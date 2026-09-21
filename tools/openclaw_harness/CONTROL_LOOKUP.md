@@ -32,7 +32,7 @@ A coordinator playtest brief with its matching validated charter requests execut
 |---|---|---|
 | Talk to nearby NPC | `C`, `t` | First practical target in the current save is Ricky Broughton. |
 | Assign nearby NPC to camp (current McWilliams Katharina restage) | `C`, `t`, `1`, `b`, `d`, `n`, `a`, `q`, `c` | Current Package 2 restaging helper path. This is the real nearby-hearer camp-assignment seam on the McWilliams fixture today. `1` is branch/save-order specific. |
-| Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`, then usually `Tab` x1-2 to let the response inject. |
+| Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`. After the current owner returns to World, use one or two `.` turns only if the observation says that is safe; do not use `Tab` as an answer-injection primitive. Confirm the recipient/response from the returned native evidence. |
 | Open ruleset window from chat UI | `a` (sometimes `a`, then `a` again) | Quest-first chat variants may consume the first `a`; if so, press `a` again to reach the ruleset window. |
 | Drop item from inventory | `d` | Harness helper path for `drop_item`. Current helper opens the normal drop inventory, then either selects a one-character inventory slot directly or uses the inventory filter (`/` + query) plus inventory `TOGGLE_ENTRY` (`l`) / optional `MARK_WITH_COUNT` (`!`) before `Enter`. Queries should match visible item text; one-character selectors are treated as raw inventory slots. Current caveat: exact fuel runs through `20260427_232220` fail the filtered multidrop primitive. The latest UI trace shows filter `plank` redraws to zero visible rows/no `typeid="2x4"` row before `TOGGLE_ENTRY`/`MARK_WITH_COUNT`; do not trust this path for fuel proof until the fixture/live inventory primitive is repaired. |
 | Spawn item wish menu from debug path | `}`, `s`, `w` | Harness helper path for `debug_spawn_item`. Current helper drives the wish-menu text filter (`/` + query) and amount prompt, then exits the menu. Because the uilist filter matches displayed entry text, practical queries should be item names / visible text, not raw item ids. |
@@ -72,10 +72,14 @@ A coordinator playtest brief with its matching validated charter requests execut
 - Derive any horizon from the mechanic or observed progress. Record native time and transition facts, and do not treat a short uneventful interval as a lifecycle negative.
 
 ### `C+b` recipient selection is situational
-A live probe in the current `master` / `Sandy Creek` save showed:
+A historical probe in the `master` / `Sandy Creek` save reported:
 - `C+b` utterance entry worked
-- the response injected after `Tab`
+- an observer attributed a later response to `Tab`
 - but the actual recipient was **Ricky Broughton**, not Rubik
+
+That `Tab` attribution is superseded for the current branch: `Tab` opens the
+main menu here, while `.` is the native pass-turn control. Treat the old
+observation as a recipient-selection note only, never as a current key recipe.
 
 So do **not** assume:
 - “ambient NPC always overrides follower NPC”
@@ -108,7 +112,7 @@ Current named probe for `Bandit local sight-avoid + scout return cadence packet 
 ## Practical live-probe recipe (current best cheap method)
 1. focus the game window
 2. send the command / utterance
-3. pass turns with `Tab`
+3. reobserve the owner, then use `.` only when a real turn is the current advertised safe action
 4. immediately read:
    - last ~40 lines of `llm_intent.log` if new lines appeared
    - and the visible in-game message log from a fresh screenshot if the intent log stayed quiet or looked ambiguous

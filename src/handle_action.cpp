@@ -549,6 +549,46 @@ static void openclaw_harness_semantic_surface_receipt(
     DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
 }
 
+// This handoff lasts for exactly one ACTION_SAVE execution.  The World
+// request is created in game::handle_action, while its ordinary native action
+// is executed by do_regular_action.  Keeping it file-local bridges those two
+// scopes without making it a game-global save result or allowing it to cross
+// a prompt decision.
+static std::optional<semantic_action_request> openclaw_harness_pending_save_quit_request;
+
+static void openclaw_harness_semantic_save_quit_completion(
+    const semantic_action_request &request, const avatar &player, const bool saved )
+{
+    // The confirmation prompt establishes only that the player chose YES.
+    // Record the serializer outcome at the one native point that knows it.
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( run_id.empty() || request.run_id != run_id || request.action_id != "world.save_quit" ) {
+        return;
+    }
+    const std::string world_name = world_generator && world_generator->active_world ?
+                                   world_generator->active_world->world_name : "";
+    const char *const artifact_dir = std::getenv( "OPENCLAW_HARNESS_RUN_DIR" );
+    const std::string artifact_identity = artifact_dir == nullptr ? "" : artifact_dir;
+    std::ostringstream event;
+    event << "{\"event\":\"native_save_completion\",\"schema\":\"caol-native-save-completion-v1\""
+          << ",\"run_id\":" << openclaw_harness_quote_action_value( run_id )
+          << openclaw_harness_semantic_event_clock()
+          << ",\"request_id\":" << openclaw_harness_quote_action_value( request.request_id )
+          << ",\"requested_run_id\":" << openclaw_harness_quote_action_value( request.run_id )
+          << ",\"requested_surface_id\":" << openclaw_harness_quote_action_value( request.surface_id )
+          << ",\"requested_frame_id\":" << openclaw_harness_quote_action_value( request.frame_id )
+          << ",\"action_id\":\"world.save_quit\""
+          << ",\"serializer_result\":" << openclaw_harness_quote_action_value(
+                 g == nullptr ? "unavailable" : g->last_save_result() )
+          << ",\"save_succeeded\":" << ( saved ? "true" : "false" )
+          << ",\"world_name\":" << openclaw_harness_quote_action_value( world_name )
+          << ",\"player_save_id\":" << openclaw_harness_quote_action_value( player.get_save_id() )
+          << ",\"artifact_identity\":{\"kind\":\"harness_run_directory\",\"value\":"
+          << openclaw_harness_quote_action_value( artifact_identity ) << "}}";
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
+}
+
 static void openclaw_harness_semantic_request_transport(
     const semantic_request_transport_event &transport )
 {
@@ -1366,6 +1406,7 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
                << openclaw_harness_quote_action_value( selected->site_id )
                << ",\"activity_id\":" << openclaw_harness_quote_action_value( outing.activity_id )
                << ",\"generation\":" << outing.generation
+               << ",\"schema_version\":" << outing.schema_version
                << ",\"owner\":" << openclaw_harness_quote_action_value(
                    bandit_live_world::to_string( outing.owner ) )
                << ",\"phase\":" << openclaw_harness_quote_action_value(
@@ -1374,6 +1415,18 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
                << ",\"last_advanced_minutes\":" << outing.last_advanced_minutes
                << ",\"member_ids\":[" << outing.member_ids[0].get_value() << ','
                << outing.member_ids[1].get_value() << ']';
+        result << ",\"local_handoff_active\":" << ( outing.local_handoff.is_active() ? "true" : "false" )
+               << ",\"local_handoff_phase\":" << openclaw_harness_quote_action_value(
+                   bandit_live_world::to_string( outing.local_handoff.phase ) )
+               << ",\"local_handoff_waypoint_index\":" << outing.local_handoff.waypoint_index
+               << ",\"local_handoff_route_position\":["
+               << outing.local_handoff.route_position.x() << ','
+               << outing.local_handoff.route_position.y() << ','
+               << outing.local_handoff.route_position.z() << ']'
+               << ",\"local_handoff_cohesion_assembled\":"
+               << ( outing.local_handoff.cohesion_assembled ? "true" : "false" )
+               << ",\"local_handoff_cohesion_abort_return\":"
+               << ( outing.local_handoff.cohesion_abort_return ? "true" : "false" );
         if( outing.waypoint_index >= 0 &&
             static_cast<std::size_t>( outing.waypoint_index ) < outing.shared_route.size() ) {
             const tripoint_abs_omt waypoint = outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
@@ -1522,11 +1575,154 @@ static std::string openclaw_harness_structural_signal_dispatch_snapshot()
 {
     const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    map &here = get_map();
+    const avatar &player = get_avatar();
+    const tripoint_bub_ms avatar_pos = player.pos_bub( here );
     std::ostringstream result;
     result << "{\"schema\":\"caol-structural-signal-dispatch-v1\""
            << ",\"current_minutes\":" << now_minutes
            << ",\"scheduler_last_hour\":" << state.routine_scheduler_last_hour
-           << ",\"candidates\":[";
+           << ",\"dispatch_threshold\":"
+           << bandit_live_world::hostile_camp_routine_dispatch_threshold()
+           << ",\"loaded_source\":{\"map_loaded\":true,\"avatar_absolute_ms\":["
+           << here.get_abs( avatar_pos ).x() << ',' << here.get_abs( avatar_pos ).y() << ','
+           << here.get_abs( avatar_pos ).z() << "],\"items\":[";
+    bool first_loaded_item = true;
+    bool loaded_source_found = false;
+    // getmapsize() is the number of loaded submaps, while i_at() takes a
+    // map-square coordinate.  Scan the complete loaded rectangle so an
+    // active source away from the first submap is still exposed.
+    const int loaded_width = SEEX * here.getmapsize();
+    const int loaded_height = SEEY * here.getmapsize();
+    for( int y = 0; y < loaded_height; ++y ) {
+        for( int x = 0; x < loaded_width; ++x ) {
+            const tripoint_bub_ms item_pos( x, y, avatar_pos.z() );
+            if( !here.inbounds( item_pos ) ) {
+                continue;
+            }
+            for( const item &stored : here.i_at( item_pos ) ) {
+                if( !stored.is_active() ) {
+                    continue;
+                }
+                loaded_source_found = true;
+                const tripoint_abs_ms absolute = here.get_abs( item_pos );
+                if( !first_loaded_item ) {
+                    result << ',';
+                }
+                first_loaded_item = false;
+                result << "{\"type_id\":"
+                       << openclaw_harness_quote_action_value( stored.typeId().str() )
+                       << ",\"active\":true,\"absolute_ms\":[" << absolute.x() << ','
+                       << absolute.y() << ',' << absolute.z();
+                if( stored.countdown_point != calendar::turn_max ) {
+                    result << "],\"countdown_turn\":"
+                           << to_turns<int>( stored.countdown_point - calendar::turn_zero )
+                           << ",\"countdown_minutes\":"
+                           << to_minutes<int>( stored.countdown_point - calendar::start_of_cataclysm );
+                } else {
+                    result << "],\"countdown_turn\":null,\"countdown_minutes\":null";
+                }
+                result << '}';
+            }
+        }
+    }
+    result << "],\"source_found\":" << ( loaded_source_found ? "true" : "false" ) << "}"
+           << ",\"site_evaluations\":[";
+    bool first_site_evaluation = true;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        const bandit_live_world::routine_scout_policy_result policy =
+            bandit_live_world::routine_scout_policy( site );
+        const bandit_live_world::routine_scout_pair_selection_result pair =
+            bandit_live_world::select_routine_scout_pair( site );
+        const std::vector<bandit_live_world::structural_outing_plan> candidates =
+            bandit_live_world::plan_structural_bounty_outing_candidates( site, now_minutes );
+        int best_cheap_target = 0;
+        std::vector<std::string> candidate_ids;
+        for( const bandit_live_world::structural_outing_plan &candidate : candidates ) {
+            best_cheap_target = std::max( best_cheap_target, candidate.cheap_score );
+            candidate_ids.push_back( candidate.lead_id );
+        }
+        const bandit_live_world::routine_dispatch_evaluation evaluation =
+            bandit_live_world::evaluate_hostile_camp_routine_dispatch(
+                site, now_minutes, best_cheap_target );
+        std::string reason;
+        if( now_minutes < 0 ) {
+            reason = "invalid_time";
+        } else if( site.next_routine_dispatch_eligible_minutes >= 0 &&
+                   now_minutes < site.next_routine_dispatch_eligible_minutes ) {
+            reason = "dispatch_cooldown";
+        } else if( site.retired_empty_site ) {
+            reason = "retired_empty_site";
+        } else if( site.has_active_outside_pressure() ) {
+            reason = "active_outside_pressure";
+        } else if( !policy.eligible ) {
+            reason = "routine_policy_ineligible";
+        } else if( !pair.eligible ) {
+            reason = "observer_or_escort_ineligible";
+        } else if( candidates.empty() ) {
+            reason = evaluation.force_due ? "force_due_without_candidate" :
+                     "no_structural_candidate_source";
+        } else if( evaluation.force_due || evaluation.drive >=
+                   bandit_live_world::hostile_camp_routine_dispatch_threshold() ) {
+            reason = evaluation.force_due ? "force_due" : "drive_at_or_above_threshold";
+        } else {
+            reason = "drive_below_threshold";
+        }
+        if( !first_site_evaluation ) {
+            result << ',';
+        }
+        first_site_evaluation = false;
+        result << "{\"site_id\":"
+               << openclaw_harness_quote_action_value( site.site_id )
+               << ",\"routine_policy\":{\"applies\":"
+               << ( policy.applies ? "true" : "false" )
+               << ",\"eligible\":" << ( policy.eligible ? "true" : "false" )
+               << ",\"party_size\":" << policy.party_size
+               << ",\"required_local_reserve\":" << policy.required_local_reserve
+               << ",\"concrete_ready_goal\":" << policy.concrete_ready_goal
+               << ",\"rejection_reason\":"
+               << openclaw_harness_quote_action_value( policy.rejection_reason ) << "}"
+               << ",\"observer\":{\"eligible\":" << ( pair.eligible ? "true" : "false" )
+               << ",\"observer_id\":" << pair.observer_id.get_value()
+               << ",\"escort_id\":" << pair.escort_id.get_value()
+               << ",\"observer_capability\":" << pair.observer_capability
+               << ",\"escort_capability\":" << pair.escort_capability
+               << ",\"return_safe_escort\":" << ( pair.return_safe_escort ? "true" : "false" )
+               << ",\"rejection_reason\":"
+               << openclaw_harness_quote_action_value( pair.rejection_reason ) << "}"
+               << ",\"scheduler_inputs\":{\"supply_units\":" << site.supply_units
+               << ",\"living_total\":" << bandit_live_world::camp_supply_living_total( site )
+               << ",\"routine_activated_minutes\":" << site.routine_activated_minutes
+               << ",\"last_routine_resolved_minutes\":" << site.last_routine_resolved_minutes
+               << ",\"next_routine_dispatch_eligible_minutes\":"
+               << site.next_routine_dispatch_eligible_minutes
+               << ",\"candidate_count\":" << candidates.size()
+               << ",\"candidate_lead_ids\":[";
+        for( std::size_t index = 0; index < candidate_ids.size(); ++index ) {
+            if( index > 0 ) {
+                result << ',';
+            }
+            result << openclaw_harness_quote_action_value( candidate_ids[index] );
+        }
+        result << "]}"
+               << ",\"evaluation\":{\"need\":" << evaluation.need
+               << ",\"knowledge_gap\":" << evaluation.knowledge_gap
+               << ",\"best_cheap_target\":" << evaluation.best_cheap_target
+               << ",\"cadence\":" << evaluation.cadence
+               << ",\"drive\":" << evaluation.drive
+               << ",\"threshold\":"
+               << bandit_live_world::hostile_camp_routine_dispatch_threshold()
+               << ",\"force_due\":"
+               << ( evaluation.force_due ? "true" : "false" )
+               << ",\"drive_eligible\":" << ( evaluation.drive >=
+                       bandit_live_world::hostile_camp_routine_dispatch_threshold() ? "true" : "false" )
+               << ",\"time_dependent\":"
+               << ( evaluation.force_due || evaluation.drive <
+                    bandit_live_world::hostile_camp_routine_dispatch_threshold() ? "true" : "false" )
+               << ",\"reason\":" << openclaw_harness_quote_action_value( reason ) << "}"
+               << "}";
+    }
+    result << "],\"candidates\":[";
     bool first = true;
     for( const bandit_live_world::site_record &site : state.sites ) {
         for( const bandit_live_world::camp_map_lead &lead : site.intelligence_map.leads ) {
@@ -1562,7 +1758,7 @@ static std::string openclaw_harness_structural_signal_dispatch_snapshot()
         }
     }
     result << "]"
-           << ",\"provenance\":\"diagnostic_read_only_structural_signal_planner_no_materialization_or_dispatch\"}";
+           << ",\"provenance\":\"diagnostic_read_only_production_scheduler_evaluator_no_materialization_or_dispatch\"}";
     return result.str();
 }
 
@@ -5153,9 +5349,20 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             }
             break;
 
-        case ACTION_SAVE:
+        case ACTION_SAVE: {
+            // Consume and clear the semantic World handoff before asking the
+            // native prompt.  A NO answer, an ordinary later ACTION_SAVE, or
+            // a failed serializer can therefore never inherit this request.
+            std::optional<semantic_action_request> semantic_save_quit_request =
+                std::move( openclaw_harness_pending_save_quit_request );
+            openclaw_harness_pending_save_quit_request.reset();
             if( query_yn( _( "Save and quit?" ) ) ) {
-                if( save() ) {
+                const bool saved = save();
+                if( semantic_save_quit_request ) {
+                    openclaw_harness_semantic_save_quit_completion(
+                        *semantic_save_quit_request, player_character, saved );
+                }
+                if( saved ) {
                     player_character.set_moves( 0 );
                     uquit = QUIT_SAVED;
                 } else if( save_is_dirty && query_yn( _( "Unable to save, quit anyway?" ) ) ) {
@@ -5165,6 +5372,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                 }
             }
             break;
+        }
 
         case ACTION_QUICKSAVE:
             quicksave();
@@ -5484,6 +5692,7 @@ bool game::handle_action()
                         // ACTION_SAVE retains the ordinary native confirmation
                         // prompt.  That child prompt publishes and consumes its
                         // own semantic choice before the saved process exits.
+                        openclaw_harness_pending_save_quit_request = request;
                         act = ACTION_SAVE;
                     } else if( request.action_id == "world.inventory" ) {
                         act = ACTION_INVENTORY;

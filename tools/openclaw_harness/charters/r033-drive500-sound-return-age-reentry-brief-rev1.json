@@ -1,0 +1,15 @@
+{
+  "outcome": "R-033: an idle, supply-empty five-member camp crosses the unchanged production threshold, sends its ordinary structural pair to a local watch before a delayed real acoustic source emits, returns one matching sound report, and preserves the original sound provenance and age through native save/reload.",
+  "scenario": "r033.phase4_semantic_autonomous_sound_return_drive500_age_reentry_rev1_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.autonomous_sound_return", "op": "eq", "value": "native_local_watch_then_sound_then_returned_report", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.production_dispatch_premise", "op": "eq", "value": "supply_empty_drive_ge_500", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.returned_sound_reentry", "op": "eq", "value": "native_save_reload_preserves_original_sound_provenance_and_age", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

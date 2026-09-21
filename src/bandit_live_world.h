@@ -1798,6 +1798,7 @@ response_denial_resolution resolve_response_authorization_denial(
 int normalize_ground_bounty_opportunity( int bounty_units );
 int hostile_camp_dispatch_drive( int need, int knowledge_gap, int best_cheap_target,
                                  int cadence );
+int hostile_camp_routine_dispatch_threshold();
 bool hostile_camp_routine_score_eligible( int score, bool retained_target );
 bool hostile_camp_routine_risk_blocked( int risk );
 bool hostile_camp_routine_route_risk_eligible( int risk, int max_segment_risk );
@@ -1856,6 +1857,14 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup = {} );
 structural_signal_record_result record_structural_signal_observations( world_state &state,
+        int now_minutes,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup );
+// Significant physical signals are one-shot.  When a structural pair is loaded at its
+// observation position, preserve a valid read on that pair before the ordinary abstract
+// cadence decides whether it changes travel or dispatch.
+structural_signal_record_result record_local_structural_signal_observations( world_state &state,
         int now_minutes,
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,

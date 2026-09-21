@@ -1422,6 +1422,73 @@ class KeepWatchTest(unittest.TestCase):
             "world.wait", "wait.duration_menu", "wait.1m",
         ])
 
+    def test_accepted_wait_collects_activity_pause_surface_without_dispatching_pause(self) -> None:
+        """The current input surface is not the operation's next recipe step."""
+        start = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        duration = frame(2, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        duration.update({"state": "wait_duration_choice", "valid_actions": ["wait.1m"],
+                         "action_inputs": {"wait.1m": "1"}})
+        activity = self.menu_frame(3, stable_id="", label="Pause activity")
+        activity.update({"kind": "activity_wait", "breadcrumbs": ["Activity in progress"],
+                         "valid_actions": [{"id": "activity.pause", "stable_id": "",
+                                            "label": "Pause activity", "enabled": True}]})
+        complete = frame(4, 101, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        service, dispatched = self.service([start, duration, activity, complete])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "wait.1m"])
+        self.assertNotIn("activity.pause", dispatched)
+        operation = service.call({"action": "run.status"})["result"]["operation"]
+        self.assertEqual(operation["state"], "completed")
+        self.assertEqual(operation["requested_duration_game_minutes"], 1.0)
+        self.assertEqual(operation["completed_progress_game_minutes"], 1.0)
+
+    def test_duration_owner_prefers_longest_fresh_advertisement_inside_boundary(self) -> None:
+        start = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        start.update({"schema_version": 1, "event": "surface_descriptor", "surface_id": "surface:1",
+                      "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                      "valid_actions": [{"id": "world.wait", "stable_id": "world-wait",
+                                         "label": "Wait", "enabled": True}]})
+        mode = self.menu_frame(2, stable_id="wait-mode:wait-a-while", label="Wait a while")
+        duration = self.menu_frame(3, stable_id="", label="wait.1m")
+        duration["valid_actions"] = [
+            {"id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True},
+            {"id": "wait.30m", "stable_id": "", "label": "wait.30m", "enabled": True},
+        ]
+        activity = self.menu_frame(4, stable_id="", label="Pause activity")
+        activity.update({"kind": "activity_wait", "breadcrumbs": ["Activity in progress"],
+                         "valid_actions": [{"id": "activity.pause", "stable_id": "",
+                                            "label": "Pause activity", "enabled": True}]})
+        complete = frame(5, 130, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        service, dispatched = self.service([start, mode, duration, activity, complete])
+        long_bound = {**bound(), "maximum": 30}
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 130, "bound": long_bound,
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "menu.choose", "wait.30m"])
+        operation = service.call({"action": "run.status"})["result"]["operation"]
+        self.assertEqual(operation["requested_duration_game_minutes"], 30.0)
+        self.assertEqual(operation["completed_progress_game_minutes"], 30.0)
+
     def test_player_api_reports_accepted_native_receipt_without_successor(self) -> None:
         issuing = self.menu_frame(1, stable_id="wait-choice", label="Wait")
 

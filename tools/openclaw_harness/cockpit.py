@@ -123,6 +123,153 @@ class CockpitRunChannel:
         self._dispatch_player_fire_setup = dispatch_player_fire_setup
         self._cancel_request = cancel_request
         self._relative_recipe_active = False
+        self._last_game_minutes: Optional[float] = None
+        # An accepted native activity outlives the surface that accepted it.
+        # Keep this separately from ``_continuation``: the latter grants the
+        # next input transaction, whereas an operation tells collection what
+        # has already reached native code.  In particular, a Pause control is
+        # an optional control on a running activity, never the next recipe
+        # action merely because it is presently advertised.
+        self._active_operation: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def _duration_from_action(action_id: str) -> Optional[float]:
+        """Decode only the public native wait-duration action vocabulary."""
+        return {
+            "wait.20s": 1.0 / 3.0,
+            "wait.1m": 1.0,
+            "wait.5m": 5.0,
+            "wait.30m": 30.0,
+            "wait.1h": 60.0,
+            "wait.2h": 120.0,
+            "wait.3h": 180.0,
+            "wait.6h": 360.0,
+            "wait.day": 1440.0,
+        }.get(action_id)
+
+    def _operation_projection(self, observed: Optional[Mapping[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        """Project receipt-bound operation state without treating controls as intent."""
+        operation = self._active_operation
+        if not isinstance(operation, Mapping):
+            return None
+        result = dict(operation)
+        if isinstance(observed, Mapping):
+            current = self._signal_value(observed, "game_minutes")
+            if current is not None:
+                result["completed_progress_game_minutes"] = max(
+                    0.0, current - float(result.get("start_game_minutes", current)),
+                )
+                duration = result.get("requested_duration_game_minutes")
+                if isinstance(duration, (int, float)) and current >= float(result.get("start_game_minutes", current)) + float(duration):
+                    result["state"] = "completed"
+            surface = observed.get("surface")
+            if isinstance(surface, Mapping):
+                result["current_input_owner"] = str(surface.get("kind", "")) or None
+                result["current_input_actions"] = list(observed.get("advertised_actions", []))
+        return result
+
+    def _accept_wait_operation(self, *, observed: Mapping[str, Any], action_id: str,
+                               native_receipt: Mapping[str, Any], next_frame: Mapping[str, Any]) -> None:
+        """Record one native acceptance; a later collection must never replay it."""
+        duration = self._duration_from_action(action_id)
+        legacy_activity = str(next_frame.get("state", "")) == "wait_activity" or \
+            str(next_frame.get("kind", "")) == "activity_wait"
+        # Opening the native wait chooser is itself an accepted operation.
+        # It has no scalar duration until the fresh duration owner is chosen,
+        # but it must remain receipt-bound across those owner changes instead
+        # of being failed as a same-minute no-progress action.
+        wait_menu = action_id == "world.wait" and (
+            str(next_frame.get("state", "")) in {"wait_mode_choice", "wait_duration_choice"} or
+            str(next_frame.get("kind", "")) == "menu"
+        )
+        if duration is None and not (action_id == "world.wait" and (legacy_activity or wait_menu)):
+            return
+        start = self._signal_value(observed, "game_minutes")
+        if start is None:
+            start = self._last_game_minutes
+        if start is None:
+            return
+        continuation = self._continuation or {}
+        target = continuation.get("start")
+        maximum = continuation.get("maximum")
+        request_id = str(native_receipt.get("request_id", "")).strip()
+        self._active_operation = {
+            "schema": "caol-native-operation-v1",
+            "kind": "wait",
+            "state": "accepted",
+            "run_id": str(observed.get("run_id", "")),
+            "binding_id": self._binding_id,
+            "request_identity": {
+                "request_id": request_id or None,
+                "observation_id": str(observed.get("observation_id", "")),
+                "action_id": action_id,
+            },
+            "accepted_receipt": self._public_action_receipt(native_receipt),
+            "start_game_minutes": start,
+            "requested_duration_game_minutes": duration,
+            "requested_target_game_minutes": (
+                float(target) + float(maximum) if isinstance(target, (int, float)) and
+                isinstance(maximum, (int, float)) else None
+            ),
+            "completed_progress_game_minutes": 0.0,
+            "interruption_policy": "native_authority_required",
+            "outcome_unknown_on_reconnect": True,
+            "evidence_handles": list(observed.get("compact_log", {}).get("evidence_refs", [])),
+            "performance": {"status": "retained_by_public_collect"},
+            "current_input_owner": str(next_frame.get("kind", next_frame.get("state", ""))) or None,
+            "current_input_actions": [],
+        }
+
+    def _collect_wait_operation(self, observed: Mapping[str, Any]) -> tuple[str, Optional[Dict[str, Any]]]:
+        """Classify a receipt-bound wait independently of a current input surface.
+
+        ``running`` means the operation owns native progress and collection
+        must wait; ``decision`` means native authority exposed a new semantic
+        owner.  The caller is the only place that chooses an action.
+        """
+        operation = self._active_operation
+        if not isinstance(operation, dict) or operation.get("kind") != "wait":
+            return "none", None
+        if operation.get("run_id") != observed.get("run_id") or not self._binding_matches():
+            operation["state"] = "outcome_unknown"
+            operation["blocker"] = "run_or_binding_changed"
+            return "unknown", None
+        projection = self._operation_projection(observed)
+        if projection is not None:
+            operation.update(projection)
+        record = self._observations.get(str(observed.get("observation_id", "")))
+        raw = record.get("issuing_frame") if isinstance(record, Mapping) else {}
+        surface = observed.get("surface") if isinstance(observed.get("surface"), Mapping) else {}
+        # This is intentionally an operation-state check, not a recipe action
+        # selection.  Both legacy actionless frames and modern activity
+        # descriptors identify an already accepted native activity; neither
+        # makes the visible Pause control mandatory.
+        running = str(raw.get("state", "")) in {
+            "wait_activity", "activity_resumed", "wait_activity_complete",
+        } or str(surface.get("kind", "")) in {"activity_wait", "wait_activity"}
+        if running:
+            operation["state"] = "running"
+            operation["blocker"] = None
+            activity_frame_id = str(raw.get("paired_raw_frame_id", observed.get("observation_id", "")))
+            return "running", {"activity_frame_id": activity_frame_id}
+        if (str(surface.get("kind", "")) == "menu" or
+                str(raw.get("state", "")) in {"wait_mode_choice", "wait_duration_choice"}) and \
+                operation.get("requested_duration_game_minutes") is None:
+            operation["state"] = "awaiting_duration_selection"
+            operation["blocker"] = None
+            return "selecting", None
+        if operation.get("state") == "completed":
+            return "completed", None
+        # A native prompt or an unfamiliar owner is a real decision boundary;
+        # do not spin or replay the accepted duration action.
+        if str(surface.get("kind", "")) not in {"world", ""} or str(raw.get("state", "")) not in {"world", ""}:
+            operation["state"] = "awaiting_decision"
+            operation["blocker"] = "native_authority_required"
+            return "decision", None
+        # A World successor is the completion boundary for an action whose
+        # duration is not scalar (legacy primitive waits).  The next macro
+        # primitive may now be selected from that fresh World owner.
+        return "completed", None
 
     @staticmethod
     def _surface_descriptor(frame: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
@@ -254,6 +401,7 @@ class CockpitRunChannel:
     @staticmethod
     def _semantic_wait_menu_choice(
         frame: Mapping[str, Any], recipe: Sequence[Mapping[str, str]],
+        *, maximum_duration_game_minutes: Optional[float] = None,
     ) -> Optional[tuple[str, Optional[str]]]:
         """Return the one receipt-bound choice for a native semantic wait menu.
 
@@ -288,10 +436,21 @@ class CockpitRunChannel:
         direct_durations = [
             action for action in enabled_actions
             if action["id"] != "menu.choose" and
-            action["id"] in {entry["action_id"] for entry in recipe}
+            CockpitRunChannel._duration_from_action(action["id"]) is not None and
+            any(entry.get("action_id") == action["id"] for entry in recipe) and
+            (maximum_duration_game_minutes is None or
+             CockpitRunChannel._duration_from_action(action["id"]) <= maximum_duration_game_minutes)
         ]
-        if len(direct_durations) == 1:
-            return direct_durations[0]["id"], None
+        if direct_durations:
+            # The duration menu is a fresh native authority.  Prefer the
+            # longest currently advertised duration that the caller declared
+            # and that stays inside the next observation boundary.  A fresh
+            # menu owner never authorizes a duration omitted from the recipe.
+            selected = max(
+                direct_durations,
+                key=lambda action: CockpitRunChannel._duration_from_action(action["id"]) or 0.0,
+            )
+            return selected["id"], None
         labels = {
             "wait.1m": "1 minute",
             "wait.5m": "5 minutes",
@@ -529,20 +688,61 @@ class CockpitRunChannel:
         first, last = cls._native_turn(before), cls._native_turn(after)
         return signal == "game_minutes" and first is not None and last is not None and last > first
 
+    def _native_save_completion_for_reentry(self) -> Dict[str, Any]:
+        """Find one serializer completion bound to its World request and YES receipt."""
+        world_receipts: list[Mapping[str, Any]] = []
+        completion_receipts: list[tuple[Mapping[str, Any], Mapping[str, Any]]] = []
+        for entry in self._transcript:
+            if not isinstance(entry, Mapping) or entry.get("kind") != "action":
+                continue
+            result = entry.get("result")
+            receipt = result.get("receipt") if isinstance(result, Mapping) else None
+            native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
+            if not isinstance(native, Mapping) or native.get("accepted") is not True:
+                continue
+            if entry.get("action_id") == "world.save_quit":
+                world_receipts.append(native)
+            candidate = native.get("native_save_completion")
+            if isinstance(candidate, Mapping):
+                completion_receipts.append((native, candidate))
+        if len(world_receipts) != 1 or len(completion_receipts) != 1:
+            return {"status": "missing_or_ambiguous", "world_receipt_count": len(world_receipts),
+                    "completion_receipt_count": len(completion_receipts)}
+        terminal_native, completion_packet = completion_receipts[0]
+        completion = completion_packet.get("completion")
+        if completion_packet.get("status") != "matched" or not isinstance(completion, Mapping):
+            return {"status": str(completion_packet.get("status", "unproved")),
+                    "completion": dict(completion) if isinstance(completion, Mapping) else None}
+        world_native = world_receipts[0]
+        exact_fields = ("request_id", "requested_run_id", "requested_surface_id", "requested_frame_id")
+        bound = (
+            completion.get("run_id") == self._run_id and
+            completion.get("requested_run_id") == self._run_id and
+            completion.get("action_id") == "world.save_quit" and
+            completion.get("serializer_result") == "saved" and
+            completion.get("save_succeeded") is True and
+            all(completion.get(key) == world_native.get(key) for key in exact_fields) and
+            isinstance(completion.get("artifact_identity"), Mapping) and
+            bool(str(completion["artifact_identity"].get("value", "")).strip()) and
+            all(bool(str(completion.get(key, "")).strip()) for key in ("world_name", "player_save_id")) and
+            terminal_native.get("run_id") == self._run_id
+        )
+        if not bound:
+            return {"status": "identity_mismatch", "completion": dict(completion)}
+        return {"status": "matched", "completion": dict(completion),
+                "terminal_action_receipt": dict(terminal_native),
+                "world_action_receipt": dict(world_native)}
+
     def _stop(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         if self._final_report is not None:
             return self._final_report
-        # A declared saved-world continuation needs both the native save
-        # receipt and an actual exit of the bound native process.  Returning
-        # to the main menu is not process replacement: advertising reentry
-        # there made the bridge attempt to replace a still-running game.
-        saved_world = any(
-            entry.get("kind") == "action" and entry.get("action_id") == "world.save_quit"
-            for entry in self._transcript
-            if isinstance(entry, Mapping)
-        )
+        # A prompt acceptance is not a saved world.  Reentry needs the native
+        # serializer completion, its exact originating World request and an
+        # actual exit of the bound native process.
+        native_save_completion = self._native_save_completion_for_reentry()
         process = self._read_process_state() if self._read_process_state is not None else {}
-        declared_reentry_ready = saved_world and isinstance(process, Mapping) and \
+        declared_reentry_ready = native_save_completion.get("status") == "matched" and \
+            isinstance(process, Mapping) and \
             process.get("alive") is False
         report: Dict[str, Any] = {
             "schema": "caol-cockpit-live-final-v1",
@@ -556,6 +756,7 @@ class CockpitRunChannel:
             "bound_derivation": dict(self._continuation or {}),
             "unused_authority": str(detail.get("unused_authority", "none")),
             "declared_reentry_ready": declared_reentry_ready,
+            "native_save_completion": native_save_completion,
         }
         if self._finalize_session is not None:
             finalized = self._finalize_session(report)
@@ -584,6 +785,12 @@ class CockpitRunChannel:
     def _fail_operation(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         """Stop this operation and revoke its grants; only the player ends a session."""
         released = dict(self._continuation or {})
+        if isinstance(self._active_operation, dict) and self._active_operation.get("state") not in {
+                "completed", "cancelled", "failed", "outcome_unknown"}:
+            self._active_operation["state"] = (
+                "cancelled" if reason == "player_cancelled" else "failed"
+            )
+            self._active_operation["blocker"] = reason
         self._continuation = None
         self._safe_activity_bridge = None
         if isinstance(self._observations, ArchiveMap):
@@ -709,7 +916,14 @@ class CockpitRunChannel:
     def observe(self) -> Dict[str, Any]:
         previous_failure = self._last_failure
         try:
-            return self._observe()
+            result = self._observe()
+            minutes = self._signal_value(result, "game_minutes")
+            if minutes is not None:
+                self._last_game_minutes = minutes
+            projection = self._operation_projection(result)
+            if projection is not None:
+                result["operation"] = projection
+            return result
         except Exception as exc:
             if self._state == "active" and self._last_failure is previous_failure:
                 self._fail_operation(str(exc), {"exception_type": type(exc).__name__})
@@ -1055,6 +1269,7 @@ class CockpitRunChannel:
             "continuation": dict(self._continuation or {}),
             "final": self._final_report,
             "last_failure": self._last_failure,
+            "operation": self._operation_projection(self._last_public_state),
         }
         return status
 
@@ -1266,28 +1481,39 @@ class CockpitRunChannel:
                                             terminal_game_minutes=current)
             if cancelled is not None:
                 return cancelled
-            record = self._observations.get(str(observed.get("observation_id", "")))
-            raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
-            raw_state = str(raw.get("paired_raw_state", raw.get("state", ""))) \
-                if isinstance(raw, Mapping) else ""
-            if raw_state in {
-                    "wait_activity", "activity_resumed", "wait_activity_complete",
-            }:
+            operation_state, collection = self._collect_wait_operation(observed)
+            if operation_state == "unknown":
+                return self._fail_operation("native_operation_outcome_unknown", {
+                    "operation": self._operation_projection(observed),
+                    "unused_authority": "revoked",
+                })
+            if operation_state == "running":
                 if self._await_native_completion is None:
                     return self._fail_operation("native_wait_completion_unavailable", {
-                        "observation_id": observed.get("observation_id", ""),
+                        "operation": self._operation_projection(observed),
                         "unused_authority": "revoked",
                     })
                 try:
-                    self._await_native_completion(str(raw.get(
-                        "paired_raw_frame_id", observed.get("observation_id", "")
-                    )))
+                    self._await_native_completion(str(collection["activity_frame_id"]))
                     observed = self.observe()
                 except ValueError as exc:
+                    if str(exc) == "player_cancelled":
+                        return self._cancel_result("unknown") or self._fail_operation(
+                            "native_wait_completion_unavailable", {"detail": str(exc)}
+                        )
                     return self._fail_operation("native_wait_completion_unavailable", {
-                        "detail": str(exc), "unused_authority": "revoked",
+                        "detail": str(exc), "operation": self._operation_projection(observed),
+                        "unused_authority": "revoked",
                     })
                 continue
+            if operation_state == "completed":
+                self._active_operation = None
+            # A decision is deliberately left to the existing native safety
+            # handling immediately below.  The operation records the blocker;
+            # it does not turn a recognized safe recovery into an automatic
+            # macro stop or a repeat of the accepted duration action.
+            record = self._observations.get(str(observed.get("observation_id", "")))
+            raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
             recipe_entry = normalized_recipe[recipe_index % len(normalized_recipe)]
             surface_actions = raw.get("valid_actions") if isinstance(raw, Mapping) else None
             if isinstance(surface_actions, list) and any(isinstance(item, Mapping) for item in surface_actions):
@@ -1352,7 +1578,10 @@ class CockpitRunChannel:
                         next_observation, Mapping
                     ) else self.observe()
                     continue
-                semantic_wait_choice = self._semantic_wait_menu_choice(raw, normalized_recipe)
+                semantic_wait_choice = self._semantic_wait_menu_choice(
+                    raw, normalized_recipe,
+                    maximum_duration_game_minutes=max(0.0, float(target) - float(current)),
+                )
                 if semantic_wait_choice is not None:
                     action_id, stable_id = semantic_wait_choice
                     outcome = self.act(
@@ -1397,10 +1626,13 @@ class CockpitRunChannel:
                         # recipe primitive just as the non-semantic branch
                         # does; retaining its cursor would try that expired
                         # duration again on the successor World surface.
-                        recipe_index = (
-                            next(index for index, entry in enumerate(normalized_recipe)
-                                 if entry["action_id"] == action_id) + 1
-                        )
+                        matching_index = next((
+                            index for index, entry in enumerate(normalized_recipe)
+                            if entry["action_id"] == action_id
+                        ), None)
+                        recipe_index = 0 if matching_index is None else (
+                            matching_index + 1
+                        ) % len(normalized_recipe)
                     # Choosing the native "Wait a while" parent can report a
                     # transient World frame before its duration descriptor is
                     # emitted.  This is after an accepted native dispatch,
@@ -1782,6 +2014,40 @@ class CockpitRunChannel:
             if cancelled is not None:
                 return cancelled
             current = self._signal_value(observed, "game_minutes")
+            operation_state, collection = self._collect_wait_operation(observed)
+            if operation_state == "unknown":
+                return stop("native_operation_outcome_unknown", {
+                    "operation": self._operation_projection(observed),
+                })
+            if operation_state == "running":
+                if self._await_native_completion is None:
+                    return stop("native_wait_completion_unavailable", {
+                        "operation": self._operation_projection(observed),
+                    })
+                try:
+                    self._await_native_completion(str(collection["activity_frame_id"]))
+                    observed = self.observe()
+                except ValueError as exc:
+                    if str(exc) == "player_cancelled":
+                        return self._cancel_result("unknown") or stop(
+                            "native_wait_completion_unavailable", {"detail": str(exc)}
+                        )
+                    return stop("native_wait_completion_unavailable", {"detail": str(exc)})
+                continue
+            if operation_state == "completed":
+                self._active_operation = None
+            if operation_state == "decision":
+                return stop("native_wait_interrupted", {
+                    "native_stop_reason": "native_authority_required",
+                    "native_frame_id": observed.get("observation_id", ""),
+                    "operation": self._operation_projection(observed),
+                })
+            # Semantic menu descriptors deliberately omit World scalar facts.
+            # The accepted operation retains its exact origin, so this
+            # zero-time selection owner is not evidence that progress is
+            # missing; use that origin only while choosing its duration.
+            if current is None and operation_state == "selecting":
+                current = start
             if current is None:
                 record = self._observations.get(str(observed.get("observation_id", "")), {})
                 raw = record.get("issuing_frame", {})
@@ -1829,40 +2095,50 @@ class CockpitRunChannel:
                     "native_stop_reason": str(safety.get("classification", "unsafe_native_frame")),
                     "native_frame_id": observed.get("observation_id", ""),
                 })
-            if state == "wait_activity":
-                if self._await_native_completion is None:
-                    return stop("native_wait_completion_unavailable", {})
-                try:
-                    self._await_native_completion(str(observed.get("observation_id", "")))
-                    observed = self.observe()
-                except ValueError as exc:
-                    if str(exc) == "player_cancelled":
-                        return self._cancel_result("unknown", action_id="world.wait") or stop(
-                            "native_wait_completion_unavailable", {"detail": str(exc)})
-                    return stop("native_wait_completion_unavailable", {"detail": str(exc)})
-                continue
             advertised = record.get("actions") if isinstance(record, Mapping) else None
             if not isinstance(advertised, set):
                 return stop("raw_wait_stale_frame", {})
-            action_id = recipe[recipe_index % len(recipe)]
-            recipe_index += 1
+            semantic_choice = self._semantic_wait_menu_choice(
+                raw, [{"action_id": action} for action in recipe],
+                maximum_duration_game_minutes=max(0.0, float(target) - current),
+            )
+            stable_id: Optional[str] = None
+            if semantic_choice is not None:
+                action_id, stable_id = semantic_choice
+                if self._duration_from_action(action_id) is not None:
+                    # A freshly advertised duration has consumed this wait
+                    # cycle.  Resume from World on its successor rather than
+                    # carrying the prior recipe cursor onto a different
+                    # owner and trying the expired duration a second time.
+                    matching_index = next((
+                        index for index, candidate in enumerate(recipe)
+                        if candidate == action_id
+                    ), None)
+                    recipe_index = 0 if matching_index is None else (
+                        matching_index + 1
+                    ) % len(recipe)
+            else:
+                action_id = recipe[recipe_index % len(recipe)]
+                recipe_index += 1
             if action_id not in advertised:
                 return stop("native_wait_interrupted", {
                     "native_stop_reason": "wait_action_not_advertised",
                     "action_id": action_id,
                     "advertised_actions": sorted(advertised),
                 })
-            continuation_bound = dict(bound)
-            continuation_bound["maximum"] = min(float(maximum) - (current - start),
-                                                float(target) - current)
-            continued = self.continue_session(
-                observation_id=str(observed["observation_id"]),
-                expected_signal="game_minutes", bound=continuation_bound,
-            )
-            if continued.get("ok") is not True:
-                return continued
+            if operation_state != "selecting":
+                continuation_bound = dict(bound)
+                continuation_bound["maximum"] = min(float(maximum) - (current - start),
+                                                    float(target) - current)
+                continued = self.continue_session(
+                    observation_id=str(observed["observation_id"]),
+                    expected_signal="game_minutes", bound=continuation_bound,
+                )
+                if continued.get("ok") is not True:
+                    return continued
             outcome = self.act(
                 observation_id=str(observed["observation_id"]), action_id=action_id,
+                stable_id=stable_id,
             )
             if outcome.get("ok") is not True:
                 error = str(outcome.get("error", "native_wait_dispatch_failed"))
@@ -2649,7 +2925,13 @@ class CockpitRunChannel:
                     dict(request.get("parameters", {})) == dict(parameters or {})
             exit_code = ended["surface"]["facts"].get("exit_code")
             exited_normally = type(exit_code) is int and exit_code == 0
-            confirmed = bool(matched and exited_normally)
+            save_completion = native.get("native_save_completion") if isinstance(native, Mapping) else None
+            save_completion_status = (
+                str(save_completion.get("status", ""))
+                if isinstance(save_completion, Mapping) else ""
+            )
+            confirmed = bool(matched and exited_normally and
+                             (not save_completion_status or save_completion_status == "matched"))
             result = {"ok": confirmed, "state": "process_exited" if confirmed else "process_exit_unconfirmed",
                       "observation": ended, "native_receipt_matched": bool(matched),
                       "receipt": self._public_action_receipt(receipt)
@@ -2657,7 +2939,11 @@ class CockpitRunChannel:
                       "next_action": "run.witness",
                       "note": "Inspect the retained receipt separately; process exit does not establish saving or gameplay success."}
             if not confirmed:
-                result["error"] = "game_process_exit_action_unconfirmed"
+                result["error"] = (
+                    "native_save_failed_or_unproved" if save_completion_status and
+                    save_completion_status != "matched" else
+                    "game_process_exit_action_unconfirmed"
+                )
             self._transcript.append({"kind": "action", "action_id": str(action_id),
                                      "observation_id": str(observation_id), "result": result})
             return result
@@ -2737,6 +3023,11 @@ class CockpitRunChannel:
                     "action_id": action_id, "observation_id": str(observation_id),
                     "native_receipt": dict(native), "unused_authority": "revoked",
                 }), "receipt": dict(receipt)}
+        if isinstance(next_frame, Mapping):
+            self._accept_wait_operation(
+                observed=observed["public_state"], action_id=str(action_id),
+                native_receipt=native, next_frame=next_frame,
+            )
         issuing_prompt_payload = issuing_raw.get("payload", {})
         selected_prompt_label = next((str(candidate.get("label", "")) for candidate in
                                       issuing_raw.get("valid_actions", [])
@@ -2922,6 +3213,9 @@ class CockpitRunChannel:
             "evidence_effect": "native_transition_receipt_persisted",
             "observation": fresh,
         }
+        projection = self._operation_projection(fresh)
+        if projection is not None:
+            result["operation"] = projection
         if recovery is not None:
             result["recovery_receipt"] = result["receipt"]
         self._transcript.append({
@@ -2931,6 +3225,26 @@ class CockpitRunChannel:
         })
         continuation = self._continuation
         if continuation is not None:
+            operation = self._active_operation
+            pending_wait_menu = isinstance(operation, Mapping) and \
+                operation.get("kind") == "wait" and \
+                operation.get("requested_duration_game_minutes") is None and \
+                (str(action_id) == "menu.choose" or
+                 (str(action_id) == "world.wait" and
+                  (str(next_frame.get("kind", "")) == "menu" or
+                   str(next_frame.get("state", "")) in {
+                       "wait_mode_choice", "wait_duration_choice",
+                   })))
+            if pending_wait_menu:
+                # Current semantic menu descriptors use ``kind: menu`` rather
+                # than the older wait_* state names.  Both are an accepted
+                # pre-duration part of the same operation: no game-time
+                # progress is owed until the duration action reaches native
+                # activity, and a new menu owner is not a player decision.
+                continuation["observation_id"] = str(fresh.get("observation_id", ""))
+                continuation["phase"] = "awaiting_wait_dispatch"
+                result["continuation"] = {"state": "awaiting_wait_dispatch"}
+                return result
             if str( next_frame.get( "state", "" ) ) in {
                     "wait_mode_choice", "wait_duration_choice",
             }:

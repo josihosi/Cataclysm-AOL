@@ -7,10 +7,13 @@ For a registry-launched file-backed session, use the persistent player client:
 ```sh
 python3 tools/openclaw_harness/play_cli.py --session SESSION look
 python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]
+python3 tools/openclaw_harness/play_cli.py --session SESSION wait --target-delta-game-minutes 5 --duration-action wait.5m --bound-maximum 5 --bound-basis scheduler_boundary --bound-source "chosen observation window"
+python3 tools/openclaw_harness/play_cli.py --session SESSION move --east 1 --south 0 --bound-maximum 1 --bound-basis path_progress --bound-source "one chosen map square"
 python3 tools/openclaw_harness/play_cli.py --session SESSION controls
 python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains TEXT
 python3 tools/openclaw_harness/play_cli.py --session SESSION --wait-seconds REMAINING_SECONDS call --request REQUEST.json
-python3 tools/openclaw_harness/play_cli.py --session SESSION --wait-seconds REMAINING_SECONDS collect
+python3 tools/openclaw_harness/play_cli.py --session SESSION --wait-seconds REMAINING_SECONDS collect --request-id REQUEST_ID
+python3 tools/openclaw_harness/play_cli.py --session SESSION resume --request-id REQUEST_ID
 python3 tools/openclaw_harness/play_cli.py --session SESSION cancel --reason "stop this pending request"
 python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR
 python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
@@ -36,14 +39,18 @@ and skips that continuation. Saving alone does not establish new-process persist
 
 ## Macros, pending requests and current controls
 
-For an existing structured `game.*` macro, put its complete request object (including `action`
-and its recipe) in `REQUEST.json` and use `call --request`. The client preserves the request;
-the cockpit checks the operation and recipe against the session. It supplies no recipe defaults.
+Use `wait` and `move` for ordinary player-chosen bounded operations: they take the target/offset,
+native duration, bound provenance and interruption policy directly, so no temporary JSON file is
+needed. The wait route uses the current advertised native wait/menu owners and never treats Pause
+as a duration. For an already-defined specialized `game.*` macro, `call --request REQUEST.json`
+remains available and preserves its exact request; the cockpit checks it against the session and
+supplies no recipe defaults.
 Give the command the finite task-time budget that remains. Submission and bounded collection then
 occur in one tool execution, waking on the response, cooperative cancellation, owner/bridge death,
-or the deadline. Continue from its terminal observation, or use `look` to reassess. If an external
-tool timeout interrupts the command, run `collect --wait-seconds REMAINING_SECONDS` for the same
-pending request before doing anything else; never resubmit the action or advance game time.
+or the deadline. Continue from its terminal observation, or use `look` only when that observation
+does not retain usable authority. If an external tool timeout interrupts the command, run
+`--wait-seconds REMAINING_SECONDS collect --request-id REQUEST_ID` for that same pending request
+before doing anything else; never resubmit the action or advance game time.
 
 When a successful action response contains a complete current World/menu surface, the client
 retains that result frame and the next legitimate `act` reuses its observation ID directly; no
@@ -55,11 +62,30 @@ exit, cancellation, or invalid authority clears the reusable frame: follow the r
 and movement must not be blindly batched.
 
 The client owns request IDs, binding, pending responses and the last displayed frame. A pending
-action needs `collect`, never resubmission. Use `cancel` to stop a pending request cooperatively; it remains available while another CLI is waiting. Then collect the original request and look again. Cancellation leaves the game running. Input already emitted can have an unknown outcome, and a native receipt already written remains evidence. Choose from the current surface's actions; supply
+action needs `collect`, never resubmission. `collect` is idempotent for the latest collected
+request. `resume --request-id` rebuilds only a genuinely outstanding request from its recorded
+envelope without sending another action. An older recorded response stays read-only: use
+`request-result --request-id` or `inspect --request-id`, never collect/resume it as if it were
+new authority. Use `cancel` to stop
+a pending request cooperatively; it remains available while another CLI is waiting. Then collect
+the original request and look again. Cancellation leaves the game running. Input already emitted can have an unknown outcome, and a native receipt already written remains evidence. Choose from the current surface's actions; supply
 `--target` only when that action advertises a stable ID. A rejected stale owner needs a fresh
 `look` before deciding what to do. Nested menus are game state, not necessarily failures.
 
-The default view names the current input owner and its available navigation. Large action catalogs
+`controls`, `inspect`, `messages`, evidence and performance are read-only. They remain available
+while `collect` waits and read the last retained displayed frame or exact receipt; they neither
+refresh native input nor make a stale frame actionable.
+
+When handing a session to another worker, use its recorded lifecycle state rather than a generic
+`look`: `awaiting_response` or a client-side pending request requires
+`collect --request-id` for that exact identity; a retained latest completed result can be replayed
+with that same read-only collection; `ready` with neither requires `look`; and
+`safe_to_cleanup`, `process_dead`, bridge failure, terminalization failure or reentry failure must
+be reported as ended/failed rather than prodded. These are state-dependent continuations, not
+interchangeable recovery suggestions.
+
+The default view names the current input owner, source selector and action selector, together with
+its available navigation. Large action catalogs
 show five distinct targets plus controls; use the supplied selector to search or page further targets.
 It includes player health, needs, stamina, named effects and weapon state, immediate neighbouring
 tiles, a terrain map, nearby entities and grouped recent messages. Omitted detail retains exact

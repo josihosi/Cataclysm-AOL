@@ -119,7 +119,9 @@ class PlayCliEvidenceTest(unittest.TestCase):
         link = next(link for link in full["links"]
                     if link["run_id"] == self.run_id and link["process_instance"] == self.process
                     and link["request_id"] == self.request)
-        self.assertEqual(link["status"], "complete")
+        self.assertEqual(link["status"], "contradictory")
+        self.assertEqual(link["outcome"], "contradictory")
+        self.assertEqual(link["missing"], [])
 
         # Every cited row resolves to the original bytes and a retained copy.
         handles = []

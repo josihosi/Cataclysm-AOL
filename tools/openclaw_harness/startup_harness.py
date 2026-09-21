@@ -4196,6 +4196,81 @@ def native_save_quit_receipt(
     return {"status": "matched", "run_id": run_id, "pair": pair}
 
 
+def _native_save_completion_from_events(
+    events: Sequence[Mapping[str, Any]], *, run_id: str, expected_world: str = "",
+) -> Dict[str, Any]:
+    """Validate the native serializer outcome for one Save-and-Quit request.
+
+    A confirmation UI receipt says only that YES reached the prompt.  This
+    deliberately accepts neither that UI receipt nor process death as a save
+    fact: the C++ producer emits this record immediately after ``game::save``
+    returns, with the original World-request identity retained across the
+    prompt child.
+    """
+    candidates = [dict(event) for event in events if
+                  str(event.get("event", "")) == "native_save_completion" and
+                  str(event.get("run_id", "")) == run_id]
+    if len(candidates) != 1:
+        return {"status": "missing_or_ambiguous", "run_id": run_id,
+                "completion_count": len(candidates), "completions": candidates}
+    completion = candidates[0]
+    artifact = completion.get("artifact_identity")
+    required_text = ("request_id", "requested_run_id", "requested_surface_id",
+                     "requested_frame_id", "world_name", "player_save_id")
+    malformed = (
+        completion.get("schema") != "caol-native-save-completion-v1" or
+        completion.get("action_id") != "world.save_quit" or
+        completion.get("requested_run_id") != run_id or
+        any(not isinstance(completion.get(key), str) or not completion[key].strip()
+            for key in required_text) or
+        not isinstance(artifact, Mapping) or
+        artifact.get("kind") != "harness_run_directory" or
+        not isinstance(artifact.get("value"), str) or not artifact["value"].strip() or
+        type(completion.get("save_succeeded")) is not bool or
+        not isinstance(completion.get("serializer_result"), str) or
+        bool(completion["save_succeeded"]) != (completion["serializer_result"] == "saved") or
+        (expected_world and completion.get("world_name") != expected_world)
+    )
+    if malformed:
+        return {"status": "malformed", "run_id": run_id, "completion": completion,
+                "expected_world": expected_world}
+    if completion["save_succeeded"] is not True:
+        return {"status": "failed", "run_id": run_id, "completion": completion}
+    return {"status": "matched", "run_id": run_id, "completion": completion}
+
+
+def native_save_quit_completion(
+    log_path: Optional[Path], start_offset: int, *, run_id: str, expected_world: str = "",
+) -> Dict[str, Any]:
+    """Read exactly one current-run native save serializer completion."""
+    if log_path is None or not log_path.exists():
+        return {"status": "missing_or_ambiguous", "run_id": run_id,
+                "completion_count": 0, "completions": []}
+    size = log_path.stat().st_size
+    bounded_start = max(start_offset if 0 <= start_offset <= size else 0,
+                        size - SEMANTIC_UI_TRACE_READ_CAP_BYTES)
+    marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
+    events: List[Dict[str, Any]] = []
+    with log_path.open("rb") as handle:
+        handle.seek(bounded_start)
+        for raw_line in iter_bounded_semantic_trace_lines(
+                handle, size, SEMANTIC_STEP_MAX_BYTES):
+            marker_offset = raw_line.find(marker)
+            if marker_offset < 0:
+                continue
+            try:
+                event = decode_semantic_step_event(raw_line[marker_offset + len(marker):].strip())
+            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(event, Mapping):
+                events.append(dict(event))
+    result = _native_save_completion_from_events(
+        events, run_id=run_id, expected_world=expected_world,
+    )
+    result["read_truncated"] = bounded_start > start_offset
+    return result
+
+
 def evaluate_semantic_ui_expectation(
     log_path: Optional[Path],
     start_offset: int,
@@ -4841,6 +4916,8 @@ def refresh_semantic_step_trace(
     marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
     selected_events = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
     latest_duration_receipt: Optional[Dict[str, Any]] = None
+    latest_surface_receipt: Optional[Dict[str, Any]] = None
+    latest_surface_successor: Optional[Dict[str, Any]] = None
     with source.open("rb") as handle:
         handle.seek(start_offset)
         # ``debug.log`` remains hot while the game renders its HUD.  Iterate
@@ -4874,6 +4951,21 @@ def refresh_semantic_step_trace(
             if event.get("event") == "receipt" and event.get("accepted") is True and \
                     str(event.get("action_id", "")).startswith("wait."):
                 latest_duration_receipt = dict(event)
+            if event.get("event") == "surface_receipt":
+                latest_surface_receipt = dict(event)
+                resulting_frame_id = str(event.get("resulting_frame_id", ""))
+                if resulting_frame_id:
+                    latest_surface_successor = next((
+                        dict(candidate) for candidate in reversed(selected_events)
+                        if candidate.get("event") == "surface_descriptor" and
+                        str(candidate.get("frame_id", "")) == resulting_frame_id
+                    ), None)
+            # Turn boundaries remain in the exact run-owned producer journal
+            # for ProcessPerformance.  They are observational and can occur
+            # many times during one pending wait, so do not let them evict the
+            # input-owning semantic descriptor from the compact action channel.
+            if event.get("event") in {"turn", "turn_phase"}:
+                continue
             if event_filter is not None and str(event.get("event", "")) not in event_filter:
                 continue
             selected_events.append(compact_semantic_step_channel_event(event))
@@ -4890,12 +4982,34 @@ def refresh_semantic_step_trace(
     # the deque above applies that event bound while parsing, before a long
     # trace can accumulate parsed event dictionaries in memory.
     selected_events = list(selected_events)
+    preserved_events: list[Dict[str, Any]] = []
     if latest_duration_receipt is not None and not any(
             event.get("event") == "receipt" and
             event.get("frame_id") == latest_duration_receipt.get("frame_id") and
             event.get("action_id") == latest_duration_receipt.get("action_id")
             for event in selected_events):
-        selected_events.insert(0, compact_semantic_step_channel_event(latest_duration_receipt))
+        preserved_events.append(compact_semantic_step_channel_event(latest_duration_receipt))
+    # A long native wait can generate more than one bounded suffix of render
+    # events before its file-bridge poll resumes.  Keep the exact latest
+    # semantic request receipt and its named successor together; otherwise
+    # the input was accepted but the bridge incorrectly reports a receipt
+    # timeout solely because the short correlation cluster fell off the tail.
+    for event in (latest_surface_successor, latest_surface_receipt):
+        if event is None:
+            continue
+        if not any(
+                candidate.get("event") == event.get("event") and
+                (candidate.get("request_id") == event.get("request_id")
+                 if event.get("event") == "surface_receipt" else
+                 candidate.get("frame_id") == event.get("frame_id"))
+                for candidate in [*preserved_events, *selected_events]):
+            preserved_events.append(compact_semantic_step_channel_event(event))
+    if preserved_events:
+        # Preserve the newest active suffix as well as the correlation
+        # cluster, always respecting the reader's hard cardinality ceiling.
+        retained_capacity = max(0, SEMANTIC_STEP_MAX_EVENTS - len(preserved_events))
+        selected_events = list(selected_events)[-retained_capacity:] if retained_capacity else []
+        selected_events = [*preserved_events, *selected_events]
     selected = encode(selected_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
         # Retain the complete source-bound event window before compacting the
@@ -6701,6 +6815,19 @@ def execute_semantic_act(
                                 "surface_request": request, "native_receipt": native_receipt,
                                 "transition_event": transition_event,
                                 "next_frame": None}
+                    # The YES receipt is only prompt acceptance.  A terminal
+                    # save boundary additionally carries the result emitted
+                    # immediately after native game::save() returns.  Retain
+                    # a malformed or failed completion too: the cockpit must
+                    # distinguish it from an absent save rather than treating
+                    # a clean process exit as persistence.
+                    if action_id == "prompt.choose":
+                        save_completion = _native_save_completion_from_events(
+                            events, run_id=run_id,
+                        )
+                        if save_completion.get("status") in {"matched", "failed", "malformed"}:
+                            native_receipt = dict(native_receipt)
+                            native_receipt["native_save_completion"] = save_completion
                     resulting_frame_id = str(native_receipt.get("resulting_frame_id", ""))
                     # A native scope publishes its resumed parent before it
                     # writes a deferred receipt.  Bind that receipt to its
@@ -7437,9 +7564,7 @@ def advance_turns(
         "batch_size": 20,
         "batches": [],
         "total_duration_seconds": 0.0,
-        "avg_turn_ms": 0.0,
         "max_batch_duration_seconds": 0.0,
-        "max_batch_turn_ms": 0.0,
         "status": "completed" if count > 0 else "no_turns_requested",
         "pause_dispatch_verification": bool(action_trace_log),
         "acknowledgement_count": 0,
@@ -7767,12 +7892,11 @@ def advance_turns(
             "attempts": attempts,
             "interruption_reports": interruption_reports,
             "duration_seconds": round(duration, 6),
-            "per_turn_ms": round((duration / batch_count) * 1000.0, 3),
+            "measurement_scope": "batch transport/action wall time; not an individual simulation-turn latency",
         }
         timing["batches"].append(batch)
         timing["total_duration_seconds"] += duration
         timing["max_batch_duration_seconds"] = max(timing["max_batch_duration_seconds"], duration)
-        timing["max_batch_turn_ms"] = max(timing["max_batch_turn_ms"], batch["per_turn_ms"])
         if timing["status"] != "completed":
             timing["abort"] = {
                 "status": timing["status"],
@@ -7804,10 +7928,6 @@ def advance_turns(
     timing["total_duration_seconds"] = round(timing["total_duration_seconds"], 6)
     accepted_total = sum(int(batch.get("accepted_pause_dispatch_count", 0) or 0) for batch in timing["batches"])
     timing["accepted_pause_dispatch_count"] = accepted_total
-    timing["avg_turn_ms"] = round(
-        (timing["total_duration_seconds"] / max(1, accepted_total)) * 1000.0,
-        3,
-    )
     timing["max_batch_duration_seconds"] = round(timing["max_batch_duration_seconds"], 6)
     return timing
 
@@ -12459,6 +12579,7 @@ def audit_map_tiles_near_player(
     forbidden_furniture: Optional[List[str]] = None,
     forbidden_traps: Optional[List[str]] = None,
     forbidden_radiation: Optional[List[int]] = None,
+    maximum_abs_offset_ms: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Read-only saved-map audit for terrain/fields/items/furniture/traps/radiation near the saved player."""
     if not world_dir.exists():
@@ -12476,6 +12597,16 @@ def audit_map_tiles_near_player(
     if offsets is None:
         scan_radius = max(0, int(radius))
         offsets = [(dx, dy, 0) for dy in range(-scan_radius, scan_radius + 1) for dx in range(-scan_radius, scan_radius + 1)]
+    if maximum_abs_offset_ms is not None:
+        maximum_abs_offset_ms = int(maximum_abs_offset_ms)
+        if maximum_abs_offset_ms < 0:
+            raise ValueError("maximum_abs_offset_ms must be non-negative")
+    offsets_outside_maximum = [
+        [int(dx), int(dy), int(dz)]
+        for dx, dy, dz in offsets
+        if maximum_abs_offset_ms is not None
+        and max(abs(int(dx)), abs(int(dy)), abs(int(dz))) > maximum_abs_offset_ms
+    ]
 
     extracted_packs: set[str] = set()
     preexisting_packs: set[str] = {path.name for path in maps_dir.iterdir() if path.is_dir()} if maps_dir.exists() else set()
@@ -12611,6 +12742,7 @@ def audit_map_tiles_near_player(
         + len(forbidden_furniture)
         + len(forbidden_traps)
         + len(forbidden_radiation)
+        + (1 if maximum_abs_offset_ms is not None else 0)
     )
     missing_count = (
         len(missing_required_terrain)
@@ -12627,6 +12759,7 @@ def audit_map_tiles_near_player(
         + len(observed_forbidden_furniture)
         + len(observed_forbidden_traps)
         + len(observed_forbidden_radiation)
+        + (1 if offsets_outside_maximum else 0)
     )
     if required_count and missing_count == 0:
         status = "required_state_present"
@@ -12641,6 +12774,8 @@ def audit_map_tiles_near_player(
         "player_location_ms": player_location,
         "player_abs_omt": list(player_abs_omt),
         "scanned_offsets": len(offsets),
+        "maximum_abs_offset_ms": maximum_abs_offset_ms,
+        "offsets_outside_maximum": offsets_outside_maximum,
         "required_terrain": required_terrain,
         "required_fields": required_fields,
         "required_items": required_items,
@@ -15468,6 +15603,7 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "empty_site_retirement_eligible": not retired_empty_site and not empty_retirement_blockers,
         "empty_site_retirement_blockers": empty_retirement_blockers,
         "member_count": len(members),
+        "supply_units": persisted_int(site, "supply_units", -1),
         "ready_at_home_count": ready_at_home,
         "home_survivor_count": home_survivors,
         "wounded_or_unready_count": wounded_or_unready,
@@ -15547,6 +15683,7 @@ def audit_saved_bandit_live_world_state(
     required_local_handoff_cohesion_abort_return: Optional[bool] = None,
     required_local_handoff_route_position: Optional[List[int]] = None,
     required_member_count: Optional[int] = None,
+    required_supply_units_exact: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
     required_min_ready_at_home_count: Optional[int] = None,
     required_min_home_survivor_count: Optional[int] = None,
@@ -15946,6 +16083,9 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
             return False
+        if required_supply_units_exact is not None and int(
+                site.get("supply_units", -1)) != required_supply_units_exact:
+            return False
         if required_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) != required_ready_at_home_count:
             return False
         if required_min_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) < required_min_ready_at_home_count:
@@ -16138,6 +16278,7 @@ def audit_saved_bandit_live_world_state(
         "required_scout_report_source_generation": required_scout_report_source_generation,
         "required_scout_report_exact_carrier_ids": normalized_scout_report_carrier_ids,
         "required_member_count": required_member_count,
+        "required_supply_units_exact": required_supply_units_exact,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_min_ready_at_home_count": required_min_ready_at_home_count,
         "required_min_home_survivor_count": required_min_home_survivor_count,
@@ -31066,22 +31207,23 @@ def run_probe_post_relaunch(
 ) -> Dict[str, Any]:
     """Cross one terminal saved-world process boundary through the canonical startup owner."""
     terminal_receipt: Dict[str, Any] = {}
+    terminal_save_completion: Dict[str, Any] = {}
     process_observation: Dict[str, Any] = {}
     if artifact_run_dir is not None:
         # The per-run copied trace is finalized after this boundary.  At the
         # boundary itself the authoritative live source is the profile debug
         # log; the run id prevents older process receipts from matching.
         feature_trace = semantic_step_source_trace(profile)
-        terminal_receipt = native_save_quit_receipt(
-            feature_trace, 0, run_id=transition_event_run_id
+        terminal_save_completion = native_save_quit_completion(
+            feature_trace, 0, run_id=transition_event_run_id, expected_world=world,
         )
-        if terminal_receipt.get("status") != "matched":
+        if terminal_save_completion.get("status") != "matched":
             return {
                 "initial_pid": initial_pid,
                 "terminal_exit_timeout_seconds": terminal_exit_timeout_seconds,
                 "original_process_exited": False,
-                "status": "terminal_save_quit_receipt_missing",
-                "terminal_save_quit_receipt": terminal_receipt,
+                "status": "terminal_native_save_completion_unproved",
+                "terminal_native_save_completion": terminal_save_completion,
             }
         process_observation = observe_bound_process_exit(
             initial_pid,
@@ -31110,8 +31252,8 @@ def run_probe_post_relaunch(
         "terminal_exit_timeout_seconds": terminal_exit_timeout_seconds,
         "original_process_exited": exit_observed,
     }
-    if terminal_receipt:
-        result["terminal_save_quit_receipt"] = terminal_receipt
+    if terminal_save_completion:
+        result["terminal_native_save_completion"] = terminal_save_completion
     if process_observation:
         result["process_observation"] = process_observation
     if not world:
@@ -34860,6 +35002,7 @@ def execute_probe_steps(
                 return str(raw_value).strip().lower() in {"1", "true", "yes", "y"}
 
             required_member_count = optional_step_int("required_member_count")
+            required_supply_units_exact = optional_step_int("required_supply_units_exact")
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
             required_min_ready_at_home_count = optional_step_int("required_min_ready_at_home_count")
             required_min_home_survivor_count = optional_step_int("required_min_home_survivor_count")
@@ -35040,6 +35183,7 @@ def execute_probe_steps(
                     required_local_handoff_cohesion_abort_return,
                     required_local_handoff_route_position=required_local_handoff_route_position,
                     required_member_count=required_member_count,
+                    required_supply_units_exact=required_supply_units_exact,
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_min_ready_at_home_count=required_min_ready_at_home_count,
                     required_min_home_survivor_count=required_min_home_survivor_count,
@@ -35115,6 +35259,7 @@ def execute_probe_steps(
                     "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
                     "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
                     "required_member_count": required_member_count,
+                    "required_supply_units_exact": required_supply_units_exact,
                     "required_ready_at_home_count": required_ready_at_home_count,
                     "required_min_ready_at_home_count": required_min_ready_at_home_count,
                     "required_min_home_survivor_count": required_min_home_survivor_count,
@@ -36115,6 +36260,11 @@ def execute_probe_steps(
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
             required_active_items = [str(item).strip() for item in step.get("required_active_items", []) if str(item).strip()]
             required_countdown_points = [int(point) for point in step.get("required_countdown_points", [])]
+            maximum_abs_offset_ms_raw = step.get("maximum_abs_offset_ms")
+            maximum_abs_offset_ms = (
+                int(maximum_abs_offset_ms_raw)
+                if maximum_abs_offset_ms_raw is not None else None
+            )
             required_furniture = [str(furn).strip() for furn in step.get("required_furniture", step.get("required_furniture_ids", [])) if str(furn).strip()]
             required_traps = [str(trap).strip() for trap in step.get("required_traps", step.get("required_trap_ids", [])) if str(trap).strip()]
             required_radiation = [int(rad) for rad in step.get("required_radiation", step.get("required_radiation_values", []))]
@@ -36137,6 +36287,7 @@ def execute_probe_steps(
                     required_items=required_items,
                     required_active_items=required_active_items,
                     required_countdown_points=required_countdown_points,
+                    maximum_abs_offset_ms=maximum_abs_offset_ms,
                     required_furniture=required_furniture,
                     required_traps=required_traps,
                     required_radiation=required_radiation,
@@ -36158,6 +36309,7 @@ def execute_probe_steps(
                     "required_items": required_items,
                     "required_active_items": required_active_items,
                     "required_countdown_points": required_countdown_points,
+                    "maximum_abs_offset_ms": maximum_abs_offset_ms,
                     "required_furniture": required_furniture,
                     "required_traps": required_traps,
                     "required_radiation": required_radiation,
@@ -36175,6 +36327,7 @@ def execute_probe_steps(
                 "player_save": player_save,
                 "offsets": [list(offset) for offset in offsets] if offsets is not None else [],
                 "radius": radius,
+                "maximum_abs_offset_ms": maximum_abs_offset_ms,
                 "metadata": metadata,
                 "action_description": "read saved map tiles near player and require exact terrain/field/item/furniture/trap/radiation metadata",
                 "expected_immediate_state": "saved map contains the required target-tile metadata before feature proof may continue",

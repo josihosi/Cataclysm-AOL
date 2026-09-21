@@ -1,0 +1,66 @@
+{
+  "manifest_version": 2,
+  "name": "r033.phase4_semantic_autonomous_sound_return_drive500_age_reentry_rev1_mcw",
+  "description": "R-033 changed-premise successor. It reuses only the zero-credit supply-empty five-member footing and delayed acoustic source from the successful drive-500 route, requires a real production-state falsification before input, and declares a native save/reload continuation after any returned sound report.",
+  "status": "active",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_phase4_autonomous_sound_return_drive500_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.autonomous_sound_return": "native_local_watch_then_sound_then_returned_report",
+    "capabilities.r033.production_dispatch_premise": "supply_empty_drive_ge_500",
+    "capabilities.r033.production_initial_state_falsification": "native_scheduler_drive_ge_500_distinguishes_retained_drive358_control",
+    "capabilities.r033.returned_sound_reentry": "native_save_reload_preserves_original_sound_provenance_and_age",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["keyboard", "mouse", "focus", "ocr", "screen-coordinate", "debug:emit_sound", "debug:inject_signal", "debug:inject_report", "debug:inject_operation", "debug:inject_member", "debug:inject_route", "debug:inject_owner", "raw-save-rewrite-after-install", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r033_phase4_autonomous_sound_return_drive500_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_phase4_autonomous_sound_return_drive500_v1", "helper": "native file bridge", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_autonomous_sound_return_drive500_v1/manifest.json",
+    "native_sources": ["src/do_turn.cpp", "src/bandit_live_world.cpp"],
+    "native_executable": "cataclysm-tiles"
+  },
+  "steps": [
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_idle_starvation_drive_footing", "required_site_id_contains": "overmap_special:bandit_camp@140,51,0", "required_member_count": 5, "required_ready_at_home_count": 5, "required_wounded_or_unready_count": 0, "required_active_outside_count": 0, "required_active_group_id_exact": "", "required_active_target_id_exact": "", "required_min_leads": 1, "required_max_leads": 1, "required_lead_kind": "terrain_opportunity", "required_lead_target_id": "road", "required_lead_source_contains": "fixture_phase4_structural_signal_matrix:terrain_fit:road", "required_supply_units_exact": 0, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_drive500_idle_premise_missing", "abort_reason": "the fresh route lacks the idle five-member, zero-supply production footing"},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_delayed_zero_credit_explosion_source", "offsets": [[0,48,0]], "maximum_abs_offset_ms": 48, "required_items": ["r033_acoustic_charge_act"], "required_active_items": ["r033_acoustic_charge_act"], "required_countdown_points": [5313900], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_drive500_delayed_source_missing", "abort_reason": "the isolated delayed source is missing, outside its loaded-map cap, or contaminated by a field channel"},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r033_drive500_age_reentry_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait", "world.save_quit"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r033_drive500_sound_return_age_reentry", "objective": "Before any action, inspect the fresh production scheduler dispatch facts and stop unless its drive is at least 500; this falsifies the retained drive-358 control without changing any threshold. Then use only observed native waits to establish the ordinary dispatch, local watch before source emission, source callback, and physical return. Once the source-matched returned report is visible, preserve its original sound class/key/OMT/observation minute, perform only the declared native save-and-quit chain, and use the replacement process to compare the retained provenance and age.", "proof_targets": ["native production drive at least 500 with zero supplies before input", "idle roster and no active owner", "native dispatch/local-watch before source", "run-bound sound callback", "returned_report key/class/OMT/original observation minute", "native save/quit/replacement", "reloaded report provenance and nondecreasing age", "cleanup"], "authority": ["currently advertised native semantic actions", "game.raw_wait with observed game-minute bounds", "world.save_quit", "prompt.yes", "run.witness", "run.finish"], "invariants": ["fixture supply/source staging is zero-credit", "the source cannot count before native watch arrival", "do not inject a signal, lead, report, operation, route, owner, or member", "do not alter the 500 threshold", "no GUI/OCR/physical input", "neither retained witness is replayed"], "live_operations": ["game.raw_wait", "game.wait", "game.act"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1},
+    {"kind": "semantic_terminal_action_chain", "label": "save_returned_sound_age_boundary", "objective": "After a source-matched returned report has been observed, use only the currently advertised native save-and-quit action and confirmation. This boundary is not success unless the reentry process preserves the report provenance and original observation time.", "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.save_quit", "prompt.yes"]},
+    {"kind": "semantic_terminal_action_chain", "label": "confirm_returned_sound_age_process_exit", "objective": "From the native main-menu owner, accept only the advertised quit action and confirmation, allowing the declared continuation to bind a replacement process.", "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["main_menu.quit", "prompt.yes"]}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_returned_sound_age_process_exit",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "cockpit_live_session", "label": "bind_r033_drive500_returned_sound_reentry", "objective": "Bind the replacement process to the saved world before comparing the returned sound report.", "proof_targets": ["new process generation", "returned report provenance/age continuity"], "authority": ["currently advertised native semantic actions"], "invariants": ["no fixture reinstall, clone, or source/report mutation"], "live_operations": ["game.raw_wait", "game.wait", "game.act"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1},
+      {"kind": "native_semantic_bootstrap", "label": "audit_r033_drive500_reentry_hud", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+      {"kind": "audit_saved_bandit_live_world_state", "label": "audit_returned_sound_report_after_reentry", "required_site_id_contains": "overmap_special:bandit_camp@140,51,0", "required_active_outside_count": 0, "required_lead_kind": "sound_signal", "required_lead_origin": "returned_report", "required_lead_source_contains": "structural-signal:structural-explosion@", "required_lead_last_outcome": "returned_structural_sound_report", "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_returned_sound_reentry_provenance_missing", "abort_reason": "the replacement process did not preserve the returned sound report's native provenance"}
+    ]
+  },
+  "proof_gates": [
+    {"id": "r033_drive500_sound_return_age_reentry_bound", "label": "R-033 changed-premise sound return/reentry route is bound to one declared native continuation", "boundary_step": "operate_r033_drive500_sound_return_age_reentry", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}},
+    {"id": "r033_drive500_returned_sound_reentered", "label": "R-033 returned sound survives native process replacement", "boundary_step": "audit_returned_sound_report_after_reentry", "predecessors": ["r033_drive500_sound_return_age_reentry_bound"], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}
+  ],
+  "proof_route": {"gates": ["r033_drive500_sound_return_age_reentry_bound", "r033_drive500_returned_sound_reentered"], "terminal": ["r033_drive500_returned_sound_reentered"]},
+  "evidence_contract": {"claim": "one source-bound semantic-only run may establish the changed production premise, native sound-to-returned-report route, and native save/reload preservation of original sound provenance/age", "failure_rule": "any initial drive below 500, premature/absent source, missing callback/report, save/reentry failure, provenance drift, or injected state leaves the route unproved"}
+}

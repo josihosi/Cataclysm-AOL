@@ -17,6 +17,41 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import startup_harness  # noqa: E402
 
 
+def pch_recovery_paths(root: Path, build_prefix: str, *, tiles: bool) -> tuple[Path, ...]:
+    """Return only the generated PCH files owned by this Makefile configuration.
+
+    Makefile defines ``ODIR = $(BUILD_PREFIX)obj`` and
+    ``ODIRTILES = $(BUILD_PREFIX)obj/tiles``.  BUILD_PREFIX is therefore a
+    literal prefix, not always a directory: ``r033-headless-`` owns
+    ``r033-headless-obj`` while ``isolated/`` owns ``isolated/obj``.
+    """
+    object_dir = root / f'{build_prefix}obj' / ('tiles' if tiles else '')
+    # ``Path`` intentionally normalizes the empty curses component.  The PCH
+    # and its make-generated dependency file are the narrow stale-cache pair;
+    # object files and libraries remain reusable.
+    pch = object_dir / 'pch' / 'main-pch.hpp.pch'
+    return pch, pch.with_suffix('.pch.d')
+
+
+def incompatible_pch_diagnostic(text: str) -> bool:
+    """Recognize compiler evidence that retrying after the owned PCH purge helps."""
+    lowered = text.lower()
+    return ('precompiled header' in lowered and
+            any(marker in lowered for marker in ('mismatch', 'different', 'incompatible', 'invalid'))) or \
+        '__optimize_size__' in lowered
+
+
+def invalidate_owned_pch(root: Path, build_prefix: str, *, tiles: bool) -> list[dict[str, str]]:
+    """Remove the exact generated PCH pair for this configuration, if present."""
+    removed = []
+    for path in pch_recovery_paths(root, build_prefix, tiles=tiles):
+        if path.is_file():
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            path.unlink()
+            removed.append({'path': str(path), 'sha256': digest})
+    return removed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build one macOS renderer and record its exact source binding."
@@ -24,7 +59,7 @@ def main() -> int:
     parser.add_argument("--renderer", choices=("tiles", "curses"), default="tiles")
     parser.add_argument(
         "--build-prefix", default="",
-        help="Optional isolated build prefix; required when preserving another renderer binary.",
+        help="Optional literal Make BUILD_PREFIX; use a trailing / only for a directory-style prefix.",
     )
     parser.add_argument(
         "--log-dir", default="",
@@ -38,8 +73,6 @@ def main() -> int:
         "LINTJSON=0", "ASTYLE=0", "TESTS=0",
     ]
     if build_prefix:
-        if not build_prefix.endswith("/"):
-            build_prefix += "/"
         command.append(f"BUILD_PREFIX={build_prefix}")
     invocation = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     log_dir = Path(args.log_dir).expanduser() if str(args.log_dir).strip() else (
@@ -71,7 +104,8 @@ def main() -> int:
             "diagnostic": diagnostic,
         }
 
-    def emit_failure(phase: dict[str, object], *, source: dict[str, object] | None = None) -> int:
+    def emit_failure(phase: dict[str, object], *, source: dict[str, object] | None = None,
+                     pch_recovery: dict[str, object] | None = None) -> int:
         payload: dict[str, object] = {
             "ok": False,
             "phase": phase["label"],
@@ -81,6 +115,8 @@ def main() -> int:
         }
         if source is not None:
             payload["source"] = source
+        if pch_recovery is not None:
+            payload['pch_recovery'] = pch_recovery
         print(json.dumps(payload, sort_keys=True), file=sys.stderr)
         return int(phase["exit_status"] or 1)
     # The direct product target does not depend on Makefile's phony ``version``
@@ -92,10 +128,22 @@ def main() -> int:
         return emit_failure(version_run)
     command.append(f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}")
     build_run = run_logged(command, "build")
+    pch_recovery = None
+    if build_run["exit_status"] != 0 and incompatible_pch_diagnostic(str(build_run["diagnostic"])):
+        removed = invalidate_owned_pch(ROOT, build_prefix, tiles=tiles)
+        if removed:
+            retry = run_logged(command, "build-after-pch-refresh")
+            pch_recovery = {
+                'reason': 'compiler reported an incompatible generated PCH for this build configuration',
+                'removed': removed,
+                'retry': retry,
+            }
+            build_run = retry
     if build_run["exit_status"] != 0:
-        return emit_failure(build_run)
+        failure = emit_failure(build_run, pch_recovery=pch_recovery)
+        return failure
 
-    executable = (ROOT / build_prefix / ("cataclysm-tiles" if tiles else "cataclysm")).resolve()
+    executable = (ROOT / f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}").resolve()
     source = startup_harness.product_source_binding()
     executable_sha256, error = startup_harness.sha256_file(executable)
     captured_head = startup_harness.current_head_short()
@@ -118,6 +166,12 @@ def main() -> int:
         "command": command,
         "version_command": version_command,
         "logs": {"version": version_run, "build": build_run},
+        "build_configuration": {
+            "renderer": args.renderer,
+            "build_prefix": build_prefix,
+            "make_variables": command[2:-1],
+            "pch_recovery": pch_recovery,
+        },
         "log_dir": str(log_dir),
     }
     serialized = json.dumps(receipt, indent=2, sort_keys=True) + "\n"

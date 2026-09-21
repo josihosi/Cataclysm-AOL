@@ -1,5 +1,22 @@
 [
   {
+    "id": "r033_acoustic_charge_act",
+    "type": "ITEM",
+    "subtypes": [ "TOOL" ],
+    "name": { "str": "acoustic signal charge" },
+    "description": "A disposable low-power acoustic charge used to produce a distant, non-destructive warning report.",
+    "weight": "1 g",
+    "volume": "1 ml",
+    "price": "0 USD",
+    "price_postapoc": "0 USD",
+    "material": [ "plastic" ],
+    "symbol": ";",
+    "color": "light_gray",
+    "countdown_interval": "6 seconds",
+    "countdown_action": { "type": "explosion", "explosion": { "power": 4 } },
+    "flags": [ "DANGEROUS", "SPAWN_ACTIVE" ]
+  },
+  {
     "id": "c4",
     "type": "ITEM",
     "subtypes": [ "TOOL" ],

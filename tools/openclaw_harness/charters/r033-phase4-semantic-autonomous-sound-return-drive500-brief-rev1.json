@@ -1,0 +1,12 @@
+{
+  "outcome": "R-033: an idle, supply-empty structural camp crosses the unchanged production dispatch threshold, reaches a local watch before a delayed real source emits, consumes that source through the current native sound path, and later returns one matching returned_report lead.",
+  "scenario": "r033.phase4_semantic_autonomous_sound_return_drive500_rev1_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.autonomous_sound_return", "op": "eq", "value": "native_local_watch_then_sound_then_returned_report", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.production_dispatch_premise", "op": "eq", "value": "supply_empty_drive_ge_500", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]
+  }
+}

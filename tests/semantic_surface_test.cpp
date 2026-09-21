@@ -152,6 +152,50 @@ TEST_CASE( "a native child popup does not republish an expired activity owner",
     } ) );
 }
 
+TEST_CASE( "activity pause receipts publish before the cancellation prompt unwinds",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "test-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+
+    std::optional<semantic_surface_scope> activity;
+    activity.emplace( manager, "activity_wait", "Activity in progress",
+                      std::map<std::string, std::string>{},
+                      std::vector<semantic_action_descriptor>{
+        { "activity.pause", "", "Pause activity", true }
+    }, []( const semantic_action_request &request ) {
+        if( request.action_id != "activity.pause" ) {
+            return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+        }
+        // DEFAULTMODE already owns the native pause action.  The cancellation
+        // query is a separate prompt owner, so receipt this action immediately.
+        return semantic_action_dispatch_result{ true, "", "", false, false };
+    } );
+    const semantic_surface_descriptor frame = *manager.top();
+    REQUIRE( manager.submit_request( { "test-run", frame.surface_id, frame.frame_id,
+                                       "pause-activity", "activity.pause", std::nullopt, {} } ) );
+    REQUIRE( activity->consume_request() );
+
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().accepted );
+    CHECK( receipts.front().action_id == "activity.pause" );
+    CHECK( receipts.front().resulting_frame_id.empty() );
+
+    REQUIRE( manager.withhold_parent_authority_until_recreated( frame.surface_id ) );
+    {
+        semantic_surface_scope prompt( manager, "prompt", "Stop waiting?", {}, {
+            { "prompt.choose", "prompt-option:1", "YES", true }
+        } );
+        CHECK( manager.top()->kind == "prompt" );
+        CHECK( receipts.size() == 1 );
+    }
+    CHECK_FALSE( manager.top() );
+    CHECK( receipts.size() == 1 );
+}
+
 TEST_CASE( "dialogue semantic receipts are emitted before a native modal",
            "[semantic_surface]" )
 {

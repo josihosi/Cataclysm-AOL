@@ -18,11 +18,51 @@ import time
 from typing import Any
 import uuid
 
-from cockpit_archive import json_chunks
+from cockpit_archive import ArchiveSequence, json_chunks
 from evidence_display import emit, retain, recover, PresentationParser
 from gameplay_display import display
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
+
+
+def _persistent_result_cache(value: Any) -> Any:
+    """Project lazy evidence before placing a collected reply in client state.
+
+    ``response_artifact`` intentionally resolves archive references so the
+    caller can inspect them.  That live object is not JSON-serializable,
+    however, and persisting it verbatim made otherwise accepted ``run.witness``
+    and ``run.finish`` replies fail at the PlayerClient state boundary.  Keep
+    the public result lazy and durable by retaining the authenticated archive
+    reference rather than materializing its history into play-client.json.
+    """
+    if isinstance(value, ArchiveSequence):
+        return {"schema": "caol-archive-sequence-ref-v1", **value.reference()}
+    if isinstance(value, dict):
+        return {key: _persistent_result_cache(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_persistent_result_cache(item) for item in value]
+    if isinstance(value, tuple):
+        return [_persistent_result_cache(item) for item in value]
+    return value
+
+
+def _merge_turn_assessments(previous: dict[str, Any] | None, current: dict[str, Any]) -> dict[str, Any]:
+    """Retain every new alarm/recovery observed during one public collect call."""
+    if previous is None:
+        return current
+    merged = dict(current)
+    for field, identity in (("alarms", "key"), ("recoveries", "recovered_alarm")):
+        seen: set[str] = set()
+        values: list[dict[str, Any]] = []
+        for assessment in (previous, current):
+            for item in assessment.get(field, []):
+                key = item.get(identity) if isinstance(item, dict) else None
+                deduplication_key = str(key) if key is not None else json.dumps(item, sort_keys=True)
+                if deduplication_key not in seen:
+                    seen.add(deduplication_key)
+                    values.append(item)
+        merged[field] = values
+    return merged
 
 
 @contextmanager
@@ -74,19 +114,28 @@ class PlayerClient:
         status_path = self.session / "status.json"
         status = json.loads(status_path.read_text()) if status_path.exists() else {}
         generation = status.get("session_generation", 0)
-        if (self.state.get("finished") and status.get("binding_id") == self.binding
-                and status.get("state") == "ready" and isinstance(generation, int)
-                and generation > self.state.get("finished_generation", 0)):
+        terminal_generation = self.state.get("finished_generation", self.state.get("session_generation", 0))
+        if ((self.state.get("finished") or self.state.get("sealed_terminal")) and
+                status.get("binding_id") == self.binding and status.get("state") == "ready" and
+                isinstance(generation, int) and isinstance(terminal_generation, int) and
+                generation > terminal_generation):
             for key in ("finished", "finished_generation", "sealed_terminal", "process_exited",
                         "observation_id", "observation_request_id", "observation_generation",
                         "observation_binding_id", "observation_owner", "terminal_observation_id",
-                        "operation_availability"):
+                        "operation_availability", "display_sha256", "display_generation",
+                        "last_request_id", "last_collected_result",
+                        "read_only_observation_request_id"):
                 self.state.pop(key, None)
             self.state["session_generation"] = generation
+            self.state["reentry_required_generation"] = generation
             self.reentered = True
 
     def save(self):
         _atomic_json(self.state_path, self.state)
+
+    def _reentry_pending(self) -> bool:
+        """Keep a declared reentry boundary across short-lived CLI processes."""
+        return self.reentered or self.state.get("reentry_required_generation") == self._current_generation()
 
     def _evidence_logs(self) -> dict[str, Any]:
         """Describe producer-published logs without observing or changing the live owner."""
@@ -203,16 +252,20 @@ class PlayerClient:
 
     def performance(self, args):
         from process_performance import (read_json, read_records, sample_owned_session,
-                                         compare_records)
+                                         compare_records, collect_turn_assessment)
         if args.sample_seconds is not None:
             record = sample_owned_session(self.session, self.binding, args.sample_seconds)
         else:
             record = read_json(self.session / "performance.latest.json")
         if record and record.get("owner", {}).get("binding_id") != self.binding:
             raise ValueError("performance_binding_mismatch")
+        assessment = collect_turn_assessment(
+            self.session, self.binding, pending=self.state.get("pending"),
+        )
         result = {"ok": True, "latest": record or None,
+                  "turn_assessment": assessment,
                   "comparison": {"status": "unavailable", "reason": "no baseline selected"},
-                  "note": "Read-only game telemetry, independent of pending requests. --sample-seconds 1 measures the owned process now. --offset 0 --limit 5 pages exact retained records. --tag labels your workload, not a native fact."}
+                  "note": "Read-only game telemetry, independent of pending requests. Native turn assessment reads the run-bound trace without sending input. A session performance-turn-config.json with scenario provenance supplies alarm thresholds; without it measurements stay unassessed. --sample-seconds 1 measures the owned process now. --offset 0 --limit 5 pages exact retained records. --tag labels your workload, not a native fact."}
         if args.offset is not None:
             page = read_records(self.session, args.offset, args.limit)
             if any(item.get("owner", {}).get("binding_id") != self.binding for item in page["records"]):
@@ -246,15 +299,102 @@ class PlayerClient:
         return Bridge.send_cancel(self.session, request_id=str(pending["request_id"]),
                                   binding_id=self.binding, run_id=run_id, reason=reason)
 
-    def collect(self, wait_seconds: float = 0) -> dict[str, Any]:
+    def _restore_pending_request(self, request_id: str) -> dict[str, Any]:
+        """Rebuild client-side pending state from the durable bridge envelope.
+
+        This is deliberately reconciliation, not a submission retry.  The
+        bridge remains the single owner of the request/result record.
+        """
+        response = Bridge.response_status(self.session, request_id, summary=False)
+        if response.get("ok"):
+            return self._read_only_recovery(request_id, "request_already_recorded_read_only")
+        if response.get("error") != "response_not_available_or_stale":
+            return {"ok": False, "error": "request_recovery_response_unresolved",
+                    "request_id": request_id, "response_status": response,
+                    "next": "inspect retained evidence before deciding whether the request is outstanding"}
+        artifact = Bridge.request_artifact(self.session, request_id)
+        if not artifact.get("ok"):
+            return artifact
+        envelope = artifact.get("envelope")
+        request = artifact.get("request")
+        if not isinstance(envelope, dict) or not isinstance(request, dict):
+            return {"ok": False, "error": "request_artifact_is_not_recoverable"}
+        envelope_binding = str(envelope.get("binding_id", "")).strip()
+        if envelope_binding and envelope_binding != self.binding:
+            return {"ok": False, "error": "request_binding_mismatch"}
+        self.state["pending"] = {"request_id": request_id, "request": request,
+                                 "submitted_unix_seconds": envelope.get("submitted_unix_seconds")}
+        self.save()
+        return {"ok": True, "request_id": request_id}
+
+    def _read_only_recovery(self, request_id: str, error: str) -> dict[str, Any]:
+        """Name the exact retained-result route without changing client state."""
+        return {
+            "ok": False, "error": error, "request_id": request_id,
+            "retrieval": {
+                "request_result": f"request-result --request-id {request_id}",
+                "response_fields": f"inspect SELECTOR --request-id {request_id}",
+            },
+            "next": "retrieve this retained result read-only; do not collect or resume it as a new operation",
+        }
+
+    def resume(self, request_id: str | None, wait_seconds: float = 0) -> dict[str, Any]:
+        """Recover one already-submitted operation after output/client loss."""
+        if self.state.get("pending"):
+            pending_id = str(self.state["pending"].get("request_id", ""))
+            if request_id and request_id != pending_id:
+                return {"ok": False, "error": "different_request_is_already_pending",
+                        "request_id": pending_id, "next": "collect"}
+            return self.collect(wait_seconds)
+        if self._reentry_pending():
+            if request_id:
+                return self._read_only_recovery(request_id, "request_recovery_superseded_by_reentry")
+            return self.collect(wait_seconds)
+        if self.state.get("finished"):
+            if request_id:
+                return self._read_only_recovery(request_id, "request_recovery_session_finished")
+            return self.collect(wait_seconds)
+        requested = request_id or self.state.get("last_request_id")
+        if not requested:
+            for path in (self.session / "active-request.json", self.session / "status.json"):
+                try:
+                    value = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError, json.JSONDecodeError):
+                    continue
+                candidate = value.get("request_id", value.get("inflight_request_id"))
+                if isinstance(candidate, str) and candidate:
+                    requested = candidate
+                    break
+        if not isinstance(requested, str) or not requested:
+            return {"ok": False, "error": "resume_request_id_required",
+                    "next": "resume --request-id REQUEST_ID"}
+        latest = self.state.get("last_request_id")
+        if isinstance(latest, str) and latest and requested != latest:
+            return self._read_only_recovery(requested, "request_recovery_superseded")
+        cached = self.state.get("last_collected_result")
+        if requested == latest and isinstance(cached, dict) and cached.get("request_id") == requested:
+            return dict(cached)
+        if requested == latest:
+            return self._read_only_recovery(requested, "latest_collected_result_not_cached")
+        restored = self._restore_pending_request(requested)
+        if not restored.get("ok"):
+            return restored
+        result = self.collect(wait_seconds)
+        return {**result, "recovered_request": requested}
+
+    def collect(self, wait_seconds: float = 0, request_id: str | None = None) -> dict[str, Any]:
         pending = self.state.get("pending")
         if not pending:
-            if self.reentered:
+            if self._reentry_pending():
+                if request_id:
+                    return self._read_only_recovery(request_id, "request_recovery_superseded_by_reentry")
                 self.save()
                 return {"ok": True, "state": "reentered", "next": "look",
                         "session_generation": self.state["session_generation"],
                         "note": "The declared saved-world continuation is ready. Old frame grants were released; observe its current owner."}
             if self.state.get("finished"):
+                if request_id:
+                    return self._read_only_recovery(request_id, "request_recovery_session_finished")
                 status = json.loads((self.session / "status.json").read_text())
                 terminal = status.get("terminalization", {})
                 cleanup = terminal.get("cleanup", status.get("cleanup"))
@@ -269,11 +409,41 @@ class PlayerClient:
                            if isinstance(status.get("reentry_failure"), dict) else {}),
                         "next": "inspect retained evidence" if complete or failed else "collect",
                         "note": "Cleanup disposition is reported by the scenario owner; it is separate from native exit or save proof."}
+            requested = request_id or self.state.get("last_request_id")
+            cached = self.state.get("last_collected_result")
+            if isinstance(requested, str) and isinstance(cached, dict) and \
+                    cached.get("request_id") == requested:
+                # Collection is a read of an immutable receipt, not a consume
+                # operation.  Return the original decision response verbatim.
+                return dict(cached)
+            if isinstance(requested, str) and requested:
+                latest = self.state.get("last_request_id")
+                if isinstance(latest, str) and latest and requested != latest:
+                    return self._read_only_recovery(requested, "request_recovery_superseded")
+                if requested == latest:
+                    return self._read_only_recovery(requested, "latest_collected_result_not_cached")
+                restored = self._restore_pending_request(requested)
+                if not restored.get("ok"):
+                    return restored
+                return self.collect(wait_seconds, request_id=requested)
             return {"ok": False, "error": "no_pending_request", "next": "look"}
-        request_id = pending["request_id"]
+        pending_request_id = pending["request_id"]
+        if request_id is not None and request_id != pending_request_id:
+            return {"ok": False, "error": "different_request_is_already_pending",
+                    "request_id": pending_request_id, "next": "collect"}
+        request_id = pending_request_id
         deadline = time.monotonic() + max(0, wait_seconds)
         terminal_states = {"process_dead", "bridge_failed", "terminalization_failed",
                            "reentry_failed", "safe_to_cleanup"}
+
+        def turn_assessment() -> dict[str, Any]:
+            from process_performance import collect_turn_assessment
+            return collect_turn_assessment(self.session, self.binding, pending={
+                "request_id": request_id,
+                "action": pending.get("request", {}).get("action"),
+                "action_id": pending.get("request", {}).get("action_id"),
+                "submitted_unix_seconds": pending.get("submitted_unix_seconds"),
+            })
 
         def terminal_failure(status: dict[str, Any]) -> dict[str, Any]:
             return {"ok": False, "state": "session_ended_without_response",
@@ -297,8 +467,10 @@ class PlayerClient:
                     return True
             return False
 
+        assessment: dict[str, Any] | None = None
         while True:
             result = Bridge.response_status(self.session, request_id)
+            assessment = _merge_turn_assessments(assessment, turn_assessment())
             if result.get("ok") or result.get("error") != "response_not_available_or_stale":
                 break
             # Wake on owner death rather than sleeping until the requested
@@ -308,17 +480,19 @@ class PlayerClient:
             except (OSError, json.JSONDecodeError):
                 status = {}
             if status.get("state") in terminal_states or status.get("child_exit_code") is not None:
-                return terminal_failure(status)
+                return {**terminal_failure(status), "turn_assessment": assessment}
             # Cancellation is an out-of-band cooperative wake. The bridge may
             # still be producing the original response, so retain pending state
             # and let the next collect retrieve its exact receipt.
             if cancellation_requested():
                 return {"ok": True, "state": "cancellation_requested", "request_id": request_id,
                         "bridge_state": status.get("state"), "next": "collect",
+                        "turn_assessment": assessment,
                         "note": "Cancellation was requested for this submission; collect the original request for its terminal receipt."}
             if time.monotonic() >= deadline:
                 return {"ok": True, "state": "pending", "request_id": request_id,
                         "bridge_state": status.get("state"), "next": "collect",
+                        "turn_assessment": assessment,
                         "note": "The request was submitted once. Collect its response; do not repeat the action."}
             time.sleep(min(0.05, max(0, deadline - time.monotonic())))
         if not result.get("ok"):
@@ -400,16 +574,21 @@ class PlayerClient:
             previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
         except (OSError, ValueError):
             previous = None  # A lost presentation cache never strands native grants.
-        view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self.reentered or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
+        view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
         self.state["display_generation"] = receipt_generation
         if display_state is not None:
             self.state["display_sha256"] = retain(display_state)["sha256"]
         result = {**result, "response": view}
         result.pop("retrieval", None)
         self.state["last_request_id"] = request_id
+        if pending["request"].get("action") == "game.observe" and reusable:
+            self.state.pop("reentry_required_generation", None)
+            self.reentered = False
+        self.state.pop("read_only_observation_request_id", None)
         self.state.pop("pending", None)
         self.save()
         output = {**result, "ok": response.get("ok") is True,
+                  "turn_assessment": assessment,
                   "state": "collected" if response.get("ok") else "rejected", "request_id": request_id,
                   "next": "collect" if self.state.get("finished") else
                           "finish --witness FILE" if self.state.get("sealed_terminal") else
@@ -436,6 +615,8 @@ class PlayerClient:
                           error="explicit_finish_or_quit_has_no_terminal_receipt",
                           next="quit --reason REASON or inspect retained evidence" if self.state.get("sealed_terminal") else "look",
                           note="The reply did not establish session termination. The client remains available and does not replay the request.")
+        self.state["last_collected_result"] = _persistent_result_cache(output)
+        self.save()
         return output
 
     def submit(self, request: dict[str, Any], wait_seconds: float) -> dict[str, Any]:
@@ -445,7 +626,8 @@ class PlayerClient:
         if self.state.get("finished"):
             return {"ok": False, "error": "session_already_finished"}
         request_id = "play-" + uuid.uuid4().hex
-        self.state["pending"] = {"request_id": request_id, "request": request}
+        self.state["pending"] = {"request_id": request_id, "request": request,
+                                 "submitted_unix_seconds": time.time()}
         # Persist ownership before submission: even a crash cannot cause replay.
         previous_frame = self.state.pop("observation_id", None)
         previous_frame_metadata = {
@@ -453,6 +635,12 @@ class PlayerClient:
             for key in ("observation_request_id", "observation_generation",
                         "observation_binding_id", "observation_owner")
         }
+        # Consuming a frame revokes its input grant, not its immutable
+        # displayed evidence.  Keep that request identity for read-only
+        # messages/inspection while this operation is pending.
+        if previous_frame_metadata.get("observation_request_id"):
+            self.state["read_only_observation_request_id"] = \
+                previous_frame_metadata["observation_request_id"]
         self.save()
         result = Bridge.send_request(self.session, request_id=request_id,
                                      binding_id=self.binding, request=request)
@@ -524,6 +712,34 @@ class PlayerClient:
         # authorization and validation; this client only owns transport.
         return self.submit(request, wait_seconds)
 
+    def wait(self, *, target_game_minutes: float | None, target_delta_game_minutes: float | None,
+             duration_action: str, bound_maximum: float, bound_basis: str, bound_source: str,
+             danger_handling: str, wait_seconds: float):
+        """Submit a player-chosen bounded wait without a hand-written JSON file."""
+        wait: dict[str, Any] = {
+            "enabled": True,
+            "recipe": ["world.wait", duration_action],
+            "bound": {"basis": bound_basis, "source": bound_source,
+                      "unit": "game_minutes", "maximum": bound_maximum,
+                      "progress_required": True},
+            "danger_handling": danger_handling,
+        }
+        if target_game_minutes is not None:
+            wait["target_game_minutes"] = target_game_minutes
+        else:
+            wait["target_delta_game_minutes"] = target_delta_game_minutes
+        return self.submit({"action": "game.wait", "wait": wait}, wait_seconds)
+
+    def move_relative(self, *, east: int, south: int, bound_maximum: int,
+                      bound_basis: str, bound_source: str, danger_handling: str,
+                      wait_seconds: float):
+        """Submit a chosen relative movement intent without a request file."""
+        return self.submit({"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [east, south], "danger_handling": danger_handling,
+            "bound": {"basis": bound_basis, "source": bound_source,
+                      "unit": "steps", "maximum": bound_maximum},
+        }}, wait_seconds)
+
     def journal(self, reason: str, unused: str, wait_seconds: float):
         return self.submit({"action": "run.witness", "observation_id": self.frame(terminal=self.state.get("process_exited", False)),
                             "stop_reason": reason, "unused_authority": unused}, wait_seconds)
@@ -537,7 +753,8 @@ class PlayerClient:
 
     def messages(self, offset: int | None, limit: int, contains: str | None):
         from cockpit_evidence import select
-        request_id = self.state.get("observation_request_id")
+        request_id = self.state.get("observation_request_id") or \
+            self.state.get("read_only_observation_request_id")
         if not request_id:
             return {"ok": False, "error": "no_displayed_observation", "next": "look or collect"}
         status = Bridge.response_status(self.session, request_id, summary=False)
@@ -598,7 +815,10 @@ def main(argv=None):
                         help="Wait for this response, then return pending; never resubmit")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("look", help="Observe the current input owner and its legal actions")
-    commands.add_parser("collect", help="Collect the outstanding response without replaying input")
+    collect = commands.add_parser("collect", help="Collect an outstanding or already-collected response without replaying input")
+    collect.add_argument("--request-id", help="Exact latest retained request; older results stay read-only")
+    resume = commands.add_parser("resume", help="Rebuild one genuinely outstanding request; never resubmits")
+    resume.add_argument("--request-id", help="Required when no active/last request identity is retained")
     cancel = commands.add_parser("cancel", help="Request cooperative cancellation of the outstanding request")
     cancel.add_argument("--reason", default="player_cancelled")
     quit_command = commands.add_parser("quit", help="Explicitly end the owned run without a gameplay claim")
@@ -611,6 +831,33 @@ def main(argv=None):
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
     act.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
+    wait = commands.add_parser("wait", help="Submit a bounded player-chosen native wait without a JSON request file")
+    target = wait.add_mutually_exclusive_group(required=True)
+    target.add_argument("--target-game-minutes", type=float)
+    target.add_argument("--target-delta-game-minutes", type=float)
+    wait.add_argument("--duration-action", required=True,
+                      help="Exact advertised native duration action, for example wait.5m")
+    wait.add_argument("--bound-maximum", required=True, type=float,
+                      help="Evidence-derived maximum game-minute allowance")
+    wait.add_argument("--bound-basis", required=True,
+                      choices=("game_mechanic", "scheduler_boundary", "path_progress", "measured_rate"))
+    wait.add_argument("--bound-source", required=True,
+                      help="Why this bound is appropriate for this chosen wait")
+    wait.add_argument("--danger-handling", default="stop_on_interruption",
+                      choices=("stop_on_interruption", "handle_classified_non_dangerous",
+                               "ignore_danger_and_interruptions"))
+    move = commands.add_parser("move", help="Submit bounded relative movement without a JSON request file")
+    move.add_argument("--east", type=int, default=0, help="Chosen relative map-square offset east/west")
+    move.add_argument("--south", type=int, default=0, help="Chosen relative map-square offset south/north")
+    move.add_argument("--bound-maximum", required=True, type=int,
+                      help="Evidence-derived maximum native step allowance")
+    move.add_argument("--bound-basis", required=True,
+                      choices=("game_mechanic", "scheduler_boundary", "path_progress", "measured_rate"))
+    move.add_argument("--bound-source", required=True,
+                      help="Why this bound is appropriate for this chosen move")
+    move.add_argument("--danger-handling", default="stop_on_interruption",
+                      choices=("stop_on_interruption", "handle_classified_non_dangerous",
+                               "ignore_danger_and_interruptions"))
     performance = commands.add_parser("performance", help="Read CPU/RSS/action intervals, including while a request is pending")
     performance.add_argument("--sample-seconds", type=float, help="Measure a fresh owned-process CPU interval without bridge input")
     performance.add_argument("--offset", type=int, help="Page exact retained records from this zero-based offset")
@@ -666,6 +913,17 @@ def main(argv=None):
             # Cancellation is an out-of-band control and must remain usable
             # while the submitting client owns the request lock.
             result = PlayerClient(args.session).cancel(args.reason)
+        elif args.command in {"controls", "messages", "inspect"}:
+            # These only read retained state/response artifacts.  Keep them
+            # useful while another process owns the blocking collect lock.
+            client = PlayerClient(args.session)
+            if args.command == "controls":
+                result = client.controls()
+            elif args.command == "messages":
+                result = client.messages(args.offset, args.limit, args.contains)
+            else:
+                result = client.inspect(args.selector, args.offset, args.limit,
+                                        args.contains, args.request_id)
         else:
             with session_lock(args.session / "play-client.lock"):
                 client = PlayerClient(args.session)
@@ -674,7 +932,9 @@ def main(argv=None):
                         raise ValueError("journal_is_sealed: submit finish --witness FILE")
                     result = client.submit({"action": "game.observe"}, args.wait_seconds)
                 elif args.command == "collect":
-                    result = client.collect(args.wait_seconds)
+                    result = client.collect(args.wait_seconds, args.request_id)
+                elif args.command == "resume":
+                    result = client.resume(args.request_id, args.wait_seconds)
                 elif args.command == "act":
                     params = {}
                     for item in args.param:
@@ -683,16 +943,26 @@ def main(argv=None):
                             raise ValueError("parameters_need_unique_KEY=VALUE")
                         params[key] = value
                     result = client.act(args.action, args.target, params, args.wait_seconds)
-                elif args.command == "controls":
-                    result = client.controls()
-                elif args.command == "messages":
-                    result = client.messages(args.offset, args.limit, args.contains)
+                elif args.command == "wait":
+                    result = client.wait(target_game_minutes=args.target_game_minutes,
+                                         target_delta_game_minutes=args.target_delta_game_minutes,
+                                         duration_action=args.duration_action,
+                                         bound_maximum=args.bound_maximum,
+                                         bound_basis=args.bound_basis,
+                                         bound_source=args.bound_source,
+                                         danger_handling=args.danger_handling,
+                                         wait_seconds=args.wait_seconds)
+                elif args.command == "move":
+                    result = client.move_relative(east=args.east, south=args.south,
+                                                  bound_maximum=args.bound_maximum,
+                                                  bound_basis=args.bound_basis,
+                                                  bound_source=args.bound_source,
+                                                  danger_handling=args.danger_handling,
+                                                  wait_seconds=args.wait_seconds)
                 elif args.command == "quit":
                     result = client.submit({"action": "run.quit", "stop_reason": args.reason}, args.wait_seconds)
                 elif args.command == "call":
                     result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
-                elif args.command == "inspect":
-                    result = client.inspect(args.selector, args.offset, args.limit, args.contains, args.request_id)
                 elif args.command == "journal":
                     result = client.journal(args.reason, args.unused_authority, args.wait_seconds)
                 else:

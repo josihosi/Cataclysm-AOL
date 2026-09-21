@@ -1,0 +1,16 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033 falsifying control: an unchanged native same-level smoke source centered in the staffed camp's anchor OMT is remembered once and deduplicated at the next authoritative cadence.",
+  "material_proof": "The disposable source-bound run begins at [3372,996,0] with one active smokebomb_act centered inside OMT [140,40,0], the registered staffed site anchor, and observer 18 at home. The first cadence must record source smoke and create one matching signal lead. With no OMT boundary crossing and no source change, the second cadence must retain the same lead identity and count/hash and record unchanged/dedup. A second identity-changing lead under this control falsifies the natural-spread explanation; a stable lead makes the retained run's OMT change a fixture-placement effect.",
+  "current_uncertainty": "Whether the centered ground source remains in one OMT for both native cadence boundaries and whether the native observer callback then deduplicates the signal lead.",
+  "material_contradiction": [
+    "fixture registration or item activation treated as gameplay proof",
+    "a source or field crossing an OMT boundary before the second cadence",
+    "missing observer 18 callback or missing source-bound smoke scan",
+    "a second smoke lead while source OMT and source identity remain stable",
+    "debug signal injection or direct state mutation"
+  ],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "raw save rewrite after fixture installation", "treating setup as gameplay proof"],
+  "honest_stop_conditions": ["first created matching lead plus second unchanged matching lead", "a source-binding, OMT-position, callback, or identity contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

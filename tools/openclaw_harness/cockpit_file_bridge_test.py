@@ -853,7 +853,7 @@ for line in sys.stdin:
                 "d=lambda n:{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
                 "'run_id':'run-a','binding_id':'native-'+n,'bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d('first')}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'world','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); "
                 "print(json.dumps({'cockpit_live_session':d('second')}),flush=True); sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
                 "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
@@ -915,7 +915,7 @@ for line in sys.stdin:
                                      json.dumps(response).encode("utf-8"))
             status = json.loads((directory / "status.json").read_text())
             self.assertEqual(status["state"], "terminalizing")
-            self.assertEqual(status["declared_reentry_skipped"], "native_save_quit_not_observed")
+            self.assertEqual(status["declared_reentry_skipped"], "native_save_completion_not_verified")
             self.assertEqual(bridge.session_reentries, 1)
 
     def test_post_relaunch_reentry_freezes_owned_saved_world_snapshot(self):
@@ -931,7 +931,9 @@ for line in sys.stdin:
                 "command": f"/registered/native/game --userdir {userdir} --world McWilliams",
             }), encoding="utf-8")
 
-            bridge._freeze_saved_world_for_reentry()
+            bridge._freeze_saved_world_for_reentry({
+                "native_save_completion": {"completion": {"world_name": "McWilliams"}},
+            })
 
             pointer = json.loads((directory / "replacement_saved_world.snapshot.json").read_text())
             snapshot = Path(pointer["snapshot"])
@@ -939,6 +941,93 @@ for line in sys.stdin:
             self.assertTrue(snapshot.is_dir())
             self.assertEqual((snapshot / "worldoptions.json").read_text(encoding="utf-8"), '{"saved":true}')
             self.assertEqual(pointer["sha256"], _tree_digest(snapshot))
+
+    def test_post_relaunch_reentry_rejects_mismatched_completion_world_without_successor(self):
+        """The saved World named by the native completion must match the bound owner."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            userdir = Path(temp) / "user"
+            saved_world = userdir / "save" / "McWilliams"
+            saved_world.mkdir(parents=True)
+            (saved_world / "worldoptions.json").write_text('{"saved":true}', encoding="utf-8")
+            child = (
+                "import json,os,sys,time; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-first','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'OtherWorld','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); "
+                "time.sleep(30)"
+            )
+            continuation = "raise SystemExit('replacement must not start')"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+                reentry_command=[sys.executable, "-u", "-c", continuation,
+                                 "--post-relaunch-continuation"],
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(.01)
+            game = subprocess.Popen([os.path.realpath(sys.executable), "-u", "-c", "pass",
+                                     "--userdir", str(userdir), "--world", "McWilliams"])
+            from startup_harness import pid_command
+            game_command = pid_command(game.pid)
+            game_generation = startup_harness.process_generation_snapshot(game.pid)
+            game.wait(timeout=2)
+            (directory / "game-process.json").write_text(json.dumps({
+                "pid": game.pid, "binding_id": "bound-a", "command": game_command,
+                "process_generation": game_generation,
+            }))
+            original_child_pid = bridge._child.pid
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"}
+            )["ok"])
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                status = json.loads((directory / "status.json").read_text())
+                if status.get("state") == "reentry_failed":
+                    break
+                time.sleep(.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "reentry_failed")
+            self.assertEqual(status["admission"], "closed_until_explicit_cleanup")
+            self.assertEqual(status["reentry_failure"]["cause"],
+                             "reentry_saved_world_completion_world_mismatch")
+            self.assertEqual(status["session_generation"], 0)
+            self.assertEqual(bridge._active_session_descriptor["binding_id"], "native-first")
+            self.assertEqual(bridge._child.pid, original_child_pid)
+            self.assertFalse((directory / "replacement_saved_world.snapshot.json").exists())
+            receipt_path = directory / "responses" / "finish.receipt.json"
+            original_receipt = receipt_path.read_bytes()
+            self.assertFalse(bridge.send_request(
+                directory, request_id="after-failure", binding_id="bound-a",
+                request={"action": "game.observe"}
+            )["ok"])
+            self.assertEqual(receipt_path.read_bytes(), original_receipt)
+            cleanup = bridge.cleanup(directory, "bound-a")
+            self.assertTrue(cleanup["ok"], cleanup)
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_durable_descriptor_recovery_rejects_a_pre_reentry_artifact(self):
+        """A same-bound original descriptor cannot admit the replacement."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            session = root / ".userdata" / "openclaw_harness" / "bridge-sessions" / "session"
+            stale = root / ".userdata" / "profile" / "harness_runs" / "first" / "live.cockpit_live_session.json"
+            stale.parent.mkdir(parents=True)
+            stale.write_text(json.dumps({
+                "schema": "caol-cockpit-live-session-v1",
+                "entry_mode": "cockpit_live_session",
+                "run_id": "run-a",
+                "binding_id": "native-first",
+                "bridge_binding_id": "bound-a",
+            }), encoding="utf-8")
+            bridge = FileBackedCockpitBridge(session, ["unused"], binding_id="bound-a")
+            bridge._child_started_ns = time.time_ns()
+            self.assertIsNone(bridge._durable_session_descriptor())
 
     def test_declared_reentry_replaces_live_registry_wrapper_after_registered_game_exits(self):
         """A live launcher is retired only after its separately owned game exits."""
@@ -949,7 +1038,7 @@ for line in sys.stdin:
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
                 "'run_id':'run-a','binding_id':'native-first','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); time.sleep(30)"
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'world','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); time.sleep(30)"
             )
             continuation = (
                 "import json,os,sys; "
@@ -1196,7 +1285,7 @@ for line in sys.stdin:
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); "
                 "sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'world','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); "
                 "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
                 "time.sleep(0.3)"
             )
@@ -1260,7 +1349,7 @@ for line in sys.stdin:
                 "import json,os,sys; "
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'world','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); "
                 "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); sys.exit(0)"
             )
             bridge = FileBackedCockpitBridge(

@@ -88,6 +88,13 @@ class CockpitEvidenceTest(unittest.TestCase):
         self.assertEqual(projected["current_input"]["actions_selector"], "observation.surface.actions")
         self.assertEqual(projected["receipt"], self.response["receipt"])
 
+    def test_routine_status_omits_startup_baggage_until_requested(self):
+        ordinary = self.status()
+        self.assertNotIn("startup_diagnostics", ordinary)
+        diagnostic = self.cli("response-status", "--session-dir", self.session,
+                              "--request-id", "confirm", "--diagnostics")
+        self.assertEqual(diagnostic["startup_diagnostics"]["binding_id"], None)
+
     def test_setup_information_keeps_highlight_prompt_and_controls_together(self):
         actions = [{"id": "inventory.select", "stable_id": "brazier-id", "label": "brazier", "enabled": True},
                    {"id": "inventory.filter", "enabled": True},

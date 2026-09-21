@@ -95,7 +95,8 @@ def read_semantic_step_trace(
         event = str(value.get("event", ""))
         frame_id = str(value.get("frame_id", "")).strip()
         if event not in {"frame", "receipt", "surface_descriptor", "surface_receipt", "travel",
-                         "gate_decision", "request_transport"}:
+                         "gate_decision", "request_transport", "turn", "turn_phase",
+                         "native_save_completion"}:
             return [], "malformed_semantic_step"
         normalized = dict(value)
         normalized["_event_offset"] = start_offset + byte_cursor + len(
@@ -205,6 +206,36 @@ def read_semantic_step_trace(
                     not isinstance(normalized.get("queued"), bool) or \
                     not isinstance(normalized.get("wake_pending"), bool):
                 return [], "malformed_semantic_request_transport"
+        elif event == "native_save_completion":
+            artifact = normalized.get("artifact_identity")
+            required_text = (
+                "request_id", "requested_run_id", "requested_surface_id",
+                "requested_frame_id", "world_name", "player_save_id",
+                "serializer_result",
+            )
+            if normalized.get("schema") != "caol-native-save-completion-v1" or \
+                    normalized.get("action_id") != "world.save_quit" or \
+                    normalized.get("requested_run_id") != normalized.get("run_id") or \
+                    any(not isinstance(normalized.get(field), str) or not normalized[field].strip()
+                        for field in required_text) or \
+                    type(normalized.get("save_succeeded")) is not bool or \
+                    bool(normalized["save_succeeded"]) != \
+                    (normalized["serializer_result"] == "saved") or \
+                    not isinstance(artifact, Mapping) or \
+                    artifact.get("kind") != "harness_run_directory" or \
+                    not isinstance(artifact.get("value"), str) or not artifact["value"].strip():
+                return [], "malformed_semantic_native_save_completion"
+        elif event in {"turn", "turn_phase"}:
+            required_strings = ("stage", "process_instance", "turn_id", "phase", "owner")
+            if any(not isinstance(normalized.get(field), str) or not normalized[field]
+                   for field in required_strings) or \
+                    any(isinstance(normalized.get(field), bool) or not isinstance(normalized.get(field), int)
+                        for field in ("sequence", "game_turn", "game_minutes")) or \
+                    not isinstance(normalized.get("wall_time_seconds"), (int, float)) or \
+                    isinstance(normalized.get("wall_time_seconds"), bool) or \
+                    not isinstance(normalized.get("simulation_seconds"), (int, float)) or \
+                    isinstance(normalized.get("simulation_seconds"), bool):
+                return [], "malformed_semantic_turn_trace"
         if event_filter is not None and event not in event_filter:
             byte_cursor += len(raw_line.encode("utf-8"))
             continue

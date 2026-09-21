@@ -74,7 +74,7 @@ class RzlRiderLightRelaunchTest(unittest.TestCase):
             artifact.mkdir(parents=True)
             with mock.patch.object(startup_harness, "save_dir_for_profile", return_value=root / "profile" / "save"), \
                  mock.patch.object(startup_harness, "semantic_step_source_trace", return_value=Path("/tmp/trace")), \
-                 mock.patch.object(startup_harness, "native_save_quit_receipt", return_value={"status": "matched"}), \
+                 mock.patch.object(startup_harness, "native_save_quit_completion", return_value={"status": "matched"}), \
                  mock.patch.object(startup_harness, "observe_bound_process_exit", return_value={"status": "native_exit", "elapsed_seconds": 0.1}), \
                  mock.patch.object(startup_harness, "run_json_command", return_value=(0, {
                      "ok": True, "pid": 22, "run_dir": str(artifact),

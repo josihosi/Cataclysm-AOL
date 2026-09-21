@@ -10,6 +10,9 @@ Start from the response you are investigating, not a guessed universal JSON root
 - `inspect` takes the returned selector relative to the retained inner response, without the CLI's
   `response.` prefix. Its answer is in `.slice`. Compact `.preview` is a display aid, not part of
   the retained selector. Follow `.selector` to retrieve omitted or complete data.
+- Ordinary successful replies omit startup/process diagnostics. Request them deliberately with
+  `cockpit_file_bridge.py response-status --session-dir SESSION --request-id REQUEST --diagnostics`
+  when a failure or recovery decision actually needs them.
 
 In the map below, `SOURCE` means the returned `source_selector`, not literal text to type.
 Field names under World facts are starting points; another input owner exposes its own facts.

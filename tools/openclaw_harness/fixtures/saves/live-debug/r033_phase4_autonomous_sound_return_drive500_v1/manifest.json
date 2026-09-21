@@ -1,0 +1,19 @@
+{
+  "name": "r033_phase4_autonomous_sound_return_drive500_v1",
+  "source_fixture": "r033_phase4_autonomous_sound_return_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 production-premise successor. It retains the idle camp, sole road opportunity, loaded-map acoustic charge, and all delayed-source controls from r033_phase4_autonomous_sound_return_v1, but starts the five-member camp with no supplies. This is a durable pre-launch camp condition, not a signal, owner, route, dispatch, report, or outcome injection. It raises the ordinary production dispatch need from the retained supply-adequate control to the legitimate starvation-need input, so the unchanged drive threshold can be crossed by the scheduler itself.",
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_supply",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "supply_units": 0,
+      "supply_last_update_minutes": 9241,
+      "supply_accounted_living_total": 5,
+      "supply_member_minute_remainder": 0,
+      "source_key": "r033_drive500_production_need",
+      "source_summary": "pre-launch empty supplies for an ordinary five-member camp; no signal or outing state is authored"
+    }
+  ]
+}

@@ -49,6 +49,72 @@ def _staffed_camp_signal_leads_observation(steps: Sequence[Mapping[str, Any]]) -
     }
 
 
+def _mapping_contains_key(value: Any, predicate) -> bool:
+    """Find a claim key in a nested manifest value without reading prose as proof."""
+    if isinstance(value, Mapping):
+        return any(predicate(str(key)) or _mapping_contains_key(child, predicate)
+                   for key, child in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_mapping_contains_key(child, predicate) for child in value)
+    return False
+
+
+def _payment_claim(report: Mapping[str, Any], declaration: Mapping[str, Any],
+                   steps: Sequence[Mapping[str, Any]], artifact_lines: Sequence[str]) -> bool:
+    """Return whether this report actually asks for payment-specific evidence."""
+    if any(step.get("action_id") == "shakedown.pay" for step in steps
+           if isinstance(step, Mapping)):
+        return True
+    if _mapping_contains_key(
+            declaration,
+            lambda key: key in {"capabilities.shakedown.payment",
+                                "capabilities.shakedown.paid_departure"} or
+            key.endswith(".shakedown.payment") or
+            key.endswith(".shakedown.paid_departure")):
+        return True
+    joined = "\n".join(artifact_lines).casefold()
+    return "shakedown.pay" in joined or "shakedown_trade_ui" in joined
+
+
+def _compact_candidate_detail(snapshot: Mapping[str, Any], observed: Mapping[str, Any],
+                              identity: str, digest: str, cli: Sequence[str]) -> dict:
+    """Project exact-scenario detail while retaining an immutable recovery handle."""
+    explanation = snapshot.get("explanation", {})
+    manifest = explanation.get("manifest", {}) if isinstance(explanation, Mapping) else {}
+    facts = snapshot.get("facts", {})
+    if (not isinstance(facts, Mapping) or not facts) and isinstance(explanation, Mapping):
+        facts = explanation.get("facts", {})
+    fact_states = {}
+    if isinstance(facts, Mapping):
+        for key, fact in facts.items():
+            if not isinstance(fact, Mapping):
+                fact_states[str(key)] = {"state": "unknown"}
+                continue
+            fact_states[str(key)] = {
+                field: fact.get(field)
+                for field in ("present", "evidence_state", "proof_depth")
+                if field in fact
+            }
+    manifest_fields = ("manifest_id", "name", "revision", "sha256", "source_path")
+    return {
+        "schema": "caol-registry-candidate-detail-v1",
+        "scenario_id": identity,
+        "lifecycle_state": snapshot.get("lifecycle_state"),
+        "token_eligible": snapshot.get("token_eligible"),
+        "manifest": {field: manifest.get(field) for field in manifest_fields if field in manifest},
+        "facts": fact_states,
+        "fact_count": len(fact_states),
+        "matches": observed.get("hard_results", []),
+        "preferences": observed.get("preference_results", []),
+        "route_evidence_states": sorted({str(route.get("evidence_state", "unknown"))
+            for route in explanation.get("route_evidence", [])})
+            if isinstance(explanation, Mapping) else [],
+        "snapshot_sha256": digest,
+        "full_snapshot": [*cli, "registry-query-artifact", "--sha256", digest],
+        "note": "Candidate detail is compact; recover the immutable full query artifact with full_snapshot.",
+    }
+
+
 def _run_observation(report: Mapping[str, Any], *, run_id: str,
                      receipt_id: str | None = None) -> dict:
     """Project one run receipt into a compact, explicitly bounded observation.
@@ -97,22 +163,25 @@ def _run_observation(report: Mapping[str, Any], *, run_id: str,
     manifest_source = declared.get("source", {}) if isinstance(declared, Mapping) else {}
     if isinstance(manifest_source, Mapping):
         source_binding = {"runtime": source_binding, "manifest": dict(manifest_source)}
+    payment_claim = _payment_claim(report, declaration, steps, artifact_lines)
     missing = []
-    for field, present in (("trade_owner", trade_owner),
-                           ("trade_ui_open", trade_owner),
-                           ("payment_completed", any("result=paid" in line for line in artifact_lines)),
-                           ("paid_departure", any("return=physical" in line for line in artifact_lines))):
-        if not present:
-            missing.append(field)
-    return {
+    if payment_claim:
+        for field, present in (("trade_owner", trade_owner),
+                               ("trade_ui_open", trade_owner),
+                               ("payment_completed", any("result=paid" in line for line in artifact_lines)),
+                               ("paid_departure", any("return=physical" in line for line in artifact_lines))):
+            if not present:
+                missing.append(field)
+    result = {
         "identity": {"run_id": expected, "receipt_id": receipt_id},
-        "accepted_pay": {"accepted": bool(pay_receipts), "receipts": pay_receipts},
-        "trade_owner": {"present": trade_owner, "status": "observed" if trade_owner else "missing"},
+        "claim_scope": "payment" if payment_claim else "generic",
         "forced_fight": forced_fight,
         "actors": actor_ids,
         "source_binding": source_binding,
         "verdict": verdict or report.get("verdict"),
-        "proof_depth": "interaction" if pay_receipts else "startup/load-or-inconclusive",
+        "proof_depth": "interaction" if any(
+            step.get("accepted") is True for step in steps if isinstance(step, Mapping)
+        ) else "startup/load-or-inconclusive",
         "missing_fields": missing,
         "manifest_declarations": declaration,
         "run_observations": {
@@ -122,6 +191,13 @@ def _run_observation(report: Mapping[str, Any], *, run_id: str,
                if staffed_camp_signal_leads is not None else {}),
         },
     }
+    if payment_claim:
+        result.update({
+            "accepted_pay": {"accepted": bool(pay_receipts), "receipts": pay_receipts},
+            "trade_owner": {"present": trade_owner,
+                            "status": "observed" if trade_owner else "missing"},
+        })
+    return result
 
 
 def load_run_report(repo_root: Path, run_id: str) -> Mapping[str, Any]:
@@ -205,7 +281,8 @@ def query_page(payload: Mapping[str, Any], receipt: Mapping[str, Any], *,
         candidates[-1]["details_argv"] = [*cli, "registry-query-page", "--sha256",
             receipt["artifact"]["sha256"], "--scenario-id", identity]
         if scenario_id is not None:
-            candidates[-1]["evidence"] = snapshot
+            candidates[-1]["evidence"] = _compact_candidate_detail(
+                snapshot, observed, identity, receipt["artifact"]["sha256"], cli)
     digest = receipt["artifact"]["sha256"]
     next_offset = offset + len(candidates)
     next_page = ([*cli, "registry-query-page", "--sha256", digest,

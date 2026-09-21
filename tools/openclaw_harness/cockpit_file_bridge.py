@@ -108,6 +108,26 @@ def _request_identity(request_bytes: bytes) -> dict[str, str]:
     }
 
 
+def _terminal_declares_verified_native_save(terminal: Mapping[str, Any]) -> bool:
+    """Keep bridge reentry closed unless the cockpit retained native save proof."""
+    packet = terminal.get("native_save_completion")
+    completion = packet.get("completion") if isinstance(packet, Mapping) else None
+    artifact = completion.get("artifact_identity") if isinstance(completion, Mapping) else None
+    return bool(
+        terminal.get("declared_reentry_ready") is True and
+        isinstance(packet, Mapping) and packet.get("status") == "matched" and
+        isinstance(completion, Mapping) and
+        completion.get("schema") == "caol-native-save-completion-v1" and
+        completion.get("run_id") == terminal.get("run_id") and
+        completion.get("serializer_result") == "saved" and
+        completion.get("save_succeeded") is True and
+        all(bool(str(completion.get(key, "")).strip()) for key in
+            ("request_id", "requested_surface_id", "requested_frame_id", "world_name", "player_save_id")) and
+        isinstance(artifact, Mapping) and artifact.get("kind") == "harness_run_directory" and
+        bool(str(artifact.get("value", "")).strip())
+    )
+
+
 def _decode_bridge_response(value: Any) -> tuple[Mapping[str, Any], bytes]:
     """Accept either raw JSON text or an already-decoded response object.
 
@@ -165,11 +185,16 @@ class FileBackedCockpitBridge:
         self._active_session_descriptor: dict[str, Any] = {}
         self._reentry_failure: dict[str, Any] | None = None
         self._child_environment: dict[str, str] = {}
+        # A replacement has the same run and bridge bindings as the terminal
+        # segment.  Keep its launch boundary so durable-descriptor recovery
+        # cannot reopen admission from an earlier segment's artifact.
+        self._child_started_ns = 0
 
     def _start_child(self, command: Sequence[str], *, append_stderr: bool) -> None:
         """Start the declared initial or saved-world continuation owner."""
         stderr_path = self.session_dir / "child.stderr.log"
         self._child_stderr = stderr_path.open("a" if append_stderr else "w", encoding="utf-8")
+        self._child_started_ns = time.time_ns()
         self._child = subprocess.Popen(
             list(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=self._child_stderr, text=True, bufsize=1, env=self._child_environment,
@@ -357,7 +382,7 @@ class FileBackedCockpitBridge:
             self._child.wait(timeout=2)
         self._close_child_streams()
 
-    def _freeze_saved_world_for_reentry(self) -> None:
+    def _freeze_saved_world_for_reentry(self, terminal: Mapping[str, Any]) -> None:
         """Freeze the native post-save world before starting a replacement child.
 
         Interactive live sessions cross the process boundary in this bridge,
@@ -381,6 +406,13 @@ class FileBackedCockpitBridge:
             raise ValueError("reentry_saved_world_command_incomplete") from exc
         if not world or Path(world).name != world:
             raise ValueError("reentry_saved_world_name_invalid")
+        completion_packet = terminal.get("native_save_completion")
+        completion = completion_packet.get("completion") \
+            if isinstance(completion_packet, Mapping) else None
+        completion_world = str(completion.get("world_name", "") or "") \
+            if isinstance(completion, Mapping) else ""
+        if completion_world != world:
+            raise ValueError("reentry_saved_world_completion_world_mismatch")
         source = (Path(userdir) / "save" / world).resolve()
         if not source.is_dir():
             raise ValueError("reentry_saved_world_missing")
@@ -449,7 +481,7 @@ class FileBackedCockpitBridge:
             terminal.get("state") == "finished"
         terminal_action = receipt["request_identity"].get("action")
         declared_reentry_ready = isinstance(terminal, Mapping) and \
-            terminal.get("declared_reentry_ready") is True
+            _terminal_declares_verified_native_save(terminal)
         next_state = ("transitioning" if self.session_reentries and terminal_action == "run.finish" and
                       declared_reentry_ready
                       else "terminalizing") if is_terminal else "ready"
@@ -459,7 +491,7 @@ class FileBackedCockpitBridge:
         self._write_status(
             next_state,
             last_response=receipt,
-            **({"declared_reentry_skipped": "native_save_quit_not_observed"}
+            **({"declared_reentry_skipped": "native_save_completion_not_verified"}
                if is_terminal and terminal_action == "run.finish" and self.session_reentries and
                not declared_reentry_ready else {}),
             **({"session_descriptor": self._active_session_descriptor}
@@ -530,6 +562,11 @@ class FileBackedCockpitBridge:
             reverse=True,
         )[:32]
         for path in candidates:
+            try:
+                if path.stat().st_mtime_ns < self._child_started_ns:
+                    continue
+            except OSError:
+                continue
             try:
                 descriptor = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, UnicodeDecodeError, json.JSONDecodeError):
@@ -776,7 +813,7 @@ class FileBackedCockpitBridge:
                     isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
                     terminal.get("state") == "finished":
                 if request.get("action") == "run.finish" and self.session_reentries and \
-                        terminal.get("declared_reentry_ready") is True:
+                        _terminal_declares_verified_native_save(terminal):
                     self.session_reentries -= 1
                     self._write_status(
                         "transitioning",
@@ -787,7 +824,7 @@ class FileBackedCockpitBridge:
                     try:
                         if self.reentry_command:
                             if "--post-relaunch-continuation" in self.reentry_command:
-                                self._freeze_saved_world_for_reentry()
+                                self._freeze_saved_world_for_reentry(terminal)
                             self._retire_exited_game_wrapper_for_reentry()
                             self._start_child(self.reentry_command, append_stderr=True)
                         descriptor = self._await_session_descriptor(
@@ -1205,7 +1242,7 @@ class FileBackedCockpitBridge:
 
     @staticmethod
     def response_status(session_dir: Path, request_id: str, *, summary: bool = True,
-                        selectors: Sequence[str] = ()) -> dict[str, Any]:
+                        selectors: Sequence[str] = (), diagnostics: bool = False) -> dict[str, Any]:
         path = Path(session_dir) / "responses" / (request_id + ".receipt.json")
         if not path.is_file():
             return {"ok": False, "error": "response_not_available_or_stale"}
@@ -1218,7 +1255,6 @@ class FileBackedCockpitBridge:
         if not isinstance(receipt.get("response_sha256"), str) or not receipt.get("response_artifact"):
             return {"ok": False, "error": "response_receipt_unavailable_or_invalid"}
         result = {"ok": True, "receipt": receipt}
-        result["startup_diagnostics"] = FileBackedCockpitBridge.startup_diagnostics(session_dir)
         if summary:
             recovered = FileBackedCockpitBridge.response_artifact(
                 session_dir, request_id, receipt["response_sha256"])
@@ -1240,6 +1276,14 @@ class FileBackedCockpitBridge:
                 "logs": "log-query (--path EXACT_LOG | --session-dir SESSION) [--run-id RUN] [--process-instance PROCESS] [--request-id REQUEST] [--actor-id ACTOR] [--actor-name NAME] [--event EVENT] [--where FIELD=JSON] [--select FIELD]",
                 "omissions": "Omitted values carry selectors, types and sizes. Explicit fields/full retrieval preserve exact values; transport ok is separate from response ok and native acceptance.",
             }
+            # Startup/process metadata is useful while diagnosing a failed
+            # operation, but it is neither current player authority nor a
+            # routine decision fact.  Keep it in the retained response route
+            # and expose it explicitly on demand.
+            if diagnostics or recovered["response"].get("ok") is not True:
+                result["startup_diagnostics"] = FileBackedCockpitBridge.startup_diagnostics(session_dir)
+        elif diagnostics:
+            result["startup_diagnostics"] = FileBackedCockpitBridge.startup_diagnostics(session_dir)
         return result
 
     @staticmethod
@@ -1515,6 +1559,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     status.add_argument("--request-id", required=True)
     status.add_argument("--select", "--selection", action="append", default=[], metavar="FIELD",
                         help="Optional exact field path(s) to expose without rendering the whole response")
+    status.add_argument("--diagnostics", action="store_true",
+                        help="Include retained startup/process diagnostics for recovery; omitted from ordinary success replies")
     compare = commands.add_parser("response-compare", aliases=["compare"], help="Compare selected fields from two retained responses")
     compare.add_argument("--session-dir", required=True)
     compare.add_argument("--before-request-id", "--before", dest="before_request_id", required=True)
@@ -1658,7 +1704,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "response-status":
         selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
         emit(FileBackedCockpitBridge.response_status(Path(args.session_dir), args.request_id,
-                                                      selectors=selectors))
+                                                      selectors=selectors, diagnostics=args.diagnostics))
         return 0
     if args.command in {"response-compare", "compare"}:
         selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]

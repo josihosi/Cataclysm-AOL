@@ -1,9 +1,9 @@
 {
-  "outcome": "R-033: current-source semantic-only proof of one autonomous abstract watch, one delayed native sound observation, and one matching returned_report lead; dedup and aging remain separate later experiments.",
+  "outcome": "R-033: an idle structural camp autonomously reaches an abstract watch before a delayed real source emits, consumes that source through the current native sound path, and later returns one matching returned_report lead.",
   "scenario": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
   "query": {
     "requirements": [
-      {"key": "capabilities.r033.autonomous_sound_return", "op": "eq", "value": "native_abstract_watch_then_sound_then_returned_report", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.autonomous_sound_return", "op": "eq", "value": "native_local_watch_then_sound_then_returned_report", "minimum_evidence": "declared"},
       {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
     ],
     "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]

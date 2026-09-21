@@ -24,6 +24,10 @@ class ActivityResumeOwnerTest( unittest.TestCase ):
         self.assertIn( 'request.action_id != "activity.pause"', body )
         self.assertIn( 'semantic_action = "pause";', body )
         self.assertIn(
+            'return semantic_action_dispatch_result{ true, "", "", false, false };',
+            body,
+        )
+        self.assertIn(
             "semantic_manager->withhold_parent_authority_until_recreated( request.surface_id );",
             body,
         )

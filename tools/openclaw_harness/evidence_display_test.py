@@ -91,13 +91,51 @@ class EvidenceDisplayTest(unittest.TestCase):
         fresh, _ = display(self.response(), state, refresh=True)
         self.assertIn("terrain", fresh["facts_changed"])
 
+    def test_display_keeps_selectors_and_changed_sixth_entity_ahead_of_unchanged_rows(self):
+        entities = [{"id": str(index), "name": "unchanged", "hp": 10}
+                    for index in range(6)]
+        first = self.response(facts={"visible_entities": entities,
+                                     "messages": [{"text": "old", "time": 1}]})
+        shown, state = display(first)
+        self.assertEqual(shown["current_input"]["source_selector"], "observation")
+        self.assertEqual(shown["current_input"]["actions_selector"], "observation.surface.actions")
+        updated = [dict(entity) for entity in entities]
+        updated[5]["hp"] = 3
+        second = self.response(facts={"visible_entities": updated,
+                                      "messages": [{"text": "old", "time": 1},
+                                                   {"text": "old", "time": 2, "actor": "Ada"}]}, frame=2)
+        changed, _ = display(second, state)
+        entities_delta = changed["facts_changed"]["visible_entities"]
+        self.assertEqual(entities_delta["selector"], "observation.surface.facts.visible_entities")
+        self.assertEqual(entities_delta["changed"][0]["identity"], {"id": "5"})
+        self.assertEqual(entities_delta["changed"][0]["value"]["hp"], 3)
+        messages = changed["facts_changed"]["messages"]
+        self.assertEqual(messages["cursor"]["mode"], "append")
+        self.assertEqual(messages["new_events"], [{"source_index": 1,
+                                                     "value": {"text": "old", "time": 2, "actor": "Ada"}}])
+
+    def test_display_pages_a_large_owner_catalog_without_dropping_navigation(self):
+        actions = []
+        for index in range(8):
+            actions.append({"id": "inventory.select", "stable_id": str(index),
+                            "label": f"item {index}", "enabled": True})
+        actions.append({"id": "inventory.cancel", "enabled": True})
+        shown, _ = display(self.response("inventory", {"title": "Inventory"}, actions))
+        catalog = shown["current_input"]["actions"]
+        self.assertEqual(catalog["selector"], "observation.surface.actions")
+        self.assertEqual(catalog["target_count"], 8)
+        self.assertEqual(catalog["controls"], [{"id": "inventory.cancel", "enabled": True}])
+        self.assertEqual(catalog["next_offset"], 5)
+
     def test_chain_exposes_terminal_and_interruption_not_internal_observations(self):
         response = {"ok": False, "result": {"terminal_observation": self.response()["observation"],
-                    "partial_progress": 3, "reason": "blocked", "native_receipts": list(range(100))}}
+                    "partial_progress": 3, "reason": "blocked", "native_receipts": list(range(100)),
+                    "handled_interruptions": object()}}
         view, _ = display(response)
         self.assertEqual(view["outcome"]["chain"]["partial_progress"], 3)
         self.assertEqual(view["outcome"]["chain"]["reason"], "blocked")
         self.assertNotIn("native_receipts", view["outcome"]["chain"])
+        self.assertNotIn("handled_interruptions", view["outcome"]["chain"])
         self.assertEqual(len(response["result"]["native_receipts"]), 100)
 
     def test_shared_npc_request_is_not_fabricated_process_correlation(self):

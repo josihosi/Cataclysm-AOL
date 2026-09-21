@@ -191,6 +191,51 @@ class SemanticStateTest(unittest.TestCase):
             self.assertEqual(events[0]["event"], "request_transport")
             self.assertEqual(events[0]["offset_after"], 256)
 
+    def test_native_save_completion_stays_parseable_for_the_following_main_menu_surface(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            completion = {
+                "event": "native_save_completion", "schema": "caol-native-save-completion-v1",
+                "run_id": "run-1", "request_id": "save-request-1", "requested_run_id": "run-1",
+                "requested_surface_id": "surface-1", "requested_frame_id": "frame-1",
+                "action_id": "world.save_quit", "serializer_result": "saved", "save_succeeded": True,
+                "world_name": "McWilliams", "player_save_id": "Ada",
+                "artifact_identity": {"kind": "harness_run_directory", "value": "/run-1"},
+            }
+            main_menu = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": "run-1",
+                "surface_id": "run-1:surface:2", "frame_id": "run-1:frame:3",
+                "kind": "menu", "breadcrumbs": ["Main menu"], "payload": {}, "valid_actions": [],
+            }
+            trace.write_text(
+                SEMANTIC_STEP_PREFIX + json.dumps(completion) + "\n" +
+                SEMANTIC_STEP_PREFIX + json.dumps(main_menu) + "\n", encoding="utf-8",
+            )
+            events, status = read_semantic_step_trace(trace, root, "run-1")
+            self.assertEqual(status, "ok")
+            self.assertEqual([event["event"] for event in events],
+                             ["native_save_completion", "surface_descriptor"])
+
+    def test_native_turn_trace_contract_is_run_bound_and_requires_source_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            turn = {
+                "event": "turn", "stage": "end", "run_id": "run-1",
+                "process_instance": "native-process-1", "turn_id": "41", "sequence": 87,
+                "game_turn": 101, "game_minutes": 202, "wall_time_seconds": 123.4,
+                "simulation_seconds": 0.25, "phase": "simulation", "owner": "game::do_turn",
+            }
+            trace.write_text(SEMANTIC_STEP_PREFIX + json.dumps(turn) + "\n", encoding="utf-8")
+            events, status = read_semantic_step_trace(trace, root, "run-1", event_filter={"turn"})
+            self.assertEqual(status, "ok")
+            self.assertEqual(events[0]["turn_id"], "41")
+            turn.pop("process_instance")
+            trace.write_text(SEMANTIC_STEP_PREFIX + json.dumps(turn) + "\n", encoding="utf-8")
+            self.assertEqual(read_semantic_step_trace(trace, root, "run-1")[1],
+                             "malformed_semantic_turn_trace")
+
     def test_native_travel_boundary_fails_active_stale_wrong_run_blocked_and_interrupted(self):
         active = {
             "event": "travel", "run_id": "run-1", "travel_id": "travel-1",

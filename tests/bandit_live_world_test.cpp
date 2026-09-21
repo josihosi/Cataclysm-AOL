@@ -712,6 +712,66 @@ bandit_live_world::world_state make_structural_local_zombie_test_world( const bo
     return world;
 }
 
+bandit_live_world::world_state make_structural_local_sound_test_world( const bool cannibal,
+        const int id_base )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( cannibal, id_base );
+    bandit_live_world::site_record &site = world.sites.front();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    REQUIRE( cursor->owner == bandit_live_world::simulation_owner::abstract );
+    REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+    // A materialized observing pair represents an actual local contact.  Preserve the
+    // same production invariant that save/load validates for a local owner.
+    site.active_outing.local_contact_minutes = cursor->last_advanced_minutes;
+    const tripoint_abs_omt route_position = site.active_outing.shared_route[
+                static_cast<std::size_t>( site.active_outing.waypoint_index )];
+    const tripoint_abs_ms route_origin = project_to<coords::ms>( route_position );
+    std::vector<bandit_live_world::local_handoff_member_read> handoff_reads;
+    for( std::size_t index = 0; index < site.active_outing.member_ids.size(); ++index ) {
+        const character_id member_id = site.active_outing.member_ids[index];
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        REQUIRE( member != nullptr );
+        bandit_live_world::local_handoff_member_read read;
+        read.npc_id = member_id;
+        read.bindable = true;
+        read.hp_percent = 90 - static_cast<int>( index ) * 10;
+        read.current_position = member->home_spawn_tile;
+        read.entry_position = tripoint_abs_ms( route_origin.x() + static_cast<int>( index ),
+                                               route_origin.y(), route_origin.z() );
+        read.staging_position = tripoint_abs_ms( route_origin.x() + static_cast<int>( index ),
+                                                 route_origin.y() + 4, route_origin.z() );
+        handoff_reads.push_back( read );
+    }
+    const bandit_live_world::local_handoff_plan handoff =
+        bandit_live_world::plan_local_pair_handoff( site, *cursor,
+                cursor->last_advanced_minutes, handoff_reads );
+    REQUIRE( handoff.valid );
+    REQUIRE( bandit_live_world::commit_local_pair_handoff(
+                 site, handoff,
+    []( const bandit_live_world::local_handoff_member_snapshot & ) {
+        return true;
+    }, []( const bandit_live_world::local_handoff_member_snapshot & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( local_cursor );
+    REQUIRE( local_cursor->owner == bandit_live_world::simulation_owner::local );
+    std::vector<bandit_live_world::local_cohesion_member_read> reads;
+    for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+         site.active_outing.local_handoff.members ) {
+        reads.push_back( { snapshot.npc_id, true, false, snapshot.staging_position } );
+    }
+    const bandit_live_world::local_cohesion_plan cohesion =
+        bandit_live_world::plan_local_pair_cohesion( site, *local_cursor,
+                local_cursor->last_advanced_minutes + 1, reads );
+    REQUIRE( cohesion.valid );
+    REQUIRE( cohesion.snapshot.cohesion_assembled );
+    REQUIRE( bandit_live_world::commit_local_pair_cohesion( site, cohesion, false, false ) );
+    return world;
+}
+
 bandit_live_world::structural_local_zombie_read make_structural_local_zombie_read(
     const bandit_live_world::site_record &site )
 {
@@ -18119,6 +18179,199 @@ TEST_CASE( "hostile_camp_local_zombie_observation_is_private_bounded_and_persist
     }
 }
 
+TEST_CASE( "hostile_camp_local_structural_sound_is_persisted_before_abstract_cadence",
+           "[bandit][live_world][phase4_sound_observation][local_handoff][save]" )
+{
+    for( const bool cannibal : { false, true } ) {
+        CAPTURE( cannibal );
+        bandit_live_world::world_state world = make_structural_local_sound_test_world(
+                    cannibal, cannibal ? 16170 : 16160 );
+        bandit_live_world::site_record &site = world.sites.front();
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( cursor->owner == bandit_live_world::simulation_owner::local );
+        REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+        REQUIRE( site.active_outing.local_handoff.cohesion_assembled );
+        REQUIRE( site.active_outing.local_handoff.route_position ==
+                 site.active_outing.shared_route[static_cast<std::size_t>(
+                         site.active_outing.waypoint_index )] );
+
+        // A native one-shot can be emitted during the same turn that advances the
+        // local cursor to its observing waypoint.  It must be recorded before the
+        // next abstract cadence, rather than being discarded as a stale read.
+        const int observed_minutes = cursor->last_advanced_minutes;
+        const bandit_live_world::scout_phase phase_before = site.active_outing.phase;
+        const int waypoint_before = site.active_outing.waypoint_index;
+        const int progress_before = site.active_outing.last_progress_minutes;
+        const int expected_return_before = site.active_outing.expected_return_minutes;
+        const std::size_t lead_count_before = site.intelligence_map.leads.size();
+        const bool report_before = site.current_scout_report.is_present();
+        const bool operation_before = site.active_hostile_operation.is_active();
+        const std::string handoff_before = serialize_local_handoff(
+                                               site.active_outing.local_handoff );
+        const bandit_live_world::camp_map_lead *lead =
+            site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+        REQUIRE( lead != nullptr );
+        const std::string lead_before = serialize_camp_map_lead( *lead );
+        int callbacks = 0;
+
+        const bandit_live_world::structural_signal_record_result recorded =
+            bandit_live_world::record_local_structural_signal_observations(
+                world, observed_minutes,
+        [&callbacks, observed_minutes]( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & request ) {
+            callbacks++;
+            return std::vector<bandit_live_world::structural_signal_read> {
+                make_structural_sound_read(
+                    bandit_live_world::structural_sound_kind::explosion,
+                    request.current_omt, observed_minutes ),
+            };
+        } );
+
+        CHECK( recorded.sites_considered == 1 );
+        CHECK( recorded.active_outings_considered == 1 );
+        CHECK( recorded.callbacks_invoked == 1 );
+        CHECK( recorded.sites_recorded == 1 );
+        CHECK( recorded.facts_recorded == 1 );
+        CHECK( callbacks == 1 );
+        REQUIRE( site.active_outing.observations.size() == 1 );
+        const bandit_live_world::sortie_observation &sound =
+            site.active_outing.observations.front();
+        CHECK( sound.sense == bandit_live_world::sortie_observation_sense::sound );
+        CHECK( sound.state_key == "structural-explosion-signal" );
+        CHECK( sound.source_omt == site.active_outing.local_handoff.route_position );
+        CHECK( sound.receiver_omt == site.active_outing.local_handoff.route_position );
+        CHECK( sound.observed_minutes == observed_minutes );
+        CHECK( sound.target_revision == site.active_outing.target_lead_revision );
+        CHECK( sound.share_state ==
+               bandit_live_world::sortie_observation_share_state::observer_private );
+        CHECK( site.active_outing.phase == phase_before );
+        CHECK( site.active_outing.waypoint_index == waypoint_before );
+        CHECK( site.active_outing.last_progress_minutes == progress_before );
+        CHECK( site.active_outing.expected_return_minutes == expected_return_before );
+        CHECK( site.intelligence_map.leads.size() == lead_count_before );
+        CHECK( site.current_scout_report.is_present() == report_before );
+        CHECK( site.active_hostile_operation.is_active() == operation_before );
+        CHECK( serialize_local_handoff( site.active_outing.local_handoff ) == handoff_before );
+        lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( serialize_camp_map_lead( *lead ) == lead_before );
+
+        const std::string after_record = serialize_world( world );
+        int replay_callbacks = 0;
+        const bandit_live_world::structural_signal_record_result replayed =
+            bandit_live_world::record_local_structural_signal_observations(
+                world, observed_minutes,
+        [&replay_callbacks]( const bandit_live_world::site_record &,
+        const bandit_live_world::active_outing_state &,
+        const bandit_live_world::structural_threat_observer_request & ) {
+            replay_callbacks++;
+            return std::vector<bandit_live_world::structural_signal_read>{};
+        } );
+        CHECK( replayed.callbacks_invoked == 0 );
+        CHECK( replayed.sites_recorded == 0 );
+        CHECK( replay_callbacks == 0 );
+        CHECK( serialize_world( world ) == after_record );
+        world = round_trip_world( world );
+        CHECK( serialize_world( world ) == after_record );
+    }
+}
+
+TEST_CASE( "hostile_camp_local_structural_sound_survives_same_minute_zombie_observation",
+           "[bandit][live_world][phase4_sound_observation][local_handoff]" )
+{
+    bandit_live_world::world_state world = make_structural_local_sound_test_world( false, 16175 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    const int observed_minutes = cursor->last_advanced_minutes + 1;
+
+    // The loaded-scene zombie prepass runs before the one-shot sound drain.  It
+    // advances the local cursor, but is not evidence that the sound was read.
+    REQUIRE( bandit_live_world::record_structural_local_zombie_observation(
+                 site, *cursor, make_structural_local_zombie_read( site ), observed_minutes ).valid );
+    REQUIRE( site.active_outing.last_advanced_minutes == observed_minutes );
+    REQUIRE( site.active_outing.observations.size() == 1 );
+    REQUIRE( site.active_outing.observations.front().sense ==
+             bandit_live_world::sortie_observation_sense::visual );
+
+    int callbacks = 0;
+    const bandit_live_world::structural_signal_record_result recorded =
+        bandit_live_world::record_local_structural_signal_observations(
+            world, observed_minutes,
+    [&callbacks, observed_minutes]( const bandit_live_world::site_record &,
+    const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        callbacks++;
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_sound_read( bandit_live_world::structural_sound_kind::gunfire,
+                                        request.current_omt, observed_minutes ),
+        };
+    } );
+
+    CHECK( recorded.callbacks_invoked == 1 );
+    CHECK( recorded.sites_recorded == 1 );
+    CHECK( recorded.facts_recorded == 1 );
+    CHECK( callbacks == 1 );
+    REQUIRE( site.active_outing.observations.size() == 2 );
+    CHECK( std::count_if( site.active_outing.observations.begin(),
+                          site.active_outing.observations.end(),
+    [observed_minutes]( const bandit_live_world::sortie_observation & observation ) {
+        return observation.sense == bandit_live_world::sortie_observation_sense::sound &&
+               observation.observed_minutes == observed_minutes;
+    } ) == 1 );
+
+    int replay_callbacks = 0;
+    const bandit_live_world::structural_signal_record_result replayed =
+        bandit_live_world::record_local_structural_signal_observations(
+            world, observed_minutes,
+    [&replay_callbacks]( const bandit_live_world::site_record &,
+                         const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & ) {
+        replay_callbacks++;
+        return std::vector<bandit_live_world::structural_signal_read> {};
+    } );
+    CHECK( replayed.callbacks_invoked == 0 );
+    CHECK( replay_callbacks == 0 );
+}
+
+TEST_CASE( "hostile_camp_local_structural_sound_rejects_off_route_source",
+           "[bandit][live_world][phase4_sound_observation][local_handoff]" )
+{
+    bandit_live_world::world_state world = make_structural_local_sound_test_world( false, 16180 );
+    bandit_live_world::site_record &site = world.sites.front();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    const int observed_minutes = cursor->last_advanced_minutes + 1;
+    const std::string before = serialize_world( world );
+    int callbacks = 0;
+
+    const bandit_live_world::structural_signal_record_result recorded =
+        bandit_live_world::record_local_structural_signal_observations(
+            world, observed_minutes,
+    [&callbacks, observed_minutes]( const bandit_live_world::site_record &,
+    const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        callbacks++;
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_sound_read(
+                bandit_live_world::structural_sound_kind::alarm,
+                tripoint_abs_omt( request.current_omt.x() + 2, request.current_omt.y() + 2,
+                                   request.current_omt.z() ), observed_minutes ),
+        };
+    } );
+
+    CHECK( recorded.callbacks_invoked == 1 );
+    CHECK( recorded.sites_recorded == 0 );
+    CHECK( recorded.facts_recorded == 0 );
+    CHECK( callbacks == 1 );
+    CHECK( serialize_world( world ) == before );
+}
+
 TEST_CASE( "hostile_camp_materialized_pair_shares_only_in_range_before_observer_death",
            "[bandit][live_world][phase4_local_communication][save]" )
 {
@@ -30870,8 +31123,12 @@ TEST_CASE( "bandit_live_world_response_denial_holds_then_releases_for_rescout",
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",
            "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][assessment_risk]" )
 {
+    CHECK( bandit_live_world::hostile_camp_routine_dispatch_threshold() == 500 );
     CHECK( bandit_live_world::hostile_camp_dispatch_drive( 1000, 599, 0, 0 ) == 499 );
     CHECK( bandit_live_world::hostile_camp_dispatch_drive( 1000, 600, 0, 0 ) == 500 );
+    CHECK( bandit_live_world::hostile_camp_dispatch_drive( 333, 966, 0, 0 ) == 358 );
+    CHECK( 358 < bandit_live_world::hostile_camp_routine_dispatch_threshold() );
+    CHECK( 500 >= bandit_live_world::hostile_camp_routine_dispatch_threshold() );
     CHECK_FALSE( bandit_live_world::hostile_camp_routine_score_eligible( 299, false ) );
     CHECK( bandit_live_world::hostile_camp_routine_score_eligible( 300, false ) );
     CHECK_FALSE( bandit_live_world::hostile_camp_routine_score_eligible( 149, true ) );

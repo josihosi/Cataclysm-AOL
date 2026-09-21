@@ -7,9 +7,11 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from play_cli import session_lock
+from cockpit_archive import Archive
+from play_cli import PlayerClient, session_lock
 
 CLI = Path(__file__).with_name("play_cli.py")
 
@@ -48,8 +50,11 @@ class PlayerCliTest(unittest.TestCase):
 
     def reply(self, request_id, value, binding="bound-a"):
         raw = json.dumps(value).encode()
+        self.reply_raw(request_id, raw, binding=binding)
+
+    def reply_raw(self, request_id, raw, binding="bound-a"):
         path = "responses/" + request_id + ".json"
-        (self.session / path).write_bytes(raw)
+        (self.session / path).write_bytes(bytes(raw))
         session_generation = json.loads((self.session / "status.json").read_text()).get("session_generation", 0)
         self.write("responses/" + request_id + ".receipt.json", {
             "request_id": request_id, "binding_id": binding,
@@ -365,6 +370,44 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("finish", "--witness", str(witness_path), ok=False)
         self.assertEqual(len(self.requests()), 3)
 
+    def test_public_journal_and_finish_serialize_archived_replies(self):
+        """The real CLI must cache lazy terminal evidence as references."""
+        self.observe()
+        archive = Archive(self.session / "cockpit-evidence.sqlite", run_id="run-a", binding_id="bound-a")
+        self.addCleanup(archive.close)
+
+        journal_entries = archive.sequence()
+        journal_entries.append({"citation_id": "J0001", "kind": "observation",
+                                "value": {"game_minutes": 100}})
+        journal = self.cli("journal", "--reason", "archived terminal evidence")
+        self.reply_raw(journal["request_id"], json.dumps(archive.wire({
+            "ok": True,
+            "result": {"evidence_journal": {"entries": journal_entries}},
+        })).encode())
+        journal_result = self.cli("collect")
+        self.assertTrue(journal_result["ok"])
+        self.assertEqual(journal_result["response"]["result"]["evidence_journal"]["entries"][0]["citation_id"], "J0001")
+
+        witness = self.session / "witness.json"
+        witness.write_text(json.dumps({"verdict": "inconclusive"}))
+        transcript = archive.sequence()
+        transcript.append({"kind": "terminal", "observation_id": "frame-1"})
+        finish = self.cli("finish", "--witness", str(witness))
+        self.reply_raw(finish["request_id"], json.dumps(archive.wire({
+            "ok": True,
+            "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished",
+                       "action_observation_sequence": transcript},
+        })).encode())
+        finish_result = self.cli("collect")
+        self.assertTrue(finish_result["ok"])
+        self.assertEqual(finish_result["state"], "collected")
+        self.assertEqual(finish_result["response"]["result"]["action_observation_sequence"][0]["kind"], "terminal")
+
+        cached = json.loads((self.session / "play-client.json").read_text())["last_collected_result"]
+        reference = cached["response"]["result"]["action_observation_sequence"]
+        self.assertEqual(reference["schema"], "caol-archive-sequence-ref-v1")
+        self.assertEqual(reference["count"], 1)
+
     def test_corrupt_or_wrong_binding_response_remains_pending(self):
         pending = self.cli("look")
         self.reply(pending["request_id"], {"ok": True, "result": {"observation_id": "wrong"}}, "other")
@@ -419,6 +462,31 @@ class PlayerCliTest(unittest.TestCase):
         receipt = json.loads((self.session / "responses" / (request_id + ".receipt.json")).read_text())
         self.assertEqual(receipt["request_id"], request_id)
 
+    def test_one_collect_returns_alarm_observed_on_an_earlier_internal_poll(self):
+        self.write("play-client.json", {"binding_id": "bound-a", "pending": {
+            "request_id": "pending-1", "request": {"action": "game.observe"},
+            "submitted_unix_seconds": 10.0,
+        }})
+        client = PlayerClient(self.session)
+        missing = {"ok": False, "error": "response_not_available_or_stale"}
+        receipt = {"ok": True, "receipt": {"binding_id": "bound-a", "session_generation": 0,
+                                                "response_sha256": "ignored"}}
+        response = {"ok": True, "response": {"ok": True, "result": {
+            "observation_id": "frame-1", "surface": {"kind": "world", "actions": []},
+        }}}
+        first_assessment = {"status": "measured", "alarms": [{"kind": "spike", "key": "spike:1"}],
+                            "recoveries": []}
+        final_assessment = {"status": "measured", "alarms": [],
+                            "recoveries": [{"kind": "recovery", "recovered_alarm": "spike:1"}]}
+        with patch("play_cli.Bridge.response_status", side_effect=[missing, receipt]), \
+                patch("play_cli.Bridge.response_artifact", return_value=response), \
+                patch("process_performance.collect_turn_assessment",
+                      side_effect=[first_assessment, final_assessment]), \
+                patch("play_cli.time.sleep"):
+            result = client.collect(wait_seconds=1)
+        self.assertEqual(result["turn_assessment"]["alarms"], first_assessment["alarms"])
+        self.assertEqual(result["turn_assessment"]["recoveries"], final_assessment["recoveries"])
+
     def test_collect_wakes_on_cancellation_without_resubmitting(self):
         pending = self.cli("look")
         (self.session / "controls").mkdir()
@@ -445,6 +513,114 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual(pending["state"], "pending")
         self.assertEqual(pending["request_id"], self.cli("collect")["request_id"])
         self.assertEqual(len(self.requests()), 1)
+
+    def test_duplicate_collect_returns_the_same_result_without_another_submission(self):
+        request_id = self.observe()
+        first = self.cli("collect")
+        repeated = self.cli("collect")
+        explicit = self.cli("collect", "--request-id", request_id)
+        self.assertEqual(repeated, first)
+        self.assertEqual(explicit, first)
+        self.assertEqual(len(self.requests()), 1)
+
+    def test_resume_rebuilds_lost_client_state_only_while_the_same_request_is_outstanding(self):
+        pending = self.cli("look")
+        (self.session / "play-client.json").unlink()
+        resumed = self.cli("resume", "--request-id", pending["request_id"])
+        self.assertEqual(resumed["state"], "pending")
+        self.assertEqual(resumed["recovered_request"], pending["request_id"])
+        self.assertEqual(len(self.requests()), 1)
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "recovered-frame", "surface": {
+                "kind": "world", "actions": [{"id": "world.pause"}]}}})
+        self.cli("collect")
+        action = self.cli("act", "world.pause")
+        sent = next(row for row in self.requests() if row["request_id"] == action["request_id"])
+        self.assertEqual(sent["request"]["observation_id"], "recovered-frame")
+        self.assertEqual(len(self.requests()), 2)
+
+    def test_older_collected_request_is_read_only_after_newer_collection(self):
+        request_a = self.observe("frame-a")
+        request_b = self.cli("act", "world.wait")
+        self.reply(request_b["request_id"], {"ok": True, "result": {
+            "observation_id": "frame-b", "surface": {
+                "kind": "world", "facts": {"turn": 2},
+                "actions": [{"id": "world.pause", "enabled": True}]}}})
+        self.cli("collect")
+        before = (self.session / "play-client.json").read_bytes()
+        count = len(self.requests())
+        collected = self.cli("collect", "--request-id", request_a, ok=False)
+        resumed = self.cli("resume", "--request-id", request_a, ok=False)
+        self.assertEqual(collected["error"], "request_recovery_superseded")
+        self.assertEqual(resumed["error"], "request_recovery_superseded")
+        self.assertEqual(collected["retrieval"]["request_result"],
+                         f"request-result --request-id {request_a}")
+        self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+        self.assertEqual(len(self.requests()), count)
+        readonly = self.cli("request-result", "--request-id", request_a)
+        self.assertTrue(readonly["ok"])
+        action = self.cli("act", "world.pause")
+        sent = next(row for row in self.requests() if row["request_id"] == action["request_id"])
+        self.assertEqual(sent["request"]["observation_id"], "frame-b")
+
+    def test_lost_state_does_not_reclassify_an_already_recorded_response_as_pending(self):
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "recorded-frame", "surface": {
+                "kind": "world", "actions": [{"id": "world.pause"}]}}})
+        (self.session / "play-client.json").unlink()
+        result = self.cli("resume", "--request-id", pending["request_id"], ok=False)
+        self.assertEqual(result["error"], "request_already_recorded_read_only")
+        self.assertFalse((self.session / "play-client.json").exists())
+        self.assertEqual(len(self.requests()), 1)
+
+    def test_safe_read_only_retrieval_does_not_wait_for_the_collect_lock(self):
+        request_id = self.observe()
+        self.write("play-client.json", {**json.loads((self.session / "play-client.json").read_text()),
+                   "pending": {"request_id": "still-pending", "request": {"action": "game.wait"}}})
+        with session_lock(self.session / "play-client.lock"):
+            result = self.cli("inspect", "result.surface.actions", "--request-id", request_id,
+                              "--limit", "1")
+        self.assertEqual(result["slice"], [{"id": "world.wait", "enabled": True}])
+        self.assertEqual(len(self.requests()), 1)
+
+    def test_messages_remain_readable_from_the_last_displayed_frame_while_action_collects(self):
+        looked = self.cli("look")
+        self.reply(looked["request_id"], {"ok": True, "result": {
+            "observation_id": "message-frame", "surface": {"kind": "world", "facts": {
+                "messages": json.dumps([{"text": "current retained message", "time": 1}])},
+                "actions": [{"id": "world.wait", "enabled": True}]}}})
+        self.cli("collect")
+        pending = self.cli("act", "world.wait")
+        self.assertEqual(pending["state"], "pending")
+        with session_lock(self.session / "play-client.lock"):
+            messages = self.cli("messages", "--contains", "retained", "--limit", "1")
+        self.assertEqual(messages["slice"], [{"text": "current retained message", "time": 1}])
+        self.assertEqual(len(self.requests()), 2)
+
+    def test_direct_wait_and_move_commands_preserve_player_chosen_bounds_without_request_files(self):
+        wait = self.cli("wait", "--target-delta-game-minutes", "5", "--duration-action", "wait.5m",
+                        "--bound-maximum", "5", "--bound-basis", "scheduler_boundary",
+                        "--bound-source", "chosen observation window")
+        sent_wait = next(row for row in self.requests() if row["request_id"] == wait["request_id"])
+        self.assertEqual(sent_wait["request"], {"action": "game.wait", "wait": {
+            "enabled": True, "recipe": ["world.wait", "wait.5m"],
+            "target_delta_game_minutes": 5.0, "danger_handling": "stop_on_interruption",
+            "bound": {"basis": "scheduler_boundary", "source": "chosen observation window",
+                      "unit": "game_minutes", "maximum": 5.0, "progress_required": True},
+        }})
+        self.reply(wait["request_id"], {"ok": False, "error": "interrupted"})
+        rejected = self.cli("collect", ok=False)
+        self.assertEqual(self.cli("collect", "--request-id", wait["request_id"], ok=False), rejected)
+        self.assertEqual(len(self.requests()), 1)
+        move = self.cli("move", "--east", "1", "--south", "-1", "--bound-maximum", "2",
+                        "--bound-basis", "path_progress", "--bound-source", "chosen diagonal")
+        sent_move = next(row for row in self.requests() if row["request_id"] == move["request_id"])
+        self.assertEqual(sent_move["request"], {"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [1, -1], "danger_handling": "stop_on_interruption",
+            "bound": {"basis": "path_progress", "source": "chosen diagonal",
+                      "unit": "steps", "maximum": 2},
+        }})
 
     def test_result_frame_reuse_sends_next_action_without_redundant_look(self):
         observe_request_id = self.observe()
@@ -589,13 +765,20 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual(self.cli("look")["state"], "pending")
 
     def test_declared_reentry_releases_old_grants_before_new_observation(self):
-        self.write("play-client.json", {"binding_id": "bound-a", "finished": True,
-                   "finished_generation": 0, "process_exited": True,
-                   "sealed_terminal": {"observation_id": "old"}, "observation_id": "old"})
+        self.write("play-client.json", {"binding_id": "bound-a",
+                   "session_generation": 0, "process_exited": True,
+                   "sealed_terminal": {"observation_id": "old"}, "observation_id": "old",
+                   "last_request_id": "old-request", "last_collected_result": {"request_id": "old-request"},
+                   "display_sha256": "0" * 64, "display_generation": 0})
         self.write("status.json", {"binding_id": "bound-a", "state": "ready", "session_generation": 0})
         self.cli("look", ok=False)
         self.write("status.json", {"binding_id": "bound-a", "state": "ready", "session_generation": 1})
         self.assertEqual(self.cli("collect")["state"], "reentered")
+        reentered = json.loads((self.session / "play-client.json").read_text())
+        self.assertNotIn("last_request_id", reentered)
+        self.assertNotIn("display_sha256", reentered)
+        self.assertEqual(self.cli("collect", "--request-id", "old-request", ok=False)["error"],
+                         "request_recovery_superseded_by_reentry")
         self.assertIn("look_required", self.cli("act", "world.pause", ok=False)["error"])
         pending = self.cli("look")
         self.reply(pending["request_id"], {"ok": True, "result": {"observation_id": "new-process:frame:1",
@@ -639,6 +822,10 @@ class PlayerCliTest(unittest.TestCase):
     def test_finished_collect_reports_actual_cleanup_instead_of_inventing_termination(self):
         self.write("play-client.json", {"binding_id": "bound-a", "finished": True})
         self.write("status.json", {"binding_id": "bound-a", "state": "terminalizing"})
+        before = (self.session / "play-client.json").read_bytes()
+        self.assertEqual(self.cli("collect", "--request-id", "old-request", ok=False)["error"],
+                         "request_recovery_session_finished")
+        self.assertEqual((self.session / "play-client.json").read_bytes(), before)
         self.assertEqual(self.cli("collect")["state"], "finishing")
         self.write("status.json", {"binding_id": "bound-a", "state": "safe_to_cleanup",
                    "cleanup": {"status": "accepted"}, "terminalization": {

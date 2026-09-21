@@ -1,5 +1,8 @@
 """Task-independent change display; native evidence and grants stay with the client."""
-from cockpit_evidence import decode, gameplay_fact
+from collections import Counter
+import json
+
+from cockpit_evidence import action_catalog, compact, decode, gameplay_fact
 
 
 def observation_path(response, path=""):
@@ -27,6 +30,73 @@ def observation(response):
     return None
 
 
+_ENTITY_ID_FIELDS = ("stable_id", "id", "uid", "handle", "character_id", "fixture_actor_id")
+
+
+def _entity_identity(value):
+    """Return a native stable identity without manufacturing one from order."""
+    if not isinstance(value, dict):
+        return None
+    for field in _ENTITY_ID_FIELDS:
+        candidate = value.get(field)
+        if candidate not in (None, ""):
+            return (field, str(candidate))
+    return None
+
+
+def _entity_delta(current, previous, selector):
+    """Put changed nearby entities ahead of unchanged preview occupants.
+
+    The complete current list remains available at ``selector``.  This small
+    view deliberately compares only producer-provided stable identities: list
+    position is not an identity and is never used to claim that an NPC changed.
+    """
+    if not isinstance(current, list) or not isinstance(previous, list):
+        return gameplay_fact(current, selector)
+    before = {_entity_identity(item): item for item in previous if _entity_identity(item) is not None}
+    after = {_entity_identity(item): item for item in current if _entity_identity(item) is not None}
+    changed = []
+    for index, item in enumerate(current):
+        identity = _entity_identity(item)
+        if identity is None:
+            # An unkeyed row cannot be compared safely.  Keep it available in
+            # the exact source rather than pretending the list index is stable.
+            continue
+        if before.get(identity) != item:
+            changed.append({"identity": {identity[0]: identity[1]}, "source_index": index,
+                            "value": compact(item, f"{selector}.{index}")})
+    removed = [{field: value} for field, value in before if (field, value) not in after]
+    return {"selector": selector, "current_count": len(current),
+            "identity_fields": list(_ENTITY_ID_FIELDS), "changed": changed,
+            "removed": removed,
+            "note": "Changed stable identities are shown before unchanged nearby entities; page the exact selector for the complete current list."}
+
+
+def _message_delta(current, previous, selector):
+    """Expose every new message event instead of grouping repeated text."""
+    if not isinstance(current, list) or not isinstance(previous, list):
+        return gameplay_fact(current, selector)
+    # A multiset preserves repeated identical events.  A new actor, timestamp,
+    # or payload is distinct; identical retained fixture history is not
+    # re-presented merely because the frame was refreshed.
+    previous_counts = Counter(json.dumps(item, sort_keys=True, ensure_ascii=False,
+                                         separators=(",", ":")) for item in previous)
+    events = []
+    for index, item in enumerate(current):
+        key = json.dumps(item, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        if previous_counts[key]:
+            previous_counts[key] -= 1
+            continue
+        events.append({"source_index": index, "value": compact(item, f"{selector}.{index}")})
+    append_only = len(current) >= len(previous) and current[:len(previous)] == previous
+    return {"selector": selector,
+            "cursor": {"before_count": len(previous), "after_count": len(current),
+                       "mode": "append" if append_only else "identity_delta"},
+            "new_events": events, "new_event_count": len(events),
+            "retained_history_count": len(previous),
+            "scope_note": "These are events newly present in this retained frame; fixture/history origin is not inferred. Use time, actor and request facts before attribution."}
+
+
 def display(response, previous=None, refresh=False):
     observed = observation(response)
     if not observed:
@@ -47,17 +117,31 @@ def display(response, previous=None, refresh=False):
         result = {}
         for key, value in new.items():
             child_path = path + "." + key if path else key
+            selector = fact_prefix + child_path
             if key not in old:
-                result[key] = gameplay_fact(value, fact_prefix + child_path)
+                if key in {"visible_entities", "visible_zones"}:
+                    result[key] = _entity_delta(value, [], selector)
+                elif key == "messages":
+                    result[key] = _message_delta(value, [], selector)
+                else:
+                    result[key] = gameplay_fact(value, selector)
             elif value != old[key]:
                 if isinstance(value, dict) and isinstance(old[key], dict):
                     result[key] = changes(value, old[key], child_path)
+                elif key in {"visible_entities", "visible_zones"}:
+                    result[key] = _entity_delta(value, old[key], selector)
+                elif key == "messages":
+                    result[key] = _message_delta(value, old[key], selector)
                 else:
-                    result[key] = gameplay_fact(value, fact_prefix + child_path)
+                    result[key] = gameplay_fact(value, selector)
         removed.extend(path + "." + key if path else key for key in old if key not in new)
         return result
     changed = changes(facts, old_facts)
-    current = {"owner": owner}
+    source_selector = observation_path(response)
+    actions_selector = source_selector + ".surface.actions"
+    current = {"owner": owner, "source_selector": source_selector,
+               "actions_selector": actions_selector,
+               "view": "full" if transition else "delta"}
     breadcrumbs = surface.get("breadcrumbs", observed.get("breadcrumbs", []))
     if transition or old.get("breadcrumbs") != breadcrumbs:
         current["breadcrumbs"] = breadcrumbs
@@ -67,7 +151,8 @@ def display(response, previous=None, refresh=False):
         return {k: v for k, v in action.items()
                 if not (k == "stable_id" and not v) and not (k == "label" and v == action.get("id"))}
     if transition:
-        current["actions"] = [action_view(a) for a in actions]
+        catalog = action_catalog(actions, actions_selector)
+        current["actions"] = catalog if catalog is not None else [action_view(a) for a in actions]
         current["navigation"] = [action_view(a) for a in actions if
             str(a.get("id", "")).rsplit(".", 1)[-1] in {"close", "cancel", "back", "done"}]
     elif old.get("actions") != actions:
@@ -90,7 +175,7 @@ def display(response, previous=None, refresh=False):
     result = response.get("result")
     if isinstance(result, dict) and "terminal_observation" in result:
         outcome["chain"] = {k: v for k, v in result.items() if k not in {
-            "terminal_observation", "native_receipts", "observations", "transcript"}}
+            "terminal_observation", "native_receipts", "handled_interruptions", "observations", "transcript"}}
     view = {"current_input": current, "outcome": outcome,
             "authority": {"run_id": observed.get("run_id"),
                           "observation_id": observed.get("observation_id")}}

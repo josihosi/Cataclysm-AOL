@@ -248,8 +248,29 @@ class LiveSessionTest(unittest.TestCase):
                     [frame(1, 100)], process_state=process_state,
                 )
                 observed = service.call({"action": "game.observe"})["result"]
+                world_native = {
+                    "accepted": True, "run_id": "live-proof", "request_id": "save-1",
+                    "requested_run_id": "live-proof", "requested_surface_id": "world-1",
+                    "requested_frame_id": observed["observation_id"], "action_id": "world.save_quit",
+                }
+                completion = {
+                    "schema": "caol-native-save-completion-v1", "run_id": "live-proof",
+                    "request_id": "save-1", "requested_run_id": "live-proof",
+                    "requested_surface_id": "world-1", "requested_frame_id": observed["observation_id"],
+                    "action_id": "world.save_quit", "serializer_result": "saved",
+                    "save_succeeded": True, "world_name": "McWilliams", "player_save_id": "Ada",
+                    "artifact_identity": {"kind": "harness_run_directory", "value": "/run"},
+                }
                 service.run_channel._transcript.append({
                     "kind": "action", "action_id": "world.save_quit",
+                    "result": {"receipt": {"native_receipt": world_native}},
+                })
+                service.run_channel._transcript.append({
+                    "kind": "action", "action_id": "prompt.choose",
+                    "result": {"receipt": {"native_receipt": {
+                        "accepted": True, "run_id": "live-proof",
+                        "native_save_completion": {"status": "matched", "completion": completion},
+                    }}},
                 })
                 process_state["alive"] = alive
                 finished = service.call({

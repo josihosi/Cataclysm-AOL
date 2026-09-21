@@ -40,7 +40,9 @@ class R019ValidationStartupTest(unittest.TestCase):
         gate_start = game_source.index("openclaw_harness_semantic_initial_world_frame_if_ready(", panels)
         gate_end = game_source.index(";", gate_start)
         gate = game_source[gate_start:gate_end]
-        self.assertIn("input_context::get_active_context()", gate)
+        self.assertIn("input_context world_context = get_default_mode_input_context()", game_source)
+        self.assertIn("input_context::scoped_activation world_input_owner( world_context )", game_source)
+        self.assertIn("openclaw_harness_semantic_initial_world_frame_if_ready(\n        &world_context,", game_source)
         self.assertIn("!u.activity", gate)
         self.assertIn("!u.has_destination()", gate)
         self.assertIn("uquit == QUIT_WATCH && u.is_dead_state()", gate)

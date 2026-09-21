@@ -368,7 +368,7 @@ class ProbeRelaunchTest(unittest.TestCase):
             "focus": {"ok": True},
             "proof_classification": {"startup_clean_for_feature_steps": True},
         }
-        with mock.patch.object(harness, "native_save_quit_receipt", return_value={"status": "matched"}), \
+        with mock.patch.object(harness, "native_save_quit_completion", return_value={"status": "matched"}), \
                 mock.patch.object(harness, "observe_bound_process_exit", return_value={
                     "status": "native_exit", "elapsed_seconds": 0.1,
                     "scheduling_uncertainty_seconds": 0.0,
@@ -377,6 +377,8 @@ class ProbeRelaunchTest(unittest.TestCase):
                     "pid": 202, "birth_identity": "fixture-relaunch-202",
                     "command": "/fixture/Cataclysm-AOL --world McWilliams",
                 }), \
+                mock.patch.object(harness, "sha256_tree", return_value=("fixture-save-tree", "")), \
+                mock.patch.object(harness.shutil, "copytree"), \
                 mock.patch.object(harness, "run_json_command", return_value=(0, start_result, "out", "err")) as run:
             result = harness.run_probe_post_relaunch(
                 initial_pid=101,
@@ -439,12 +441,14 @@ class ProbeRelaunchTest(unittest.TestCase):
 
     def test_relaunch_with_pid_but_no_generation_is_retained_not_ready(self) -> None:
         with tempfile.TemporaryDirectory() as directory, \
-                mock.patch.object(harness, "native_save_quit_receipt", return_value={"status": "matched"}), \
+                mock.patch.object(harness, "native_save_quit_completion", return_value={"status": "matched"}), \
                 mock.patch.object(harness, "observe_bound_process_exit", return_value={
                     "status": "native_exit", "elapsed_seconds": 0.1,
                     "scheduling_uncertainty_seconds": 0.0,
                 }), \
                 mock.patch.object(harness, "persisted_run_process_generation", return_value={}), \
+                mock.patch.object(harness, "sha256_tree", return_value=("fixture-save-tree", "")), \
+                mock.patch.object(harness.shutil, "copytree"), \
                 mock.patch.object(harness, "run_json_command", return_value=(0, {
                     "ok": True, "pid": 202, "run_dir": "/tmp/relaunch-run",
                     "focus": {"ok": True},
@@ -464,6 +468,9 @@ class ProbeRelaunchTest(unittest.TestCase):
             root = Path(temp_dir)
             run_dir = root / "run"
             run_dir.mkdir()
+            saved_world = root / "save" / "McWilliams"
+            saved_world.mkdir(parents=True)
+            (saved_world / "player.sav").write_text("fixture", encoding="utf-8")
             artifact_log = root / "debug.log"
             artifact_log.write_text("", encoding="utf-8")
             args = SimpleNamespace(
@@ -510,12 +517,13 @@ class ProbeRelaunchTest(unittest.TestCase):
                 "run_startup_in_process": mock.Mock(return_value=(0, first_start, "", "")),
                 "run_json_command": mock.Mock(return_value=(0, relaunch_start, "", "")),
                 "pid_command": mock.Mock(return_value="/fixture/Cataclysm-AOL --world McWilliams"),
-                "native_save_quit_receipt": mock.Mock(return_value={"status": "matched"}),
+                "native_save_quit_completion": mock.Mock(return_value={"status": "matched"}),
                 "observe_bound_process_exit": mock.Mock(return_value={
                     "status": "native_exit", "elapsed_seconds": 0.1,
                     "scheduling_uncertainty_seconds": 0.0,
                 }),
                 "resolve_artifact_source": mock.Mock(return_value=(artifact_log, False, "debug.log")),
+                "save_dir_for_profile": mock.Mock(return_value=root / "save"),
                 "probe_runtime_blockers": mock.Mock(return_value=[]),
                 "probe_runtime_warnings": mock.Mock(return_value=[]),
                 "read_current_saved_weather_audit": mock.Mock(return_value={}),
@@ -527,6 +535,7 @@ class ProbeRelaunchTest(unittest.TestCase):
                     "pid": 202, "birth_identity": "fixture-relaunch-202",
                     "command": "/fixture/Cataclysm-AOL --world McWilliams",
                 }),
+                "sha256_tree": mock.Mock(return_value=("fixture-save-tree", "")),
                 "capture_feature_phase_guard": mock.Mock(return_value={"status": "green", "ledger_row": {}}),
                 "render_derived_screens": mock.Mock(return_value=[]),
                 "declared_screen_artifact_matches": mock.Mock(return_value=[]),

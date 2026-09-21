@@ -27,7 +27,8 @@ def continuation_note(*, session_generation: int | None,
                       retained_frame_handles: Sequence[str] = (),
                       retained_evidence_handles: Sequence[str] = (),
                       unresolved_question: str = '',
-                      next_decision: str = '') -> dict:
+                      next_decision: str = '',
+                      next_operation: Mapping[str, Any] | None = None) -> dict:
     """Build a replaceable current-work note without inferring state.
 
     Generations, binding and handles are caller-supplied exact values.  A
@@ -39,6 +40,8 @@ def continuation_note(*, session_generation: int | None,
     if process_generation is not None and (
             not isinstance(process_generation, int) or isinstance(process_generation, bool)):
         raise CurrentResultsError('process_generation must be an integer or null')
+    if next_operation is not None and not isinstance(next_operation, Mapping):
+        raise CurrentResultsError('next_operation must be an object or null')
     return {
         'session_generation': session_generation,
         'process_generation': process_generation,
@@ -48,6 +51,7 @@ def continuation_note(*, session_generation: int | None,
         'retained_evidence_handles': [str(item) for item in retained_evidence_handles],
         'unresolved_question': str(unresolved_question),
         'next_decision': str(next_decision),
+        'next_operation': dict(next_operation or {}),
     }
 
 
@@ -68,6 +72,7 @@ def _continuation_value(value: Mapping[str, Any] | None) -> dict | None:
         retained_evidence_handles=value['retained_evidence_handles'],
         unresolved_question=value['unresolved_question'],
         next_decision=value['next_decision'],
+        next_operation=value.get('next_operation'),
     )
 
 
@@ -86,7 +91,9 @@ def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[st
                            conclusions: Sequence[str] = (),
                            boundaries: Sequence[str] = (),
                            dependencies: Mapping[str, str] | None = None,
-                           continuation: Mapping[str, Any] | None = None) -> dict:
+                           continuation: Mapping[str, Any] | None = None,
+                           limits: Sequence[str] = (),
+                           current_question: str = '') -> dict:
     """Select coordinator-named receipts and conclusions without judging them.
 
     Receipt objects are copied verbatim and retain their exact identity.  This
@@ -119,6 +126,8 @@ def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[st
         'schema': 'caol-current-results-v1',
         'selected_receipts': [by_id[rid] for rid in ids],
         'current_conclusions': [str(item) for item in conclusions],
+        'current_limits': [str(item) for item in limits],
+        'current_question': str(current_question),
         'remaining_boundaries': [str(item) for item in boundaries],
         'source_dependencies': deps,
     }
@@ -126,6 +135,38 @@ def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[st
     if note is not None:
         selected['continuation_note'] = note
     return selected
+
+
+def _receipt_reference(receipt: Mapping[str, Any]) -> dict:
+    """Project a receipt to its useful routing handles, never its whole body.
+
+    The selected source evidence keeps the full receipt.  A worker needs the
+    durable identity, ceiling and exact artifact/binding handles first; it can
+    retrieve the source only when that detail changes a decision.
+    """
+    reference = {'receipt_id': _receipt_id(receipt)}
+    for field in ('claim', 'claim_id', 'disposition', 'status', 'verdict'):
+        if field in receipt:
+            reference[field] = receipt[field]
+    if 'evidence_ceiling' in receipt:
+        reference['evidence_ceiling'] = receipt['evidence_ceiling']
+    if isinstance(receipt.get('bindings'), Mapping):
+        reference['bindings'] = dict(receipt['bindings'])
+    handles = receipt.get('artifact_refs', receipt.get('artifacts', ()))
+    if isinstance(handles, Sequence) and not isinstance(handles, (str, bytes)):
+        compact_handles = []
+        for handle in handles:
+            if not isinstance(handle, Mapping):
+                continue
+            compact = {key: handle[key] for key in ('path', 'sha256', 'role', 'kind') if key in handle}
+            if compact:
+                compact_handles.append(compact)
+        if compact_handles:
+            reference['artifact_handles'] = compact_handles
+    entrypoints = receipt.get('entrypoints', ())
+    if isinstance(entrypoints, Sequence) and not isinstance(entrypoints, (str, bytes)):
+        reference['entrypoints'] = [str(value) for value in entrypoints]
+    return reference
 
 
 def export_current_results(selection: Mapping[str, Any], destination: Path) -> dict:
@@ -145,13 +186,16 @@ def export_current_results(selection: Mapping[str, Any], destination: Path) -> d
     note = _continuation_value(selection.get('continuation_note'))
     lines = ['# Current results', '', '## Current conclusions']
     lines += ['- ' + str(item) for item in selection.get('current_conclusions', [])]
+    lines += ['', '## Current limits']
+    lines += ['- ' + str(item) for item in selection.get('current_limits', [])]
+    lines += ['', '## Current question', str(selection.get('current_question', ''))]
     lines += ['', '## Remaining boundaries']
     lines += ['- ' + str(item) for item in selection.get('remaining_boundaries', [])]
-    lines += ['', '## Selected durable receipts']
+    lines += ['', '## Selected durable receipt handles']
     for receipt in receipts:
         lines.append('### receipt ' + _receipt_id(receipt))
         lines.append('```json')
-        lines.append(json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2))
+        lines.append(json.dumps(_receipt_reference(receipt), ensure_ascii=False, sort_keys=True, indent=2))
         lines.append('```')
     if note is not None:
         lines += ['', '## Current continuation note', '```json',
@@ -212,28 +256,84 @@ def session_context(workspace: Path, evidence: dict) -> dict:
         try:session.resolve().relative_to(workspace.resolve())
         except ValueError:continue
         files={};status={}
-        for name in ('status.json','bridge.manifest.json','active-request.json'):
+        client_state = {}
+        for name in ('status.json','bridge.manifest.json','active-request.json','play-client.json'):
             path=session/name
             try:
                 raw=path.read_bytes();stat=path.stat();value=json.loads(raw)
                 files[name]={'path':str(path),'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
                              'mtime_ns':stat.st_mtime_ns,'available':True}
-                if name=='status.json':status=value
+                if name=='status.json':
+                    status = value if isinstance(value, Mapping) else {}
+                    if not isinstance(value, Mapping):
+                        files[name]['available'] = False
+                        files[name]['reason'] = 'status is not an object'
                 elif name=='active-request.json':status['pending_request']=value
+                elif name=='play-client.json':client_state=value if isinstance(value, Mapping) else {}
             except FileNotFoundError:files[name]={'path':str(path),'available':False,'reason':'missing'}
             except (OSError,ValueError) as e:files[name]={'path':str(path),'available':False,'reason':str(e)}
         pending = status.get('pending_request')
+        if not isinstance(pending, Mapping):
+            pending = client_state.get('pending') if isinstance(client_state, Mapping) else None
+        pending_request_id = (pending.get('request_id') if isinstance(pending, Mapping) else
+                              status.get('inflight_request_id'))
+        state = status.get('state') if isinstance(status, Mapping) else None
+        command_prefix = [sys.executable, 'tools/openclaw_harness/play_cli.py', '--session', str(session)]
+        next_operation: dict[str, Any]
+        if state == 'awaiting_response':
+            if isinstance(pending_request_id, str) and pending_request_id:
+                next_operation = {
+                    'kind': 'collect_pending', 'request_id': pending_request_id,
+                    'argv': [*command_prefix, 'collect', '--request-id', pending_request_id],
+                    'reason': 'The bridge records this exact operation as awaiting a response; collect it before any new input.',
+                }
+            else:
+                next_operation = {
+                    'kind': 'unknown_pending_identity',
+                    'reason': 'The bridge is awaiting a response but did not retain an exact request identity. Do not submit or look as recovery.',
+                }
+        elif state == 'ready' and isinstance(pending_request_id, str) and pending_request_id:
+            next_operation = {
+                'kind': 'collect_pending', 'request_id': pending_request_id,
+                'argv': [*command_prefix, 'collect', '--request-id', pending_request_id],
+                'reason': 'A client-side pending record survives output loss; collect this exact operation before any new input.',
+            }
+        elif state == 'ready' and isinstance(client_state, Mapping) and \
+                isinstance(client_state.get('last_collected_result'), Mapping) and \
+                isinstance(client_state.get('last_request_id'), str) and client_state['last_request_id']:
+            request_id = client_state['last_request_id']
+            next_operation = {
+                'kind': 'replay_completed_result', 'request_id': request_id,
+                'argv': [*command_prefix, 'collect', '--request-id', request_id],
+                'reason': 'This is the retained latest collected result; collection is read-only and does not replay input.',
+            }
+        elif state == 'ready':
+            next_operation = {
+                'kind': 'refresh_current_owner', 'argv': [*command_prefix, 'look'],
+                'reason': 'The bridge is ready without a pending or replayable result; obtain a fresh current owner before choosing input.',
+            }
+        elif state in {'safe_to_cleanup', 'process_dead', 'bridge_failed', 'terminalization_failed', 'reentry_failed'}:
+            next_operation = {
+                'kind': 'ended_or_failed', 'state': state,
+                'reason': 'This recorded session is terminal or failed. Report its exact state and retained evidence; do not issue a new look or input.',
+            }
+        else:
+            next_operation = {
+                'kind': 'unknown_session_state', 'state': state,
+                'reason': 'Recorded state is unavailable or not actionable. It is not evidence that the session finished or that input is safe.',
+            }
         current_note = continuation_note(
             session_generation=status.get('session_generation'),
             process_generation=status.get('process_generation'),
             binding=status.get('binding_id'),
-            pending_request_id=(pending.get('request_id')
-                                if isinstance(pending, Mapping) else None),
-            unresolved_question='', next_decision='')
+            pending_request_id=(str(pending_request_id) if pending_request_id else None),
+            unresolved_question='What does the exact recorded session state permit next?',
+            next_decision=str(next_operation['reason']), next_operation=next_operation)
         result.append({'session':str(session),'files':files,'recorded_status':status,
             'current_continuation': current_note,
-            'refresh_argv':[sys.executable,'tools/openclaw_harness/play_cli.py','--session',str(session),'look'],
-            'controls_argv':[sys.executable,'tools/openclaw_harness/play_cli.py','--session',str(session),'controls'],
+            'next_operation': next_operation,
+            'refresh_argv': [*command_prefix, 'look'],
+            'controls_argv': [*command_prefix, 'controls'],
             'log_query_argv':[sys.executable,'tools/openclaw_harness/cockpit_file_bridge.py','log-query',
                               '--session-dir',str(session)],
             'evidence_limit':'Recorded bridge state and pending request only. Process liveness and '

@@ -17,7 +17,7 @@ class R019StartupBoundaryObservationTest(unittest.TestCase):
     def test_post_hud_observation_precedes_input_dispatch(self) -> None:
         redraw = DO_TURN.index("ui_manager::redraw();", DO_TURN.index("bool game::do_turn()"))
         boundary = DO_TURN.index("openclaw_harness_trace_post_hud_pre_input_boundary( u,", redraw)
-        dispatch = DO_TURN.index("if( handle_action() )", boundary)
+        dispatch = DO_TURN.index("const bool handle_action_returned = handle_action();", boundary)
         self.assertLess(redraw, boundary)
         self.assertLess(boundary, dispatch)
         self.assertNotIn("openclaw_harness_semantic_initial_world_frame_if_ready(", DO_TURN)

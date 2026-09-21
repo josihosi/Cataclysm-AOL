@@ -45,23 +45,39 @@ def bound(maximum: int = 2) -> dict[str, object]:
 
 
 class RawWaitTest(unittest.TestCase):
-    def service(self, frames: list[dict[str, object]]) -> tuple[cockpit.CockpitService, list[str]]:
+    def service(self, frames: list[dict[str, object]], *, await_completion: bool = False) -> tuple[cockpit.CockpitService, list[str]]:
         index = [0]
         dispatched: list[str] = []
 
-        def dispatch(issuing: dict[str, object], action_id: str) -> dict[str, object]:
+        def dispatch(issuing: dict[str, object], action_id: str,
+                     stable_id: str | None = None) -> dict[str, object]:
             dispatched.append(action_id)
             index[0] += 1
+            receipt = {
+                "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+            }
+            if action_id.startswith("wait."):
+                receipt["provenance"] = "native_wait_duration_legacy_receipt"
+            if "surface_id" in issuing:
+                receipt.update({
+                    "requested_frame_id": issuing["frame_id"],
+                    "requested_surface_id": issuing["surface_id"],
+                    "consuming_surface_id": issuing["surface_id"],
+                })
             return {
-                "native_receipt": {
-                    "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
-                },
+                "native_receipt": receipt,
                 "_next_frame": frames[index[0]],
             }
 
+        def collect_activity(_: str) -> None:
+            self.assertTrue(await_completion)
+            index[0] += 1
+
         channel = cockpit.CockpitRunChannel(
             lambda: frames[index[0]], dispatch, binding_id="binding-a",
-            read_binding_id=lambda: "binding-a", enforce_continuation_bounds=True,
+            read_binding_id=lambda: "binding-a",
+            await_native_completion=collect_activity if await_completion else None,
+            enforce_continuation_bounds=True,
         )
         return cockpit.CockpitService(run_channel=channel), dispatched
 
@@ -100,6 +116,133 @@ class RawWaitTest(unittest.TestCase):
             })["observation"]
         self.assertEqual(primitive_actions, raw_actions)
         self.assertEqual(observed["game_minutes"], result["result"]["terminal_observation"]["game_minutes"])
+
+    def test_raw_route_collects_one_semantic_menu_operation_without_premature_progress_failure(self) -> None:
+        """The same wait crosses World -> menu -> duration before time advances."""
+        start = frame(1, 100)
+        mode = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:2", "surface_id": "wait-mode", "kind": "menu",
+            "breadcrumbs": ["Wait"], "payload": {},
+            "valid_actions": [{"id": "menu.choose", "stable_id": "wait-mode:wait-a-while",
+                               "label": "Wait a while", "enabled": True}],
+        }
+        duration = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:3", "surface_id": "wait-duration", "kind": "menu",
+            "breadcrumbs": ["Wait", "Duration"], "payload": {},
+            "valid_actions": [{"id": "wait.1m", "stable_id": "", "label": "1 minute",
+                               "enabled": True}],
+        }
+        complete = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:4", "surface_id": "world:4", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "game_minutes": 101,
+            "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "Wait",
+                               "enabled": True}],
+        }
+        service, dispatched = self.service([start, mode, duration, complete])
+
+        result = service.call(self.request(target=101))
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "menu.choose", "wait.1m"])
+        self.assertEqual(result["result"]["partial_progress"], 1)
+        self.assertEqual(service.call({"action": "run.status"})["result"]["operation"], None)
+
+    def test_semantic_duration_menu_cannot_expand_the_declared_wait_recipe(self) -> None:
+        """A current menu owner still cannot authorize an omitted duration."""
+        start = frame(1, 100)
+        mode = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:2", "surface_id": "wait-mode", "kind": "menu",
+            "breadcrumbs": ["Wait"], "payload": {},
+            "valid_actions": [{"id": "menu.choose", "stable_id": "wait-mode:wait-a-while",
+                               "label": "Wait a while", "enabled": True}],
+        }
+        duration = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:3", "surface_id": "wait-duration", "kind": "menu",
+            "breadcrumbs": ["Wait", "Duration"], "payload": {},
+            "valid_actions": [
+                {"id": "wait.5m", "stable_id": "", "label": "5 minutes", "enabled": True},
+                {"id": "wait.6h", "stable_id": "", "label": "6 hours", "enabled": True},
+            ],
+        }
+        complete = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:4", "surface_id": "world:4", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "game_minutes": 460,
+            "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "Wait",
+                               "enabled": True}],
+        }
+        service, dispatched = self.service([start, mode, duration, complete])
+
+        result = service.call({"action": "game.raw_wait", "raw_wait": {
+            "enabled": True, "target_game_minutes": 460, "bound": bound(400),
+            "recipe": ["world.wait", "wait.5m"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "menu.choose", "wait.5m"])
+
+    def test_raw_route_collects_a_receipt_bound_activity_surface_without_replaying_duration(self) -> None:
+        start = frame(1, 100)
+        duration = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:2", "surface_id": "wait-duration", "kind": "menu",
+            "breadcrumbs": ["Wait", "Duration"], "payload": {}, "game_minutes": 100,
+            "valid_actions": [{"id": "wait.1m", "stable_id": "", "label": "1 minute",
+                               "enabled": True}],
+        }
+        activity = frame(3, 100, state="wait_activity")
+        activity["valid_actions"] = []
+        complete = frame(4, 101)
+        service, dispatched = self.service([start, duration, activity, complete], await_completion=True)
+
+        result = service.call(self.request(target=101))
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "wait.1m"])
+
+    def test_raw_route_resets_the_recipe_cursor_after_a_semantic_duration(self) -> None:
+        start = frame(1, 100)
+
+        def menu(sequence: int, *, duration: bool = False) -> dict[str, object]:
+            return {
+                "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+                "frame_id": f"raw-wait-proof:{sequence}", "surface_id": f"menu:{sequence}",
+                "kind": "menu", "breadcrumbs": ["Wait"], "payload": {},
+                "valid_actions": ([{"id": "wait.1m", "stable_id": "", "label": "1 minute",
+                                    "enabled": True}] if duration else
+                                  [{"id": "menu.choose", "stable_id": "wait-mode:wait-a-while",
+                                    "label": "Wait a while", "enabled": True}]),
+            }
+
+        after_first = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "raw-wait-proof",
+            "frame_id": "raw-wait-proof:4", "surface_id": "world:4", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "game_minutes": 101,
+            "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "Wait",
+                               "enabled": True}],
+        }
+        final = dict(after_first)
+        final.update({"frame_id": "raw-wait-proof:7", "surface_id": "world:7", "game_minutes": 102})
+        service, dispatched = self.service([
+            start, menu(2), menu(3, duration=True), after_first,
+            menu(5), menu(6, duration=True), final,
+        ])
+
+        result = service.call({"action": "game.raw_wait", "raw_wait": {
+            "enabled": True, "target_game_minutes": 102, "bound": bound(2),
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, [
+            "world.wait", "menu.choose", "wait.1m",
+            "world.wait", "menu.choose", "wait.1m",
+        ])
 
     def test_menu_selection_keeps_its_native_owner_frame(self) -> None:
         menu = frame(1, 100)

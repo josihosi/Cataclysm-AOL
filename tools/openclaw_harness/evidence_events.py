@@ -98,8 +98,49 @@ def envelopes(record, source):
                    "payload": entity, "observation_id": observed.get("observation_id")}
 
 
-def _request_result_links(events):
-    """Group only explicit request/run/process identities; never infer joins by time."""
+def _lifecycle_payload(event):
+    """Return the native lifecycle payload without interpreting nearby prose."""
+    payload = event.get("payload", {})
+    if not isinstance(payload, dict):
+        return {}
+    nested = payload.get("payload")
+    if isinstance(nested, dict) and any(
+            key in nested for key in ("accepted", "rejection_reason", "outcome")):
+        return nested
+    return payload
+
+
+def _lifecycle_observations(event):
+    """Classify only explicitly observed lifecycle signals for one event.
+
+    In particular, an absent rejection is not evidence of a contradiction.  A
+    contradiction requires observed acceptance and observed rejection evidence
+    for the same exact request/run/process tuple.
+    """
+    payload = _lifecycle_payload(event)
+    accepted = payload.get("accepted")
+    rejection_reason = payload.get("rejection_reason")
+    outcome = str(payload.get("outcome", "")).casefold()
+    kind = str(event.get("event", "")).casefold()
+    acceptance = accepted is True or outcome in {"accepted", "approved"} or kind in {
+        "accepted", "acceptance", "request_accepted", "approved",
+    }
+    rejection = (accepted is False or bool(rejection_reason) or
+                 outcome in {"rejected", "denied"} or kind in {
+                     "rejected", "rejection", "request_rejected", "denied",
+                 })
+    result = any(token in kind for token in ("result", "completed", "applied", "outcome"))
+    return acceptance, rejection, result
+
+
+def _request_result_links(events, keys=None):
+    """Group explicit request/run/process identities; never infer joins by time.
+
+    ``keys`` is the set of exact identities selected by the query.  Related
+    lifecycle stages for a selected identity remain available, but an
+    adjacent request or a same-request different-process record does not leak
+    into the result merely because it was scanned.
+    """
     groups = {}
     for event in events:
         request_id = event.get("request_id")
@@ -107,30 +148,47 @@ def _request_result_links(events):
             continue
         key = (event.get("run_id"), event.get("process_instance"), request_id)
         groups.setdefault(key, []).append(event)
+    selected = set(groups) if keys is None else set(keys)
     links = []
     for (run_id, process_instance, request_id), matching in groups.items():
+        if (run_id, process_instance, request_id) not in selected:
+            continue
         stages = {"acceptance": [], "rejection": [], "result": []}
         writers = set()
         for event in matching:
-            payload = event.get("payload", {})
-            if isinstance(payload, dict) and isinstance(payload.get("payload"), dict):
-                payload = payload["payload"]
-            accepted = payload.get("accepted") if isinstance(payload, dict) else None
-            rejection = payload.get("rejection_reason") if isinstance(payload, dict) else None
-            kind = str(event.get("event", "")).casefold()
-            if accepted is True:
+            acceptance, rejection, result = _lifecycle_observations(event)
+            if acceptance:
                 stages["acceptance"].append(event["event_id"])
-            if accepted is False or rejection:
+            if rejection:
                 stages["rejection"].append(event["event_id"])
-            if any(token in kind for token in ("result", "completed", "applied", "outcome")):
+            if result:
                 stages["result"].append(event["event_id"])
             writer = (event.get("producer"), event.get("actor_id"))
             if writer != (None, None):
                 writers.add(writer)
-        missing = [name for name, ids in stages.items() if not ids]
+        observed_acceptance = bool(stages["acceptance"])
+        observed_rejection = bool(stages["rejection"])
+        if observed_acceptance and observed_rejection:
+            outcome = "contradictory"
+            missing = []
+            status = "contradictory"
+        elif observed_acceptance:
+            outcome = "accepted"
+            missing = [] if stages["result"] else ["result"]
+            status = "complete" if not missing else "partial"
+        elif observed_rejection:
+            # Rejection is a terminal lifecycle outcome; a result is not
+            # required to prove that the request was rejected.
+            outcome = "rejected"
+            missing = []
+            status = "complete"
+        else:
+            outcome = "unknown"
+            missing = ["acceptance", "rejection"]
+            status = "partial"
         links.append({"request_id": request_id, "run_id": run_id,
                       "process_instance": process_instance,
-                      "status": "complete" if not missing else "partial",
+                      "status": status, "outcome": outcome,
                       "stages": stages, "missing": missing,
                       "competing_writers": [{"producer": producer, "actor_id": actor}
                                              for producer, actor in sorted(writers, key=str)] if len(writers) > 1 else [],
@@ -141,6 +199,7 @@ def _request_result_links(events):
 
 def query(sources, filters, contains=None, selectors=(), limit=20):
     rows, events, unavailable = [], [], []
+    matching_keys = set()
     scanned = 0
     scanned_bytes = 0
     for metadata in sources:
@@ -184,6 +243,9 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                     continue
                 if contains is not None and contains.casefold() not in encoded(event).decode("utf-8").casefold():
                     continue
+                request_id = event.get("request_id")
+                if request_id:
+                    matching_keys.add((event.get("run_id"), event.get("process_instance"), request_id))
                 if "retained_raw" not in source:
                     source["retained_raw"] = retain({"raw_base64": base64.b64encode(original).decode("ascii")})
                 if selectors:
@@ -196,13 +258,22 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                     rows.append({"event_id": event["event_id"], "source": source, "fields": fields})
                 else:
                     rows.append(event)
-    links = _request_result_links(events)
+    links = _request_result_links(events, matching_keys)
+    displayed_rows = rows[:limit]
     snapshot = {"rows": rows, "links": links, "unavailable_sources": unavailable, "filters": filters,
                 "contains": contains, "scanned_records": scanned, "scanned_bytes": scanned_bytes,
+                "displayed_records": len(displayed_rows),
+                "displayed_bytes": len(encoded(displayed_rows)),
+                "displayed_link_records": len(links),
+                "displayed_link_bytes": len(encoded(links)),
                 "correlation": "Null means unavailable. Shared request IDs or actor names alone do not establish cross-process identity. Observations are not inferred changes."}
     artifact = retain(snapshot)
     return {"ok": True, "status": "partial" if unavailable else "matched" if rows else "no_match",
             "matched": len(rows), "rows": rows[:limit], "links": links, "unavailable_sources": unavailable,
             "scanned_records": scanned, "scanned_bytes": scanned_bytes,
+            "displayed_records": len(displayed_rows),
+            "displayed_bytes": len(encoded(displayed_rows)),
+            "displayed_link_records": len(links),
+            "displayed_link_bytes": len(encoded(links)),
             "snapshot": artifact, "next": {"sha256": artifact["sha256"], "selector": "rows",
             "offset": limit} if len(rows) > limit else None, "correlation": snapshot["correlation"]}

@@ -27,20 +27,22 @@ class R019FixtureSourceResolutionTest(unittest.TestCase):
         self.assertEqual((resolved["fixture"], resolved["fixture_profile"]), (self.fixture, self.profile))
         self.assertEqual((binding["resolved_fixture"], binding["resolved_fixture_profile"]),
                          (self.fixture, self.profile))
-        self.assertEqual(resolved["payload_fixture"], "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22")
+        self.assertEqual(resolved["payload_fixture"], "mcwilliams_live_debug_2026-04-07")
         self.assertEqual(
             [name for _profile, name in resolved["source_chain"]],
             [
                 self.fixture,
                 "r013_clean_wait_duration_v1",
                 "r012_avatar_visible_bootstrap_v1",
-                "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+                "mcwilliams_live_debug_2026-04-07",
             ],
         )
         scheduled = [item for item in resolved["save_transforms"]
                      if item["kind"] == "scheduled_global_eoc"]
         mutations = [item for item in resolved["save_transforms"]
                      if item["kind"] == "player_mutations"]
+        active_monsters = [item for item in resolved["save_transforms"]
+                           if item["kind"] == "active_monsters_near_player"]
         self.assertEqual(scheduled, [{
             "kind": "scheduled_global_eoc",
             "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
@@ -55,10 +57,24 @@ class R019FixtureSourceResolutionTest(unittest.TestCase):
                 "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION",
             ],
         }, mutations)
+        staged = [item for item in active_monsters if item["monsters"]]
+        self.assertEqual(len(staged), 1)
+        self.assertTrue(staged[0]["clear_existing"])
+        self.assertEqual(
+            [(monster["typeid"], monster["offset_ms"], monster["hp"],
+              monster["friendly"], monster["faction"])
+             for monster in staged[0]["monsters"]],
+            [("mon_zombie_dog", [0, 12, 0], 80, 0, "zombie")],
+        )
+        self.assertEqual(staged[0]["monsters"][0]["qualification_offset_ms"], [0, 12, 0])
+        self.assertEqual(
+            [item["monsters"] for item in active_monsters if not item["monsters"]],
+            [[]],
+        )
 
     def test_install_fails_closed_if_resolver_leaks_a_payload_identity(self) -> None:
         leaked = {
-            "fixture": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+            "fixture": "mcwilliams_live_debug_2026-04-07",
             "fixture_profile": self.profile,
         }
         with mock.patch.object(startup_harness, "resolve_fixture_payload", return_value=leaked):

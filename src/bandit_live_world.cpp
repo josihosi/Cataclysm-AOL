@@ -12566,6 +12566,11 @@ int hostile_camp_dispatch_drive( const int need, const int knowledge_gap,
     return std::clamp( static_cast<int>( weighted / 1000 ), 0, 1000 );
 }
 
+int hostile_camp_routine_dispatch_threshold()
+{
+    return 500;
+}
+
 bool hostile_camp_routine_score_eligible( const int score, const bool retained_target )
 {
     return score >= ( retained_target ? routine_retain_score : routine_acquire_score );
@@ -15358,6 +15363,81 @@ structural_signal_record_result record_structural_signal_observations( world_sta
     return result;
 }
 
+structural_signal_record_result record_local_structural_signal_observations( world_state &state,
+        const int now_minutes,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const active_outing_state &,
+                const structural_threat_observer_request & )> &signal_lookup )
+{
+    structural_signal_record_result result;
+    if( !signal_lookup || now_minutes < 0 ) {
+        return result;
+    }
+    for( site_record &site : state.sites ) {
+        result.sites_considered++;
+        structural_threat_observer_request request;
+        if( !make_static_structural_observer_request( site, request ) ) {
+            continue;
+        }
+        result.active_outings_considered++;
+        const std::optional<simulation_advance_cursor> expected_cursor =
+            current_external_simulation_cursor( site );
+        const active_outing_state &outing = site.active_outing;
+        // A one-shot sound packet is consumed only once.  A different typed
+        // observation (for example the local zombie prepass) can legitimately
+        // move the local cursor in this minute and must not discard the sound.
+        const bool same_minute_sound_already_recorded =
+            now_minutes == outing.last_advanced_minutes &&
+            std::any_of( outing.observations.begin(), outing.observations.end(),
+        [now_minutes]( const sortie_observation & observation ) {
+            return observation.record_schema_version == 1 &&
+                   observation.sense == sortie_observation_sense::sound &&
+                   observation.fact_key.rfind( "structural-signal:", 0 ) == 0 &&
+                   observation.observed_minutes == now_minutes;
+        } );
+        if( !expected_cursor || expected_cursor->owner != simulation_owner::local ||
+            now_minutes < expected_cursor->last_advanced_minutes ||
+            same_minute_sound_already_recorded ||
+            outing.schema_version < 8 || outing.owner != simulation_owner::local ||
+            outing.phase != scout_phase::observing ||
+            outing.local_handoff.phase != outing.phase ||
+            !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
+            outing.local_handoff.cohesion_abort_return ||
+            outing.local_handoff.waypoint_index != outing.waypoint_index ||
+            outing.local_handoff.route_position != request.current_omt ) {
+            continue;
+        }
+
+        result.callbacks_invoked++;
+        std::vector<structural_signal_read> reads = signal_lookup(
+                    site, outing, request );
+        if( reads.empty() || !structural_signal_reads_are_valid( request, reads, now_minutes ) ) {
+            continue;
+        }
+        std::vector<sortie_observation> observations = make_structural_signal_observations(
+                    site, request, std::move( reads ), now_minutes );
+        if( observations.empty() ) {
+            continue;
+        }
+
+        const int progress_before = site.active_outing.last_progress_minutes;
+        site_record candidate = site;
+        const sortie_observation_effect recorded = record_active_typed_observations(
+                    candidate, *expected_cursor, candidate.active_outing.leader_id,
+                    candidate.active_outing.target_lead_revision, observations, now_minutes );
+        if( !recorded.valid ) {
+            continue;
+        }
+        // The shared recorder advances its idempotence cursor.  A signal fact is not route
+        // progress: the ordinary cadence owns movement, dispatch, and the progress clock.
+        candidate.active_outing.last_progress_minutes = progress_before;
+        result.sites_recorded++;
+        result.facts_recorded += recorded.inserted + recorded.replaced;
+        site = std::move( candidate );
+    }
+    return result;
+}
+
 static std::string staffed_camp_signal_lead_hash( const site_record &site )
 {
     // A deterministic receipt fingerprint, not a persistence mechanism.  It
@@ -17009,10 +17089,12 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             routine_dispatch_evaluation evaluation = evaluate_hostile_camp_routine_dispatch(
                         site, now_minutes, 0 );
             evaluation.force_due = evaluation.force_due || frontier_due;
-            if( !evaluation.force_due && evaluation.drive < 500 ) {
+            if( !evaluation.force_due &&
+                evaluation.drive < hostile_camp_routine_dispatch_threshold() ) {
                 scheduler_exit_diagnostic( &site, "drive_below_threshold_without_plan",
                                            "drive=" + std::to_string( evaluation.drive ) +
-                                           ",threshold=500" );
+                                           ",threshold=" + std::to_string(
+                                               hostile_camp_routine_dispatch_threshold() ) );
                 result.notes.push_back( "routine dispatch drive below threshold with no candidate site=" +
                                         site.site_id + " drive=" +
                                         std::to_string( evaluation.drive ) );
@@ -17086,10 +17168,12 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         routine_dispatch_evaluation evaluation = evaluate_hostile_camp_routine_dispatch(
                     site, now_minutes, best_cheap_score );
         evaluation.force_due = evaluation.force_due || frontier_due;
-        if( !evaluation.force_due && !urgent_signal_candidate && evaluation.drive < 500 ) {
+        if( !evaluation.force_due && !urgent_signal_candidate &&
+            evaluation.drive < hostile_camp_routine_dispatch_threshold() ) {
             scheduler_exit_diagnostic( &site, "drive_below_threshold",
                                        "drive=" + std::to_string( evaluation.drive ) +
-                                       ",threshold=500" );
+                                       ",threshold=" + std::to_string(
+                                           hostile_camp_routine_dispatch_threshold() ) );
             result.notes.push_back( "routine dispatch drive below threshold site=" + site.site_id +
                                     " drive=" + std::to_string( evaluation.drive ) );
             continue;
@@ -19613,7 +19697,9 @@ static sortie_observation_effect record_active_sortie_observations_impl( site_re
           site.active_outing.job_type != "scavenge" ) ||
         site.active_outing.member_ids.empty() || observations.empty() ||
         observations.size() > max_sortie_observation_batch || current_minutes < 0 ||
-        current_minutes <= site.active_outing.last_advanced_minutes ||
+        current_minutes < site.active_outing.last_advanced_minutes ||
+        ( current_minutes == site.active_outing.last_advanced_minutes &&
+          ( !typed_observations || expected_cursor.owner != simulation_owner::local ) ) ||
         current_minutes < site.active_outing.last_progress_minutes ) {
         return effect;
     }

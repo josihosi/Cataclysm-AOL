@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: an idle, supply-empty five-member camp crosses the unchanged production threshold, sends its ordinary structural pair to a local watch before a delayed real acoustic source emits, returns one matching sound report, and preserves the original sound provenance and age through native save/reload.",
+  "material_proof": "Before input, the new source-bound run must falsify the retained supply-adequate control by observing the real production scheduler with drive at least 500 while the fixture supplies remain exactly zero, and must separately bind the idle five-member roster, sole road lead, no active owner, and delayed charge. The actual route is credited only when ordinary native waits produce the dispatch, local watch, C4 source event, same-run sound callback, and physical return carrying a returned_report lead whose source key and OMT match the observed sound. After that return, native save-and-quit and the declared replacement process must preserve that same report's source class/key/OMT and original observation minute; the observed age may advance only by elapsed native game time, never by fixture rewriting.",
+  "current_uncertainty": "Whether the current source and drive-500 fixture retain the previously observed native route and whether its returned sound report remains durable and correctly aged across the declared replacement process.",
+  "material_contradiction": [
+    "pre-input production scheduler drive below 500, an active owner, or nonzero supplies",
+    "a sound fact before native local-watch arrival",
+    "a direct signal, lead, report, route, owner, member, or post-install save mutation",
+    "a returned report whose source class, key, or OMT cannot be tied to this run's sound callback",
+    "a reloaded lead with a changed original observation minute, class, key, or OMT absent an ordinary native lifecycle transition",
+    "a duplicate local/abstract owner or a replay of either retained witness"
+  ],
+  "forbidden_shortcuts": [
+    "debug emitted sound",
+    "direct signal, lead, report, operation, member, route, or owner mutation",
+    "raw save rewrite after fixture installation",
+    "fixture staging presented as gameplay behavior",
+    "GUI, OCR, physical input, or replay of drive708"
+  ],
+  "honest_stop_conditions": [
+    "one fresh source-bound native chain through return and a declared native reentry observation",
+    "the first failed premise, dispatch, watch, callback, report, save, replacement, or provenance/age boundary"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

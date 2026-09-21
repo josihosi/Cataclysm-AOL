@@ -9,9 +9,11 @@
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <memory>
@@ -167,6 +169,145 @@ static bool openclaw_harness_startup_boundary_trace_enabled()
     return trace_enabled != nullptr && trace_enabled[0] != '\0' && trace_enabled[0] != '0' &&
            active_run_id != nullptr && active_run_id[0] != '\0';
 }
+
+// The semantic trace is also the run-bound journal for performance facts.  Do
+// not use DebugLog timestamps for this: a delayed flush is transport evidence,
+// not the duration of the advancing simulation turn.
+static std::string openclaw_harness_turn_trace_quote( const std::string &value )
+{
+    std::ostringstream quoted;
+    for( const char character : value ) {
+        switch( character ) {
+            case '\\':
+                quoted << "\\\\";
+                break;
+            case '"':
+                quoted << "\\\"";
+                break;
+            case '\n':
+                quoted << "\\n";
+                break;
+            case '\r':
+                quoted << "\\r";
+                break;
+            case '\t':
+                quoted << "\\t";
+                break;
+            default:
+                quoted << character;
+                break;
+        }
+    }
+    return quoted.str();
+}
+
+static bool openclaw_harness_turn_trace_enabled()
+{
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const semantic_run_id = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
+    const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
+    return run_id != nullptr && semantic_run_id != nullptr && path != nullptr && run_id[0] != '\0' &&
+           semantic_run_id[0] != '\0' && path[0] != '\0' && std::string( run_id ) == semantic_run_id;
+}
+
+static void openclaw_harness_write_turn_trace( const char *event, const char *stage,
+        const char *phase, const std::string &turn_id, int game_turn, int game_minutes,
+        double simulation_seconds )
+{
+    if( !openclaw_harness_turn_trace_enabled() ) {
+        return;
+    }
+    const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    static const auto process_instance = std::chrono::system_clock::now().time_since_epoch().count();
+    static std::uint64_t sequence = 0;
+    const auto wall_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+                               std::chrono::system_clock::now().time_since_epoch() ).count();
+    std::ofstream stream( path, std::ios::app | std::ios::binary );
+    if( stream ) {
+        // The native wall clock is used to distinguish a newly resumed
+        // simulation slice from time spent at an input/save boundary.  The
+        // default six significant digits would quantize epoch timestamps by
+        // thousands of seconds, so retain a round-trippable double here.
+        stream << std::setprecision( std::numeric_limits<double>::max_digits10 );
+        stream << "openclaw_harness_semantic_step: {\"event\":\"" << event
+               << "\",\"stage\":\"" << stage
+               << "\",\"run_id\":\"" << openclaw_harness_turn_trace_quote( run_id )
+               << "\",\"process_instance\":\"" << process_instance
+               << "\",\"sequence\":" << ++sequence
+               << ",\"turn_id\":\"" << turn_id
+               << "\",\"game_turn\":" << game_turn
+               << ",\"game_minutes\":" << game_minutes
+               << ",\"wall_time_seconds\":" << wall_time
+               << ",\"simulation_seconds\":" << simulation_seconds
+               << ",\"phase\":\"" << phase
+               << "\",\"owner\":\"game::do_turn\"}\n";
+    }
+}
+
+class openclaw_harness_turn_trace
+{
+    public:
+        openclaw_harness_turn_trace( bool advancing, int game_turn, int game_minutes ) :
+            enabled_( advancing && openclaw_harness_turn_trace_enabled() ), game_turn_( game_turn ),
+            game_minutes_( game_minutes ), started_( std::chrono::steady_clock::now() ) {
+            if( enabled_ ) {
+                static std::uint64_t next_turn_id = 0;
+                turn_id_ = std::to_string( ++next_turn_id );
+                openclaw_harness_write_turn_trace( "turn", "start", "simulation", turn_id_, game_turn_, game_minutes_, 0.0 );
+            }
+        }
+
+        ~openclaw_harness_turn_trace() {
+            if( enabled_ ) {
+                const double elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(
+                                           std::chrono::steady_clock::now() - started_ ).count();
+                const double open_outside_simulation = outside_simulation_started_ ?
+                    std::chrono::duration_cast<std::chrono::duration<double>>(
+                        std::chrono::steady_clock::now() - *outside_simulation_started_ ).count() : 0.0;
+                openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
+                        to_turns<int>( calendar::turn - calendar::turn_zero ),
+                        to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
+                        std::max( 0.0, elapsed - outside_simulation_seconds_ - open_outside_simulation ) );
+            }
+        }
+
+        void input_begin() {
+            phase_begin( "input" );
+        }
+
+        void input_end() {
+            phase_end( "input" );
+        }
+
+        void phase_begin( const char *phase ) {
+            if( enabled_ && !outside_simulation_started_ ) {
+                outside_simulation_started_ = std::chrono::steady_clock::now();
+                outside_simulation_phase_ = phase;
+                openclaw_harness_write_turn_trace( "turn_phase", "begin", phase, turn_id_, game_turn_, game_minutes_, 0.0 );
+            }
+        }
+
+        void phase_end( const char *phase ) {
+            if( enabled_ && outside_simulation_started_ && outside_simulation_phase_ == phase ) {
+                outside_simulation_seconds_ += std::chrono::duration_cast<std::chrono::duration<double>>(
+                                      std::chrono::steady_clock::now() - *outside_simulation_started_ ).count();
+                outside_simulation_started_.reset();
+                outside_simulation_phase_.clear();
+                openclaw_harness_write_turn_trace( "turn_phase", "end", "simulation", turn_id_, game_turn_, game_minutes_, 0.0 );
+            }
+        }
+
+    private:
+        bool enabled_ = false;
+        int game_turn_ = 0;
+        int game_minutes_ = 0;
+        std::string turn_id_;
+        std::chrono::steady_clock::time_point started_;
+        std::optional<std::chrono::steady_clock::time_point> outside_simulation_started_;
+        std::string outside_simulation_phase_;
+        double outside_simulation_seconds_ = 0.0;
+};
 
 static void openclaw_harness_trace_post_hud_pre_input_boundary( const avatar &player,
         bool watching_dead_avatar )
@@ -5446,6 +5587,65 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             std::vector<tripoint_abs_omt> omt_path;
         };
         std::vector<homeward_route_backup> homeward_backups;
+        const auto selected_watch_waypoint = std::find(
+                    site.active_outing.shared_route.begin(), site.active_outing.shared_route.end(),
+                    site.active_outing.selected_watch_omt );
+        const bool forward_route_release =
+            plan.snapshot.cohesion_assembled &&
+            plan.snapshot.phase == bandit_live_world::scout_phase::observing &&
+            site.active_outing.schema_version >= 10 &&
+            site.active_outing.waypoint_index >= 0 &&
+            selected_watch_waypoint != site.active_outing.shared_route.end() &&
+            std::distance( site.active_outing.shared_route.begin(), selected_watch_waypoint ) >
+            site.active_outing.waypoint_index &&
+            plan.snapshot.waypoint_index == site.active_outing.waypoint_index &&
+            plan.snapshot.route_position == site.active_outing.shared_route[
+                static_cast<std::size_t>( site.active_outing.waypoint_index )] &&
+            plan.snapshot.egress_omt == site.active_outing.shared_route[
+                static_cast<std::size_t>( site.active_outing.waypoint_index + 1 )] &&
+            *selected_watch_waypoint == site.active_outing.selected_watch_omt;
+        if( forward_route_release ) {
+            bandit_live_world::site_record route_site = site;
+            route_site.active_outing.local_handoff = plan.snapshot;
+            // Ingress validates its native mission against the final watch, not merely the
+            // next shared-route waypoint.  This is the same destination when adjacent and
+            // preserves the required mission identity for intermediate-waypoint routes.
+            bool route_preparation_failed = false;
+            for( const bandit_live_world::local_handoff_member_snapshot &snapshot :
+                 plan.snapshot.members ) {
+                if( snapshot.dead ) {
+                    continue;
+                }
+                npc *member = g->find_npc( snapshot.npc_id );
+                if( member == nullptr || member->is_dead() ) {
+                    route_preparation_failed = true;
+                    break;
+                }
+                if( member->is_travelling() &&
+                    member->goal == site.active_outing.selected_watch_omt &&
+                    !member->omt_path.empty() ) {
+                    continue;
+                }
+                homeward_backups.push_back( { member, member->mission,
+                                              member->previous_mission, member->goal,
+                                              member->omt_path } );
+                if( !live_bandit_route_member_to( *member, route_site,
+                                                   site.active_outing.selected_watch_omt ) ) {
+                    route_preparation_failed = true;
+                    break;
+                }
+            }
+            if( route_preparation_failed ) {
+                for( const homeward_route_backup &backup : homeward_backups ) {
+                    backup.member->mission = backup.mission;
+                    backup.member->previous_mission = backup.previous_mission;
+                    backup.member->goal = backup.goal;
+                    backup.member->omt_path = backup.omt_path;
+                }
+                append_assembly_orders( site.active_outing );
+                continue;
+            }
+        }
         const bool restaging_homeward =
             plan.snapshot.route_position != site.active_outing.local_handoff.route_position &&
             bandit_live_world::scout_phase_requires_homeward_only( plan.snapshot.phase );
@@ -5518,6 +5718,14 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
 
         if( !bandit_live_world::commit_local_pair_cohesion(
                 site, plan, route_attempted, route_failed ) ) {
+            if( forward_route_release ) {
+                // A saved, already assembled local pair has no further cohesion-state delta
+                // to commit, but may still need its native forward route rebound after load.
+                // The route was prepared transactionally for both members above; retaining it
+                // here makes the existing ingress preflight admit that durable local state.
+                append_assembly_orders( site.active_outing );
+                continue;
+            }
             for( const homeward_route_backup &backup : homeward_backups ) {
                 backup.member->mission = backup.mission;
                 backup.member->previous_mission = backup.previous_mission;
@@ -5689,13 +5897,14 @@ bool complete_loaded_live_bandit_route_arrivals()
         // It remains the same local structural outing, so the exact-pair
         // arrival motor must admit it rather than stranding the assembled
         // pair before its outcome and physical return path.
+        // commit_local_pair_route_arrival validates that both actors are physically at the
+        // selected watch.  A direct egress to that watch is therefore an admission case.
         if( outing.schema_version < 10 ||
             outing.owner != bandit_live_world::simulation_owner::local ||
             outing.phase != bandit_live_world::scout_phase::observing ||
             !outing.local_handoff.is_active() ||
             !outing.local_handoff.cohesion_assembled ||
-            outing.waypoint_index + 1 >= static_cast<int>( outing.shared_route.size() ) ||
-            outing.local_handoff.egress_omt != outing.selected_watch_omt ) {
+            outing.waypoint_index + 1 >= static_cast<int>( outing.shared_route.size() ) ) {
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -8463,10 +8672,16 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                                    << live_bandit_structural_signal_request_diagnostic( outing, request )
                                    << '\n';
     }
+    const bool local_observer = outing.owner == bandit_live_world::simulation_owner::local &&
+                                outing.phase == bandit_live_world::scout_phase::observing &&
+                                outing.local_handoff.is_active() &&
+                                outing.local_handoff.cohesion_assembled &&
+                                !outing.local_handoff.cohesion_abort_return &&
+                                outing.local_handoff.route_position == request.current_omt;
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-        outing.owner != bandit_live_world::simulation_owner::abstract ||
+        ( outing.owner != bandit_live_world::simulation_owner::abstract && !local_observer ) ||
         request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
-        request_current_inbounds ) {
+        ( request_current_inbounds && !local_observer ) ) {
         if( !sound_events.empty() ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_adapter rejected_request"
                                        << " current_omt=" << request.current_omt
@@ -8899,6 +9114,21 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
     } );
 }
 
+bandit_live_world::structural_signal_record_result record_live_bandit_local_structural_sounds(
+    bandit_live_world::world_state &state,
+    const std::vector<live_bandit_sound_observation> &live_sounds )
+{
+    const std::vector<live_bandit_signal_observation> no_field_signals;
+    return bandit_live_world::record_local_structural_signal_observations(
+               state, live_bandit_current_minutes(),
+               [&no_field_signals, &live_sounds]( const bandit_live_world::site_record & site,
+    const bandit_live_world::active_outing_state & outing,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        return live_bandit_structural_signal_reads(
+                   no_field_signals, live_sounds, site, outing, request );
+    } );
+}
+
 std::vector<live_bandit_sound_observation> take_live_bandit_sounds()
 {
     std::vector<live_bandit_sound_observation> events;
@@ -8919,6 +9149,7 @@ int observe_live_bandit_sounds()
     record_r008_production_channel_scan( no_visual_signals, events );
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     record_live_bandit_structural_sounds( state, events );
+    record_live_bandit_local_structural_sounds( state, events );
     bandit_live_world::record_staffed_camp_signal_observations(
         state, live_bandit_current_minutes(),
         [&events, &no_visual_signals]( const bandit_live_world::site_record & site,
@@ -9888,11 +10119,15 @@ void handle_key_blocking_activity()
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
                 }
                 // The following native cancellation query owns any next
-                // player decision.  Do not republish this consumed activity
-                // owner while that child is active.
+                // player decision.  The pause request itself has a durable
+                // native owner receipt; the cancellation query is a separate
+                // prompt owner and must not be used as a deferred receipt
+                // successor.  Deferring here strands the accepted request
+                // when native cancellation exits without recreating an
+                // activity surface.
                 semantic_manager->withhold_parent_authority_until_recreated( request.surface_id );
                 semantic_action = "pause";
-                return semantic_action_dispatch_result{ true, "", "" };
+                return semantic_action_dispatch_result{ true, "", "", false, false };
             } );
             semantic_scope->consume_request();
         }
@@ -11063,15 +11298,22 @@ void monmove()
                                    overmap_buffer.global_state.bandit_live_world, guy.getID() );
                 const auto local_path_respects_watch_ring = [relationship, &m, &guy](
                 const std::vector<tripoint_bub_ms> &candidate_path ) {
-                    return relationship && std::all_of(
+                    const std::optional<int> start_distance = relationship ?
+                            bandit_live_world::target_footprint_watch_distance(
+                                guy.pos_abs_omt(), relationship->target_footprint ) :
+                            std::nullopt;
+                    const int minimum_distance = relationship && start_distance ?
+                                                 std::min( relationship->minimum_target_distance,
+                                                           *start_distance ) : 0;
+                    return relationship && start_distance && std::all_of(
                                candidate_path.begin(), candidate_path.end(),
-                    [relationship, &m, &guy]( const tripoint_bub_ms & step ) {
+                    [relationship, &m, &guy, minimum_distance]( const tripoint_bub_ms & step ) {
                         const tripoint_abs_omt step_omt =
                             project_to<coords::omt>( m.get_abs( step ) );
                         const std::optional<int> distance =
                             bandit_live_world::target_footprint_watch_distance(
                                 step_omt, relationship->target_footprint );
-                        return distance && *distance >= relationship->minimum_target_distance &&
+                        return distance && *distance >= minimum_distance &&
                                ( step_omt == guy.pos_abs_omt() ||
                                  std::find( relationship->forbidden_route_omts.begin(),
                                             relationship->forbidden_route_omts.end(), step_omt ) ==
@@ -11087,16 +11329,31 @@ void monmove()
                 } else if( ingress_boundary != pair_ingress_boundary_steps.end() ) {
                     if( guy.pos_abs() == ingress_boundary->second.departure ) {
                         guy.move_pause();
-                    } else if( live_bandit_update_local_path(
-                                   guy, m.get_bub( ingress_boundary->second.departure ) ) &&
-                               local_path_respects_watch_ring( guy.path ) ) {
-                        guy.move_to_next();
                     } else {
-                        guy.path.clear();
-                        guy.move_pause();
+                        const bool route_found = live_bandit_update_local_path(
+                                                     guy, m.get_bub(
+                                                         ingress_boundary->second.departure ) );
+                        const bool route_safe = route_found &&
+                                                local_path_respects_watch_ring( guy.path );
+                        if( route_safe ) {
+                            guy.move_to_next();
+                        } else {
+                            guy.path.clear();
+                            guy.move_pause();
+                        }
                     }
                 } else {
-                    guy.go_to_omt_destination( local_path_respects_watch_ring );
+                    const auto avoid_watch_ring = [&local_path_respects_watch_ring](
+                    const tripoint_bub_ms &step ) {
+                        return !local_path_respects_watch_ring( { step } );
+                    };
+                    // The pair can materialize one OMT ring-unit inside the selected watch,
+                    // and a tile-level boundary crossing may briefly remain at that starting
+                    // distance.  Keep that non-inward corridor available while excluding every
+                    // step closer to the target; the covert mover retains the native OMT mission
+                    // and validates the prospective route before the arrival commit.
+                    live_bandit_move_to_omt_destination_avoiding(
+                        guy, local_path_respects_watch_ring, avoid_watch_ring );
                 }
             } else if( pair_homeward_travel_ids.count( guy.getID() ) > 0 ) {
                 const std::optional<bandit_live_world::covert_scout_relationship_read>
@@ -11683,12 +11940,17 @@ void overmap_npc_move()
     } else if( !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =
             record_live_bandit_structural_sounds( bandit_state, live_sounds );
+        const bandit_live_world::structural_signal_record_result local_recorded =
+            record_live_bandit_local_structural_sounds( bandit_state, live_sounds );
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_observation sites="
                                    << recorded.sites_considered
                                    << " active=" << recorded.active_outings_considered
                                    << " callbacks=" << recorded.callbacks_invoked
                                    << " recorded=" << recorded.sites_recorded
-                                   << " facts=" << recorded.facts_recorded << '\n';
+                                   << " facts=" << recorded.facts_recorded
+                                   << " local_callbacks=" << local_recorded.callbacks_invoked
+                                   << " local_recorded=" << local_recorded.sites_recorded
+                                   << " local_facts=" << local_recorded.facts_recorded << '\n';
     }
     advance_live_bandit_hostile_rallies();
     advance_live_bandit_hostile_approaches();
@@ -12688,6 +12950,9 @@ bool game::do_turn()
         gamemode->per_turn();
         calendar::turn += 1_turns;
     }
+    openclaw_harness_turn_trace turn_trace( advancing_game_turn,
+                                            to_turns<int>( calendar::turn - calendar::turn_zero ),
+                                            to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) );
     //used for dimension swapping
     if( swapping_dimensions ) {
         swapping_dimensions = false;
@@ -12753,7 +13018,9 @@ bool game::do_turn()
     if( get_option<bool>( "AUTOSAVE" ) &&
         calendar::once_every( 1_turns * get_option<int>( "AUTOSAVE_TURNS" ) ) &&
         !u.is_dead_state() ) {
+        turn_trace.phase_begin( "save" );
         autosave();
+        turn_trace.phase_end( "save" );
     }
 
     weather.update_weather();
@@ -12823,7 +13090,9 @@ bool game::do_turn()
                 }
 
                 openclaw_harness_trace_activity_driver( "handle_action_enter", u );
+                turn_trace.input_begin();
                 const bool handle_action_returned = handle_action();
+                turn_trace.input_end();
                 openclaw_harness_trace_activity_driver( "handle_action_exit", u, handle_action_returned );
                 if( handle_action_returned ) {
                     ++moves_since_last_save;
@@ -12855,7 +13124,9 @@ bool game::do_turn()
             const auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(
                                  std::chrono::steady_clock::now() );
             if( ( now - start ).count() > 100 ) {
+                turn_trace.input_begin();
                 handle_key_blocking_activity();
+                turn_trace.input_end();
                 start = now;
             }
 
@@ -12866,7 +13137,12 @@ bool game::do_turn()
             // warn them regardless of previous safemode warnings
             if( u.activity ) {
                 for( std::pair<const distraction_type, std::string> &dist : u.activity.get_distractions() ) {
-                    if( cancel_activity_or_ignore_query( dist.first, dist.second ) ) {
+                    // This query owns a real blocking input prompt while an
+                    // activity is advancing; do not charge it to simulation.
+                    turn_trace.input_begin();
+                    const bool activity_cancelled = cancel_activity_or_ignore_query( dist.first, dist.second );
+                    turn_trace.input_end();
+                    if( activity_cancelled ) {
                         break;
                     }
                 }

@@ -13,7 +13,8 @@ from unittest import mock
 
 import scenario_registry_cli as cli
 import scenario_registry_cli_test as fixtures
-from registry_query_output import _run_observation
+import evidence_display
+from registry_query_output import _compact_candidate_detail, _run_observation
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
@@ -57,6 +58,47 @@ class RegistryQueryOutputTest(unittest.TestCase):
         self.assertIn("trade_owner", result["missing_fields"])
         self.assertEqual(result["manifest_declarations"]["capabilities"]["state"], "declared")
         self.assertEqual(result["run_observations"]["actor_ids_source"], "run artifact lines")
+
+    def test_generic_claim_does_not_inherit_payment_missing_fields_or_depth(self):
+        result = _run_observation({
+            "steps": [{"action_id": "world.move", "accepted": True}],
+            "proof_classification": {"verdict": "proved"},
+            "scenario_manifest": {"normalized": {"capabilities": {
+                "state": "declared", "value": {"runtime.entry_mode": "cockpit"}}}},
+        }, run_id="generic-run")
+        self.assertEqual(result["claim_scope"], "generic")
+        self.assertEqual(result["verdict"], "proved")
+        self.assertEqual(result["proof_depth"], "interaction")
+        self.assertEqual(result["missing_fields"], [])
+        self.assertNotIn("accepted_pay", result)
+        self.assertNotIn("trade_owner", result)
+
+    def test_exact_candidate_detail_is_compact_and_recovers_full_snapshot(self):
+        snapshot = {
+            "explanation": {
+                "manifest": {"manifest_id": "m", "name": "scenario", "revision": 3,
+                              "sha256": "s", "source_path": "/scenario.json",
+                              "large_declaration": "not projected"},
+                "facts": {"capability": {"present": True, "evidence_state": "run-verified",
+                                           "proof_depth": "interaction", "value": "not projected"}},
+                "route_evidence": [{"evidence_state": "inspected", "large": "not projected"}],
+            },
+            "facts": {"capability": {"present": True, "evidence_state": "run-verified",
+                                       "proof_depth": "interaction", "value": "not projected"}},
+            "lifecycle_state": "active", "token_eligible": True,
+        }
+        artifact = evidence_display.retain(snapshot, self.root / "retained")
+        detail = _compact_candidate_detail(
+            snapshot, {"hard_results": [], "preference_results": []},
+            "scenario-id", artifact["sha256"], ["python", "registry_query.py"])
+        self.assertEqual(detail["schema"], "caol-registry-candidate-detail-v1")
+        self.assertEqual(detail["scenario_id"], "scenario-id")
+        self.assertNotIn("explanation", detail)
+        self.assertNotIn("value", detail["facts"]["capability"])
+        self.assertEqual(detail["snapshot_sha256"], artifact["sha256"])
+        self.assertEqual(detail["full_snapshot"][-1], artifact["sha256"])
+        self.assertEqual(evidence_display.recover(
+            detail["snapshot_sha256"], self.root / "retained"), snapshot)
 
     def test_query_preserves_build_and_binding_metadata(self):
         readiness = {"status": "ready", "build_entrypoint": {"argv": ["python", "verified-builder.py"]},
@@ -171,7 +213,10 @@ class RegistryQueryOutputTest(unittest.TestCase):
         full = json.loads(Path(result["artifact"]["path"]).read_text())
         expected = next(x for x in full["result"]["evaluation"]["candidates"]
                         if x["scenario_id"] == item["scenario_id"])
-        self.assertEqual(detail["evidence"], expected)
+        self.assertEqual(detail["evidence"]["scenario_id"], item["scenario_id"])
+        self.assertEqual(detail["evidence"]["snapshot_sha256"], result["artifact"]["sha256"])
+        self.assertNotIn("explanation", detail["evidence"])
+        self.assertEqual(detail["evidence"]["full_snapshot"][-1], result["artifact"]["sha256"])
         self.assertEqual(self.registry.read_bytes(), before)
         missing = self.call("registry-query-page", "--sha256", result["artifact"]["sha256"],
                             "--scenario-id", "absent", success=False)

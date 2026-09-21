@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 sys.path.insert( 0, str( Path( __file__ ).resolve().parent ) )
 
-from semantic_state import MAX_EVENT_BYTES, SEMANTIC_STEP_PREFIX, read_semantic_step_trace
+from semantic_state import MAX_EVENT_BYTES, MAX_EVENTS, SEMANTIC_STEP_PREFIX, read_semantic_step_trace
 from r008_indoor_channel_observation import (
     R008_CHANNEL_RECORD_FILENAME,
     R008_CHANNEL_SCHEMA,
@@ -31,6 +31,89 @@ from startup_harness import (
 
 
 class R009SemanticChannelCompactionTest( unittest.TestCase ):
+    def test_retained_duration_receipt_does_not_overflow_the_bounded_channel(self) -> None:
+        """One preserved correlation receipt replaces a stale suffix event."""
+        run_id = "r009-duration-receipt-bound"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "debug.log"
+            run_dir = root / "run"
+            run_dir.mkdir()
+            receipt = {
+                "event": "receipt", "run_id": run_id, "frame_id": "duration:0",
+                "action_id": "wait.5m", "accepted": True,
+            }
+            descriptors = [
+                {
+                    "event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+                    "surface_id": f"surface:{index}", "frame_id": f"frame:{index}",
+                    "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                    "valid_actions": [],
+                }
+                for index in range(MAX_EVENTS)
+            ]
+            source.write_text(
+                "".join("native: " + SEMANTIC_STEP_PREFIX + json.dumps(event) + "\n"
+                        for event in [receipt, *descriptors]),
+                encoding="utf-8",
+            )
+            with patch("startup_harness.semantic_step_source_trace", return_value=source):
+                _, owned = refresh_semantic_step_trace(
+                    profile="r009-m095", run_dir=run_dir, run_id=run_id, start_offset=0,
+                )
+            events, status = read_semantic_step_trace(owned, run_dir, run_id)
+
+        self.assertEqual(status, "ok")
+        self.assertEqual(len(events), MAX_EVENTS)
+        self.assertEqual(events[0]["action_id"], "wait.5m")
+        self.assertEqual(events[-1]["frame_id"], f"frame:{MAX_EVENTS - 1}")
+
+    def test_long_wait_keeps_its_surface_receipt_and_named_successor(self) -> None:
+        """A completed native duration remains correlatable after its render tail."""
+        run_id = "r009-wait-surface-cluster"
+        request_id = "cockpit:wait-cluster"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "debug.log"
+            run_dir = root / "run"
+            run_dir.mkdir()
+            successor = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+                "surface_id": "surface:activity", "frame_id": "frame:activity",
+                "kind": "activity_wait", "breadcrumbs": ["Activity in progress"],
+                "payload": {}, "valid_actions": [],
+            }
+            receipt = {
+                "event": "surface_receipt", "run_id": run_id, "request_id": request_id,
+                "requested_run_id": run_id, "requested_surface_id": "surface:duration",
+                "requested_frame_id": "frame:duration", "consuming_surface_id": "surface:duration",
+                "consuming_frame_id": "frame:duration", "action_id": "wait.6h",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "frame:activity",
+            }
+            tail = [
+                {
+                    "event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+                    "surface_id": f"surface:tail:{index}", "frame_id": f"frame:tail:{index}",
+                    "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+                }
+                for index in range(MAX_EVENTS)
+            ]
+            source.write_text(
+                "".join("native: " + SEMANTIC_STEP_PREFIX + json.dumps(event) + "\n"
+                        for event in [successor, receipt, *tail]),
+                encoding="utf-8",
+            )
+            with patch("startup_harness.semantic_step_source_trace", return_value=source):
+                _, owned = refresh_semantic_step_trace(
+                    profile="r009-m095", run_dir=run_dir, run_id=run_id, start_offset=0,
+                )
+            events, status = read_semantic_step_trace(owned, run_dir, run_id)
+
+        self.assertEqual(status, "ok")
+        self.assertLessEqual(len(events), MAX_EVENTS)
+        self.assertTrue(any(event.get("request_id") == request_id for event in events))
+        self.assertTrue(any(event.get("frame_id") == "frame:activity" for event in events))
+
     def test_run_owned_source_probe_has_constant_peak_for_sixty_action_history( self ) -> None:
         """Selecting the run-owned trace must not load its whole action chain.
 
