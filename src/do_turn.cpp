@@ -220,6 +220,9 @@ static void openclaw_harness_write_turn_trace( const char *event, const char *st
     const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
     const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     static const auto process_instance = std::chrono::system_clock::now().time_since_epoch().count();
+    const player_activity &activity = get_avatar().activity;
+    const size_t waiting_generation = activity.id().str().compare( 0, 8, "ACT_WAIT" ) == 0 ?
+                                      activity.input_generation() : 0;
     static std::uint64_t sequence = 0;
     const auto wall_time = std::chrono::duration_cast<std::chrono::duration<double>>(
                                std::chrono::system_clock::now().time_since_epoch() ).count();
@@ -240,6 +243,7 @@ static void openclaw_harness_write_turn_trace( const char *event, const char *st
                << ",\"game_minutes\":" << game_minutes
                << ",\"wall_time_seconds\":" << wall_time
                << ",\"simulation_seconds\":" << simulation_seconds
+               << ",\"waiting_generation\":" << waiting_generation
                << ",\"phase\":\"" << phase
                << "\",\"owner\":\"game::do_turn\"}\n";
     }

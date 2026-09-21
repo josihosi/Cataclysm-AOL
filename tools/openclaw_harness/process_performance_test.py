@@ -243,6 +243,7 @@ class PerformanceTest(unittest.TestCase):
             "process_instance": "native-a", "++sequence": "1", "turn_id": "turn-1",
             "game_turn": "100", "game_minutes": "600", "wall_time": format(1700000000.125, ".17g"),
             "simulation_seconds": format(.125, ".17g"), "phase": "simulation",
+            "waiting_generation": "1",
         }
         produced = []
         for expression in re.split(r"\s*<<\s*", chain):
@@ -277,6 +278,51 @@ class PerformanceTest(unittest.TestCase):
                          {"spike", "slow_turn", "sustained_regression"})
         self.assertEqual(result["alarms"][0]["evidence"]["path"],
                          str(self.directory / "semantic.native.events.jsonl"))
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+
+    def waiting_turns(self, first, durations, generation=1):
+        for turn, duration in enumerate(durations, first):
+            self.append_trace(
+                {**self.turn_event(turn, "start", sequence=turn * 2, wall=turn * 60.0),
+                 "waiting_generation": generation},
+                {**self.turn_event(turn, "end", sequence=turn * 2 + 1,
+                                   duration=duration, wall=turn * 60.0 + 59),
+                 "waiting_generation": generation})
+
+    def test_waiting_alarm_crossing_recovery_and_duplicate_collection(self):
+        self.recorder([sample(1, 0)])
+        self.turn_config()  # Four-turn generic window must not shorten waiting's 100 turns.
+        self.waiting_turns(1, [.022] * 99)
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+        self.waiting_turns(100, [.022])
+        result = perf.collect_turn_assessment(self.directory, "binding-a")
+        self.assertEqual([a["kind"] for a in result["alarms"]], ["waiting_slow"])
+        self.assertAlmostEqual(result["alarms"][0]["mean_seconds"], .022)
+        self.assertIn("coordinator", result["alarms"][0]["message"])
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+        self.waiting_turns(101, [.022] * 10)
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+        self.waiting_turns(111, [.001] * 100)
+        recovered = perf.collect_turn_assessment(self.directory, "binding-a")
+        self.assertEqual([a["kind"] for a in recovered["recoveries"]], ["waiting_recovery"])
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["recoveries"], [])
+
+    def test_waiting_threshold_spike_and_input_gaps(self):
+        self.recorder([sample(1, 0)])
+        self.waiting_turns(1, [.010] * 100)
+        result = perf.collect_turn_assessment(self.directory, "binding-a")
+        self.assertEqual(result["alarms"], [])
+        self.assertAlmostEqual(result["waiting"]["mean_seconds"], .010)
+        self.waiting_turns(101, [.001] * 99 + [.050], generation=2)
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+
+    def test_waiting_does_not_include_other_activity_or_previous_wait(self):
+        self.recorder([sample(1, 0)])
+        self.waiting_turns(1, [2.0] * 100, generation=0)
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["waiting"], {})
+        self.waiting_turns(101, [.020] * 99, generation=1)
+        self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
+        self.waiting_turns(200, [.020], generation=2)
         self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
 
     def test_missing_configuration_and_trace_rewind_are_honest(self):

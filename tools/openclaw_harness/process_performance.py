@@ -20,6 +20,39 @@ TURN_TRACE_PREFIX = "openclaw_harness_semantic_step: "
 TURN_CONFIG_NAME = "performance-turn-config.json"
 TURN_STATE_NAME = "performance-turn-state.json"
 TURN_WINDOW_LIMIT = 256
+WAITING_WINDOW_TURNS = 100
+WAITING_LIMIT_SECONDS = 0.010
+
+
+def update_waiting_performance(state: dict, measurement: dict) -> tuple[dict, dict | None]:
+    """Keep current waiting cost and emit only threshold crossings.
+
+    Josef's usability budget: an hour taking a minute is already very bad.
+    Ten milliseconds per turn gives a warning at 36 seconds per game hour.
+    Native simulation time excludes input, load, save and transport pauses.
+    """
+    generation = measurement.get("waiting_generation")
+    if not generation:
+        return {}, None
+    identity = [measurement.get("native_process_instance"), generation]
+    if state.get("identity") != identity:
+        state = {"identity": identity, "seconds": [], "alarmed": False}
+    if state.get("last_measurement") == measurement["measurement_id"]:
+        return state, None
+    seconds = (state["seconds"] + [measurement["simulation_seconds"]])[-WAITING_WINDOW_TURNS:]
+    state = {**state, "seconds": seconds, "last_measurement": measurement["measurement_id"]}
+    if len(seconds) < WAITING_WINDOW_TURNS:
+        return state, None
+    mean = math.fsum(seconds) / len(seconds)
+    alarmed = mean > WAITING_LIMIT_SECONDS
+    change = None
+    if alarmed != state["alarmed"]:
+        change = {"kind": "waiting_slow" if alarmed else "waiting_recovery",
+                  "mean_seconds": mean, "sample_count": len(seconds),
+                  "limit_seconds": WAITING_LIMIT_SECONDS,
+                  "message": ("Waiting is too slow. Tell the coordinator: waiting performance needs attention."
+                              if alarmed else "Waiting performance recovered.")}
+    return {**state, "alarmed": alarmed, "mean_seconds": mean}, change
 
 
 def read_json(path: Path) -> dict:
@@ -244,7 +277,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                                                           run_id=str(owner["run_id"]))
     if trace_error == "trace_rewound_or_replaced":
         # A save/load or trace generation reset cannot inherit the old window.
-        state.update(offset=0, completed=[], active={}, emitted=[],
+        state.update(offset=0, completed=[], active={}, emitted=[], waiting={},
                      reset_reason="native_trace_rewound_or_replaced")
         events, next_offset, trace_error = _parse_turn_trace(path, start_offset=0,
                                                               run_id=str(owner["run_id"]))
@@ -253,6 +286,8 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                 "trace_path": str(path), "native_receipts_preserved": True}
 
     completed = list(state.get("completed", []))[-window_turns:]
+    waiting_state = state.get("waiting", {})
+    waiting_changes = []
     active = dict(state.get("active", {}))
     added: list[dict] = []
     game_turn_rewound = False
@@ -279,6 +314,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
             native_process_instance = event_process_instance
         elif native_process_instance != event_process_instance:
             completed = []
+            waiting_state = {}
             active = {}
             native_process_instance = event_process_instance
             native_process_replaced = True
@@ -316,6 +352,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                         isinstance(completed[-1].get("game_turn"), int) and \
                         event["game_turn"] < completed[-1]["game_turn"]:
                     completed = []
+                    waiting_state = {}
                     game_turn_rewound = True
                 measurement = {"measurement_id": identity, "run_id": owner["run_id"],
                                "process_identity": owner["process_identity"],
@@ -323,11 +360,16 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                                "simulation_seconds": duration, "start": start.get("_evidence_handle"),
                                "end": event.get("_evidence_handle"), "owner": event.get("owner"),
                                "phase": event.get("phase"), "sequence": event.get("sequence"),
+                               "waiting_generation": start.get("waiting_generation"),
+                               "native_process_instance": event_process_instance,
                                "start_wall_time_seconds": _event_wall_seconds(start),
                                "end_wall_time_seconds": _event_wall_seconds(event)}
                 if not any(item.get("measurement_id") == identity for item in completed):
                     completed.append(measurement)
                     added.append(measurement)
+                    waiting_state, waiting_change = update_waiting_performance(waiting_state, measurement)
+                    if waiting_change:
+                        waiting_changes.append(waiting_change)
     completed = completed[-window_turns:]
     values = [item["simulation_seconds"] for item in completed if _finite_number(item.get("simulation_seconds"))]
     native_wall_seconds = None
@@ -372,6 +414,8 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
               "simulation_throughput_scope": "completed_native_turn_simulation_seconds_only"}
     alarms: list[dict] = []
     for measurement in added:
+        if measurement.get("waiting_generation"):
+            continue
         if config and measurement["simulation_seconds"] > config["spike_seconds"]:
             alarms.append({"kind": "spike", "key": "spike:" + measurement["measurement_id"],
                            "observed": measurement["simulation_seconds"], "expected": config["spike_seconds"],
@@ -381,7 +425,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                            "observed": measurement["simulation_seconds"], "expected": config["slow_turn_seconds"],
                            "evidence": measurement["end"]})
     tail = completed[-config["sustained_turns"]:] if config else []
-    if config and len(tail) == config["sustained_turns"] and all(item["simulation_seconds"] > config["slow_turn_seconds"] for item in tail):
+    if config and len(tail) == config["sustained_turns"] and all(not item.get("waiting_generation") and item["simulation_seconds"] > config["slow_turn_seconds"] for item in tail):
         alarms.append({"kind": "sustained_regression", "key": "sustained:" + str(tail[-1]["measurement_id"]),
                        "observed": [item["simulation_seconds"] for item in tail],
                        "expected": config["slow_turn_seconds"], "evidence": tail[-1]["end"]})
@@ -477,6 +521,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                      configuration_reference=config.get("reference") if config else None,
                      configuration_provenance=config["provenance"] if config else None)
     state.update(offset=next_offset, completed=completed, active=active, emitted=list((emitted | current_active))[-512:],
+                 waiting=waiting_state,
                  active_alarm_keys=sorted(current_active), last_source_event=last_source_event,
                  pending_observation=pending_observation,
                  native_process_instance=native_process_instance,
@@ -493,7 +538,9 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
         "metric": metric, "current_incomplete_turn": {"event": current_start, "age_seconds": active_age,
         "phase": current_phase, "phase_evidence": current.get("phase_evidence")} if current else None,
         "source_freshness": {"last_event": last_source_event, "pending_observation": pending_observation},
-        "alarms": changed, "recoveries": recoveries,
+        "alarms": changed + [item for item in waiting_changes if item["kind"] == "waiting_slow"],
+        "recoveries": recoveries + [item for item in waiting_changes if item["kind"] == "waiting_recovery"],
+        "waiting": {key: value for key, value in waiting_state.items() if key not in {"seconds", "identity", "last_measurement"}},
         "pending_operation": operation, "observation_uncertainty": observation_uncertainty,
         "note": "Native turn boundaries measure simulation only. Input, pause, load, save and transport phases do not create simulation alarms."}
     state["assessment"] = assessment
