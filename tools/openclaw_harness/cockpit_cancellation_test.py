@@ -81,6 +81,21 @@ class CancellationTest(unittest.TestCase):
         self.assertFalse((self.run / "semantic.requests.jsonl").exists())
         self.assertEqual(self.service.live_channel._state, "active")
 
+    def test_native_wait_hands_interruption_back_to_mode_policy(self):
+        for kind in ("prompt", "activity_distraction", "uilist"):
+            with self.subTest(kind=kind):
+                self.current = {**self.descriptor, "frame_id": "decision-" + kind, "kind": kind}
+                with patch.object(startup.time, "sleep", side_effect=AssertionError("decision was swallowed")):
+                    self.service.live_channel._await_native_completion("activity-1")
+
+    def test_native_wait_does_not_mistake_activity_or_unpaired_world_for_completion(self):
+        for kind in ("activity_wait", "wait_activity", "world"):
+            with self.subTest(kind=kind):
+                self.current = {**self.descriptor, "frame_id": "pending-" + kind, "kind": kind}
+                with patch.object(startup.time, "sleep", side_effect=RuntimeError("still waiting")):
+                    with self.assertRaisesRegex(RuntimeError, "still waiting"):
+                        self.service.live_channel._await_native_completion("activity-1")
+
     @unittest.skipIf(os.name == "nt", "native Windows does not use the wake pipe")
     def test_cancel_after_write_retains_unknown_input_and_reobserves(self):
         with patch.object(startup, "write_semantic_wake_pipe", side_effect=lambda *_: self.cancel() or 1):

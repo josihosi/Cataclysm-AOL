@@ -5647,7 +5647,7 @@ def open_cockpit_game_service(
         return frame
 
     def await_native_completion(activity_frame_id: str) -> None:
-        """Wait for the exact native World successor or a cooperative cancel.
+        """Wait for native completion, a decision boundary, or cooperative cancel.
 
         A live wait can take longer than an action-dispatch observation. Do not
         fail, terminate, or replace its game process merely because a
@@ -5661,6 +5661,12 @@ def open_cockpit_game_service(
             frame = read_frame()
             if is_native_wait_completion_successor(
                     frame, activity_frame_id=activity_frame_id):
+                return
+            if (frame.get("event") == "surface_descriptor"
+                    and frame.get("run_id") == run_id
+                    and frame.get("frame_id")
+                    and frame.get("frame_id") != activity_frame_id
+                    and frame.get("kind") not in {None, "", "world", "activity_wait", "wait_activity"}):
                 return
             time.sleep(observe_interval_seconds)
 
