@@ -1,11 +1,144 @@
 """Task-independent change display; native evidence and grants stay with the client."""
 from collections import Counter
 import json
+import re
+import shlex
 
 from cockpit_evidence import action_catalog, compact, decode, gameplay_fact
 
 
-def plain_player_output(result):
+def world_look(snapshot):
+    """Present an existing World snapshot, using only its advertised controls."""
+    current = snapshot.get("current", {})
+    facts = current.get("facts", {})
+    actions = [action for action in current.get("actions", []) if action.get("enabled", True)]
+    lines = ["YOU"]
+    clean = lambda value: re.sub(r"</?color[^>]*>", "", str(value))
+    avatar = facts.get("avatar", {})
+    status = facts.get("avatar_status", {})
+    lines.append(" · ".join(clean(value) for value in
+                          (avatar.get("name"), facts.get("world_mode")) if value))
+    position = avatar.get("absolute_ms")
+    if position is not None:
+        lines.append("Position: " + ", ".join(str(value) for value in position))
+    parts = status.get("health", {}).get("body_parts", {})
+    if parts:
+        health = {(part.get("current"), part.get("maximum")) for part in parts.values()}
+        if len(health) == 1:
+            hp, maximum = next(iter(health))
+            lines.append(f"All {len(parts)} body parts: {hp}/{maximum} HP")
+        else:
+            lines.append("HP: " + " · ".join(
+                f"{part.get('name', key)} {part.get('current')}/{part.get('maximum')}"
+                for key, part in parts.items()))
+    stamina = status.get("stamina", {})
+    if "current" in stamina and "maximum" in stamina:
+        lines.append(f"Stamina: {stamina['current']}/{stamina['maximum']}")
+    weapon = status.get("weapon")
+    if isinstance(weapon, dict):
+        lines.append("Weapon: " + " ".join(clean(weapon[key]) for key in ("name", "mode", "ammo")
+                                            if weapon.get(key)))
+    needs = status.get("needs", {})
+    conditions = [clean(needs[key].get("text", "")) for key in
+                  ("hunger", "thirst", "sleepiness", "pain", "weariness") if needs.get(key, {}).get("text")]
+    if conditions:
+        lines.append(" · ".join(conditions))
+    effects = facts.get("avatar_effects", {}).get("entries", {})
+    names = list(dict.fromkeys(clean(part["name"]) for effect, parts_by_body in effects.items()
+                              if effect != "wet" for part in parts_by_body.values() if part.get("name")))
+    if names:
+        lines.append("Effects: " + " · ".join(names))
+
+    lines.extend(["", "SURROUNDINGS"])
+    tiles = facts.get("visible_local")
+    if isinstance(tiles, list):
+        groups = {}
+        for tile in tiles:
+            dx, dy = tile.get("dx"), tile.get("dy")
+            if not isinstance(dx, int) or not isinstance(dy, int):
+                continue
+            direction = ("N" if dy < 0 else "S" if dy > 0 else "") + ("W" if dx < 0 else "E" if dx > 0 else "")
+            description = clean(tile.get("terrain", tile.get("visibility", "unknown")))
+            if tile.get("furniture"):
+                description += "; " + clean(tile["furniture"])
+            if tile.get("fields"):
+                description += "; " + ", ".join(clean(field) for field in tile["fields"])
+            groups.setdefault(description, []).append(direction or "here")
+        for description, directions in groups.items():
+            lines.append(description + ": " + ", ".join(directions))
+    entities = facts.get("visible_entities")
+    if isinstance(entities, list):
+        if not entities:
+            lines.append("No creatures in the current visible-entity observation.")
+        for entity in entities:
+            offsets = []
+            for key, positive, negative in (("dx", "east", "west"), ("dy", "south", "north")):
+                value = entity.get(key)
+                if isinstance(value, (int, float)) and value:
+                    offsets.append(f"{abs(value):g} {positive if value > 0 else negative}")
+            identity = entity.get("identity", {}).get("id", "")
+            lines.append(" · ".join(filter(None, (clean(entity.get("name", entity.get("kind", "Creature"))),
+                         entity.get("attitude", ""), ", ".join(offsets) or "here", identity))))
+    if not isinstance(tiles, list) and not isinstance(entities, list):
+        lines.append("Surroundings unavailable in this observation.")
+
+    remaining = list(actions)
+    def take(predicate):
+        selected = [action for action in remaining if predicate(action)]
+        remaining[:] = [action for action in remaining if not predicate(action)]
+        return selected
+
+    movement = take(lambda action: action.get("id", "").startswith("world.move.") and not action.get("stable_id"))
+    if movement:
+        lines.extend(["", "MOVE — one step", "play act world.move.<direction>",
+                      " / ".join(action["id"].removeprefix("world.move.") for action in movement),
+                      "Occupied tiles may trigger interaction or attack.",
+                      "", "MOVE — multiple steps (when allowed by the scenario)",
+                      'play move --east 3 --south -2 --bound-maximum 5 --bound-basis path_progress --bound-source "3 east, 2 north"',
+                      "3 east, then 2 north. Negative east = west; negative south = north.",
+                      "Stops on interruptions by default; reports partial progress."])
+    groups = {
+        "Combat": {"fire", "reload", "toggle_safemode"},
+        "Items": {"inventory", "pickup", "drop"},
+        "Observe": {"look", "overmap", "messages"},
+        "Interact": {"chat", "zone_manager"},
+        "Vertical": {"level_up", "level_down"},
+        "Save": {"quicksave", "save_quit"},
+        "Debug": {"debug_menu"},
+    }
+    lines.extend(["", "ACTIONS — play act world.<action>"])
+    for label, names in groups.items():
+        selected = take(lambda action: action.get("id", "").removeprefix("world.") in names
+                        and action.get("id", "").startswith("world.") and not action.get("stable_id"))
+        if selected:
+            lines.append(label + ": " + " / ".join(action["id"].removeprefix("world.") for action in selected))
+    people = take(lambda action: action.get("id") in
+                  {"world.inspect_npc", "world.inspect_camp_npc", "world.basecamp_missions"})
+    if people:
+        lines.extend(["", "PEOPLE"])
+        for action_id in dict.fromkeys(action["id"] for action in people):
+            offered = [action for action in people if action["id"] == action_id]
+            lines.append(f"play act {action_id} --target <target>")
+            lines.extend("  " + action.get("stable_id", "") + " — " + clean(action.get("label", action_id))
+                         for action in offered)
+    waiting = take(lambda action: action.get("id") == "world.wait" and not action.get("stable_id"))
+    if waiting:
+        lines.extend(["", "WAIT — when allowed by the scenario", "play wait <duration> [ignore|safe|stop]",
+                      "1m / 5m / 30m / 1h / 2h / 3h / 6h — native availability applies; hours require a watch.",
+                      "ignore: danger and interruptions (default); safe: classified harmless interruptions; stop: stop at interruptions.",
+                      "Native wait menu: play act world.wait"])
+    if remaining:
+        lines.extend(["", "OTHER ADVERTISED ACTIONS"])
+        for action in remaining:
+            command = "play act " + shlex.quote(action["id"])
+            if action.get("stable_id"):
+                command += " --target " + shlex.quote(action["stable_id"])
+            lines.append(clean(action.get("label", action["id"])) + " → " + command)
+    lines.extend(["", "SESSION", "play look — observe · play collect — retrieve pending result · play quit — end playtest"])
+    return "\n".join(line for line in lines if line is not None)
+
+
+def plain_player_output(result, *, snapshot=None):
     """Render the existing player projection; never replace game facts with advice."""
     import shlex
     import re
@@ -13,6 +146,11 @@ def plain_player_output(result):
     lines = []
 
     view = bounded_player_output(result)
+    if (snapshot and result.get("ok") is True and result.get("state") == "collected"
+            and view.get("current_input", {}).get("owner") == "world" and snapshot.get("owner") == "world"):
+        lines.append(world_look(snapshot))
+        view = {key: value for key, value in view.items()
+                if key not in {"current_input", "facts_changed", "facts_removed"}}
     terminal = view.get("result", {})
     if isinstance(terminal, dict) and terminal.get("state") == "finished":
         cleanup = terminal.get("cleanup", {}).get("status", "unknown")

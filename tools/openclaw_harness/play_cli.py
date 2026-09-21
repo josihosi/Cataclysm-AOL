@@ -1009,7 +1009,15 @@ def main(argv=None):
     if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit", "stop", "yes", "no", "ignore"}:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
-        text = plain_player_output(result)
+        snapshot = None
+        if (args.command == "look" and result.get("ok") is True
+                and result.get("state") == "collected"
+                and result.get("response", {}).get("current_input", {}).get("owner") == "world"):
+            try:
+                snapshot = recover(client.state["display_sha256"])
+            except (OSError, ValueError, KeyError):
+                pass  # The existing projected reply remains usable without the presentation cache.
+        text = plain_player_output(result, snapshot=snapshot)
         print(text)
         if args.session.is_dir():
             entered = entered_argv[entered_argv.index(args.command):]
