@@ -2,7 +2,7 @@
 import json
 import unittest
 
-from gameplay_display import player_output
+from gameplay_display import player_output, bounded_player_output
 
 
 class PlayerOutputTest(unittest.TestCase):
@@ -43,6 +43,20 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertEqual(shown["outcome"]["operation"], {
             "kind": "wait", "state": "accepted", "requested_duration_game_minutes": 360,
             "accepted": True})
+
+    def test_large_game_output_keeps_existing_budget_and_retrieval_identity(self):
+        from evidence_display import DEFAULT_BYTES
+        full = {"ok": True, "request_id": "play-large", "next": "look",
+                "response": {"current_input": {"owner": "world"},
+                             "facts_changed": {"large": "x" * 100000}}}
+        shown = bounded_player_output(full)
+        text = json.dumps(shown, separators=(",", ":"))
+        self.assertLessEqual(len(text.encode()), DEFAULT_BYTES)
+        self.assertEqual(shown["request_id"], "play-large")
+        self.assertEqual(shown["current_input"]["owner"], "world")
+        self.assertNotIn("sha256", text)
+        self.assertTrue(shown["facts_changed"]["large"]["omitted"])
+        self.assertGreater(shown["facts_changed"]["large"]["evidence"]["json_bytes"], 100000)
 
 
 if __name__ == "__main__":

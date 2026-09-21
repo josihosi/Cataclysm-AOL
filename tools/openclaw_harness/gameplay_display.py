@@ -44,6 +44,21 @@ def player_output(result):
     return output
 
 
+def bounded_player_output(result):
+    """Use the existing output budget without printing its integrity hashes."""
+    from evidence_display import bounded
+
+    shown = bounded(player_output(result))
+    shown.pop("presentation", None)
+    # Omitted fields retain their exact byte counts. The request ID below
+    # retrieves the original response through request-result/inspect.
+    shown = player_output(shown)
+    for key in ("ok", "state", "request_id", "next"):
+        if key in result:
+            shown[key] = result[key]
+    return shown
+
+
 def observation_path(response, path=""):
     for key in ("observation", "terminal_observation", "result"):
         value = response.get(key)

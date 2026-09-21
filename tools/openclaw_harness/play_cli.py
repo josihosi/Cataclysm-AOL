@@ -20,7 +20,7 @@ import uuid
 
 from cockpit_archive import ArchiveSequence, json_chunks
 from evidence_display import emit, retain, recover, PresentationParser
-from gameplay_display import display, player_output
+from gameplay_display import display, bounded_player_output
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -971,10 +971,10 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call"}:
+    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit"}:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
-        print(json.dumps(player_output(result), ensure_ascii=False, separators=(",", ":")))
+        print(json.dumps(bounded_player_output(result), ensure_ascii=False, separators=(",", ":")))
     else:
         emit(result)
     return 0 if result.get("ok") else 1
