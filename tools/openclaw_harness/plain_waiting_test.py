@@ -115,6 +115,25 @@ class PlainWaitingTest(unittest.TestCase):
             self.player.run("wait", "5m")
         self.assertEqual(before, self.fixture.requests())
 
+    def test_packet_retirement_preserves_newly_submitted_successor(self):
+        from waiting_transport import retire_collected_packets
+        self.fixture.write("responses/old.receipt.json", {})
+        self.fixture.write("responses/old.json", {})
+        for name in ("old", "current", "successor"):
+            self.fixture.write("requests/" + name + ".json", {})
+        retire_collected_packets(self.fixture.session, "current")
+        self.assertFalse((self.fixture.session / "requests/old.json").exists())
+        self.assertTrue((self.fixture.session / "requests/current.json").exists())
+        self.assertTrue((self.fixture.session / "requests/successor.json").exists())
+
+    def test_unavailable_duration_can_be_corrected_in_current_menu(self):
+        self.world()
+        self.player.run("wait", "7m")
+        with self.assertRaisesRegex(ValueError, "play wait 5m"):
+            self.reply("menu", [{"id": "wait.5m", "enabled": True}])
+        self.player.run("wait", "5m")
+        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "wait.5m")
+
     def test_executable_entrypoint_is_plain_text_and_logs_no_request_ids(self):
         from pathlib import Path
         cli = Path(__file__).with_name("play")

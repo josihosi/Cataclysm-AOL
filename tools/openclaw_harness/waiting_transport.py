@@ -30,8 +30,11 @@ def retire_collected_packets(session: Path, current_request: str):
     Keep the latest response for crash recovery. This applies only to explicitly
     selected plain waiting sessions, whose client stores current input state.
     """
-    for name in ("requests", "responses"):
-        directory = session / name
-        for path in directory.glob("*.json"):
-            if path.name not in {current_request + ".json", current_request + ".receipt.json"}:
-                path.unlink()
+    # The next request may already be spooled once this receipt is published.
+    # Only a completed predecessor's receipt authorizes retiring its packet.
+    for receipt in (session / "responses").glob("*.receipt.json"):
+        request_id = receipt.name.removesuffix(".receipt.json")
+        if request_id != current_request:
+            for path in (session / "requests" / (request_id + ".json"),
+                         session / "responses" / (request_id + ".json"), receipt):
+                path.unlink(missing_ok=True)

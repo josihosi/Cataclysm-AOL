@@ -87,7 +87,11 @@ class WaitingPlayer:
                 result = self.act("wait.duration_menu")
             else:
                 self.state["selecting"] = False
-                raise ValueError("The game does not offer that waiting duration. Run play look.")
+                offered = sorted(a.removeprefix("wait.") for a in action_ids
+                                 if re.fullmatch(r"wait\.[1-9][0-9]*[mh]", a))
+                choices = "\n".join("Choose " + value + " → play wait " + value for value in offered)
+                raise ValueError("The game does not offer that waiting duration." +
+                                 ("\n" + choices if choices else " Run play look."))
         if not result.get("ok"):
             self.state["selecting"] = False
         return result
@@ -108,14 +112,16 @@ class WaitingPlayer:
         if not duration or not re.fullmatch(r"[1-9][0-9]*[mh]", duration):
             raise ValueError("Choose a duration, for example: play wait 5m or play wait 1h.")
         current = self.current()
-        if current.get("surface", {}).get("kind") != "world":
+        in_duration_menu = (current.get("surface", {}).get("kind") == "menu" and
+                            any(a["id"].startswith("wait.") for a in self.actions()))
+        if current.get("surface", {}).get("kind") != "world" and not in_duration_menu:
             raise ValueError("Waiting can start from ordinary gameplay. Run play look.")
         minutes = int(duration[:-1]) * (60 if duration[-1] == "h" else 1)
         self.state.update(duration=duration, requested_minutes=minutes,
                           start_minutes=current.get("game_minutes"), start_turn=current.get("game_turn"),
                           selecting=True, answer=None)
         self.client.save()
-        return self.advance_wait(self.act("world.wait"))
+        return self.advance_wait({"ok": True} if in_duration_menu else self.act("world.wait"))
 
     def render(self, result):
         lines = []
