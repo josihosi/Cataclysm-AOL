@@ -10,7 +10,6 @@ import sys
 
 from play_cli import PlayerClient, session_lock
 from cockpit_evidence import decode
-from waiting_interruptions import continuation
 
 
 def elapsed(minutes):
@@ -65,40 +64,7 @@ class WaitingPlayer:
                    (target is None or a.get("stable_id") == target)]
         if len(offered) != 1:
             raise ValueError("That action is not currently available. Run play look.")
-        result = self.client.act(action, target, {}, 1)
-        self.capture(result)
-        return result
-
-    def capture(self, result):
-        if not hasattr(self, "events"):
-            return
-        if any(result is previous for previous in self.captured):
-            return
-        self.captured.append(result)
-        self.events.extend(performance_text(result.get("turn_assessment", {})))
-        if result.get("ok") and result.get("state") != "pending":
-            self.events.extend(self.new_messages())
-        if result.get("state") != "pending" and self.state.get("automatic_reply"):
-            cause = self.state.pop("automatic_reply")
-            self.events.append(cause + (" (" + self.state["mode"] + " mode)."
-                                       if result.get("ok") else " — continuation failed."))
-            self.client.save()
-
-    def new_messages(self):
-        facts = self.current().get("surface", {}).get("facts", {})
-        messages = decode(facts.get("messages", []))
-        lines = []
-        if "messages" in facts and isinstance(messages, list):
-            previous = self.state.get("messages")
-            if previous is not None:
-                overlap = min(len(previous), len(messages))
-                while overlap and previous[-overlap:] != messages[:overlap]:
-                    overlap -= 1
-                for message in messages[overlap:]:
-                    if isinstance(message, dict) and message.get("text"):
-                        lines.append((str(message["time"]) + ": " if message.get("time") else "") + message["text"])
-            self.state["messages"] = messages
-        return lines
+        return self.client.act(action, target, {}, 1)
 
     def answer(self, answer):
         matches = [a for a in self.actions() if a.get("id") == "prompt.choose" and
@@ -134,30 +100,7 @@ class WaitingPlayer:
             self.state["selecting"] = False
         return result
 
-    def run(self, command, duration=None, mode="ignore"):
-        if mode not in {"ignore", "safe", "stop"}:
-            raise ValueError("Waiting mode must be ignore, safe, or stop.")
-        self.events, self.captured = [], []
-        result = self.run_once(command, duration, mode)
-        self.capture(result)
-        while (result.get("ok") and result.get("state") != "pending" and
-               self.state.get("waiting") and not self.state.get("manual_stop") and
-               not self.client.state.get("finished") and command != "quit"):
-            surface = self.current().get("surface", {})
-            action = continuation(surface, self.state.get("mode", "stop"))
-            if action is None:
-                break
-            owner = self.client.state.get("observation_id")
-            self.state["automatic_reply"] = (str(surface.get("facts", {}).get("text") or "Interruption") +
-                                              " → " + str(action.get("label") or action["id"]))
-            self.client.save()
-            result = self.act(action["id"], action.get("stable_id") or None)
-            if result.get("state") != "pending" and result.get("ok") and self.client.state.get("observation_id") == owner:
-                result = {"ok": False, "error": "The interruption did not advance after its response. Run play look."}
-                break
-        return {**result, "plain_events": self.events, "turn_assessment": {}}
-
-    def run_once(self, command, duration=None, mode="ignore"):
+    def run(self, command, duration=None):
         if self.state.get("finishing"):
             status = json.loads((self.client.session / "status.json").read_text(encoding="utf-8"))
             cleanup = status.get("cleanup", {})
@@ -190,22 +133,11 @@ class WaitingPlayer:
         if self.client.state.get("pending"):
             if command != "look":
                 raise ValueError("A command is still pending. Run play look to collect its result.")
-            result = self.client.collect(1)
-            self.capture(result)
-            return self.advance_wait(result)
+            return self.advance_wait(self.client.collect(1))
         if command == "look":
             return self.client.submit({"action": "game.observe"}, 1)
-        if command in {"yes", "no", "ignore"}:
-            result = self.answer(command)
-            if result.get("ok"):
-                self.state["manual_stop"] = False
-            return result
-        if command == "choose":
-            choices = self.actions()
-            if not duration or not duration.isdigit() or not 1 <= int(duration) <= len(choices):
-                raise ValueError("Choose a displayed option number. Run play look.")
-            action = choices[int(duration) - 1]
-            return self.act(action["id"], action.get("stable_id") or None)
+        if command in {"yes", "no"}:
+            return self.answer(command)
         if command == "cancel":
             return self.act("prompt.cancel")
         if command == "continue":
@@ -215,7 +147,6 @@ class WaitingPlayer:
                 raise ValueError("The game does not offer a single continuation. Run play look.")
             return self.act(offered[0]["id"], offered[0].get("stable_id") or None)
         if command == "stop":
-            self.state["manual_stop"] = True
             return self.act("activity.pause")
         if command == "quit":
             return self.client.submit({"action": "run.quit", "stop_reason": "player requested quit"}, 1)
@@ -230,7 +161,7 @@ class WaitingPlayer:
         minutes = int(duration[:-1]) * (60 if duration[-1] == "h" else 1)
         self.state.update(duration=duration, requested_minutes=minutes,
                           start_minutes=current.get("game_minutes"), start_turn=current.get("game_turn"),
-                          selecting=True, answer=None, mode=mode, manual_stop=False)
+                          selecting=True, answer=None)
         self.client.save()
         return self.advance_wait({"ok": True} if in_duration_menu else self.act("world.wait"))
 
@@ -253,20 +184,27 @@ class WaitingPlayer:
             surface = current.get("surface", {})
             kind = surface.get("kind")
             facts = surface.get("facts", {})
-            lines.extend(self.new_messages())
+            messages = decode(facts.get("messages", []))
+            if "messages" in facts and isinstance(messages, list):
+                previous = self.state.get("messages")
+                if previous is not None:
+                    overlap = min(len(previous), len(messages))
+                    while overlap and previous[-overlap:] != messages[:overlap]:
+                        overlap -= 1
+                    for message in messages[overlap:]:
+                        if isinstance(message, dict) and message.get("text"):
+                            lines.append((str(message["time"]) + ": " if message.get("time") else "") + message["text"])
+                self.state["messages"] = messages
             text = facts.get("text", "")
             if isinstance(text, str) and text:
                 # Native wording preserves interruption causes; remove keyboard-only advice.
                 lines.append(text.removeprefix("Confirm: ").replace(" (Case Sensitive)", ""))
-            if kind in {"prompt", "activity_distraction", "menu"}:
+            if kind == "prompt":
                 choices = 0
-                for index, choice in enumerate(self.actions(), 1):
+                for choice in self.actions():
                     label = str(choice.get("label", "")).strip()
-                    if choice.get("id") == "prompt.choose" and label.casefold() in {"yes", "no", "ignore"}:
+                    if choice.get("id") == "prompt.choose" and label.casefold() in {"yes", "no"}:
                         lines.append(f"{label.upper()} → play {label.lower()}")
-                        choices += 1
-                    elif choice.get("id") not in {"prompt.acknowledge", "modal.acknowledge", "prompt.cancel"}:
-                        lines.append(f"{label or choice['id']} → play choose {index}")
                         choices += 1
                 if any(a.get("id") in {"prompt.acknowledge", "modal.acknowledge"} for a in self.actions()):
                     lines.append("Continue → play continue")
@@ -300,7 +238,6 @@ class WaitingPlayer:
                 lines.append("Continue → play continue")
             else:
                 lines.append("The game is not ready for waiting. Check again → play look")
-        lines.extend(result.get("plain_events", []))
         lines.extend(performance_text(result.get("turn_assessment", {})))
         return "\n".join(lines)
 
@@ -317,14 +254,11 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="play", description="Operate your waiting playtest.")
-    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "ignore", "choose", "continue", "cancel", "quit"])
+    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "continue", "cancel", "quit"])
     parser.add_argument("duration", nargs="?")
-    parser.add_argument("mode", nargs="?", choices=["ignore", "safe", "stop"])
     args = parser.parse_args(argv)
-    if args.duration and args.command not in {"wait", "choose"}:
-        parser.error("Only play wait and play choose take an argument.")
-    if args.mode and args.command != "wait":
-        parser.error("Only play wait takes a mode.")
+    if args.duration and args.command != "wait":
+        parser.error("Only play wait takes a duration.")
     session = os.environ.get("CAOL_PLAY_SESSION")
     if not session:
         print("No playtest session is bound. Launch a playtest before using play.")
@@ -338,12 +272,11 @@ def main(argv=None):
         with session_lock(directory / "play-client.lock"):
             player = WaitingPlayer(PlayerClient(directory, plain_waiting=True))
             command = args.command + (" " + args.duration if args.duration else "")
-            command += " " + args.mode if args.mode else ""
             try:
-                result = player.run(args.command, args.duration, args.mode or "ignore")
+                result = player.run(args.command, args.duration)
                 text = player.render(result)
             except (OSError, ValueError, KeyError, TypeError) as error:
-                text = "\n".join(getattr(player, "events", []) + [str(error)])
+                text = str(error)
                 result = {"ok": False}
             player.record(command, text)
             print(text)

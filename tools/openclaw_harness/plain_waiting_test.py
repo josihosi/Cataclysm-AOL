@@ -65,7 +65,7 @@ class PlainWaitingTest(unittest.TestCase):
         self.player.run("look")
         result = self.reply("prompt", [{"id": "prompt.acknowledge", "enabled": True}],
                             facts={"text": "A scheduled notice interrupts your wait."})
-        self.assertEqual(self.player.render({**result, "turn_assessment": {}, "plain_events": []}),
+        self.assertEqual(self.player.render({**result, "turn_assessment": {}}),
                          "A scheduled notice interrupts your wait.\nContinue → play continue")
         self.player.run("continue")
         self.assertEqual(self.client.state["pending"]["request"]["action_id"], "prompt.acknowledge")
@@ -79,7 +79,7 @@ class PlainWaitingTest(unittest.TestCase):
         self.player.run("look")
         result = self.reply("prompt", [{"id": "prompt.cancel", "enabled": True}],
                             facts={"text": "A quiet moment passes."})
-        self.assertEqual(self.player.render({**result, "turn_assessment": {}, "plain_events": []}),
+        self.assertEqual(self.player.render({**result, "turn_assessment": {}}),
                          "A quiet moment passes.\nCancel → play cancel")
         self.player.run("cancel")
         self.assertEqual(self.client.state["pending"]["request"]["action_id"], "prompt.cancel")
@@ -109,68 +109,6 @@ class PlainWaitingTest(unittest.TestCase):
         path.write_text(json.dumps({**status, "state": "cleaned", "cleanup": {"game": {"status": "terminated"}}}))
         self.assertEqual(self.player.render(self.player.run("look")), "Playtest ended.")
         self.assertNotIn("pending", self.client.state)
-
-    def test_default_mode_handles_chained_notices_without_replaying_wait(self):
-        self.world()
-        self.player.run("wait", "5m")
-        self.reply("menu", [{"id": "wait.5m", "enabled": True}])
-        pending = self.reply("prompt", [{"id": "prompt.cancel", "label": "Cancel"}],
-                             minute=4, facts={"text": "A quiet moment passes."})
-        self.assertEqual(pending["state"], "pending")
-        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "prompt.cancel")
-        self.assertNotIn("→ Cancel", self.player.render(pending))
-        pending = self.reply("prompt", [{"id": "prompt.choose", "label": "IGNORE", "stable_id": "ignore"}],
-                             minute=4, facts={"title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY", "text": "You were hurt!"})
-        self.assertIn("A quiet moment passes. → Cancel (ignore mode).", self.player.render(pending))
-        self.assertEqual(self.client.state["pending"]["request"]["stable_id"], "ignore")
-        result = self.reply("world", [{"id": "world.wait"}], minute=5)
-        text = self.player.render(result)
-        self.assertIn("You were hurt! → IGNORE (ignore mode).", text)
-        self.assertIn("Waited 5 minutes", text)
-        self.assertFalse(self.client.state.get("pending"))
-
-    def test_stop_mode_exposes_all_prompt_choices(self):
-        self.world()
-        self.player.run("wait", "5m", "stop")
-        self.reply("menu", [{"id": "wait.5m", "enabled": True}])
-        result = self.reply("prompt", [{"id": "prompt.choose", "label": label, "stable_id": label}
-                                      for label in ("YES", "NO", "IGNORE", "MANAGER")],
-                            facts={"title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY", "text": "Interruption"})
-        text = self.player.render(result)
-        self.assertIn("IGNORE → play ignore", text)
-        self.assertIn("MANAGER → play choose 4", text)
-        self.assertFalse(self.client.state.get("pending"))
-        self.player.run("choose", "4")
-        self.assertEqual(self.client.state["pending"]["request"]["stable_id"], "MANAGER")
-
-    def test_automatic_chain_keeps_alarm_and_recovery(self):
-        self.state_for_auto_notice()
-        alarm = {"kind": "waiting_slow", "mean_seconds": .02, "limit_seconds": .01, "sample_count": 100}
-        initial = {"ok": True, "turn_assessment": {"alarms": [alarm]}}
-
-        def acknowledged(*args):
-            self.client.state["observation_id"] = "after-notice"
-            self.client.state["plain_current"] = {"surface": {"kind": "world", "facts": {}, "actions": []}}
-            return {"ok": True, "turn_assessment": {"recoveries": [{"kind": "waiting_recovery"}]}}
-
-        with patch.object(self.player, "run_once", return_value=initial), patch.object(self.client, "act", side_effect=acknowledged):
-            text = self.player.render(self.player.run("look"))
-        self.assertEqual(text.count("Tell the coordinator"), 1)
-        self.assertEqual(text.count("Waiting performance recovered."), 1)
-        self.assertLess(text.index("Tell the coordinator"), text.index("Waiting performance recovered."))
-
-    def state_for_auto_notice(self):
-        self.player.state.update(waiting=True, mode="ignore")
-        self.client.state["observation_id"] = "notice"
-        self.client.state["plain_current"] = {"surface": {"kind": "prompt", "facts": {"text": "Notice"},
-                                                         "actions": [{"id": "prompt.cancel"}]}}
-
-    def test_explicit_stop_never_inherits_automatic_policy(self):
-        self.state_for_auto_notice()
-        self.player.state["manual_stop"] = True
-        with patch.object(self.player, "run_once", return_value={"ok": True}), patch.object(self.client, "act") as act:
-            self.player.run("look")
-        act.assert_not_called()
 
     def test_menu_does_not_reset_native_message_baseline(self):
         self.world()

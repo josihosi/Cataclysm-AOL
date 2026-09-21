@@ -577,7 +577,6 @@ class PlayerClient:
                 "game_minutes": observation.get("game_minutes"),
                 "game_turn": observation.get("game_turn"),
                 "surface": {"kind": surface.get("kind"), "actions": surface.get("actions", []),
-                            "breadcrumbs": surface.get("breadcrumbs", []),
                             "facts": {key: value for key, value in surface.get("facts", {}).items()
                                       if key in {"text", "title", "messages", "activity_type"}}},
             } if reusable else {}
