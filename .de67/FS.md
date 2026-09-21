@@ -1,17 +1,24 @@
 # Reliable playtesting and safer C-AOL subsystem changes — Functional Specification
 
-Status: Refrozen — 2026-09-20
+Status: Refrozen — 2026-09-21
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL | dev | a46200ef7884ae62a8aedd58e27d3f08a5f2d5bb | inspected 2026-09-20; owner WEC addition dirty on entry; unrelated untracked .agents/skills/typesafe-ai/ and skills-lock.json preserved`
+Source baseline: `Cataclysm-AOL | dev | fe8c418c1636bdfa6e16d0009af83873a079e24f | inspected 2026-09-21; existing harness/game/test repairs and owner context dirty on entry, preserved in review-owner-f5d913c63d0e/baseline-state.json; unrelated .agents/skills/typesafe-ai/ and skills-lock.json preserved`
 Method baseline: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab | a6125b4a70adf641e185b34dbd33118e48d884e3 | inspected 2026-09-19`
 
 ## Authority and outcome
 
 This is the single canonical FS. The owner explicitly removed the former compatibility-pointer arrangement; active tooling reads `FS.md` directly. Historical slice/receipt identities remain stable data, not a second specification. The WEC defines intended behavior; current code defines the inspected starting point. A proposed symbol below is an implementation starting point, not an extra behavioral obligation.
 
-The current performance/travelling addition is specified in S-PERFORMANCE below. It reconciles distant discovery with the owner-approved fifteen-minute latency and permitted missed brief visual exposures; nearby perception and tactical response stay responsive. The performance alarm, newer signal/camp native proof and travelling/exit-cost claims are additional open obligations, with no inherited acceptance. Harness execution and alarms precede acceptance of their native playtests. Phase 3 and gameplay remain stopped until a later explicit owner start.
+The current owner addition is the full-stack harness outcome in S-HARNESS/H-ERGONOMICS below.
+Owner trigger HARNESS-FULL-STACK-20260921 authorizes this exclusive FS thaw/refreeze and directs
+Sol to deliver the resulting repairs and native validation. The mutator specifies and validates
+context; it does not implement the harness. Preserve all earlier accepted proof and recoverable
+work. The explicit 2026-09-20 Phase-3 start remains current; earlier phase-only holds are historical.
+Only the external supervisor launches the one requested post-review coordinator.
 
-The earlier 2026-09-20 harness contribution is additive and is specified in S-HARNESS below. Earlier sections retain their original contract and evidence ceilings; their dated “current” findings describe the 2026-09-19 inspection, not a claim that already repaired code remains defective. Durable acceptance and the work ledger own delivered status. In particular, the six efficiency claims and revised stalking-to-attack account retain their accepted scope; the stronger shared-execution and deletion obligations below are new red claims. The stopped `R-CAOL-NATIVE-REGRESSION` campaign and its recorded failures remain unfinished. This refreeze does not restart it or authorize Phase 3. Optional experiments remain deferred and additionally depend on the new harness acceptance.
+The earlier performance/travelling addition is specified in S-PERFORMANCE below. It reconciles distant discovery with the owner-approved fifteen-minute latency and permitted missed brief visual exposures; nearby perception and tactical response stay responsive. The performance alarm, newer signal/camp native proof and travelling/exit-cost claims are additional open obligations, with no inherited acceptance. Harness execution and alarms precede acceptance of their native playtests. The later explicit owner start recorded above authorizes delivery; this historical addition imposes no new stop.
+
+The earlier 2026-09-20 harness contribution is additive and is specified in S-HARNESS below. Earlier sections retain their original contract and evidence ceilings; their dated “current” findings describe the 2026-09-19 inspection, not a claim that already repaired code remains defective. Durable acceptance and the work ledger own delivered status. In particular, the six efficiency claims and revised stalking-to-attack account retain their accepted scope; the stronger shared-execution and deletion obligations below are new red claims. The stopped `R-CAOL-NATIVE-REGRESSION` campaign and its recorded failures remain unfinished. The earlier refreeze did not restart that campaign; current delivery authority is stated above. Optional experiments remain deferred and additionally depend on the new harness acceptance.
 
 Preserve the prior zombies-and-light contract and its accepted evidence. Its verbatim WEC, FS and pointer are in `.de67/history/20260919-zombies-light-before-affordable-playtests/`, verified by `archive.json`. Durable acceptance remains in the existing SQLite state and work ledger; this refreeze does not invalidate, fabricate or rerun that acceptance. New regressions and proof obligations have new IDs. The earlier owner revision changed `R-ZL-PLAYTEST` from naturally occurring stalker to debug-spawned stalker followed through ordinary play. The current owner revision also changes distant-signal discovery guarantees, as stated in S-SIGNAL-CADENCE; stable acceptance identities retain only their original historical scope.
 
@@ -512,7 +519,7 @@ must be distinguished from restarting an executable. Use coverage/risk to determ
 not a fixed action/run count, compulsory new framework, or unrelated replay of every accepted feature.
 <!-- DE67:DFS-SLICE:END id=R-CAOL-NATIVE-REGRESSION-S001 claim=R-CAOL-NATIVE-REGRESSION -->
 
-## Lean, reliable harness — S-HARNESS, owner addition 2026-09-20
+## Lean, reliable harness — S-HARNESS, reconciled owner additions 2026-09-20/21
 
 The reasoning agent chooses the question, setup and interpretation. The harness owns execution,
 waiting, identity, recovery and compact facts. Finding/preparing a scenario → starting or resuming
@@ -527,9 +534,63 @@ Keep player-facing language **pending**, **completed**, **interrupted**, **faile
 **session**, **run**, and **game-time progress**. Internal legacy identifiers may remain where they
 identify valuable evidence; obsolete commands and execution machinery have no compatibility promise.
 
+### Full-stack owner contract and current evidence — H-ERGONOMICS
+
+The 2026-09-21 owner request makes the complete journey a delivery outcome, not an audit-only
+exercise: discovery/selection → preparation/launch → gameplay → interruptions/asynchronous work →
+evidence/witness → closeout → continuation. The complete original investigation brief is retained
+byte-for-byte at `.de67/task-logs/owner-harness-forcing-mutation-20260921/owner-attachment.txt`;
+its eleven areas are mapped below. Its fe8c418/synthetic findings are leads to verify on the actual
+working tree, not an instruction to repair already-correct code. Current review reproductions are
+in `.de67/task-logs/review-owner-f5d913c63d0e/current-reproductions.json`; these are synthetic
+production-function checks, not native playtests or measured savings.
+
+The LLM retains movements, interactions, waiting choices, dialogue, interruption responses,
+evidence selection and interpretation. Automate transport, bookkeeping, result collection and
+addressing; do not introduce an agent that plays a predetermined successful recipe. Cache interface
+knowledge, not a solution to a scenario. Starting an action, sleeping and exhausting a timeout do
+not prove completion. Never manufacture NPC behavior, weaken acceptance or repeat variants until
+one passes. Full retained logs remain valuable; repeated irrelevant content in model context is
+the cost to remove. One complete decision response can be cheaper than five tiny retrievals.
+
+Both coordinator and worker actively try to reach defensible native results through the supported
+workflow. The worker plays, observes and adapts; the coordinator helps diagnose blockers and chooses
+justified experiments instead of merely receiving failure reports. Legitimate alternatives include
+another supported interaction, better observation timing/position, smaller independently useful
+checks and cross-checking native state/events against visible behavior. Document setup changes;
+a changed claim is a separate experiment. Pass, genuine failure, inconclusive and demonstrated
+infrastructure blocker are distinct honest outcomes. A stall calls for a hypothesis and the new
+information another attempt would produce, not premature abandonment or unchanged retries.
+Coordinator assistance never introduces a competing input owner. Record awkward steps as evidence.
+
+The owner requests 100% reliability and half the token use for equivalent useful outcomes. Establish
+an explicit supported-operation/fault contract and report observed failures over that denominator;
+zero observed failures in bounded coverage is not universal reliability. Pursue a measured 50%
+reduction under H-COST, disclose a miss and remaining opportunities, and do not claim savings from
+less gameplay, abandoned objectives, reduced proof or merely smaller replies. This target does not
+create a fixed audit quota, paid-provider requirement or background optimizer.
+
+| Owner area | Current source/evidence disposition at refreeze | Required delivery/verification owner |
+|---|---|---|
+| 1. Exact evidence and linkage | `evidence_events.query` filters rows but links all scanned events. Reproduction: two matching records return 11 then 101 links as unrelated records grow; link bytes grow 5,494→49,594. Accepted+completed is labelled partial/missing rejection. | R-HARNESS-EVIDENCE: related-stage scope and alternative lifecycle outcomes, with history-growth controls. |
+| 2. Routine reply baggage | `FileBackedCockpitBridge.response_status` unconditionally adds startup diagnostics; PlayerClient retains them. Controls and outer presentation repeat manuals/paths/digests. Actual model-context impact remains to measure. | R-HARNESS-SESSION: decision view, on-demand diagnostics, section-level measurements and exact full retrieval. |
+| 3. Renderer/docs/selectors | `gameplay_display.display` emits neither documented current_input selector; it consumes `result` into a delta and directly renders transition action lists instead of `action_catalog`. | R-HARNESS-SESSION: one tested full/delta/owner-change/large-menu/retrieval contract. |
+| 4. Wrong omissions | `evidence_display.bounded` reduces largest fields. `gameplay_fact` previews first five entities and groups supplied message history. A synthetic sixth changed NPC is omitted while five unchanged NPCs remain. | R-HARNESS-SESSION: mandatory decision facts first, identity deltas/event cursors, complete pagination without omission cascades. |
+| 5A–E. Collection and chores | Current CLI still defaults to one wall second; ordinary repeated collect returns no_pending_request; controls/messages/inspect share blocking lock; structured call requires a file. R-EFF-WAIT/FRAME already proved useful narrower behavior, and receipt a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc proves a partial shared collector. | R-HARNESS-EXECUTION/SESSION: finish existing lifecycle, exact replayable results, suitable waiting, concurrent safe reads, direct chosen operations and traced command costs. Preserve narrower proof. |
+| 6. Discovery/run summaries | `_run_observation` classifies a proved movement control with payment-specific missing fields and startup/load-or-inconclusive depth; underlying verdict stays proved. Exact `query_page` attaches a complete candidate snapshot; registry serializer is separate. | R-HARNESS-EVIDENCE: claim-aware summaries, selection versus detailed/history retrieval, actual output-growth tests. |
+| 7A–D. Delivered guidance | CONTROL_LOOKUP contradicts itself on Tab; live-operation has both correct and wrong wait-argument ordering. `session_context` offers look even with a pending request. `export_current_results` prints selected receipts in full. | R-HARNESS-CONTINUATION/SESSION: executable examples, state-dependent next operation, measured selected brief; no all-documents prerequisite. |
+| 8A–B. Speech/witness | Request/runner/native-application correlation and exact witness addressing need a real-use trace. Historical fire/NPC omission reports are leads, not a diagnosed component fault. | R-HARNESS-EVIDENCE/JOURNEY: indexed chronology, explicit uncertainty and independent application proof; retrieve original cases if available. |
+| 9. Whole campaign | Earlier smoke and sound investigations found distinct setup/product questions. Latest interruption task repaired fixture/startup but reached no wait receipt; a presentation OCR requirement blocked semantic readiness. | R-HARNESS-PREMISES/JOURNEY: varied difficult native attempts, creative valid routes, explicit coverage and useful continuation rather than one easy repeated success. |
+| 10. Cost semantics | Existing cockpit “model round-trip” values are transcript/action-derived proxies, not provider usage. Recent local usage has actual own-response records, but not every historical/native player run. | H-COST: actual coordinator/worker tree accounting, proxies labelled, context delivery checked, omissions and gaps explicit. |
+| 11. Priority and proof | Initial attachment order is a hypothesis. Current reproducible scope/display errors and wait/recovery blockers justify early slices; valid work is retained. | Sol orders smallest useful repairs and validates a fresh-agent journey; no duplicate executor, summarizer, Telescope or coordinator layer. |
+
 ### Inspected production map and causal diagnosis — H-MAP
 
-| Boundary | Current owner and consumers | Observation at source baseline |
+The following original ownership map records the earlier 2026-09-20 baseline; H-ERGONOMICS
+and current receipts distinguish repaired behavior from remaining gaps. Do not reimplement an
+already-working path merely because its historical gap appears here.
+
+| Boundary | Owner and consumers | Observation at earlier source baseline |
 |---|---|---|
 | Public player input | `play_cli.py::PlayerClient.submit/collect/act/call/frame`, CLI `main` | Submission persists `pending` before sending; collection verifies immutable receipt and response. On successful collection it removes `pending`. A second `collect` has no pending request, and regular wait requires a JSON request file with recipe/bound machinery. `--wait-seconds` defaults to one second. |
 | Native completion | `startup_harness.py::open_cockpit_game_service` closures `read_frame/await_native_completion`; `CockpitService.raw_wait/keep_watch/wait` | `await_native_completion` loops until a different World descriptor paired with raw World state, or cancellation. It does not consult process death or return a new prompt. Ordinary progress can therefore hide an interruption or poll a dead owner forever. `read_frame` can retain a prior descriptor when only actionless activity state arrives; freshness must be accounted for explicitly. |
@@ -563,14 +624,22 @@ the necessary native identity; retain the single transition contract and avoid d
 ### Actions finish at a native outcome
 - [ ] 🔴 R-HARNESS-EXECUTION — One shared operation lifecycle drives scripted and interactive actions and waits through real completion, interruption, cancellation and failure.
 
-**Mechanism.** Replace the callback-only completion seam in `open_cockpit_game_service` with a
-shared driver used by `CockpitService` operations and `execute_probe_steps`. Inputs include the
+**Mechanism.** Complete and consolidate the existing receipt-bound collector and the
+`open_cockpit_game_service` seam as one transition contract used by `CockpitService` operations and
+`execute_probe_steps`. Preserve the validated raw-wait/keep-watch slice from receipt
+`a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc`; it proves normal waits
+and focused controls, not the remaining live interruption or the whole shared-driver contract. Inputs include the
 operation/request identity, issuing frame/process generation, action and parameters, requested
 native outcome (for wait, duration/target in native game-time units), interruption policy and caller
 observation/deadline budget. Keep these typed in the existing request/response path. Exact helper
 placement is replaceable; a second loop for scenarios is not.
 
-Submission → accepted input → native activity progress remains **pending**. Completion requires a
+Submission → accepted input → native activity progress remains **pending**. Operation lifecycle
+and input availability are separate facts: an offered Pause control does not demand its use, and
+a menu/owner transition is not completion. Preserve accepted/running/awaiting-decision/completed/
+cancelled/failed/unknown distinctions through existing native types and receipts; no second state
+owner or frame-name exception substitutes for correlation. Native action choice stays with the
+LLM; the driver executes the chosen outcome and declared interruption policy, not a scenario solver. Completion requires a
 matching terminal native receipt/postcondition and current owner, not just a changed frame ID.
 For waits report start/current/target game turn or minutes plus actual delta; reaching a clock value
 while a prompt owns input does not imply an unqualified completed activity. Native end-before-target,
@@ -584,7 +653,8 @@ Routine polling stays inside the driver. On each poll inspect cancellation, exac
 identity/liveness, new owner/receipt and game progress. A transport/wall-clock deadline yields
 **pending** with uncertainty and the same handle; it neither completes nor repeats the action.
 Process death or rejected/corrupt binding returns **failed** with the evidence and last known
-progress. A live operation that cannot establish progress exposes a decision-required/stalled
+progress; if already-dispatched native effects cannot be established, their outcome remains
+**unknown**. Never infer no effects or automatically retry merely from transport failure. A live operation that cannot establish progress exposes a decision-required/stalled
 reason and retained pending identity under its configured observation budget, rather than polling
 forever or claiming native failure from elapsed seconds. Derive stall diagnostics from last native
 event/game-time, owner, process status and configured expectations; no fixed global timing promise.
@@ -611,14 +681,37 @@ consumes a fresh validated launch selection; resume takes an existing session. N
 duration/target and interruption policy; the harness resolves currently advertised native choices,
 recipe and bounds. The caller must not write temporary JSON/scripts to reconstruct these internals.
 Unsupported durations/actions return an honest supported choice set or missing capability, never
-an invented input. Existing `call` need not survive as a compatibility command if no current purpose
+an invented input. The player chooses duration/target and what to do after interruption; native
+menus already support longer waits and impose no demonstrated 20-second cap. Use the longest
+currently advertised duration compatible with that chosen intent and required observation boundary.
+Wall-time collection budgets do not change requested game time. Diagnose ordinary early-pending
+round trips and choose an appropriate bounded internal collection default from observed operation
+behavior, respecting cancellation and remaining task budget; no arbitrary global sleep or time cap. Existing `call` need not survive as a compatibility command if no current purpose
 remains. Scripted declarations call the same typed operations directly.
+
+One player-facing contract is shared by `gameplay_display`, `cockpit_evidence`, `evidence_display`,
+CLI/help, guides, examples and tests. Full observations, deltas and owner changes locate corresponding
+facts consistently. Every advertised selector and retrieval command works against the response
+actually received, including its displayed versus retained source root. Large action catalogs keep
+native navigation and the relevant prompt/choices visible with useful paging; do not render the
+entire menu merely because input ownership changed or promise a catalog formatter never called.
 
 Every response projects operation/request ID, lifecycle status, reason/uncertainty, input availability
 and owner, relevant current game state/progress, valid next operations and evidence handles. Include
-save result, process state and reload readiness when relevant. Compact means selected useful facts,
-not a hard output quota. Preserve unknown versus absent, causal contradictions and full retrieval.
-Reuse the returned current frame when valid; do not issue a redundant observe to make presentation
+save result, process state and reload readiness when relevant. Prioritize what happened, whether
+it completed/interrupted/failed/remains pending, game-time delta, changed state, current input owner
+and available native responses. Unchanged startup/process/recovery/transport metadata, repeated
+manuals and generic retrieval instructions remain in exact receipts and relevant diagnostic views,
+not every ordinary successful reply. Internal validation stays intact. Compact means selected useful
+facts, not a hard output quota; do not preserve metadata while dropping a consequential choice. Preserve unknown versus absent, causal contradictions and full retrieval.
+Protect the mandatory decision view before reducing optional detail. Compare changed entities/zones
+by stable identity rather than reprinting first-five prefixes of changed whole lists; include a newly
+changed sixth NPC ahead of unchanged preview occupants. Use event cursors for messages since the
+previous observation and distinguish retained fixture/history from this run's events. Grouping
+repeated text must not conceal a new event, actor or chronology. Exact pages must be usable rather
+than recursively creating omission handles; count the complete recovery/retrieval chain, not only
+initial bytes. A refresh may intentionally replace a baseline but should not be necessary merely to
+recover a lost result. Reuse the returned current frame when valid; do not issue a redundant observe to make presentation
 work. Stale generation/owner requires refresh and invalidates the old grant.
 
 `collect` takes an exact request or defaults to the retained outstanding/last request and returns
@@ -626,8 +719,10 @@ that result again after prior collection. It does not erase or consume the opera
 does not spend launch authority. With no request it says so without acting. `resume` reconstructs
 the compact state from the existing manifest/status, request/result and native owner, including a
 pending operation after client restart. A stale or missing derived cache is rebuildable from those
-owners; contradictory authoritative records stay explicit. Preserve serialized submit/collect and
-out-of-band cancellation so two clients cannot race a new action. A request persisted before an
+owners; contradictory authoritative records stay explicit. Preserve serialized mutation/result reconciliation and out-of-band cancellation so two clients
+cannot race a new action. Relevant read-only controls/messages/inspection should remain available
+during collection using consistent retained snapshots or equivalent safe reads; remove unnecessary
+exclusive-lock contention without publishing mixed generations or racing state writes. A request persisted before an
 uncertain send is reconciled by its ID, never resubmitted under a new ID automatically.
 
 **Proof.** Real `PlayerClient`/CLI tests cover duplicate collection after success/rejection, pending
@@ -637,6 +732,135 @@ send/launch counts and current legal actions. A fresh agent uses only the docume
 handle to recover an interrupted/pending native run; no conversation reconstruction, state-file
 edit or custom helper is allowed for H-JOURNEY. Prior R-EFF evidence remains its earlier scope.
 <!-- DE67:DFS-SLICE:END id=R-HARNESS-SESSION-S001 claim=R-HARNESS-SESSION -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-EVIDENCE-S001 claim=R-HARNESS-EVIDENCE -->
+### Evidence and summaries answer the selected question
+- [ ] 🔴 R-HARNESS-EVIDENCE — Exact evidence queries, scenario summaries and witness indexes expose related native facts and uncertainty without unrelated history or hand-built citation machinery.
+
+**Mechanism.** Correct the existing `evidence_events.query/_request_result_links`, registry query
+projection, evidence archive and witness interfaces together where their contracts overlap. An exact
+actor/request/event query returns matching facts and only genuinely related lifecycle stages,
+retaining explicit run/process/request identity and counterevidence. Acceptance and rejection are
+alternative outcomes; missing rejection is not incompleteness after accepted completion. Distinguish
+missing outcome, unknown correlation, conflicting writers and rejected dispatch rather than
+requiring every stage in every case. Filtering and paging cover links as well as rows; histories
+outside the selected relationship must not inflate the decision response. Preserve immutable full
+sources and exact expansion handles. Known IDs, statuses and failures require no provider call.
+
+Generic run summaries describe actual observations/actions and the selected claim's requirements.
+Payment/trade/departure checks apply only to payment claims; summary depth cannot silently change
+a retained verdict or imply unrelated missing proof. Discovery returns enough to select and launch,
+with declaration detail and historical snapshots separately retrievable. Exact scenario selection
+must not dump an entire saved candidate snapshot by default. Retain registry token/binding freshness,
+current exclusion reasons, contradictions and source identity. Measure both projection and scan cost;
+a small candidate count is not itself compact output or efficient execution.
+
+Expose a request-specific speech lifecycle through existing evidence owners: utterance/hearer,
+qualified request identity, runner queued/running/completed, native applied/failed/unknown, and exact
+chronology. Distinguish prewarming from an actual request, process-local reused IDs from durable
+identity, and model completion from native game application. Do not automatically advance gameplay
+to obtain application. The player chooses that action; unavailable native application stays unknown.
+
+The existing witness path supplies an evidence index of exact citations, typed values, selector roots
+and chronology. The agent chooses supporting and contrary evidence and interprets the claim; it
+should not navigate undocumented archive structures or manually reconstruct address syntax. Retain
+negative/inconclusive attempts. Investigate retained fire/NPC cases whose witnesses omitted later
+World facts when originals are available, without attributing their cause merely from omission.
+
+**Proof.** Current exact-query and non-payment-summary reproductions must become passing regression
+controls without losing full source retrieval. Add accepted/rejected/unknown/conflicting identity,
+shared-history growth and paged-links cases. Exercise non-payment and payment native records through
+the actual registry output. Trace one relevant async speech request through model completion and
+native application or demonstrated uncertainty, including process-ID reuse/prewarm controls. A fresh
+agent finds the needed fact, contrary fact and exact witness citation through documented operations;
+report retrieval/closeout effort and unavailable originals rather than inventing a retrospective pass.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-EVIDENCE-S001 claim=R-HARNESS-EVIDENCE -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-PREMISES-S001 claim=R-HARNESS-PREMISES -->
+### Scenarios establish a real opportunity for the tested behavior
+- [ ] 🔴 R-HARNESS-PREMISES — Scenario preparation exposes executable native prerequisites before costly play and separates setup, infrastructure and gameplay failures.
+
+**Mechanism.** Reuse registry declaration validation, fixture installation, source-bound launch and
+read-only production evaluators. Validate the actual save/assets, current native startup readiness,
+loaded-map source opportunity, native countdown, observer eligibility and relevant scheduler/policy
+inputs for the selected claim. Return the real drive/threshold/reason where the production evaluator
+has those concepts, not a parallel approximate formula. Identify time-varying premises and the next
+causal observation boundary; an initially below-threshold score does not prove permanent inability
+to dispatch. A setup item or lead is not proof that its source or recipient will execute. Failure to
+establish a premise is a setup finding, not a gameplay contradiction.
+
+The R033 unloaded C-4 and first dispatch score 358 versus 500 are concrete counterexamples. Preserve
+their evidence and the later independent sound-retention repair. Do not lower thresholds, inject a
+post-launch owner/lead/signal, or seed the outcome being observed. Legitimate fixture changes are
+explicit zero-credit setup and obtain fresh registry authority. Changed claims become separate
+experiments. Native play still proves actual source emission, observation and consequence.
+
+For native semantic routes, presentation/OCR is supporting diagnostic evidence unless a selected
+claim actually tests presentation. Remove stale Escape/capture/OCR prerequisites that can block
+valid semantic readiness without proving the claim. Preserve startup-error detection, process and
+session ownership, source identity and meaningful visual checks; do not replace native proof with
+screenshots or silently skip a consequential startup dialog. Inspect the real R012/R019 repaired
+route before another launch; latest task 003 reached startup/HUD but submitted no wait request.
+
+**Proof.** Falsify the old unloaded-source and invalid dispatch premise with the real evaluators and
+controlled fixtures; check valid, missing, stale, changed-source and time-dependent cases. Prove that
+an optional missing capture cannot block a semantically ready nonvisual claim while a real startup
+failure still blocks. Use native attempts to establish opportunity and distinguish source, adapter,
+recipient and return boundaries; a preflight pass alone grants no gameplay credit. Reuse existing
+success/failure records and rerun only for changed premises or an unresolved proof boundary.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-PREMISES-S001 claim=R-HARNESS-PREMISES -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-CONTINUATION-S001 claim=R-HARNESS-CONTINUATION -->
+### Continue useful work without reconstructing its environment
+- [ ] 🔴 R-HARNESS-CONTINUATION — A worker receives an executable current boundary, valid next session operation and reusable build/evidence facts rather than repeated setup archaeology.
+
+**Mechanism.** Correct existing `work_context_provider.session_context`, current-results export,
+source-bound builders, harness guidance and their actual delivered consumers. A brief contains the
+claim/acceptance, relevant setup constraints, source/session identity, current state, unresolved
+question and exact evidence handles. Include the working build command/configuration/test selector,
+prerequisites, artifact/source fingerprint and last result when that boundary needs a build. The
+root-Makefile focused-test route recovered in `review-signal-proof-003/report.md` is reusable evidence,
+not a requirement to manually relink game objects. Incompatible PCH/configuration state is handled
+by the existing build owner with bounded diagnostic recovery, preserving useful compatible caches.
+
+Continuation guidance reflects authoritative session state: collect the exact pending operation,
+replay a completed result, refresh an invalid frame, or report an ended/unknown session as appropriate.
+Never recommend a new look that the client rejects merely because a pending operation was already
+known. Exact request collection does not accidentally collect another request. Lost output, a tool
+timeout and context handoff retain identity and effects. Resume does not relaunch or reseed.
+
+Correct contradictory Tab advice, parent-parser wait argument order, nonexistent response selectors
+and examples for removed commands. Generate or execute examples against the actual parser/schema;
+do not add another manual that competes with it. Preserve situation-specific skill reading rather
+than requiring the whole documentation corpus. Export selected conclusions, limits, unresolved
+questions and exact source references instead of verbatim receipt bodies by default. Measure what
+actually reaches coordinator/worker contexts: file/export bytes alone are not model input. Retain
+full receipts and dependency identity for targeted retrieval and stale-context invalidation.
+
+Sol should reuse a worker's useful context for related corrections or a new terminal-successor task
+when it saves total effort, with correct immutable task rebinding. A fresh task does not mandate a
+fresh worker, and retaining a huge stale transcript is not inherently economical. Independent
+assignments and edit/session ownership remain distinct; allocation preferences are not quotas.
+Do not turn valid substantive review into repetitive receipt reconstruction or a mandatory fresh
+reviewer after every return. Installed DE67 tooling changes, if needed, are commissioned through its
+existing ledger/candidate route and promoted exclusively; ordinary product workers do not edit
+shared live method state. The current FS mutation validators still require obsolete `## Functional
+contract` / `## Project language and terminology` headings absent from this canonical FS. Stage a
+narrow compatibility repair through that same candidate route: validate actual canonical domain
+contract, stable claim/slice identity, accepted frontier and explicit owner scope without requiring
+obsolete document structure or silently weakening the protected semantics. The current review uses
+explicit owner-scoped preservation checks; it does not claim the legacy guard passed.
+
+**Proof.** A successor uses the supported build/test route and correct same-operation continuation
+from its delivered brief without rediscovery. Test pending/completed/ended/stale handoff examples,
+source/config invalidation and full-receipt expansion. The guard candidate must accept a legitimate
+current-format scoped change and reject lost accepted proof, deleted/rebound slice identity,
+unrelated domain rewrites and unauthorized scope expansion. Inspect actual prepared worker context and
+acknowledgment/use, not merely written guidance. Compare equivalent continuation outcomes including
+handoff, worker/helper/reviewer and recovery cost; list unavailable usage. Reuse the existing build
+reproduction and latest task returns; do not replay already-settled native proof just to demonstrate
+worker reuse.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-CONTINUATION-S001 claim=R-HARNESS-CONTINUATION -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-LIFECYCLE-S001 claim=R-HARNESS-LIFECYCLE -->
 ### Save, quit and reload have separate observable boundaries
@@ -734,6 +958,13 @@ before its dependent step, an interruption exposed for a genuine next decision f
 continuation/cancellation, and save → quit → reload → continue with exact saved-world continuity.
 One coherent run may cover several boundaries; no fixed run count or full historical campaign.
 
+Also trace the owner-reported “10 waits / almost 50 commands” from its original run if accessible,
+otherwise label a reproduction explicitly. It is not the separately observed 42-action/13-minute
+wait. Classify each step as gameplay choice, necessary native menu interaction, file/schema work,
+transport, collection, selector repair, redundant observation or evidence retrieval. A source-bound
+long wait and a materially different long/async operation test common execution, not just two
+configurations of the same happy path. Native gameplay interpretation remains separate.
+
 Automated proof runs real driver, CLI, bridge and scenario paths with delayed outcomes and failure
 combinations from the preceding claims. The starting command uses the existing modern-Python route:
 
@@ -757,14 +988,70 @@ native adapters exercised where changed. Existing macOS-only scenario declaratio
 macOS-only and cannot certify Windows/Linux native input. Record unavailable routes as pending,
 not green from a Mac run. No native build is necessary merely to freeze this document.
 
-Completion requires the five original R-HARNESS claims plus R-HARNESS-PERFORMANCE and their named evidence, a current consumer/deletion inventory
-and a working documented journey. Existing R-CAOL regression failures and optional experiment
+The campaign investigates varied available scenario families: waiting/time-dependent behavior,
+movement/navigation, menus/input-owner changes, NPC interaction/async speech, interruptions,
+multi-feature interactions, launch/recovery/continuation, and evidence/witness closeout. Inventory
+the registry and select representative difficult as well as straightforward cases; repeatedly
+passing an easy case is insufficient. Track inspected, attempted, completed, blocked and untested
+coverage separately. The coordinator helps the worker investigate valid alternatives without
+competing live input. Each rerun states changed premises or the new evidence it seeks, preserving
+the previous negative/inconclusive result. A native product failure can be a successful harness
+usability result if the failure and its evidence are exposed correctly; it does not close the
+separate gameplay claim.
+
+A fresh agent must encounter an unfamiliar situation, choose a native action, receive completion
+or interruption, inspect relevant evidence and continue or close through the published interface.
+No temporary helper scripts, undocumented selectors, repeated agent polling or reverse-engineered
+response shapes may be necessary. Record actual awkward steps; do not smooth them out of the audit.
+Static review alone does not satisfy this native usability requirement.
+
+**Campaign deliverable.** Publish (1) the largest verified waste causes; (2) actual branch/commit and
+relevant dirty inputs; (3) source/symbol findings, reproductions and observed versus inferred impact;
+(4) the classified wait trace or labelled reproduction; (5) coordinator/worker native attempts,
+including difficult cases, creative alternatives and blockers; (6) the scenario-family coverage
+record; (7) retained confusing/bloated replies and tested decision-complete alternatives; (8) a
+prioritized minimal repair list with acceptance evidence; and (9) measurement limits plus old findings
+now fixed, obsolete, incorrect or not reproducible. For each improvement identify removed chores,
+remaining LLM choices/native checks/evidence, existing partial solution, smallest supported change
+and regression/usability test. This is the existing campaign's report, not a new reporting service.
+
+Completion requires the five original R-HARNESS claims, the three H-ERGONOMICS claims
+(R-HARNESS-EVIDENCE, R-HARNESS-PREMISES, R-HARNESS-CONTINUATION), R-HARNESS-PERFORMANCE and their
+named evidence, a current consumer/deletion inventory and a working documented journey. Existing R-CAOL regression failures and optional experiment
 gates remain separate. The old estimate for four narrow fixes does not apply: this is a cross-cutting
 Python execution, native observation, scenario/dependency and lifecycle migration. The number of
 useful consumers and any missing native save fact determine its actual delivery cost; no unsupported
 calendar promise is part of acceptance. First obtain a working shared-completion slice, then migrate
 and delete callers while completing session/lifecycle delivery; revise tactics from evidence.
 <!-- DE67:DFS-SLICE:END id=R-HARNESS-JOURNEY-S001 claim=R-HARNESS-JOURNEY -->
+
+### Full-tree effort and target comparison — H-COST
+
+Use S-EFF-COMPARE for equivalent completed diagnostic/action/resume/closeout outcomes, and compare
+combined campaign delivery separately from a single operation. Preserve source/build/scenario state,
+claim, information, evidence quality and meaningful gameplay choices. Reuse captured failures and
+frozen comparisons when they answer the same question; fresh native runs address changed inputs or
+unproved native boundaries. Do not turn an efficiency comparison into a ritual replay campaign.
+
+Where available record actual model requests and uncached input, cached input and output tokens,
+separating coordinator, worker, helper, reviewer, provider, handoff, retry and recovery contributions.
+Deduplicate own-response records rather than inherited rollups. Report gameplay decisions,
+transport-only commands, collection/polling, evidence retrieval, forced full observations,
+file/schema construction/repair, displayed bytes by section, elapsed time and completed objectives.
+Classify playing, polling, retrieving evidence, diagnosing failure, repairing interface
+misunderstandings and reporting/closeout. Command/character/byte counts and existing transcript-derived
+“model round-trip” values are proxies, not actual model usage. Missing provider usage stays missing.
+Account-wide allowance or estimated weekly pace is not campaign consumption or token billing.
+
+Measure delivered context duplication and unnecessary model decision frequency without reducing the
+player's legitimate decisions. Cache/reuse interface knowledge and accepted results. Report both
+per-category token changes and total input-plus-output change with cached input visibly separate;
+where actual price/cost is unavailable do not equate this total to a bill. The 50% target is a
+before/after goal for the same useful outcome, not an invented universal cap or a claim of savings
+from fewer CLI calls. Include implementation/audit/review cost separately from steady-state per-run
+cost so a benefit is not merely shifted elsewhere. If comparisons or coverage are insufficient,
+report that uncertainty and the exact next measurement rather than fabricated savings or claiming
+the whole workflow optimal. Target shortfall must remain visible; preserve completed valid repairs.
 
 ### Earlier harness refreeze record
 
@@ -856,9 +1143,11 @@ new runs must bind their actual executable and source, not claim an old receipt 
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-PERFORMANCE-S001 claim=R-HARNESS-PERFORMANCE -->
 ### Performance alarms during real operations
-- [ ] 🔴 R-HARNESS-PERFORMANCE — The shared operation driver reports measured slow turns, spikes, sustained regression and stalled game-time progress without confusing input waits, loading, saving or transport delay with simulation failure.
+- [x] R-HARNESS-PERFORMANCE — The shared operation driver reports measured slow turns, spikes, sustained regression and stalled game-time progress without confusing input waits, loading, saving or transport delay with simulation failure.
 
-**Current gap and boundary.** `process_performance.py::ProcessPerformance` records resource deltas
+Durable acceptance #1 already exists via `R-HARNESS-PERFORMANCE-closure-representative-workload-comparison-001`. This refreeze corrects a stale status projection, not a new acceptance. Its ceiling is instrumentation and representative measurement; gameplay claims remain open.
+
+**Original inspected gap and boundary (now covered at the accepted ceiling above).** `process_performance.py::ProcessPerformance` records resource deltas
 around `startup_harness.py::dispatch`, and `play_cli.py::performance` supports retained records,
 manual samples and tagged comparisons. `compare_records` checks host/platform/context but the tag
 only asserts workload comparability. No automatic alarm exists; action latency spans dispatch and
@@ -1100,10 +1389,29 @@ contact. Accept only reduced selection work with preserved native return and ref
 an optimized helper or scout success does not establish the historical following slowdown's cause.
 <!-- DE67:DFS-SLICE:END id=R-CAOL-EXIT-COST-S001 claim=R-CAOL-EXIT-COST -->
 
-### Current freeze record — performance addition
+### Historical freeze record — performance addition
 
 - Refrozen 2026-09-20 against `dev@a46200ef7884ae62a8aedd58e27d3f08a5f2d5bb`; inspected direct fixes `463b1a810d`/`54e60ce3ac`, their tests/evidence, signal/turn owners, process telemetry and actual loaded contact/exit paths. No product source/tests changed and no gameplay or Phase 3 started.
 - Four new stable red claims: R-HARNESS-PERFORMANCE, R-CAOL-SIGNAL-PROOF, R-CAOL-TRAVELLING-COST, R-CAOL-EXIT-COST. Old stable slice/receipt identities and accepted work survive at their actual ceilings. New obligations remain open; old native regression gaps are not silently accepted or commissioned anew.
 - Latest WEC owns fifteen-minute distant notice, permitted missed brief visual exposure, responsive nearby behavior, one-shot sound retention, travelling encounter scope and deletion/consolidation. Related older cadence wording is reconciled above. The current source's combined staffed-observation latency remains to be proved.
 - Research narrows the design to existing action ownership, relevant-change failed-query reuse and perimeter/local-neighbor exit enumeration. Historical travel attribution and cross-turn recurring-work sufficiency are explicitly unproved; no imported balance, global scheduler or universal timing threshold.
 - Git/runtime preparation and capability evidence belong to the ledger, not this functional contract. The current owner hold supersedes all historical launch instructions.
+
+
+## Current freeze record — full-stack harness owner mutation, 2026-09-21
+
+- Status: Refrozen from the owner-authorized thaw in gate `f5d913c63d0e`, invocation
+  `mutation-48bcebae6cd84750aecc249a942956f5`, against `dev@fe8c418c1636bdfa6e16d0009af83873a079e24f`
+  plus preserved dirty source/test/fixture repairs. The reviewer changes FS/context, not product code.
+- The full owner brief and prior audit remain lossless under
+  `.de67/task-logs/owner-harness-forcing-mutation-20260921/`; H-ERGONOMICS maps all eleven areas.
+  Review source checks/reproductions, accounting, scope validation and restart receipt are under
+  `.de67/task-logs/review-owner-f5d913c63d0e/`. Synthetic findings are not native proof or savings.
+- Preserve all 64 durable acceptance rows and all old slice/claim identities. Three new claims
+  carry new work; expanded open harness contracts receive no inherited whole-claim acceptance.
+  R-HARNESS-PERFORMANCE's stale red display is reconciled to existing acceptance only.
+- Resume the returned `R-HARNESS-EXECUTION-exploration-003` frontier through the coordinator's
+  ordinary ingress/continuation, retaining useful fixture repairs and its exact result. Source
+  capture/OCR is not a prerequisite for a nonvisual semantic claim; actual startup readiness is.
+  Sol sequences that live-decision proof with the new session/evidence/premise/continuation work.
+  No new game, worker or coordinator was launched by this mutator.

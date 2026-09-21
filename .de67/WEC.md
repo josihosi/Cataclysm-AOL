@@ -1,6 +1,16 @@
 # WEC — Affordable playtests, reliable harness and safer subsystem changes
 
-## Current owner addition — performance and travelling hostiles, 2026-09-20
+## Current owner addition — full-stack harness, 2026-09-21
+
+Josef explicitly requires owner trigger `HARNESS-FULL-STACK-20260921` to become a concrete FS
+thaw/refreeze and coordinator delivery handoff now. The mutator owns specification/context and
+exclusive validation; Sol and workers own implementation and hands-on native playtesting. This is
+not an audit-only outcome and not authority for an unrelated rewrite. The full attached brief,
+prior audit and provenance are preserved in `.de67/task-logs/owner-harness-forcing-mutation-20260921/`.
+The canonical FS maps every area under H-ERGONOMICS and retains the complete required deliverable.
+Earlier phase-only holds below are historical; the marked current owner contract governs execution.
+
+## Historical owner addition — performance and travelling hostiles, 2026-09-20
 
 Josef now requests a combined discussion/specification pass directly into the existing `.de67/FS.md`.
 Use the Phase-2 authoring surface, resolving routine design choices within this brief; do not create
@@ -68,7 +78,7 @@ campaign, implementation and de67 3 remain paused until a later explicit start. 
 unrelated optional experiments, historical failures or accepted claims merely because this refreeze
 touches shared documentation. No product source/tests are to be changed during this pass.
 
-## Current owner reconciliation — 2026-09-20
+## Historical owner reconciliation — 2026-09-20
 
 Josef invoked “ok de67 2 please. merge with existing FS”. The contribution appended
 below is additive. Prior gameplay intent, accepted evidence and unfinished regression
@@ -620,6 +630,9 @@ not a larger test count or smaller files for their own sake.
   restart workers, change live tests, or authorize unrelated gameplay work.
 
 <!-- DE67:OWNER-CONTRACT:BEGIN -->
+Current owner stop, 2026-09-21: Josef instructed “stop the work for now” to become directly involved in harness design. Autonomous implementation, worker dispatch, native playtesting and coordinator/mutation restarts are paused. This supersedes the historical start authorization below. Preserve all edits, evidence and unfinished work. Do not resume until Josef explicitly authorizes it; discussion and requested read-only inspection remain available.
+
+Historical start authorization (superseded by the current stop):
 Josef explicitly instructed on 2026-09-20: “ok then start de67 3”. The prior Phase-2 work is
 complete at dev@d953261730. This is the new explicit owner start required by every earlier hold:
 implementation, worker dispatch, policy-governed review/restart and native gameplay testing may
@@ -632,6 +645,37 @@ dependencies. Remove obsolete harness machinery as specified; Git is its archive
 the single specification, with no DFS.md pointer. Work on dev in the main C-AOL checkout and
 checkpoint to origin/dev through the existing guarded hook. The temporary dev worktree is already
 removed; preserve the older archive and unrelated .agents/skills/typesafe-ai/ and skills-lock.json.
+
+Retained applied execution correction, 2026-09-20: the receipt-bound collector now spans ordinary
+wait-owner changes without replay or using Pause merely because it is offered. Receipt
+`a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc` preserves two migrated
+consumers, 139 focused tests and normal source-bound waits. Longer native durations are available;
+there is no demonstrated 20-second cap. Real interruption/decision proof remains open. Preserve the
+full evidence and use the current FS for the shared lifecycle contract; do not replay this settled
+normal-wait work merely for confidence.
+
+Pending delivery correction from owner trigger HARNESS-FULL-STACK-20260921: deliver the refrozen
+full-stack S-HARNESS/H-ERGONOMICS contract, not just the existing wait patch. Keep the LLM in control
+of gameplay; automate transport, collection, bookkeeping and evidence addressing. Prioritize real
+scenario prerequisites, exact related evidence, decision-complete replies and usable same-operation
+continuation. Preserve the known normal-wait/performance/test proof and the returned task 003 fixture
+repairs; native interruption remains unproved. The successor coordinator ingests that returned
+result and resumes its open boundary, then sequences supported repairs and varied difficult native
+journeys against the FS. A presentation-only capture must not block an otherwise valid nonvisual
+semantic test; actual readiness, binding and ownership remain mandatory.
+
+Use current source, retained counterexamples and compact task-specific briefs. Carry working build
+commands and exact evidence handles, reuse useful worker knowledge, and help workers diagnose a
+stalled attempt without competing input. Document changed setup and new experiments, preserve
+negative/inconclusive results, and do not force a pass or stop merely because one strategy failed.
+The 100% reliability ambition has an explicit bounded coverage denominator; the 50% token target
+needs equivalent completed outcomes with fresh/cached/output and all helper/retry/review costs
+visible. Neither is a license to reduce gameplay choices or proof. Written changes are not evidence
+of receipt/use: Sol records acknowledgment, actual use or the exact justified deferral in ordinary
+continuation/results. Owner conversation remains the mutator's context; historical artifacts are
+retrievable evidence, not new owner instructions. Installed method tooling follows its existing
+candidate/exclusive-promotion route. No additional permission or coordinator launch is needed from
+this owner chat; the external supervisor alone launches the requested post-review successor.
 <!-- DE67:OWNER-CONTRACT:END -->
 
 # WEC
