@@ -1,5 +1,4 @@
 #include "bandit_live_world.h"
-#include "plain_waiting_transport.h"
 
 #include <algorithm>
 #include <array>
@@ -19366,9 +19365,6 @@ std::string render_local_gate_semantic_event( const site_record &site,
 void record_local_gate_semantic_event( const site_record &site,
         const local_gate_input &input, const local_gate_decision &decision )
 {
-    if( plain_waiting_active() ) {
-        return;
-    }
     const std::string run_id = openclaw_harness_bound_semantic_run_id();
     const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
     if( run_id.empty() || path == nullptr || path[0] == '\0' ) {

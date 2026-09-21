@@ -1,5 +1,16 @@
 # Active owner-guided waiting redesign, 2026-09-21
 
+Owner correction: change input/output only, preserving existing functions. The alternate
+WaitingPlayer, snapshot transport and special lifecycle path have been removed. Short syntax
+now enters the existing play_cli parser/dispatch; plain rendering uses the existing game
+projection. The earlier pause fix and 10 ms/100-turn measurement remain. Recovery validation:
+48 CLI tests, three additional focused cases, and 26 performance tests pass under WSL.
+Luna's fresh normal Mac run observed World, completed wait 5m from minute 8159 to 8164,
+observed World again and quit with confirmed owned-process exit. The final unedited transcript
+is `build_logs/waiting-recovery-final-transcript.txt` (10,428 characters / 10,614 UTF-8 bytes).
+The prior failing wrapper transcript is not acceptance evidence. Existing functional evidence
+storage remains intact; do not delete transport dependencies to reduce display/log text.
+
 The owner now requests a complete waiting slice with session-bound short commands, plain-text
 decision replies and minimal plain-text playtest history, followed by a Luna native Mac playtest
 and review of the full resulting transcript before generalizing. Replace redundant record
@@ -28,19 +39,6 @@ copies receipt data to current status. Native summaries consume `semantic.steps.
 `transition.events.jsonl`. Replace waiting-history dependencies with current operational state
 and useful observed transcript events; audit actual generated files in the native proof.
 The broader campaign remains held. The previous two-fix checkpoint below remains valid history.
-
-Waiting slice checkpoint: short commands and plain transcript are implemented on dev. Native
-Mac proof at `f5e0652e45a` completed a five-minute wait, stop/NO/resume, stop/YES and clean
-shutdown. A natural 100-turn window crossed the 10 ms threshold at 14.582 ms/turn, emitted the
-coordinator instruction, then recovered. This is real measurement, not injected latency.
-The complete latest worker transcript is `build_logs/waiting-redesign-transcript.txt` on Windows
-(10,508 characters / 10,527 UTF-8 bytes). Earlier observed old-message replay through menus and
-alarm-clock chooser failure were fixed and retested. Native changed objects compile on Mac;
-65 semantic tests passed, with focused plain-command tests and clean structured reviews.
-Remaining: game-triggered interruption proof and removal/consolidation of startup/terminal
-receipt archives. Current waiting protocol replaces history with current state, but the launch
-and shutdown layers still retain bulky diagnostic reports. Repeated new NPC activity messages
-remain visible for Josef's judgment; do not silently classify them as irrelevant game evidence.
 
 # Owner-guided harness repair checkpoint, 2026-09-21
 

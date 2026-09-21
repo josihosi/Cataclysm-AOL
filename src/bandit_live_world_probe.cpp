@@ -1,5 +1,4 @@
 #include "bandit_live_world_probe.h"
-#include "plain_waiting_transport.h"
 
 #include <algorithm>
 #include <array>
@@ -397,9 +396,6 @@ bool initialize_transition_stream( const std::string &path, const std::string &r
 
 bool live_transition_stream_enabled()
 {
-    if( plain_waiting_active() ) {
-        return false;
-    }
     const char *const path_value = std::getenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH" );
     const char *const run_id_value = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     if( path_value == nullptr || path_value[0] == '\0' || run_id_value == nullptr ||

@@ -1,5 +1,4 @@
 #include "debug.h"
-#include "plain_waiting_transport.h"
 
 #include <cctype>
 // IWYU pragma: no_include <sys/errno.h>
@@ -1548,7 +1547,7 @@ std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
 
     // Error are always logged, they are important,
     // Messages from D_MAIN come from debugmsg and are equally important.
-    if( debug_log_enabled( lev, cl ) && !( lev == D_INFO && cl != D_MAIN && plain_waiting_active() ) ) {
+    if( debug_log_enabled( lev, cl ) ) {
         std::ostream &out = DebugFile::instance().get_file();
 
         output_repetitions( out );

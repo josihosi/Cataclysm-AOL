@@ -5,6 +5,121 @@ import json
 from cockpit_evidence import action_catalog, compact, decode, gameplay_fact
 
 
+def plain_player_output(result):
+    """Render the existing player projection; never replace game facts with advice."""
+    import shlex
+    import re
+
+    lines = []
+
+    view = bounded_player_output(result)
+    terminal = view.get("result", {})
+    if isinstance(terminal, dict) and terminal.get("state") == "finished":
+        cleanup = terminal.get("cleanup", {}).get("status", "unknown")
+        lines.append("Playtest ended." if cleanup in {"terminated", "already_exited", "killed",
+                     "terminated_during_kill_escalation"} else "Playtest ended. Cleanup: " + cleanup)
+        view = {key: item for key, item in view.items() if key not in {"result", "next"}}
+
+    def write(value, label=""):
+        if value is None or value == [] or value == {}:
+            return
+        if isinstance(value, dict):
+            if value.get("omitted") is True:
+                size = value.get("json_bytes", value.get("evidence", {}).get("json_bytes"))
+                preview = value.get("preview", value.get("named_effects"))
+                if preview:
+                    write(preview, label)
+                detail = str(size) + " bytes" if size is not None else "details"
+                command = " → play inspect " + value["selector"] if value.get("selector") else ""
+                lines.append(label + ": " + detail + (" total; partial view" if preview else " omitted") + command)
+                return
+            if "text" in value and "time" in value:
+                lines.append(str(value["time"]) + ": " + re.sub(r"</?color[^>]*>", "", str(value["text"])))
+                return
+            if "owner" in value and "facts_changed" in value:
+                write(value["facts_changed"])
+                value = {key: item for key, item in value.items() if key != "facts_changed"}
+            if "id" in value and ("enabled" in value or label.startswith("actions")):
+                command = "play act " + shlex.quote(str(value["id"]))
+                if value.get("stable_id"):
+                    command += " --target " + shlex.quote(str(value["stable_id"]))
+                answer = str(value.get("label", "")).strip().lower()
+                if value["id"] == "prompt.choose" and answer in {"yes", "no", "ignore"}:
+                    command = "play " + answer
+                elif value["id"] == "activity.pause":
+                    command = "play stop"
+                lines.append(str(value.get("label", value["id"])) +
+                             (" → " + command if value.get("enabled", True) else " (unavailable)"))
+                return
+            for key, item in value.items():
+                if key == "game_turn" and "game_minutes" in value:
+                    continue
+                if key == "game_minutes" and isinstance(item, dict) and "after" in item:
+                    lines.append("Game time: " + str(item["after"]) + " minutes.")
+                    continue
+                if key in {"view", "request_id", "navigation", "breadcrumbs", "source_index",
+                           "current_input_actions", "current_input_owner",
+                           "outcome_unknown_on_reconnect", "interruption_policy", "observed_turn",
+                           "selector", "cursor", "retained_history_count", "new_event_count",
+                           "note", "detail"} or (key == "ok" and item is True):
+                    continue
+                if key == "chain" and isinstance(item, dict):
+                    start, end = item.get("start_game_minutes"), item.get("terminal_game_minutes")
+                    if isinstance(start, (int, float)) and isinstance(end, (int, float)):
+                        lines.append(f"Waited {end - start:g} game minutes. " +
+                                     str(item.get("stop_reason", "")).replace("_", " ") + ".")
+                    item = {field: content for field, content in item.items() if field not in {
+                        "start_game_minutes", "target_game_minutes", "terminal_game_minutes",
+                        "stop_reason", "derived_bound", "native_action_count", "model_round_trips",
+                        "tool_round_trips", "safety_frame_count", "danger_handling"}
+                        and not (field == "target_overshoot_game_minutes" and content == 0)}
+                if key == "owner" and item in ("prompt", "menu", "activity_wait", "wait_activity"):
+                    continue
+                if key == "accepted" and item is True:
+                    continue
+                if key == "facts_removed" and isinstance(item, list):
+                    item = [field for field in item if field not in {
+                        "activity_generation", "activity_type", "native_action", "native_owner"}]
+                if key == "operation" and isinstance(item, dict):
+                    progress = item.get("completed_progress_game_minutes")
+                    if progress is not None:
+                        lines.append("Elapsed: " + str(progress) + " game minutes.")
+                    item = {field: content for field, content in item.items() if field not in {
+                        "kind", "start_game_minutes", "requested_duration_game_minutes",
+                        "requested_target_game_minutes", "completed_progress_game_minutes"}}
+                if key == "state" and item in ("collected", "accepted"):
+                    continue
+                if key == "performance" and item == {"status": "retained_by_public_collect"}:
+                    continue
+                if key == "next" and item == "act, look, inspect, or journal":
+                    continue
+                if key == "title" and item in ("YESNO", ""):
+                    continue
+                if key in {"current_input", "facts_changed", "outcome", "response", "new_events", "value"}:
+                    write(item)
+                else:
+                    write(item, (label + "." if label else "") + key.replace("_", " "))
+        elif isinstance(value, list):
+            if all(isinstance(item, (str, int, float, bool)) for item in value):
+                lines.append(label + ": " + ", ".join(str(item) for item in value))
+                return
+            for item in value:
+                write(item, label)
+        else:
+            if value == "":
+                return
+            text = str(value) if not isinstance(value, bool) else ("yes" if value else "no")
+            text = re.sub(r"</?color[^>]*>", "", text)
+            if label == "text":
+                text = re.sub(r"</?color[^>]*>", "", text)
+                text = text.removeprefix("Confirm: ").replace(" (Case Sensitive)", "")
+                label = ""
+            lines.append((label + ": " if label else "") + text)
+
+    write(view)
+    return "\n".join(lines) or "No changes."
+
+
 def player_output(result):
     """Present decisions, keeping transport receipts in the retained request."""
     def clean(value):

@@ -69,7 +69,6 @@
 #include "item_wakeup.h"
 #include "item.h"
 #include "json.h"
-#include "plain_waiting_transport.h"
 #include "magic_enchantment.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -215,9 +214,6 @@ static void openclaw_harness_write_turn_trace( const char *event, const char *st
         const char *phase, const std::string &turn_id, int game_turn, int game_minutes,
         double simulation_seconds )
 {
-    if( plain_waiting_active() ) {
-        return;
-    }
     if( !openclaw_harness_turn_trace_enabled() ) {
         return;
     }
@@ -261,9 +257,6 @@ class openclaw_harness_turn_trace
             game_minutes_( game_minutes ), started_( std::chrono::steady_clock::now() ) {
             if( enabled_ ) {
                 static std::uint64_t next_turn_id = 0;
-                const player_activity &activity = get_avatar().activity;
-                waiting_generation_ = activity.id().str().compare( 0, 8, "ACT_WAIT" ) == 0 ?
-                                      activity.input_generation() : 0;
                 turn_id_ = std::to_string( ++next_turn_id );
                 openclaw_harness_write_turn_trace( "turn", "start", "simulation", turn_id_, game_turn_, game_minutes_, 0.0 );
             }
@@ -276,12 +269,6 @@ class openclaw_harness_turn_trace
                 const double open_outside_simulation = outside_simulation_started_ ?
                     std::chrono::duration_cast<std::chrono::duration<double>>(
                         std::chrono::steady_clock::now() - *outside_simulation_started_ ).count() : 0.0;
-                if( plain_waiting_active() ) {
-                    plain_waiting_record_turn( waiting_generation_,
-                                               std::max( 0.0, elapsed - outside_simulation_seconds_ - open_outside_simulation ),
-                                               to_turns<int>( calendar::turn - calendar::turn_zero ),
-                                               to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) );
-                }
                 openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
                         to_turns<int>( calendar::turn - calendar::turn_zero ),
                         to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
@@ -317,7 +304,6 @@ class openclaw_harness_turn_trace
 
     private:
         bool enabled_ = false;
-        size_t waiting_generation_ = 0;
         int game_turn_ = 0;
         int game_minutes_ = 0;
         std::string turn_id_;

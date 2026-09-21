@@ -12,6 +12,7 @@ from contextlib import contextmanager
 import json
 import math
 import os
+import re
 from pathlib import Path
 import sys
 import time
@@ -20,7 +21,7 @@ import uuid
 
 from cockpit_archive import ArchiveSequence, json_chunks
 from evidence_display import emit, retain, recover, PresentationParser
-from gameplay_display import display, bounded_player_output
+from gameplay_display import display, bounded_player_output, plain_player_output
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -98,9 +99,8 @@ def session_lock(path: Path):
 
 
 class PlayerClient:
-    def __init__(self, session: Path, *, plain_waiting: bool = False):
+    def __init__(self, session: Path):
         self.session = session.resolve()
-        self.plain_waiting = plain_waiting
         manifest = json.loads((self.session / "bridge.manifest.json").read_text())
         self.binding = str(manifest.get("binding_id", ""))
         if not self.binding:
@@ -571,26 +571,11 @@ class PlayerClient:
             self.state["finished"] = True
             self.state["finished_generation"] = result["receipt"].get("session_generation", 0)
             self.state.pop("observation_id", None)
-        if self.plain_waiting:
-            # This is replaceable input state, not an archive of game frames.
-            self.state["plain_current"] = {
-                "game_minutes": observation.get("game_minutes"),
-                "game_turn": observation.get("game_turn"),
-                "surface": {"kind": surface.get("kind"), "actions": surface.get("actions", []),
-                            "facts": {key: value for key, value in surface.get("facts", {}).items()
-                                      if key in {"text", "title", "messages", "activity_type"}}},
-            } if reusable else {}
-            view, display_state = {"ok": response.get("ok", False)}, None
-            for key in ("error", "reason", "failure"):
-                if key in response:
-                    view[key] = response[key]
-            self.state.pop("display_sha256", None)
-        else:
-            try:
-                previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
-            except (OSError, ValueError):
-                previous = None  # A lost presentation cache never strands native grants.
-            view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
+        try:
+            previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
+        except (OSError, ValueError):
+            previous = None  # A lost presentation cache never strands native grants.
+        view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
         self.state["display_generation"] = receipt_generation
         if display_state is not None:
             self.state["display_sha256"] = retain(display_state)["sha256"]
@@ -631,11 +616,6 @@ class PlayerClient:
                           error="explicit_finish_or_quit_has_no_terminal_receipt",
                           next="quit --reason REASON or inspect retained evidence" if self.state.get("sealed_terminal") else "look",
                           note="The reply did not establish session termination. The client remains available and does not replay the request.")
-        if self.plain_waiting:
-            output = {key: value for key, value in output.items() if key in {
-                "ok", "state", "response", "error", "request_id"}}
-            output["turn_assessment"] = {key: assessment[key] for key in
-                                        ("status", "reason", "alarms", "recoveries") if key in assessment}
         self.state["last_collected_result"] = _persistent_result_cache(output)
         self.save()
         return output
@@ -830,14 +810,38 @@ class PlayerClient:
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    entered_argv = list(argv)
+    # Short spelling only: feed the original parser and dispatch unchanged.
+    if "wait" in argv:
+        index = argv.index("wait")
+        if index + 1 < len(argv) and re.fullmatch(r"[1-9][0-9]*[mh]", argv[index + 1]):
+            duration = argv[index + 1]
+            minutes = int(duration[:-1]) * (60 if duration.endswith("h") else 1)
+            mode = "ignore"
+            end = index + 2
+            if end < len(argv) and argv[end] in {"ignore", "safe", "stop"}:
+                mode = argv[end]
+                end += 1
+            argv[index + 1:end] = [
+                "--target-delta-game-minutes", str(minutes), "--duration-action", "wait." + duration,
+                "--bound-maximum", str(minutes), "--bound-basis", "game_mechanic",
+                "--bound-source", "Player requested " + duration, "--danger-handling",
+                {"ignore": "ignore_danger_and_interruptions", "safe": "handle_classified_non_dangerous",
+                 "stop": "stop_on_interruption"}[mode]]
     parser = PresentationParser(description=__doc__)
     parser.add_argument("--diagnostics", action="store_true",
                         help="Show retained transport and performance diagnostics")
-    parser.add_argument("--session", type=Path, required=True, help="Existing registry-launched session directory")
+    parser.add_argument("--session", type=Path, default=os.environ.get("CAOL_PLAY_SESSION"),
+                        required=not os.environ.get("CAOL_PLAY_SESSION"),
+                        help="Existing registry-launched session directory; defaults to CAOL_PLAY_SESSION")
     parser.add_argument("--wait-seconds", type=float, default=1,
                         help="Wait for this response, then return pending; never resubmit")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("look", help="Observe the current input owner and its legal actions")
+    for answer in ("yes", "no", "ignore"):
+        commands.add_parser(answer, help="Choose the matching advertised prompt option")
+    commands.add_parser("stop", help="Use the existing activity.pause action")
     collect = commands.add_parser("collect", help="Collect an outstanding or already-collected response without replaying input")
     collect.add_argument("--request-id", help="Exact latest retained request; older results stay read-only")
     resume = commands.add_parser("resume", help="Rebuild one genuinely outstanding request; never resubmits")
@@ -845,7 +849,7 @@ def main(argv=None):
     cancel = commands.add_parser("cancel", help="Request cooperative cancellation of the outstanding request")
     cancel.add_argument("--reason", default="player_cancelled")
     quit_command = commands.add_parser("quit", help="Explicitly end the owned run without a gameplay claim")
-    quit_command.add_argument("--reason", required=True)
+    quit_command.add_argument("--reason", default="player requested quit")
     messages = commands.add_parser("messages", help="Read native messages from the displayed observation; latest matching page by default")
     messages.add_argument("--contains")
     messages.add_argument("--offset", type=int)
@@ -966,6 +970,16 @@ def main(argv=None):
                             raise ValueError("parameters_need_unique_KEY=VALUE")
                         params[key] = value
                     result = client.act(args.action, args.target, params, args.wait_seconds)
+                elif args.command == "stop":
+                    result = client.act("activity.pause", None, {}, args.wait_seconds)
+                elif args.command in {"yes", "no", "ignore"}:
+                    snapshot = recover(client.state["display_sha256"])
+                    choices = [action for action in snapshot.get("current", {}).get("actions", [])
+                               if action.get("id") == "prompt.choose" and action.get("enabled", True)
+                               and str(action.get("label", "")).strip().casefold() == args.command]
+                    if len(choices) != 1:
+                        raise ValueError("The current prompt does not offer " + args.command.upper())
+                    result = client.act("prompt.choose", choices[0].get("stable_id"), {}, args.wait_seconds)
                 elif args.command == "wait":
                     result = client.wait(target_game_minutes=args.target_game_minutes,
                                          target_delta_game_minutes=args.target_delta_game_minutes,
@@ -992,10 +1006,15 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit"}:
+    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit", "stop", "yes", "no", "ignore"}:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
-        print(json.dumps(bounded_player_output(result), ensure_ascii=False, separators=(",", ":")))
+        text = plain_player_output(result)
+        print(text)
+        if args.session.is_dir():
+            entered = entered_argv[entered_argv.index(args.command):]
+            with (args.session / "playtest.txt").open("a", encoding="utf-8") as transcript:
+                transcript.write("> play " + " ".join(entered) + "\n" + text + "\n\n")
     else:
         emit(result)
     return 0 if result.get("ok") else 1

@@ -1,36 +1,12 @@
 # Operate an existing live session
 
-## Waiting redesign in progress
-
-The short waiting interface is `tools/openclaw_harness/play` (`play.cmd` on Windows).
-Set `CAOL_PLAIN_WAITING=1` in the launcher environment before creating a fresh registry session;
-this selects the plain record path before the controller starts. Existing diagnostic sessions
-cannot be converted by pointing `play` at them.
-Bind `CAOL_PLAY_SESSION` to the exact launched session directory and add
-`tools/openclaw_harness` to that worker's PATH. Use an absolute directory for both; each worker
-keeps its own environment, with no shared current-session pointer. The selected Python must be
-the same supported interpreter used by the harness (on the Mac, put Homebrew first in PATH).
-
-Run `play look`, then `play wait 5m` (or an advertised duration such as `1h`). `play stop` asks
-the native activity to pause. Answer the displayed confirmation with `play yes` or `play no`.
-`play wait` calls the existing `game.wait` endpoint, defaulting to its dangerous-ignore mode.
-Append `safe` or `stop` to select the existing harmless-only or stop-on-interruption mode.
-Other prompt/menu choices are printed as `play choose NUMBER`; `play ignore` selects IGNORE.
-The short interface changes no interruption policy. Existing-handler failures remain visible.
-For a notice that advertises acknowledgement or continuation, use the displayed `play continue`.
-`play cancel` selects the current prompt's advertised Cancel action; it does not cancel a pending command.
-`play look` also collects an outstanding command without resending it. `play quit` requests
-session termination; it does not by itself establish native save/exit proof.
-
-Replies and `SESSION/playtest.txt` are plain text. The waiting client keeps current input state
-instead of archived display snapshots; the bridge retains only its latest compact response for
-recovery. The plain controller skips the legacy evidence database and receipt-history exports.
-Native waiting events replace current protocol state rather than accumulating a trace. A plain
-session writes `playtest-summary.txt` at shutdown and does not ingest a formal registry feature
-certification from these reduced records. Native normal waiting, YES/NO and performance alarms
-have been exercised; game-triggered interruption and the final disk audit remain pending.
-
-## Existing general player interface
+For short commands, put `tools/openclaw_harness` on PATH and set `CAOL_PLAY_SESSION`
+to the registry-launched session directory. `play` invokes the existing player CLI:
+`play look`, `play wait 5m`, `play collect`, `play stop`, `play yes`, `play no`, `play quit`.
+Short wait defaults to the existing ignore-danger-and-interruptions mode; add `safe` or
+`stop` to select the other existing modes. Ordinary replies and `playtest.txt` are plain
+text. `look` observes the game; `collect` retrieves a pending result. No special launch mode
+or alternate transport is required. Existing long arguments remain accepted.
 
 Native gameplay here means dispatch through the game's own semantic owners. Run the player CLI
 in the game worktree, locally or over SSH; it does not require a desktop-control connection.

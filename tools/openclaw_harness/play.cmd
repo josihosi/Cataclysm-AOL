@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0plain_waiting.py" %*
+python "%~dp0play_cli.py" %*

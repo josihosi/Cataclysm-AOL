@@ -308,8 +308,6 @@ def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
         if value != {"semantic_state": {"required": True}}:
             raise _error(path, f"{field} must require semantic_state for the improved R-007 route")
         return
-    if value == {"semantic_state": {"required": True}}:
-        return
     if not isinstance(value, dict) or set(value) != {"screen_text_contains"}:
         raise _error(path, f"{field} must contain exactly screen_text_contains")
     _require_string_list(value.get("screen_text_contains"), path=path,

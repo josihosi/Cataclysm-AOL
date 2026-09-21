@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "json.h"
-#include "plain_waiting_transport.h"
 
 namespace
 {
@@ -230,9 +229,6 @@ bool semantic_surface_manager::poll_request_transport()
     if( static_cast<std::size_t>( end ) < request_transport_offset_ ) {
         request_transport_offset_ = 0;
     }
-    if( plain_waiting_active() ) {
-        request_transport_offset_ = 0;
-    }
     stream.seekg( static_cast<std::streamoff>( request_transport_offset_ ) );
 
     bool received = false;
@@ -252,12 +248,6 @@ bool semantic_surface_manager::poll_request_transport()
             request.surface_id = record.get_string( "surface_id", "" );
             request.frame_id = record.get_string( "frame_id", "" );
             request.request_id = record.get_string( "request_id", "" );
-            if( plain_waiting_active() ) {
-                if( request.request_id == plain_transport_request_id_ ) {
-                    continue;
-                }
-                plain_transport_request_id_ = request.request_id;
-            }
             request.action_id = record.get_string( "action_id", "" );
             if( record.has_string( "stable_id" ) ) {
                 request.stable_id = record.get_string( "stable_id" );

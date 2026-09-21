@@ -17,6 +17,60 @@ CLI = Path(__file__).with_name("play_cli.py")
 
 
 class PlayerCliTest(unittest.TestCase):
+    def test_short_wait_preserves_existing_request(self):
+        pending = self.cli("wait", "5m")
+        sent = next(row for row in self.requests() if row["request_id"] == pending["request_id"])
+        self.assertEqual(sent["request"], {"action": "game.wait", "wait": {
+            "enabled": True, "recipe": ["world.wait", "wait.5m"],
+            "target_delta_game_minutes": 5.0, "danger_handling": "ignore_danger_and_interruptions",
+            "bound": {"basis": "game_mechanic", "source": "Player requested 5m",
+                      "unit": "game_minutes", "maximum": 5.0, "progress_required": True}}})
+
+    def test_plain_observation_preserves_facts_and_action(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "response": {"current_input": {
+            "owner": "world", "actions": [{"id": "world.wait", "enabled": True}],
+            "facts_changed": {"terrain": "forest", "weather": "rain"}}}})
+        self.assertIn("forest", text)
+        self.assertIn("rain", text)
+        self.assertIn("play act world.wait", text)
+        self.assertNotIn("Start waiting", text)
+        self.assertNotIn("{", text)
+
+    def test_short_yes_uses_existing_advertised_target(self):
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "prompt-frame", "run_id": "run-a", "surface": {
+                "kind": "prompt", "facts": {"text": "Stop waiting?"},
+                "actions": [{"id": "prompt.choose", "stable_id": "prompt-option:1",
+                             "label": "YES", "enabled": True}]}}})
+        self.cli("collect")
+        chosen = self.cli("yes")
+        sent = next(row for row in self.requests() if row["request_id"] == chosen["request_id"])
+        self.assertEqual(sent["request"]["action"], "game.act")
+        self.assertEqual(sent["request"]["action_id"], "prompt.choose")
+        self.assertEqual(sent["request"]["stable_id"], "prompt-option:1")
+
+    def test_plain_wait_keeps_progress_messages_and_alarm(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "response": {"outcome": {"chain": {
+            "start_game_minutes": 10, "terminal_game_minutes": 15, "stop_reason": "target_reached",
+            "model_round_trips": 1}}, "facts_changed": {"messages": {
+                "new_events": [{"value": {"time": "12:05", "text": "You finish waiting."}}]}}},
+            "turn_assessment": {"alarms": [{"kind": "waiting_slow", "mean_seconds": .02,
+                "message": "Tell the coordinator: waiting performance needs attention."}]}})
+        self.assertIn("Waited 5 game minutes. target reached.", text)
+        self.assertIn("12:05: You finish waiting.", text)
+        self.assertIn("Tell the coordinator", text)
+        self.assertNotIn("round trips", text)
+
+    def test_plain_quit_keeps_cleanup_failure_visible(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "result": {"state": "finished",
+            "cleanup": {"status": "failed", "pid": 1234}}})
+        self.assertIn("Cleanup: failed", text)
+        self.assertNotIn("1234", text)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

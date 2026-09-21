@@ -993,32 +993,6 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(current["paired_raw_frame_id"], "raw-world")
         self.assertEqual(current["keep_watch_safety"]["classification"], "clear")
 
-    def test_plain_snapshot_completion_requires_fresh_raw_world(self) -> None:
-        descriptor = {
-            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
-            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
-            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
-            "_source_offset": 10, "_source_end": 11,
-        }
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            trace = root / "semantic.native.events.jsonl"
-            Path(str(trace) + ".plain").touch()
-            for raw_offset, state, completed in ((9, "world", False),
-                                                  (11, "wait_activity", False),
-                                                  (11, "world", True)):
-                with self.subTest(raw_offset=raw_offset, state=state):
-                    raw = self.frame("raw-next", state, {}, 101) | {
-                        "_source_offset": raw_offset, "_source_end": raw_offset + 1}
-                    events = sorted((descriptor, raw), key=lambda event: event["_source_offset"])
-                    trace.write_text("".join("openclaw_harness_semantic_step: " + json.dumps(event) + "\n"
-                                             for event in events), encoding="utf-8")
-                    with patch.object(startup_harness, "semantic_step_source_trace", return_value=trace):
-                        current = current_semantic_step_frame(
-                            profile="ignored", run_dir=root, run_id=self.run_id, start_offset=999999)
-                    self.assertEqual(startup_harness.is_native_wait_completion_successor(
-                        current, activity_frame_id="raw-wait"), completed)
-
     def test_refresh_trace_bounds_parsed_events_while_preserving_recent_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -611,8 +611,6 @@ def append_semantic_surface_transition_event(
     }
     if not accepted:
         event["reason"] = str(receipt.get("rejection_reason", "native_rejected"))
-    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
-        return event
     with path.open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
         stream.flush()
@@ -3302,11 +3300,6 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 
 
 def write_json(path: Path, data: Dict[str, Any]) -> None:
-    if os.environ.get("CAOL_PLAIN_WAITING") == "1" and path.name.endswith(".cockpit_live_session.json"):
-        # macOS startup can recover this binding envelope before stdout becomes
-        # readable. Keep current ownership, without the full instruction packet.
-        data = {key: data[key] for key in ("schema", "entry_mode", "run_id", "binding_id",
-                                         "bridge_binding_id", "bootstrap_only") if key in data}
     ensure_dir(path.parent)
     if find_archive(data) is not None:
         write_json_stream(path, data, exclusive=False)
@@ -4910,8 +4903,6 @@ def refresh_semantic_step_trace(
     """Copy only the current run's bounded native trace into its owned artifact."""
     run_dir = Path(run_dir).resolve()
     source = semantic_step_source_trace(profile, run_dir).resolve()
-    if Path(str(source) + ".plain").exists():
-        return source, source
     size = source.stat().st_size
     if start_offset < 0 or start_offset > size:
         # The game can truncate debug.log after the startup readiness sample,
@@ -5113,8 +5104,6 @@ def refresh_semantic_step_trace(
 
 def semantic_step_effective_source_offset(source: Path, start_offset: int) -> int:
     """Use the current native log generation's coordinate system."""
-    if Path(str(source) + ".plain").exists():
-        return 0
     try:
         size = source.stat().st_size
     except OSError:
@@ -5193,27 +5182,6 @@ def current_semantic_step_frame(
     events, status = read_semantic_step_trace(owned, Path(run_dir), run_id)
     if status != "ok":
         raise ValueError(f"semantic step trace is unavailable: {status}")
-    if Path(str(source) + ".plain").exists():
-        native = latest_semantic_step_frame(events)
-        if native is None:
-            raise ValueError("the current run has not emitted a semantic frame")
-        raw = next((event for event in reversed(events) if event.get("event") == "frame"), None)
-        if (native.get("kind") == "world" and raw is not None and raw.get("run_id") == run_id
-                and raw.get("state") == "world"
-                and raw.get("_event_offset", -1) > native.get("_event_offset", -1)):
-            # The latest raw World follows this current owner. An older World
-            # must never make an active wait look completed.
-            native.update(paired_raw_frame_id=raw["frame_id"], paired_raw_state="world",
-                          paired_raw_event_offset=raw["_event_offset"],
-                          game_minutes=raw.get("game_minutes"), observed_turn=raw.get("observed_turn"),
-                          observation=dict(raw.get("observation", {})),
-                          keep_watch_safety=dict(raw.get("keep_watch_safety", {})))
-        metrics_path = Path(str(source) + ".performance")
-        if metrics_path.exists():
-            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            if metrics.get("run_id") == run_id and metrics.get("game_turn", -1) > native.get("game_turn", -1):
-                native.update(game_turn=metrics["game_turn"], game_minutes=metrics["game_minutes"])
-        return native
     for event in events:
         source_offset = event.get("_source_offset")
         event["_event_offset"] = (
@@ -5889,7 +5857,7 @@ def open_cockpit_game_service(
     archive = Archive(
         Path(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR") or run_dir) / "cockpit-evidence.sqlite",
         run_id=run_id, binding_id=binding_id,
-    ) if live_session and os.environ.get("CAOL_PLAIN_WAITING") != "1" else None
+    ) if live_session else None
     channel = CockpitRunChannel(
         read_frame, dispatch, archive=archive,
         read_evidence=read_evidence,
@@ -5912,7 +5880,6 @@ def open_cockpit_game_service(
         cancel_request=read_cancel_request if live_session else None,
     )
     service = CockpitService( run_channel=channel, allowed_live_operations=allowed_live_operations )
-    service.plain_native_trace = run_dir / "semantic.native.events.jsonl"
     service.live_channel = channel
     return service
 
@@ -6235,12 +6202,6 @@ def finalize_cockpit_live_session(
             },
         }
     payload = {**dict( report ), "cleanup": cleanup}
-    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
-        # Waiting proof lives in the plain command/result conversation. Keep
-        # only the current lifecycle result here, not another receipt archive.
-        payload = {key: value for key, value in payload.items() if key in {
-            "schema", "state", "run_id", "binding_id", "stop_reason",
-            "termination_requested", "cleanup"}}
     ensure_dir( final_path.parent )
     exported = write_json_stream(final_path, payload)
     transcript = payload.get("action_observation_sequence")
@@ -6256,10 +6217,6 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
     """Serve public live-session requests without a harness-owned time window."""
     finished = False
     archive = getattr(service.run_channel, "archive", None)
-    plain_waiting = os.environ.get("CAOL_PLAIN_WAITING") == "1"
-    if plain_waiting and getattr(service, "plain_native_trace", None) is not None:
-        from waiting_transport import activate_native_snapshot
-        activate_native_snapshot(service.plain_native_trace)
     memory_snapshot("registry_child", "session_ready", archive=archive)
     for line in input_stream:
         memory_snapshot("registry_child", "before_request_construction", archive=archive,
@@ -6273,12 +6230,7 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
                 "ok": False, "error": "request must be an object",
             }
         memory_snapshot("registry_child", "after_response_construction", archive=archive)
-        if plain_waiting:
-            from waiting_transport import compact_response
-            wire_result = compact_response(result)
-            service.run_channel.discard_waiting_history()
-        else:
-            wire_result = archive.wire(result) if archive is not None else result
+        wire_result = archive.wire(result) if archive is not None else result
         memory_snapshot("registry_child", "after_wire_projection", archive=archive)
         response_bytes = 0
         for chunk in json_chunks(wire_result):
@@ -6298,12 +6250,7 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
     if not finished:
         result = service.run_channel.close_unfinished()
         memory_snapshot("registry_child", "eof_after_response_construction", archive=archive)
-        if plain_waiting:
-            from waiting_transport import compact_response
-            wire_result = compact_response(result)
-            service.run_channel.discard_waiting_history()
-        else:
-            wire_result = archive.wire(result) if archive is not None else result
+        wire_result = archive.wire(result) if archive is not None else result
         response_bytes = 0
         for chunk in json_chunks(wire_result):
             output_stream.write(chunk)
@@ -6440,9 +6387,7 @@ def execute_semantic_act(
     # One dispatch can poll several times before its receipt and successor
     # arrive.  Keep its source cursor and correlation window local to this
     # transaction rather than replaying the run from its launch cursor.
-    transaction_cursor: Dict[str, int] = {"offset": (
-        0 if Path(str(run_dir / "semantic.native.events.jsonl") + ".plain").exists()
-        else trace_start_offset)}
+    transaction_cursor: Dict[str, int] = {"offset": trace_start_offset}
     transaction_history: Dict[str, Any] = {}
     transaction_events: deque[Dict[str, Any]] = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
 
@@ -6570,16 +6515,10 @@ def execute_semantic_act(
                     "surface_request": request, "native_receipt": None, "next_frame": None}
         request_path = run_dir / "semantic.requests.jsonl"
         try:
-            line = json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n"
-            if Path(str(run_dir / "semantic.native.events.jsonl") + ".plain").exists():
-                temporary = request_path.with_suffix(".tmp")
-                temporary.write_text(line, encoding="utf-8")
-                os.replace(temporary, request_path)
-            else:
-                with request_path.open("a", encoding="utf-8") as stream:
-                    stream.write(line)
-                    stream.flush()
-                    os.fsync(stream.fileno())
+            with request_path.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
             if os.name != "nt":
                 pipe_contract = semantic_wake_pipe_contract(run_dir, run_id)
                 if pipe_contract["status"] != "bound":
@@ -22452,8 +22391,6 @@ def write_semantic_wake_pipe(run_dir: Path, run_id: str) -> int:
 
 def append_semantic_wake_observation(run_dir: Path, record: Mapping[str, Any]) -> None:
     """Retain the source-bound wake delivery result."""
-    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
-        return
     path = run_dir / "semantic.wake.observation.jsonl"
     with path.open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(dict(record), ensure_ascii=False, separators=(",", ":"), default=str) + "\n")
@@ -39305,12 +39242,6 @@ def finalize_probe_report(
                         "reason": "report finalization could not authenticate the current owned process",
                     },
                 }
-    if run_dir is not None and os.environ.get("CAOL_PLAIN_WAITING") == "1":
-        from waiting_transport import finish_plain_waiting
-        finish_plain_waiting(run_dir, report, cleanup_complete=(
-            isinstance(report.get("cleanup"), Mapping) and
-            report["cleanup"].get("status") in CLEANUP_ACCEPTED_STATUSES))
-        return
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
@@ -39344,10 +39275,6 @@ def finalize_probe_report(
             "report_sha256": sha256_file(report_path)[0],
             "cleanup": report.get("cleanup", {}),
         })
-    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
-        # The worker already received its command result. This private child
-        # pipe is drained by the bridge, not a second playtest transcript.
-        return
     stdout_payload = compact_probe_report_for_stdout(
         report,
         run_dir=run_dir,

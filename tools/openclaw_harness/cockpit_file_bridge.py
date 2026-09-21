@@ -442,9 +442,6 @@ class FileBackedCockpitBridge:
         self.requests_dir.mkdir()
         self.responses_dir.mkdir()
         self.controls_dir.mkdir()
-        plain_waiting = os.environ.get("CAOL_PLAIN_WAITING") == "1"
-        if plain_waiting:
-            (self.session_dir / "plain-waiting").touch()
         os.mkfifo(self.input_path, 0o600)
         _atomic_json(self.session_dir / "bridge.manifest.json", {
             "schema": SCHEMA,
@@ -454,16 +451,10 @@ class FileBackedCockpitBridge:
             "input_channel": self.input_path.name,
             "request_directory": self.requests_dir.name,
             "response_directory": self.responses_dir.name,
-            "plain_waiting": plain_waiting,
         })
         self._write_status("starting")
 
     def _persist_response(self, request_id: str, request_bytes: bytes, response_bytes: bytes) -> dict[str, Any]:
-        plain_waiting = (self.session_dir / "plain-waiting").is_file()
-        if plain_waiting:
-            from waiting_transport import compact_response
-            response_bytes = json.dumps(compact_response(json.loads(response_bytes)),
-                                        ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         self._sequence += 1
         artifact = self.responses_dir / (request_id + ".json")
         if artifact.exists():
@@ -507,9 +498,6 @@ class FileBackedCockpitBridge:
                if self._active_session_descriptor else {}),
         )
         _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
-        if plain_waiting:
-            from waiting_transport import retire_collected_packets
-            retire_collected_packets(self.session_dir, request_id)
         return receipt
 
     def _read_complete_response(self) -> Any:
@@ -910,7 +898,7 @@ class FileBackedCockpitBridge:
         # signal.
         assert self._child.stdout is not None
         terminal_stdout = self._child.stdout.read()
-        if terminal_stdout and not (self.session_dir / "plain-waiting").exists():
+        if terminal_stdout:
             (self.session_dir / "terminal.stdout.log").write_text(
                 terminal_stdout, encoding="utf-8"
             )
