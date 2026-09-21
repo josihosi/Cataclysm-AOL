@@ -3828,6 +3828,15 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
         }
     }
     actions.push_back( { "inventory.cancel", "", _( "Cancel" ), true } );
+    // Layout can reorder inventory rows without changing any semantic choice.
+    // Keep the advertised UID controls stable across that first redraw.
+    std::stable_sort( actions.begin(), actions.end(), []( const semantic_action_descriptor & lhs,
+    const semantic_action_descriptor & rhs ) {
+        if( lhs.stable_id.empty() || rhs.stable_id.empty() ) {
+            return lhs.stable_id.empty() && !rhs.stable_id.empty();
+        }
+        return std::tie( lhs.stable_id, lhs.id ) < std::tie( rhs.stable_id, rhs.id );
+    } );
     return actions;
 }
 

@@ -115,7 +115,7 @@ def world_look(snapshot):
     people = take(lambda action: action.get("id") in
                   {"world.inspect_npc", "world.inspect_camp_npc", "world.basecamp_missions"})
     if people:
-        lines.extend(["", "PEOPLE"])
+        lines.extend(["", "PEOPLE", "Copy the target listed under the exact command; target formats differ."])
         for action_id in dict.fromkeys(action["id"] for action in people):
             offered = [action for action in people if action["id"] == action_id]
             lines.append(f"play act {action_id} --target <target>")
@@ -144,8 +144,18 @@ def _plain_text(value):
 
 def _plain_controls(actions):
     """Print every advertised choice once, sharing command syntax across targets."""
-    lines = []
+    lines = ["ALLOWED ACTIONS IN THIS VIEW", "Only these actions are available until this view changes."]
     targeted = {}
+    ids = {action["id"] for action in actions}
+    if {"inventory.toggle", "inventory.commit"} <= ids:
+        lines.append("toggle: mark/unmark an item; commit: perform the labelled action on marked items. select confirms; it does not mark items.")
+    elif "inventory.toggle" in ids:
+        toggle = next(action for action in actions if action["id"] == "inventory.toggle")
+        lines.append("toggle: " + _plain_text(toggle.get("label", "Toggle")))
+    elif "inventory.select" in ids:
+        lines.append("select: confirm an item; details: inspect it.")
+    if "menu.select" in ids and "menu.choose" in ids:
+        lines.append("select: highlight; choose: activate the option.")
     for action in actions:
         action_id = action["id"]
         target = action.get("stable_id", "")
@@ -174,14 +184,19 @@ def _plain_controls(actions):
                         f"play act prompt.{verb} --target " + shlex.quote(target))
                     lines.append(label + (" → " + command if action.get("enabled", True) else " (unavailable)"))
             continue
-        lines.append(f"play act {namespace}.<action> --target <target>")
+        lines.append(f"play act {namespace}.<action> --target <target> (copy the target exactly)")
+        verb_sets = {tuple(verb for verb, action in choices if action.get("enabled", True))
+                     for choices in targets.values()}
+        shared = next(iter(verb_sets)) if len(verb_sets) == 1 else ()
+        if shared:
+            lines.append("Actions for every target below: " + "/".join(shared))
         for target, choices in targets.items():
             named = next((action for verb, action in choices if verb in {"select", "choose"}), choices[0][1])
             label = _plain_text(named.get("label", named["id"]))
             available = [verb for verb, action in choices if action.get("enabled", True)]
             disabled = [verb + ": " + _plain_text(action.get("label", verb))
                         for verb, action in choices if not action.get("enabled", True)]
-            lines.append(f"  {shlex.quote(target)} — {label}" + (" — " + "/".join(available) if available else ""))
+            lines.append(f"  {shlex.quote(target)} — {label}" + (" — " + "/".join(available) if available and not shared else ""))
             if disabled:
                 lines.append("    Unavailable: " + "; ".join(disabled))
     return "\n".join(lines)
@@ -229,7 +244,9 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                 selected["messages"] = changed["messages"]
             view = {**view, "facts_changed": selected}
         else:
-            title = facts.get("title") or facts.get("actor_name") or owner.replace("_", " ").title()
+            title = facts.get("title") or owner.replace("_", " ").upper()
+            if facts.get("actor_name"):
+                title += " — " + facts["actor_name"]
             if title != "YESNO" and not (title == "Menu" and facts.get("text")):
                 lines.append(_plain_text(title))
             view = {**view, "facts_changed": facts}
@@ -243,6 +260,13 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
 
     def write(value, label=""):
         value = decode(value)
+        if label == "selected items" and isinstance(value, dict):
+            marking = fresh and any(action["id"] == "inventory.toggle"
+                                    for action in snapshot["current"].get("actions", []))
+            lines.append(("Marked: " if marking else "Selected: ") + (", ".join(
+                f"{key} ×{item.get('count', 1)}" + (" charges" if item.get("unit") == "charges" else "")
+                for key, item in value.items()) or "none"))
+            return
         if value is None or value == [] or value == {}:
             return
         if isinstance(value, dict):
@@ -258,7 +282,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                     return
             if label.endswith("highlighted item"):
                 if value.get("name"):
-                    lines.append("Selected: " + _plain_text(value["name"]) + " [" + str(value.get("id", "")) + "]")
+                    lines.append("Highlighted: " + _plain_text(value["name"]) + " [" + str(value.get("id", "")) + "]")
                 return
             if label.endswith("needs"):
                 texts = [_plain_text(part["text"]) for part in value.values() if isinstance(part, dict) and part.get("text")]
@@ -278,7 +302,8 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
             if label in {"camp patrol", "orders", "llm intent"}:
                 summary = []
                 for key, item in value.items():
-                    if key in {"provenance", "schema"} or key.endswith("coordinate_system") or item in (None, "", [], {}):
+                    if key in {"provenance", "schema", "shift_cache_state", "shift_cache_available",
+                               "runtime_available"} or key.endswith("coordinate_system") or item in (None, "", [], {}):
                         continue
                     if isinstance(item, list):
                         item = ", ".join(str(part) for part in item)
@@ -321,17 +346,45 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                              (" → " + command if value.get("enabled", True) else " (unavailable)"))
                 return
             for key, item in value.items():
+                if view.get("error") and ((key == "ok" and item is False)
+                                          or (key == "state" and item == "rejected")):
+                    continue
                 if key == "game_turn":
                     continue
                 if key == "game_minutes" and isinstance(item, dict) and "after" in item:
-                    lines.append("Game time: " + str(item["after"]) + " minutes.")
+                    if item["after"] is not None:
+                        lines.append("Game time: " + str(item["after"]) + " minutes.")
+                    continue
+                if key == "state" and item == "process_exited":
+                    if "Game exited." not in lines:
+                        lines.append("Game exited.")
+                    continue
+                if key == "error":
+                    hint = {
+                        "action_not_advertised": "This action is not available in the current menu.",
+                        "stable_id_not_advertised": "Use the target listed for this exact action; targets differ between actions.",
+                        "stale_observation": "The game has moved on from that observation.",
+                    }.get(str(item))
+                    if str(item).startswith("look_required"):
+                        hint = "A fresh observation is required before another action."
+                    if hint:
+                        lines.append("Error: " + hint)
+                        continue
+                    if item == "native_action_rejected" and view.get("rejection_reason"):
+                        continue
+                if key == "rejection_reason":
+                    if not item:
+                        continue
+                    lines.append("Rejected: " + str(item).replace("_", " ") + ".")
+                    if item == "stale_frame" and "Next: play look" not in lines:
+                        lines.append("Next: play look")
                     continue
                 if key in {"view", "request_id", "navigation", "breadcrumbs", "source_index",
                            "current_input_actions", "current_input_owner",
                            "outcome_unknown_on_reconnect", "interruption_policy", "observed_turn",
                            "selector", "cursor", "retained_history_count", "new_event_count",
                            "note", "detail", "facts_removed", "actions_removed", "selection_source",
-                           "provenance", "schema", "calendar_turn", "item_details_parameters",
+                           "provenance", "schema", "calendar_turn", "item_details_parameters", "item_info_text_source",
                            "pid", "alive", "exit_observed_at", "evidence_ref", "native_receipt_matched",
                            "failure", "session_state", "unused_authority", "selected_stable_id",
                            "identity", "gameplay_credit", "unit", "color", "speaker_id", "speaker_name",
@@ -365,7 +418,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                         "target_absolute_ms", "terminal_absolute_ms"}
                         and not (field == "target_overshoot_game_minutes" and content == 0)}
                 if key == "owner":
-                    if item != "world":
+                    if item not in {"world", "process_exited"}:
                         lines.append(str(item).replace("_", " ").title())
                     continue
                 if key == "accepted" and item is True:
@@ -383,6 +436,9 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                     continue
                 if key == "next" and item == "act, look, inspect, or journal":
                     continue
+                if key == "next" and item in {"look", "collect"}:
+                    lines.append("Next: play " + item)
+                    continue
                 if key == "title" and item in ("YESNO", ""):
                     continue
                 if key == "filter_required" and item in (False, "false"):
@@ -391,7 +447,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                     continue
                 if fresh and owner != "world" and key.endswith("_available"):
                     continue  # The current controls carry availability and native reasons.
-                if fresh and owner == "npc_inspection" and key in {"actor_name", "diagnostic_item_count"}:
+                if fresh and owner in {"npc_inspection", "camp_npc_inspection"} and key in {"actor_name", "diagnostic_item_count"}:
                     continue
                 if label == "visible" and key in {"worn", "wielded_item_uid"}:
                     continue
@@ -415,7 +471,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                 lines.extend(terrain + ": " + ", ".join(directions) for terrain, directions in groups.items())
                 return
             if label.endswith("rules") and all(isinstance(item, dict) and "label" in item for item in value):
-                lines.append("Rules: " + " ".join(_plain_text(item["label"]) for item in value))
+                lines.append("Rules: " + "; ".join(re.sub(r"^(?:He|She|They) will ", "", _plain_text(item["label"])).rstrip(".") for item in value))
                 return
             if label.endswith("visible entities"):
                 for entity in value:
@@ -441,6 +497,10 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
             lines.append((label + ": " if label else "") + text)
 
     write(view)
+    error = str(view.get("error", ""))
+    if (error in {"action_not_advertised", "stable_id_not_advertised", "stale_observation"}
+            or error.startswith("look_required")) and "Next: play look" not in lines:
+        lines.append("Next: play look")
     if fresh and owner != "world":
         lines.append(_plain_controls(snapshot["current"].get("actions", [])))
     return "\n".join(line for line in lines if line) or "No changes."
@@ -475,6 +535,15 @@ def player_output(result):
         output.update({key: clean(value) for key, value in view.items()
                        if key not in {"authority", "receipt", "turn_assessment",
                                       "startup_diagnostics", "request_result", "retrieval"}})
+    # Rejections can carry their cause in the outer receipt rather than response.
+    # Keep that native cause, never infer it from the failed action or UI owner.
+    for source in (result, view):
+        if isinstance(source, dict):
+            receipt = source.get("receipt", {})
+            if isinstance(receipt, dict):
+                receipt = clean({"receipt": receipt.get("native_receipt") or receipt})
+                if receipt.get("rejection_reason"):
+                    output["rejection_reason"] = receipt["rejection_reason"]
     assessment = result.get("turn_assessment") or {}
     alerts = {key: assessment[key] for key in ("alarms", "recoveries") if assessment.get(key)}
     if alerts:

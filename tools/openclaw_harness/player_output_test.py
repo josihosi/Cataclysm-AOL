@@ -6,6 +6,58 @@ from gameplay_display import player_output, bounded_player_output, plain_player_
 
 
 class PlayerOutputTest(unittest.TestCase):
+    def test_successful_native_receipt_with_empty_reason_is_not_a_rejection(self):
+        text = plain_player_output({"ok": True, "response": {"outcome": {
+            "native_receipt": {"accepted": True, "rejection_reason": ""}}}})
+        self.assertNotIn("Rejected", text)
+
+    def test_native_rejection_cause_survives_outer_and_nested_receipts(self):
+        for reason in ("stale_frame", "target_missing", "unknown_native_reason"):
+            for nested in (False, True):
+                receipt = {"accepted": False, "rejection_reason": reason, "frame_id": "secret"}
+                result = {"ok": False, "error": "native_action_rejected",
+                          "receipt": {"native_receipt": receipt} if nested else receipt}
+                text = plain_player_output(result)
+                self.assertIn("Rejected: " + reason.replace("_", " "), text)
+                self.assertNotIn("secret", text)
+                self.assertNotIn("native_action_rejected", text)
+                self.assertEqual("Next: play look" in text, reason == "stale_frame")
+
+    def test_inventory_controls_explain_marking_without_inventing_targets(self):
+        snapshot = {"owner": "inventory", "current": {"facts": {
+            "title": "Multidrop", "selected_items": '{"42":{"count":2,"unit":"items"}}'},
+            "actions": [{"id": "inventory.toggle", "stable_id": "42", "label": "Arrow"},
+                        {"id": "inventory.select", "stable_id": "42", "label": "Arrow"},
+                        {"id": "inventory.commit", "label": "Drop selected items"},
+                        {"id": "inventory.cancel", "label": "Cancel"}]}}
+        text = plain_player_output({"state": "collected", "response": {
+            "current_input": {"owner": "inventory"}}}, snapshot=snapshot)
+        self.assertIn("ALLOWED ACTIONS IN THIS VIEW", text)
+        self.assertIn("select confirms; it does not mark", text)
+        self.assertIn("Marked: 42 ×2", text)
+        self.assertIn("Drop selected items → play act inventory.commit", text)
+        self.assertNotIn("item:42", text)
+
+    def test_shared_menu_actions_keep_every_choice_and_disabled_reason(self):
+        from gameplay_display import _plain_controls
+        actions = [{"id": "menu." + verb, "stable_id": f"option:{i}", "label": f"Choice {i}"}
+                   for i in range(171) for verb in ("select", "choose")]
+        text = _plain_controls(actions)
+        self.assertEqual(text.count("select/choose"), 1)
+        for i in range(171):
+            self.assertIn(f"option:{i} — Choice {i}", text)
+        actions[-1].update(enabled=False, label="Choice 170 — unavailable in this mode")
+        text = _plain_controls(actions)
+        self.assertIn("Unavailable: choose: Choice 170 — unavailable in this mode", text)
+        self.assertIn("option:170 — Choice 170 — select", text)
+
+    def test_comparison_does_not_advertise_missing_commit(self):
+        from gameplay_display import _plain_controls
+        text = _plain_controls([{"id": "inventory.toggle", "stable_id": "42",
+                                 "label": "Toggle comparison"}])
+        self.assertIn("Toggle comparison", text)
+        self.assertNotIn("commit", text)
+
     def world_snapshot(self):
         return {"owner": "world", "current": {"facts": {
             "avatar": {"name": "Test survivor", "absolute_ms": [10, 20, 0]},
@@ -148,6 +200,34 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertIn("after.dead: yes", text)
         self.assertNotIn("a" * 64, text)
         self.assertNotIn("run id", text)
+
+    def test_rejected_input_explains_recovery_without_replaying_stale_controls(self):
+        for error, explanation in (
+                ("action_not_advertised", "current menu"),
+                ("stable_id_not_advertised", "this exact action"),
+                ("stale_observation", "moved on"),
+                ("look_required: no current unconsumed observation", "fresh observation")):
+            with self.subTest(error=error):
+                result = {"ok": False, "state": "rejected", "error": error}
+                text = plain_player_output(result, snapshot=self.world_snapshot())
+                self.assertIn(explanation, text)
+                self.assertEqual(text.count("Next: play look"), 1)
+                self.assertNotIn("YOU", text)
+                self.assertNotIn("play act", text)
+                result["next"] = "look"
+                self.assertEqual(plain_player_output(result).count("Next: play look"), 1)
+
+    def test_process_exit_has_one_status_no_unknown_clock_and_retains_failure(self):
+        result = {"ok": True, "state": "process_exited", "response": {
+            "current_input": {"owner": "process_exited", "facts_changed": {
+                "state": "process_exited", "exit_code": 1,
+                "save_outcome": "not_established_by_process_exit"}},
+            "state": "process_exited", "game_minutes": {"before": 10, "after": None}}}
+        text = plain_player_output(result)
+        self.assertEqual(text.count("Game exited."), 1)
+        self.assertNotIn("Game time", text)
+        self.assertIn("exit code: 1", text)
+        self.assertIn("not_established_by_process_exit", text)
 
     def test_gameplay_and_real_alarms_survive_without_receipts(self):
         full = {"ok": True, "state": "collected", "request_id": "play-1",
