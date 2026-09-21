@@ -59,6 +59,19 @@ _KEEP_WATCH_SAFE_CLASSIFICATIONS = {"safe_flavour", "safe_prompt"}
 class CockpitRunChannel:
     """Read avatar-visible facts from the current native semantic frame only."""
 
+    def discard_waiting_history(self) -> None:
+        """Retire legacy receipt history after a plain waiting reply.
+
+        The latest observation remains current input state. This route uses
+        the worker's plain conversation as its record, not JSON witnesses.
+        """
+        if self.archive is not None:
+            raise ValueError("plain waiting must be selected before starting the controller")
+        self._transcript.clear()
+        latest = next(reversed(self._observations), None)
+        if latest is not None:
+            self._observations = {latest: self._observations[latest]}
+
     def __init__(
         self, read_native_frame: Callable[[], Mapping[str, Any]],
         dispatch_advertised_action: Optional[Callable[[Mapping[str, Any], str, Optional[str]], Mapping[str, Any]]] = None,

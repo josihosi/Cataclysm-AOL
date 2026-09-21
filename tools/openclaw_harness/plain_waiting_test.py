@@ -1,5 +1,6 @@
 """Real file-backed client routing; responses are explicit game fixtures."""
 import json
+import io
 import os
 import subprocess
 import sys
@@ -137,6 +138,7 @@ class PlainWaitingTest(unittest.TestCase):
     def test_executable_entrypoint_is_plain_text_and_logs_no_request_ids(self):
         from pathlib import Path
         cli = Path(__file__).with_name("play")
+        self.fixture.write("bridge.manifest.json", {"binding_id": "bound-a", "plain_waiting": True})
         result = subprocess.run([sys.executable, str(cli), "look"],
                                 env={**os.environ, "CAOL_PLAY_SESSION": str(self.fixture.session)},
                                 capture_output=True, encoding="utf-8")
@@ -146,6 +148,53 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertIn("> play look", text)
         self.assertNotIn("request_id", text)
         self.assertNotIn("sha256", text)
+
+    def test_plain_controller_does_not_accumulate_receipt_history(self):
+        import cockpit
+        import startup_harness
+        from cockpit_live_session_test import frame
+        channel = cockpit.CockpitRunChannel(lambda: frame(1, 100))
+        service = cockpit.CockpitService(run_channel=channel)
+        source = io.StringIO('\n'.join(json.dumps({"action": action}) for action in
+                                     ("game.observe", "game.observe", "run.quit")) + '\n')
+        output = io.StringIO()
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1"}):
+            self.assertEqual(startup_harness.serve_cockpit_live(service, source, output), 0)
+        replies = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertEqual(len(replies), 3)
+        self.assertTrue(all(reply["ok"] for reply in replies))
+        self.assertEqual(channel._transcript, [])
+        self.assertLessEqual(len(channel._observations), 1)
+        self.assertNotIn("action_observation_sequence", output.getvalue())
+        self.assertNotIn("visible_entities", output.getvalue())
+
+    def test_plain_semantic_channel_does_not_write_receipt_log(self):
+        from semantic_broker import SemanticStepChannel
+        target = self.fixture.session / "semantic.steps.jsonl"
+        channel = SemanticStepChannel(run_id="run", session_id="session", receipt_path=target,
+                                      read_frame=lambda: {})
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1"}):
+            channel._persist({"accepted": True, "large_receipt": "x" * 10000})
+        self.assertFalse(target.exists())
+
+    def test_plain_terminal_report_does_not_export_history(self):
+        import startup_harness
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1"}), patch.object(
+                startup_harness, "current_owned_process_generation", return_value={"pid": 0, "status": "exited"}):
+            startup_harness.finalize_cockpit_live_session(self.fixture.session, 0, {
+                "schema": "caol-cockpit-live-final-v1", "state": "finished",
+                "action_observation_sequence": [{"receipt": "x" * 10000}]}, cleanup_process=False)
+        text = (self.fixture.session / "cockpit.live.final.json").read_text()
+        self.assertNotIn("action_observation_sequence", text)
+        self.assertLess(len(text), 1000)
+
+    def test_compact_failure_preserves_uncertainty_without_frame_dump(self):
+        from waiting_transport import compact_response
+        result = compact_response({"ok": False, "error": "player_cancelled", "failure": {
+            "unused_authority": "revoked", "detail": {"action_outcome": "unknown", "frame": "x" * 10000}}})
+        self.assertEqual(result["failure"]["detail"], {"action_outcome": "unknown"})
+        self.assertEqual(result["failure"]["unused_authority"], "revoked")
+        self.assertLess(len(json.dumps(result)), 300)
 
 
 if __name__ == "__main__":

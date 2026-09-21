@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -207,9 +208,12 @@ def main(argv=None):
         return 1
     try:
         directory = Path(session).resolve(strict=True)
+        manifest = json.loads((directory / "bridge.manifest.json").read_text(encoding="utf-8"))
+        if manifest.get("plain_waiting") is not True:
+            print("Launch a fresh waiting session with CAOL_PLAIN_WAITING=1 before using play.")
+            return 1
         with session_lock(directory / "play-client.lock"):
             player = WaitingPlayer(PlayerClient(directory, plain_waiting=True))
-            (directory / "plain-waiting").touch()
             command = args.command + (" " + args.duration if args.duration else "")
             try:
                 result = player.run(args.command, args.duration)

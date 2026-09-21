@@ -442,6 +442,9 @@ class FileBackedCockpitBridge:
         self.requests_dir.mkdir()
         self.responses_dir.mkdir()
         self.controls_dir.mkdir()
+        plain_waiting = os.environ.get("CAOL_PLAIN_WAITING") == "1"
+        if plain_waiting:
+            (self.session_dir / "plain-waiting").touch()
         os.mkfifo(self.input_path, 0o600)
         _atomic_json(self.session_dir / "bridge.manifest.json", {
             "schema": SCHEMA,
@@ -451,6 +454,7 @@ class FileBackedCockpitBridge:
             "input_channel": self.input_path.name,
             "request_directory": self.requests_dir.name,
             "response_directory": self.responses_dir.name,
+            "plain_waiting": plain_waiting,
         })
         self._write_status("starting")
 

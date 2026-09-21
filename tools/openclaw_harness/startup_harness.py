@@ -5857,7 +5857,7 @@ def open_cockpit_game_service(
     archive = Archive(
         Path(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR") or run_dir) / "cockpit-evidence.sqlite",
         run_id=run_id, binding_id=binding_id,
-    ) if live_session else None
+    ) if live_session and os.environ.get("CAOL_PLAIN_WAITING") != "1" else None
     channel = CockpitRunChannel(
         read_frame, dispatch, archive=archive,
         read_evidence=read_evidence,
@@ -6202,6 +6202,12 @@ def finalize_cockpit_live_session(
             },
         }
     payload = {**dict( report ), "cleanup": cleanup}
+    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
+        # Waiting proof lives in the plain command/result conversation. Keep
+        # only the current lifecycle result here, not another receipt archive.
+        payload = {key: value for key, value in payload.items() if key in {
+            "schema", "state", "run_id", "binding_id", "stop_reason",
+            "termination_requested", "cleanup"}}
     ensure_dir( final_path.parent )
     exported = write_json_stream(final_path, payload)
     transcript = payload.get("action_observation_sequence")
@@ -6217,6 +6223,7 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
     """Serve public live-session requests without a harness-owned time window."""
     finished = False
     archive = getattr(service.run_channel, "archive", None)
+    plain_waiting = os.environ.get("CAOL_PLAIN_WAITING") == "1"
     memory_snapshot("registry_child", "session_ready", archive=archive)
     for line in input_stream:
         memory_snapshot("registry_child", "before_request_construction", archive=archive,
@@ -6230,7 +6237,12 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
                 "ok": False, "error": "request must be an object",
             }
         memory_snapshot("registry_child", "after_response_construction", archive=archive)
-        wire_result = archive.wire(result) if archive is not None else result
+        if plain_waiting:
+            from waiting_transport import compact_response
+            wire_result = compact_response(result)
+            service.run_channel.discard_waiting_history()
+        else:
+            wire_result = archive.wire(result) if archive is not None else result
         memory_snapshot("registry_child", "after_wire_projection", archive=archive)
         response_bytes = 0
         for chunk in json_chunks(wire_result):
@@ -6250,7 +6262,12 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
     if not finished:
         result = service.run_channel.close_unfinished()
         memory_snapshot("registry_child", "eof_after_response_construction", archive=archive)
-        wire_result = archive.wire(result) if archive is not None else result
+        if plain_waiting:
+            from waiting_transport import compact_response
+            wire_result = compact_response(result)
+            service.run_channel.discard_waiting_history()
+        else:
+            wire_result = archive.wire(result) if archive is not None else result
         response_bytes = 0
         for chunk in json_chunks(wire_result):
             output_stream.write(chunk)

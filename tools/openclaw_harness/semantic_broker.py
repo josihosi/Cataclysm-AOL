@@ -205,6 +205,10 @@ class SemanticStepChannel:
         return frame.public()
 
     def _persist(self, receipt: Mapping[str, Any]) -> None:
+        if os.environ.get("CAOL_PLAIN_WAITING") == "1":
+            # The native result is consumed in memory. Plain waiting records
+            # the player's command and observed outcome instead of a second receipt log.
+            return
         self.receipt_path.parent.mkdir(parents=True, exist_ok=True)
         durable = {
             key: value for key, value in receipt.items()

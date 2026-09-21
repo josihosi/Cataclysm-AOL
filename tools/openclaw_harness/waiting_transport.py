@@ -6,7 +6,13 @@ def compact_response(response):
     """Keep only what the waiting client needs to act or establish an outcome."""
     from gameplay_display import observation
 
-    result = {key: response[key] for key in ("ok", "error", "reason", "failure") if key in response}
+    result = {key: response[key] for key in ("ok", "error", "reason", "action_outcome") if key in response}
+    failure = response.get("failure")
+    if isinstance(failure, dict):
+        result["failure"] = {key: failure[key] for key in ("reason", "unused_authority") if key in failure}
+        detail = failure.get("detail")
+        if isinstance(detail, dict) and "action_outcome" in detail:
+            result["failure"]["detail"] = {"action_outcome": detail["action_outcome"]}
     observed = observation(response)
     if observed:
         surface = observed["surface"]
