@@ -3302,6 +3302,8 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 
 
 def write_json(path: Path, data: Dict[str, Any]) -> None:
+    if os.environ.get("CAOL_PLAIN_WAITING") == "1" and path.name.endswith(".cockpit_live_session.json"):
+        return
     ensure_dir(path.parent)
     if find_archive(data) is not None:
         write_json_stream(path, data, exclusive=False)
@@ -39300,6 +39302,12 @@ def finalize_probe_report(
                         "reason": "report finalization could not authenticate the current owned process",
                     },
                 }
+    if run_dir is not None and os.environ.get("CAOL_PLAIN_WAITING") == "1":
+        from waiting_transport import finish_plain_waiting
+        finish_plain_waiting(run_dir, report, cleanup_complete=(
+            isinstance(report.get("cleanup"), Mapping) and
+            report["cleanup"].get("status") in CLEANUP_ACCEPTED_STATUSES))
+        return
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
@@ -39333,6 +39341,10 @@ def finalize_probe_report(
             "report_sha256": sha256_file(report_path)[0],
             "cleanup": report.get("cleanup", {}),
         })
+    if os.environ.get("CAOL_PLAIN_WAITING") == "1":
+        # The worker already received its command result. This private child
+        # pipe is drained by the bridge, not a second playtest transcript.
+        return
     stdout_payload = compact_probe_report_for_stdout(
         report,
         run_dir=run_dir,

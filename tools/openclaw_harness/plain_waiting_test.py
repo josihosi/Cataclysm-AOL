@@ -226,6 +226,38 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertNotIn("action_observation_sequence", text)
         self.assertLess(len(text), 1000)
 
+    def test_plain_scenario_finish_keeps_text_and_cleanup_without_certification_archive(self):
+        import startup_harness
+        from unittest.mock import Mock
+        directory = self.fixture.session
+        hook = Mock()
+        report = {"ok": True, "mode": "probe", "cleanup": {"status": "already_exited"},
+                  "steps": [{"receipt": "bureaucracy" * 10000}]}
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1",
+                                    "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(directory),
+                                    "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "binding"}), \
+                patch("sys.stdout", new_callable=io.StringIO) as output:
+            startup_harness.finalize_probe_report(directory, report, post_finalize_hook=hook)
+        self.assertEqual(output.getvalue(), "")
+        hook.assert_not_called()
+        self.assertFalse((directory / "probe.report.json").exists())
+        self.assertLess(len((directory / "playtest-summary.txt").read_text()), 150)
+        signal = json.loads((directory / "cockpit.bridge.safe_to_cleanup.json").read_text())
+        self.assertEqual(signal["state"], "safe_to_cleanup")
+        self.assertNotIn("report_sha256", signal)
+
+    def test_plain_scenario_incomplete_cleanup_does_not_release_bridge(self):
+        import startup_harness
+        directory = self.fixture.session
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1",
+                                    "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(directory),
+                                    "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "binding"}):
+            startup_harness.finalize_probe_report(directory, {
+                "ok": False, "reason": "process_identity_unavailable",
+                "cleanup": {"status": "retained_process_identity_unavailable"}})
+        self.assertFalse((directory / "cockpit.bridge.safe_to_cleanup.json").exists())
+        self.assertIn("process identity unavailable", (directory / "playtest-summary.txt").read_text())
+
     def test_compact_failure_preserves_uncertainty_without_frame_dump(self):
         from waiting_transport import compact_response
         result = compact_response({"ok": False, "error": "player_cancelled", "failure": {

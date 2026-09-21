@@ -910,7 +910,7 @@ class FileBackedCockpitBridge:
         # signal.
         assert self._child.stdout is not None
         terminal_stdout = self._child.stdout.read()
-        if terminal_stdout:
+        if terminal_stdout and not (self.session_dir / "plain-waiting").exists():
             (self.session_dir / "terminal.stdout.log").write_text(
                 terminal_stdout, encoding="utf-8"
             )

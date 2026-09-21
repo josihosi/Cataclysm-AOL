@@ -1230,6 +1230,12 @@ for line in sys.stdin:
             self.assertFalse(bridge._terminal_request_id)
 
     def test_live_finish_drains_terminal_stdout_before_waiting_for_child_exit(self):
+        self._exercise_terminal_stdout_drain(plain=False)
+
+    def test_plain_finish_drains_without_retaining_terminal_stdout(self):
+        self._exercise_terminal_stdout_drain(plain=True)
+
+    def _exercise_terminal_stdout_drain(self, *, plain):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"
             child = (
@@ -1248,13 +1254,18 @@ for line in sys.stdin:
             while not (directory / "status.json").is_file() or \
                     json.loads((directory / "status.json").read_text())["state"] != "ready":
                 time.sleep(0.01)
+            if plain:
+                (directory / "plain-waiting").touch()
             self.assertTrue(bridge.send_request(
                 directory, request_id="finish", binding_id="bound-a", request={"action":"run.finish"},
             )["ok"])
             thread.join(2)
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
-            self.assertEqual((directory / "terminal.stdout.log").stat().st_size, 200000)
+            if plain:
+                self.assertFalse((directory / "terminal.stdout.log").exists())
+            else:
+                self.assertEqual((directory / "terminal.stdout.log").stat().st_size, 200000)
 
     def test_live_finish_without_terminalization_signal_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:

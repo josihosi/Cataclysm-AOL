@@ -7,6 +7,40 @@ import os
 PREFIX = "openclaw_harness_semantic_step: "
 
 
+def finish_plain_waiting(run_dir, report, *, cleanup_complete):
+    """End an exploratory playtest without manufacturing a certification archive.
+
+    Registry selection still authenticates launch. Reduced waiting records are
+    deliberately not ingested as formal feature-proof reports.
+    """
+    cleanup = report.get("cleanup", {})
+    lines = ["Playtest ended." if report.get("ok") else "Playtest ended with a failure."]
+    for key in ("error", "reason", "verdict"):
+        value = report.get(key)
+        if isinstance(value, str) and value:
+            lines.append(value.replace("_", " "))
+    lines.append("Cleanup: " + str(cleanup.get("status", "unknown")).replace("_", " ") + ".")
+    path = run_dir / "playtest-summary.txt"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR")
+    binding = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID")
+    if session and binding and cleanup_complete:
+        from process_performance import write_json
+        write_json(Path(session) / "cockpit.bridge.safe_to_cleanup.json", {
+            "schema": "caol-cockpit-scenario-terminalization-v1", "binding_id": binding,
+            "state": "safe_to_cleanup", "report_path": str(path.resolve()),
+            "cleanup": {key: cleanup[key] for key in ("status", "native_exit_credit") if key in cleanup},
+        })
+
+
+def retire_startup_records(directory):
+    """After admission, startup-only projections no longer own any live state."""
+    for name in ("startup.result.json", "startup.step_ledger.json", "contract.preflight.json",
+                 "plan.json", "debug.final.log", "semantic.native.log", "semantic.native.full.log",
+                 "semantic.native.full.log.ref.json"):
+        (directory / name).unlink(missing_ok=True)
+
+
 def activate_native_snapshot(path: Path):
     """Switch a paused, admitted World session from startup history to current state."""
     if Path(str(path) + ".plain").exists():
@@ -29,8 +63,7 @@ def activate_native_snapshot(path: Path):
     Path(str(path) + ".plain").touch()
     # These startup projections are superseded by the current native state.
     # No plain-mode reader uses them after activation.
-    for name in ("semantic.native.log", "semantic.native.full.log", "semantic.native.full.log.ref.json"):
-        (path.parent / name).unlink(missing_ok=True)
+    retire_startup_records(path.parent)
 
 
 def collect_waiting_snapshot(directory, path, owner):
