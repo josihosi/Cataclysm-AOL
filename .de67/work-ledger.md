@@ -1,4 +1,25 @@
-# Current handoff — forcing harness owner mutation, 2026-09-21
+# Owner-guided harness repair checkpoint, 2026-09-21
+
+The owner paused the broader campaign and authorized two focused repairs plus one Luna Mac
+playtest: trim ordinary player output and repair stale activity-pause input grants. Both are
+committed on dev. Ordinary replies now omit routine receipts/hashes, retain actionable failures,
+and respect the existing display budget with omitted byte counts; `--diagnostics` retains the
+evidence view. Activity grants survive polls of the same activity and retire on owner changes.
+
+Native Mac proof: the source-bound build at `807b07ca89d` accepted `activity.pause` after the
+wait advanced from minute 8525 to 8648, opened the stop-waiting prompt, accepted YES, then
+accepted `world.move.east` and graceful quit. Owned processes exited. Full command/output logs
+and lengths are in `build_logs/harness-owner-fix-20260921/`. Failed attempts remain recorded.
+Later display-only fixes through `40aadc0da23` passed four projection tests on Windows and Mac;
+the default CLI fixture route passed under WSL. Earlier focused WSL suites passed 46 CLI,
+8 display, 15 evidence and 1 activity-owner tests. The new C++ activity-poll test was not run
+successfully because the attempted Mac test build was misconfigured; native proof supplies the
+behavioral evidence. One retained wait reply fell from 7503 to 1493 canonical JSON bytes.
+
+This is a focused repair checkpoint, not acceptance of the broader harness campaign or a
+coordinator restart. The preceding campaign handoff is retained below as historical context.
+
+# Previous handoff — forcing harness owner mutation, 2026-09-21
 
 Deliver the refrozen `.de67/FS.md` S-HARNESS/H-ERGONOMICS and the marked WEC owner contract from
 `dev@fe8c418c1636bdfa6e16d0009af83873a079e24f` plus preserved dirty repairs. Owner gate
