@@ -50,34 +50,41 @@ R-HARNESS-JOURNEY-exploration-001 / worker `01a0c3b3-be24-7fc2-a1ef-69b7315ec40b
 This retires stale ownership only; it does not invalidate receipts, erase acceptance, restart
 the closed campaign or authorize new execution. Lineage remains `semantic-surface-cockpit`.
 
-**Preparation blocker.** The owner requires GPT-6 Luna for live harness operation; Sol/Astra
-must delegate those actions. This overrides older GPT-5.6 Luna examples. Project
-`.codex/config.toml` now requests `gpt-6-luna` without a default effort. A fresh coordinator
-under codex-cli 0.153.2 actually tried an omitted-model/low native child after that edit;
-`spawn_agent` rejected the resolved model with `Unknown model gpt-6-luna`. The available roster
-listed GPT-6 Astra, GPT-5.6 Sol/Terra/Luna and GPT-5.5. Explicit GPT-5.6 Terra/medium returned
-its exact nonce. The requested Luna default is therefore configured but **not proved usable**.
-Do not substitute GPT-5.6 Luna, credit the failed probe, launch phase 3 or install a runner here.
-The installed setup helper also hardcodes GPT-5.6 Luna in its required roster; its full setup
-cannot succeed with the truthfully proved current pairs. A compatible runner and setup helper,
-then a fresh requested-model probe/setup, are needed to complete preparation.
+**Preparation complete.** The owner-authorized Codex update supersedes the earlier 0.153.2
+runner rejection. Canonical CLI and managed app-server are 0.156.1; the owner reports a valid
+code-mode-host signature, and the recorded real shell probe returned `MAC_CODE_HOST_OK`.
+`updated-runner-probe.jsonl` records fresh native GPT-6 Luna probes: omitted model / low
+returned `LUNA6_DEFAULT_LOW_OK`; explicit `gpt-6-luna` / medium returned
+`LUNA6_EXPLICIT_MEDIUM_OK`. No extra model metadata was returned or inferred. The earlier
+explicit `gpt-5.6-terra` / medium nonce success in `worker-probes.jsonl` remains valid.
+Project `.codex/config.toml` requests `gpt-6-luna` with no default effort. Only GPT-6 Luna may
+operate live harness sessions; Sol/Astra delegate those actions. No substitute was credited.
 
-The existing guarded upstream hook/binding and effective shared-guidance fingerprint are
-retained. All six runtime files named by the installed helper already exist and are preserved;
-its packaged list uses compiled phase3-policy/contracts rather than the older skill's absent
-orchestrator-guidelines asset. No replacement workflow is invented. Historical availability
-rows in machine state are not authorization to substitute the wrong playtest model.
+The setup helper's single outdated required-model name changed from `gpt-5.6-luna` to
+`gpt-6-luna` in the de67 source and installed copy. Terra, distinct effort, duplicate and
+syntax validation remain enforced; historical rosters remain readable. The existing setup
+suite passes all 35 tests, including old-Luna, missing-model, duplicate and invalid-effort
+rejections. Tooling source checkpoint: de67-lab `c72a3dc` (local); unrelated staged method
+work is preserved. This is the bounded tooling correction authorized with the Codex update.
+
+Full setup succeeded using the existing hook's Python 3.14 interpreter, with exactly the
+proved GPT-6 Luna/low, GPT-6 Luna/medium and GPT-5.6 Terra/medium pairs recorded in
+`.de67/state/workspace.json`. The first invocation used the shell's different Python and
+was correctly refused by the hook guard; rerunning with its existing interpreter required
+no hook bypass or policy change. The stable `semantic-surface-cockpit` lineage, sole
+`origin/dev` target and prior effective shared-guidance fingerprint remain intact. Setup
+preserved all six existing runtime files and passed the disposable acceptance projection.
+The managed backlog push succeeded. Setup did not launch a coordinator or phase 3.
 
 **Evidence and checkpoint.** Task artifacts are in
 `build_logs/phase2-playtesting-installation-20260923/`: baseline hashes and before-files,
-actual native worker probe transcript, exact stale-claim releases, and closeout/setup results.
-Validation passed: disposable acceptance projection, all 44 prior slice identities retained,
-seven new red slices, all 69 acceptance rows unchanged, no unreleased worker claims, and 49
-unrelated tracked dirty paths unchanged. The prior WEC is retained exactly apart from authority
-labels. Full setup was attempted with the actually proved Terra/medium pair and refused with
-“Record successfully probed Luna and Terra capabilities”; no false Luna success was supplied.
-Scoped checkpoint includes WEC, FS, this current handoff/retirement and requested model default
-only. Prior unrelated ledger changes remain unstaged with the other dirty product work.
+original and updated worker probes, exact stale-claim releases, setup-helper tests and
+`updated-setup-result.json`. The readiness completion supersedes the earlier blocked setup
+result without rewriting its evidence. All 69 durable acceptance records and 49 unrelated
+tracked dirty paths remain unchanged; runtime policy files and unrelated method staging are
+preserved. The frozen FS and merged WEC are unchanged by this continuation. The original
+spec checkpoint `44543000e4` was pushed; this follow-up checkpoints only readiness in this
+ledger. The pre-existing 143-line ledger addition remains unstaged with other dirty work.
 
 # Historical active owner-guided waiting redesign, 2026-09-21
 
