@@ -1,30 +1,45 @@
-# Reliable playtesting and safer C-AOL subsystem changes — Functional Specification
+# C-AOL playtesting and clean Catapult-Dabubu installation — Functional Specification
 
-Status: Refrozen — 2026-09-21
+Status: Refrozen — 2026-09-23
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL | dev | fe8c418c1636bdfa6e16d0009af83873a079e24f | inspected 2026-09-21; existing harness/game/test repairs and owner context dirty on entry, preserved in review-owner-f5d913c63d0e/baseline-state.json; unrelated .agents/skills/typesafe-ai/ and skills-lock.json preserved`
+Source baseline: `Cataclysm-AOL | dev | 4d378c8e7ccce140afc9a656f869ea9d06490916 | inspected 2026-09-23; existing dirty game/harness/test/scenario/guidance work preserved; exact tracked dirty-file hashes in build_logs/phase2-playtesting-installation-20260923/baseline.json`
+Launcher baseline: `josihosi/Lacapult-Doobdab | main | 366aee6bd675be9b45afbd2ab222808faceedd9d | clean checkout /Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu | inspected 2026-09-23`
 Method baseline: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab | a6125b4a70adf641e185b34dbd33118e48d884e3 | inspected 2026-09-19`
 
 ## Authority and outcome
 
 This is the single canonical FS. The owner explicitly removed the former compatibility-pointer arrangement; active tooling reads `FS.md` directly. Historical slice/receipt identities remain stable data, not a second specification. The WEC defines intended behavior; current code defines the inspected starting point. A proposed symbol below is an implementation starting point, not an extra behavioral obligation.
 
-The current owner addition is the full-stack harness outcome in S-HARNESS/H-ERGONOMICS below.
-Owner trigger HARNESS-FULL-STACK-20260921 authorizes this exclusive FS thaw/refreeze and directs
-Sol to deliver the resulting repairs and native validation. The mutator specifies and validates
-context; it does not implement the harness. Preserve all earlier accepted proof and recoverable
-work. The explicit 2026-09-20 Phase-3 start remains current; earlier phase-only holds are historical.
-Only the external supervisor launches the one requested post-review coordinator.
+The 2026-09-23 merged WEC adds the remaining game evidence, connected armed basecamp defense,
+payment/return ecology, and a genuine first installation through **Catapult-Dabubu** on macOS,
+Windows and Linux. S-REMAINING and S-CAMP-PROOF identify the game frontier; S-LAUNCHER defines
+the separate launcher changes and full installation proof. Existing accepted work retains its
+scope. New proof obligations receive new IDs and no inherited acceptance.
 
-The earlier performance/travelling addition is specified in S-PERFORMANCE below. It reconciles distant discovery with the owner-approved fifteen-minute latency and permitted missed brief visual exposures; nearby perception and tactical response stay responsive. The performance alarm, newer signal/camp native proof and travelling/exit-cost claims are additional open obligations, with no inherited acceptance. Harness execution and alarms precede acceptance of their native playtests. The later explicit owner start recorded above authorizes delivery; this historical addition imposes no new stop.
+The owner closed the current harness-cleanup campaign after 18 scoped successes and two unresolved
+camp observations. The rider knockdown outcome is accepted. S-HARNESS preserves useful behavior,
+history and identities; its superseded cleanup/campaign instructions do not commission further
+cleanup, a fresh coverage sweep or an economy-measurement project. Repair only an obstruction
+actually encountered in the still-open useful proof. Current plain commands/replies, complete
+per-playtest transcripts and the existing 100 ms/turn waiting alarm remain required behavior.
 
-The earlier 2026-09-20 harness contribution is additive and is specified in S-HARNESS below. Earlier sections retain their original contract and evidence ceilings; their dated “current” findings describe the 2026-09-19 inspection, not a claim that already repaired code remains defective. Durable acceptance and the work ledger own delivered status. In particular, the six efficiency claims and revised stalking-to-attack account retain their accepted scope; the stronger shared-execution and deletion obligations below are new red claims. The stopped `R-CAOL-NATIVE-REGRESSION` campaign and its recorded failures remain unfinished. The earlier refreeze did not restart that campaign; current delivery authority is stated above. Optional experiments remain deferred and additionally depend on the new harness acceptance.
+The earlier performance/travelling addition in S-PERFORMANCE retains fifteen-minute distant
+notice, permitted missed brief visual exposures, responsive nearby behavior and original-age
+one-shot sound retention. Native-regression, signal, travelling and exit proof remain open only
+at their actual evidence gaps. Optional experiments and independent unfinished requirements stay
+preserved. Dated “current” findings in retained sections describe their original inspection, not
+an assertion that accepted repairs remain defective. Durable acceptance and the work ledger own
+delivered status. Historical start/dispatch directions are superseded; this specification contains
+no authority to start execution.
 
 Preserve the prior zombies-and-light contract and its accepted evidence. Its verbatim WEC, FS and pointer are in `.de67/history/20260919-zombies-light-before-affordable-playtests/`, verified by `archive.json`. Durable acceptance remains in the existing SQLite state and work ledger; this refreeze does not invalidate, fabricate or rerun that acceptance. New regressions and proof obligations have new IDs. The earlier owner revision changed `R-ZL-PLAYTEST` from naturally occurring stalker to debug-spawned stalker followed through ordinary play. The current owner revision also changes distant-signal discovery guarantees, as stated in S-SIGNAL-CADENCE; stable acceptance identities retain only their original historical scope.
 
 Deliver lower total playtest effort, an honest stalking-to-city-attack account, and tested subsystem boundaries supporting small cleanups. Keep product changes in C-AOL on `dev`; method/Telescope changes belong to the separate de67 source. Neither side silently absorbs the other's ownership. Pit Crew and Reflex Pilot are optional, deferred experiments, in that order. Production success does not depend on either experiment proving useful.
 
-The inspected product tracked tree was clean before Phase 2; unrelated untracked runtime/evidence remains. The method tree has unrelated dashboard edits in `integrations/dashboard/{README.md,de67_dashboard.py,test_de67_dashboard.py}`; preserve them. Record the actual implementation starting commit and relevant dirty state again for each delivered slice. Phase 2 changed no product code/tests and ran no new gameplay.
+The current C-AOL tree is substantially dirty, including game, harness and guidance work.
+Preserve it and unrelated method/dashboard work. Record the actual implementation starting
+revision and dirty inputs for later proof. This refreeze changes no product code/tests and
+claims no new gameplay or installation acceptance.
 
 ## Language, coordinates and truth
 
@@ -131,7 +146,7 @@ The earlier cleanup order was player-tile/fixture safety, repeated handoffs, tur
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-LIGHT-FIXTURE-S001 claim=R-CAOL-LIGHT-FIXTURE -->
 ### Player-tile discovery and reliable restoration
-- [ ] 🔴 R-CAOL-LIGHT-FIXTURE — The real loaded-source index retains stationary light beneath the player and touched fixtures restore global definitions on every exit.
+- [x] R-CAOL-LIGHT-FIXTURE — The real loaded-source index retains stationary light beneath the player and touched fixtures restore global definitions on every exit.
 **Current evidence.** `src/physical_light.cpp::index_loaded_z_sources` calls `collect_item_emitters(carrier, here, 0)`, then continues the entire tile loop when `p == carrier_pos`. That avoids a duplicate ground item but also bypasses terrain, furniture and fields. Source inspection confirms the control-flow defect; the failing behavioral regression has not yet been executed. `physical_light_stationary_records_are_source_bound` mutates global `ter_t/furn_t::light_emitted` and restores them after `REQUIRE` calls, so assertion unwinding can skip restoration. `src/cata_scope_helpers.h::restore_on_out_of_scope` already exists.
 
 **Change boundary/mechanism.** First add a real-index fixture with walkable luminous terrain or furniture at an absolute tile, not an impassable fixture through which the avatar cannot move. Capture original definitions with the existing scope guard before mutation. Move the actual avatar beside → onto → beside the source; call `index_loaded_z_sources` each time. Place a powered ground lamp at the same tile. Constrain only the ground-item loop to skip the already-collected player tile; stationary collection must execute there. Do not change emission power, geometry, other z-level scanning or native movement. Restore touched terrain/furniture/map fixture and global fields on normal and exceptional exits. Avoid a new restoration framework.
@@ -141,7 +156,7 @@ The earlier cleanup order was player-tile/fixture safety, repeated handoffs, tur
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-HANDOFF-S001 claim=R-CAOL-HANDOFF -->
 ### Repeated real ownership transitions
-- [ ] 🔴 R-CAOL-HANDOFF — Repeated local/abstract crossings and save/load preserve one owner, identity and resource accounting, including rejected and interleaved transfers.
+- [x] R-CAOL-HANDOFF — Repeated local/abstract crossings and save/load preserve one owner, identity and resource accounting, including rejected and interleaved transfers.
 **Current evidence.** `overmapbuffer::spawn_monster` extracts horde nodes, prepares predator state in a disposable copy, tries exact predator placement, and reinserts the original node on failure. `despawn_monster` snapshots first and reports insertion success. `game::shift_monsters` must remove the local actor only after that success. `horde_entity::ensure_predator_payload` retains heavy predator state; ordinary lazy evolution remains a separate path. Existing `tests/horde_map_test.cpp` cases cover lazy payload, duplicate abstract identity and failed prepared handoff, but the latter constructs a prepared copy and is not a complete production transfer/reload loop.
 
 **Mechanism.** Extend existing real-entrypoint fixtures, not a parallel transfer API. Begin without combat, regeneration/consumption or unrelated time advancement; cross out/in more than once with a save/load between crossings. At every completed or refused boundary count local tracker plus loaded horde containers and match surviving predator durable IDs, epochs, absolute positions, HP/ammo, typed state and band registry. Ordinary zombie identity is its native payload/accounting identity, not an invented durable predator UUID. Repeat a completed request at the real caller: no second insertion, removal, ammo/resource debit or resurrection. Then add legitimate elapsed abstract time and compare invariant accounting while permitting genuine movement/tactical state changes.
@@ -153,7 +168,7 @@ The earlier cleanup order was player-tile/fixture safety, repeated handoffs, tur
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-LIGHT-TURNS-S001 claim=R-CAOL-LIGHT-TURNS -->
 ### Turn-driven observation, memory and ordering
-- [ ] 🔴 R-CAOL-LIGHT-TURNS — Real advancing turns detect eligible brief exposure, retain finite memory after source-off and expire it without redraw/query refresh.
+- [x] R-CAOL-LIGHT-TURNS — Real advancing turns detect eligible brief exposure, retain finite memory after source-off and expire it without redraw/query refresh.
 **Historical acceptance and current contract.** The old five-minute producer discrepancy was repaired and accepted before commits `463b1a810d`/`54e60ce3ac`. `live_light::run_advancing_turn` now admits one packet per advancing turn, reconciles riders before aging memory and delivery, and exposes that same-turn packet to later staffed maintenance. Keep its same-turn idempotency and reset owner. This stable slice retains its accepted evidence; the new discovery schedule receives no credit from that evidence.
 
 **Current cadence.** “Eligible brief exposure” in this historical claim means exposure actually admitted by the current sampler, not a guarantee to inspect every distant tile every second. S-SIGNAL-CADENCE supersedes the former mandatory every-turn full discovery/brief-exposure wording. Real source-off stops fresh observations; finite memory keeps its original identity/time/expiry. Nearby ordinary perception remains native. Repeated redraw or same-turn query cannot renew samples, and load/world reset cannot borrow a cache from another timeline.
@@ -163,7 +178,7 @@ The earlier cleanup order was player-tile/fixture safety, repeated handoffs, tur
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-HISTORY-S001 claim=R-CAOL-HISTORY -->
 ### Perception history and coordinate lifetimes
-- [ ] 🔴 R-CAOL-HISTORY — Actor replacement, bubble shifts and world/load boundaries cannot turn obsolete perception into current pressure or rider knowledge.
+- [x] R-CAOL-HISTORY — Actor replacement, bubble shifts and world/load boundaries cannot turn obsolete perception into current pressure or rider knowledge.
 **Inspected risk.** `monmove.cpp::writhing_stalker_pressure_memories` is a process-static map keyed by `Creature::get_identity()`. Outer size is capped at 512 by arbitrary map-entry removal; each retained memory's `samples` grows with new actor/target IDs without age pruning. Samples store `tripoint_bub_ms` and are compared with the current bubble target coordinate up to three turns later; a shifted origin can manufacture closing movement. The loop also updates samples when `visible` is false. These are source-confirmed lifetime/coordinate defects; their concrete gameplay regressions remain to be executed. `observed_attacks` in `writhing_stalker_ai.cpp` has its own bounded transient registry and fresh creature IDs; do not replace this working identity mechanism. `overmap_global_state::clear` already clears rider bands/light memory; retain that behavior.
 
 **Mechanism.** Historical pressure positions use absolute map-square coordinates and observation time; convert only current qualified positions for local quiet-side consumers. Retain a sample only while it can contribute under the existing three-turn perceptual horizon, matching observer, target and live actor identity. Write observed positions only on actual eligible perception, not hidden-state reads. Repeated same-turn reads are idempotent. Drop expired/dead/replaced identities and invalidate same-turn qualified caches on map/world identity changes; preserve the existing tactical horizon rather than invent a new retention balance. Make transient perception reset at the existing game/world lifecycle explicit, with the smallest narrow owner API if needed. Persistent stalker approach/retreat and rider band/pursuit data retain existing serialization and are not converted into this ephemeral cache.
@@ -173,7 +188,7 @@ The earlier cleanup order was player-tile/fixture safety, repeated handoffs, tur
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-LIGHT-EXTRACT-S001 claim=R-CAOL-LIGHT-EXTRACT -->
 ### Share discovery and extract cohesive turn responsibilities
-- [ ] 🔴 R-CAOL-LIGHT-EXTRACT — Duplicated light discovery and cohesive turn implementation are simplified with executed behavior preserved.
+- [x] R-CAOL-LIGHT-EXTRACT — Duplicated light discovery and cohesive turn implementation are simplified with executed behavior preserved.
 **Boundary.** After R-CAOL-LIGHT-FIXTURE and R-CAOL-LIGHT-TURNS are passing, share the duplicated terrain/furniture/field, vehicle-light and luminous-monster enumeration in `collect_stationary_emitters` and `index_loaded_z_sources`. Existing loops differ in spatial selection (radius versus all loaded z); preserve that selection and source provenance while sharing emission eligibility. Ground item dedup remains independent. Do not consolidate sound, optical recognition and reaction policy into a universal source owner.
 
 Move the cohesive sample-cache/discovery/delivery implementation out of `do_turn.cpp` into a narrow production module (proposed `live_light.{h,cpp}`) only to the extent its dependencies permit a clear entrypoint. `game::do_turn` keeps an explicit call at the same ordered boundary; later overmap readers receive the same-turn immutable sample view. Rider reconciliation remains before memory aging/delivery at exactly the existing advancing-turn frequency; extracting it is not permission to batch, defer or duplicate it. New module names are replaceable; one time owner and preserved interfaces are binding.
@@ -183,7 +198,7 @@ Move the cohesive sample-cache/discovery/delivery implementation out of `do_turn
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-SETUP-LIFETIME-S001 claim=R-CAOL-SETUP-LIFETIME -->
 ### Harness setup has a run lifetime
-- [ ] 🔴 R-CAOL-SETUP-LIFETIME — R022 item setup is removed from ordinary turn implementation without suppressing later runs or duplicating intervention effects.
+- [x] R-CAOL-SETUP-LIFETIME — R022 item setup is removed from ordinary turn implementation without suppressing later runs or duplicating intervention effects.
 **Current behavior.** `openclaw_harness_r022_item_spawn_bridge(avatar &)` is called at `game::do_turn` startup. Its function-static `dispatched` becomes true before `debug_item_spawn_transaction`; an environment transaction ID triggers apple quantity 3 at player offset (+4,0,0), followed by cleanup and transaction/identity/cleanup log receipts. A failed attempt is currently not automatically retried within the process. The run ID labels the receipt but does not scope the once flag.
 
 **Required mechanism.** Move the small adapter beside its existing transaction owner in `src/wish.cpp`, declared through `src/debug_menu.h` (proposed `debug_menu::process_harness_item_setup`). Keep only its explicit call at the existing loaded-world/pre-input boundary in `game::do_turn`, so extraction does not move setup ahead of map/avatar readiness. Reset its narrow transient run state through `game::setup` when a new world lifecycle starts. Bind its attempt state to the actual run plus transaction ID, not process lifetime or the turn count. Repeated calls for the same completed attempt return/retain its receipts and cannot spawn or clean twice. A subsequent supported scenario/run in the same process gets its own state. Preserve current no-implicit-retry behavior on an ambiguous or rejected attempt: retain exact result/cleanup, and require an explicit new or supported idempotent retry transaction after authoritative outcome inspection. The actual `src/wish.cpp` transaction rejects occupied destinations, tags ordinal item identities, and calls tagged cleanup on placement/audit failure; it is not itself a replay registry. A new ID is not permission to lose tagged items or overwrite a receipt. Termination clears ephemeral ownership only after preserving the transaction outcome; no harness env means no setup side effects.
@@ -193,7 +208,7 @@ Move the cohesive sample-cache/discovery/delivery implementation out of `do_turn
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-BANDIT-QUERIES-S001 claim=R-CAOL-BANDIT-QUERIES -->
 ### Narrow bandit eligibility queries
-- [ ] 🔴 R-CAOL-BANDIT-QUERIES — Identical eligibility checks share named queries without changing operation-specific transfer behavior.
+- [x] R-CAOL-BANDIT-QUERIES — Identical eligibility checks share named queries without changing operation-specific transfer behavior.
 After R-CAOL-HANDOFF, identify exact duplicated predicates among `active_local_contact_member`, committed shakedown membership, structural handoffs and homeward motor in `do_turn.cpp` and matching `bandit_live_world` queries. Consolidate only predicates with the same inputs, owner and meaning; leave distinct operation/reservation/departure conditions at their callers. A proposed narrow query may report a member's existing eligibility; it must not mutate resources, transfer ownership or perform rollback. Avoid Boolean-switch helper frameworks.
 
 **Proof.** Each affected real caller must execute eligible/ineligible cases before and after extraction, including blocked partner, stale token/preflight, destination invalidation, failed transfer/retry, death and established complete-pair rollback behavior from S-BANDIT. Preserve exact member counts and inventory/resource accounting, not only a returned Boolean. Reuse adequate existing `bandit_live_world_test.cpp` tests and add caller coverage only for missing paths. If investigation finds no genuinely identical useful duplication, document that disposition and deliver the protective tests without forced production edits.
@@ -201,7 +216,7 @@ After R-CAOL-HANDOFF, identify exact duplicated predicates among `active_local_c
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-DIAGNOSTICS-S001 claim=R-CAOL-DIAGNOSTICS -->
 ### Diagnostics stay outside decisions
-- [ ] 🔴 R-CAOL-DIAGNOSTICS — Lengthy movement diagnostics can be separated and timing labels describe the measured interval without affecting play.
+- [x] R-CAOL-DIAGNOSTICS — Lengthy movement diagnostics can be separated and timing labels describe the measured interval without affecting play.
 Inspect `monmove.cpp` timing blocks in rider destination selection, `apply_writhing_stalker_plan` and specialized movement before moving formatting. The stalker `eval_us` surrounds live-context construction plus policy evaluation, not the later complete planner/movement; other blocks must be labeled by their own actual start/end. Keep native evidence field meaning and parsers stable or update their exact consumers together. Guard diagnostic-only formatting/collection with the existing enabled-logging predicate; do not introduce per-turn costly strings on a disabled path. Logging cannot query/mutate gameplay in a way that changes action choice.
 
 **Proof.** Proposed `predator_diagnostics_preserve_decision_and_disabled_path` plus affected native parser tests compare the same controlled seed/state with logging enabled and disabled: destination, action/attempt state, resources, time and ownership match. Assert required structured field semantics and that disabled mode omits diagnostic-only work. Timing tests check scope association or instrumentation boundaries, never exact wall-clock duration or prose. Mechanical formatting extraction is validated before/after separately from any intentional label correction.
@@ -226,7 +241,7 @@ C-AOL owns its native interfaces; de67 owns reusable invocation/discovery/contin
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-WAIT-S001 claim=R-EFF-WAIT -->
 ### Pending response waits
-- [ ] 🔴 R-EFF-WAIT — Waiting for an already-submitted native request stays within one tool execution until useful progress, terminal failure or the actual task deadline.
+- [x] R-EFF-WAIT — Waiting for an already-submitted native request stays within one tool execution until useful progress, terminal failure or the actual task deadline.
 **Present mechanism.** `tools/openclaw_harness/play_cli.py::PlayerClient.submit` saves pending request before `Bridge.send_request`; `collect(wait_seconds)` polls exact response identity and returns without resubmission at its deadline. CLI `--wait-seconds` defaults to 1. `cockpit_file_bridge.py` owns immutable request/response envelopes and binding checks. The principal gap is invocation guidance, not missing asynchronous transport.
 
 **Change.** In the actual harness live-operation examples and method playtest instructions, use the existing finite wait option with remaining task time and keep launch plus necessary process polling in a single `functions.exec`. Return promptly on meaningful response/state change, cancellation/new owner input, process/bridge death or deadline. Tool responsiveness limits may require yielding the still-running execution; they never authorize resubmitting the action or an in-game wait. Continue the same request ID after an external timeout, inspecting acceptance/completion first. Add runtime glue only if a concrete test shows the existing route cannot provide this behavior; do not change the gameplay action API or the task clock.
@@ -236,7 +251,7 @@ C-AOL owns its native interfaces; de67 owns reusable invocation/discovery/contin
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-FRAME-S001 claim=R-EFF-FRAME -->
 ### Reuse the returned observation
-- [ ] 🔴 R-EFF-FRAME — The next legitimate action reuses a valid action-result frame without a redundant look.
+- [x] R-EFF-FRAME — The next legitimate action reuses a valid action-result frame without a redundant look.
 `PlayerClient.collect` already retains the result observation, `frame()` rejects pending/terminal/absent state, and `act()` binds the current frame. `gameplay_display.display` supplies deltas; explicit `look` submits `game.observe`. Keep these owners and improve the actual playtest examples/continuation instructions. Reuse only when the last result belongs to current session/process generation and native input state and contains the needed facts. Prompt transitions, rejection with no valid successor, reentry, missing data or stale authority require supported refresh/recovery. Static controls documentation is not current action authority; do not blindly batch moves.
 
 **Proof.** Extend `play_cli_test.py` at the real client level and retain `test_final3_style_five_step_observe_act_chain_keeps_ids_and_observations_unique`, `test_action_successor_observation_id_handoff_never_serializes_empty_id` (`cockpit_file_bridge_test.py`), `test_descriptor_action_does_not_reread_same_cycle_legacy_frame` and `test_latest_superseding_prompt_accepts_once_and_replay_is_stale` (`cockpit_observation_test.py`). In the same action/prompt/rejection/reentry sequence, assert next action references the correct successor, stale frame rejects, required refresh happens, and no extra observe is sent when unnecessary. Count observe calls and actual total work via S-EFF-COMPARE.
@@ -244,7 +259,7 @@ C-AOL owns its native interfaces; de67 owns reusable invocation/discovery/contin
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-EVIDENCE-S001 claim=R-EFF-EVIDENCE -->
 ### Exact projected evidence first
-- [ ] 🔴 R-EFF-EVIDENCE — Known run/request/actor/event questions use existing exact filters and selected fields before bulk retrieval.
+- [x] R-EFF-EVIDENCE — Known run/request/actor/event questions use existing exact filters and selected fields before bulk retrieval.
 `PlayerClient.evidence` → `evidence_events.query` freezes source bytes, records offsets/lengths/hashes, filters identity and projects `--select`. `cockpit_file_bridge` provides `log-query`, response slices/status/artifacts. Reuse those interfaces in actual investigation guidance and examples; do not add a second evidence cache. A rejection example projects identity, time, accepted/error/rejection/outcome and retrieval handle rather than whole nested receipts.
 
 Correlation requires exact `(run_id, process_instance, request_id)`, not nearby timestamps or spoken text. Missing selected fields remain explicitly unavailable/unknown. Source handles recover the full record and omissions, including contradictions; compact views are not absence evidence. Preserve append-safe immutable snapshot and record hash semantics.
@@ -254,7 +269,7 @@ Correlation requires exact `(run_id, process_instance, request_id)`, not nearby 
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-SEMANTIC-S001 claim=R-EFF-SEMANTIC -->
 ### Jev only for useful semantic selection
-- [ ] 🔴 R-EFF-SEMANTIC — Telescope helps distinguish competing explanations without model calls for exact identifiers or known flags.
+- [x] R-EFF-SEMANTIC — Telescope helps distinguish competing explanations without model calls for exact identifiers or known flags.
 Method files: `integrations/jev_telescope/README.md`, `de-67-3/scripts/instruction_context.py::telescope_guidance`, the actual harness invocation examples, and `telescope.py::request_body/validate_response/evaluate`. Existing typed candidate classification, independent counterevidence question, unknown-ID rejection, stale revalidation and baseline fallback are useful. Keep them; no generic prompt-to-JSON replacement.
 
 Exact ID/failure/status/rejection queries go first through R-EFF-EVIDENCE with zero provider calls. A genuinely ambiguous question may send its bounded relevant candidate pool and competing hypothesis to Telescope; returned labels/IDs guide original-source inspection, never become a certified bug or completion. Explicit irrelevant/abstain is valid. Off has no calls; shadow records comparison while returning baseline; on uses validated selection. Provider failure retains deterministic retrieval, not another paid model.
@@ -264,7 +279,7 @@ Exact ID/failure/status/rejection queries go first through R-EFF-EVIDENCE with z
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-CANDIDATES-S001 claim=R-EFF-CANDIDATES -->
 ### Candidate coverage before provider selection
-- [ ] 🔴 R-EFF-CANDIDATES — Telescope's harness pool removes equivalent rows before submission and retains relevant late observations and contradictions within honest scan limits.
+- [x] R-EFF-CANDIDATES — Telescope's harness pool removes equivalent rows before submission and retains relevant late observations and contradictions within honest scan limits.
 **Confirmed gap.** `integrations/jev_telescope/harness_adapter.py::search` takes source-order rows and stops once `max_candidates` is full. `assemble` deduplicates after the provider call. Thus early irrelevant/duplicate rows crowd out later useful evidence and still cost provider tokens. `telescope.py::gather` already has deterministic lexical ranking, but the adapter does not apply it.
 
 **Mechanism.** Start from R-EFF-EVIDENCE's exact run/actor/request/event filter and field projection. Within the configured byte/row/time scan budget, verify each candidate's source handle, build a bounded shortlist using deterministic query relevance, and deduplicate before `request_body`. Exact original record identity and identical projection for the same event may collapse, with original handles retained. Different run/process/request/actor, observation time, result or contradiction must remain distinct even if prose is identical. Never claim to know omitted rows are irrelevant. A candidate count limits the final provider pool, not the opportunity to inspect later rows within the existing scan budget. Preserve counts/reasons for exclusions, duplicates, scan truncation and final-pool truncation, plus an exact expansion route. Retain post-selection stale/tamper revalidation. No automatic limit increase, semantic duplicate model, or shadow evidence store.
@@ -274,7 +289,7 @@ Exact ID/failure/status/rejection queries go first through R-EFF-EVIDENCE with z
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-CONTINUATION-S001 claim=R-EFF-CONTINUATION -->
 ### Continue from current bindings
-- [ ] 🔴 R-EFF-CONTINUATION — A context reset resumes the unfinished question without reconstructing static guidance or replaying pending input.
+- [x] R-EFF-CONTINUATION — A context reset resumes the unfinished question without reconstructing static guidance or replaying pending input.
 Use the existing worker handoff/checkpoint and `tools/openclaw_harness/work_context_provider.py::select_current_results/export_current_results` where current selected receipts are exported. Keep a small current note containing session/process generation and binding, pending request ID or none, retained frame/evidence handles, unresolved question and next decision. Replace obsolete current tactics while preserving immutable prior evidence. No new continuation database, competing acceptance ledger or mandatory full transcript/WEC reload.
 
 On resume, validate current native session/action authority and source dependencies, collect the pending request before any new action, and reuse static controls guidance only as documentation. A changed generation invalidates old frame/grants; retain accepted prior receipts at their old scope and refresh/rebind through existing reentry. Use current-results export for explicit selected receipts/conclusions; it must not infer which findings are accepted.
@@ -285,7 +300,7 @@ On resume, validate current native session/action authority and source dependenc
 <!-- DE67:DFS-SLICE:BEGIN id=R-ZL-PLAYTEST-S001 claim=R-ZL-PLAYTEST -->
 ## Revised remaining playtest: follow into a city
 
-- [ ] 🔴 R-ZL-PLAYTEST — The remaining stalker follows the player into natural city pressure and chooses its own opportunistic attack after honestly recorded debug-only stalker setup.
+- [x] R-ZL-PLAYTEST — The remaining stalker follows the player into natural city pressure and chooses its own opportunistic attack after honestly recorded debug-only stalker setup.
 
 **Retained frontier.** Existing integrated accounts and accepted focused light, stalker, rider, lifecycle, evolution, band, encounter and sprite work are not reopened. The current ledger's remaining gap is the stalking-to-opportunistic-attack account. The already accepted actionless activity-resume repair is a premise, not work to repeat. Old task names containing `natural-stalker-opportunism` remain historical identifiers; the owner now explicitly permits debug spawning that stalker.
 
@@ -320,7 +335,7 @@ A real paid request is not needed to discover these public contracts. If provide
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EXP-PIT-FUNDS-S001 claim=R-EXP-PIT-FUNDS -->
 ### Pit Crew request admission and durable funding shutdown — deferred
-- [ ] 🔴 R-EXP-PIT-FUNDS — Optional Jev integrations stop admitting paid requests after confirmed provider exhaustion or the configured local budget, across worker restart and package update.
+- [x] R-EXP-PIT-FUNDS — Optional Jev integrations stop admitting paid requests after confirmed provider exhaustion or the configured local budget, across worker restart and package update.
 **Prerequisite:** G-PRODUCTION. **Owner:** de67 source, optional integration/adapter; no C-AOL gameplay changes. Existing Telescope `max_calls` is per evaluation, not a persistent funding budget. `_provider_child` currently collapses HTTP errors to a status string and cannot identify a structured funding code.
 
 **Mechanism.** Add a small shared optional provider guard beside the existing Telescope adapter (proposed `integrations/jev_telescope/provider_guard.py`), usable by Pit Crew without enabling Telescope. Configuration distinguishes mode (`off/shadow/on`) from effective state (`ready/disabled_funds/disabled_budget/auth_error/transient_open`). Owner configuration specifies nonsecret funding-scope ID, shared durable state location, call/spending limits, concurrency, request/input bounds, timeout and bounded retry/backoff. No values here are invented acceptance thresholds. Off never touches the paid endpoint.
@@ -425,7 +440,7 @@ After freeze, only the selected phase skill's evidence-bound closure, nonmateria
 
 Implementation status:
 
-- [ ] 🔴 R-EFF-REGISTRY-COST — Routine scenario selection and exact evidence retrieval use compact current data without repeatedly rebuilding or returning the registry's accumulated history.
+- [x] R-EFF-REGISTRY-COST — Routine scenario selection and exact evidence retrieval use compact current data without repeatedly rebuilding or returning the registry's accumulated history.
 
 **Owner outcome.** Josef requested immediate control of harness registry and token overhead on
 2026-09-19. Separate storage bytes, internal reads/latency, serialized artifacts and model-visible
@@ -520,6 +535,14 @@ not a fixed action/run count, compulsory new framework, or unrelated replay of e
 <!-- DE67:DFS-SLICE:END id=R-CAOL-NATIVE-REGRESSION-S001 claim=R-CAOL-NATIVE-REGRESSION -->
 
 ## Lean, reliable harness — S-HARNESS, reconciled owner additions 2026-09-20/21
+
+**Owner-closed campaign, 2026-09-23.** The following is retained historical contract and
+source/evidence rationale, subordinate to S-REMAINING. Unaccepted campaign claims
+R-HARNESS-EXECUTION, R-HARNESS-CONSOLIDATION and R-HARNESS-JOURNEY are retired by the owner,
+not technically accepted or a prerequisite to the new proof. Their identities and history remain;
+old prose about a successor, full campaign, cleanup inventory or 50% target does not revive them.
+Accepted harness behavior remains protected. A demonstrated obstruction gets only its necessary
+repair under the affected current claim.
 
 The reasoning agent chooses the question, setup and interpretation. The harness owns execution,
 waiting, identity, recovery and compact facts. Finding/preparing a scenario → starting or resuming
@@ -622,7 +645,7 @@ the necessary native identity; retain the single transition contract and avoid d
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-EXECUTION-S001 claim=R-HARNESS-EXECUTION -->
 ### Actions finish at a native outcome
-- [ ] 🔴 R-HARNESS-EXECUTION — One shared operation lifecycle drives scripted and interactive actions and waits through real completion, interruption, cancellation and failure.
+- R-HARNESS-EXECUTION — **Owner-closed campaign; no new technical acceptance.**  One shared operation lifecycle drives scripted and interactive actions and waits through real completion, interruption, cancellation and failure.
 
 **Mechanism.** Complete and consolidate the existing receipt-bound collector and the
 `open_cockpit_game_service` seam as one transition contract used by `CockpitService` operations and
@@ -671,7 +694,7 @@ is the source-bound bandit long wait in H-JOURNEY, with exact elapsed game time 
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-SESSION-S001 claim=R-HARNESS-SESSION -->
 ### A compact response and recoverable session
-- [ ] 🔴 R-HARNESS-SESSION — Every supported operation returns enough current truth for the next decision, and collection/resume is idempotent without reconstructing request machinery.
+- [x] R-HARNESS-SESSION — Every supported operation returns enough current truth for the next decision, and collection/resume is idempotent without reconstructing request machinery.
 
 **Mechanism.** Extend `play_cli.py` and existing display/status projection, not a second session
 database. Provide direct public scenario selection/preparation, start, resume, wait, save and reload
@@ -735,7 +758,7 @@ edit or custom helper is allowed for H-JOURNEY. Prior R-EFF evidence remains its
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-EVIDENCE-S001 claim=R-HARNESS-EVIDENCE -->
 ### Evidence and summaries answer the selected question
-- [ ] 🔴 R-HARNESS-EVIDENCE — Exact evidence queries, scenario summaries and witness indexes expose related native facts and uncertainty without unrelated history or hand-built citation machinery.
+- [x] R-HARNESS-EVIDENCE — Exact evidence queries, scenario summaries and witness indexes expose related native facts and uncertainty without unrelated history or hand-built citation machinery.
 
 **Mechanism.** Correct the existing `evidence_events.query/_request_result_links`, registry query
 projection, evidence archive and witness interfaces together where their contracts overlap. An exact
@@ -778,7 +801,7 @@ report retrieval/closeout effort and unavailable originals rather than inventing
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-PREMISES-S001 claim=R-HARNESS-PREMISES -->
 ### Scenarios establish a real opportunity for the tested behavior
-- [ ] 🔴 R-HARNESS-PREMISES — Scenario preparation exposes executable native prerequisites before costly play and separates setup, infrastructure and gameplay failures.
+- [x] R-HARNESS-PREMISES — Scenario preparation exposes executable native prerequisites before costly play and separates setup, infrastructure and gameplay failures.
 
 **Mechanism.** Reuse registry declaration validation, fixture installation, source-bound launch and
 read-only production evaluators. Validate the actual save/assets, current native startup readiness,
@@ -812,7 +835,7 @@ success/failure records and rerun only for changed premises or an unresolved pro
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-CONTINUATION-S001 claim=R-HARNESS-CONTINUATION -->
 ### Continue useful work without reconstructing its environment
-- [ ] 🔴 R-HARNESS-CONTINUATION — A worker receives an executable current boundary, valid next session operation and reusable build/evidence facts rather than repeated setup archaeology.
+- [x] R-HARNESS-CONTINUATION — A worker receives an executable current boundary, valid next session operation and reusable build/evidence facts rather than repeated setup archaeology.
 
 **Mechanism.** Correct existing `work_context_provider.session_context`, current-results export,
 source-bound builders, harness guidance and their actual delivered consumers. A brief contains the
@@ -864,7 +887,7 @@ worker reuse.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-LIFECYCLE-S001 claim=R-HARNESS-LIFECYCLE -->
 ### Save, quit and reload have separate observable boundaries
-- [ ] 🔴 R-HARNESS-LIFECYCLE — Save → quit → reload → continue preserves the intended world and history and reports real completion at each boundary.
+- [x] R-HARNESS-LIFECYCLE — Save → quit → reload → continue preserves the intended world and history and reports real completion at each boundary.
 
 **Mechanism.** Trace native `world.quicksave/world.save_quit` through `handle_action.cpp`, the actual
 save result and current semantic owner. Publish or consume a successful-save fact tied to the exact
@@ -913,7 +936,7 @@ Recheck references and useful proof questions when delivering each replacement.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-CONSOLIDATION-S001 claim=R-HARNESS-CONSOLIDATION -->
 ### Replacements remove their old machinery
-- [ ] 🔴 R-HARNESS-CONSOLIDATION — Useful scenarios and distinct failure protections use the shared path, and superseded execution code, declarations, fixtures, tests and instructions are removed.
+- R-HARNESS-CONSOLIDATION — **Owner-closed campaign; no new technical acceptance.**  Useful scenarios and distinct failure protections use the shared path, and superseded execution code, declarations, fixtures, tests and instructions are removed.
 
 Use H-INVENTORY as the concrete initial consumer map. For each replaced path identify imports,
 dispatch tables, step-kind/parser readers, declaration references, registry ingestion, test consumers
@@ -948,7 +971,7 @@ tests decide correctness. They do not supply game timing thresholds, native fact
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-JOURNEY-S001 claim=R-HARNESS-JOURNEY -->
 ### Prove the supported journey — H-JOURNEY
-- [ ] 🔴 R-HARNESS-JOURNEY — Representative native playtests complete through the documented interface without temporary helpers, session-file edits or repeated agent-managed polling.
+- R-HARNESS-JOURNEY — **Owner-closed campaign; no new technical acceptance.**  Representative native playtests complete through the documented interface without temporary helpers, session-file edits or repeated agent-managed polling.
 
 Begin with the original bandit long-wait failure identified in the manual handoff and retained
 archive. Recover its exact run/scenario/dependent step before reproducing; do not assume a similarly
@@ -1071,8 +1094,8 @@ The separate exit selector has measured work amplification, not proof of the tra
 The delivery dependency is reliable shared operation execution plus its performance alarms, then
 acceptance of source-bound native signal and travelling proof. Deterministic regressions and small
 repairs may be prepared together; no native run or implementation starts in this Phase-2 pass.
-Reuse H-JOURNEY and R-CAOL-NATIVE-REGRESSION where they exercise the same boundary. Their original
-unfinished gaps remain distinct. Do not generate a scenario Cartesian product or reopen optional
+Reuse retained H-JOURNEY evidence and R-CAOL-NATIVE-REGRESSION where they exercise the same
+boundary. The owner-closed harness campaign is not an additional execution prerequisite. Do not generate a scenario Cartesian product or reopen optional
 experiments, unrelated historical failures or accepted gameplay solely because these owners overlap.
 
 ### Revised signal cadence and inspected changes — S-SIGNAL-CADENCE
@@ -1398,7 +1421,7 @@ an optimized helper or scout success does not establish the historical following
 - Git/runtime preparation and capability evidence belong to the ledger, not this functional contract. The current owner hold supersedes all historical launch instructions.
 
 
-## Current freeze record — full-stack harness owner mutation, 2026-09-21
+## Historical freeze record — full-stack harness owner mutation, 2026-09-21
 
 - Status: Refrozen from the owner-authorized thaw in gate `f5d913c63d0e`, invocation
   `mutation-48bcebae6cd84750aecc249a942956f5`, against `dev@fe8c418c1636bdfa6e16d0009af83873a079e24f`
@@ -1415,3 +1438,344 @@ an optimized helper or scout success does not establish the historical following
   capture/OCR is not a prerequisite for a nonvisual semantic claim; actual startup readiness is.
   Sol sequences that live-decision proof with the new session/evidence/premise/continuation work.
   No new game, worker or coordinator was launched by this mutator.
+
+## Remaining useful evidence — S-REMAINING, 2026-09-23
+
+The accepted matrix is **18 scoped successes and two unresolved camp observations**. The older
+`build_logs/harness-fixes-matrix20/INDEX.md` still reports 17; the later owner decision accepts
+row 12's rider knockdown result. Row 13's absent assignment and row 14's unobserved helmet
+transfer are open observations, not established harness or game defects. Keep the original
+transcripts/results and their limits. Row 10 proves its prepared assignment/reload case; row 16
+proves patrol and priority-zero release. Neither establishes a fresh assignment, native Locker
+weapons/ammunition pickup or the combined armed defense journey. Existing accepted R-032 and
+sprite/LLM/ownership claims are not reopened by the new installation or camp claims.
+
+| Existing claim | Settled evidence to retain | Remaining useful proof |
+|---|---|---|
+| R-CAOL-SIGNAL-PROOF | Exploration-006 receipt `9c6ee60a703bc9fe462a03b64bbb739022a1bed64712b14fb03df8059f35541f`; run `c79899abce5a7e064f1594ab06726c5b037fba81994d46ef12cc7b2c4c09ab0f`; local watch, native sound at minute 9365 / OMT (138,52,0), physical return/report at 9426. The `r033-drive500-sound-return-age-reentry-final-witness.json` in that task directory proves the returned sound report retains original age 61 game minutes through process replacement/reload. | Stationary-source discovery/removal and bubble-edge behavior; finite memory/expiry and separate original signal-origin camp clue support; save/reload of those still-unproved states; populated native before/after performance and alarm evidence. Do not repeat the already-proved returned-report age merely because earlier continuation prose still lists it. |
+| R-CAOL-TRAVELLING-COST | Existing code-path investigation distinguishes pre/post contact work, native NPC moves and path queries; historical slowdown attribution remains unproved. | Actual bandit/cannibal pursuit of a travelling player, responsive nearby combat, blocked/open routes, ownership and boundary continuity, with comparable measured work/performance. Camp waiting is not a substitute. Dismiss a suspected edit if current production evidence makes it unnecessary. |
+| R-CAOL-EXIT-COST | Retained real-adapter control and selector work counts in S-PERFORMANCE. | Actual map-exit/homeward/return behavior, complete-pair or legitimate survivor ownership, and source-bound cost proof at the remaining gap; share the native segment with travel/ownership proof where it genuinely reaches the same boundary. |
+| R-CAOL-NATIVE-REGRESSION | Accepted focused LIGHT-FIXTURE/HANDOFF/LIGHT-TURNS/HISTORY/LIGHT-EXTRACT/SETUP-LIFETIME/DIAGNOSTICS results, matrix light controls and scoped reload results. | The combined build's remaining real-turn light/memory/recipient, repeated local/abstract ownership/history and R022 setup/reentry/diagnostic integration boundaries. Use its existing coverage map and returned results. No automatic whole-campaign repeat. |
+
+The signal production owners remain `physical_light::loaded_source_sampler`,
+`live_light::run_advancing_turn`, `reset_live_light_sample_cache`, the mutually exclusive sound
+drains in `do_turn.cpp`, and `bandit_live_world::returned_structural_signal_lead_has_support`.
+Only normal advancing owners may generate fresh observations, decisions or returns. Sampling
+queries, redraw and relayed clues do not refresh original time/class/position. A fixture lacking
+an eligible observer or a real decision opportunity is inconclusive. Preserve the current
+fifteen-minute distant-notice contract rather than restoring superseded every-turn discovery.
+
+Use the current existing registry/cockpit/play CLI. Keep concise plain commands/replies and
+complete per-playtest command/output transcripts with a short supported outcome. Setup, harness
+failure, game defect and unproved behavior are distinct. `process_performance.py` currently sets
+`WAITING_WINDOW_TURNS = 100` and `WAITING_LIMIT_SECONDS = 0.100`: retain 100 ms per completed
+waiting turn, the measured window and instruction to report performance problems. A performance
+alarm does not grant completion or input-replay authority. Do not replace the harness, invent
+mechanics to force green, or add another evidence/receipt framework.
+
+## Assigned, equipped patrol and camp defense — S-CAMP-PROOF
+
+A suitable disposable camp save may establish terrain, population, zones, stock and a staffed
+bandit camp. Those are disclosed setup interventions. It must not pre-equip the very weapons or
+ammunition whose Locker acquisition is being proved, inject an alarm/attack/return, or count
+preassigned fixture NPCs as proof of the fresh assignment path. Equivalent saved starting states
+separate zombie defense, peaceful shakedown and hostile Fight so prior hostility does not contaminate
+peaceful acceptance. The owner permits preparing this save; obtaining an owner-provided save is
+an alternative, not a blocking dependency.
+
+| State/action | Readers and writers | Authority, precedence and persistence |
+|---|---|---|
+| Camp assignment | `faction_camp.cpp::basecamp::worker_assignment_ui` → `npctalk_funcs.cpp::talk_function::assign_camp(npc&)` → `basecamp::add_assignee(character_id)`; `validate_assignees`, NPC AI and camp jobs read it. Removal and explicit reassignment are competing writers. | The native assignment route finds the camp at the NPC's current OMT, sets CAMP_RESIDENT/attitude/order state and `npc::assigned_camp`. The camp's pointer list is reconstructed, not a second durable owner. An NPC near a camp or following the player is not thereby assigned. NPC save/load preserves the camp ID; validation removes stale membership. |
+| Locker items and readiness | `npc::worker_downtime` → `basecamp::process_camp_locker_downtime` → `service_camp_locker_impl`; zone/item collectors, policy UI, queue/reservations and ranged-readiness service. Native item movement, wearing/wielding and reloading own actual inventory changes. | CAMP_LOCKER stock and current worker gear determine a candidate plan. Queue/eligible downtime precede actual service. A candidate is removed from its real tile, equipped, or returned on failure; displaced gear and contents retain one owner. Reservations expire; repeated service must not duplicate items. `savegame_json.cpp` persists assignment, inventory, locker policy/queue and next service turn; transient reservations do not become saved item ownership. |
+| Patrol roster and route | `basecamp::refresh_patrol_shift_cache`, `get_current_patrol_runtime`, `collect_camp_patrol_workers`, `plan_camp_patrol`; `npc::worker_downtime`, job priority and explicit assignment read/write order state. | Eligible camp residents, or camp-owned guard/patrol orders, with positive ACT_CAMP_PATROL priority enter the roster. Normal day/night and competing-job duty apply; explicit reassignment/exclusion and survival retain their existing precedence. Diagnostic cached views cannot create a roster. Saved NPC order and camp shift exclusions rebuild the transient plan after load. |
+| Alarm and combat | `npc::assess_danger` observes visible hostile monsters/NPCs and calls `basecamp::raise_patrol_alarm`; `is_active_shakedown_parley_member` qualifies neutral contact. The native NPC combat loop owns attacks/moves. | Alarm expiry is game time. An active alarm rebuilds the eligible roster at full duty, including eligible reserve/off-shift guards. It does not override a genuinely excluded/dead/unassigned actor or invent visibility/targets. Active shakedown parley can be watched as neutral even while an alarm is raised. A peaceful case requires no guard attack, not necessarily no alarm. `patrol_alarm_until` survives save/load without renewed duration. |
+| Payment and departure | `do_turn.cpp::live_bandit_select_shakedown_payment` refreshes Storage and values player/nearby-NPC/camp/ground pools; `npc_trading::trade`, paid-return preparation/commit, and hostile Fight own their respective transitions. | Real selected items/value must transfer before successful paid departure. Cancelled/insufficient payment may become Fight; it cannot count as peaceful success. Keep the existing paid-return preflight and tokenized complete-pair/survivor ownership policy. One successful settlement cannot charge again on collection or reload. |
+| Replenished bounty and return | Existing `bandit_live_world` site/outing/lead state; structural scan/maintenance/decision, physical NPC movement and native writeback. | Preparation may replenish real stock but cannot set a fresh clue, dispatch, cooldown completion or returned outcome. Existing knowledge, scouting, risk/supply, revisit eligibility and time drive return. Serialize the site's original lead/outing/member identities and clocks. Inventory replenishment alone does not promise a fixed return interval. |
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-ASSIGNMENT-S001 claim=R-CAOL-CAMP-ASSIGNMENT -->
+### Fresh camp assignment
+- [ ] 🔴 R-CAOL-CAMP-ASSIGNMENT — A fresh camp accepts an eligible NPC through the native assignment route and retains the actual assignment through save/reload.
+
+**Code gap and causal question.** Matrix row 13 created a camp but left the NPC unassigned.
+`talk_function::assign_camp` first calls `find_camp(p.pos_abs_omt().xy())`; a missing camp at that
+position returns without assigning. Camp creation, NPC placement, follower eligibility and the
+actual assignment action must therefore be distinguished before declaring a game defect. Row 10's
+prepared resident proves a different premise.
+
+**Mechanism and proof.** Reuse `r032.fresh_camp_establishment_v001_mcw` after checking its real
+premises. Create the camp, position an eligible follower at the camp's actual lookup OMT, use the
+native assignment UI, and observe the same character ID becoming CAMP_RESIDENT with matching
+`assigned_camp` and usable job priorities. Save, quit/reload that world and continue ordinary camp
+work. Check wrong-location/ineligible cancellation through existing real-caller tests if needed;
+no fabricated assignment or success message earns proof. Repair the first demonstrated obstruction
+at its actual owner, not an assumed new assignment system. Close with native assignment and
+persisted state/behavior evidence; fixture preassignment is only setup.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-ASSIGNMENT-S001 claim=R-CAOL-CAMP-ASSIGNMENT -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-LOCKER-S001 claim=R-CAOL-CAMP-LOCKER -->
+### Actual Locker equipment transfer
+- [ ] 🔴 R-CAOL-CAMP-LOCKER — Assigned camp NPCs acquire and equip real Locker weapons, compatible ammunition and applicable gear natively, with accountable item movement and reload persistence.
+
+**Code gap.** Matrix row 14 changed policy from 12 to 11 but did not establish the helmet's final
+location or transfer. `process_camp_locker_downtime` can be skipped, queued or legitimately no-op;
+a policy toggle does not prove `service_camp_locker_impl` ran or found an eligible upgrade.
+
+**Mechanism and proof.** Before advancing service, stock an enabled camp-local CAMP_LOCKER with
+identifiable wearable/equippable upgrades and usable weapons, magazines/ammunition, while retaining
+needed camp Storage for displaced items. Establish real assignment, policy, accessible stock,
+current gear and an ordinary downtime opportunity. Observe exact tile → NPC worn/wielded/inventory
+changes and ranged-readiness/reload consequences; use item identity where stable and quantity/type/
+charge conservation where stacks legitimately merge. Observe displaced gear and failed-candidate
+restoration rather than accepting disappearance. A real equipped firearm with compatible usable
+rounds must feed the later defense case; injecting it directly into NPC inventory cannot prove this
+claim. Preserve assignment, selected gear and ammunition through save/reload without a second
+pickup/charge. Existing `camp_locker_service_equips_upgrades_and_returns_replaced_gear`,
+`camp_locker_service_readies_ranged_loadouts_from_locker_supply`, queue/requeue/rehydration and
+unwearable/unwieldable controls in `tests/faction_camp_test.cpp` protect the production seams;
+extend only the missing causal regression if a defect is found. Close with attributable native
+transfer and readiness, not a full-inventory diagnostic or elapsed wait alone.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-LOCKER-S001 claim=R-CAOL-CAMP-LOCKER -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-DEFENSE-S001 claim=R-CAOL-CAMP-DEFENSE -->
+### Patrol, zombie alarm and peaceful/hostile shakedown
+- [ ] 🔴 R-CAOL-CAMP-DEFENSE — A real armed camp patrol mobilizes its appropriate guards and defeats a zombie, permits peaceful shakedown/looting without guard attack, and engages a substantive hostile bandit defense fight.
+
+**Mechanism.** Use genuinely assigned, Locker-equipped NPCs and actual CAMP_PATROL zones/routes.
+Verify roster, active/reserve status, native patrol-order ownership and movement before introducing
+threats. Normal job/shift rules determine eligible guards; fixture labels such as “three armed
+followers” are not proof that they are camp patrol guards. The existing intact-camp shakedown
+fixture with eight bandits is a possible starting setup, not a mandatory actor-count threshold.
+Prepare enough eligible defenders and bandits for the requested substantive encounter.
+
+**Proof.** (1) Disclose debug spawning of a visible hostile zombie. Observe an actual guard's alarm,
+then each appropriate roster guard's mobilization/engagement and the guards' attack/kill outcome.
+Record exclusions or obstructions per actor; one follower's shot or a scripted death is insufficient.
+(2) From an equivalent peaceful starting state, accept the real shakedown, observe actual looting/
+payment/departure and no guard attack throughout that contact. An alarm alone is not failure:
+`is_active_shakedown_parley_member` intentionally prevents escalation. (3) From an equivalent
+hostile branch, choose Fight with a staffed/equipped bandit camp and observe meaningful guard and
+bandit movement, attacks, damage/ammunition/casualties. Mere dialog, an immediate player death with
+no defense opportunity, or fighting only an isolated unrepresentative NPC is not the requested fight.
+A guard defeat is an honest game result, not an automatic harness failure; diagnose a missing native
+link before altering behavior. Save/reload the camp's assignment, equipment and live patrol order/
+route, then observe continued service; row 16's saved priority-zero release cannot replace this.
+Retain source/run/world/site/actor/time and native combat evidence with screenshots for visible
+behavior where useful. Reuse `[camp][patrol]` alarm, neutral-contact, hostile and persistence controls;
+run affected controls only if implementation changes or a material proof gap requires them.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-DEFENSE-S001 claim=R-CAOL-CAMP-DEFENSE -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-PAY-RETURN-S001 claim=R-CAOL-CAMP-PAY-RETURN -->
+### Pay from camp stock and observe return ecology
+- [ ] 🔴 R-CAOL-CAMP-PAY-RETURN — Native payment can use the prepared camp inventory zone and gold/spillover; after replenishment the real bandit ecology is observed through return or a causally explained non-return boundary with elapsed game time.
+
+**Gap and mechanism.** The earlier Pay attempt hit a native pocket-weight error. Do not work around
+it by changing inventory capacity or declaring a click paid. Prepare actual CAMP_STORAGE inventory
+and enough gold for the real demand, including overflow on valid nearby zone tiles. Verify the real
+trade surface includes the intended camp/ground pools without double-counting; select and transfer
+those items, then observe paid-return commit, departure and homeward ownership. Distinguish gold
+outside the zone or beyond the production reach from reachable spillover; do not assume arbitrary
+far-away stock is eligible.
+
+**Proof.** Reuse the peaceful defense branch where possible. Bind demanded and surrendered value,
+item/charge deltas and departure to the same site/outing. After the real departure, replenish useful
+stock as disclosed setup and advance ordinary game time with alarms. Observe knowledge/lead update,
+eligible outing, map exit/return and actual renewed contact. Report game time at departure,
+replenishment and first return, including both elapsed intervals. Preserve source age, camp/member
+identity, casualties/resources and no duplicated payment through a useful save/reload. No fixed
+return deadline is invented: inspect real scheduler/lead/supply/risk eligibility if no return occurs,
+and preserve the duration observed and concrete cause. A timeout or absence without opportunity
+remains unproved. A demonstrated legitimate non-return may explain that branch but does not erase
+the requested return-ecology outcome; continue a materially suitable premise or report its exact
+remaining boundary. Do not inject a dispatch or shorten cooldowns to manufacture a return.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-PAY-RETURN-S001 claim=R-CAOL-CAMP-PAY-RETURN -->
+
+## Clean Catapult-Dabubu installation — S-LAUNCHER
+
+**Identity and scope.** The actual product is **Catapult-Dabubu**, Godot 3, repository
+[`josihosi/Lacapult-Doobdab`](https://github.com/josihosi/Lacapult-Doobdab). Launcher paths below
+are relative to that separate repository; game paths remain relative to C-AOL. Do not rename the
+product to the dictated “lavapult” or build another launcher. Gemma 4 E2B/E4B are additional local
+choices, not Gemini API models or replacements for existing Mistral/Nemotron choices. Existing
+OpenVINO support is not expanded by this request.
+
+Read-only release inspection found launcher prerelease
+`catapult-dabubu-python-venv-fix-2026-06-05`, source `366aee6bd675be9b45afbd2ab222808faceedd9d`,
+with macOS unsigned zip, Windows unsigned zip, Linux unsigned tar.gz and checksums. The newest
+observed matching C-AOL master prerelease was `caol-cdda-master-2026-06-05-0903`, source
+`ab1723253b16b9f31a732ea50fde3e8a0a4b1e13`, older than current dev. These are starting facts,
+not a claim that those packages contain the current fixes or custom sprites. Installation proof
+must bind actual downloaded release/tag/asset/checksum/source content. Correct packaging and a
+published downloadable candidate are required when the older release lacks the needed content;
+a developer checkout or local export folder cannot silently substitute for the user's download.
+
+| State/action | Readers and writers | Authority and failure/persistence boundary |
+|---|---|---|
+| Release download/install | `ReleaseManager.gd` filters platform assets from C-AOL releases; `Catapult.gd::_on_BtnInstall_pressed` calls `ReleaseInstaller.gd::install_release(release_info, game, update_in)`; downloader/filesystem helper extracts and preflights. | Actual matching archive contents and successful extraction/preflight precede active-install selection. Fresh proof starts with empty relevant cache/install state. Failure does not select a nonexistent/partial game. A retry observes partial state and does not delete unrelated saves. Existing release packaging tools remain the owners. |
+| Launcher/user/game paths | `path_helper.gd`, `settings_manager.gd`, install list and `Catapult.gd::_start_game` | macOS uses `~/Library/Application Support/Catapult-Dabubu`; Windows/Linux are portable beside the executable. Active game and userdir must match the tested install. A second Mac app copy alone is not clean isolation. `dabubu_settings.json` and the active game userdir persist selection; no fallback to a development sibling earns fresh proof. |
+| Model choice/readiness | `BackendSetupUI.gd` option metadata, `_select_ollama_choice`, field save/refresh; `BackendConfigManager.gd::get_ollama_model_choices`, normalization, readiness and setup/test plans | One exact selected tag survives UI refresh, backend switches, save and relaunch. Inventory is observational and must identify the same endpoint used for pull/test/game. Existing Nemotron source/alias special handling stays specific to Nemotron. |
+| Ollama install/server/model | `build_ollama_setup_plan(endpoint, model)`, `run_ollama_setup(..., proof_only)`, OS installer/process owner, Ollama API/CLI | Missing runtime → actual platform installation → re-detect binary/server → selected model download → ready. Each step reports its true state; an empty plan/manual requirement is not installed. Avoid duplicate install/pull while an operation is pending. Existing proof-only modes never earn live install/inference credit. |
+| Backend options/Python | `BackendSetupUI` Save → `write_launcher_backend_config` → `_build_caol_options_patch` and backup/apply to active `options.json`; game options/LLM runner read it. `run_python_venv_setup` creates app-managed uv/CPython/venv. | Save selects `LLM_INTENT_ENABLE`, BACKEND, USE_API, shared Python path and exact model/provider/env settings. Preserve unrelated options and backups. Actual venv/runner belongs to the installed package, not a pre-existing developer Python. Status checks do not install or call models. |
+| API secret | `_on_SetSessionApiKey_pressed` writes the named process environment, clears the masked input; launcher/game/`runner.py` consume the named variable. | Secret value is never written to config, command previews, reports or screenshots. Provider/model/env-var name persists; the current session key does not. Use owner-configured persistent environment/secure provisioning where available, or explicitly re-enter through the existing masked UI after launcher restart. Do not invent plaintext persistence or claim session-secret retention. |
+| Model response | `build_backend_runner_test_plan`/`run_backend_runner_test` call installed `tools/llm_runner/runner.py`; game runner/intent consumers own in-game application. | Readiness/listed tag, dry-run and exit status alone do not prove an actual model answer. Attribute a real response to backend/model/endpoint and the installed runner; observe usable in-game response/application. Ollama currently requests `think: false` and rejects nonempty reasoning content; preserve that response boundary for Gemma. No canned/forced answer or API fallback earns local credit. |
+| Tileset/custom graphics | `TilesetManager.gd`, `TilesetsUI.gd`, game graphics options and mod loader; C-AOL `data/mods/caol_creature_sprites_tileset` | Use delivered UltimateCataclysm plus C-AOL Creature Sprites (`caol_creature_sprites_tileset`), mapping `mon_writhing_stalker` and `mon_zombie_rider`; Larwick Overmap compatibility is already declared. Downloaded assets/mod enablement, actual selected tileset and native visible rendering must agree. Preserve separate mod-tileset assets and unrelated user graphics. |
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-LAUNCHER-GEMMA-S001 claim=R-LAUNCHER-GEMMA -->
+### Download and retain both Gemma 4 choices
+- [ ] 🔴 R-LAUNCHER-GEMMA — Catapult-Dabubu offers, downloads and selects `gemma4:e2b` and `gemma4:e4b` alongside its existing local models, and sends the retained selection to the installed game's local runner.
+
+**Code gap.** BackendConfigManager's list and BackendSetupUI's separate OptionButton currently
+contain only Mistral v0.3 and Nemotron 9B. `_select_ollama_choice` defaults an unlisted selection
+to entry zero and writes it back. Readiness/hardware/status rows also contain named existing-model
+assumptions; adding a displayed string alone is insufficient.
+
+**Required mechanism.** Extend the current catalogue and all its actual UI/readiness/plan consumers,
+preferably using its existing `get_ollama_model_choices` seam to avoid divergent choices. Each
+Gemma entry maps directly to its exact official tag for pull, inventory match, save and runner.
+Do not use bare `gemma4` (a potentially different default), a Gemma 3n tag, a cloud tag, or a
+Nemotron-style alias. Retain existing models/defaults and honest unknown hardware/performance
+status; do not invent RAM/VRAM acceptance thresholds or call “E2B” its exact full weight count.
+
+**Proof.** Extend existing `tools/godot_ollama_workflow_smoke.gd`, backend triad/save-apply and
+backend contract checks for both entries: selection → plan/pull tag → settings/options → actual
+runner args, backend switch, refresh and relaunch without reset to Mistral. Negative controls keep
+one missing model from appearing ready because the other is installed, and keep wrong endpoint/
+proof-only output from earning readiness/inference. Those focused tests precede R-LAUNCHER-CLEAN-INSTALL's
+fresh download and genuine local response from each model on each OS; tests with inventory fixtures
+are narrow wiring proof only.
+<!-- DE67:DFS-SLICE:END id=R-LAUNCHER-GEMMA-S001 claim=R-LAUNCHER-GEMMA -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-LAUNCHER-OLLAMA-SETUP-S001 claim=R-LAUNCHER-OLLAMA-SETUP -->
+### Install Ollama from an absent runtime through the launcher
+- [ ] 🔴 R-LAUNCHER-OLLAMA-SETUP — Launcher-led setup installs and starts a real local Ollama runtime on macOS, Windows and Linux, pulls the selected model, and reports partial failure/readiness truthfully.
+
+**Inspected gaps.** `build_ollama_setup_plan` queues Homebrew only when already present on macOS,
+winget only when already present on Windows, otherwise `manual_required`; Linux has no install
+branch. Model pulls require both CLI and server to have been ready before the plan was built.
+`run_ollama_setup` can call zero commands yet return `ollama_setup_install_ok` with
+`performed_external_install=true`. `_ollama_inventory(endpoint)` ignores `endpoint` and runs
+`ollama list`, so environment-selected host state can disagree with the runner URL.
+
+**Existing-owner repair.** Keep the current confirmed setup action and installer/download/process
+helpers. Resolve a supported official artifact/installer for the host architecture, install/start
+through the launcher, then recheck the actual binary and selected local endpoint before pulling.
+Existing supported package-manager branches may remain; a first-time Mac must not require an
+unmentioned preinstalled Homebrew, nor Linux an external terminal installation to claim this flow.
+Use upstream Linux install/service behavior (L-OLLAMA-LINUX below) with the real privilege prompt
+when required. Report cancellation, missing privilege, download/extraction/install failure, server
+startup failure and model-pull failure distinctly while retaining recoverable completed work.
+A launcher-guided OS installer is acceptable; an agent manually running the terminal command in
+place of the launcher is only diagnosis. Do not broaden into a package-manager framework.
+
+Only a completed verified transition earns its status. An already-installed runtime may be reused
+outside the clean test, but no-command/needs-action is not a fresh install. Replan after actual
+installation/startup; preserve the current stepwise Check/Install interaction if it produces a
+clear complete user journey. Scope inventory and pull/server controls to the same endpoint;
+for Linux proof, verify a Linux process/binary/model store, not a Windows-host service at a
+convenient address. No action or retry may silently switch models/providers or use an old cache.
+
+**Proof.** Existing Ollama workflow/setup smoke tests should exercise missing CLI, missing server,
+empty command plan, failed installer, post-install re-detection, one-model-present and failed pull,
+with real setup-plan/execution owners and no false success. Actual installer/server/model proof
+comes from all three native R-LAUNCHER-CLEAN-INSTALL rows. No phase-2 installation is required or
+allowed to freeze this requirement.
+<!-- DE67:DFS-SLICE:END id=R-LAUNCHER-OLLAMA-SETUP-S001 claim=R-LAUNCHER-OLLAMA-SETUP -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-LAUNCHER-CLEAN-INSTALL-S001 claim=R-LAUNCHER-CLEAN-INSTALL -->
+### Prove the complete first-time installation on all three OSes
+- [ ] 🔴 R-LAUNCHER-CLEAN-INSTALL — A downloaded Catapult-Dabubu package completes the full clean launcher → game → Ollama/models/API → custom graphics → playable game → quit/relaunch journey separately on macOS, Windows and Linux.
+
+**Clean precondition.** Preserve unrelated saves, launcher settings, models, secrets and user data.
+During later authorized execution, inventory the exact relevant installations/services/stores and
+perform the requested Ollama uninstall before launcher-led reinstall where it was installed.
+Merely hiding an executable from PATH, changing a profile, disabling a server or creating a new
+launcher directory is not uninstall. An OS that already lacks Ollama records verified absence;
+it does not need a fictitious removal. Back up/isolate existing models and launcher/game data,
+leaving them unavailable to the tested installation and inference service until fresh proof and
+relaunch are complete. Verify both model manifests and blobs cannot satisfy the download from an
+old store. Do not delete unrelated data, remove unrelated package-manager dependencies, or leave
+another user's active work broken. Record restoration of preserved material after the proof.
+
+**Route and evidence.** Obtain the published platform package, record its URL/tag/checksum and
+install/extract using the real OS route. Launch that executable, select/download the intended
+C-AOL release through Game, create its app-managed Python environment, and run the launcher's
+Ollama setup from the absent-runtime state. Download both exact Gemma tags from the network into
+the clean tested store; select/save each and prove a real response using the installed game/runner.
+Configure the API provider/model and safely supplied key through the supported launcher route;
+prove a genuine API response and in-game use separately from local inference. Retain failures
+honestly, including a model that responds but produces an unusable game result.
+
+Obtain/select UltimateCataclysm and enable the separately delivered C-AOL Creature Sprites mod.
+`TilesetManager::TILESETS` is currently empty: first inspect whether the actual downloaded game
+already bundles the required base tileset and mod. Bundled assets obtained with that game download
+are valid; if absent, repair the existing release/package or tileset download catalogue route.
+Do not copy loose assets from the dev tree into a supposedly fresh install or add another asset
+manager. In a playable world, show the two exact custom monster graphics, distinguish them from
+fallback symbols/stock substitutions, and exercise ordinary input. Debug creature placement for
+visual inspection is disclosed setup, not natural occurrence proof.
+
+Save/quit the game and quit/relaunch the launcher, then launch the same installed game/save.
+Verify active install, userdir, Python path, backend/provider/model/endpoint/env-var reference,
+tileset/mod selection and relevant save state persist. Switch between API and local modes and
+between both Gemma selections without stale `LLM_INTENT_USE_API` or model override. A session-only
+key may require explicit masked re-entry after launcher restart; disclose that existing boundary,
+preserve non-secret settings, and prove the post-relaunch configured route without claiming the
+secret itself was stored. An existing owner-provisioned persistent key source may supply it without
+printing its value. Missing credentials leave API acceptance open; never borrow an unrelated
+process's secret or substitute a dry-run. Actual local/API responses and native rendering/input
+are required; green readiness lights, static package checks or the title screen alone are not enough.
+
+| OS proof row | Available route and specific boundary | Current acceptance |
+|---|---|---|
+| macOS | Downloaded Mac app/package on the Mac mini; isolate the shared Application Support path as well as game/cache/model state. Prove runtime installation even without relying on a developer Homebrew/Python setup; observe native launcher and game interaction. | Open; no fresh install or model proof in this phase. |
+| Windows | Downloaded Windows executable/archive on `windows-codex` / `Josi_Hosi`; fresh portable root plus actual Windows Ollama absence/reinstall, process/environment re-detection and native game UI. WSL binaries do not count for this row. | Open; existing Windows game/LLM results are not clean-install credit. |
+| Linux | Linux package and Linux game in Ubuntu 24.04.2 LTS x86_64, WSL2, with WSLg; Linux-native Ollama and model store. Observe the Linux launcher/game windows and real input, inference and relaunch. Do not use Windows Ollama, a Windows launcher or headless smoke as full Linux credit. | Open; graphics-context readiness only, as detailed below. |
+
+**Linux inspection and limits.** Read-only host inspection found WSL 2.5.9.0, kernel 6.6.87.2-1,
+WSLg 1.0.66 on Windows 10.0.26200.9457. Ubuntu was initially stopped; starting it for inspection
+exposed X11/Wayland sockets and `/dev/dxg`. Existing `glxinfo -B` opened display `:0`, reported
+OpenGL 4.5 and Mesa llvmpipe, **Accelerated: no**. `ollama` was absent from the current distro PATH;
+that alone does not prove no runtime/service/model store exists. No application installation or
+launcher/game play occurred. WSLg can support this Linux application journey if its actual windows,
+input, Linux runtime and persistence work. It cannot certify a standalone Linux desktop/session
+integration or hardware-accelerated Linux performance from this software-rendered context. If a
+required desktop/privilege/service or graphics boundary cannot be reached there, retain that exact
+open boundary and use a suitable graphical Linux VM or physical Linux host for it. WSL remains
+the available first Linux test host; its limits do not remove Linux from acceptance.
+
+**Completion.** Preserve one coherent account per OS with actual release/build identity, clean
+preconditions, setup interventions, download/runtime/model provenance, non-secret option state,
+real local responses for both tags, API response, native play/graphics and quit/relaunch outcomes.
+Reuse normal logs/screenshots/transcripts; do not create another verification framework. Packaging
+and backend unit/smoke tests diagnose failures and protect repairs but never close an unexecuted OS
+row. Whole-claim closure requires all three rows, with any unavailable boundary explicitly open.
+<!-- DE67:DFS-SLICE:END id=R-LAUNCHER-CLEAN-INSTALL-S001 claim=R-LAUNCHER-CLEAN-INSTALL -->
+
+### Bounded external evidence — L-RESEARCH
+
+| Stable source | Inspected fact and design effect |
+|---|---|
+| L-GEMMA-TAGS — [Google Ollama integration](https://ai.google.dev/gemma/docs/integrations/ollama), [Ollama E2B](https://ollama.com/library/gemma4:e2b), [Ollama E4B](https://ollama.com/library/gemma4:e4b), accessed 2026-09-23 | Both exact local tags exist. Use direct selected-tag pulls in R-LAUNCHER-GEMMA; no Gemini/Gemma-3n/cloud alias. Catalogue presence does not prove the installed runner supports a usable response; runtime version and actual downloaded model digest are recorded at execution. |
+| L-OLLAMA-LINUX — [official Linux installation](https://docs.ollama.com/linux), accessed 2026-09-23 | Official Linux installation, architecture-specific packages, `ollama serve` and service setup are existing reusable mechanisms. R-LAUNCHER-OLLAMA-SETUP replaces its current manual-only Linux dead end through the existing setup owner; no independent installer framework. |
+| L-WSLG — [Microsoft Linux GUI support](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps), accessed 2026-09-23 | WSL2 runs X11/Wayland apps but is not a complete standalone desktop environment. R-LAUNCHER-CLEAN-INSTALL separates Linux application/inference proof from unsupported desktop/GPU claims. |
+| L-RELEASES — [launcher release](https://github.com/josihosi/Lacapult-Doobdab/releases/tag/catapult-dabubu-python-venv-fix-2026-06-05), [observed C-AOL master release](https://github.com/josihosi/Cataclysm-AOL/releases/tag/caol-cdda-master-2026-06-05-0903) | Platform archives exist as prereleases; a stable `/releases/latest` lookup alone misses the launcher. Their older source identities require package-content verification or a corrected release before claiming current features through fresh installation. |
+
+## Current freeze record — playtesting and clean installation, 2026-09-23
+
+- Status: Refrozen. Source/identity/preservation checks and disposable durable-acceptance projection passed; all 44 prior slice identities and 69 acceptance rows are preserved.
+- Baseline: C-AOL `dev@4d378c8e7ccce140afc9a656f869ea9d06490916` plus preserved dirty inputs;
+  Catapult-Dabubu `main@366aee6bd675be9b45afbd2ab222808faceedd9d`, clean. The source map above
+  records inspected owners; later execution binds its actual source and downloaded packages.
+- User choices: approved merged WEC; closed harness cleanup and accepted rider result; remaining
+  game evidence, real armed patrol/peaceful and hostile defense, payment/replenishment/return,
+  both Gemma 4 models, genuine three-OS clean installation, preserved user data and WSL as the
+  available Linux host. No gameplay balance, forced outcomes or new framework is introduced.
+- All prior stable claim/slice identities and durable acceptance history are retained. Stale red
+  displays for already accepted claims are reconciled only to their existing scope. The three
+  unaccepted harness campaign claims are owner-retired, not newly accepted. Seven new red claims
+  carry only the additional camp and launcher obligations; the four existing native proof claims
+  retain their still-open boundaries. Independent unfinished requirements and deferred experiments
+  remain preserved. The returned-report age proof narrows only its already-observed signal boundary.
+- No product implementation, gameplay campaign, installation, runtime uninstall or new technical
+  acceptance occurs in this refreeze. Preparation/model capability and checkpoint status belong to
+  the work ledger, not this functional contract. Product intent and acceptance strength remain
+  user-owned; preserve the existing evidence-bound closure/clarification/refreeze rules.

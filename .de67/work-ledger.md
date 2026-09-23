@@ -1,4 +1,85 @@
-# Active owner-guided waiting redesign, 2026-09-21
+# Phase-2 refreeze — playtesting and clean launcher installation, 2026-09-23
+
+The owner approved “Yes merge and finish de67 2”. The exact chat WEC is merged at the
+start of `.de67/WEC.md`; `.de67/FS.md` is the canonical code-grounded refreeze. This section
+supersedes historical start/assignment directions below. No phase-3 start, product change,
+live playtest campaign, runtime installation or uninstallation is authorized in this phase.
+
+**Current scope.** Harness cleanup is owner-closed at 18 scoped successes and two unresolved
+camp observations; rider knockdown is accepted. R-HARNESS-EXECUTION,
+R-HARNESS-CONSOLIDATION and R-HARNESS-JOURNEY are retired campaign obligations, not newly
+accepted technical claims. Preserve useful behavior and repair only an actual obstruction
+encountered in the remaining useful proof. Keep plain commands/replies, full per-playtest
+transcripts and the 100 ms/turn waiting alarm with its instruction to report performance issues.
+
+S-REMAINING narrows R-CAOL-SIGNAL-PROOF, R-CAOL-TRAVELLING-COST, R-CAOL-EXIT-COST and
+R-CAOL-NATIVE-REGRESSION to their actual evidence gaps. In particular, the exploration-006
+returned sound report retaining its original 61-minute age through save/process replacement/
+reload is settled at that scope. Preserve that witness and all 69 durable acceptance rows;
+this refreeze adds no gameplay or installation credit. Independent unfinished requirements
+and optional experiments remain in the FS. The following new claims are unaccepted:
+
+- [ ] R-CAOL-CAMP-ASSIGNMENT — Fresh native camp assignment and save/reload continuity.
+  - DFS slices: `R-CAOL-CAMP-ASSIGNMENT-S001`
+- [ ] R-CAOL-CAMP-LOCKER — Real Locker weapons/ammunition/gear pickup, readiness and persistence.
+  - DFS slices: `R-CAOL-CAMP-LOCKER-S001`
+- [ ] R-CAOL-CAMP-DEFENSE — Real patrol, zombie alarm/kill, peaceful contact and substantive hostile defense.
+  - DFS slices: `R-CAOL-CAMP-DEFENSE-S001`
+- [ ] R-CAOL-CAMP-PAY-RETURN — Camp-zone gold/spillover payment and observed replenishment/return ecology.
+  - DFS slices: `R-CAOL-CAMP-PAY-RETURN-S001`
+- [ ] R-LAUNCHER-GEMMA — Both exact Gemma 4 tags through Catapult-Dabubu's existing model route.
+  - DFS slices: `R-LAUNCHER-GEMMA-S001`
+- [ ] R-LAUNCHER-OLLAMA-SETUP — Launcher-led absent-runtime installation, startup, pull and truthful readiness.
+  - DFS slices: `R-LAUNCHER-OLLAMA-SETUP-S001`
+- [ ] R-LAUNCHER-CLEAN-INSTALL — Complete independent macOS, Windows and Linux installation journeys.
+  - DFS slices: `R-LAUNCHER-CLEAN-INSTALL-S001`
+
+**Sources and host.** C-AOL main `dev@4d378c8e7ccce140afc9a656f869ea9d06490916`, upstream
+`origin/dev`; pre-existing dirty game/harness/tests/guidance are preserved. Launcher identity is
+Catapult-Dabubu, `josihosi/Lacapult-Doobdab`, separate clean `main` checkout at
+`366aee6bd675be9b45afbd2ab222808faceedd9d`. The FS records concrete production owners,
+persistence, failure behavior and proof, including the old downloadable package boundary.
+WSL2 Ubuntu 24.04.2 with WSLg is the available Linux host. Its working OpenGL context uses
+llvmpipe without acceleration; actual Linux launcher/game input and Linux-native Ollama remain
+unproved. Windows inference or headless tests cannot close Linux desktop/application proof.
+
+**Ownership and durable state.** No live coordinator was found; historical PID 7345 was absent.
+The two stale unreleased attempts were released through the existing deadline harness:
+R-CAOL-SIGNAL-PROOF-exploration-006 / worker `01a0c101-a0b9-72f2-b509-7302b2bb7102`, and
+R-HARNESS-JOURNEY-exploration-001 / worker `01a0c3b3-be24-7fc2-a1ef-69b7315ec40b`.
+This retires stale ownership only; it does not invalidate receipts, erase acceptance, restart
+the closed campaign or authorize new execution. Lineage remains `semantic-surface-cockpit`.
+
+**Preparation blocker.** The owner requires GPT-6 Luna for live harness operation; Sol/Astra
+must delegate those actions. This overrides older GPT-5.6 Luna examples. Project
+`.codex/config.toml` now requests `gpt-6-luna` without a default effort. A fresh coordinator
+under codex-cli 0.153.2 actually tried an omitted-model/low native child after that edit;
+`spawn_agent` rejected the resolved model with `Unknown model gpt-6-luna`. The available roster
+listed GPT-6 Astra, GPT-5.6 Sol/Terra/Luna and GPT-5.5. Explicit GPT-5.6 Terra/medium returned
+its exact nonce. The requested Luna default is therefore configured but **not proved usable**.
+Do not substitute GPT-5.6 Luna, credit the failed probe, launch phase 3 or install a runner here.
+The installed setup helper also hardcodes GPT-5.6 Luna in its required roster; its full setup
+cannot succeed with the truthfully proved current pairs. A compatible runner and setup helper,
+then a fresh requested-model probe/setup, are needed to complete preparation.
+
+The existing guarded upstream hook/binding and effective shared-guidance fingerprint are
+retained. All six runtime files named by the installed helper already exist and are preserved;
+its packaged list uses compiled phase3-policy/contracts rather than the older skill's absent
+orchestrator-guidelines asset. No replacement workflow is invented. Historical availability
+rows in machine state are not authorization to substitute the wrong playtest model.
+
+**Evidence and checkpoint.** Task artifacts are in
+`build_logs/phase2-playtesting-installation-20260923/`: baseline hashes and before-files,
+actual native worker probe transcript, exact stale-claim releases, and closeout/setup results.
+Validation passed: disposable acceptance projection, all 44 prior slice identities retained,
+seven new red slices, all 69 acceptance rows unchanged, no unreleased worker claims, and 49
+unrelated tracked dirty paths unchanged. The prior WEC is retained exactly apart from authority
+labels. Full setup was attempted with the actually proved Terra/medium pair and refused with
+“Record successfully probed Luna and Terra capabilities”; no false Luna success was supplied.
+Scoped checkpoint includes WEC, FS, this current handoff/retirement and requested model default
+only. Prior unrelated ledger changes remain unstaged with the other dirty product work.
+
+# Historical active owner-guided waiting redesign, 2026-09-21
 
 Owner correction: change input/output only, preserving existing functions. The alternate
 WaitingPlayer, snapshot transport and special lifecycle path have been removed. Short syntax
@@ -145,7 +226,7 @@ its implementation/playtest work remains open in the FS, not silently accepted o
   and R-CAOL-NATIVE-REGRESSION remain at their existing unresolved scope.
   - Durable acceptance: #1 via `R-HARNESS-PERFORMANCE-closure-representative-workload-comparison-001`; SQLite evidence is authoritative.
 
-- [ ] R-HARNESS-EXECUTION — A running native operation must not require agent recovery merely because the currently offered input control changes.
+- R-HARNESS-EXECUTION — **Owner-closed campaign; no new technical acceptance.** A running native operation must not require agent recovery merely because the currently offered input control changes.
   - DFS slices: `R-HARNESS-EXECUTION-S001`
   - Assignment R-HARNESS-EXECUTION-exploration-001: Deliver the first real vertical slice of the shared native operation lifecycle required by the FS. Use retained run `b5efab00a403702f4932728bcb05d3299cd30ef48fea0727e60219a54f6cdbfe` and receipt `4b87884b39f658c11326e7022dd8e8ede5799a300243ea9717de1c1d2276a25e` as the diagnosed reproducer: a running wait offered `activity.pause`, but `keep_watch` treated that available control as a required next recipe action and returned `keep_watch_recipe_action_not_advertised`. Verify the source/run causal chain, then separate correlated operation state (accepted, running, awaiting a real decision, completed, cancelled, failed or the smallest equivalent native types) from the current input surface. Make the existing shared driver collect one accepted operation across ordinary owner/menu changes without resubmitting wait or pause, and preserve exact request/run/binding identity, game-time target/progress, interruption policy, timeout/reconnect outcome-unknown semantics, cancellation, performance accounting and evidence handles. Return a real decision only when native authority requires one. Expose requested duration and completed progress in the existing status projection, using longer freshly advertised durations when they do not cross an observation boundary. Migrate one second existing long-running consumer to prove reuse and remove only the superseded frame-name/recipe-cursor branches whose consumers migrate; do not add a parallel operation owner or string exception. Add captured-transition, delayed-frame, repeated-observation, interruption, cancellation and reconnect tests proving no duplicate accepted input or premature completion. Then run a source-bound normal long wait and a real interruption through the public interface, with exact PID/birth cleanup and honest performance/evidence ceilings. This repairs shared execution only; it does not accept signal/camp gameplay behavior.
   - Assignment R-HARNESS-EXECUTION-exploration-001 result: The shared receipt-bound lifecycle now spans wait menus, duration selection, running activity and World surfaces without replaying an accepted wait or treating Pause as required input. Raw wait and keep-watch share the collector and expose requested duration, progress, owner, blocker and evidence state. The focused suite passes 139 tests; public source-bound waits completed 30, 840 and 30 game minutes with no replay. The C-4 source consequence occurred but left the World owner intact, so it did not prove a live decision interruption. R013 remains prelaunch-blocked by its missing retained save. Receipt `a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc` records implementation, evidence ceilings and exact game/broker cleanup.
@@ -237,10 +318,10 @@ its implementation/playtest work remains open in the FS, not silently accepted o
     - [done] public-terminal-archive :: Journal and finish retain lazy evidence publicly while persisting only authenticated archive references in PlayerClient state.
     - [done] focused-native-continuity :: The created brazier and active fire survived native save, original-process exit and replacement load with exact cleanup.
   - Durable acceptance: #1 via `R-HARNESS-LIFECYCLE-closure-wrong-world-snapshot-rejection-001`; SQLite evidence is authoritative.
-- [ ] R-HARNESS-CONSOLIDATION — Replaced execution and presentation paths lose their obsolete consumers while useful evidence survives.
+- R-HARNESS-CONSOLIDATION — **Owner-closed campaign; no new technical acceptance.** Replaced execution and presentation paths lose their obsolete consumers while useful evidence survives.
   - DFS slices: `R-HARNESS-CONSOLIDATION-S001`
   - Next boundary: Apply H-INVENTORY by current consumer and useful question as each replacement lands. Preserve distinct protections, useful scenarios, historical immutable evidence and user saves; remove only superseded machinery and migrated stale guidance. No extra framework or wholesale rewrite is implied.
-- [ ] R-HARNESS-JOURNEY — Varied native playtests and a fresh-agent journey establish usability and honest full-tree cost.
+- R-HARNESS-JOURNEY — **Owner-closed campaign; no new technical acceptance.** Varied native playtests and a fresh-agent journey establish usability and honest full-tree cost.
   - DFS slices: `R-HARNESS-JOURNEY-S001`
   - Assignment R-HARNESS-JOURNEY-exploration-001: Prove the documented harness journey as a usable, source-bound native route across a long wait, a materially different asynchronous action, a real decision interruption with same-operation continuation or cancellation, and save/quit/reload continuity. Start by finding the original bandit long-wait failure and ten-waits/almost-fifty-commands trace; label any substitute as a reproduction. Select representative easy and difficult registry families, including an unfamiliar native action chosen by a fresh agent, and keep inspected/attempted/completed/blocked/untested coverage separate. Use only documented play controls for native work, preserving exact request/run/world/player/source/process identities, evidence handles, contrary results and graceful PID/birth cleanup. Produce the nine H-JOURNEY audit outputs and an equivalent-outcome H-COST comparison with actual fresh/cached/output usage and helper/retry/review costs where available. Preserve accepted execution, lifecycle, evidence, continuation and performance proof at its stated scope; repair only demonstrated journey faults in owned harness files, coordinating shared source edits with the active signal worker. A genuine product failure may validate truthful harness reporting but cannot close the gameplay claim. Return durable partial evidence and continue changed tactics when a scenario fails; the whole outcome, including final review and uncertain native startup, is the clock basis.
   - Current clock: A new twelve-hour whole-claim window began for R-HARNESS-JOURNEY on 2026-09-21. This covers source recovery, varied native attempts, likely interface repair, builds, tests, review and uncertainty. Fresh worker `journey_native_prover` owns this task; the signal worker owns its separate game and source work.

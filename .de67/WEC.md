@@ -1,6 +1,51 @@
+# WEC — Playtesting and clean launcher installation
+User intent and language brief, 2026-09-23.
+User explicitly requests de67 2 on the Mac mini main Cataclysm-AOL dev workspace. This extends the existing product intent with the following testing campaign; preserve existing accepted work and independent unfinished requirements. Current harness cleanup was closed by the owner; do not revive superseded cleanup work merely because old checkboxes remain. The owner accepted rider testing; current matrix assessment is 18 scoped successes and two unresolved camp observations.
+
+Outcome: complete all still-open useful game playtests, add full patrol/basecamp-defense coverage, and prove the game installer/launcher provides a working first-time installation on macOS, Windows and Linux. User calls the launcher Catapult/Dabubu (also dictated lavapult dabubu); identify its actual repository/product name rather than guessing or creating another launcher.
+
+Game testing: retain open signal memory/expiry/save-reload/populated-scene tests, travelling-hostile pursuit and performance, map-exit/return behavior, and combined native light/ownership/setup regressions at their actual remaining evidence gaps. No automatic repeat of already sufficient evidence. Investigate fresh-camp NPC assignment and actual Locker gear transfer. The earlier rider knockdown outcome is accepted, not a harness failure.
+Patrol scenario: real assigned basecamp NPCs, stocked Locker before pickup, weapons and ammunition acquired/equipped natively, real patrol roster/routes; spawn a zombie and observe guard alarm, all appropriate roster guards mobilizing and attacking/killing it. Then equivalent peaceful bandit shakedown/looting without guard attack, and hostile shakedown with an adequately staffed bandit camp yielding a substantive defense fight. Preserve assignment/equipment/patrol through save-reload. Owner permits preparation of a suitable disposable camp save or can provide one. Payment setup needs a basecamp inventory zone and lots of gold, including zone spillover; test replenished bounty and return ecology, reporting elapsed game time until bandits return. Setup interventions are distinct from observed behavior.
+
+Launcher: add Gemma 4 E2B and E4B as downloads among existing local models. User said Gemini; discussion verified official Ollama tags gemma4:e2b and gemma4:e4b (https://ai.google.dev/gemma/docs/integrations/ollama). Inspect actual integration and supported variants before specifying.
+On each OS obtain installer, install launcher, download game, install Ollama through the launcher starting with Ollama uninstalled, download/select both new models, configure local inference and an API key, obtain/select tileset with custom monsters, start a playable game, prove actual local and API model responses, verify custom monster graphics and successful quit/relaunch with retained settings. No preinstalled game/Ollama or cached model may silently satisfy fresh-install proof. Owner explicitly wants Ollama uninstalled and reinstalled via launcher during execution. Preserve unrelated user saves/data; any proposal to isolate/back up existing models must still leave them unavailable to the tested clean install. No uninstall or runtime installation in phase 2.
+
+Linux host: owner confirms WSL is available on Windows. Determine WSL distribution, WSLg/graphical usability and meaningful limits for testing Linux desktop installer, Ollama and game; do not equate Windows-host inference or headless shell tests with full Linux acceptance. If WSL cannot prove a specific boundary, state the concrete gap and suitable alternative; do not silently drop Linux.
+
+Economy and evidence: only GPT-6 Luna launches or operates live playtest harnesses; Sol/Astra workers must spawn a GPT-6 Luna subagent for playtests, retaining implementation and diagnosis responsibility. This rule exists in repository AGENTS.md and caol-harness skill. Preserve minimal plain-language commands/replies, 100 ms/turn waiting alarms and instruction to report performance issues. Per-playtest transcripts and concise outcomes distinguish setup mistakes, harness failures and game defects. Fix actual obstructions, no invented mechanics, replacement harnesses or receipt bureaucracy. User asks for testing, not a new verification framework.
+
+Phase boundary: code-grounded spec/refreeze, no product implementation or test execution campaign, no de67 3 start. Existing main dev has substantial dirty harness/game fixes: preserve them, do not revert or include unrelated code in a spec checkpoint. Existing canonical spec is .de67/FS.md; user previously removed DFS compatibility pointer. Current ownership preflight found no running coordinator process, but two unreleased historical claims remain (signal proof and harness journey); establish appropriate state before setup without reviving the closed harness campaign.
+
+## Merge authority and precedence — 2026-09-23
+
+The owner explicitly approved: “Yes merge and finish de67 2”. The exact chat WEC above
+is merged with the retained earlier brief below. Preserve still-binding product requirements,
+accepted results and independent unfinished work. The current WEC supersedes historical
+execution/start directions and the closed harness-cleanup campaign; old checkboxes are not
+authority to reopen it. This merge does not start phase 3. WSL is the available Linux host.
+The owner's GPT-6 Luna direction supersedes older skill examples using `gpt-5.6-luna`;
+do not substitute that model for live harness operation. Finish specification, necessary
+workspace preparation and a scoped checkpoint without installing or uninstalling runtime
+software. The original brief remains recoverable in Git and is retained below for product intent.
+
+<!-- DE67:OWNER-CONTRACT:BEGIN -->
+Current owner contract, 2026-09-23: complete this Mac-native phase-2 merge, code-grounded
+FS refreeze, necessary workspace preparation and scoped checkpoint on main dev. No phase-3
+start, product implementation, live playtest campaign, or runtime installation/uninstallation
+in this phase. Current harness cleanup is closed at 18 scoped successes; rider knockdown is
+accepted. Keep fresh-camp assignment and actual Locker transfer open, alongside the remaining
+game evidence and full patrol/defense/payment/return and three-OS clean-launcher outcomes above.
+Only GPT-6 Luna may launch or operate live harness sessions during later authorized execution;
+Sol/Astra must delegate those actions while retaining implementation/diagnosis responsibility.
+Preserve unrelated dirty product work, accepted evidence and all independent unfinished
+requirements. Do not treat historical start directions below as current authority.
+<!-- DE67:OWNER-CONTRACT:END -->
+
+## Retained earlier WEC — historical directions, binding product intent where not superseded
+
 # WEC — Affordable playtests, reliable harness and safer subsystem changes
 
-## Current owner addition — full-stack harness, 2026-09-21
+## Historical owner addition — full-stack harness, 2026-09-21
 
 Josef explicitly requires owner trigger `HARNESS-FULL-STACK-20260921` to become a concrete FS
 thaw/refreeze and coordinator delivery handoff now. The mutator owns specification/context and
@@ -629,8 +674,8 @@ not a larger test count or smaller files for their own sake.
 - This discussion and saved draft do not launch Phase 2/3, rewrite current acceptance,
   restart workers, change live tests, or authorize unrelated gameplay work.
 
-<!-- DE67:OWNER-CONTRACT:BEGIN -->
-Current owner stop, 2026-09-21: Josef instructed “stop the work for now” to become directly involved in harness design. Autonomous implementation, worker dispatch, native playtesting and coordinator/mutation restarts are paused. This supersedes the historical start authorization below. Preserve all edits, evidence and unfinished work. Do not resume until Josef explicitly authorizes it; discussion and requested read-only inspection remain available.
+<!-- DE67:HISTORICAL-OWNER-CONTRACT:BEGIN -->
+Historical owner stop, 2026-09-21: Josef instructed “stop the work for now” to become directly involved in harness design. Autonomous implementation, worker dispatch, native playtesting and coordinator/mutation restarts are paused. This supersedes the historical start authorization below. Preserve all edits, evidence and unfinished work. Do not resume until Josef explicitly authorizes it; discussion and requested read-only inspection remain available.
 
 Historical start authorization (superseded by the current stop):
 Josef explicitly instructed on 2026-09-20: “ok then start de67 3”. The prior Phase-2 work is
@@ -676,7 +721,7 @@ continuation/results. Owner conversation remains the mutator's context; historic
 retrievable evidence, not new owner instructions. Installed method tooling follows its existing
 candidate/exclusive-promotion route. No additional permission or coordinator launch is needed from
 this owner chat; the external supervisor alone launches the requested post-review successor.
-<!-- DE67:OWNER-CONTRACT:END -->
+<!-- DE67:HISTORICAL-OWNER-CONTRACT:END -->
 
 # WEC
 
