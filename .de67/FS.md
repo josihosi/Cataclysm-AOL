@@ -1,21 +1,20 @@
 # C-AOL playtesting and clean Catapult-Dabubu installation — Functional Specification
 
-Status: Refrozen — 2026-09-24
+Status: Refrozen — 2026-09-24 reconciliation
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL | dev | 67d2c1d8e660c64f7474e1d5ab19778504da3de0 | inspected 2026-09-24; existing dirty game/harness/test/scenario/guidance work preserved; exact tracked dirty-file hashes in build_logs/phase2-trajectory-20260924/baseline.json`
+Source baseline: `Cataclysm-AOL | dev | 224d7dc9779fe3e871a6ec13de918226338e6751 | inspected 2026-09-24; retained dirty inputs bound by build_logs/phase2-reconcile-20260924/baseline.json`
 Launcher baseline: `josihosi/Lacapult-Doobdab | main | 366aee6bd675be9b45afbd2ab222808faceedd9d plus existing five-file Gemma/setup patch | /Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu | inspected 2026-09-24; isolated clean candidate 495ac43ef62f36685a941840405a4a8e25a1f03f retained`
 Method baseline: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab | a6125b4a70adf641e185b34dbd33118e48d884e3 | inspected 2026-09-19`
 
-## Current trajectory contract — 2026-09-24
+## Current reconciliation
 
-The current WEC adds the owner-reference camp comparison, bulk-item performance repair and
-Smartzone presentation correction in S-TRAJECTORY below. Existing S-REMAINING, S-CAMP-PROOF and
-S-LAUNCHER requirements remain binding at their actual evidence scope. S-TRAJECTORY updates dated
-code-gap assertions and fixture premises where current code or accepted results supersede them.
-It grants no new acceptance. The current work ledger and durable receipts preserve delivered status;
-new reference-world observations cannot inherit a different fixture's acceptance. The WEC and work
-ledger own execution sequencing, publication authorization and human contact; they are not gameplay
-rules. No parallel DFS is created.
+S-CAMP-20260924 below carries the seven new findings and controls their current code/proof
+requirements. The prior game and launcher contract remains binding. S-TRAJECTORY and the
+revised crash slice distinguish retained implemented work from outstanding acceptance. Older
+slice descriptions retain their original inspection/evidence scope and stable IDs; a dated
+“code gap” is not a command to undo a later accepted repair. The work ledger and durable
+acceptance own delivered status. No new obligation inherits an old acceptance and this FS
+provides no delivery-start authority. Current priorities and preparation belong to WEC/ledger.
 
 ## Authority and outcome
 
@@ -51,6 +50,139 @@ The current C-AOL tree is substantially dirty, including game, harness and guida
 Preserve it and unrelated method/dashboard work. Record the actual implementation starting
 revision and dirty inputs for later proof. This refreeze changes no product code/tests and
 claims no new gameplay or installation acceptance.
+
+## Camp observations and reactions — S-CAMP-20260924
+
+This section translates the seven new WEC findings. It supersedes conflicting dated code-gap
+explanations, not existing acceptance. Observations from the Windows derived campaign remain
+reported/saved evidence; this Phase 2 performed source inspection, not a new live reproduction.
+The current Mac source also contains retained dirty fixes. `build_logs/phase2-reconcile-20260924/baseline.json`
+binds HEAD, all tracked dirty hashes and the 74 existing acceptance rows. None of the seven
+obligations is closed by those rows. Original stable slice IDs below remain intact.
+
+### Start identity and proof boundary — C-START
+
+The private Mac open/closed archives and extracted worlds named in WEC exist. Both READMEs
+identify owner-confirmed window state, without an independent replay; each extracted reference
+has 62 files whose hashes are retained in `build_logs/phase2-reconcile-20260924/private-reference-hashes.json`.
+The Windows camp-transplant audit, modified start and later stuck checkpoint are Windows-origin
+handles from WEC, not local Mac paths verified in this pass. The same relative Windows paths
+are absent in this checkout. Do not silently substitute the untouched Mac reference for them.
+The exact pre-crash Windows copy already retained under
+`.de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/windows-evidence/TestSetup00-exact-copy`
+is available Mac evidence; it is not established to be the later stuck-pair checkpoint.
+
+For smoke-first use a disposable closed-window Mac copy and explicitly record the added
+cannibal camp at `(135,137,0)` (and any needed source placement) as setup. Preserve the original.
+The source must produce a physically valid camp-reaching smoke sample with no preceding valid
+light admission. Record darkness/emission, weather, range/geometry, sample identity and the
+first admitted channel before judging dispatch. Use an independent copy for first-light control;
+previous light activation invalidates smoke-first proof. A rejected/out-of-range sample is an
+inconclusive premise, not an ignored valid signal. Copy the Windows derived start/checkpoint
+with source hashes when testing those exact observations; record a reconstructed setup as such.
+No remote execution or private-save publication is implied.
+
+All native cases bind copied world/player, executable and dirty source identity, elapsed game
+time, site/outing/member IDs, local versus abstract owner, requests/results and cleanup. Setup
+may add the stated camps/actors/supplies; it cannot write the transition claimed as gameplay.
+Existing accepted observations may close overlapping portions only when their route and state
+actually match. The remaining connected defense/payment/return and signal-memory tests keep
+their original scope. C-VALIDATION supplies the executable route.
+
+### Ownership and precedence — C-OWNERS
+
+| State/action | Readers | Writers / competing owners | Decision |
+|---|---|---|---|
+| Fresh smoke/light packet | `live_light::samples_for_turn`, staffed and creature adapters | `run_advancing_turn`, discovery/reset, native emitter state | One immutable packet per advancing turn. Optical-only consumers receive light; cannibal response receives eligible smoke and light. Reading/reload never creates a newer observation. |
+| Camp observer | `record_staffed_camp_signal_observations`, `live_bandit_staffed_camp_signal_reads`, ecology display | `site_record::roster`, tracked spawn/member casualty/dispatch/return, overmap NPC registry | Valid living home population owns one site observation stream independent of its outing. Resolve an actual home sensor without taking an away member, adding population or making the camp locally loaded. Dispatch keeps its separate current-position observer. |
+| Homeward cursor and physical actors | local entry/staging motor, return recorder, overmap travel | `active_outing_state`, projection lease, crossing token and pair commit; NPC movement | One owner advances a surviving identity at a time. Off-bubble travel cannot depend on a loaded entry. Complete-pair transfer or existing survivor policy remains atomic. Arrival, never deadline alone, permits release/report. |
+| Visit/search and tactical action | local gate, raid target selection, structural progression | outing phase/route/deadline; native NPC danger, attack/flee and move budget | Durable visit state continues across unloading. Native survival temporarily overrides search/departure; it does not erase the outing. One action budget; observation-only aftermath cannot attack twice. |
+| Patrol Investigate sounds | sound handler, follower UI/semantic payload, NPC inspection | saved camp patrol order versus personal base/override rules, roster/mission changes | Patrol owns a separate temporary effective value for active loop AND hold duty. Personal rule/override bits remain owned by their existing setters. On exit reveal the prior personal value; reserve workers get no override. Danger/survival still controls whether movement is safe. |
+| Stalker response | generic target selection, live context, policy/planner | actual attack-resolution evidence and typed stalker state | Fresh perceived attacker identity may replace an inferior current target; no hidden-coordinate grant. Native movement/attack spends moves; existing daylight caution and survival remain legitimate responses. |
+| Camp repeated work | NPC move/downtime, Locker service and UI | NPC jobs/perception; Locker queue/due/reservation and item/zone mutations | Optimize repeated unchanged preparation, not NPC turns or threat response. Actual service recomputes authoritative items and validates ownership/capacity before transferring; stale plans cannot mutate items. |
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-HOMEWARD-CONTINUITY-S001 claim=R-CAOL-HOMEWARD-CONTINUITY -->
+### Genuine return through moving reality bubbles
+- [ ] 🔴 R-CAOL-HOMEWARD-CONTINUITY — A returning bandit dispatch continues off-bubble with the same surviving identities, materializes legally and completes only at its camp.
+  - Observed: WEC's Windows checkpoint retains members 4/5 at waypoint 3/5, route OMT `(126,135,0)`, with repeated zero travel/entry and expired missing deadline. The imported logs are not a newly reproduced Mac run.
+  - Code-derived cause: `do_turn.cpp::live_bandit_local_handoff_entry_positions` searches the exact route OMT inside the loaded map. `materialize_live_bandit_structural_handoffs` needs complete entry/staging positions; its recenter route requires an `abstract_resume` plus assembled/abort-return state. The reported pair lacks those flags. `bandit_live_world::advance_structural_bounty_outings` correctly refuses schema-10 return completion without physical receipts or an abstract-resume position inside camp, but waiting there does not itself move this pre-resume pair. Existing `overmap_npc_move` paired abstract-resume travel and `record_local_pair_abstract_resume_progress` already solve travel after a valid release; do not rewrite that working path.
+  - Required mechanism: At the existing local/abstract crossing owner, recognize a surviving homeward pair whose route OMT is outside loaded coverage before attempting loaded placement. Bind its current exact positions/route to the existing abstract homeward-resume transaction, validate member/outing/generation/epoch, then let the existing paired overmap motor advance toward camp. An already local pair must first quiesce through `commit_local_pair_dematerialization`; do not advance its abstract copy concurrently. An already abstract pair must not require a fictional prior local cohesion event. Re-entry uses the existing complete-pair `commit_local_pair_handoff` and valid current-map squares; rejected placement retains journey/cursor and a reason. Repeated same-token/cursor attempts are no-ops; stale generation or changed membership rejects. Preserve inventory, HP, casualties and the existing survivor return policy. No deadline teleport, unconditional cohesion bit or premature return receipt.
+  - Persistence/proof: Extend the actual production-adapter path beside `hostile_camp_local_handoff_binds_the_complete_pair_transactionally` in `tests/bandit_live_world_test.cpp` for the specific no-resume/off-bubble counterexample, bubble relocation, blocked entry/retry, survivor loss and save/load. Assert identity/owner/cursor before and after each genuine move and actual camp-footprint arrival through `record_live_bandit_structural_member_returns` / `record_structural_member_physical_return`. Native proof uses a natural dispatch from the derived camp start plus the exact stuck checkpoint when recovered; move the bubble across its route and wait through real return. Existing `active_outing_state` serialization and S-BANDIT atomic transfer rules are binding. If retained actor positions show an unrelated movement/path failure, revisit the proposed crossing repair at that first contradicted premise.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-HOMEWARD-CONTINUITY-S001 claim=R-CAOL-HOMEWARD-CONTINUITY -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-OBSERVERS-S001 claim=R-CAOL-CAMP-OBSERVERS -->
+### Staffed camp and active dispatch observe independently
+- [ ] 🔴 R-CAOL-CAMP-OBSERVERS — Every valid living home roster observes while abstract or loaded, independently of an active dispatch, with truthful exclusion reasons.
+  - Observed: WEC reports an active populated ecology display while staffed observation logged `sites=3 eligible=0 callbacks=0`, both before and after dispatch. Saved roster facts are not proof of a callback.
+  - Code gap: `record_staffed_camp_signal_observations(world_state&, int now_minutes, signal_lookup)` rejects active outings/hostile operations, then requires an unwounded `at_home` concrete member. `site_record::roster()` includes `unmaterialized_home_total`, but `do_turn.cpp::live_bandit_staffed_camp_signal_reads` also requires `overmap_buffer.find_npc(observer_id)`. Removing the first guard alone therefore fails. `ecology_debug_view.cpp` uses roster/living population, explaining the disagreement.
+  - Required mechanism: Select the home observation stream from the valid home roster, not `!active_outing`. Reuse an eligible concrete home identity; when only unmaterialized home population exists, resolve one actual overmap home NPC through the existing tracked-spawn/materialization owner and site's existing template, consuming one unmaterialized slot without increasing `living_total`. This is an abstract overmap sensor, not local bubble placement or a dispatch. Separate this observer prerequisite from `live_bandit_materialize_abstract_members_for_routine`'s signal-gated cannibal dispatch allocation to avoid requiring a first signal before the camp can sense it. Keep failed template/spawn/roster resolution truthful and retryable; never substitute the player's senses or an invented sight range. The same home identity then feeds the existing optical/smoke/sound adapter. No duplicate sensor on a repeated cadence or reload, no borrowing an away/reserved member, no parallel roster writer. `claim_tracked_spawn`, overmap insertion, member serialization and existing population accounting own the allocation; failure must leave a consistent retryable roster/registry, never an unclaimed population increment.
+  - Precedence: A wounded/unready home member who retains usable senses still supports observation; readiness controls dispatch, not an automatic blanket sensing exclusion. Remove only observation suppression caused by outside pressure; `plan_site_dispatch` and `has_active_outside_pressure` retain dispatch admission/exclusion. Camp clues may update while an outing observes at its own location; neither observer refreshes the other's original time or creates a second outing. Invalid roster, no living home population, unavailable/unready sensor and geometry/range rejection are separate reasons; no observation failure is reported as unstaffed merely because the camp is unloaded.
+  - Proof: Add production-adapter tests adjacent to staffed-camp cases in `tests/bandit_live_world_test.cpp`: pure abstract population before dispatch, concrete home reserve during both outing kinds, no home population, dead/unready sensor, failed allocation and repeat/save-load. Assert one site stream and one separate dispatch stream, actor/site binding and unchanged total population. Retain `staffed camp signal reads emit actor-bound live transition receipts`. Native derived-start proof crosses abstract → materialized → dispatch-away → bubble/reload, verifying eligibility and actual delivered reads, not just counters. Revisit allocation if a current template/claim path cannot preserve the counted roster; a new arbitrary abstract sensory model is not an authorized balance change.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-OBSERVERS-S001 claim=R-CAOL-CAMP-OBSERVERS -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-FIRST-SMOKE-S001 claim=R-CAOL-FIRST-SMOKE -->
+### Smoke can be the first admitted cannibal signal
+- [ ] 🔴 R-CAOL-FIRST-SMOKE — A valid smoke-first packet reaches cannibal response admission and can materialize the needed members and dispatch without prior light.
+  - Report versus explanation: Owner reports smoke-first failure; the rejected prior packet does not establish valid arrival. Current `src/live_light.cpp::run_advancing_turn` stores all discovered samples but passes only `has_light_projection && !sample_id.empty()` samples to `callbacks.deliver_cannibals`. `do_turn.cpp::dispatch_live_cannibal_signal_contacts` already orders smoke first, checks range and active outside pressure, then uses real materialization, `plan_site_dispatch`, `apply_dispatch_plan` and route assignment. The producer filter is a confirmed channel gap, not proof that the earlier rejected sample should have passed.
+  - Required mechanism: Keep the single advancing-turn gate/cache and light-only horde/stalker/rider delivery. Pass the discovered smoke/light response candidates to the cannibal callback, with original source/mark/sample/time/channel fields intact; existing downstream eligibility remains authoritative. Do not relabel smoke as light or weaken physical range/geometry admission. Camp observer and response adapters share source truth but have separate read/dispatch ownership. Repeated same-turn calls, active outside pressure and save/reload cannot allocate duplicate parties; an admission, materialization or route-assignment failure remains distinguishable from a completed dispatch.
+  - Proof: Extend `tests/physical_light_test.cpp::live_light_discovers_each_advancing_turn_without_same_turn_replay` with smoke-only, light-only and mixed packets; assert optical consumers receive no smoke and the cannibal callback receives it exactly once. Add a real dispatch-adapter test through `dispatch_live_cannibal_signal_contacts` for a valid abstract cannibal roster, first smoke, one allocated party, rejected range, failed route and replay. Helper callback counts do not close native behavior. C-START's closed-window smoke-first run must prove actual camp-reaching admission → concrete members if needed → one dispatch → observed progression; a separate fresh first-light run is the comparison. Preserve original-age memory and the fifteen-minute distant sampling contract.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-FIRST-SMOKE-S001 claim=R-CAOL-FIRST-SMOKE -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-PATROL-SOUND-S001 claim=R-CAOL-PATROL-SOUND -->
+### Patrol duty owns a temporary visible sound setting
+- [ ] 🔴 R-CAOL-PATROL-SOUND — Active roaming and fixed-post patrol show Investigate sounds ON, act consistently and restore each NPC's own prior setting on every duty exit and save/load.
+  - Status: New owner-requested behavior; no before/after native setting trace exists. `npc::set_camp_patrol_order/clear_camp_patrol_order` currently change guard/mission/order fields only. `basecamp.cpp::sync_camp_patrol_worker_order` maps hold to `NPC_MISSION_GUARD`; `npc::handle_sound` only bypasses `ignore_noise` for `NPC_MISSION_GUARD_PATROL`, so fixed posts are excluded and roaming UI can disagree.
+  - Required mechanism: Tie a distinct temporary effective `ignore_noise=false` layer to the NPC's saved camp patrol order, active only when actual runtime duty is present for loop or hold. Preserve personal base `flags` and `override_enable/overrides`; the generic override lane is also used by `set_danger_overrides` and is not patrol's storage. Route sound behavior, `follower_rules_ui_impl::checkbox`, `follower_rules_ui::semantic_payload/semantic_actions` and `npc_inspection.cpp` through the same effective rule. Use the existing `npc_follower_rules::has_flag` semantics beneath that layer. Duty entry is idempotent and does not resnapshot the forced value; clear/mission reassignment/priority-zero/shift end/interruption release the layer. Reserve and genuinely excluded workers never receive it. Personal setters retain ownership of personal preferences; an explicit personal edit during duty changes that underlying preference but cannot turn the effective duty setting OFF. On exit it is revealed; absent an explicit edit the original ON/OFF value is unchanged. Display the effective temporary duty state without pretending the personal preference was destroyed.
+  - Persistence/failure: `npc::serialize/deserialize` in `savegame_json.cpp` already saves/validates `camp_patrol_order_active` against assignment/mission. Persist the separate duty layer with its owning order or deterministically reconstruct it from that validated order before either UI or sound reads; never serialize the forced value over the personal rule. A stale/invalid order releases the layer on load. Follow/flee/trait_IGNORE_SOUND, danger, reachability and existing sound-priority/zone filters may prevent investigation; ON is not omniscience or forced suicidal movement. Patrol interruption restores the preference even when another mission takes ownership.
+  - Proof: Extend `camp_patrol_worker_moves_route_and_releases_after_interrupt` and `camp_patrol_order_ownership_survives_npc_save` in `tests/faction_camp_test.cpp`, plus real sound/UI consumer coverage: personal OFF and ON, loop and hold, reserve, shift/disable/reassign/interruption, danger override, repeat enter and mid-duty save/reload. Native disposable Mac camp proof checks visible state plus a qualified audible event and post-duty restoration for both starting values. A behavior-only bypass or display-only change fails.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-PATROL-SOUND-S001 claim=R-CAOL-PATROL-SOUND -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-DISPATCH-VISIT-S001 claim=R-CAOL-DISPATCH-VISIT -->
+### Search, individual combat choice and bounded departure
+- [ ] 🔴 R-CAOL-DISPATCH-VISIT — Visiting bandit/cannibal dispatches search the target area, respond to valid enemies and depart through real local/abstract travel without losing individual survival choices.
+  - Observed/unknown: The stationary cannibal was saved in local `returning_home`; that moment may be failed departure rather than failed scouting. One attacker and one fleeing member is desired individual behavior. No per-turn causal trace establishes the stationary cause. `live_cannibal_raid_attack_loaded_targets` in `do_turn.cpp` explicitly enumerates only avatar/player allies; this does not implement the requested other-human/zombie target rule.
+  - Mechanism: Use existing `active_outing_state` phase, route/watch position and game-time visit/return bounds, `advance_structural_bounty_outings`, local contact gate and `advance_live_bandit_hostile_rallies/approaches/returns`. Arrival begins actual reachable local scanning movement through the target area; retain/advance the current search waypoint in the outing's absolute-coordinate state so a blocked move can choose another legal search leg or truthfully begin return under existing visit bounds. Repeated redraw/local calls do not spend time or renew the visit. An unloaded outing advances abstract search/return at its existing elapsed-time owner, never a fake local walk or instant success. Reuse HOMEWARD-CONTINUITY for departure and retain original outing identity through save/load. No new arbitrary visit duration or grid-search framework.
+  - Target and action authority: At the existing target selector, admit detected non-cannibal humans and zombies for cannibals; admit an animal only when hostile to that member. Ignore harmless wildlife and cannibal allies. Bandits retain their own faction/individual enemy relationships and defend against hostile animals. Feed selected live `Creature` identities into native combat planning; revalidate visibility/liveness/relation before action. Do not unconditionally reset fleeing members to `NPCATT_KILL` each pass. Native danger/fear/attack and move budgets override search; the group route remains active and resolves with actual casualties/survivors. Observation-only aftermath must not spend a second action. Peaceful bandit parley immunity remains protected by S-CAMP-PROOF.
+  - Proof: Extend the real loaded caller beside `live_cannibal_raid_holds_at_rally_until_night_departure` and `bandit_live_world_cannibal_scout_confirmation_promotes_to_attack_pack` in `tests/bandit_live_world_test.cpp`; positive/negative target classes, frightened member, blocked search leg, visit expiry, no same-turn double move, unload/reload during search and return. Native natural dispatch from the derived camp start records arrival, multiple real search positions/perception opportunities, contact, withdrawal and home return while the bubble moves. Controlled separate human/zombie/hostile-animal/harmless-wildlife encounters establish each relation; player-only combat does not. A legitimate flee is not a failure; an unexplained stationary deadline cannot close departure.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-DISPATCH-VISIT-S001 claim=R-CAOL-DISPATCH-VISIT -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-STALKER-COUNTERATTACK-S001 claim=R-CAOL-STALKER-COUNTERATTACK -->
+### A stalker reconsiders a nearby attacker
+- [ ] 🔴 R-CAOL-STALKER-COUNTERATTACK — Repeated reachable human attacks cause prompt, explainable stalker target/exposure reconsideration and a strike, cover move or withdrawal rather than unexplained stationary holding.
+  - Observed: Owner struck a daylight stalker four times at spear reach two; the first hit coincided with a claw attempt at Cyril Crowder. It was not wholly inert. Later target/action gates are unknown.
+  - Code: `creature.cpp` melee/projectile resolution records visible hostile counterpressure via `writhing_stalker::record_counterpressure_attempt`. `writhing_stalker_ai.cpp` has resolution-bound `observed_attack` identities and age checks, but counterpressure currently adds caution; `monmove.cpp::apply_writhing_stalker_plan` evaluates one generic-plan target and may clear destination. Another human's prior target can therefore remain the context; the observation does not prove which branch actually won.
+  - Mechanism: Reuse real attack-resolution identity/time at the live target/context seam, before the specialized plan chooses hold/approach/withdraw. Reconsider a currently perceived reachable nearby human attacker even while a different human was selected; validate fresh identity and current perception, and retain only observed absolute location as memory. No cached raw pointer, hidden moving coordinates, forced hit or generic aggression boost. A newly relevant attack invalidates an unchanged hold decision; use existing legal attack/cover/withdrawal primitives and move budget. If no legal move/attack exists, expose the concrete obstruction rather than silently clearing intent forever. Preserve daylight caution, weak stats, attack accounting, existing HP/survival rules and per-turn idempotency. Transient attack evidence expires/reset through its existing owner; any durable chosen target/waypoint uses existing typed serialization.
+  - Proof: Add a real `monster::plan`/attack-resolution regression in `tests/writhing_stalker_test.cpp` with another human initially drawing attention, player at reach two and successive advancing attacks; assert refreshed target/exposure/action and paid physical consequence, not one prescribed tactical choice. Retain `writhing_stalker_approach_prefers_cover_and_holds_at_exposure`, `writhing_stalker_burst_limit_is_shaped_by_stress_and_counterpressure`, linked melee/projectile miss visibility/idempotency controls. Include inaccessible/hidden attacker, actor replacement, same-turn replay and no-attack daylight control. Native controlled daylight scene logs target, input context, selected reason, positions/moves and health through several attacks. The original unrecorded encounter cannot be claimed reproduced merely by spawning a stalker.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-STALKER-COUNTERATTACK-S001 claim=R-CAOL-STALKER-COUNTERATTACK -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-CAMP-WAIT-COST-S001 claim=R-CAOL-CAMP-WAIT-COST -->
+### Responsive camp waiting with active NPCs
+- [ ] 🔴 R-CAOL-CAMP-WAIT-COST — Waiting and sleeping with two assigned NPCs stays responsive and scales without making work, patrol, interaction or danger response inert.
+  - Status: Owner-reported slowdown, no profile or equivalent unassigned/assigned timing yet. This is separate from bulk-item timing. `game::do_turn` processes active NPC moves. In `npc::move`, assigning `npc_worker_downtime` does not exit the enclosing undecided block: the following independent stationary/scan branch may still call `find_item` (six-tile map/cargo scan with item-count cache). `worker_downtime` calls `basecamp::process_camp_locker_downtime`, whose `collect_camp_locker_live_state` and signature/plan creation precede its service-due check. Both are source-confirmed repeated-work opportunities, not measured causes in the owner's save.
+  - Required mechanism: First profile matching open-window reference copies before/after assigning two NPCs, identical game-time wait/sleep spans and stock/jobs/weather. Separate native turn, NPC movement, nearby pickup, Locker collection/planning and service work. If Locker preparation dominates, move cheap eligibility/queue/due rejection before full collection where it cannot suppress real invalidation; retain wake-dirty/high-priority changes and recompute authoritative state at actual service. If pickup dominates, gate unchanged redundant scans at the existing item-search owner with correct item/zone/position/need invalidation. Use the measured owner's smallest repair, not a new scheduler or a fixed tactical throttle. Preserve queue fairness, expired reservation cleanup, changed stock/policy/equipment response, camp assignment, sleep interruption and real item conservation. Do not cache live item pointers across mutation, transfer ownership in a plan, or skip danger/perception because the player waits.
+  - Proof: Extend `camp_locker_downtime_queue_processes_one_worker_at_a_time` and existing service scaling probes in `tests/faction_camp_test.cpp` through actual repeated downtime, covering not-due, changed gear/stock, competing workers and real service. Use deterministic counters for redundant work; no machine timing assertion. Native matching-copy comparison records wall time per equal game-time span, completed work, wait and sleep, two NPCs and a representative larger camp. Introduce an audible/danger event and interact to prove prompt responses/jobs/patrol survive. A fast inert camp fails. No acceptable slowdown threshold has been supplied; report measurements and the remaining subjective comfort limit, not an invented pass number. If the profile exonerates both suspects, revise the diagnosis before changing code.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-CAMP-WAIT-COST-S001 claim=R-CAOL-CAMP-WAIT-COST -->
+
+### Executable proof and external comparison — C-VALIDATION
+
+Use V-CPP's verified Makefile/Catch route, selecting the named existing test first and related
+`[bandit][live_world]`, `[physical_light]`, `[camp][patrol]`, `[camp][locker]` or
+`[writhing_stalker]` coverage as affected. New test names above are proposed coverage, not claims
+that a test already exists. List selectors and confirm nonzero cases in the source-bound binary;
+then execute with an isolated user directory, retained command/exit/assertion count and seed.
+A failing-before/passing-after comparison belongs to a demonstrated bug; behavior-preserving
+optimization needs equivalent outcomes/work before and after. No product test was run or changed
+by this specification pass. Native acceptance uses the existing registry/cockpit route and the
+C-START premises, with independent state/event evidence. Compile or callback counts cannot close
+any native clause. Relevant platform checks follow V-CPP; the crash-specific Mac correction does
+not waive three-OS launcher acceptance or claim a Windows playtest occurred.
+
+Bounded primary-source comparison, read 2026-09-24:
+
+- C-RESEARCH-PATROL: [upstream CDDA sound rule](https://raw.githubusercontent.com/CleverRaven/Cataclysm-DDA/master/src/npctalk.cpp), mutable master, `npc::handle_sound`, applies `ignore_noise` to sound investigation. This supports keeping visible/effective rule and sound consumer aligned; it supplies no camp-duty overlay. PATROL-SOUND specifies that missing local lifecycle explicitly.
+- C-RESEARCH-COST: [upstream CDDA NPC move](https://raw.githubusercontent.com/CleverRaven/Cataclysm-DDA/master/src/npcmove.cpp), mutable master, sets worker downtime before a separate `find_item` branch. This is a corroborating call-structure comparison, not evidence of this fork's bottleneck or authority to suppress pickup.
+- C-RESEARCH-VISIT: [OpenMW AiSequence](https://raw.githubusercontent.com/OpenMW/openmw/master/apps/openmw/mwmechanics/aisequence.cpp), mutable master, `execute/stack`, keeps action completion, priority interruption and return behavior separate. Apply that limited principle to DISPATCH-VISIT: retain the existing durable outing while native combat/flee owns the immediate action. Do not import OpenMW's package framework, balance or code. These comparisons resolve mechanism choices, not runtime proof.
+
 
 ## Language, coordinates and truth
 
@@ -435,16 +567,6 @@ Each red claim's section names the outcome, owner, transition, independent obser
 
 The new S-PERFORMANCE claims require their specific measurements. For other unchanged owners, where existing instrumentation makes it inexpensive, retain deterministic work counts or an explicit optimized benchmark for blocked bandit pairs, rider pair reconciliation, light scanning with much loot, predator owner searches, repeated handoffs and retained histories. `reconcile_rider_band_encounters` scans local/loaded abstract riders and pairs; `index_loaded_z_sources` traverses loaded tiles/items. Measure those real intervals separately from delivery/pathfinding. No speculative algorithm rewrite, fixed timing assertion, invented cap or mandatory soak campaign. Randomized tests report seed/sequence; expensive soaks stay opt-in.
 
-## Historical freeze record
-
-- Status: Refrozen 2026-09-19 after source recheck against the unchanged product baseline. Durable acceptance projection and native workspace preparation are recorded in the work ledger.
-- Source identities: product and method commits above; Phase-2 WEC/spec/archive/runtime preparation only. Existing dashboard dirty files and untracked product evidence are preserved.
-- User-owned decisions: six promoted efficiency outcomes; one debug stalker followed into natural city zombies; ordered C-AOL regression/cleanup work; Pit Crew then Reflex as gated optional experiments; the historical launch authorization is superseded by the current explicit owner hold.
-- Evidence-implied design decisions: retain existing exact retrieval and pending/frame owners; pre-provider candidate filtering in the adapter; player-tile dedup limited to ground items; complete-pair atomic bandit rollback; absolute transient pressure samples; historical actual-turn repair (current discovery contract: S-SIGNAL-CADENCE); run-scoped R022 setup with no implicit ambiguous retry.
-- Accepted scope: all historical stable slices and durable receipts preserved. R-ZL-PLAYTEST changes only its owner-approved remaining setup/behavior proof. New R-CAOL/R-EFF/R-EXP obligations get no inherited acceptance.
-- External uncertainties: documented provider funding-exhaustion semantics remain unverified; optional paid modes require them before live admission. No credentials or paid endpoints were used in Phase 2.
-
-After freeze, only the selected phase skill's evidence-bound closure, nonmaterial clarification and uniquely implied same-contract append-only expansion routes apply. Preserve stable identities, accepted scope and proof strength. Product intent, vocabulary, permissions, balance and materially different designs remain owner decisions. Runtime coordination/model/clock policy belongs outside this FS.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EFF-REGISTRY-COST-S001 claim=R-EFF-REGISTRY-COST -->
 ## Current registry queries without accumulated-history cost
@@ -1087,12 +1209,6 @@ cost so a benefit is not merely shifted elsewhere. If comparisons or coverage ar
 report that uncertainty and the exact next measurement rather than fabricated savings or claiming
 the whole workflow optimal. Target shortfall must remain visible; preserve completed valid repairs.
 
-### Earlier harness refreeze record
-
-- Refrozen 2026-09-20 against `dev@4ad0fd67d7896bb07fcc782a704f0bbf6077a315` after inspecting the production owners in H-MAP and their current consumers.
-- The appended WEC contribution and owner deletion policy add five stable red claims. Historical requirements, slices, acceptance identities and unfinished work are retained without granting old evidence credit for these claims.
-- The owner's FS-only naming correction removes the pointer arrangement. Machine receipt/slice identifiers retain identity where required for history; they are not a competing document.
-- No product implementation, new gameplay run or restart occurred in this phase. The manual handoff's two failing C++ history cases, one registry lifecycle test and pressure-locality review finding remain recorded and unresolved.
 
 ## Measured performance and travelling hostiles — S-PERFORMANCE
 
@@ -1423,32 +1539,7 @@ contact. Accept only reduced selection work with preserved native return and ref
 an optimized helper or scout success does not establish the historical following slowdown's cause.
 <!-- DE67:DFS-SLICE:END id=R-CAOL-EXIT-COST-S001 claim=R-CAOL-EXIT-COST -->
 
-### Historical freeze record — performance addition
 
-- Refrozen 2026-09-20 against `dev@a46200ef7884ae62a8aedd58e27d3f08a5f2d5bb`; inspected direct fixes `463b1a810d`/`54e60ce3ac`, their tests/evidence, signal/turn owners, process telemetry and actual loaded contact/exit paths. No product source/tests changed and no gameplay or Phase 3 started.
-- Four new stable red claims: R-HARNESS-PERFORMANCE, R-CAOL-SIGNAL-PROOF, R-CAOL-TRAVELLING-COST, R-CAOL-EXIT-COST. Old stable slice/receipt identities and accepted work survive at their actual ceilings. New obligations remain open; old native regression gaps are not silently accepted or commissioned anew.
-- Latest WEC owns fifteen-minute distant notice, permitted missed brief visual exposure, responsive nearby behavior, one-shot sound retention, travelling encounter scope and deletion/consolidation. Related older cadence wording is reconciled above. The current source's combined staffed-observation latency remains to be proved.
-- Research narrows the design to existing action ownership, relevant-change failed-query reuse and perimeter/local-neighbor exit enumeration. Historical travel attribution and cross-turn recurring-work sufficiency are explicitly unproved; no imported balance, global scheduler or universal timing threshold.
-- Git/runtime preparation and capability evidence belong to the ledger, not this functional contract. The current owner hold supersedes all historical launch instructions.
-
-
-## Historical freeze record — full-stack harness owner mutation, 2026-09-21
-
-- Status: Refrozen from the owner-authorized thaw in gate `f5d913c63d0e`, invocation
-  `mutation-48bcebae6cd84750aecc249a942956f5`, against `dev@fe8c418c1636bdfa6e16d0009af83873a079e24f`
-  plus preserved dirty source/test/fixture repairs. The reviewer changes FS/context, not product code.
-- The full owner brief and prior audit remain lossless under
-  `.de67/task-logs/owner-harness-forcing-mutation-20260921/`; H-ERGONOMICS maps all eleven areas.
-  Review source checks/reproductions, accounting, scope validation and restart receipt are under
-  `.de67/task-logs/review-owner-f5d913c63d0e/`. Synthetic findings are not native proof or savings.
-- Preserve all 64 durable acceptance rows and all old slice/claim identities. Three new claims
-  carry new work; expanded open harness contracts receive no inherited whole-claim acceptance.
-  R-HARNESS-PERFORMANCE's stale red display is reconciled to existing acceptance only.
-- Resume the returned `R-HARNESS-EXECUTION-exploration-003` frontier through the coordinator's
-  ordinary ingress/continuation, retaining useful fixture repairs and its exact result. Source
-  capture/OCR is not a prerequisite for a nonvisual semantic claim; actual startup readiness is.
-  Sol sequences that live-decision proof with the new session/evidence/premise/continuation work.
-  No new game, worker or coordinator was launched by this mutator.
 
 ## Remaining useful evidence — S-REMAINING, 2026-09-23
 
@@ -1770,26 +1861,6 @@ row. Whole-claim closure requires all three rows, with any unavailable boundary 
 | L-WSLG — [Microsoft Linux GUI support](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps), accessed 2026-09-23 | WSL2 runs X11/Wayland apps but is not a complete standalone desktop environment. R-LAUNCHER-CLEAN-INSTALL separates Linux application/inference proof from unsupported desktop/GPU claims. |
 | L-RELEASES — [launcher release](https://github.com/josihosi/Lacapult-Doobdab/releases/tag/catapult-dabubu-python-venv-fix-2026-06-05), [observed C-AOL master release](https://github.com/josihosi/Cataclysm-AOL/releases/tag/caol-cdda-master-2026-06-05-0903) | Platform archives exist as prereleases; a stable `/releases/latest` lookup alone misses the launcher. Their older source identities require package-content verification or a corrected release before claiming current features through fresh installation. |
 
-## Historical freeze record — playtesting and clean installation, 2026-09-23
-
-- Status: Refrozen. Source/identity/preservation checks and disposable durable-acceptance projection passed; all 44 prior slice identities and 69 acceptance rows are preserved.
-- Baseline: C-AOL `dev@4d378c8e7ccce140afc9a656f869ea9d06490916` plus preserved dirty inputs;
-  Catapult-Dabubu `main@366aee6bd675be9b45afbd2ab222808faceedd9d`, clean. The source map above
-  records inspected owners; later execution binds its actual source and downloaded packages.
-- User choices: approved merged WEC; closed harness cleanup and accepted rider result; remaining
-  game evidence, real armed patrol/peaceful and hostile defense, payment/replenishment/return,
-  both Gemma 4 models, genuine three-OS clean installation, preserved user data and WSL as the
-  available Linux host. No gameplay balance, forced outcomes or new framework is introduced.
-- All prior stable claim/slice identities and durable acceptance history are retained. Stale red
-  displays for already accepted claims are reconciled only to their existing scope. The three
-  unaccepted harness campaign claims are owner-retired, not newly accepted. Seven new red claims
-  carry only the additional camp and launcher obligations; the four existing native proof claims
-  retain their still-open boundaries. Independent unfinished requirements and deferred experiments
-  remain preserved. The returned-report age proof narrows only its already-observed signal boundary.
-- No product implementation, gameplay campaign, installation, runtime uninstall or new technical
-  acceptance occurs in this refreeze. Preparation/model capability and checkpoint status belong to
-  the work ledger, not this functional contract. Product intent and acceptance strength remain
-  user-owned; preserve the existing evidence-bound closure/clarification/refreeze rules.
 
 ## Owner reference camp, item performance and release continuity — S-TRAJECTORY
 
@@ -1942,20 +2013,41 @@ unavailable OS boundaries remain explicitly open and prevent a full-release comp
 | T-AIM-UPSTREAM — [CleverRaven advanced inventory](https://raw.githubusercontent.com/CleverRaven/Cataclysm-DDA/master/src/advanced_inv.cpp), mutable upstream master | The existing upstream UI/activity separation is a useful comparison for R-CAOL-BULK-ITEM-COST; it is not evidence of this fork's bottleneck or authority to replace its UI. Profile the local production route first and retain native transfer ownership. |
 | T-OLLAMA-LINUX — [official Linux installation](https://docs.ollama.com/linux); T-OLLAMA-MAC — [official macOS installation](https://docs.ollama.com/macos) | Supported OS installation and real local server remain the relevant external boundaries for R-LAUNCHER-CLEAN-INSTALL. These documents do not diagnose `-60007` or certify the prepared launcher command. Observe the actual privilege/install route; preserve accepted setup code unless that route contradicts it. |
 
-## Current freeze record — owner trajectory, 2026-09-24
 
-- Status: Refrozen. Source baseline and private archive identities are recorded above; no product
-  source/tests or original saves were changed by this specification pass.
-- User-owned choices: current supplied WEC, real reference camp, natural signal-to-arrival chain,
-  physical open/closed/roof comparison, focused bulk-item repair, Smartzone naming, full installation
-  and release outcome. No gameplay balance change or fabricated encounter state is authorized.
-- Three new stable claims/slices: R-CAOL-REFERENCE-CAMP, R-CAOL-BULK-ITEM-COST and
-  R-CAOL-SMARTZONE-NAMES. Existing claim/slice and receipt identities and all 73 acceptance rows
-  retain their scope. New obligations remain open; accepted harness work is not restarted.
-- Evidence-implied refinements: dedicated native patrol priorities address the observed 9% duty
-  premise; current launcher wiring replaces the historical missing-code diagnosis while actual
-  three-OS installation remains open. Ambiguous legacy generated names are preserved because the
-  saved schema cannot distinguish them from custom names without guessing.
-- Closure, clarification and refreeze follow the existing evidence-bound rules. Product intent,
-  permissions, balance and acceptance strength remain user-owned. Preparation, sequencing, human
-  contact and checkpoint results are recorded in WEC/work ledger, outside this product contract.
+## Owner crash correction — S-WINDOWS-DISPATCH-CRASH
+
+Refrozen 2026-09-24 under owner suggestion WINDOWS-CAMP-ITEM-CRASH-20260924. Inspected
+Mac dev baseline `224d7dc9779fe3e871a6ec13de918226338e6751` with existing dirty work preserved.
+Windows launch reports the same base plus dirty SDL3 changes; the exact executable SHA and
+original dump are retained in `.de67/task-logs/owner-scout-crash-20260924/triage.md`.
+Matching HEADs do not establish identical sources or binaries. This addition retains every
+existing slice, accepted proof and unfinished outcome; it does not reopen harness cleanup.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-WINDOWS-DISPATCH-CRASH-S001 claim=R-CAOL-WINDOWS-DISPATCH-CRASH -->
+### Ordinary dispatch preserves valid optic-item iteration
+- [ ] 🔴 R-CAOL-WINDOWS-DISPATCH-CRASH — The owner's ordinary wait-through-dispatch crash has a source-bound lifetime repair and regression proof, with inventory/ecology behavior preserved and the prior proof gap explained.
+  - Diagnosis now supported: The retained original Windows executable/dump and disassembly identify two `gun.gunmods()` temporary vectors supplying one `std::any_of` iterator range in the structural observer's optic predicate. `gunmods()` returns by value; different vectors make that range invalid. This is a caller lifetime defect, not demonstrated NPC/save corruption. The current Mac `bandit_live_world::live_structural_observer_has_optic` in `src/do_turn.cpp` stores one vector and iterates it. The original log's three materialized members are observer 4, escort 5 and one reserve, not a three-member sortie. Exact crashing gun/NPC is not established by the dump.
+  - Required behavior: Keep the one-range lifetime repair reached through `live_bandit_structural_observer_sight`, actual perception and ordinary structural dispatch. Preserve the same optic decision, gun/mod contents and ecology; no exception suppression, skipped observer or false null-check repair. The repair is already dirty source, not a new Phase-2 edit requirement.
+  - Proof and owner's host correction: Reconcile the retained `R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md`, exact build/save manifests and receipt `9ff65f472052342c2f8210d952e50acc07858c4dc9b4c8d720f8265ad3f45acf`. It records `[optic_lifetime]` crashing before and passing 14 assertions after, adjacent sight coverage passing 31 assertions, and native Mac run `220727e9d0d84ae49dc964416cd2d109` on the byte-verified TestSetup00 copy: minute 8379→8785, natural dispatch at 8400, observer sight returns at 8460/8520/8580/8640, saved quit and both processes exited. The native log alone does not prove the inner gunmod predicate or NPC inventory equality; focused production regression supplies the iterator/content control. Compare earlier natural dispatch attempts and actual build/world/item-state differences, preserving their narrower valid outcomes. Source-bound complementary evidence may close the claim after scope reconciliation; do not automatically replay the gameplay case or claim unobserved native gun/mod contents.
+  - Windows replay is explicitly not required for this crash under the latest owner correction. Mac is the requested native reproduction/regression host, and Windows original dump/build remain causal evidence. No Windows native pass is claimed. This supersedes the earlier Windows-only proof sentence while preserving the stable claim/slice identity and every retained receipt. The checkbox remains open here: specification reconciliation does not manufacture durable acceptance.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-WINDOWS-DISPATCH-CRASH-S001 claim=R-CAOL-WINDOWS-DISPATCH-CRASH -->
+
+
+## Current freeze record — reconciled camp outcomes, 2026-09-24
+
+- Status: Refrozen after source cross-check and successful disposable durable-state compatibility projection.
+- Baseline: header and `build_logs/phase2-reconcile-20260924/baseline.json`; 74 prior durable
+  acceptance rows retained without new credit. All prior stable claim/slice identities remain.
+- Owner choices: merged WEC's seven findings, retained game-first/full-launcher outcomes,
+  Mac crash proof correction, unchanged private references, closed harness campaign and current
+  stop. No unresolved choice prevents this product contract. Performance comfort is unquantified;
+  measure and report it instead of inventing a threshold.
+- Evidence-implied refinements: first smoke channel split; one counted home sensor independent
+  of outside dispatch; existing abstract-resume travel extended to the observed pre-resume
+  boundary; visible patrol effective rule; native combat/flee over retained visit; perceived
+  attacker reconsideration; profiling before a camp-cost repair. Observations remain distinct
+  from these code-derived mechanisms and unknown runtime inputs.
+- This specification claims no new gameplay/installation acceptance. Preserve acceptance history
+  and checked ledger entries. Evidence-bound closure/nonmaterial clarification and same-contract
+  expansion follow the retained freeze rules; material behavior, balance, language, permissions
+  and alternative product intent return to the owner. No worker may refreeze the FS.

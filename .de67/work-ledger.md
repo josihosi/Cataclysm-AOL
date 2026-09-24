@@ -1,3 +1,153 @@
+# Current Phase-2 reconciliation — 2026-09-24
+
+Josef authorized this merge, refreeze, preparation and scoped checkpoint only. The exact delivery
+supervisor, worker turns and deadline watches remain stopped; no Phase 3 restart is authorized.
+This section supersedes every older start/stop/priority assertion below. Those entries preserve
+results and checked acceptance, not current execution authority. Phase ownership stayed here;
+Luna helpers only inspected bounded source questions, and a fresh nonce coordinator only proved
+capabilities. No product code/tests, game, installer or owner GUI was changed/operated.
+
+## Recommended order for a later explicitly authorized delivery
+
+1. **Settle existing crash evidence; preserve the item-loss defect as urgent remaining work.**
+   The crash's focused failing-before/passing-after proof and Mac natural dispatch/subsequent sight
+   run already exist. The FS now applies the owner's Mac-only retest correction; reconcile receipt
+   scope rather than impose a new Windows replay. Native sight logs do not establish the inner
+   gunmod predicate or NPC inventory equality; the focused regression covers that lifetime and
+   content boundary. The separate 128-plank loss remains a data-integrity defect even though the
+   owner accepted the 1,024-item timing. Recover returned work and acceptance before new changes.
+2. **Repair return continuity, then independent camp observers and smoke-first admission.**
+   These are upstream causes of unreliable longer tests: a journey that cannot leave/return and
+   a camp excluded from sensing make defense/return results hard to interpret. Reuse existing
+   paired overmap movement and tracked roster allocation, fixing the missing entry boundary.
+   Observer eligibility and the smoke channel split can be inspected independently, but share
+   their final natural signal-to-response proof. Closed-window Mac reference copy is the preferred
+   smoke start; record the cannibal transplant as setup. Do not call it the Windows modified save.
+3. **Complete dispatch search/target/departure and patrol sound lifecycle.**
+   Preserve native individual attack/flee while proving bounded group resolution. Patrol's
+   effective setting and fixed posts need one consistent owner before judging sound/alarm behavior.
+   Then reuse these journeys for the remaining reference-camp gear/persistence, zombie mobilization,
+   peaceful/hostile shakedown, real payment, departure and replenished-bounty return observations.
+   Shared evidence closes only matching portions; accepted assignment/Locker/Smartzone/rider work
+   is not repeated automatically.
+4. **Resolve the stalker reaction and measured camp cost.**
+   The spear report needs per-turn target/action evidence; camp cost needs matching wait/sleep
+   profiles. They are independent of the dispatch fix and may be investigated earlier without
+   taking competing live input or delaying an established integrity fix. Optimize measured
+   repeated work while retaining jobs, pickup/service, danger response and interaction. No fixed
+   comfort threshold exists. Remaining signal lifetime/bubble/save-load, travelling pursuit/cost,
+   exit and combined native-regression gaps should share suitable segments of these tests. Avoid
+   a broad re-run of accepted harness cleanup or a speculative refactor campaign.
+5. **Finish launcher journeys and assess full release readiness after game completion.**
+   Preserve accepted Gemma/setup implementation and the prepared source-bound unsigned candidate.
+   Publication for download-back testing is already approved after concrete validation. Run actual
+   clean macOS, Windows and Linux/WSL desktop/local inference journeys; obtain owner authentication
+   only at the real Mac prompt. The downloaded game must contain accepted fixes. Full release is
+   not a prerelease upload or a window-opening smoke test. Pit Crew then Reflex Pilot remain
+   optional deferred experiments, with their existing prerequisites, never release prerequisites.
+
+This ordering is a recommendation based on dependencies, severity and current evidence, not inherited
+document order or a claim that later independent diagnosis must wait. No new product deadline,
+visit-duration balance, performance cap or owner choice has been invented.
+
+## New obligations and overlap
+
+- [ ] R-CAOL-HOMEWARD-CONTINUITY — Same surviving pair progresses off-bubble and genuinely returns; extends the pre-resume boundary without reopening accepted transfer primitives.
+  - DFS slices: `R-CAOL-HOMEWARD-CONTINUITY-S001`
+- [ ] R-CAOL-CAMP-OBSERVERS — A living home roster and active dispatch observe independently; abstract home sensing has real identity/capability without added population.
+  - DFS slices: `R-CAOL-CAMP-OBSERVERS-S001`
+- [ ] R-CAOL-FIRST-SMOKE — Valid first smoke reaches response admission without prior light; closed-window Mac controlled setup and separate first-light copy.
+  - DFS slices: `R-CAOL-FIRST-SMOKE-S001`
+- [ ] R-CAOL-PATROL-SOUND — Visible/effective Investigate sounds follows active loop/hold duty and releases to each personal setting through all exits/reload.
+  - DFS slices: `R-CAOL-PATROL-SOUND-S001`
+- [ ] R-CAOL-DISPATCH-VISIT — Search, correct target classes, individual survival and real local/abstract departure; stationary anecdote remains causally unresolved.
+  - DFS slices: `R-CAOL-DISPATCH-VISIT-S001`
+- [ ] R-CAOL-STALKER-COUNTERATTACK — Perceived nearby attacker triggers explainable response; earlier opportunistic-city proof remains accepted.
+  - DFS slices: `R-CAOL-STALKER-COUNTERATTACK-S001`
+- [ ] R-CAOL-CAMP-WAIT-COST — Profile and repair the actual two-NPC wait/sleep cost without disabling camp behavior; separate from bulk-item timing/loss.
+  - DFS slices: `R-CAOL-CAMP-WAIT-COST-S001`
+
+No new acceptance is granted. The exact stuck Windows checkpoint/transplant audit paths in incoming
+WEC are absent at the same relative locations on this Mac. Recover their source-bound copies for
+exact replay; the local pre-crash copy is not proof of the later stuck state. Both untouched Mac
+references exist and their 62-file hash manifests are retained. This evidence availability is a
+technical preparation boundary, not an unresolved owner choice or reason to mutate originals.
+
+## Context audit, recovery and preparation
+
+Baseline: Josefs-Mac-mini.local, exact main workspace, `dev@224d7dc9779fe3e871a6ec13de918226338e6751`,
+configured upstream `origin/dev`. `build_logs/phase2-reconcile-20260924/baseline.json` retains the
+68 tracked dirty-file hashes, status and all 74 durable acceptance rows. Adjacent before-files
+preserve the incoming WEC and dirty WEC/FS/ledger/mutation queue verbatim. Incoming SHA256 matches
+`c57f0aab73d8129e45649916797510a07daa9c2046adfc19530e1907e032ca1a`; it was moved into canonical
+WEC and merged under explicit conflict resolution. Original committed history remains in Git.
+The compact WEC carries binding outcomes; superseded start/host/priority narratives are recoverable
+from before-files. FS removes redundant historical freeze prose, retains all old stable IDs and
+slice blocks except the explicitly corrected crash scope, and adds seven unaccepted slices.
+
+Audited surfaces and decisions:
+
+- Global `/Users/josefhorvath/.codex/AGENTS.md`: effective Mac GUI, MSW, data and reasoning guidance,
+  read and retained unchanged. This owner and the fresh probe coordinator received it. Future
+  delivery coordinator/reviewer receipt is not asserted; helper receipt was not independently
+  attested. Setup fingerprints this explicit source, not inferred wording equivalence.
+- Parent `workspaces/AGENTS.md`: canonical naming/storage/one-shot host facts retained. The user's
+  exact workspace selection overrides its general internal-source preference. OpenClaw-specific
+  examples have their own runtime scope, not authority to replace native Codex tools.
+- Repository AGENTS.md and named caol-harness skill: local evidence and Luna-only live operation
+  agree with current intent. Existing dirty files are preserved. No no-go-zone was inventoried
+  or read, no instruction surface moved, and no other phase's procedure loaded.
+- FS, WEC, ledger, test-and-task guidelines and mutation queue are the named active context.
+  Superseded WEC/ledger launch directions are explicitly historical beneath the current stop.
+  The pending crash-host suggestion is consumed only because its exact owner correction is now
+  incorporated in FS; it grants no crash acceptance or restart. Legacy test/task guidance retains
+  useful truth/input rules and applies to delivery, not authority to launch it in Phase 2.
+- `phase3-policy.d67` and its JSON policy/contracts are the installed runtime's active compiled
+  decision system, not a second product specification. Its dispatch/review/restart actions apply
+  only within an authorized delivery session. No competing Phase-2 mandate was found. The actual
+  setup helper preserves six compiled-policy/guideline/ledger files, as already recorded by the
+  previous preparation. Do not fabricate the older missing orchestrator-guidelines filename.
+- `.codex/config.toml` already contains `[agents] default_subagent_model = "gpt-6-luna"`, no default
+  effort. Fresh strict-config CLI coordinator `01a0d4ec-600f-7d43-907c-09a162bc1cee` returned all
+  unique nonces from fork_turns=none probes: omitted-model Luna low/medium and explicit Sol low.
+  `probe-routing.json`, `probes.jsonl`, `probe-final.txt` retain request/result evidence. No runtime
+  model metadata beyond requested routing was returned. Only these successful pairs are recorded.
+
+List-only Catch checks resolved the current light-cadence selector and `[optic_lifetime]`; they
+executed no behavior tests and establish no new gameplay proof. The FS names additional existing
+source tests and proposed regressions, with production/native controls and no new arbitrary quotas.
+Bounded upstream CDDA/OpenMW comparisons informed rule alignment, scan ownership and temporary
+combat precedence; their URLs/limits are beside the affected FS claims.
+
+Workspace setup succeeded through the existing Homebrew Python 3.14 hook interpreter. It
+preserved all six actual runtime files, the `semantic-surface-cockpit` lineage, audited guidance,
+and `origin/dev` as sole automatic target. The real projection against a disposable copy of the
+existing acceptance database passed; backlog push succeeded. The first Apple-Python invocation
+was rejected only because its interpreter differed from the installed managed hook; repeating
+with that existing interpreter resolved the guard without altering or bypassing it. Exact result:
+`build_logs/phase2-reconcile-20260924/workspace-setup.json`.
+
+Validation retains 55 prior slice identities (54 byte-identical bodies; only the owner-corrected
+crash slice revised), adds seven open slices, and preserves all 74 acceptance rows and checked
+ledger history. Both private reference manifests and unrelated tracked dirty paths match the
+baseline. There is no unresolved owner decision blocking this Phase-2 contract. The exact later
+Windows checkpoint is a future evidence-retrieval boundary, not fabricated local proof.
+
+The scoped checkpoint includes WEC, FS, the new ledger prefix over its HEAD version, and the
+consumed mutation suggestion. Pre-existing dirty ledger additions remain in the working tree;
+all unrelated source, tests, skills, scenarios, saves and untracked evidence remain untouched.
+No default-effort, ignore or policy changes are needed. The post-commit hook alone pushes the
+checkpoint; its actual result is retained in `.de67/state/checkpoint-push.json` and reported at
+closeout. Phase 3 stays stopped.
+
+
+---
+
+## Retained ledger history and scoped acceptance
+
+The following pre-existing ledger body is preserved. Its dated execution instructions are superseded
+by the current section; checked entries and exact receipt references retain their original scope.
+
 # Current Phase-2 trajectory checkpoint — 2026-09-24
 
 This section and the current marked WEC owner contract supersede historical execution directions
