@@ -1,3 +1,34 @@
+# WEC — user intent and language brief
+## Owner trajectory correction, 2026-09-24
+Josef explicitly requests de67 1 and de67 2 together to revise the existing Mac dev campaign. Complete game debugging/playtesting FIRST; launcher installer testing comes AFTER the game work, on a coherent route to full product release. This authorizes revising/refreezing existing WEC/FS/DFS rather than treating their differing contents as a permission blocker. Preserve prior still-binding product requirements and accepted results; do not restart accepted harness-cleanup work. This phase is specification/preparation, not Phase-3 launch.
+
+## Game outcomes
+Use disposable copies of Josef's real camp world TestSetup00, character Test00. Two verified private archives are under .userdata/reference-saves/archives/: josef-basecamp-open-windows-20260924-122356.zip (corrected all windows open) and josef-basecamp-closed-windows-20260924-122642.zip (doors/windows closed, owner reports darkness). Each has a SHA256 sidecar. Never alter these originals or publish included configuration/credentials. The ordinary live game may still be open for Josef; no GUI takeover in phase2.
+Camp has Casey Bolton and Tilda Wray (owner calls her Tilda Ray), assigned to TestCamp01, stocked Locker guns/backpacks, tools/lighters, ground and rooftop braziers/wood, storage and patrol zones. Verify compatible ammunition, rooftop SOURCE_FIREWOOD (not present in inspected earlier saves), and gold inventory in working copies as needed. Do not ask owner to reconstruct routine setup.
+Prove actual Locker equipment collection and persistence, patrol roster/routes/day-night duty, nearby zombie detection/alarm/all appropriate guards responding and fighting; peaceful bandit robbery should not trigger a guard attack, hostile shakedown should produce a proper fight against a sufficiently populated bandit camp. Use natural signal -> stalking -> dispatch -> physical arrival, not fabricated downstream encounter state. Setup can place suitable surroundings/actors and supplies; identify first missing transition when natural behavior fails.
+Compare open/closed building and rooftop fire for actual physical light/smoke propagation and bandit attraction. Do not assume closed windows block all light or smoke travels through walls. For payment/return, put plentiful gold within camp inventory/storage zone, observe payment and departure, replenish bounty and measure actual return interval.
+Patrol investigation found both NPCs correctly camp-assigned and patrol zones recognized. All 11 jobs priority5 yields only9% patrol duty at shift start in current code; change job priorities through existing harness camp_assignment.edit_worker_jobs/native menu on working copies to make dedicated patrol proof meaningful, not assume corrupt save. No automatic game behavior redesign from this observation.
+Investigate severe bulk-item performance: repeat advanced inventory mass-moving planks and sorting many unsorted items, profile actual bottleneck, implement focused justified fix, compare performance and item conservation. No invented performance threshold. Rename Smart Zone Manager's generated Basecamp prefix to Smartzone or shorter clear equivalent, distinct from genuine basecamp zones; presentation-only, preserving zone semantics and custom names.
+Retain other still-open game release requirements from existing authoritative intent/specification at their established evidence scope. Avoid new bureaucracy, exhaustive unrelated testing or repeated proof of accepted work. Luna-only live playtests; concise transcripts saved per scenario, useful remaining issues plain text. Code quality fixes by appropriate Sol/Astra; no GPT5.6/Terra.
+
+## Launcher after game debugging
+Catapult-Dabubu repo is /Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu (josihosi/Lacapult-Doobdab). Finish Gemma4 E2B/E4B download choices and real launcher-led Ollama installation. Full from-scratch journeys on Mac, Windows and native WSL Linux: obtain installer, download game, install Ollama through launcher, obtain both exact models, real local and API response, custom monster tiles, playable game and save/quit/relaunch. Preserve unrelated owner data.
+Existing blockers: Mac install returned admin authentication -60007; observe real interactive prompt and owner authenticates, or fix invocation if no usable prompt. Windows/Linux published packages are obsolete. Updated unsigned candidates and a clean candidate commit already prepared; reuse verified useful work, do not rebuild bureaucracy. Windows agent route used isolated current CLI/config workaround; correct necessary route for reliable test. WSL candidate window worked with PulseAudio; native Linux inference required.
+Josef now explicitly approves publishing the prepared unsigned launcher prerelease to GitHub for download-back testing, after normal concrete validation. No need to ask again for that publication. This is not permission to publish credentials or replace final stable release without checking readiness. Plan a concrete path to full release; distinguish prerelease installation proof from final release readiness.
+
+## Human contact and sequencing
+User explicitly authorizes SHORT Discord messages through existing DE67 integration when he must access Mac mini (e.g. admin authentication). Use a short sentence with needed action, never dump logs, hashes, full task packets or prompts into Discord. Reuse existing configured channel/owner identity; no secrets. Ordinary setup/tooling choices proceed autonomously. Put execution/notification policy in appropriate existing intent/guidance, not product behavior. Game work first, installer journeys second; exclusive Mac GUI ownership. Existing external supervisor stopped; do not launch Phase3 in this phase.
+
+<!-- DE67:OWNER-CONTRACT:BEGIN -->
+Current owner trajectory, 2026-09-24: Complete this explicitly requested Phase-2 refreeze and scoped checkpoint only. Do not start Phase 3, restart the stopped supervisor, or operate Josef's ordinary game. On a later explicit Phase-3 start, complete remaining game debugging/playtests first, including the disposable TestSetup00/Test00 camp, physical light/smoke and natural bandit arrival/defense/payment/return, bulk-item performance and Smartzone naming. Installer journeys follow game completion, then final release readiness. Preserve accepted results and the closed harness-cleanup scope. Only GPT-6 Luna operates live harness playtests; Sol/Astra retain code diagnosis/implementation. Preserve unrelated dirty work and private archives. The prepared unsigned Catapult-Dabubu prerelease is approved for publication after concrete validation in the later launcher stage; the earlier request for publication approval is resolved. Reuse the configured DE67 Discord channel and owner identity for a short action request only when Josef must access the Mac mini, such as an interactive administrator prompt; never send logs, hashes, packets, credentials or prompts. Exclusive Mac GUI ownership remains mandatory. This current contract supersedes every historical start, concurrency, pause and publication-permission instruction retained below; those records retain only their product intent and evidence scope.
+<!-- DE67:OWNER-CONTRACT:END -->
+
+## Retained earlier intent and evidence — superseded execution directions
+
+The new trajectory above controls. The earlier brief below remains for still-binding product requirements and accepted evidence; it cannot restart Phase 3, reopen accepted harness cleanup, or permit launcher journeys before game work is complete. FS.md remains canonical; historical DFS receipt/slice names do not create a second specification.
+
+Current model direction, 2026-09-23: only GPT-6 Sol, GPT-6 Luna and GPT-6 Astra for new work. Coordinator GPT-6 Sol low; Luna workers preferred and mandatory for live harness playtests. No GPT-5.6 models or Terra. This supersedes historical model guidance below. Existing records remain evidence, not dispatch choices.
+
 # WEC — Playtesting and clean launcher installation
 User intent and language brief, 2026-09-23.
 User explicitly requests de67 2 on the Mac mini main Cataclysm-AOL dev workspace. This extends the existing product intent with the following testing campaign; preserve existing accepted work and independent unfinished requirements. Current harness cleanup was closed by the owner; do not revive superseded cleanup work merely because old checkboxes remain. The owner accepted rider testing; current matrix assessment is 18 scoped successes and two unresolved camp observations.
@@ -28,18 +59,9 @@ do not substitute that model for live harness operation. Finish specification, n
 workspace preparation and a scoped checkpoint without installing or uninstalling runtime
 software. The original brief remains recoverable in Git and is retained below for product intent.
 
-<!-- DE67:OWNER-CONTRACT:BEGIN -->
-Current owner contract, 2026-09-23: complete this Mac-native phase-2 merge, code-grounded
-FS refreeze, necessary workspace preparation and scoped checkpoint on main dev. No phase-3
-start, product implementation, live playtest campaign, or runtime installation/uninstallation
-in this phase. Current harness cleanup is closed at 18 scoped successes; rider knockdown is
-accepted. Keep fresh-camp assignment and actual Locker transfer open, alongside the remaining
-game evidence and full patrol/defense/payment/return and three-OS clean-launcher outcomes above.
-Only GPT-6 Luna may launch or operate live harness sessions during later authorized execution;
-Sol/Astra must delegate those actions while retaining implementation/diagnosis responsibility.
-Preserve unrelated dirty product work, accepted evidence and all independent unfinished
-requirements. Do not treat historical start directions below as current authority.
-<!-- DE67:OWNER-CONTRACT:END -->
+<!-- DE67:HISTORICAL-20260923-OWNER-CONTRACT:BEGIN -->
+Current execution authorization, 2026-09-23: Josef explicitly instructs "De67 3 on the Mac mini then thanks!" Deliver the current refrozen .de67/FS.md on this main dev workspace. This supersedes the phase-2-only execution limits above and all historical stop/start directions below; product requirements and accepted evidence are unchanged. Complete the remaining game playtests, patrol/camp/Locker/defense/payment/return outcomes, and Gemma launcher integration plus fresh installation proof on Mac, Windows and WSL Linux. Only GPT-6 Luna may launch or operate live playtest harness sessions; Sol/Astra delegate live playtesting. Preserve unrelated dirty work, all accepted evidence and the owner-closed harness cleanup scope. Use the existing configured supervisor and native coordinator; do not add a parallel coordinator.
+<!-- DE67:HISTORICAL-20260923-OWNER-CONTRACT:END -->
 
 ## Retained earlier WEC — historical directions, binding product intent where not superseded
 

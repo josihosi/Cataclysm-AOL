@@ -1,3 +1,125 @@
+# Current Phase-2 trajectory checkpoint — 2026-09-24
+
+This section and the current marked WEC owner contract supersede historical execution directions
+below. Josef requests this Phase-2 refreeze/checkpoint only. Phase 3 and the external supervisor
+remain stopped. No game, installer or owner GUI was operated in this phase. The fresh native Mac
+phase owner retains ownership; the separate nonce coordinator only proves worker capability.
+
+## Delivery trajectory for the next explicitly authorized start
+
+1. Finish remaining game debugging and useful playtests first. Preserve scoped assignment,
+   Locker, rider, signal-return-age and harness acceptance. Use private disposable TestSetup00 /
+   Test00 copies, Casey Bolton and Tilda Wray in TestCamp01; verify compatible ammo, roof
+   SOURCE_FIREWOOD and plentiful camp-zone gold. Use native job priorities for dedicated patrol.
+   Prove reference-camp gear/persistence, day/night roster, zombie alarm/appropriate guards,
+   peaceful robbery without guard attack, hostile substantive fight, open/closed/roof physical
+   light/smoke and natural signal → stalking → dispatch → arrival. Pay, observe departure,
+   replenish bounty and measure actual return interval. Find the first absent natural transition;
+   downstream committed-encounter fixtures cannot close the connected route.
+2. Reproduce/profile bulk planks and unsorted-item work, implement a focused justified fix and
+   compare completed work/conservation. Rename generated helper labels to Smartzone without
+   changing genuine camp zones or custom saved names. Retain the existing still-open signal,
+   travelling-hostile, exit/return, native regression and other game release boundaries at their
+   established scope. These are game work, ahead of launcher journeys. Accepted harness cleanup
+   remains closed; repair only an encountered obstruction, without a new audit campaign.
+3. After game completion, finish launcher installation journeys. Reuse accepted Gemma/setup code
+   and clean candidate commit 495ac43ef62f36685a941840405a4a8e25a1f03f with its exact manifest,
+   assets and bundle under R-LAUNCHER-CLEAN-INSTALL-exploration-003/candidate/rebuilt-from-final-commit/.
+   Josef has approved publishing that prepared unsigned prerelease after concrete validation;
+   the candidate document's old approval request is resolved. Do not ask again. Check relevance
+   to any later installer fix, publish the source-bound candidate through the existing release
+   route, download it back, and perform complete Mac, Windows and WSL Linux journeys. Publishing
+   belongs to that later launcher stage, not this Phase-2 checkpoint.
+4. Bind the game release downloaded by the launcher to the completed game fixes. After genuine
+   local responses from both exact Gemma models, API response, custom graphics, play and retained
+   save/quit/relaunch on all three OSes, assess final release readiness. A prerelease upload or
+   candidate smoke is not stable-release acceptance. Report remaining concrete defects plainly;
+   do not silently replace stable release before readiness is established. Optional Pit Crew and
+   Reflex Pilot remain deferred behind the agreed production work, never a release prerequisite.
+
+Windows prerequisite: reuse the diagnosed official CLI/config route; the prior temporary route
+was cleaned up, so reestablish it safely and prove a real command before assigning the Windows
+journey. Correct the necessary configuration/runtime boundary without replacing unrelated owner
+settings. Windows model/service proof cannot satisfy Linux. WSLg's PulseAudio candidate startup is
+useful partial evidence; Linux-native Ollama, normal launch/input and inference still need proof.
+Mac prerequisite: reproduce the real -60007 installer failure only during its authorized journey,
+observe the actual prompt, and let Josef authenticate. If there is no usable prompt, repair the
+launcher invocation at its owner. No terminal substitute or stored admin credential earns proof.
+
+Use only GPT-6 Luna for live harness playtests; Sol/Astra handle appropriate diagnosis/code work.
+Keep concise per-scenario transcripts and useful plain-text remaining issues. Exclusive Mac GUI
+ownership includes Josef's ordinary game, which remains untouched. When Josef must access the Mac
+mini, he explicitly authorizes a SHORT message via the already configured DE67 Discord channel and
+owner identity, e.g. “Please authenticate the Ollama installer on the Mac mini.” Do not send logs,
+hashes, full task packets, prompts or secrets. No message is needed in this specification phase.
+
+## New open obligations
+
+- [ ] R-CAOL-REFERENCE-CAMP — Owner camp gear/patrol prerequisites and open/closed/roof physical signals with natural bandit attraction.
+  - DFS slices: `R-CAOL-REFERENCE-CAMP-S001`
+  - Reuse existing defense/payment/signal claims when the same connected evidence reaches them;
+    no inherited credit from an accepted different fixture and no repeated fresh assignment test.
+- [ ] R-CAOL-BULK-ITEM-COST — Profile and repair severe bulk transfer/sorting cost with equivalent native performance and item-conservation proof.
+  - DFS slices: `R-CAOL-BULK-ITEM-COST-S001`
+- [ ] R-CAOL-SMARTZONE-NAMES — Clear generated Smartzone labels, preserved custom names and zone semantics.
+  - DFS slices: `R-CAOL-SMARTZONE-NAMES-S001`
+
+## Phase-2 context audit and preparation evidence
+
+Host is Josefs-Mac-mini.local; exact C-AOL workspace is dev@67d2c1d8e660c64f7474e1d5ab19778504da3de0,
+upstream origin/dev. Before-file copies, tracked dirty hashes and all 73 acceptance rows are in
+build_logs/phase2-trajectory-20260924/baseline.json and adjacent before-files. Existing owner-dirty
+WEC/ledger additions remain preserved; the local supplied WEC was moved into the canonical path
+and merged with retained intent under explicit refreeze authority. No DFS pointer is recreated.
+
+- Effective global /Users/josefhorvath/.codex/AGENTS.md: Mac GUI/MSW/data boundaries, read and
+  retained. This owner received it; the fresh nonce coordinator confirms receipt. Nonce workers
+  used fork_turns=none; their effective shared-guidance receipt was not independently attested.
+  No delivery coordinator or reviewer was launched, so receipt by those future contexts is not
+  claimed. Setup records the audited global source; repository-local facts remain in AGENTS.md.
+- Parent workspaces/AGENTS.md: storage/canonical folder and one-shot host facts retained. Exact
+  user-selected CodexBulk workspace takes precedence over general internal-source preference.
+  Its OpenClaw-only tool examples do not replace this native Codex task's available tools.
+- Repository AGENTS.md and .agents/skills/caol-harness/SKILL.md: current GPT-6/Luna live-test and
+  evidence rules agree with the WEC. Their pre-existing dirty changes are untouched. No GUI
+  skill operation is needed. Existing run/session bindings are evidence, never new owner intent.
+- Existing FS receipt/slice blocks, work ledger, test-and-task-guidelines.md and mutation queue:
+  retain useful proof and current policy. The old top-of-ledger Phase-3 start is superseded by
+  this current section and the marked WEC contract. The pending mutation queue is empty.
+- Compiled phase3-policy.d67 with JSON policy/contracts remains the installed runtime's policy
+  source; its delivery actions have no Phase-2 launch authority. The setup helper actually
+  preserves six compiled-policy/guideline/ledger files. This is the already-recorded runtime
+  compatibility fact, not a missing orchestrator-guidelines.md to fabricate. No procedure from
+  another phase or no-go-zone contents were loaded. No instruction surface was archived or
+  silently neutralized; only the owner-authorized WEC/FS/ledger trajectory was reconciled.
+
+Project .codex/config.toml already sets agents.default_subagent_model = "gpt-6-luna" with no
+pinned effort. Fresh CLI 0.156.1 probe coordinator 01a0d2ff-f3da-7880-a3f5-ac99a44ce69b returned
+all three unique nonces: omitted-model Luna low TRAJ_LUNA_LOW_7c849d, omitted-model Luna medium
+TRAJ_LUNA_MED_c19742 and explicit gpt-6-sol low TRAJ_SOL_LOW_914e6a. Every spawn used
+fork_turns=none; exact routing is retained in probe-routing.json with original session handle,
+probes.jsonl and probe-final.txt. Runtime returned no additional model metadata; none is inferred.
+Only these successful requested pairs are supplied to setup. Probes ran no product work.
+
+## Refreeze validation and checkpoint scope
+
+Workspace setup succeeded with Python 3.14 through the existing guarded hook. It preserved all
+six actual runtime files, the semantic-surface-cockpit lineage and origin/dev as the sole automatic
+target, recorded the three proved GPT-6 worker pairs and audited global guidance, and pushed the
+already-committed backlog successfully. The helper's real disposable acceptance projection passed;
+all 73 durable acceptance rows and all 51 prior FS slice blocks remain unchanged. Three new slice
+IDs remain open. Detailed result: build_logs/phase2-trajectory-20260924/workspace-setup.json.
+
+Both private archive hashes match their sidecars. The previous working ledger body is preserved
+byte-for-byte below; all unrelated tracked dirty files still match the captured hashes. No product
+code/test changes or new gameplay/install acceptance were made. Phase 3 remains stopped.
+The checkpoint stages only WEC, FS and this new ledger prefix over the previously committed ledger;
+pre-existing ledger additions stay in the working tree alongside unrelated dirty work. Existing
+agent-default configuration, ignore rules and runtime policy need no change. The hook pushes the
+scoped checkpoint to origin/dev; checkpoint identity and push result are reported at closeout.
+
+---
+
 # Phase-2 refreeze — playtesting and clean launcher installation, 2026-09-23
 
 The owner approved “Yes merge and finish de67 2”. The exact chat WEC is merged at the

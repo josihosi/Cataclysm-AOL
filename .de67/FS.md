@@ -1,10 +1,21 @@
 # C-AOL playtesting and clean Catapult-Dabubu installation — Functional Specification
 
-Status: Refrozen — 2026-09-23
+Status: Refrozen — 2026-09-24
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL | dev | 4d378c8e7ccce140afc9a656f869ea9d06490916 | inspected 2026-09-23; existing dirty game/harness/test/scenario/guidance work preserved; exact tracked dirty-file hashes in build_logs/phase2-playtesting-installation-20260923/baseline.json`
-Launcher baseline: `josihosi/Lacapult-Doobdab | main | 366aee6bd675be9b45afbd2ab222808faceedd9d | clean checkout /Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu | inspected 2026-09-23`
+Source baseline: `Cataclysm-AOL | dev | 67d2c1d8e660c64f7474e1d5ab19778504da3de0 | inspected 2026-09-24; existing dirty game/harness/test/scenario/guidance work preserved; exact tracked dirty-file hashes in build_logs/phase2-trajectory-20260924/baseline.json`
+Launcher baseline: `josihosi/Lacapult-Doobdab | main | 366aee6bd675be9b45afbd2ab222808faceedd9d plus existing five-file Gemma/setup patch | /Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu | inspected 2026-09-24; isolated clean candidate 495ac43ef62f36685a941840405a4a8e25a1f03f retained`
 Method baseline: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab | a6125b4a70adf641e185b34dbd33118e48d884e3 | inspected 2026-09-19`
+
+## Current trajectory contract — 2026-09-24
+
+The current WEC adds the owner-reference camp comparison, bulk-item performance repair and
+Smartzone presentation correction in S-TRAJECTORY below. Existing S-REMAINING, S-CAMP-PROOF and
+S-LAUNCHER requirements remain binding at their actual evidence scope. S-TRAJECTORY updates dated
+code-gap assertions and fixture premises where current code or accepted results supersede them.
+It grants no new acceptance. The current work ledger and durable receipts preserve delivered status;
+new reference-world observations cannot inherit a different fixture's acceptance. The WEC and work
+ledger own execution sequencing, publication authorization and human contact; they are not gameplay
+rules. No parallel DFS is created.
 
 ## Authority and outcome
 
@@ -1759,7 +1770,7 @@ row. Whole-claim closure requires all three rows, with any unavailable boundary 
 | L-WSLG — [Microsoft Linux GUI support](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps), accessed 2026-09-23 | WSL2 runs X11/Wayland apps but is not a complete standalone desktop environment. R-LAUNCHER-CLEAN-INSTALL separates Linux application/inference proof from unsupported desktop/GPU claims. |
 | L-RELEASES — [launcher release](https://github.com/josihosi/Lacapult-Doobdab/releases/tag/catapult-dabubu-python-venv-fix-2026-06-05), [observed C-AOL master release](https://github.com/josihosi/Cataclysm-AOL/releases/tag/caol-cdda-master-2026-06-05-0903) | Platform archives exist as prereleases; a stable `/releases/latest` lookup alone misses the launcher. Their older source identities require package-content verification or a corrected release before claiming current features through fresh installation. |
 
-## Current freeze record — playtesting and clean installation, 2026-09-23
+## Historical freeze record — playtesting and clean installation, 2026-09-23
 
 - Status: Refrozen. Source/identity/preservation checks and disposable durable-acceptance projection passed; all 44 prior slice identities and 69 acceptance rows are preserved.
 - Baseline: C-AOL `dev@4d378c8e7ccce140afc9a656f869ea9d06490916` plus preserved dirty inputs;
@@ -1779,3 +1790,172 @@ row. Whole-claim closure requires all three rows, with any unavailable boundary 
   acceptance occurs in this refreeze. Preparation/model capability and checkpoint status belong to
   the work ledger, not this functional contract. Product intent and acceptance strength remain
   user-owned; preserve the existing evidence-bound closure/clarification/refreeze rules.
+
+## Owner reference camp, item performance and release continuity — S-TRAJECTORY
+
+### Current evidence and source identities
+
+The source baseline above includes existing repairs; do not reimplement historical gaps solely
+because their retained FS text describes the old source. Durable acceptance now contains 73 rows.
+The camp-assignment closure proves the native fresh-assignment/reload route. Locker receipt
+`73284f118ce415f159ddbf90ba49f5f51aa6036e0b99d8fac3659fa406dbee7c` proves its original
+fixture's transfer/conservation and reloaded loadout, with the recorded ammunition-count and
+terminal-wrapper limits. Gemma receipt `92c75f53526c3c9dbcab6b0fae8c97e459d79291bc5cd16980d1fc8780622ba5`
+and setup receipt `91a23ef2ab8713cbf66767ded1f0e23a688e9c735abb73299a0d64c8f1594b66`
+prove launcher wiring/focused behavior, not three-OS fresh installation or inference. Historical
+checked ledger entries, stable slice identities and receipts retain those scopes unchanged.
+The zombie branch in `R-CAOL-CAMP-DEFENSE-exploration-001/v003-final-witness.json` already records
+one eligible guard's alarm/fight/kill and reload. It is useful partial evidence, not proof of the
+owner camp's two-guard day/night roster or peaceful/hostile natural-arrival branches.
+
+Private setup sources are `.userdata/reference-saves/archives/`:
+
+| Archive | SHA-256 | Meaning |
+|---|---|---|
+| `josef-basecamp-open-windows-20260924-122356.zip` | `6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f` | Corrected all-open-windows TestSetup00, character Test00. |
+| `josef-basecamp-closed-windows-20260924-122642.zip` | `4b11469931507c49f0b373934730fed6b729b7a29b87c6f78eca0f728e8320c3` | Closed doors/windows; darkness is owner-reported until observed. |
+
+Both sidecars matched in this refreeze. These archives include private configuration: only
+disposable extracted working copies may be changed; no archive or included credentials enter
+published packages or reports. Casey Bolton and Tilda Wray (owner wording: Tilda Ray) belong to
+TestCamp01. Resolve actual saved/live character IDs, assignment, zone extents and item quantities
+on the working copy rather than inferring them from display names. Stocked Locker guns/backpacks,
+tools/lighters, ground/roof braziers, wood, Storage and patrol zones are starting facts, not proof
+of usable ammunition, roof SOURCE_FIREWOOD, native gear collection or a valid signal opportunity.
+
+### Additional ownership and code map
+
+| State/action | Readers | Writers / competing owners | Authoritative decision |
+|---|---|---|---|
+| Reference-camp work and patrol priority | `src/basecamp.cpp::camp_patrol_duty_percent`, shift/cache/roster builders; NPC downtime | `src/faction_camp.cpp::basecamp::worker_assignment_ui`, `job_data`, assignment/removal | `camp_assignment.edit_worker_jobs` selects the advertised current worker and opens the native priority editor; stale camp/worker rejects. Native job priorities own duty. Set dedicated patrol priorities through that editor as disclosed setup. Alarm/survival retain S-CAMP-PROOF precedence. |
+| Physical source and escaping signal | `src/physical_light.cpp::loaded_source_sampler`; `src/do_turn.cpp::observe_loaded_z_light_sources`, `live_bandit_note_light_geometry`; `bandit_mark_generation::adapt_local_field_signal_reading` | Real item/fire/field/terrain/weather updates; normal advancing-turn sampler; bandit memory/decision owners | Per-source absolute map-square geometry is evaluated before OMT aggregation. Source emission, escape, distant observation and encounter decision are separate facts. Native smoke fields own propagation; a projected mark cannot prove smoke crossed a wall. Duplicate sampling/relaying must not renew an observation's original age. |
+| Bulk transfer | `advanced_inventory::process_action`, `move_all_items`, `fill_lists_with_pane_items`, `recalc_pane` in `src/advanced_inv.cpp` | `move_items_activity_actor::do_turn` in `src/activity_actor.cpp`; pickup/drop/insert actors for other destinations; real map/vehicle/item containers | The UI builds item-location/quantity requests; the active native activity alone moves items and spends moves. Quantity zero means all. Reentry/redraw cannot replay a completed transfer. Stale/invalid/non-solid/unowned targets keep existing rejection semantics. Serialized target/quantity/destination state owns interruption/resume. |
+| Zone sorting | `zone_sort_activity_actor::stage_init/stage_think/stage_do/do_turn`, `zone_manager` caches and source/destination classification | `zone_activity_actor`, real item movement, NPC jobs, map/vehicle storage, temporary picked-up state | Preserve existing movement, destination capacity/filter, unreachable-source invalidation and cancellation/return-to-source behavior. Locker tiles remain protected. No diagnostic counter or optimization cache becomes an item owner. Save/load and changed zones/position/grab state invalidate cached assumptions where current owners require it. |
+| Generated Smart Zone names | `src/clzones.cpp::auto_place_basecamp_smart_zones`, `smart_zone_plan_entry`, `mapgen_place_zone`; zone UI and serialization | Generator supplies initial name; `zone_data::set_name` owns later user names; save/load retains name/type/faction/geometry/options/identity | Change only the generator's translated display labels to `Smartzone …`. Keep genuine camp zone types/names and native semantics. Saved records expose no generator provenance: do not guess from a `Basecamp ` prefix and overwrite a custom name. Existing saved names remain unless provenance proves they were generated and unmodified. |
+
+**Patrol reasoning.** `camp_patrol_duty_percent` sums positive job priorities and returns
+`patrol_priority * 100 / total_priority` when an equally/higher prioritized competitor exists.
+Eleven jobs at five therefore yield integer 9% duty, not a corrupt assignment. Dedicated patrol
+setup gives patrol higher priority than competing work (or disables those jobs for the test), then
+observes native day/night/reserve behavior. This is test setup, not a redesign of automatic duty,
+balance or NPC jobs. Reinspect if dedicated priorities still fail to produce an eligible roster.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-REFERENCE-CAMP-S001 claim=R-CAOL-REFERENCE-CAMP -->
+### Prove the owner's camp and physical signal comparison
+- [ ] 🔴 R-CAOL-REFERENCE-CAMP — Disposable TestSetup00/Test00 copies prove real camp equipment/patrol prerequisites and the open/closed/rooftop light, smoke and natural bandit-attraction behavior.
+  - Code gap: Existing fixture-bound assignment/Locker/zombie results do not establish these reference-world conditions. Physical propagation and a connected signal-to-arrival chain remain unobserved here; source emission and an old committed encounter are insufficient.
+  - Required mechanism: Use the existing assignment, Locker, patrol, physical-light, field and bandit owners above, fixing only a demonstrated missing transition. Prepare compatible magazines/rounds and upgrades, verify actual roof SOURCE_FIREWOOD (absent in earlier inspected saves), reachable firewood and ignition supplies in working copies. Observe NPC tile-to-inventory/worn/wielded collection and usable loadout, conservation and reload persistence. Keep prior accepted Locker proof; do not repeat fresh camp creation or assignment merely because the reference camp is already assigned.
+  - Proof: Bind each copy to its archive hash and actual world/player/camp/NPC/source identities. Observe gear collection, dedicated day/night roster/routes and continued service after reload. Compare open building, closed building and roof fire with comparable time/weather, actual window/door/roof geometry, source intensity/fuel and observer opportunity. Record actual light escape and smoke positions separately from bandit observations. Closed windows need not block all light; smoke may not be presumed to pass walls. Include source-off/occluded control as needed to attribute the source, rather than requiring every environmental combination.
+
+For bandit attraction and the existing R-CAOL-CAMP-DEFENSE/PAY-RETURN branches, establish a
+sufficiently populated/equipped camp and suitable surroundings as disclosed preparation, then
+observe **physical signal → stalking/knowledge → native dispatch → physical arrival** with the
+same site/member/outing identities and game-time timeline. Prebuilt committed-shakedown or
+paid-departure fixtures may diagnose downstream mechanics but cannot close this connected route.
+Do not inject a lead, dispatch, alert, encounter or return, skip a cooldown, or teleport arrivals.
+If no encounter occurs, locate the first absent eligible transition and its actual premise;
+advance or repair that cause rather than constructing a downstream success.
+
+At arrival reuse S-CAMP-PROOF's separate peaceful and hostile branches: no guard attack during
+peaceful robbery/payment, and a substantive native fight after hostility. The zombie control must
+show detection/alarm and all appropriate guards responding, with exclusions explained per actor.
+Preserve peaceful neutrality even if an alarm is raised. Stock plentiful real gold in reachable
+camp inventory/Storage, use actual payment, observe departure, replenish bounty as disclosed setup
+and measure departure-to-return and replenishment-to-return game time. Existing return eligibility,
+risk, supply, survivor/complete-pair ownership and original-age memory remain authoritative. Do not
+invent a return deadline; an explained non-return preserves its observed limit and leaves the
+requested actual-return boundary open. These connected observations may support the existing
+open defense/payment/signal claims when they reach those claims' exact boundaries; they create no
+second requirement to repeat the same supported journey.
+
+Close with concise scenario transcripts and original source/run/world/actor/time evidence for the
+reference-camp prerequisites and three physical-source conditions, including negative or
+inconclusive results and the first missing transition. A defect report alone leaves its required
+behavior open. Existing accepted assignment, fixture Locker, rider and harness results remain
+accepted at their original scope.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-REFERENCE-CAMP-S001 claim=R-CAOL-REFERENCE-CAMP -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-BULK-ITEM-COST-S001 claim=R-CAOL-BULK-ITEM-COST -->
+### Measured bulk-item performance repair
+- [ ] 🔴 R-CAOL-BULK-ITEM-COST — Advanced-inventory bulk planks and sorting many unsorted items avoid the diagnosed severe slowdown while conserving items and preserving native activity semantics.
+  - Code gap: The owner reports both workloads as severely slow. Inspection identifies distinct UI collection/sort/redraw, transfer activity, zone source/destination routing and ordinary game-turn costs; no profile yet proves the bottleneck. A suspected scan or unrelated light cost is not an established diagnosis.
+  - Required mechanism: Reproduce both workloads on disposable copies with recorded item counts/types, locations, zone configuration, destination capacity, build and starting state. Measure wall time and actual game turns; profile UI versus native transfer/sorting versus other turn work. Fix the demonstrated costly owner with the smallest justified algorithm/cache/batching change. Keep item location validity, charge splitting, contents, ownership, capacity/overflow, cancellation, move costs and elapsed simulation semantics. Any cache must have explicit source lifetime and invalidation; a cheaper result from skipping items or game turns fails.
+  - Proof: Repeat equivalent before/after workloads from equivalent starts, reporting measured timings and relevant work counts without an invented target percentage or universal time threshold. Account for all items/charges/contents in source, destination, inventory and temporary activity state; none disappear or duplicate. Exercise interruption/resume and the relevant full/blocked destination control if that path changes. Extend `tests/advanced_inventory_test.cpp::AIM_basic_move_items` or `tests/clzones_test.cpp` through the real changed owner for the reproduced regression; existing zone sorting capacity/unreachable/Locker protections are reusable. Record the profile, focused test/build results and native repeated comparison. GUI timing alone cannot diagnose the activity owner, and compilation alone cannot prove conservation.
+
+This contract requires a focused repair supported by the actual reproduction. Profiling may rule
+out an initial suspect; it does not authorize a general inventory rewrite, a new job scheduler or
+removal of simulation work. Source-level inspection is a starting map. Revisit the mechanism when
+profiles point elsewhere or the fixed case fails to improve equivalent completed work.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-BULK-ITEM-COST-S001 claim=R-CAOL-BULK-ITEM-COST -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-SMARTZONE-NAMES-S001 claim=R-CAOL-SMARTZONE-NAMES -->
+### Distinguish Smart Zone Manager's generated names
+- [ ] 🔴 R-CAOL-SMARTZONE-NAMES — Newly generated Smart Zone Manager helper zones display `Smartzone …`, distinct from genuine basecamp zones, without changing zone behavior or custom names.
+  - Code gap: `auto_place_basecamp_smart_zones` currently supplies translated `Basecamp fire source`, `Basecamp wood`, `Basecamp tools`, `Basecamp unsorted` and the other helper labels in `src/clzones.cpp`. `mapgen_place_zone` persists those names alongside unchanged types/options. `zone_data::serialize/deserialize` has no generator-origin marker.
+  - Required mechanism: Replace the generated label prefix consistently with `Smartzone`, including helper-layout success wording where needed for clarity. Keep the input Basecamp inventory zone, CAMP_* types, SOURCE_FIREWOOD, filters, faction, coordinates, identity, enabled state and storage/patrol mechanics unchanged. Do not rename internal IDs or introduce a migration/schema just for presentation. Preserve all existing names on load, since even an exact old label could be owner-authored. Native Rename remains available for old saved labels.
+  - Proof: Generate the real layout and inspect its displayed names, then save/reload. Compare type/filter/geometry/count/faction and representative sorting/firewood behavior with the unchanged generation plan. Load a custom `Basecamp …` name and a genuine camp zone and confirm they remain unchanged. Reuse existing `tests/clzones_test.cpp` generation and serialization coverage; add only a missing behavioral check if needed. A broad text replacement across unrelated basecamp UI fails this contract.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-SMARTZONE-NAMES-S001 claim=R-CAOL-SMARTZONE-NAMES -->
+
+### Launcher evidence update and full-release outcome
+
+Current `BackendConfigManager.gd` defines both exact Gemma tags and provides
+`get_ollama_model_choices`, `build_ollama_setup_plan` and `run_ollama_setup` with install → CLI
+redetection → server start → selected endpoint check → exact model pull. The setup distinguishes
+proof-only, already-ready and partial failure. Earlier S-LAUNCHER statements about absent choices
+and manual-only setup describe the pre-repair baseline. Preserve the accepted implementation;
+R-LAUNCHER-CLEAN-INSTALL retains actual installation/inference on every OS.
+
+The prepared unsigned candidate is source commit `495ac43ef62f36685a941840405a4a8e25a1f03f`,
+with exact assets, manifest, bundle and prior checks at
+`.de67/task-logs/R-LAUNCHER-CLEAN-INSTALL-exploration-003/candidate/rebuilt-from-final-commit/PUBLICATION-CANDIDATE.md`.
+Its publication-permission paragraph is historical; the current WEC owns permission. Reuse this
+candidate after checking source relevance and actual asset hashes, rather than recreating working
+packaging. A later installer correction requires a new source-bound candidate, not a stale binary
+with new provenance. Current checked-out launcher source remains the five-file dirty patch over
+`366aee6bd675be9b45afbd2ab222808faceedd9d`; the isolated candidate is a separate identity.
+
+Mac's real setup attempt returned administrator authentication `-60007`; no runtime installation
+or model pull was proved. Inspect `_ollama_macos_shell_script`, its `osascript -e` argument and
+actual interactive launch context if no usable prompt appears. A retry succeeds only when a real
+owner-authenticated installation, endpoint and model response are observed; relabelling the error
+or supplying a terminal substitute does not close launcher-led installation. Windows/Linux older
+published packages lack the accepted choices/installer. Their new proof must download back the
+current published candidate. WSLg candidate startup needed `--audio-driver PulseAudio`; retain that
+working fact without claiming default-startup, Linux-native inference or full game proof. A
+supported shipped/default launch route must handle required audio configuration; an unrecorded
+agent-only flag is not first-time user acceptance.
+
+The final product release contains the completed game fixes and the launcher version actually
+proved to download/install that game, both Gemma tags, local/API responses and custom graphics.
+The installed game source/package must include the accepted release-scope game work; yesterday's
+master package cannot prove today's fixes. First use a current downloadable prerelease and perform
+all three S-LAUNCHER journeys; then assess final release readiness using their actual source,
+remaining defect list and package results. A prerelease upload, smoke pass or successful Linux
+window is not stable-release readiness. Retain existing packaging and OS support conventions;
+this adds no new signing system, release framework or unrelated certification sweep. Material
+unavailable OS boundaries remain explicitly open and prevent a full-release completion claim.
+
+### Bounded external comparison
+
+| Source identity, inspected 2026-09-24 | Relevant observation and design effect |
+|---|---|
+| T-AIM-UPSTREAM — [CleverRaven advanced inventory](https://raw.githubusercontent.com/CleverRaven/Cataclysm-DDA/master/src/advanced_inv.cpp), mutable upstream master | The existing upstream UI/activity separation is a useful comparison for R-CAOL-BULK-ITEM-COST; it is not evidence of this fork's bottleneck or authority to replace its UI. Profile the local production route first and retain native transfer ownership. |
+| T-OLLAMA-LINUX — [official Linux installation](https://docs.ollama.com/linux); T-OLLAMA-MAC — [official macOS installation](https://docs.ollama.com/macos) | Supported OS installation and real local server remain the relevant external boundaries for R-LAUNCHER-CLEAN-INSTALL. These documents do not diagnose `-60007` or certify the prepared launcher command. Observe the actual privilege/install route; preserve accepted setup code unless that route contradicts it. |
+
+## Current freeze record — owner trajectory, 2026-09-24
+
+- Status: Refrozen. Source baseline and private archive identities are recorded above; no product
+  source/tests or original saves were changed by this specification pass.
+- User-owned choices: current supplied WEC, real reference camp, natural signal-to-arrival chain,
+  physical open/closed/roof comparison, focused bulk-item repair, Smartzone naming, full installation
+  and release outcome. No gameplay balance change or fabricated encounter state is authorized.
+- Three new stable claims/slices: R-CAOL-REFERENCE-CAMP, R-CAOL-BULK-ITEM-COST and
+  R-CAOL-SMARTZONE-NAMES. Existing claim/slice and receipt identities and all 73 acceptance rows
+  retain their scope. New obligations remain open; accepted harness work is not restarted.
+- Evidence-implied refinements: dedicated native patrol priorities address the observed 9% duty
+  premise; current launcher wiring replaces the historical missing-code diagnosis while actual
+  three-OS installation remains open. Ambiguous legacy generated names are preserved because the
+  saved schema cannot distinguish them from custom names without guessing.
+- Closure, clarification and refreeze follow the existing evidence-bound rules. Product intent,
+  permissions, balance and acceptance strength remain user-owned. Preparation, sequencing, human
+  contact and checkpoint results are recorded in WEC/work ledger, outside this product contract.
