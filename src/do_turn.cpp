@@ -540,7 +540,6 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
     } else if( input.basecamp_or_camp_scene ) {
         input.local_threat = 3;
         input.local_opportunity = 2;
-        input.recent_exposure = true;
     }
 
     map &here = get_map();
@@ -558,8 +557,9 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
             }
             const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
             const bool player_sees_member = get_player_view().sees( here, member_pos );
+            const bool member_sees_player = member_npc->sees( here, u );
             const bool follower_sees_member = live_bandit_seen_by_nearby_ally( here, u, member_pos );
-            input.player_contact |= player_sees_member;
+            input.player_contact |= member_sees_player;
             input.follower_sight |= follower_sees_member;
             input.current_exposure |= player_sees_member ||
                                       follower_sees_member;
@@ -998,6 +998,28 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
     return plan;
 }
 
+void live_bandit_apply_hostile_return_orders( bandit_live_world::site_record &site,
+        live_bandit_paid_return_plan &plan )
+{
+    for( live_bandit_paid_return_travel_order &order : plan.travel_orders ) {
+        order.member_npc->clear_bandit_live_world_projection_lease();
+        for( const shared_ptr_fast<npc> &persistent_member : overmap_buffer.get_overmap_npcs() ) {
+            if( persistent_member && persistent_member->getID() == order.member_npc->getID() &&
+                persistent_member.get() != order.member_npc ) {
+                persistent_member->clear_bandit_live_world_projection_lease();
+                persistent_member->set_attitude( NPCATT_NULL );
+                persistent_member->goal = site.anchor;
+                persistent_member->omt_path = order.route;
+                persistent_member->set_mission( NPC_MISSION_TRAVELLING );
+            }
+        }
+        order.member_npc->set_attitude( NPCATT_NULL );
+        order.member_npc->goal = site.anchor;
+        order.member_npc->omt_path = std::move( order.route );
+        order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+    }
+}
+
 bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
                                       live_bandit_paid_return_plan &plan,
                                       const bandit_live_world::shakedown_surface &surface,
@@ -1018,26 +1040,7 @@ bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
     site.active_hostile_operation.shakedown_pending_surrendered_value = surrendered_value;
     site.active_hostile_operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
     site.active_hostile_operation.shakedown_pending_basecamp_scene = surface.includes_basecamp_inventory;
-    for( live_bandit_paid_return_travel_order &order : plan.travel_orders ) {
-        // The paid transition hands this party back to abstract ownership.  A
-        // persisted local lease would otherwise contradict that durable state
-        // on the next native load.
-        order.member_npc->clear_bandit_live_world_projection_lease();
-        for( const shared_ptr_fast<npc> &persistent_member : overmap_buffer.get_overmap_npcs() ) {
-            if( persistent_member && persistent_member->getID() == order.member_npc->getID() &&
-                persistent_member.get() != order.member_npc ) {
-                persistent_member->clear_bandit_live_world_projection_lease();
-                persistent_member->set_attitude( NPCATT_NULL );
-                persistent_member->goal = site.anchor;
-                persistent_member->omt_path = order.route;
-                persistent_member->set_mission( NPC_MISSION_TRAVELLING );
-            }
-        }
-        order.member_npc->set_attitude( NPCATT_NULL );
-        order.member_npc->goal = site.anchor;
-        order.member_npc->omt_path = std::move( order.route );
-        order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
-    }
+    live_bandit_apply_hostile_return_orders( site, plan );
     DebugLog( D_INFO, DC_ALL ) << summary << " return=physical\n";
     return true;
 }
@@ -2587,7 +2590,12 @@ bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
         return false;
     }
     map &here = get_map();
-    const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
+    const tripoint_bub_ms target_pos = here.get_bub(
+                                           project_to<coords::ms>( outing->target_omt ) +
+                                           point( SEEX, SEEY ) );
+    if( !here.inbounds( target_pos ) ) {
+        return false;
+    }
     std::vector<npc *> party;
     party.reserve( outing->member_ids.size() );
     for( const character_id member_id : outing->member_ids ) {
@@ -2601,8 +2609,8 @@ bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
     }
     std::vector<tripoint_bub_ms> placements;
     placements.reserve( party.size() );
-    for( const tripoint_bub_ms &candidate : closest_points_first( avatar_pos, 2 ) ) {
-        if( candidate == avatar_pos || !here.inbounds( candidate ) || !g->is_empty( candidate ) ) {
+    for( const tripoint_bub_ms &candidate : closest_points_first( target_pos, 2 ) ) {
+        if( candidate == target_pos || !here.inbounds( candidate ) || !g->is_empty( candidate ) ) {
             continue;
         }
         placements.push_back( candidate );
@@ -2725,6 +2733,12 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
     if( here.get_abs( avatar_pos ) != get_avatar().pos_abs() ) {
         return reject( "avatar_not_in_loaded_map", "avatar_map_coordinates_mismatch" );
     }
+    const tripoint_bub_ms target_pos = here.get_bub(
+                                           project_to<coords::ms>( outing->target_omt ) +
+                                           point( SEEX, SEEY ) );
+    if( !here.inbounds( target_pos ) ) {
+        return reject( "target_not_in_loaded_map", "target_site_outside_local_bubble" );
+    }
     std::vector<shared_ptr_fast<npc>> party;
     party.reserve( outing->member_ids.size() );
     for( std::size_t member_index = 0; member_index < outing->member_ids.size(); ++member_index ) {
@@ -2765,8 +2779,8 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
 
     std::vector<tripoint_bub_ms> placements;
     placements.reserve( party.size() );
-    for( const tripoint_bub_ms &candidate : closest_points_first( avatar_pos, 2 ) ) {
-        if( candidate == avatar_pos || !here.inbounds( candidate ) || !g->is_empty( candidate ) ) {
+    for( const tripoint_bub_ms &candidate : closest_points_first( target_pos, 2 ) ) {
+        if( candidate == target_pos || !here.inbounds( candidate ) || !g->is_empty( candidate ) ) {
             continue;
         }
         placements.push_back( candidate );
@@ -3016,6 +3030,216 @@ bool live_cannibal_raid_reconcile_combat( bandit_live_world::site_record &site )
     return true;
 }
 
+constexpr std::array<point, 5> live_bandit_site_search_waypoints = {
+    point( SEEX, SEEY ), point( SEEX / 2, SEEY / 2 ),
+    point( SEEX + SEEX / 2, SEEY / 2 ),
+    point( SEEX + SEEX / 2, SEEY + SEEY / 2 ),
+    point( SEEX / 2, SEEY + SEEY / 2 )
+};
+
+bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &site )
+{
+    bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    const bandit_live_world::active_outing_state &outing = operation.reservation;
+    if( operation.operation_kind != bandit_live_world::hostile_operation_kind::raid ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        outing.owner != bandit_live_world::simulation_owner::local ) {
+        return false;
+    }
+    std::vector<npc *> party;
+    for( const character_id member_id : outing.member_ids ) {
+        const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+        if( active_local_contact_member( site, member_id, member_npc ) ) {
+            party.push_back( member_npc.get() );
+        }
+    }
+    if( party.empty() ) {
+        return false;
+    }
+    if( operation.site_search_initial_goods_value < 0 ) {
+        operation.site_search_initial_goods_value = 0;
+        for( npc *member : party ) {
+            member->goal = member->pos_abs_omt();
+            member->omt_path.clear();
+            member->set_mission( NPC_MISSION_NULL );
+        }
+    }
+
+    map &here = get_map();
+    for( npc *member : party ) {
+        if( member->get_attitude() != NPCATT_KILL ) {
+            continue;
+        }
+        if( member->attitude_to( get_avatar() ) == Creature::Attitude::HOSTILE &&
+            member->sees( here, get_avatar() ) ) {
+            return false;
+        }
+        for( npc &other : g->all_npcs() ) {
+            if( &other != member && !other.is_dead() &&
+                member->attitude_to( other ) == Creature::Attitude::HOSTILE &&
+                member->sees( here, other ) ) {
+                return false;
+            }
+        }
+    }
+
+    while( operation.site_search_waypoint < static_cast<int>( live_bandit_site_search_waypoints.size() ) ) {
+        if( !operation.site_search_waypoint_attempted ) {
+            bool assigned = false;
+            for( std::size_t index = 0; index < party.size(); ++index ) {
+                const std::size_t waypoint = ( static_cast<std::size_t>( operation.site_search_waypoint ) +
+                                               index ) % live_bandit_site_search_waypoints.size();
+                const tripoint_abs_ms goal = project_to<coords::ms>( outing.target_omt ) +
+                                             live_bandit_site_search_waypoints[waypoint];
+                const tripoint_bub_ms local_goal = here.get_bub( goal );
+                if( here.inbounds( local_goal ) && here.passable( local_goal ) ) {
+                    party[index]->goto_to_this_pos = goal;
+                    assigned = true;
+                }
+            }
+            operation.site_search_waypoint_attempted = true;
+            if( assigned ) {
+                return true;
+            }
+        }
+        bool travelling = false;
+        for( npc *member : party ) {
+            if( member->goto_to_this_pos && member->pos_abs() != *member->goto_to_this_pos &&
+                !member->path.empty() ) {
+                travelling = true;
+            }
+        }
+        if( travelling ) {
+            return false;
+        }
+        for( npc *member : party ) {
+            member->goto_to_this_pos.reset();
+        }
+        operation.site_search_waypoint++;
+        operation.site_search_waypoint_attempted = false;
+    }
+
+    std::optional<live_bandit_paid_return_plan> return_plan = live_bandit_prepare_paid_return( site );
+    if( !return_plan ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world raid site search retained: physical home route unavailable"
+                                   << " site=" << site.site_id;
+        return false;
+    }
+    if( bandit_live_world::transition_hostile_operation_phase( site, return_plan->cursor,
+            bandit_live_world::hostile_operation_phase::committed_contact,
+            bandit_live_world::hostile_operation_phase::returning_home,
+            live_bandit_current_minutes(), "cannibal raid completed physical site search", true ) !=
+        bandit_live_world::hostile_operation_transition_result::applied ) {
+        return false;
+    }
+    live_bandit_apply_hostile_return_orders( site, *return_plan );
+    return true;
+}
+
+int live_bandit_shakedown_party_goods_value( const bandit_live_world::site_record &site )
+{
+    int value = 0;
+    for( const character_id member_id : site.active_hostile_operation.reservation.member_ids ) {
+        const npc *member_npc = g->find_npc( member_id );
+        if( member_npc != nullptr && !member_npc->is_dead() ) {
+            value += live_bandit_character_goods_value( *member_npc );
+        }
+    }
+    return value;
+}
+
+bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record &site )
+{
+    bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    const bandit_live_world::active_outing_state &outing = operation.reservation;
+    npc *searcher = nullptr;
+    for( const character_id member_id : outing.member_ids ) {
+        const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+        if( active_committed_bandit_shakedown_member( site, member_id, member_npc ) ) {
+            searcher = member_npc.get();
+            break;
+        }
+    }
+    if( searcher == nullptr ) {
+        return false;
+    }
+    if( operation.site_search_initial_goods_value < 0 ) {
+        operation.site_search_initial_goods_value = live_bandit_shakedown_party_goods_value( site );
+        for( const character_id member_id : outing.member_ids ) {
+            npc *member_npc = g->find_npc( member_id );
+            if( member_npc != nullptr && !member_npc->is_dead() ) {
+                member_npc->goal = member_npc->pos_abs_omt();
+                member_npc->omt_path.clear();
+                member_npc->set_mission( NPC_MISSION_NULL );
+            }
+        }
+    }
+
+    // The native NPC action loop searches visible items while walking.  Visit
+    // the center and four quarters of the actual target OMT; no remote stash
+    // or unseen inventory is queried or transferred here.
+    map &here = get_map();
+    while( operation.site_search_waypoint < static_cast<int>( live_bandit_site_search_waypoints.size() ) ) {
+        const tripoint_abs_ms goal = project_to<coords::ms>( outing.target_omt ) +
+                                     live_bandit_site_search_waypoints[static_cast<std::size_t>(
+                                             operation.site_search_waypoint )];
+        const tripoint_bub_ms local_goal = here.get_bub( goal );
+        if( !here.inbounds( local_goal ) || !here.passable( local_goal ) ) {
+            operation.site_search_waypoint++;
+            operation.site_search_waypoint_attempted = false;
+            continue;
+        }
+        if( searcher->fetching_item ) {
+            return false;
+        }
+        if( operation.site_search_waypoint_attempted ) {
+            if( searcher->pos_abs() == goal || searcher->goto_to_this_pos != goal ||
+                searcher->path.empty() ) {
+                searcher->goto_to_this_pos.reset();
+                // Ordered movement takes priority over the normal idle-item scan.
+                // Probe from the reached waypoint before moving on; the NPC's
+                // ordinary pickup action handles the selected physical item.
+                searcher->find_item();
+                if( searcher->fetching_item ) {
+                    return false;
+                }
+                operation.site_search_waypoint++;
+                operation.site_search_waypoint_attempted = false;
+                continue;
+            }
+            return false;
+        }
+        searcher->goto_to_this_pos = goal;
+        operation.site_search_waypoint_attempted = true;
+        return true;
+    }
+
+    std::optional<live_bandit_paid_return_plan> return_plan = live_bandit_prepare_paid_return( site );
+    if( !return_plan ) {
+        return false;
+    }
+    const int taken_value = std::max( 0, live_bandit_shakedown_party_goods_value( site ) -
+                                     operation.site_search_initial_goods_value );
+    const std::string summary = string_format( "bandit site search completed physical loot=%d",
+                                taken_value );
+    if( bandit_live_world::transition_hostile_operation_phase( site, return_plan->cursor,
+            bandit_live_world::hostile_operation_phase::committed_contact,
+            bandit_live_world::hostile_operation_phase::returning_home,
+            live_bandit_current_minutes(), summary, true ) !=
+        bandit_live_world::hostile_operation_transition_result::applied ) {
+        return false;
+    }
+    bandit_live_world::hostile_operation_state &returned_operation = site.active_hostile_operation;
+    returned_operation.shakedown_pending_branch = taken_value > 0 ? "robbed" : "searched_empty";
+    returned_operation.shakedown_pending_demanded_value = 0;
+    returned_operation.shakedown_pending_surrendered_value = taken_value;
+    returned_operation.shakedown_pending_reachable_value = taken_value;
+    returned_operation.shakedown_pending_basecamp_scene = true;
+    live_bandit_apply_hostile_return_orders( site, *return_plan );
+    DebugLog( D_INFO, DC_ALL ) << summary << " return=physical\n";
+    return true;
+}
+
 bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_record &site,
         const avatar &u )
 {
@@ -3093,8 +3317,11 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
         }
         return changed;
     }
-    if( gate_decision.opens_shakedown_surface ) {
+    if( gate_decision.opens_shakedown_surface && gate_input.player_contact ) {
         return open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
+    }
+    if( !gate_input.player_contact ) {
+        return live_bandit_advance_hidden_shakedown_search( site );
     }
     return false;
 }
@@ -3177,7 +3404,7 @@ bool note_live_bandit_local_turn_sight_avoid()
             }
             continue;
         }
-        if( gate_decision.opens_shakedown_surface ) {
+        if( gate_decision.opens_shakedown_surface && gate_input.player_contact ) {
             changed |= open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
             continue;
         }
@@ -4157,6 +4384,7 @@ bool note_live_bandit_aftermath()
                     changed = true;
                 } else {
                     changed |= materialize_committed_cannibal_raid( site );
+                    changed |= live_cannibal_raid_advance_site_search( site );
                 }
             } else {
                 changed |= live_bandit_handle_hostile_shakedown_contact( site, u );

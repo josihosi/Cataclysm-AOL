@@ -2321,10 +2321,10 @@ void npc::on_attacked( const Creature &attacker )
 
     hallucination_die( &here, nullptr );
 
-    if( attacker.is_avatar() ) {
+    const bool defender_attacked_shakedown =
+        ( attacker.is_avatar() || ( attacker.is_npc() && attacker.as_npc()->is_player_ally() ) ) &&
         bandit_live_world::release_shakedown_combat_on_player_attack(
             overmap_buffer.global_state.bandit_live_world, getID() );
-    }
 
     const bool player_camp_attacker = attacker.is_avatar() ||
                                       ( attacker.is_npc() &&
@@ -2335,7 +2335,7 @@ void npc::on_attacked( const Creature &attacker )
     // This callback represents a launched melee/projectile attack even when damage is avoided.
     // Ranged shot commitment may already have set hit_by_player, so qualify the exact assignment
     // without consulting that flag.  Player-allied defenders break the same relationship.
-    if( !is_dead() && active_covert_scout ) {
+    if( !is_dead() && ( active_covert_scout || defender_attacked_shakedown ) ) {
         make_angry();
         hit_by_player = true;
     } else if( attacker.is_avatar() && !is_enemy() && !is_dead() && !guaranteed_hostile() ) {
@@ -3496,6 +3496,20 @@ Creature::Attitude npc::attitude_to( const Creature &other ) const
             operation_relationship ==
             bandit_live_world::hostile_operation_player_relationship::paid_departure ) {
             return Creature::Attitude::NEUTRAL;
+        }
+    }
+    if( other.is_npc() ) {
+        const npc &other_npc = *other.as_npc();
+        const bool this_ally = is_player_ally();
+        const bool other_ally = other_npc.is_player_ally();
+        if( this_ally != other_ally ) {
+            const character_id bandit_id = this_ally ? other_npc.getID() : getID();
+            const auto relationship = bandit_live_world::hostile_operation_player_relationship_for(
+                                          overmap_buffer.global_state.bandit_live_world, bandit_id );
+            if( relationship == bandit_live_world::hostile_operation_player_relationship::shakedown_parley ||
+                relationship == bandit_live_world::hostile_operation_player_relationship::paid_departure ) {
+                return Attitude::NEUTRAL;
+            }
         }
     }
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {

@@ -1189,7 +1189,6 @@ void npc::assess_danger() {
 
     if( attitude_to( guy ) == Attitude::HOSTILE &&
         sees( here, guy.pos_bub( here ) ) ) {
-      raise_camp_patrol_alarm();
       const bool shakedown_parley_member = camp_patrol_response &&
           bandit_live_world::is_active_shakedown_parley_member(
               overmap_buffer.global_state.bandit_live_world, guy.getID() );
@@ -1199,6 +1198,7 @@ void npc::assess_danger() {
                        "%s watches active shakedown contact %s without escalating patrol alarm to combat.",
                        name, guy.disp_name() );
       } else {
+        raise_camp_patrol_alarm();
         ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
       }
     } else if (has_faction_relationship(guy,

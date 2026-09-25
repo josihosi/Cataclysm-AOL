@@ -192,6 +192,7 @@ enum class scout_phase_transition_result {
 enum class scout_assessment_threshold_class {
     none,
     normal,
+    site_signal,
     burned,
 };
 
@@ -607,7 +608,7 @@ enum class local_handoff_commit_result {
 };
 
 struct scout_assessment_state {
-    int schema_version = 2;
+    int schema_version = 3;
     int observation_started_minutes = -1;
     int last_progress_minutes = -1;
     int burned_minutes = -1;
@@ -623,6 +624,8 @@ struct scout_assessment_state {
     int danger_high = 0;
     int bounty_estimate = 0;
     int route_danger_high = 0;
+    int site_signal_observed_minutes = -1;
+    std::string site_signal_source_id;
     int target_alert = 0;
     int pinned_target_revision = 0;
     int next_eligible_minutes = -1;
@@ -829,7 +832,7 @@ struct active_outing_state {
 };
 
 struct hostile_operation_state {
-    int schema_version = 1;
+    int schema_version = 2;
     hostile_operation_kind operation_kind = hostile_operation_kind::none;
     hostile_operation_phase phase = hostile_operation_phase::assembling;
     active_outing_state reservation;
@@ -842,6 +845,9 @@ struct hostile_operation_state {
     int shakedown_pending_surrendered_value = 0;
     int shakedown_pending_reachable_value = 0;
     bool shakedown_pending_basecamp_scene = false;
+    int site_search_waypoint = 0;
+    int site_search_initial_goods_value = -1;
+    bool site_search_waypoint_attempted = false;
     bool has_rally = false;
     tripoint_abs_omt rally_omt;
     std::string last_transition_reason;
@@ -1666,6 +1672,8 @@ struct shakedown_surface {
 struct shakedown_outcome {
     bool paid = false;
     bool fought = false;
+    bool robbed = false;
+    bool searched_empty = false;
     bool basecamp_or_camp_scene = false;
     bool extraction_failed = false;
     int demanded_value = 0;

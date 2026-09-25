@@ -1334,6 +1334,9 @@ scout_assessment_threshold_from_string(
     if( value == "normal" ) {
         return bandit_live_world::scout_assessment_threshold_class::normal;
     }
+    if( value == "site_signal" ) {
+        return bandit_live_world::scout_assessment_threshold_class::site_signal;
+    }
     if( value == "burned" ) {
         return bandit_live_world::scout_assessment_threshold_class::burned;
     }
@@ -1348,6 +1351,8 @@ std::string scout_assessment_threshold_to_string(
             return "none";
         case bandit_live_world::scout_assessment_threshold_class::normal:
             return "normal";
+        case bandit_live_world::scout_assessment_threshold_class::site_signal:
+            return "site_signal";
         case bandit_live_world::scout_assessment_threshold_class::burned:
             return "burned";
     }
@@ -2081,6 +2086,12 @@ int shakedown_demand_modifier_percent( const bandit_live_world::site_record &sit
 
 std::string shakedown_outcome_label( const bandit_live_world::shakedown_outcome &outcome )
 {
+    if( outcome.robbed ) {
+        return "robbed";
+    }
+    if( outcome.searched_empty ) {
+        return "searched_empty";
+    }
     if( outcome.paid ) {
         return "paid";
     }
@@ -8110,7 +8121,7 @@ void scout_assessment_state::clear()
 void scout_assessment_state::serialize( JsonOut &json ) const
 {
     json.start_object();
-    json.member( "schema_version", 2 );
+    json.member( "schema_version", 3 );
     json.member( "observation_started_minutes", observation_started_minutes );
     json.member( "last_progress_minutes", last_progress_minutes );
     json.member( "burned_minutes", burned_minutes );
@@ -8126,6 +8137,8 @@ void scout_assessment_state::serialize( JsonOut &json ) const
     json.member( "danger_high", danger_high );
     json.member( "bounty_estimate", bounty_estimate );
     json.member( "route_danger_high", route_danger_high );
+    json.member( "site_signal_observed_minutes", site_signal_observed_minutes );
+    json.member( "site_signal_source_id", site_signal_source_id );
     json.member( "target_alert", target_alert );
     json.member( "pinned_target_revision", pinned_target_revision );
     json.member( "next_eligible_minutes", next_eligible_minutes );
@@ -8138,7 +8151,7 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     scout_assessment_state candidate;
     jo.read( "schema_version", candidate.schema_version );
     const int loaded_schema_version = candidate.schema_version;
-    if( loaded_schema_version < 1 || loaded_schema_version > 2 ) {
+    if( loaded_schema_version < 1 || loaded_schema_version > 3 ) {
         jo.throw_error( "scout assessment schema version is not supported" );
     }
     jo.read( "observation_started_minutes", candidate.observation_started_minutes );
@@ -8171,6 +8184,10 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     } else {
         candidate.route_danger_high = -1;
     }
+    if( loaded_schema_version >= 3 ) {
+        jo.read( "site_signal_observed_minutes", candidate.site_signal_observed_minutes );
+        jo.read( "site_signal_source_id", candidate.site_signal_source_id );
+    }
     jo.read( "target_alert", candidate.target_alert );
     jo.read( "pinned_target_revision", candidate.pinned_target_revision );
     jo.read( "next_eligible_minutes", candidate.next_eligible_minutes );
@@ -8190,6 +8207,11 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
                        candidate.bounty_estimate <= 3 &&
                        candidate.route_danger_high >= -1 &&
                        candidate.route_danger_high <= 20 &&
+                       candidate.site_signal_observed_minutes >= -1 &&
+                       candidate.site_signal_source_id.size() <= max_sortie_summary_length &&
+                       ( candidate.threshold_class != scout_assessment_threshold_class::site_signal ||
+                         ( candidate.site_signal_observed_minutes >= 0 &&
+                           !candidate.site_signal_source_id.empty() ) ) &&
                        candidate.target_alert >= 0 && candidate.target_alert <= 100 &&
                        candidate.pinned_target_revision >= 0 &&
                        candidate.next_eligible_minutes >= -1 &&
@@ -8203,7 +8225,7 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     if( !valid ) {
         jo.throw_error( "scout assessment has malformed bounded state" );
     }
-    candidate.schema_version = 2;
+    candidate.schema_version = 3;
     *this = std::move( candidate );
 }
 
@@ -8798,6 +8820,9 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "shakedown_pending_surrendered_value", shakedown_pending_surrendered_value );
     json.member( "shakedown_pending_reachable_value", shakedown_pending_reachable_value );
     json.member( "shakedown_pending_basecamp_scene", shakedown_pending_basecamp_scene );
+    json.member( "site_search_waypoint", site_search_waypoint );
+    json.member( "site_search_initial_goods_value", site_search_initial_goods_value );
+    json.member( "site_search_waypoint_attempted", site_search_waypoint_attempted );
     json.member( "has_rally", has_rally );
     json.member( "rally_omt", rally_omt );
     json.member( "last_transition_reason",
@@ -8810,8 +8835,8 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
 {
     hostile_operation_state candidate;
     jo.read( "schema_version", candidate.schema_version );
-    if( candidate.schema_version > 1 ) {
-        jo.throw_error( "hostile operation schema version is newer than supported schema v1" );
+    if( candidate.schema_version > 2 ) {
+        jo.throw_error( "hostile operation schema version is newer than supported schema v2" );
     }
     std::string kind_string = "none";
     jo.read( "operation_kind", kind_string );
@@ -8835,11 +8860,16 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "shakedown_pending_surrendered_value", candidate.shakedown_pending_surrendered_value );
     jo.read( "shakedown_pending_reachable_value", candidate.shakedown_pending_reachable_value );
     jo.read( "shakedown_pending_basecamp_scene", candidate.shakedown_pending_basecamp_scene );
+    jo.read( "site_search_waypoint", candidate.site_search_waypoint );
+    jo.read( "site_search_initial_goods_value", candidate.site_search_initial_goods_value );
+    jo.read( "site_search_waypoint_attempted", candidate.site_search_waypoint_attempted );
     jo.read( "has_rally", candidate.has_rally );
     jo.read( "rally_omt", candidate.rally_omt );
     jo.read( "last_transition_reason", candidate.last_transition_reason );
     jo.read( "legacy_unpinned", candidate.legacy_unpinned );
-    candidate.schema_version = 1;
+    candidate.schema_version = 2;
+    candidate.site_search_waypoint = std::clamp( candidate.site_search_waypoint, 0, 5 );
+    candidate.site_search_initial_goods_value = std::max( -1, candidate.site_search_initial_goods_value );
     candidate.source_report_revision = std::max( 0, candidate.source_report_revision );
     candidate.source_report_generation = std::max( 0, candidate.source_report_generation );
     candidate.last_transition_reason.resize( std::min( candidate.last_transition_reason.size(),
@@ -9248,7 +9278,7 @@ void site_record::deserialize( const JsonObject &jo )
                     "v10 site contains a hostile operation without a schema version" );
             }
             hostile_operation_json.read( "schema_version", hostile_operation_schema_version );
-            if( hostile_operation_schema_version != 1 ) {
+            if( hostile_operation_schema_version != 1 && hostile_operation_schema_version != 2 ) {
                 hostile_operation_json.allow_omitted_members();
                 hostile_operation_json.throw_error(
                     "v10 site contains an unsupported hostile operation schema version" );
@@ -12477,7 +12507,35 @@ response_authorization_evaluation evaluate_response_authorization(
     result.assessment_ready = effective.assessment_ready;
     result.normalized_opportunity = normalize_ground_bounty_opportunity(
                                         effective.bounty_estimate );
-    result.opportunity_sufficient = result.normalized_opportunity >= 600;
+    const bool signal_founded_site =
+        report.assessment.threshold_class == scout_assessment_threshold_class::site_signal;
+    if( signal_founded_site ) {
+        const camp_map_lead *lead = site.intelligence_map.find_lead( report.target_lead_id );
+        const int observed = report.assessment.site_signal_observed_minutes;
+        const bool source_bound = lead != nullptr && returned_structural_signal_lead( *lead ) &&
+                                  ( lead->kind == camp_lead_kind::smoke_signal ||
+                                    lead->kind == camp_lead_kind::light_signal ) &&
+                                  lead->status != camp_lead_status::invalidated &&
+                                  lead->omt == report.target_omt &&
+                                  lead->revision >= report.target_lead_revision &&
+                                  lead->first_seen_minutes >= 0 &&
+                                  lead->first_seen_minutes <= observed &&
+                                  observed <= lead->last_seen_minutes &&
+                                  !report.assessment.site_signal_source_id.empty() &&
+                                  ( lead->source_sample_id == report.assessment.site_signal_source_id ||
+                                    lead->last_seen_minutes > observed );
+        result.assessment_ready = result.assessment_ready && source_bound &&
+                                  std::none_of( report.observations.begin(), report.observations.end(),
+        [&report]( const sortie_observation & observation ) {
+            return observation.kind == sortie_observation_kind::contradiction &&
+                   observation.source_omt == report.target_omt;
+        } );
+    }
+    // A physically observed active site is an opportunity to investigate and rob even
+    // when the scouts could not see its inventory.  The measured danger and party
+    // margin still gate a response; no loot score is manufactured here.
+    result.opportunity_sufficient = signal_founded_site ? result.assessment_ready :
+                                    result.normalized_opportunity >= 600;
 
     const response_party_selection_result fresh_selection =
         select_capable_response_party( site, policy, effective.danger_high, member_reads );
@@ -16343,8 +16401,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 continue;
             }
         }
-        if( !returned_structural_signal_lead( *lead ) &&
-            outing.phase == scout_phase::observing &&
+        if( outing.phase == scout_phase::observing &&
             outing.selected_watch_kind != structural_watch_kind::none &&
             outing.waypoint_index == structural_outing_destination_waypoint( outing ) ) {
             const scout_assessment_result assessment = advance_structural_scout_assessment(
@@ -16623,7 +16680,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
             elapsed >= active_structural_outing_arrival_delay_minutes( candidate ) ) {
             const std::string lead_id = lead->lead_id;
             const bool returned_signal_arrival = returned_structural_signal_lead( *lead );
-            if( structural_outing_uses_watch_route( outing ) && !returned_signal_arrival ) {
+            if( structural_outing_uses_watch_route( outing ) ) {
                 const int destination_waypoint = structural_outing_destination_waypoint( outing );
                 const bool newly_arrived = waypoint_progressed ||
                                            outing.waypoint_index != destination_waypoint;
@@ -20338,6 +20395,8 @@ bool scout_assessment_readiness_after_certainty(
     switch( threshold_class ) {
         case scout_assessment_threshold_class::normal:
             return certainty >= ( readiness_latched ? 60 : 70 );
+        case scout_assessment_threshold_class::site_signal:
+            return readiness_latched;
         case scout_assessment_threshold_class::burned:
             return certainty >= ( readiness_latched ? 50 : 60 );
         case scout_assessment_threshold_class::none:
@@ -20369,6 +20428,13 @@ scout_report_effective_state evaluate_scout_report_at(
     result.route_danger_high = report.assessment.route_danger_high;
     result.scout_losses = static_cast<int>( report.casualty_ids.size() );
     result.attack_authorization_usable = result.age_minutes < 48 * 60;
+    if( report.assessment.threshold_class == scout_assessment_threshold_class::site_signal ) {
+        const int observed = report.assessment.site_signal_observed_minutes;
+        result.attack_authorization_usable = result.attack_authorization_usable &&
+                                             observed >= 0 && observed <= report.delivered_minutes &&
+                                             current_minutes - observed < 48 * 60 &&
+                                             !report.assessment.site_signal_source_id.empty();
+    }
     result.assessment_ready = result.attack_authorization_usable &&
                               report.assessment.readiness_latched &&
                               scout_assessment_readiness_after_certainty(
@@ -20424,6 +20490,8 @@ bool scout_assessment_states_equal( const scout_assessment_state &lhs,
            lhs.danger_high == rhs.danger_high &&
            lhs.bounty_estimate == rhs.bounty_estimate &&
            lhs.route_danger_high == rhs.route_danger_high &&
+           lhs.site_signal_observed_minutes == rhs.site_signal_observed_minutes &&
+           lhs.site_signal_source_id == rhs.site_signal_source_id &&
            lhs.target_alert == rhs.target_alert &&
            lhs.pinned_target_revision == rhs.pinned_target_revision &&
            lhs.next_eligible_minutes == rhs.next_eligible_minutes &&
@@ -20436,7 +20504,7 @@ scout_assessment_state summarize_normal_scout_assessment(
     const active_outing_state &outing )
 {
     scout_assessment_state summary = outing.assessment;
-    summary.schema_version = 2;
+    summary.schema_version = 3;
     summary.pinned_target_revision = outing.target_lead_revision;
     summary.certainty = 0;
     summary.strong_visual_windows = 0;
@@ -20676,12 +20744,44 @@ scout_assessment_result advance_structural_scout_assessment(
         next.assessment.strong_visual_windows >= 3 &&
         normal_readiness &&
         next.assessment.defenders_high - next.assessment.defenders_low <= 2;
-    if( normal_success ) {
+    const camp_map_lead *source_lead = candidate.intelligence_map.find_lead(
+                                           next.target_lead_id );
+    const bool site_signal_success = !next.alternate_watch_reposition_pending &&
+        current_minutes - next.assessment.observation_started_minutes >= 120 &&
+        target_footprint_watch_distance( next.selected_watch_omt, next.target_footprint ) == 3 &&
+        source_lead != nullptr && returned_structural_signal_lead( *source_lead ) &&
+        ( source_lead->kind == camp_lead_kind::smoke_signal ||
+          source_lead->kind == camp_lead_kind::light_signal ) &&
+        source_lead->status != camp_lead_status::invalidated &&
+        source_lead->omt == next.target_omt &&
+        source_lead->revision == next.target_lead_revision &&
+        source_lead->first_seen_minutes >= 0 &&
+        source_lead->first_seen_minutes <= source_lead->last_seen_minutes &&
+        source_lead->last_seen_minutes <= current_minutes &&
+        current_minutes - source_lead->last_seen_minutes < 48 * 60 &&
+        !source_lead->source_sample_id.empty() &&
+        source_lead->source_sample_id.size() <= max_sortie_summary_length &&
+        std::none_of( next.observations.begin(), next.observations.end(),
+    [&next]( const sortie_observation & observation ) {
+        return observation.kind == sortie_observation_kind::contradiction &&
+               observation.target_revision == next.target_lead_revision &&
+               std::find( next.target_footprint.begin(), next.target_footprint.end(),
+                          observation.source_omt ) != next.target_footprint.end();
+    } );
+    if( normal_success || site_signal_success ) {
         next.assessment.readiness_latched = true;
-        next.assessment.threshold_class = scout_assessment_threshold_class::normal;
+        next.assessment.threshold_class = normal_success ?
+                                          scout_assessment_threshold_class::normal :
+                                          scout_assessment_threshold_class::site_signal;
+        next.assessment.site_signal_observed_minutes = normal_success ? -1 :
+                source_lead->last_seen_minutes;
+        next.assessment.site_signal_source_id = normal_success ? std::string() :
+                source_lead->source_sample_id;
         next.assessment.next_eligible_minutes = minutes_after_saturated(
                 current_minutes, 48 * 60 );
-        next.assessment.exit_reason = "normal watch assessment complete";
+        next.assessment.exit_reason = normal_success ?
+                                      "normal watch assessment complete" :
+                                      "signal-founded site watch complete";
         next.phase = scout_phase::returning_report;
         next.last_progress_minutes = current_minutes;
         if( next.local_handoff.is_active() ) {
@@ -20693,7 +20793,7 @@ scout_assessment_result advance_structural_scout_assessment(
         site = std::move( candidate );
         record_scout_phase_transition_event( site.active_outing, scout_phase::observing,
                                              scout_phase::returning_report,
-                                             "normal watch assessment complete",
+                                             site.active_outing.assessment.exit_reason,
                                              current_minutes );
         return scout_assessment_result::normal_success;
     }
@@ -20988,7 +21088,9 @@ hostile_operation_player_relationship hostile_operation_player_relationship_for(
         }
         const hostile_operation_state &operation = site.active_hostile_operation;
         const bool paid_return = operation.phase == hostile_operation_phase::returning_home &&
-                                 operation.shakedown_pending_branch == "paid";
+                                 ( operation.shakedown_pending_branch == "paid" ||
+                                   operation.shakedown_pending_branch == "robbed" ||
+                                   operation.shakedown_pending_branch == "searched_empty" );
         if( outing->owner != simulation_owner::local && !paid_return ) {
             continue;
         }
@@ -22283,7 +22385,8 @@ shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome )
 {
     shakedown_aftermath_effect effect;
-    if( ( !outcome.paid && !outcome.fought ) || outcome.demanded_value <= 0 ) {
+    if( ( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty ) ||
+        ( ( outcome.paid || outcome.fought ) && outcome.demanded_value <= 0 ) ) {
         effect.notes.push_back( "shakedown aftermath ignored: no concrete paid/fought outcome" );
         return effect;
     }
@@ -22294,10 +22397,12 @@ shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
     site.shakedown_last_surrendered_value = outcome.surrendered_value;
     site.shakedown_last_reachable_value = outcome.reachable_goods_value;
 
-    if( outcome.paid ) {
+    if( outcome.paid || outcome.robbed ) {
         site.shakedown_loot_value += std::max( 0, outcome.surrendered_value );
-        site.remembered_bounty_estimate += std::max( 1, outcome.surrendered_value / 1000 );
-        effect.notes.push_back( "paid shakedown writes surrendered value into abstract bounty" );
+        if( outcome.surrendered_value > 0 ) {
+            site.remembered_bounty_estimate += std::max( 1, outcome.surrendered_value / 1000 );
+        }
+        effect.notes.push_back( "physical shakedown loot writes its value into abstract bounty" );
     }
 
     if( outcome.fought ) {
@@ -22384,12 +22489,14 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
     shakedown_outcome outcome;
     outcome.paid = operation.shakedown_pending_branch == "paid";
     outcome.fought = operation.shakedown_pending_branch == "fight";
+    outcome.robbed = operation.shakedown_pending_branch == "robbed";
+    outcome.searched_empty = operation.shakedown_pending_branch == "searched_empty";
     outcome.demanded_value = operation.shakedown_pending_demanded_value;
     outcome.surrendered_value = operation.shakedown_pending_surrendered_value;
     outcome.reachable_goods_value = operation.shakedown_pending_reachable_value;
     outcome.basecamp_or_camp_scene = operation.shakedown_pending_basecamp_scene;
     outcome.bandit_losses = static_cast<int>( reservation.casualty_ids.size() );
-    if( !outcome.paid && !outcome.fought ) {
+    if( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty ) {
         return false;
     }
     if( outcome.fought && outcome.demanded_value <= 0 ) {
