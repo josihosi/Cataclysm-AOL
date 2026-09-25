@@ -1,0 +1,35 @@
+{
+  "schema": "caol.bulk-item-cost-workload-setup.v1",
+  "source_profile": "caol-bulk-item-cost-exploration-001",
+  "source_world": "Westcreek",
+  "source_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+  "owner": "your_followers",
+  "setup_credit": "zero-credit: native survivor world was saved and quit before these map/zone transforms; transforms run on independent disposable world copies",
+  "map_items_transform": "map_items_near_player",
+  "zones_transform": "source_firewood_zone_near_player (generic fixture writer with explicit zone_type overrides)",
+  "tile_layout_relative_to_avatar_ms": {
+    "source": [0, 0, 0],
+    "destination_wood_or_bulk": [0, 1, 0],
+    "destination_tools": [0, -1, 0]
+  },
+  "world_copies": [
+    {"name": "BulkA0", "workload": "advanced_inventory_bulk_move", "replicate": "before"},
+    {"name": "BulkA1", "workload": "advanced_inventory_bulk_move", "replicate": "after"},
+    {"name": "BulkB0", "workload": "zone_sort_unsorted", "replicate": "before"},
+    {"name": "BulkB1", "workload": "zone_sort_unsorted", "replicate": "after"}
+  ],
+  "items": {
+    "advanced_inventory_bulk_move": [{"typeid": "2x4", "display_name": "plank", "count": 256, "offset_ms": [0, 0, 0], "owner": "your_followers"}],
+    "zone_sort_unsorted": [
+      {"typeid": "2x4", "display_name": "plank", "count": 128, "offset_ms": [0, 0, 0], "owner": "your_followers"},
+      {"typeid": "hammer", "count": 128, "offset_ms": [0, 0, 0], "owner": "your_followers"}
+    ]
+  },
+  "zones": [
+    {"name": "Bulk cost unsorted source", "zone_type": "LOOT_UNSORTED", "start_offset_ms": [0, 0, 0], "end_offset_ms": [0, 0, 0]},
+    {"name": "Bulk cost wood destination", "zone_type": "LOOT_WOOD", "start_offset_ms": [0, 1, 0], "end_offset_ms": [0, 1, 0]},
+    {"name": "Bulk cost tools destination", "zone_type": "LOOT_TOOLS", "start_offset_ms": [0, -1, 0], "end_offset_ms": [0, -1, 0]}
+  ],
+  "counts_are_diagnostic": true,
+  "count_basis": "256 physical item instances per workload, a representative diagnostic population pending exact owner-reported counts"
+}

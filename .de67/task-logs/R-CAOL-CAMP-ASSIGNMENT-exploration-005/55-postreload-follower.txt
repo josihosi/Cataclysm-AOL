@@ -1,0 +1,16 @@
+NPC INSPECTION — R032 Establishment Ally 1
+actor id: character:25
+Camp patrol — camp found: yes; camp site: 162, 36, 0; patrol zone defined: no
+All 12 body parts: 82/82 HP
+Items: sharpened rebar [111, wielded]; \. bra [2, worn]; ++ boy shorts [4, worn]; ++ socks (pair) [6, worn]; |\ round bifocal glasses [8, worn]; ++ soccer fan cap [10, worn]; ++ jeans > smartphone (UPS) (unbrowsed) [12, worn]; smartphone (UPS) (unbrowsed) [13434, CONTAINER]; battery [13432, MAGAZINE] ×56; coming of age novel [13433, E_FILE_STORAGE]; ++ sneakers (pair) [25, worn]; ++ t-shirt [27, worn]; ++ work gloves (pair) [29, worn]; |\ barrette [31, worn]; ++ light jacket > 5 items [33, worn]; one-dollar currency strap [13464, CONTAINER]; wallet > 6 currency [13472, CONTAINER]; cash card [13466, CONTAINER]; cent [13465, MAGAZINE] ×73; dime [13467, CONTAINER]; penny [13468, CONTAINER]; penny [13469, CONTAINER]; quarter [13470, CONTAINER]; penny [13471, CONTAINER]; saline eye drops (cold) [13473, CONTAINER]; plastic bag⁺ > corn tortilla (fresh) [13475, CONTAINER]; corn tortilla (fresh) [13474, CONTAINER]; small aluminum can⁺ (sealed) > diet cola [13477, CONTAINER]; diet cola [13476, CONTAINER] ×1; ++ wrist watch [87, worn]; ++ messenger bag > small cardboard box⁺ > 4 items [89, worn]; small cardboard box⁺ > 4 slices of meat pizza [13493, CONTAINER]; slice of meat pizza [13489, CONTAINER]; slice of meat pizza [13490, CONTAINER]; slice of meat pizza [13491, CONTAINER]; slice of meat pizza [13492, CONTAINER]
+Full gear data: 5592 characters → play inspect observation.surface.facts.diagnostic_items
+Item details → play inspect observation.surface.facts.diagnostic_items.UID (copy an item ID; no --contains)
+AI intent: 220 characters omitted → play inspect observation.surface.facts.diagnostic_llm_intent
+Orders — attitude: Ignoring; mission: CAMP_RESIDENT; activity: ACT_NULL; absolute position: 3890, 868, 0; camp patrol order: no; camp patrol priority: 8; assigned camp: 162, 36, 0; has companion mission: no
+Rules: 3007 characters omitted → play inspect observation.surface.facts.diagnostic_rules
+visible.health: She is uninjured.
+visible.attitude: Friendly
+visible.wielded: sharpened rebar
+ALLOWED HERE ONLY
+Close → play act npc_inspection.close
+Item details (requires item_uid parameter) → play act npc_inspection.item_details --param item_uid=ID

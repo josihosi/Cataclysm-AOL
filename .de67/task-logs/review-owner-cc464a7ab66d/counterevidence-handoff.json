@@ -1,0 +1,27 @@
+{
+  "original": ".de67/task-logs/R-CAOL-CAMP-DEFENSE-exploration-001/exp008-incomplete-profile-copy/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/local_pair_handoff.snapshot.json",
+  "run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+  "source": {
+    "runtime_source_sha256": "7699818d1544db93a70f14faa1883aeacd2d0ed9ddcb2819dd5d089e2fa20cbb",
+    "executable_sha256": "c5442a8c0457cf1b2430f8496917de221395dfe0934611672dc294b4b67a4692"
+  },
+  "transition": {
+    "domain": "bandit_live_world",
+    "transition": "local_pair_handoff",
+    "outcome": "committed",
+    "site_id": "overmap_special:bandit_camp@164,39,0",
+    "operation_id": "overmap_special:bandit_camp@164,39,0#structural",
+    "actor_ids": [
+      4,
+      5
+    ],
+    "generation": 1,
+    "simulation_owner": "local",
+    "previous_state": "abstract",
+    "new_state": "local",
+    "handoff_epoch": 1,
+    "game_minutes": 8900,
+    "omt": "(163,39,0)",
+    "owner_transition": "abstract_to_local"
+  }
+}

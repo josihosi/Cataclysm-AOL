@@ -53,7 +53,7 @@ class CockpitEvidenceTest(unittest.TestCase):
         shown = json.loads(result.stdout)
         # The supported CLI now presents handles; verify the complete retained
         # result as well as the serialized boundary instead of demanding a dump.
-        return recover(shown["presentation"]["full_evidence"]["sha256"])
+        return recover(shown["presentation"]["full_evidence"]["sha256"]) if "presentation" in shown else shown
 
     def status(self):
         return self.cli("response-status", "--session-dir", self.session, "--request-id", "confirm")

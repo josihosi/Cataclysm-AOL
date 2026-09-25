@@ -1,0 +1,67 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PERFORMANCE-implementation-001",
+  "claim_id": "R-HARNESS-PERFORMANCE",
+  "worker_id": "01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc",
+  "disposition": "completed",
+  "verdict": "shared_turn_alarm_implementation_verified",
+  "outcome": "The existing shared operation driver now measures run-bound advancing simulation turns and reports configured performance alarms, recovery, and uncertainty without replaying native input.",
+  "summary": "The worker applied the current owner correction for the implementation slice. Native game::do_turn emits precise run-bound turn and excluded-phase records. ProcessPerformance and play_cli incrementally retain measurements, comparable-baseline status, spike, slow, sustained, incomplete-turn, stalled-progress, recovery, and missing-fact outcomes. Coordinator review and independent review found seven concrete defects; the same worker repaired them and added falsifying tests. The final focused suite and native object compile pass.",
+  "material_changes": [
+    "Added guarded native turn start/end and input/save phase facts in src/do_turn.cpp with parseable precise timestamps.",
+    "Added bounded resumable turn assessment to the existing ProcessPerformance journal and owner.",
+    "Integrated assessment into play_cli performance and one-submit pending collection while retaining alarm and recovery deltas across internal polls.",
+    "Extended semantic trace validation without letting observational turn events displace the compact action owner.",
+    "Removed unconsumed batch-as-individual-turn timing fields while retaining explicit batch transport/action wall time.",
+    "Added focused tests for JSON producer shape, precision, spike/sustained alarms, no-start stalls, transport uncertainty, long input exclusion, PID/process/reset handling, wall/CPU/throughput metrics, internal-poll delivery, and activity prompt classification."
+  ],
+  "tests": [
+    "257 tests passed: process_performance_test, play_cli_test, semantic_state_test, r009_semantic_channel_compaction_test, semantic_broker_test, proof_classification_unit_test.",
+    "make -j2 src/do_turn.o passed.",
+    "git diff --check passed.",
+    "No remaining avg_turn_ms, per_turn_ms, or max_batch_turn_ms consumer was found outside retained evidence/history."
+  ],
+  "live_actions": [
+    "None. No game, bridge, session, provider call, or native journey was launched."
+  ],
+  "evidence_ceiling": [
+    "Controlled tests and compilation prove instrumentation and shared-poller behavior; they do not prove live native alarm behavior.",
+    "No signal, camp, travelling-hostile, platform-matrix, or gameplay acceptance is claimed.",
+    "Alarm judgment requires a provenance-bearing scenario configuration; missing or incompatible baselines remain explicit."
+  ],
+  "bindings": {
+    "dispatch_digest": "2517e84c94f17d5872b18dee29a504dd2c318daa1aee9204c9ffd7cbc65025e5",
+    "worker_id": "01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+    "source_branch": "dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-PERFORMANCE-implementation-001-result.md",
+      "sha256": "a54d74d5fddd0798fa33f62801819da0548bbe34796505a9891ed273f7034a6d",
+      "role": "implementation review, verification, and evidence limits"
+    }
+  ],
+  "first_divergence": {
+    "class": "none",
+    "summary": "The assigned implementation behavior is delivered; real native journey proof remains a separate FS boundary."
+  },
+  "accepted_no_replay": [],
+  "active_work": [],
+  "first_open_boundary": "Run a source-bound pending native wait with a provenance-bearing scenario configuration and comparable baseline, observe alarms and recovery through real completion, and reconcile exact process cleanup.",
+  "narrow_queries": [
+    "R-HARNESS-PERFORMANCE-implementation-001",
+    "collect_turn_assessment",
+    "openclaw_harness_turn_trace",
+    "01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "tools/openclaw_harness/process_performance.py",
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/startup_harness.py"
+  ],
+  "context_metrics": {}
+}

@@ -1,0 +1,135 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-001",
+  "claim_id": "R-HARNESS-EVIDENCE",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "finding",
+  "verdict": "first_divergence_preload_reuse_control_unproven",
+  "outcome": "Independent reconciliation closes the exact evidence projection, claim-aware summary, compact candidate retrieval, measured shared-history growth, and one focused native speech lifecycle. The whole-item proof remains below closure because no retained experiment demonstrates prewarming or process-ID reuse controls.",
+  "summary": "Projection receipt 56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635 and speech receipt 5ccd21efc5efa598bb23d7d238dd83e7dd199d3b4465ff19f03b095b9255a3d4 were independently reconciled to R-HARNESS-EVIDENCE-S001. The first receipt covers exact tuple scoping, related lifecycle semantics, payment/non-payment separation, compact candidate detail/full retrieval, 12-to-102 growth, stable displayed-link bytes, and 26 tests. The second covers an accepted utterance, exact run and semantic/runner process identities through req_0 model completion, native reply exposure, fresh-agent retrieval, contrary evidence, and typed witness roots. It explicitly bounds req_0 as process-local and requires exact run/process identity, but no actual prewarm/reused-process control is present.",
+  "material_changes": [],
+  "tests": [
+    "Read-only reconciliation of .de67/FS.md proof and mechanism clauses against both prepared receipts and their referenced artifacts.",
+    "Existing receipt 56 records 26 focused lifecycle, contradiction, growth, generic/payment, candidate-detail, and evidence-route tests; not rerun.",
+    "Existing speech witness validation, JSON validation, and fresh Luna retrieval are preserved from receipt 5; not rerun.",
+    "Exact process identity fields and the request-ID-only contrary query were inspected; no prewarm/reuse control artifact was found."
+  ],
+  "live_actions": [
+    "No native run, provider call, replay, source edit, or coordination-state mutation was performed.",
+    "Only durable filesystem artifacts and the current FS clause were inspected."
+  ],
+  "evidence_ceiling": [
+    "Exact run_id plus semantic_process_instance and runner_process_instance are retained; req_0 is explicitly process-local and cockpit request ID alone is not treated as sufficient.",
+    "The focused speech proof is limited to the recorded utterance/hearer/response and does not generalize to the NPC matrix, fire case, or durable follow-up.",
+    "The explicit Proof requirement for process-ID reuse/prewarm controls is unproven because the retained evidence contains no such control experiment.",
+    "No_displayed_observation after cleanup and session-directory query misses remain bounded retrieval limitations; durable artifact-path queries succeeded."
+  ],
+  "bindings": {
+    "fs_slice": "R-HARNESS-EVIDENCE-S001",
+    "native_exit_credit": "false",
+    "prior_projection_receipt": ".de67/task-logs/review-owner-f5d913c63d0e/worker-receipt-prepared.json",
+    "prior_speech_receipt": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/de67-worker-result-receipt-prepared-v2.json",
+    "speech_run_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec",
+    "speech_runner_process_instance": "520999d79e9c4bd99bd6a88d1e51e6ff",
+    "speech_semantic_process_instance": "1789959634416807",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [
+    {
+      "id": "reconcile-projection",
+      "sequence": "1",
+      "event_type": "evidence_reconciliation",
+      "evidence_class": "test",
+      "summary": "Exact tuple/lifecycle, claim-aware summaries, compact detail, and measured shared-history growth reconcile to the FS clauses.",
+      "artifact_ref": ".de67/task-logs/review-owner-f5d913c63d0e/repaired-reproductions.json"
+    },
+    {
+      "id": "reconcile-speech",
+      "sequence": "2",
+      "event_type": "speech_lifecycle_reconciliation",
+      "evidence_class": "native_witness",
+      "summary": "One accepted utterance is correlated through runner/model completion to an exposed native reply with exact process identities.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json"
+    },
+    {
+      "id": "first-divergence-prewarm",
+      "sequence": "3",
+      "event_type": "proof_boundary",
+      "evidence_class": "audit",
+      "summary": "The explicit prewarm/process-ID-reuse control clause has no corresponding retained experiment.",
+      "artifact_ref": ".de67/FS.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/FS.md",
+      "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df",
+      "role": "authoritative R-HARNESS-EVIDENCE-S001 mechanism and proof clauses"
+    },
+    {
+      "path": ".de67/task-logs/review-owner-f5d913c63d0e/worker-receipt-prepared.json",
+      "sha256": "6056e3ec30a45369df53900e2e2bed9be9ea2f9229ee26f53476c960cd64e4ac",
+      "role": "exact projection and lifecycle receipt"
+    },
+    {
+      "path": ".de67/task-logs/review-owner-f5d913c63d0e/repaired-reproductions.json",
+      "sha256": "9654161cd18beefa12fc128e6c52f7bff04e3ce1f1a8b20a43a9bf07cfbbbd22",
+      "role": "projection reproductions and growth measurements"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/de67-worker-result-receipt-prepared-v2.json",
+      "sha256": "4f4fd7df28da6755232d72eb912fdbe1507fb44c6ac88b664c1ade6ef4648c8c",
+      "role": "focused speech lifecycle receipt"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json",
+      "sha256": "96512760896c31249a7b21a74faa3dc2b780ce584945d627ef8f5da4813b47a2",
+      "role": "typed native speech witness"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/fresh-agent-retrieval.json",
+      "sha256": "13faf30576396561cd2bec6b39308697e37829bff06328fb44b0098db1a57cbd",
+      "role": "independent fresh-agent retrieval"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/luna-fresh-agent-report.json",
+      "sha256": "994f30d7119d9ee3f12ff9e9dd11834e44494683e5e4b4d10ecbb0345e2dd356",
+      "role": "independent retrieval report and effort"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/contrary-query-no-match.json",
+      "sha256": "6945f30fb09ae3e6cbca8001c4b6d2c513f8959dc466f6e9bda8c33c7a755c29",
+      "role": "contrary request-ID-only query evidence"
+    }
+  ],
+  "first_divergence": {
+    "class": "missing_required_control",
+    "summary": "FS Proof requires process-ID reuse/prewarm controls; retained receipts preserve identity and process-local semantics but do not demonstrate that control."
+  },
+  "accepted_no_replay": [
+    "Accepted prior receipts and artifacts as immutable evidence; no replay or source edit was authorized or needed to identify the first divergence."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A fresh, explicitly controlled prewarm/process-ID-reuse experiment is required before claiming whole-item closure; broader NPC/fire/durable-follow-up/native-exit claims remain outside this evidence ceiling.",
+  "narrow_queries": [
+    "If closure is required, run one controlled prewarm-versus-request and/or reused-runner identity experiment retaining run_id, semantic_process_instance, runner_process_instance, and request identity.",
+    "Do not reopen the settled projection/growth or focused speech facts unless the new control changes their interpretation."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_events.py::_request_result_links",
+    "tools/openclaw_harness/registry_query_output.py::query_page",
+    "tools/openclaw_harness/evidence_display.py",
+    "tools/openclaw_harness/cockpit.py"
+  ],
+  "context_metrics": {
+    "fresh_luna_lifecycle_reads": 4,
+    "fresh_luna_queries": 6,
+    "fresh_luna_stdout_bytes": 29497,
+    "native_speech_matrix": "focused one utterance only",
+    "projection_displayed_link_bytes": 592,
+    "projection_scanned_records": "12 to 102",
+    "projection_tests": 26
+  },
+  "finding_kind": "unexpected"
+}

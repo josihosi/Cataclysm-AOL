@@ -1,0 +1,1 @@
+26144 26111 Thu Sep 24 02:38:47 2026     /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles --userdir .userdata/r032-camp-assignment-exp004-20260924/ --world McWilliams

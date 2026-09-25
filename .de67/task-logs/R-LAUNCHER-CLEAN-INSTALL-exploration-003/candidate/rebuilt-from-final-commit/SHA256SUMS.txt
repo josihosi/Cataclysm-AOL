@@ -1,0 +1,3 @@
+c47b8e2aadf3646d0d98a80a348d04ec7e5ba295ee371febd5d2866a1fd04c1f  Catapult-Dabubu-macos-unsigned.zip
+f5a4c73f9e4a4b5f85ed99bfe56fe7e8553a73f52d3574b438008e0c91143bab  Catapult-Dabubu-linux-unsigned.tar.gz
+b26cbb43f7f16ef0d4ff3227b263c3d2614c1f2e4f2652f15005249b01dba794  Catapult-Dabubu-windows-unsigned.zip

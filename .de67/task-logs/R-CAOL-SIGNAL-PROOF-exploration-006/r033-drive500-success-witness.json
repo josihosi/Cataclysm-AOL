@@ -1,0 +1,37 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "One current-source-bound native session dispatched the idle supply-empty camp at drive 708, reached a local watch, recorded the delayed acoustic source at that watch, and later published one matching returned structural-sound report.",
+  "causal_account": "The sealed run preserves the source-bound identity, a native one-minute source-boundary action at minute 9365, and the later minute-9426 World surface.  That terminal surface has no active structural outing and contains the returned sound lead whose source key and OMT match the acoustic observation.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "The sealed evidence belongs to the selected R-033 source-bound scenario and executable.",
+      "checks": {
+        "scenario_id": "r033.phase4_semantic_autonomous_sound_return_drive500_rev1_mcw",
+        "executable_identity": "7ee45418d68296158791062c146053cc4ea88075b549dd6328ac5b23658370b3"
+      }
+    },
+    {
+      "citation_id": "J0053",
+      "meaning": "A native one-minute wait crossed the armed source boundary at minute 9365.",
+      "checks": {
+        "result.partial_progress": 1.0,
+        "result.native_receipts.0.native_receipt.game_minutes": 9365
+      }
+    },
+    {
+      "citation_id": "J0062",
+      "meaning": "After the bounded return window, the active structural outing was gone and the returned sound lead was present with matching source provenance.",
+      "checks": {
+        "value.game_minutes": 9426,
+        "value.surface.facts.structural_outing_owner.present": false,
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.source_key": "structural-signal:structural-explosion@(138,52,0)",
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.last_outcome": "returned_structural_sound_report"
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

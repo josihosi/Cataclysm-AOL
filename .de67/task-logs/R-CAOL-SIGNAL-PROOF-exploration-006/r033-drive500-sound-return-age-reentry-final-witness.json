@@ -1,0 +1,29 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "The declared replacement process reopened the native world at minute 9426 with the same returned structural sound report: its source key is structural-signal:structural-explosion@(138,52,0), its original observation minute remains 9365, and its outcome remains returned_structural_sound_report. Therefore the report's native provenance and its 61-minute elapsed game-time age survived save/reload.",
+  "causal_account": "The reentry journal binds this observation to the same selected scenario, executable, run, and bridge as the sealed source-bound segment. The new native World surface preserves the returned sound lead's class, exact source key, original observation minute, and outcome at the unchanged current minute 9426; the difference between 9426 and 9365 is 61 elapsed game minutes. This is replacement-process observation, not an inferred save result.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the reentry journal to the selected scenario, executable, run, and bridge.",
+      "checks": {
+        "scenario_id": "r033.phase4_semantic_autonomous_sound_return_drive500_age_reentry_rev1_mcw"
+      }
+    },
+    {
+      "citation_id": "J0002",
+      "meaning": "Replacement-process native World observation at minute 9426 retains the returned sound report's exact source key, original observation minute, and return outcome.",
+      "checks": {
+        "value.game_minutes": 9426,
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.kind": "sound_signal",
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.source_key": "structural-signal:structural-explosion@(138,52,0)",
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.last_seen_minutes": 9365,
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.last_outcome": "returned_structural_sound_report"
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

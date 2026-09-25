@@ -1,0 +1,1050 @@
+diff --git a/scripts/BackendConfigManager.gd b/scripts/BackendConfigManager.gd
+index daf7404..d2f337e 100644
+--- a/scripts/BackendConfigManager.gd
++++ b/scripts/BackendConfigManager.gd
+@@ -33,6 +33,11 @@ const OLLAMA_MODEL_MISTRAL = "mistral:v0.3"
+ const OLLAMA_MODEL_NEMOTRON_SOURCE = "mirage335/NVIDIA-Nemotron-Nano-9B-v2-virtuoso:latest"
+ const OLLAMA_MODEL_NEMOTRON = "nemotron-9b-dumber:latest"
+ const OLLAMA_MODEL_NEMOTRON_MODE = "system_no_think_alias_no_blob_copy"
++const OLLAMA_MODEL_GEMMA4_E2B = "gemma4:e2b"
++const OLLAMA_MODEL_GEMMA4_E4B = "gemma4:e4b"
++
++# Focused smoke seam; unset in launcher runs so commands use OS.execute.
++var _ollama_process_executor = null
+ 
+ const API_PROVIDER_CHOICES = [
+ 	{
+@@ -179,7 +184,21 @@ func run_api_setup(provider_id: String, python_path: String = "", proof_only: bo
+ 
+ 
+ func get_ollama_model_choices() -> Array:
+-	return [OLLAMA_MODEL_MISTRAL, OLLAMA_MODEL_NEMOTRON]
++	return [OLLAMA_MODEL_MISTRAL, OLLAMA_MODEL_NEMOTRON, OLLAMA_MODEL_GEMMA4_E2B, OLLAMA_MODEL_GEMMA4_E4B]
++
++
++func get_ollama_model_choice_label(model: String) -> String:
++	match model:
++		OLLAMA_MODEL_MISTRAL:
++			return "Mistral v0.3"
++		OLLAMA_MODEL_NEMOTRON:
++			return "Nemotron 9B"
++		OLLAMA_MODEL_GEMMA4_E2B:
++			return "Gemma 4 E2B"
++		OLLAMA_MODEL_GEMMA4_E4B:
++			return "Gemma 4 E4B"
++		_:
++			return model
+ 
+ 
+ func get_ollama_pull_source_for_model(model: String) -> String:
+@@ -250,15 +269,15 @@ func build_ollama_setup_plan(endpoint: String = DEFAULT_OLLAMA_URL, model: Strin
+ 	var installer = "manual"
+ 	var os_name = OS.get_name()
+ 	if inventory.get("command", "missing") != "present":
+-		if os_name == "OSX" and _command_exists("brew"):
+-			installer = "homebrew"
+-			commands.append({"phase": "install_ollama_cli", "command": "brew", "args": ["install", "ollama"], "purpose": "Install Ollama through Homebrew."})
+-		elif os_name == "Windows" and _command_exists("winget"):
+-			installer = "winget"
+-			commands.append({"phase": "install_ollama_cli", "command": "winget", "args": ["install", "--id", "Ollama.Ollama", "-e"], "purpose": "Install the official Ollama Windows package through winget id Ollama.Ollama."})
+-		else:
+-			installer = "manual_required"
+-	if inventory.get("command", "missing") == "present" and inventory.get("server", "unreachable") == "running" and selected_model != "":
++		var install_step = _ollama_installer_step()
++		installer = install_step.get("installer", "manual_required")
++		if not install_step.empty():
++			commands.append(install_step)
++	elif inventory.get("server", "unreachable") != "running":
++		var startup_step = _ollama_server_start_step("", endpoint)
++		if not startup_step.empty():
++			commands.append(startup_step)
++	elif selected_model != "":
+ 		if selected_model == OLLAMA_MODEL_NEMOTRON:
+ 			if not _ollama_model_list_has(inventory.get("models", []), OLLAMA_MODEL_NEMOTRON_SOURCE):
+ 				commands.append({"phase": "pull_nemotron_source", "command": "ollama", "args": ["pull", OLLAMA_MODEL_NEMOTRON_SOURCE], "purpose": "Pull the Nemotron Virtuoso source model after confirmation."})
+@@ -281,55 +300,344 @@ func build_ollama_setup_plan(endpoint: String = DEFAULT_OLLAMA_URL, model: Strin
+ 		"installer": installer,
+ 		"commands": commands,
+ 		"phase_order": _command_phases(commands),
+-		"command_preview": "\n".join(preview) if preview.size() > 0 else "Manual Ollama install/startup required before model preparation; no safe one-step command is queued.",
+-		"sequencing": "serialized_steps_not_shell_chained",
+-		"timeout_note": "The launcher may appear to time out. Wait for Ollama installation to commence.",
+-		"next_step": "Run Check after an Ollama install/startup step, then use Install Ollama / model again for model pull or alias preparation if needed.",
++		"command_preview": "\n".join(preview) if preview.size() > 0 else "Selected endpoint and exact model are already ready.",
++		"sequencing": "install_then_cli_recheck_then_server_start_then_endpoint_recheck_then_exact_model_pull",
++		"timeout_note": "Installation, startup and model pull run as separate confirmed steps. Wait for each step to finish.",
++		"next_step": "After install, Catapult-Dabubu re-detects the CLI, starts Ollama if needed, checks this endpoint, then pulls only the selected model.",
+ 		"requires_confirmation": true,
+-		"automated_proof_policy": "plan_only_no_installer_no_model_pull_no_alias_create"
++		"automated_proof_policy": "plan_only_no_installer_no_model_pull_no_alias_create",
++		"initial_inventory": inventory
+ 	}
+ 
+ 
+ func run_ollama_setup(endpoint: String = DEFAULT_OLLAMA_URL, model: String = "", proof_only: bool = false) -> Dictionary:
+ 	var plan = build_ollama_setup_plan(endpoint, model)
++	var initial_inventory = plan.get("initial_inventory", {})
++	var selected_model = str(plan.get("model", model))
+ 	if proof_only:
+-		var proof_result = write_ollama_setup_intent(endpoint, plan.get("model", model), false, [], "proof_only_no_installer_no_model_pull")
++		var proof_state = _new_ollama_setup_state(initial_inventory, selected_model)
++		var proof_result = write_ollama_setup_intent(endpoint, selected_model, false, [], "proof_only_no_installer_no_model_pull", plan, proof_state)
+ 		return {
+ 			"status": proof_result,
+ 			"plan": plan,
+ 			"performed_external_install": false,
++			"installer_command_succeeded": false,
++			"runtime_detected": proof_state.get("runtime_detected", false),
++			"server_ready": proof_state.get("server_ready", false),
++			"model_ready": proof_state.get("model_ready", false),
+ 			"proof_only": true
+ 		}
+ 	var results = []
+-	var failed = false
+-	var failed_step = {}
+-	for step in plan.get("commands", []):
+-		var output = []
+-		var exit_code = 0
+-		if step.get("command", "") == "write_file":
+-			exit_code = _write_text_file(str(step.get("args", [""])[0]), str(step.get("content", "")), output)
+-		else:
+-			exit_code = OS.execute(step.get("command", ""), step.get("args", []), true, output, true)
+-		var result = {"phase": step.get("phase", "ollama_setup"), "command": step.get("command", ""), "args": step.get("args", []), "purpose": step.get("purpose", "Ollama setup command."), "exit_code": exit_code, "output_line_count": output.size(), "output_summary": _safe_command_output_summary(output)}
+-		results.append(result)
+-		if exit_code != 0:
+-			failed = true
+-			failed_step = result
+-			break
+-	var summary = _ollama_setup_failure_summary(failed_step) if failed else "ollama_setup_commands_ok"
+-	var write_result = write_ollama_setup_intent(endpoint, plan.get("model", model), true, results, summary)
+-	var status = summary if failed else "ollama_setup_install_ok"
++	var setup_state = _new_ollama_setup_state(initial_inventory, selected_model)
++	if plan.get("commands", []).empty() and setup_state.get("server_ready", false) and setup_state.get("model_ready", false):
++		return {
++			"status": "ollama_setup_already_ready",
++			"plan": plan,
++			"performed_external_install": false,
++			"installer_command_succeeded": false,
++			"runtime_detected": setup_state.get("runtime_detected", false),
++			"server_ready": setup_state.get("server_ready", false),
++			"model_ready": setup_state.get("model_ready", false),
++			"proof_only": false,
++			"results": results
++		}
++	var inventory = _ollama_inventory(endpoint)
++	setup_state = _new_ollama_setup_state(inventory, selected_model)
++	var setup_fixture = OS.get_environment("LACAPULT_OLLAMA_SETUP_FIXTURE").strip_edges()
++	if inventory.get("command", "missing") != "present":
++		var install_step = _ollama_installer_step()
++		if install_step.empty():
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_installer_unsupported")
++		var install_result = _execute_ollama_setup_step(install_step, endpoint, setup_fixture)
++		results.append(install_result)
++		if install_result.get("exit_code", 0) != 0:
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, _ollama_setup_failure_summary(install_result))
++		setup_state["installer_command_succeeded"] = true
++		inventory = _ollama_inventory(endpoint)
++		setup_state = _new_ollama_setup_state(inventory, selected_model, true)
++		if inventory.get("command", "missing") != "present":
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_cli_not_detected_after_install")
++	if inventory.get("server", "unreachable") != "running":
++		if not _ollama_endpoint_is_local(endpoint):
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_selected_endpoint_unreachable")
++		var start_step = _ollama_server_start_step("", endpoint)
++		if start_step.empty():
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_server_start_unsupported")
++		var start_result = _execute_ollama_setup_step(start_step, endpoint, setup_fixture)
++		results.append(start_result)
++		if start_result.get("exit_code", 0) != 0:
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, _ollama_setup_failure_summary(start_result))
++		inventory = _wait_for_ollama_endpoint(endpoint, setup_fixture)
++		setup_state = _new_ollama_setup_state(inventory, selected_model, setup_state.get("installer_command_succeeded", false))
++		if inventory.get("server", "unreachable") != "running":
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_server_start_failed")
++	if selected_model == "" or _ollama_model_list_has(inventory.get("models", []), selected_model):
++		setup_state["server_ready"] = inventory.get("server", "unreachable") == "running"
++		setup_state["model_ready"] = selected_model == "" or _ollama_model_list_has(inventory.get("models", []), selected_model)
++		var ready_status = "ollama_setup_already_ready" if results.empty() else "ollama_setup_install_ok"
++		return _finish_ollama_setup(endpoint, plan, results, setup_state, ready_status)
++	var model_steps = _ollama_model_setup_steps(selected_model, inventory)
++	for step in model_steps:
++		var step_result = _execute_ollama_setup_step(step, endpoint, setup_fixture)
++		results.append(step_result)
++		if step_result.get("exit_code", 0) != 0:
++			return _finish_ollama_setup(endpoint, plan, results, setup_state, _ollama_setup_failure_summary(step_result))
++		if step.get("phase", "").begins_with("pull"):
++			inventory = _ollama_inventory(endpoint)
++			if step.get("phase", "") == "pull_selected_model" and not _ollama_model_list_has(inventory.get("models", []), selected_model):
++				setup_state = _new_ollama_setup_state(inventory, selected_model, setup_state.get("installer_command_succeeded", false))
++				return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_model_not_detected_after_pull")
++	var final_inventory = _ollama_inventory(endpoint)
++	if not _ollama_model_list_has(final_inventory.get("models", []), selected_model):
++		setup_state = _new_ollama_setup_state(final_inventory, selected_model, setup_state.get("installer_command_succeeded", false))
++		return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_model_not_detected_after_pull")
++	setup_state = _new_ollama_setup_state(final_inventory, selected_model, setup_state.get("installer_command_succeeded", false))
++	return _finish_ollama_setup(endpoint, plan, results, setup_state, "ollama_setup_install_ok")
++
++
++func _new_ollama_setup_state(inventory: Dictionary, selected_model: String, installer_command_succeeded: bool = false) -> Dictionary:
++	var runtime_detected = inventory.get("command", "missing") == "present"
++	var server_ready = runtime_detected and inventory.get("server", "unreachable") == "running"
++	var model_ready = server_ready and _ollama_model_list_has(inventory.get("models", []), selected_model)
++	return {
++		"installer_command_succeeded": installer_command_succeeded,
++		"runtime_detected": runtime_detected,
++		"server_ready": server_ready,
++		"model_ready": model_ready
++	}
++
++
++func _finish_ollama_setup(endpoint: String, plan: Dictionary, results: Array, setup_state: Dictionary, status: String) -> Dictionary:
++	var performed_external_install = setup_state.get("installer_command_succeeded", false) and setup_state.get("runtime_detected", false)
++	var write_result = write_ollama_setup_intent(endpoint, plan.get("model", ""), performed_external_install, results, status, plan, setup_state)
+ 	if write_result != "ok":
+ 		status = write_result
+ 	return {
+ 		"status": status,
+ 		"plan": plan,
+-		"performed_external_install": true,
++		"performed_external_install": performed_external_install,
++		"installer_command_succeeded": setup_state.get("installer_command_succeeded", false),
++		"runtime_detected": setup_state.get("runtime_detected", false),
++		"server_ready": setup_state.get("server_ready", false),
++		"model_ready": setup_state.get("model_ready", false),
+ 		"proof_only": false,
+ 		"results": results,
+-		"failed_step": failed_step
++		"failed_step": results[results.size() - 1] if results.size() > 0 and status != "ollama_setup_install_ok" and status != "ollama_setup_already_ready" else {}
+ 	}
+ 
++
++func _ollama_installer_step(platform: String = "") -> Dictionary:
++	var target_platform = platform if platform != "" else OS.get_name()
++	if target_platform == "OSX":
++		if _command_exists("curl") and _command_exists("osascript"):
++			var install_script = _ollama_macos_shell_script("curl -fsSL https://ollama.com/install.sh | OLLAMA_NO_START=1 sh", true)
++			return {"phase": "install_ollama_runtime", "command": "osascript", "args": ["-e", install_script], "installer": "official_macos_installer", "purpose": "Run Ollama's official macOS installer with the native administrator prompt; the launcher starts Ollama as the signed-in user afterward."}
++		return {}
++	if target_platform == "Windows":
++		return {"phase": "install_ollama_runtime", "command": _windows_powershell_executable(), "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm https://ollama.com/install.ps1 | iex"], "installer": "official_powershell_installer", "purpose": "Run Ollama's official per-user Windows installer."}
++	if target_platform == "X11" or target_platform == "Server":
++		if _command_exists("curl") and _command_exists("sh"):
++			if _command_exists("pkexec"):
++				return {"phase": "install_ollama_runtime", "command": "pkexec", "args": ["sh", "-c", "curl -fsSL https://ollama.com/install.sh | sh"], "installer": "official_linux_install_script", "purpose": "Run Ollama's official Linux installer through the desktop privilege prompt."}
++			return {"phase": "install_ollama_runtime", "command": "sh", "args": ["-c", "curl -fsSL https://ollama.com/install.sh | sh"], "installer": "official_linux_install_script", "purpose": "Run Ollama's official Linux installer; it requests sudo when system installation requires it."}
++	return {}
++
++
++func _ollama_macos_shell_script(shell_command: String, administrator: bool = false) -> String:
++	var script = "do shell script \\\"%s\\\"" % shell_command.replace("\\", "\\\\").replace("\"", "\\\"")
++	if administrator:
++		script += " with administrator privileges"
++	return script
++
++
++func _ollama_server_start_step(platform: String = "", endpoint: String = DEFAULT_OLLAMA_URL) -> Dictionary:
++	var target_platform = platform if platform != "" else OS.get_name()
++	if target_platform == "OSX":
++		if _normalize_ollama_endpoint(endpoint) != DEFAULT_OLLAMA_URL:
++			return {"phase": "start_ollama_server", "command": "ollama", "args": ["serve"], "process_wait": false, "purpose": "Start Ollama on the selected local endpoint."}
++		var app_path = OS.get_environment("HOME").plus_file("Applications").plus_file("Ollama.app")
++		if Directory.new().dir_exists("/Applications/Ollama.app"):
++			app_path = "/Applications/Ollama.app"
++		if Directory.new().dir_exists(app_path):
++			return {"phase": "start_ollama_server", "command": "open", "args": ["-a", app_path], "purpose": "Start the official macOS Ollama app, which starts the local server."}
++		return {"phase": "start_ollama_server", "command": "ollama", "args": ["serve"], "process_wait": false, "purpose": "Start the installed Ollama server process."}
++	if target_platform == "Windows":
++		var cli = _ps_quote(_ollama_cli_command())
++		var host = _ps_quote(_normalize_ollama_endpoint(endpoint))
++		var start_script = "$env:OLLAMA_HOST='%s'; Start-Process -WindowStyle Hidden -FilePath '%s' -ArgumentList 'serve'" % [host, cli]
++		return {"phase": "start_ollama_server", "command": _windows_powershell_executable(), "args": ["-NoProfile", "-Command", start_script], "purpose": "Start the installed Ollama server in the user session at the selected endpoint."}
++	if target_platform == "X11" or target_platform == "Server":
++		var systemctl_available = _command_exists("systemctl")
++		var system_service_available = systemctl_available and _ollama_systemd_service_available()
++		return _ollama_linux_server_start_step(endpoint, systemctl_available, system_service_available, _command_exists("pkexec"))
++	return {}
++
++
++func _ollama_linux_server_start_step(endpoint: String, systemctl_available: bool, system_service_available: bool, pkexec_available: bool) -> Dictionary:
++	if _normalize_ollama_endpoint(endpoint) == DEFAULT_OLLAMA_URL and systemctl_available and system_service_available:
++		if pkexec_available:
++			return {"phase": "start_ollama_server", "command": "pkexec", "args": ["systemctl", "start", "ollama.service"], "purpose": "Start the installed Ollama systemd service through the desktop privilege prompt."}
++		return {"phase": "start_ollama_server", "command": "systemctl", "args": ["start", "ollama.service"], "purpose": "Start the detected Ollama systemd service; privilege errors are reported without pulling a model."}
++	var purpose = "Start Ollama in the current user session on the selected local endpoint."
++	if _normalize_ollama_endpoint(endpoint) == DEFAULT_OLLAMA_URL and systemctl_available and not system_service_available:
++		purpose = "No loaded Ollama systemd service was detected; start ollama serve in the current user session instead."
++	return {"phase": "start_ollama_server", "command": "ollama", "args": ["serve"], "process_wait": false, "purpose": purpose}
++
++
++func _ollama_systemd_service_available() -> bool:
++	var output = []
++	var exit_code = OS.execute("systemctl", ["show", "-p", "LoadState", "ollama.service"], true, output, true)
++	if exit_code != 0:
++		return false
++	return "\n".join(output).find("LoadState=loaded") >= 0
++
++
++func _ollama_model_setup_steps(selected_model: String, inventory: Dictionary) -> Array:
++	var steps = []
++	var models = inventory.get("models", [])
++	if selected_model == OLLAMA_MODEL_NEMOTRON:
++		if not _ollama_model_list_has(models, OLLAMA_MODEL_NEMOTRON_SOURCE):
++			steps.append({"phase": "pull_nemotron_source", "command": "ollama", "args": ["pull", OLLAMA_MODEL_NEMOTRON_SOURCE], "purpose": "Pull the Nemotron Virtuoso source model after confirmation."})
++		if not _ollama_model_list_has(models, OLLAMA_MODEL_NEMOTRON):
++			var modelfile_path = _ollama_nemotron_modelfile_path()
++			steps.append({"phase": "write_nemotron_no_think_modelfile", "command": "write_file", "args": [modelfile_path], "content": _ollama_nemotron_modelfile_text(), "purpose": "Write the no-think Nemotron alias Modelfile."})
++			steps.append({"phase": "create_nemotron_no_think_alias", "command": "ollama", "args": ["create", OLLAMA_MODEL_NEMOTRON, "-f", modelfile_path], "purpose": "Create the no-think Nemotron alias, reusing source model blobs."})
++	elif not _ollama_model_list_has(models, selected_model):
++		steps.append({"phase": "pull_selected_model", "command": "ollama", "args": ["pull", selected_model], "purpose": "Pull only the selected model tag from the selected Ollama endpoint."})
++	return steps
++
++
++func _execute_ollama_setup_step(step: Dictionary, endpoint: String, setup_fixture: String = "") -> Dictionary:
++	var phase = str(step.get("phase", "ollama_setup"))
++	var command = str(step.get("command", ""))
++	var args = step.get("args", [])
++	var output = []
++	var exit_code = 0
++	var process_id = 0
++	if setup_fixture != "":
++		if setup_fixture == "installer_cancelled" and phase == "install_ollama_runtime":
++			exit_code = 1223
++			output.append("user cancelled installer")
++		elif setup_fixture == "installer_privilege" and phase == "install_ollama_runtime":
++			exit_code = 5
++			output.append("Access is denied; administrator permission required")
++		elif (setup_fixture == "installer_fail" and phase == "install_ollama_runtime") or (setup_fixture == "server_start_fail" and phase == "start_ollama_server") or (setup_fixture == "pull_fail" and phase.begins_with("pull")):
++			exit_code = 37
++			output.append("fixture failure for %s" % phase)
++		else:
++			if phase == "install_ollama_runtime" and setup_fixture != "install_cli_missing":
++				OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "server_unreachable")
++			elif phase == "start_ollama_server":
++				OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:")
++			elif phase == "pull_selected_model":
++				OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s" % str(args[1]))
++			elif phase == "pull_nemotron_source":
++				OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s" % OLLAMA_MODEL_NEMOTRON_SOURCE)
++			elif phase == "create_nemotron_no_think_alias":
++				OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s,%s" % [OLLAMA_MODEL_NEMOTRON_SOURCE, OLLAMA_MODEL_NEMOTRON])
++	else:
++		if command == "write_file":
++			exit_code = _write_text_file(str(args[0]), str(step.get("content", "")), output)
++		elif command == "ollama":
++			var wait_for_exit = step.get("process_wait", true)
++			var command_result = _execute_ollama_command(args, endpoint, output, wait_for_exit)
++			if wait_for_exit:
++				exit_code = command_result
++			else:
++				process_id = command_result
++				exit_code = 0 if process_id > 0 else 1
++		elif step.get("process_wait", true):
++			exit_code = OS.execute(command, args, true, output, true)
++		else:
++			process_id = OS.execute(command, args, false)
++			exit_code = 0 if process_id > 0 else 1
++	var result = {"phase": phase, "command": command, "args": args, "purpose": step.get("purpose", "Ollama setup command."), "exit_code": exit_code, "output_line_count": output.size(), "output_summary": _safe_command_output_summary(output)}
++	if phase.begins_with("pull") or phase.begins_with("create_nemotron"):
++		result["endpoint"] = endpoint
++	if process_id > 0:
++		result["process_id"] = process_id
++	return result
++
++
++func _execute_ollama_command(args: Array, endpoint: String, output: Array, wait_for_exit: bool = true) -> int:
++	var original_host = OS.get_environment("OLLAMA_HOST")
++	OS.set_environment("OLLAMA_HOST", _normalize_ollama_endpoint(endpoint))
++	var exit_code = _run_ollama_os_execute(_ollama_cli_command(), args, wait_for_exit, output, true)
++	OS.set_environment("OLLAMA_HOST", original_host)
++	return exit_code
++
++
++func _run_ollama_os_execute(command: String, args: Array, wait_for_exit: bool, output: Array, read_stderr: bool = true) -> int:
++	if _ollama_process_executor != null and _ollama_process_executor.is_valid():
++		return int(_ollama_process_executor.call_func(command, args, wait_for_exit, output, read_stderr))
++	return OS.execute(command, args, wait_for_exit, output, read_stderr)
++
++
++func _normalize_ollama_endpoint(endpoint: String) -> String:
++	var normalized = endpoint.strip_edges()
++	if normalized == "":
++		return DEFAULT_OLLAMA_URL
++	while normalized.ends_with("/"):
++		normalized = normalized.substr(0, normalized.length() - 1)
++	return normalized
++
++
++func _wait_for_ollama_endpoint(endpoint: String, setup_fixture: String = "") -> Dictionary:
++	var inventory = _ollama_inventory(endpoint)
++	if setup_fixture != "":
++		return inventory
++	for attempt in range(30):
++		if inventory.get("server", "unreachable") == "running":
++			return inventory
++		OS.delay_msec(1000)
++		inventory = _ollama_inventory(endpoint)
++	return inventory
++
++
++func _ollama_endpoint_is_local(endpoint: String) -> bool:
++	var normalized = endpoint.strip_edges().to_lower()
++	var scheme_end = normalized.find("://")
++	if scheme_end < 0:
++		return false
++	var scheme = normalized.substr(0, scheme_end)
++	if scheme != "http" and scheme != "https":
++		return false
++	var authority = normalized.substr(scheme_end + 3, normalized.length())
++	for separator in ["/", "?", "#"]:
++		var separator_index = authority.find(separator)
++		if separator_index >= 0:
++			authority = authority.substr(0, separator_index)
++	if authority == "" or authority.find("@") >= 0:
++		return false
++	var host = ""
++	var port = ""
++	var port_specified = false
++	if authority.begins_with("["):
++		var closing_bracket = authority.find("]")
++		if closing_bracket < 0:
++			return false
++		host = authority.substr(1, closing_bracket - 1)
++		var suffix = authority.substr(closing_bracket + 1, authority.length())
++		if suffix != "":
++			if not suffix.begins_with(":"):
++				return false
++			port_specified = true
++			port = suffix.substr(1, suffix.length())
++	else:
++		var colon_index = authority.find(":")
++		if colon_index >= 0:
++			if authority.find(":", colon_index + 1) >= 0:
++				return false
++			host = authority.substr(0, colon_index)
++			port_specified = true
++			port = authority.substr(colon_index + 1, authority.length())
++		else:
++			host = authority
++	if port_specified:
++		if not port.is_valid_integer() or int(port) < 1 or int(port) > 65535:
++			return false
++	return host == "localhost" or host == "127.0.0.1" or host == "::1"
++
+ func build_backend_runner_test_plan(mode: String, endpoint: String = "", model: String = "", python_path: String = "", api_provider: String = DEFAULT_API_PROVIDER, api_key_env: String = DEFAULT_API_KEY_ENV, proof_only: bool = false) -> Dictionary:
+ 	var normalized = _normalize_backend_fields(mode, endpoint, model, python_path, api_provider, api_key_env, "", DEFAULT_OPENVINO_DEVICE)
+ 	var runner_path = _resolve_caol_runner_path()
+@@ -686,12 +994,12 @@ func write_api_setup_intent(provider_id: String, python_path: String = "", perfo
+ 
+ 
+ 
+-func write_ollama_setup_intent(endpoint: String = DEFAULT_OLLAMA_URL, model: String = "", performed_external_install: bool = false, command_results: Array = [], result_summary: String = "plan_only_no_installer_no_model_pull") -> String:
++func write_ollama_setup_intent(endpoint: String = DEFAULT_OLLAMA_URL, model: String = "", performed_external_install: bool = false, command_results: Array = [], result_summary: String = "plan_only_no_installer_no_model_pull", plan_override: Dictionary = {}, setup_state: Dictionary = {}) -> String:
+ 	var config_dir_status = _ensure_backend_config_dir()
+ 	if not config_dir_status.get("ok", false):
+ 		return config_dir_status.get("status", "config_dir_error")
+ 	var config_dir = config_dir_status.get("path", "")
+-	var plan = build_ollama_setup_plan(endpoint, model)
++	var plan = plan_override if not plan_override.empty() else build_ollama_setup_plan(endpoint, model)
+ 	var intent = {
+ 		"action": plan.get("action", "install_ollama_and_prepare_model"),
+ 		"endpoint": plan.get("endpoint", DEFAULT_OLLAMA_URL),
+@@ -705,6 +1013,10 @@ func write_ollama_setup_intent(endpoint: String = DEFAULT_OLLAMA_URL, model: Str
+ 		"phase_order": plan.get("phase_order", []),
+ 		"confirmed": true,
+ 		"performed_external_install": performed_external_install,
++		"installer_command_succeeded": setup_state.get("installer_command_succeeded", false),
++		"runtime_detected": setup_state.get("runtime_detected", false),
++		"server_ready": setup_state.get("server_ready", false),
++		"model_ready": setup_state.get("model_ready", false),
+ 		"command_results": command_results,
+ 		"result_summary": result_summary,
+ 		"proof_policy": plan.get("automated_proof_policy", "plan_only_no_installer_no_model_pull_no_alias_create"),
+@@ -802,8 +1114,18 @@ func _status_summary(raw_status: String) -> String:
+ 		return "Ollama is running, but the selected model is not installed."
+ 	if raw_status.find("ollama_command_present_server_running_model_not_selected") >= 0:
+ 		return "Ollama is running; choose a model."
++	if raw_status.find("ollama_setup_cancelled") >= 0:
++		return "Ollama setup was cancelled; no later setup step ran."
++	if raw_status.find("ollama_setup_privilege_required") >= 0:
++		return "Ollama setup needs operating-system privileges that were not granted; no later setup step ran."
++	if raw_status.find("ollama_setup_cli_not_detected_after_install") >= 0:
++		return "The installer returned, but the Ollama CLI was not detected. No server start or model pull ran."
++	if raw_status.find("ollama_setup_server_start") >= 0 or raw_status.find("ollama_setup_selected_endpoint_unreachable") >= 0:
++		return "Ollama did not answer at the selected endpoint after startup; the model pull was skipped."
++	if raw_status.find("ollama_setup_model_not_detected_after_pull") >= 0:
++		return "The pull returned success, but a fresh inventory did not find the selected model."
+ 	if raw_status.find("ollama_setup_installer_failed") >= 0:
+-		return "Ollama installer command failed; CLI/server/model pull should be checked separately."
++		return "Ollama installer command failed; Catapult-Dabubu kept the failure and skipped server startup and model pull."
+ 	if raw_status.find("ollama_setup_model_pull_failed") >= 0:
+ 		return "Ollama model pull failed after installer/CLI step; Check can still report command/server readiness separately."
+ 	if raw_status.find("ollama_setup_command_failed") >= 0:
+@@ -816,6 +1138,16 @@ func _status_summary(raw_status: String) -> String:
+ func _ollama_setup_failure_summary(failed_step: Dictionary) -> String:
+ 	var command = str(failed_step.get("command", ""))
+ 	var args = failed_step.get("args", [])
++	var phase = str(failed_step.get("phase", ""))
++	var output_text = str(failed_step.get("output_summary", "")).to_lower()
++	if int(failed_step.get("exit_code", 0)) == 1223 or output_text.find("cancel") >= 0 or output_text.find("user declined") >= 0 or output_text.find("dismissed") >= 0:
++		return "ollama_setup_cancelled_%s" % phase
++	if output_text.find("permission denied") >= 0 or output_text.find("administrator") >= 0 or output_text.find("sudo") >= 0 or output_text.find("access is denied") >= 0 or output_text.find("authentication failed") >= 0 or output_text.find("authentication is required") >= 0 or output_text.find("interactive authentication") >= 0 or output_text.find("not authorized") >= 0:
++		return "ollama_setup_privilege_required_%s" % phase
++	if phase == "install_ollama_runtime":
++		return "ollama_setup_installer_failed_%s" % str(failed_step.get("exit_code", "unknown"))
++	if phase == "start_ollama_server":
++		return "ollama_setup_server_start_failed_%s" % str(failed_step.get("exit_code", "unknown"))
+ 	if command == "write_file":
+ 		return "ollama_setup_modelfile_write_failed_%s" % str(failed_step.get("exit_code", "unknown"))
+ 	if command == "ollama" and args.size() > 0 and str(args[0]) == "pull":
+@@ -827,6 +1159,24 @@ func _ollama_setup_failure_summary(failed_step: Dictionary) -> String:
+ 	return "ollama_setup_command_failed_%s" % str(failed_step.get("exit_code", "unknown"))
+ 
+ 
++func _ollama_setup_failure_detail(status: String) -> String:
++	if status.find("cancelled") >= 0:
++		return "Setup was cancelled. No later install, startup or model-pull step ran."
++	if status.find("privilege_required") >= 0:
++		return "The installer needs a privilege prompt the launcher could not complete. Resolve the permission request, then retry."
++	if status.find("installer_failed") >= 0:
++		return "The installer failed; CLI detection, server startup and model pull were skipped."
++	if status.find("cli_not_detected_after_install") >= 0:
++		return "The installer exited successfully, but the launcher could not find the CLI afterward. No pull ran."
++	if status.find("server_start") >= 0 or status.find("endpoint_unreachable") >= 0:
++		return "The selected endpoint did not answer after startup. The model pull was skipped."
++	if status.find("model_pull_failed") >= 0:
++		return "The selected model pull failed at the selected endpoint. Check the endpoint and retry."
++	if status.find("model_not_detected_after_pull") >= 0:
++		return "The pull command returned success, but the model was absent from the follow-up inventory."
++	return status
++
++
+ func write_sandboxed_options_config(options_path: String, mode: String, endpoint: String = "", model: String = "", python_path: String = "", api_provider: String = DEFAULT_API_PROVIDER, api_key_env: String = DEFAULT_API_KEY_ENV, openvino_model_dir: String = "", openvino_device: String = DEFAULT_OPENVINO_DEVICE) -> String:
+ 	# Repeatable proof helper only. Normal Save options writes the active C-AOL
+ 	# userdir config/options.json; this helper still refuses normal-looking paths.
+@@ -1084,17 +1434,17 @@ func _detect_ollama_status(ollama_url: String = DEFAULT_OLLAMA_URL, model: Strin
+ func _ollama_inventory(ollama_url: String = DEFAULT_OLLAMA_URL) -> Dictionary:
+ 	var fixture = OS.get_environment("LACAPULT_OLLAMA_FIXTURE")
+ 	if fixture != "":
+-		return _ollama_fixture_inventory(fixture)
++		var fixture_inventory = _ollama_fixture_inventory(fixture)
++		fixture_inventory["endpoint"] = _normalize_ollama_endpoint(ollama_url)
++		return fixture_inventory
++	var cli = _ollama_cli_command()
++	if cli == "":
++		return {"command": "missing", "server": "unreachable", "models": [], "endpoint": _normalize_ollama_endpoint(ollama_url)}
+ 	var output = []
+-	var command_lookup = "where" if OS.get_name() == "Windows" else "which"
+-	var exit_code = OS.execute(command_lookup, ["ollama"], true, output, true)
+-	if exit_code != 0:
+-		return {"command": "missing", "server": "unreachable", "models": []}
+-	output.clear()
+-	exit_code = OS.execute("ollama", ["list"], true, output, true)
++	var exit_code = _execute_ollama_command(["list"], ollama_url, output)
+ 	if exit_code != 0:
+-		return {"command": "present", "server": "unreachable", "models": []}
+-	return {"command": "present", "server": "running", "models": _parse_ollama_list_models("\n".join(output))}
++		return {"command": "present", "server": "unreachable", "models": [], "endpoint": _normalize_ollama_endpoint(ollama_url)}
++	return {"command": "present", "server": "running", "models": _parse_ollama_list_models("\n".join(output)), "endpoint": _normalize_ollama_endpoint(ollama_url)}
+ 
+ 
+ func _ollama_fixture_inventory(fixture: String) -> Dictionary:
+@@ -1124,7 +1474,7 @@ func _ollama_model_list_has(models: Array, model: String) -> bool:
+ 	var wanted = model.strip_edges()
+ 	for entry in models:
+ 		var candidate = str(entry).strip_edges()
+-		if candidate == wanted or candidate.begins_with(wanted + ":") or wanted.begins_with(candidate + ":"):
++		if candidate == wanted:
+ 			return true
+ 	return false
+ 
+@@ -1383,6 +1733,21 @@ func _command_exists(command: String) -> bool:
+ 	return OS.execute(command_lookup, [command], true, output, true) == 0
+ 
+ 
++func _ollama_cli_command() -> String:
++	if _command_exists("ollama"):
++		return "ollama"
++	var candidates = []
++	if OS.get_name() == "OSX":
++		candidates.append("/Applications/Ollama.app/Contents/Resources/ollama")
++		candidates.append(OS.get_environment("HOME").plus_file("Applications").plus_file("Ollama.app").plus_file("Contents").plus_file("Resources").plus_file("ollama"))
++	elif OS.get_name() == "Windows":
++		candidates.append(OS.get_environment("LOCALAPPDATA").plus_file("Programs").plus_file("Ollama").plus_file("ollama.exe"))
++	for candidate in candidates:
++		if File.new().file_exists(candidate):
++			return candidate
++	return ""
++
++
+ func _venv_python_command(target_path: String) -> String:
+ 	if target_path.strip_edges() == "":
+ 		return "python3"
+@@ -1462,8 +1827,8 @@ func _build_ollama_hardware_check(ram_mb: int, vram_mb: int, source: String, acc
+ 			state = "red"
+ 		elif acceleration.get("state", "gray") == "yellow" and state == "green":
+ 			state = "yellow"
+-		return {"ram_mb": ram_mb, "vram_mb": vram_mb, "ram_gib": ram_gib, "vram_gib": vram_gib, "state": state, "performance_lights": {OLLAMA_MODEL_MISTRAL: mistral_state, OLLAMA_MODEL_NEMOTRON: nemotron_state}, "acceleration": acceleration, "acceleration_state": acceleration.get("state", "gray"), "acceleration_label": acceleration.get("label", "not measured"), "gpu_names": gpu_names, "source": source, "proof_policy": "hardware_detect_only_no_install_no_pull"}
+-	return {"ram_mb": ram_mb, "vram_mb": vram_mb, "ram_gib": ram_gib, "vram_gib": vram_gib, "state": state, "performance_lights": {OLLAMA_MODEL_MISTRAL: "gray", OLLAMA_MODEL_NEMOTRON: "gray"}, "acceleration": acceleration, "acceleration_state": acceleration.get("state", "gray"), "acceleration_label": acceleration.get("label", "not measured"), "gpu_names": gpu_names, "source": source, "proof_policy": "hardware_detect_only_no_install_no_pull"}
++		return {"ram_mb": ram_mb, "vram_mb": vram_mb, "ram_gib": ram_gib, "vram_gib": vram_gib, "state": state, "performance_lights": {OLLAMA_MODEL_MISTRAL: mistral_state, OLLAMA_MODEL_NEMOTRON: nemotron_state, OLLAMA_MODEL_GEMMA4_E2B: "gray", OLLAMA_MODEL_GEMMA4_E4B: "gray"}, "acceleration": acceleration, "acceleration_state": acceleration.get("state", "gray"), "acceleration_label": acceleration.get("label", "not measured"), "gpu_names": gpu_names, "source": source, "proof_policy": "hardware_detect_only_no_install_no_pull"}
++	return {"ram_mb": ram_mb, "vram_mb": vram_mb, "ram_gib": ram_gib, "vram_gib": vram_gib, "state": state, "performance_lights": {OLLAMA_MODEL_MISTRAL: "gray", OLLAMA_MODEL_NEMOTRON: "gray", OLLAMA_MODEL_GEMMA4_E2B: "gray", OLLAMA_MODEL_GEMMA4_E4B: "gray"}, "acceleration": acceleration, "acceleration_state": acceleration.get("state", "gray"), "acceleration_label": acceleration.get("label", "not measured"), "gpu_names": gpu_names, "source": source, "proof_policy": "hardware_detect_only_no_install_no_pull"}
+ 
+ 
+ func _ollama_acceleration_state(accel_hint: String, gpu_names: Array, vram_mb: int, source: String) -> Dictionary:
+diff --git a/scripts/BackendSetupUI.gd b/scripts/BackendSetupUI.gd
+index 45380c3..7935c05 100644
+--- a/scripts/BackendSetupUI.gd
++++ b/scripts/BackendSetupUI.gd
+@@ -4,8 +4,6 @@ extends VBoxContainer
+ const OLLAMA_MODEL_MISTRAL = "mistral:v0.3"
+ const OLLAMA_MODEL_NEMOTRON_SOURCE = "mirage335/NVIDIA-Nemotron-Nano-9B-v2-virtuoso:latest"
+ const OLLAMA_MODEL_NEMOTRON = "nemotron-9b-dumber:latest"
+-const OLLAMA_LABEL_MISTRAL = "Mistral v0.3"
+-const OLLAMA_LABEL_NEMOTRON = "Nemotron 9B"
+ const CONFIRM_DIALOG_SIZE = Vector2(520, 260)
+ 
+ var _backend_modes := ["api", "ollama"]
+@@ -133,10 +131,9 @@ func _build_controls() -> void:
+ 	ollama_choice_row.add_child(_ollama_model_choice_label)
+ 	_ollama_model_choice = OptionButton.new()
+ 	_ollama_model_choice.rect_min_size = Vector2(300, 0)
+-	_ollama_model_choice.add_item(OLLAMA_LABEL_MISTRAL)
+-	_ollama_model_choice.set_item_metadata(_ollama_model_choice.get_item_count() - 1, OLLAMA_MODEL_MISTRAL)
+-	_ollama_model_choice.add_item(OLLAMA_LABEL_NEMOTRON)
+-	_ollama_model_choice.set_item_metadata(_ollama_model_choice.get_item_count() - 1, OLLAMA_MODEL_NEMOTRON)
++	for model_tag in BackendConfig.get_ollama_model_choices():
++		_ollama_model_choice.add_item(BackendConfig.get_ollama_model_choice_label(model_tag))
++		_ollama_model_choice.set_item_metadata(_ollama_model_choice.get_item_count() - 1, model_tag)
+ 	_ollama_model_choice.connect("item_selected", self, "_on_OllamaModelChoice_item_selected")
+ 	ollama_choice_row.add_child(_ollama_model_choice)
+ 
+@@ -299,7 +296,7 @@ func _refresh_backend_setup_controls() -> void:
+ 		_backend_endpoint_label.text = "Ollama URL"
+ 		_backend_model_label.text = "Ollama model tag"
+ 		_backend_endpoint.placeholder_text = BackendConfig.DEFAULT_OLLAMA_URL
+-		_backend_model.placeholder_text = "%s or %s" % [OLLAMA_MODEL_MISTRAL, OLLAMA_MODEL_NEMOTRON]
++		_backend_model.placeholder_text = "Ollama model tag"
+ 		_backend_endpoint.hint_tooltip = "Local Ollama server URL."
+ 		_backend_endpoint.text = Settings.read("backend_ollama_endpoint")
+ 		var normalized_model = BackendConfig.normalize_ollama_model_tag(Settings.read("backend_ollama_model"))
+@@ -372,19 +369,30 @@ func _ollama_status_rows() -> Array:
+ 	var acceleration_label = hardware.get("acceleration_label", acceleration.get("label", "acceleration not measured"))
+ 	_hardware_hint.text = "RAM: %.1f GiB   VRAM: %.1f GiB   Acceleration: %s" % [hardware.get("ram_gib", 0.0), hardware.get("vram_gib", 0.0), acceleration_label]
+ 	var performance = hardware.get("performance_lights", {})
+-	return [
++	var rows = [
+ 		{"label": "Ollama command", "state": readiness.get("command_state", readiness.get("command_light", "red"))},
+ 		{"label": "Ollama server", "state": readiness.get("server_state", readiness.get("server_light", "red"))},
+ 		{"label": "Acceleration", "state": hardware.get("acceleration_state", acceleration.get("state", "gray")), "state_label": acceleration_label},
+-		{"label": "Mistral model", "state": model_states.get(OLLAMA_MODEL_MISTRAL, "red")},
+-		{"label": "Nemotron model", "state": model_states.get(OLLAMA_MODEL_NEMOTRON, "red")},
+-		{"label": "mistral:v0.3 performance", "state": performance.get(OLLAMA_MODEL_MISTRAL, "gray"), "state_label": _performance_label(performance.get(OLLAMA_MODEL_MISTRAL, "gray"))},
+-		{"label": "nemotron-9b performance", "state": performance.get(OLLAMA_MODEL_NEMOTRON, "gray"), "state_label": _performance_label(performance.get(OLLAMA_MODEL_NEMOTRON, "gray"))},
++	]
++	for model_tag in BackendConfig.get_ollama_model_choices():
++		var model_label = BackendConfig.get_ollama_model_choice_label(model_tag)
++		var model_status_label = model_label
++		var performance_label = model_label
++		if model_tag == OLLAMA_MODEL_MISTRAL:
++			model_status_label = "Mistral"
++			performance_label = "mistral:v0.3"
++		elif model_tag == OLLAMA_MODEL_NEMOTRON:
++			model_status_label = "Nemotron"
++			performance_label = "nemotron-9b"
++		rows.append({"label": "%s model" % model_status_label, "state": model_states.get(model_tag, "red")})
++		rows.append({"label": "%s performance" % performance_label, "state": performance.get(model_tag, "gray"), "state_label": _performance_label(performance.get(model_tag, "gray"))})
++	rows.append_array([
+ 		{"label": "Python/venv", "state": readiness.get("python_state", readiness.get("python_light", "red"))},
+ 		{"label": "Harness requirements", "state": "green" if BackendConfig.resolve_active_install_openclaw_harness_requirements_path() != "" else "yellow"},
+ 		{"label": "Options", "state": readiness.get("options_state", readiness.get("options_light", "green"))},
+ 		{"label": "Ollama runner test", "state": _runner_test_state("ollama")}
+-	]
++	])
++	return rows
+ 
+ 
+ func _api_status_rows(raw_status: String) -> Array:
+@@ -681,7 +689,7 @@ func _confirmation_text_for_mode(mode: String) -> String:
+ 		var fields = _collect_current_backend_fields()
+ 		var plan = BackendConfig.build_ollama_setup_plan(fields.get("endpoint", BackendConfig.DEFAULT_OLLAMA_URL), fields.get("model", ""))
+ 		var proof_note = "\n\nProof mode is enabled for this run, so Catapult-Dabubu records the confirmed intent only instead of running installers or `ollama pull`." if _external_setup_proof_only_enabled() else ""
+-		return "Confirm Ollama setup for model %s.\n\nCLI input (serialized, not shell-chained):\n%s\n\nThis may install Ollama or pull a model only after the matching readiness step is available. If Ollama was just installed or is still opening, run Check before pulling the model.\nThe launcher may appear to time out. Wait for Ollama installation to commence.\nCatapult-Dabubu will not pull models before this confirmation.%s" % [plan.get("model", Settings.read("backend_ollama_model")), plan.get("command_preview", "manual install required"), proof_note]
++		return "Confirm Ollama setup for model %s.\n\nCLI input (serialized, not shell-chained):\n%s\n\nAfter confirmation, Catapult-Dabubu installs Ollama with this platform's official installer when the CLI is missing, re-detects the CLI, starts Ollama if needed, checks the selected endpoint, and pulls only this exact model tag. The installer may request operating-system authorization; cancelling stops the sequence and reports the partial result.\nCatapult-Dabubu will not install or pull before this confirmation.%s" % [plan.get("model", Settings.read("backend_ollama_model")), plan.get("command_preview", "manual install required"), proof_note]
+ 	if mode == "api_runner_test" or mode == "ollama_runner_test":
+ 		var fields = _collect_current_backend_fields()
+ 		var backend = "api" if mode == "api_runner_test" else "ollama"
+@@ -744,7 +752,7 @@ func _on_ExternalBackendAction_confirmed() -> void:
+ 			yield(get_tree(), "idle_frame")
+ 		var setup_result = BackendConfig.run_ollama_setup(fields.get("endpoint", BackendConfig.DEFAULT_OLLAMA_URL), fields.get("model", ""), proof_only)
+ 		var status = setup_result.get("status", "ollama_setup_unknown")
+-		if status != "ok" and status != "ollama_setup_install_ok":
++		if status != "ok" and status != "ollama_setup_install_ok" and status != "ollama_setup_already_ready":
+ 			_set_backend_status("ollama", status, "Ollama setup command failed" if not proof_only else "Ollama setup intent failed")
+ 			post_message = _ollama_setup_failure_message(setup_result, proof_only)
+ 			Status.post(post_message)
+@@ -754,7 +762,11 @@ func _on_ExternalBackendAction_confirmed() -> void:
+ 			post_message = "Ollama setup intent recorded in proof mode; no external install/download was performed."
+ 		else:
+ 			_set_backend_status("ollama", _check_current_backend_status(), "Ollama setup command finished")
+-			post_message = "Ollama setup command finished after confirmation; installer/CLI/server and model-pull state can be checked separately."
++			if status == "ollama_setup_already_ready":
++				_backend_status.text = "The selected Ollama endpoint and model are already ready. No installer or model pull ran."
++				post_message = "Selected Ollama model is already present at the selected endpoint; no installation or pull was performed."
++			else:
++				post_message = "Ollama setup finished: the CLI was re-detected, the selected endpoint was checked, and the selected model is ready."
+ 	elif _pending_confirm_action == "api_runner_test" or _pending_confirm_action == "ollama_runner_test":
+ 		var fields = _collect_current_backend_fields()
+ 		var backend = "api" if _pending_confirm_action == "api_runner_test" else "ollama"
+@@ -853,6 +865,7 @@ func _python_venv_setup_failure_message(setup_result: Dictionary, proof_only: bo
+ func _ollama_setup_failure_message(setup_result: Dictionary, proof_only: bool) -> String:
+ 	if proof_only:
+ 		return "Ollama setup proof intent failed; no external install/download was performed."
++	var status = str(setup_result.get("status", "ollama_setup_unknown"))
+ 	var failed_step = setup_result.get("failed_step", {})
+ 	var purpose = failed_step.get("purpose", "Ollama setup command")
+ 	var command = failed_step.get("command", "")
+@@ -863,4 +876,7 @@ func _ollama_setup_failure_message(setup_result: Dictionary, proof_only: bool) -
+ 			arg_strings.append(str(arg))
+ 		args = PoolStringArray(arg_strings).join(" ")
+ 	var exit_code = str(failed_step.get("exit_code", "unknown"))
+-	return "%s failed after confirmation (exit %s): %s %s. Installer/CLI/server/model-pull state is reported separately; use Check after fixing the failed step." % [purpose, exit_code, command, args]
++	var detail = BackendConfig._ollama_setup_failure_detail(status)
++	if failed_step.empty():
++		return "%s\nSetup status: %s" % [detail, status]
++	return "%s failed after confirmation (exit %s): %s %s.\n%s" % [purpose, exit_code, command, args, detail]
+diff --git a/scripts/path_helper.gd b/scripts/path_helper.gd
+index d3a8882..ce445e4 100644
+--- a/scripts/path_helper.gd
++++ b/scripts/path_helper.gd
+@@ -34,6 +34,15 @@ var _last_active_install_dir := ""
+ 
+ 
+ func _get_own_dir() -> String:
++	var data_dir_override = OS.get_environment("CATAPULT_DABUBU_DATA_DIR").strip_edges()
++	if data_dir_override != "":
++		var override_dir = Directory.new()
++		if not override_dir.dir_exists(data_dir_override):
++			var override_err = override_dir.make_dir_recursive(data_dir_override)
++			if override_err != OK and override_err != ERR_ALREADY_EXISTS:
++				push_error("Unable to create CATAPULT_DABUBU_DATA_DIR: %s" % data_dir_override)
++				return ""
++		return data_dir_override
+ 	
+ 	# On macOS, use the standard Application Support directory
+ 	if OS.get_name() == "OSX":
+diff --git a/tools/godot_ollama_workflow_smoke.gd b/tools/godot_ollama_workflow_smoke.gd
+index 4b715ec..66c6d42 100644
+--- a/tools/godot_ollama_workflow_smoke.gd
++++ b/tools/godot_ollama_workflow_smoke.gd
+@@ -1,5 +1,7 @@
+ extends SceneTree
+ 
++var _fake_ollama_process_calls = []
++
+ # Headless UI smoke for Package 4: Ollama installer/model readiness workflow.
+ # Proves the visible Ollama setup has one model-choice control, compact readiness
+ # lights for Mistral/Nemotron plus Python/options state, Check/Save/Install actions,
+@@ -16,6 +18,20 @@ func _run() -> void:
+ 	var paths = root.get_node("/root/Paths")
+ 	var helpers = root.get_node("/root/Helpers")
+ 	var backend_config = root.get_node("/root/BackendConfig")
++	_require(backend_config._ollama_endpoint_is_local("http://localhost:11434") and backend_config._ollama_endpoint_is_local("https://127.0.0.1:11434/api") and backend_config._ollama_endpoint_is_local("http://[::1]:11434"), "valid loopback endpoint was rejected")
++	_require(not backend_config._ollama_endpoint_is_local("http://localhost.evil.com:11434") and not backend_config._ollama_endpoint_is_local("https://127.0.0.1.evil.com:11434") and not backend_config._ollama_endpoint_is_local("http://localhost:"), "lookalike or malformed endpoint passed loopback validation")
++	var no_linux_service = backend_config._ollama_linux_server_start_step(backend_config.DEFAULT_OLLAMA_URL, true, false, true)
++	_require(no_linux_service.get("command", "") == "ollama" and no_linux_service.get("args", []) == ["serve"], "Linux selected systemctl despite no loaded Ollama service")
++	var loaded_linux_service = backend_config._ollama_linux_server_start_step(backend_config.DEFAULT_OLLAMA_URL, true, true, true)
++	_require(loaded_linux_service.get("command", "") == "pkexec" and loaded_linux_service.get("args", []) == ["systemctl", "start", "ollama.service"], "Linux did not use the privilege prompt for a detected systemd service")
++	_require(backend_config._ollama_setup_failure_summary({"phase": "start_ollama_server", "command": "systemctl", "exit_code": 1, "output_summary": "Interactive authentication is required"}).find("privilege_required") >= 0, "Linux systemd privilege denial did not remain a distinct startup result")
++	_require(backend_config._ollama_setup_failure_summary({"phase": "start_ollama_server", "command": "pkexec", "exit_code": 126, "output_summary": "Request dismissed"}).find("cancelled") >= 0, "Linux polkit dismissal did not remain a distinct cancellation result")
++	var model_choices = backend_config.get_ollama_model_choices()
++	_require(model_choices.size() == 4 and model_choices[0] == "mistral:v0.3" and model_choices[1] == "nemotron-9b-dumber:latest", "adding Gemma changed the existing Mistral/Nemotron model choices or order")
++	_require(backend_config.normalize_ollama_model_tag("") == "mistral:v0.3" and backend_config.normalize_ollama_model_tag("mistral-v0.3") == "mistral:v0.3", "existing blank/legacy Mistral selection defaults changed")
++	_require(backend_config.normalize_ollama_model_tag("nemotron-9b") == "nemotron-9b-dumber:latest", "existing Nemotron selection alias changed")
++	var isolated_data_dir = OS.get_environment("CATAPULT_DABUBU_DATA_DIR").strip_edges()
++	_require(isolated_data_dir != "" and paths.own_dir == isolated_data_dir, "launch with CATAPULT_DABUBU_DATA_DIR pointing to an isolated temporary directory")
+ 	settings.store("game", "caol")
+ 	settings.store("active_install_caol", "Package 4 Sandbox")
+ 	var install_dir = paths.own_dir.plus_file("caol").plus_file("game0")
+@@ -37,6 +53,9 @@ func _run() -> void:
+ 	var missing = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3")
+ 	_require(missing.get("model_states", {}).get("mistral:v0.3", "") == "green", "fixture model-present state did not mark Mistral ready")
+ 	_require(missing.get("model_states", {}).get("nemotron-9b-dumber:latest", "") == "yellow", "fixture model-missing state did not mark Nemotron pull-needed")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:nemotron-9b-dumber:latest")
++	var nemotron_ready = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3")
++	_require(nemotron_ready.get("model_states", {}).get("nemotron-9b-dumber:latest", "") == "green", "exact Nemotron alias inventory entry did not remain ready")
+ 	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "server_unreachable")
+ 	var unreachable = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3")
+ 	_require(unreachable.get("command_state", "") == "green" and unreachable.get("server_state", "") == "yellow", "fixture server-unreachable state did not mark command/server lights correctly")
+@@ -51,7 +70,14 @@ func _run() -> void:
+ 	_require(nemotron_plan_text.find("SYSTEM /no_think") >= 0 or nemotron_plan_text.find("/no_think") >= 0, "Nemotron setup plan did not write a no-think Modelfile")
+ 	_require(nemotron_plan_text.find("create_nemotron_no_think_alias") >= 0, "Nemotron setup plan did not create the no-think alias")
+ 	_require(nemotron_plan_text.find("does not duplicate model weights") >= 0 or nemotron_plan_text.find("reuses the source model blobs") >= 0, "Nemotron setup plan does not state no duplicate model blob boundary")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mirage335/NVIDIA-Nemotron-Nano-9B-v2-virtuoso:latest")
++	var nemotron_source_plan = backend_config.build_ollama_setup_plan(backend_config.DEFAULT_OLLAMA_URL, "nemotron-9b")
++	var nemotron_source_phases = []
++	for command in nemotron_source_plan.get("commands", []):
++		nemotron_source_phases.append(command.get("phase", ""))
++	_require(not nemotron_source_phases.has("pull_nemotron_source") and nemotron_source_phases.has("create_nemotron_no_think_alias"), "exact Nemotron source inventory did not preserve the no-duplicate-pull alias contract")
+ 	OS.set_environment("LACAPULT_HARDWARE_FIXTURE", "ram:16000,vram:1024")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
+ 
+ 	var config_path = paths.config.plus_file(backend_config.BACKEND_CONFIG_FILENAME)
+ 	var patch_path = paths.config.plus_file(backend_config.C_AOL_OPTIONS_PATCH_FILENAME)
+@@ -78,12 +104,13 @@ func _run() -> void:
+ 	_require(all_text.find("Ollama model choice") >= 0, "Ollama model choice control did not render")
+ 	_require(_visible_text_count(all_text, "Ollama model choice") == 1, "Ollama model choice rendered more than once")
+ 	_require(all_text.find("Ollama model tag") < 0, "duplicate freeform Ollama model field is still visible")
+-	_require(_option_has_item(ui._ollama_model_choice, "Mistral v0.3") and _option_has_item(ui._ollama_model_choice, "Nemotron 9B"), "supported Ollama model choices did not render")
+-	_require(all_text.find("Ollama command") >= 0 and all_text.find("Mistral") >= 0 and all_text.find("Nemotron") >= 0 and all_text.find("Python/venv") >= 0, "Ollama status rows did not render")
++	_require(_option_has_item(ui._ollama_model_choice, "Mistral v0.3") and _option_has_item(ui._ollama_model_choice, "Nemotron 9B") and _option_has_item(ui._ollama_model_choice, "Gemma 4 E2B") and _option_has_item(ui._ollama_model_choice, "Gemma 4 E4B"), "supported Ollama model choices did not render")
++	_require(ui._ollama_model_choice.get_item_count() == 4, "Ollama model choice catalogue count mismatch")
++	_require(all_text.find("Ollama command") >= 0 and all_text.find("Mistral") >= 0 and all_text.find("Nemotron") >= 0 and all_text.find("Gemma 4 E2B") >= 0 and all_text.find("Gemma 4 E4B") >= 0 and all_text.find("Python/venv") >= 0, "Ollama status rows did not render every catalog choice")
+ 	_require(all_text.find("Save options") >= 0 and all_text.find("Check") >= 0 and all_text.find("Install Ollama / model") >= 0 and all_text.find("Set up Python venv") >= 0 and all_text.find("Test Ollama runner") >= 0, "Ollama action row did not render Save/Check/Install/venv/runner-test actions")
+ 	_require(all_text.find("API key") < 0 and all_text.find("Provider") < 0, "Ollama mode leaked API-only controls")
+ 	_require(all_text.find("RAM: 15.6 GiB") >= 0 and all_text.find("VRAM: 1.0 GiB") >= 0 and all_text.find("mistral:v0.3 performance") >= 0 and all_text.find("nemotron-9b performance") >= 0 and all_text.find("Hardware check: missing") < 0, "Ollama GiB hardware/performance display did not render or still says missing")
+-
++	_require(_find_status_row(ui._ollama_status_lights, "Gemma4E2BperformanceStatusRow", "gray") and _find_status_row(ui._ollama_status_lights, "Gemma4E4BperformanceStatusRow", "gray"), "Gemma performance should remain not measured without an evidence-based assessment")
+ 	var check_button = _find_button(ui, "Check")
+ 	_require(check_button != null, "Check button lookup failed")
+ 	check_button.emit_signal("pressed")
+@@ -91,6 +118,67 @@ func _run() -> void:
+ 	_require(not File.new().file_exists(config_path), "Check wrote backend config; it should be detection-only")
+ 	_require(_find_status_row(ui._ollama_status_lights, "MistralmodelStatusRow", "green") and _find_status_row(ui._ollama_status_lights, "NemotronmodelStatusRow", "yellow"), "fixture model readiness rows did not render expected present/missing state")
+ 
++	var gemma_tags = ["gemma4:e2b", "gemma4:e4b"]
++	for tag in gemma_tags:
++		var choice_index = _choice_index_for_tag(ui._ollama_model_choice, tag)
++		_require(choice_index >= 0, "exact Gemma tag missing from model catalogue: %s" % tag)
++		ui._on_OllamaModelChoice_item_selected(choice_index)
++		_require(settings.read("backend_ollama_model") == tag, "model selection did not save exact tag: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s" % tag)
++		var own_ready = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3").get("model_states", {})
++		_require(own_ready.get(tag, "") == "green", "selected Gemma tag was not independently ready: %s" % tag)
++		var other_tag = "gemma4:e4b" if tag == "gemma4:e2b" else "gemma4:e2b"
++		_require(own_ready.get(other_tag, "") == "yellow", "installed Gemma tag incorrectly made the other Gemma ready: %s" % other_tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s:latest" % tag)
++		var near_match = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3").get("model_states", {})
++		_require(near_match.get(tag, "") == "yellow", "lookalike Gemma tag incorrectly satisfied exact inventory match: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s" % tag)
++		var plan = backend_config.build_ollama_setup_plan(backend_config.DEFAULT_OLLAMA_URL, tag)
++		_require(plan.get("model", "") == tag and plan.get("model_source", "") == tag, "pull plan changed exact Gemma tag: %s" % tag)
++		_require(plan.get("commands", []).size() == 0, "installed selected Gemma fixture queued an unnecessary pull: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
++		var missing_plan = backend_config.build_ollama_setup_plan(backend_config.DEFAULT_OLLAMA_URL, tag)
++		_require(missing_plan.get("commands", []).size() == 1 and missing_plan.get("commands", [])[0].get("args", []) == ["pull", tag], "missing Gemma pull did not use its exact tag: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "server_unreachable")
++		var endpoint_unreachable = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3")
++		_require(endpoint_unreachable.get("server_state", "") == "yellow" and endpoint_unreachable.get("model_states", {}).get(tag, "") == "red", "endpoint failure was not distinguished from missing Gemma model: %s" % tag)
++		var startup_plan = backend_config.build_ollama_setup_plan(backend_config.DEFAULT_OLLAMA_URL, tag)
++		_require(startup_plan.get("commands", []).size() == 1 and startup_plan.get("commands", [])[0].get("phase", "") == "start_ollama_server" and startup_plan.get("commands", [])[0].get("args", []).has("pull") == false, "unreachable endpoint should queue only startup, not a model pull: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "command_missing")
++		var command_missing_plan = backend_config.build_ollama_setup_plan(backend_config.DEFAULT_OLLAMA_URL, tag)
++		_require(JSON.print(command_missing_plan.get("commands", [])).find("\"pull\"") < 0, "missing Ollama command queued Gemma pull: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
++		ui._on_BackendMode_item_selected(0)
++		_require(settings.read("backend_ollama_model") == tag, "API backend switch discarded saved Gemma tag: %s" % tag)
++		ui._on_BackendMode_item_selected(1)
++		_require(settings.read("backend_ollama_model") == tag, "Ollama backend switch discarded saved Gemma tag: %s" % tag)
++		_require(ui._save_current_backend_setup() == "ok", "Gemma setup did not save active game options: %s" % tag)
++		var saved_options = _option_values(helpers.load_json_file(options_path))
++		_require(saved_options.get("LLM_INTENT_OLLAMA_MODEL", "") == tag, "saved active-game options changed Gemma tag: %s" % tag)
++		settings._exit_tree()
++		settings._initialized = false
++		settings._load()
++		_require(settings.read("backend_ollama_model") == tag, "launcher settings disk round-trip changed Gemma tag: %s" % tag)
++		var runner_plan = backend_config.build_backend_runner_test_plan("ollama", backend_config.DEFAULT_OLLAMA_URL, tag, "python3", backend_config.DEFAULT_API_PROVIDER, backend_config.DEFAULT_API_KEY_ENV, true)
++		_require(runner_plan.get("runner_path", "").find("tools/llm_runner/runner.py") >= 0 and runner_plan.get("args", []).has(tag), "installed-game runner plan lost exact Gemma tag: %s" % tag)
++		var runner_result = backend_config.run_backend_runner_test("ollama", backend_config.DEFAULT_OLLAMA_URL, tag, "python3", backend_config.DEFAULT_API_PROVIDER, backend_config.DEFAULT_API_KEY_ENV, true)
++		_require(runner_result.get("status", "") == "runner_test_ok" and runner_result.get("plan", {}).get("args", []).has(tag), "installed-game runner dry-run did not retain Gemma tag: %s" % tag)
++		ui.queue_free()
++		yield(self, "idle_frame")
++		ui = VBoxContainer.new()
++		ui.set_script(ui_script)
++		root.add_child(ui)
++		yield(self, "idle_frame")
++		_require(settings.read("backend_mode") == "ollama" and settings.read("backend_ollama_model") == tag, "launcher UI relaunch reset Gemma selection: %s" % tag)
++		_require(str(ui._ollama_model_choice.get_item_metadata(ui._ollama_model_choice.get_selected())) == tag, "recreated setup UI did not select retained Gemma tag: %s" % tag)
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
++		ui._refresh_backend_setup_controls()
++		var refreshed = backend_config.get_ollama_readiness(backend_config.DEFAULT_OLLAMA_URL, "python3").get("model_states", {})
++		_require(refreshed.get(tag, "") == "yellow", "refresh did not show missing selected Gemma as pull-needed: %s" % tag)
++		_require(str(ui._ollama_model_choice.get_item_metadata(ui._ollama_model_choice.get_selected())) == tag, "refresh reset retained Gemma choice: %s" % tag)
++	settings.store("backend_ollama_model", "nemotron-9b-dumber:latest")
++	ui._refresh_backend_setup_controls()
++
+ 	var save_button = _find_button(ui, "Save options")
+ 	_require(save_button != null, "Save options button lookup failed")
+ 	save_button.emit_signal("pressed")
+@@ -146,6 +234,70 @@ func _run() -> void:
+ 	_require(ollama_intent.get("model_source", "") == "mirage335/NVIDIA-Nemotron-Nano-9B-v2-virtuoso:latest", "Ollama setup intent lost Virtuoso source model")
+ 	_require(ollama_intent.get("performed_external_install", true) == false, "Ollama setup proof claimed an external install ran")
+ 
++	var setup_endpoint = "http://127.0.0.1:11435"
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "command_missing")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "installer_fail")
++	var failed_installer = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(failed_installer.get("status", "") == "ollama_setup_installer_failed_37" and failed_installer.get("performed_external_install", true) == false, "failed installer was reported as installed or successful")
++	_require(failed_installer.get("results", []).size() == 1 and failed_installer.get("results", [])[0].get("phase", "") == "install_ollama_runtime", "failed installer did not stop before startup/model pull")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "installer_cancelled")
++	var cancelled_installer = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(cancelled_installer.get("status", "").find("cancelled") >= 0, "cancelled installer was not reported as cancelled")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "installer_privilege")
++	var privilege_installer = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(privilege_installer.get("status", "").find("privilege_required") >= 0, "installer privilege failure was not reported distinctly")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "install_cli_missing")
++	var missing_after_install = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(missing_after_install.get("status", "") == "ollama_setup_cli_not_detected_after_install" and missing_after_install.get("installer_command_succeeded", false) and not missing_after_install.get("performed_external_install", true), "post-install CLI recheck mislabeled installer completion as a verified install")
++	_require(not missing_after_install.get("runtime_detected", true) and not missing_after_install.get("server_ready", true) and not missing_after_install.get("model_ready", true), "post-install CLI recheck falsely reported runtime/server/model ready")
++	_require(missing_after_install.get("results", []).size() == 1, "missing post-install CLI incorrectly started server or pulled a model")
++	var missing_runtime_intent = helpers.load_json_file(ollama_intent_path)
++	_require(missing_runtime_intent.get("installer_command_succeeded", false) and not missing_runtime_intent.get("performed_external_install", true) and not missing_runtime_intent.get("runtime_detected", true), "setup intent mislabeled the undetected runtime as installed")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "server_unreachable")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "server_start_fail")
++	var failed_server_start = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(failed_server_start.get("status", "").find("server_start_failed") >= 0, "failed server startup was not reported distinctly")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "pull_fail")
++	var failed_pull = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(failed_pull.get("status", "").find("model_pull_failed") >= 0 and failed_pull.get("performed_external_install", true) == false, "failed model pull was reported as a runtime install or success")
++	_require(failed_pull.get("results", []).size() == 1 and failed_pull.get("results", [])[0].get("endpoint", "") == setup_endpoint, "failed pull did not retain the selected endpoint identity")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "install_ok")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "command_missing")
++	var installed_and_pulled = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(installed_and_pulled.get("status", "") == "ollama_setup_install_ok" and installed_and_pulled.get("performed_external_install", false), "successful install/startup/pull sequence did not reach verified ready status")
++	var setup_phases = []
++	for result in installed_and_pulled.get("results", []):
++		setup_phases.append(result.get("phase", ""))
++	_require(setup_phases == ["install_ollama_runtime", "start_ollama_server", "pull_selected_model"], "confirmed setup did not install, start/recheck, then pull in order")
++	_require(installed_and_pulled.get("results", [])[2].get("args", []) == ["pull", "gemma4:e2b"] and installed_and_pulled.get("results", [])[2].get("endpoint", "") == setup_endpoint, "setup pull changed model tag or selected endpoint")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:gemma4:e2b")
++	var already_ready = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	_require(already_ready.get("status", "") == "ollama_setup_already_ready" and already_ready.get("performed_external_install", true) == false and already_ready.get("results", []).empty() and already_ready.get("runtime_detected", false) and already_ready.get("server_ready", false) and already_ready.get("model_ready", false), "empty plan falsely reported an installation or lost ready state")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "server_unreachable")
++	backend_config._ollama_process_executor = funcref(self, "_fake_ollama_process_executor")
++	var seam_startup_setup = backend_config.run_ollama_setup(setup_endpoint, "gemma4:e2b", false)
++	backend_config._ollama_process_executor = null
++	_require(seam_startup_setup.get("status", "") == "ollama_setup_install_ok" and seam_startup_setup.get("server_ready", false) and seam_startup_setup.get("model_ready", false), "non-fixture command seam did not pass startup through endpoint recheck and exact pull")
++	_require(seam_startup_setup.get("results", []).size() == 2 and seam_startup_setup.get("results", [])[0].get("exit_code", -1) == 0 and seam_startup_setup.get("results", [])[0].get("process_id", 0) > 0, "positive ollama serve PID was treated as an exit code instead of successful spawn")
++	_require(_fake_ollama_process_calls.size() == 2 and _fake_ollama_process_calls[0].get("args", []) == ["serve"] and not _fake_ollama_process_calls[0].get("wait_for_exit", true), "startup seam did not exercise the non-waiting Ollama process route")
++	_require(seam_startup_setup.get("results", [])[1].get("args", []) == ["pull", "gemma4:e2b"] and seam_startup_setup.get("results", [])[1].get("endpoint", "") == setup_endpoint, "seam setup changed exact tag or endpoint after successful spawn")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
++	_require(JSON.print(backend_config._ollama_installer_step("Windows")).find("https://ollama.com/install.ps1") >= 0, "Windows plan did not use Ollama's official per-user installer")
++	_require(JSON.print(backend_config._ollama_installer_step("X11")).find("https://ollama.com/install.sh") >= 0, "Linux plan did not use Ollama's official install script")
++	_require(JSON.print(backend_config._ollama_installer_step("OSX")).find("https://ollama.com/install.sh") >= 0, "macOS plan did not use Ollama's official installer")
++	if OS.get_name() == "OSX":
++		var safe_osascript_output = []
++		var safe_osascript_script = backend_config._ollama_macos_shell_script("printf benign")
++		var safe_osascript_exit = OS.execute("/usr/bin/osascript", ["-e", safe_osascript_script], true, safe_osascript_output, true)
++		_require(safe_osascript_exit == 0 and safe_osascript_output.size() > 0 and str(safe_osascript_output[0]).find("benign") >= 0, "macOS installer AppleScript quoting does not survive Godot OS.execute")
++		var macos_installer = backend_config._ollama_installer_step("OSX")
++		_require(macos_installer.get("args", []).size() == 2 and macos_installer.get("args", [])[1] == backend_config._ollama_macos_shell_script("curl -fsSL https://ollama.com/install.sh | OLLAMA_NO_START=1 sh", true), "macOS installer plan did not use verified AppleScript quoting")
++	OS.set_environment("LACAPULT_OLLAMA_SETUP_FIXTURE", "")
++	OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:mistral:v0.3")
++
+ 	var venv_button = _find_button(ui, "Set up Python venv")
+ 	_require(venv_button != null, "Set up Python venv button lookup failed")
+ 	var executable_venv_plan = backend_config.build_python_venv_setup_plan("python3")
+@@ -153,7 +305,7 @@ func _run() -> void:
+ 	ui._backend_python_path.text = ""
+ 	venv_button.emit_signal("pressed")
+ 	yield(self, "idle_frame")
+-	_require(ui._confirm_dialog.dialog_text.find("uv 0.11.19") >= 0 and ui._confirm_dialog.dialog_text.find("CPython 3.13.13") >= 0 and ui._confirm_dialog.dialog_text.find("harness requirements") >= 0, "Python venv confirmation did not explain uv-managed runner.py/manual harness setup")
++	_require(ui._confirm_dialog.dialog_text.find("uv 0.11.19") >= 0 and ui._confirm_dialog.dialog_text.find("Python 3.13.13") >= 0 and ui._confirm_dialog.dialog_text.find("No system Python or PATH changes") >= 0 and ui._confirm_dialog.dialog_text.find("Proof mode is enabled") >= 0, "Python venv confirmation did not explain pinned toolchain and proof-only behavior")
+ 	ui._on_ExternalBackendAction_confirmed()
+ 	yield(self, "idle_frame")
+ 	_require(File.new().file_exists(venv_intent_path), "confirmed Python venv setup did not record setup intent")
+@@ -165,12 +317,14 @@ func _run() -> void:
+ 	_require(ui._backend_python_path.text.find("caol-llm-python-venv") >= 0, "Python venv proof did not fill the intended path field")
+ 
+ 	print("Ollama workflow UI smoke passed")
+-	print("  UI proof: one short-label Ollama model-choice control, real Mistral tag and Nemotron no-think alias, GiB hardware/performance lights, Check, Save, Install Ollama / model, and Set up Python venv rendered")
++	print("  UI proof: catalog-backed Mistral, Nemotron, Gemma 4 E2B, and Gemma 4 E4B choices and status rows; Gemma performance remains not measured")
++	print("  Gemma proof: each exact tag survived independent inventory, pull plans, backend switches, active-game options, launcher settings disk reload, UI recreation/refresh, and runner dry-run")
+ 	print("  Fixture proof: command-missing, server-unreachable, model-present, and model-missing states are distinguishable without real pulls")
+ 	print("  Check proof: readiness-only; no backend config write")
+ 	print("  Save proof: Ollama endpoint/model/Python metadata round-tripped and active C-AOL options.json enables local runner")
+ 	print("  Runner proof: confirmation-gated C-AOL runner.py --backend ollama --dry-run exercised the runner route without Ollama request/install/pull")
+-	print("  Install proof: confirmation-gated Ollama/model and Python venv intents recorded in proof mode; no installer, venv creation, model pull, API call, or non-isolated user config mutation")
++	print("  Install proof: proof-only confirmation stayed inert; isolated fixtures covered installer failure/cancellation/privilege, post-install CLI recheck, startup recheck, exact pull, and failed pull")
++	print("  Startup proof: non-fixture command seam separated positive serve PID from exit status; exact loopback host matching and Linux loaded-service fallback/privilege paths checked")
+ 	quit(0)
+ 
+ 
+@@ -184,6 +338,17 @@ func _write_runner_fixture(install_dir: String) -> void:
+ 	f.close()
+ 
+ 
++func _fake_ollama_process_executor(command: String, args: Array, wait_for_exit: bool, _output: Array, _read_stderr: bool) -> int:
++	_fake_ollama_process_calls.append({"command": command, "args": args.duplicate(), "wait_for_exit": wait_for_exit})
++	if args == ["serve"] and not wait_for_exit:
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:")
++		return 41827
++	if args.size() >= 2 and args[0] == "pull" and wait_for_exit:
++		OS.set_environment("LACAPULT_OLLAMA_FIXTURE", "models:%s" % str(args[1]))
++		return 0
++	return 1
++
++
+ func _write_harness_requirements_fixture(install_dir: String) -> void:
+ 	var harness_dir = install_dir.plus_file("tools").plus_file("openclaw_harness")
+ 	var err = Directory.new().make_dir_recursive(harness_dir)
+@@ -231,6 +396,13 @@ func _option_has_item(option: OptionButton, text: String) -> bool:
+ 	return false
+ 
+ 
++func _choice_index_for_tag(option: OptionButton, tag: String) -> int:
++	for i in range(option.get_item_count()):
++		if str(option.get_item_metadata(i)) == tag:
++			return i
++	return -1
++
++
+ func _status_container_has_states(container: Node, states: Array) -> bool:
+ 	for wanted in states:
+ 		var found = false
+diff --git a/tools/prove_caol_backend_contract.py b/tools/prove_caol_backend_contract.py
+index c561be5..e6086b5 100755
+--- a/tools/prove_caol_backend_contract.py
++++ b/tools/prove_caol_backend_contract.py
+@@ -59,6 +59,8 @@ REQUIRED_BACKEND_TOKENS = {
+     "ollama_command_present_server_running_model_present",
+     "get_backend_guidance",
+     "OpenVINO setup checks Python imports/model-dir presence only",
++    "gemma4:e2b",
++    "gemma4:e4b",
+ }
+ REQUIRED_UI_TOKENS = {
+     "title.text = \"LLM\"",
+@@ -69,7 +71,7 @@ REQUIRED_UI_TOKENS = {
+     "mirage335/NVIDIA-Nemotron-Nano-9B-v2-virtuoso:latest",
+     "nemotron-9b-dumber:latest",
+     "ConfirmExternalBackendAction",
+-    "Catapult-Dabubu will not pull models before this confirmation",
++    "Catapult-Dabubu will not install or pull before this confirmation",
+ }
+ 
+ 
+@@ -91,6 +93,22 @@ PATCH_CASES: dict[str, dict[str, str]] = {
+         "LLM_INTENT_OLLAMA_MODEL": "llama-test",
+         "LLM_INTENT_PYTHON": sys.executable,
+     },
++    "ollama_gemma4_e2b": {
++        "LLM_INTENT_ENABLE": "true",
++        "LLM_INTENT_BACKEND": "ollama",
++        "LLM_INTENT_USE_API": "false",
++        "LLM_INTENT_OLLAMA_URL": "http://127.0.0.1:11434",
++        "LLM_INTENT_OLLAMA_MODEL": "gemma4:e2b",
++        "LLM_INTENT_PYTHON": sys.executable,
++    },
++    "ollama_gemma4_e4b": {
++        "LLM_INTENT_ENABLE": "true",
++        "LLM_INTENT_BACKEND": "ollama",
++        "LLM_INTENT_USE_API": "false",
++        "LLM_INTENT_OLLAMA_URL": "http://127.0.0.1:11434",
++        "LLM_INTENT_OLLAMA_MODEL": "gemma4:e4b",
++        "LLM_INTENT_PYTHON": sys.executable,
++    },
+     "openvino": {
+         "LLM_INTENT_ENABLE": "true",
+         "LLM_INTENT_BACKEND": "openvino",

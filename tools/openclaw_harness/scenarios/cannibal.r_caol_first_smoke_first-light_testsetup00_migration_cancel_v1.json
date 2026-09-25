@@ -1,0 +1,155 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_first-light_testsetup00_migration_cancel_v1",
+  "description": "Task-scoped smoke-first versus first-light native cannibal behavior on a copied closed-window TestSetup00 with a zero-credit transplanted camp footprint. Disposable-copy only: Tilda id=2 pending ACT_MOVE_LOOT actor removed to use the current save loader’s documented ACT_MIGRATION_CANCEL compatibility path; setup earns no behavior credit.",
+  "profile": "first-smoke-r-caol-001-light-migration",
+  "world": "TestSetup00",
+  "fixture": "first_smoke_first-light_testsetup00_migration_cancel_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": [
+      "first-light",
+      "native_cannibal_admission",
+      "member_materialization",
+      "dispatch",
+      "progression"
+    ],
+    "world.signal": [
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "ordinary-player-ui:use-smokebomb",
+      "ordinary-player-ui:deploy-brazier",
+      "ordinary-player-ui:ignite-with-charged-lighter",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-r-caol-001-light-migration",
+    "fixture": "first_smoke_first-light_testsetup00_migration_cancel_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-r-caol-001-light-migration",
+      "fixture": "first_smoke_first-light_testsetup00_migration_cancel_v1",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": [
+        "native item use and worker-owned live cockpit"
+      ],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_copied_closed_window_world",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_first-light_native_cannibal_route",
+      "objective": "On a separate identical dark copy, create the first valid light through ordinary player use of the supplied brazier, log, and existing lighter; record that native light event before any smoke and then compare native cannibal admission/materialization/dispatch/progression after smoke.",
+      "proof_targets": [
+        "copy and camp binding",
+        "first valid event identity/time/source",
+        "admission evidence",
+        "materialized native actor identity",
+        "dispatch event",
+        "progression event",
+        "separate-arm sequence comparison"
+      ],
+      "authority": [
+        "ordinary player UI through Peekaboo",
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "camp footprint, supplies, and player reposition are setup-only",
+        "smoke-first run has no valid light before native smoke",
+        "no authored smoke, fire, light, signal, dispatch, actor, or contact",
+        "absence in a short observation window is inconclusive"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "production_behavior": [
+      "observe_first-light_native_cannibal_route"
+    ],
+    "artifact_verdict": [
+      "observe_first-light_native_cannibal_route"
+    ],
+    "disallowed_shortcuts": [
+      "load_copied_closed_window_world"
+    ],
+    "capability_gates": {},
+    "precondition": [
+      "load_copied_closed_window_world",
+      "bind_native_world"
+    ],
+    "terminal_persistence": [
+      "observe_first-light_native_cannibal_route"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On a separate identical dark copy, create the first valid light through ordinary player use of the supplied brazier, log, and existing lighter; record that native light event before any smoke and then compare native cannibal admission/materialization/dispatch/progression after smoke.",
+    "failure_rule": "No gameplay credit for setup; feature proof requires native event receipts in temporal order, actor identity/materialization, dispatch, observed progression, and exact cleanup; otherwise preserve the first missing boundary as inconclusive."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "A fresh current-source native run accepted one game.wait macro, advanced exactly one game minute, recorded bound native turn evidence, and produced a measured assessment with no simulation alarms; the macro did not expose a long-lived pending poll for the repaired menu-owner branch.",
+  "causal_account": "The source-bound executable and run identity are bound in the sealed journal. The completed native wait yielded four turn measurements and an input-phase incomplete-turn fact with no alarm. The requested pending menu-owner distinction was not directly exercised by a shared poll in this run, so the focused falsifying test remains the direct proof of the repaired event ordering.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "Run identity binds the fresh source/executable/process evidence.", "checks": {}},
+    {"citation_id": "J0008", "meaning": "Native wait observation records the completed one-minute operation and its bound performance assessment.", "checks": {}},
+    {"citation_id": "J0013", "meaning": "Terminal native lifecycle observation supports closeout cleanup handling.", "checks": {}}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["A fresh native shared-poller observation of an accepted receipt followed by a menu surface descriptor remains open."],
+  "evidence_ceiling": "focused"
+}

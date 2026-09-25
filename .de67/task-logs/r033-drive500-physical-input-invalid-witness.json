@@ -1,0 +1,26 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This current-source diagnostic run reached the timed C-4 boundary, produced the native ringing/Deaf consequence, and persisted the local cursor at minute 10081; it is ineligible to establish the semantic-only R-033 claim because physical GUI recovery input was sent during an unadvertised activity interruption.",
+  "causal_account": "The sealed diagnostic stop reason records the physical GUI recovery and its conflict with the semantic-only contract.  The source observation is retained only to diagnose the interruption route; it is not used as claim credit.  A fresh run must use the advertised semantic interruption continuation or otherwise stop fail-closed.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the selected scenario, current source, executable, run, and bridge.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0110",
+      "meaning": "Records the terminal invalidation and released authority.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [
+    "Physical GUI input was used to resolve an interruption in a semantic-only scenario."
+  ],
+  "remaining_unknowns": [
+    "Whether the classified interruption is exposed and continued solely by the semantic wait route in a fresh source-bound run.",
+    "Whether the same source observation later yields the required returned_report lead after physical return."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

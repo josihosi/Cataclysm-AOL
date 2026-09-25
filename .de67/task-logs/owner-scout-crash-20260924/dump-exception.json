@@ -1,0 +1,21 @@
+{
+  "exception_code": "0xc0000005",
+  "exception_address": "0x7ff63a2ccbdf",
+  "exception_parameters": [
+    "0x0",
+    "0x2100000020"
+  ],
+  "thread_id": 13464,
+  "context_bytes": 1232,
+  "RBX": "0x2100000000",
+  "RIP": "0x7ff63a2ccbdf",
+  "dump_sha256": "6ca561182479c548a4518f351459315caf8925cc56686d08a724ddf2d9581801",
+  "faulting_module": [
+    {
+      "name": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-camp-20260924\\cataclysm-tiles.exe",
+      "base": "0x7ff6395d0000",
+      "size": 58130432,
+      "exception_rva": "0xcfcbdf"
+    }
+  ]
+}

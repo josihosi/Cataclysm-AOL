@@ -1,0 +1,95 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-CAMP-ASSIGNMENT-exploration-004",
+  "claim_id": "R-CAOL-CAMP-ASSIGNMENT",
+  "worker_id": "01a0d091-6cdf-77e0-a12b-16b8c3472155",
+  "disposition": "completed",
+  "verdict": "isolated_camp_bootstrap_ready",
+  "outcome": "Non-GUI R032 camp assignment preparation is source-bound and can later launch in an isolated target profile without replacing the retained game world.",
+  "summary": "The worker aligned the witness charter with the existing camp-assignment brief after registry rejection, identified the eligible follower and expected camp lookup OMT from the source fixture, and validated an isolated target profile. Three focused route tests passed. No game was launched and native camp assignment remains unproved.",
+  "material_changes": [
+    "Aligned the R032 witness charter to require same-follower native assignment, save/reload and ordinary camp work.",
+    "Preserved the prior charter and exact registry rejection in task artifacts; no product code or game world changed."
+  ],
+  "tests": [
+    "r032_fresh_camp_assignment_route_test.py: 3 passed, proving declaration/route shape only.",
+    "Registry query first rejected brief/charter outcome mismatch, then selected R032 after alignment with matched executable.",
+    "Canonical probe accepted isolated --profile forwarding; disposable fixture staging retained the R032 to R009 source chain and was removed."
+  ],
+  "live_actions": [
+    "No game, harness bridge or GUI action was launched in this task.",
+    "Retained PID 90668 and dev-harness/McWilliams were not operated or replaced."
+  ],
+  "evidence_ceiling": [
+    "Follower character:25, OMT [162,36,0], forest_thick and bare-bones eligibility are source/fixture predictions awaiting native confirmation.",
+    "Registry selection and temporary fixture staging are bootstrap only; no native assignment, save/reload, ordinary work or cleanup was observed.",
+    "The selected token is technical state and must be re-queried at the later launch handoff."
+  ],
+  "bindings": {
+    "isolated_profile": "r032-camp-assignment-exp004-20260924",
+    "isolated_target_world": ".userdata/r032-camp-assignment-exp004-20260924/save/McWilliams",
+    "registry_artifact": ".userdata/openclaw_harness/command-artifacts/registry-query/0e7ce8e2c9bbbe959bd7f8af1441a546cc2e3a6e034db3b18fb459ff41344f4e.json",
+    "retained_original_world": ".userdata/dev-harness/save/McWilliams",
+    "scenario": "r032.fresh_camp_establishment_v001_mcw",
+    "scenario_manifest_id": "5cc04a1cba845c73080b318bc459e5131d6f0cd2b154262a2ef54c95fda890ef",
+    "scenario_manifest_sha256": "4b03860fb0c2a55b2183d1ec4a17fbe217138413d66ab5cfb3094bfdcb6ea879",
+    "worker_assignment_id": "e321c120ab7440bd9c468cab101c971f",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/e321c120ab7440bd9c468cab101c971f/d12c87200a70209ae2a51912ebd627226c3fcfa9b982d68c0d5ccba5bef7394c.md"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-004/result.md",
+      "sha256": "b257759b57e39d33a1d34769af0b3d3ff72140dcb5a30296eaf7746a2865ddf7",
+      "role": "Full source premise, charter mismatch, isolated-profile validation and later launch route."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-004/witness-charter-before-alignment.json",
+      "sha256": "1e18d4d3c03e2557ff283a83e873acac3335cd59c4a2275f29e27fc31c171ed5",
+      "role": "Original narrower charter retained to explain registry rejection."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-004/isolated-route-registry-page.json",
+      "sha256": "812964a3223688443c2e46e1af31a17f86944480899592ef9e648c0ae784a2ed",
+      "role": "Artifact-backed registry selection page before launch."
+    },
+    {
+      "path": ".userdata/openclaw_harness/command-artifacts/registry-query/0e7ce8e2c9bbbe959bd7f8af1441a546cc2e3a6e034db3b18fb459ff41344f4e.json",
+      "sha256": "0e7ce8e2c9bbbe959bd7f8af1441a546cc2e3a6e034db3b18fb459ff41344f4e",
+      "role": "Current source and executable matched registry query output."
+    },
+    {
+      "path": ".de67/state/worker-library/results/e321c120ab7440bd9c468cab101c971f/d12c87200a70209ae2a51912ebd627226c3fcfa9b982d68c0d5ccba5bef7394c.md",
+      "sha256": "16dce84fb0e38a97b842e263022aac0ca2017c96e45337e3a777bcece3b44770",
+      "role": "Final non-GUI worker result and evidence ceiling."
+    }
+  ],
+  "first_divergence": {
+    "class": "registry_charter_mismatch_repaired",
+    "summary": "The initial R032 registry query rejected a charter that stopped at camp establishment; the charter now covers the existing brief's native assignment and persistence outcome."
+  },
+  "accepted_no_replay": [
+    "Retained R-029 game and transcript remain at their original scope.",
+    "No source save was altered and no game was launched in this preparation."
+  ],
+  "active_work": [
+    "Launcher Luna owns Mac GUI input; native camp proof waits for explicit coordinator handoff.",
+    "PID 90668 remains live under coordinator cleanup ownership, isolated from the prepared R032 target profile."
+  ],
+  "first_open_boundary": "After Mac GUI input is returned, re-query R032 and launch with an isolated --profile and fresh absent session dir. Observe actual follower, camp assignment, save/reload and ordinary work natively; close new processes by exact PID/birth.",
+  "narrow_queries": [
+    "Inspect the registry query artifact for source/executable match and re-query at handoff.",
+    "Check the isolated --profile forwarding in scenario_registry_cli.py and source fixture profiles in the scenario manifest.",
+    "Compare actual character:25 and OMT [162,36,0] with live frame after world.chat."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/charters/r032-fresh-camp-establishment-rev1.json",
+    "tools/openclaw_harness/scenarios/r032.fresh_camp_establishment_v001_mcw.json",
+    "tools/openclaw_harness/scenario_registry_cli.py"
+  ],
+  "context_metrics": {
+    "focused_tests": 3,
+    "native_game_launches": 0
+  }
+}

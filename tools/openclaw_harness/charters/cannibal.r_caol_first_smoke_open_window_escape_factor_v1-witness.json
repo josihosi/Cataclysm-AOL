@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A native gameplay opening of the audited east-side window changes the geometry of the already-burning brazier source live_light@3159,3449,0; the resulting light exposure and acceptance/rejection are observed from the fresh task-owned continuation.",
+  "material_proof": "Use an isolated copy of the saved checkpoint; verify safe mode off and current brazier fire; move by advertised native steps to the audited closed window [3163,3450,0]; open via ordinary gameplay; return safely; correlate the source-specific native signal rejection/acceptance after opening; quicksave.",
+  "current_uncertainty": "The prior run showed 78 nighttime minutes of light packet rejection for this brazier with exposure=contained and score=0. The nearest audited closed east-side window may or may not control the brazier escape geometry.",
+  "material_contradiction": [
+    "baseline or owner save changed",
+    "safe mode on during movement",
+    "native interaction fails to open the chosen window",
+    "brazier fire extinguished or another source identity observed",
+    "source remains contained after the relevant opening",
+    "light accepted/changed only through debug or injected state",
+    "unsafe step onto fire"
+  ],
+  "forbidden_shortcuts": [
+    "owner/reference save edits",
+    "smokebomb",
+    "debug injection of source, fire, smoke, light or dispatch",
+    "direct postlaunch serialized save mutation",
+    "raw keyboard or mouse action",
+    "step onto brazier/fire"
+  ],
+  "honest_stop_conditions": [
+    "one fresh source-bound post-open light acceptance/rejection observation with quicksave",
+    "first concrete ordinary-gameplay window-open blocker after current-frame confirmation",
+    "bounded night scan showing exact source exposure and adapter outcome unchanged after opening"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

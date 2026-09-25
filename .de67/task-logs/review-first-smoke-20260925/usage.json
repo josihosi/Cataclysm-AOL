@@ -1,0 +1,124 @@
+{
+  "start": "2026-09-24T21:09:13.271523+00:00",
+  "snapshot": "2026-09-25T07:09:13.271523+00:00",
+  "campaign": {
+    "fresh": 3036838,
+    "cached": 243843456,
+    "output": 610472,
+    "responses": 2033
+  },
+  "review_including_helper": {
+    "fresh": 114042,
+    "cached": 4427008,
+    "output": 19234,
+    "responses": 44
+  },
+  "other_workspace": {
+    "fresh": 0,
+    "cached": 0,
+    "output": 0,
+    "responses": 0
+  },
+  "campaign_threads": [
+    {
+      "id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+      "parent": "01a0d4fd-9ed2-7973-9a86-636630250699",
+      "agent": "/root/task_522d43414f4c2d46495253542d534d4f4b452d6578706c6f726174696f6e2d303031",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/24/rollout-2026-09-24T22-06-47-01a0d507-1891-7f30-9cb7-af8e7fe1c658.jsonl",
+      "fresh": 1622923,
+      "cached": 100244224,
+      "output": 311711,
+      "responses": 919,
+      "latest_turn": "01a0d5de-114d-7041-aa1f-7e358eb585c2"
+    },
+    {
+      "id": "01a0d507-ef3e-7742-935b-d4bd66ef0bc2",
+      "parent": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+      "agent": "/root/task_522d43414f4c2d46495253542d534d4f4b452d6578706c6f726174696f6e2d303031/luna_smoke_native",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/24/rollout-2026-09-24T22-07-42-01a0d507-ef3e-7742-935b-d4bd66ef0bc2.jsonl",
+      "fresh": 700642,
+      "cached": 44899840,
+      "output": 151322,
+      "responses": 364,
+      "latest_turn": "01a0d59f-43ff-7441-8bb3-9569378248bd"
+    },
+    {
+      "id": "01a0d4fd-9ed2-7973-9a86-636630250699",
+      "parent": null,
+      "agent": null,
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/24/rollout-2026-09-24T21-56-26-01a0d4fd-9ed2-7973-9a86-636630250699.jsonl",
+      "fresh": 336936,
+      "cached": 87822336,
+      "output": 98075,
+      "responses": 643,
+      "latest_turn": "01a0d582-fae5-7bd2-b390-ed8e1dab60fe"
+    },
+    {
+      "id": "01a0d57f-966a-73d1-a2ae-825b93498efa",
+      "parent": null,
+      "agent": null,
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T00-18-23-01a0d57f-966a-73d1-a2ae-825b93498efa.jsonl",
+      "fresh": 326446,
+      "cached": 10319616,
+      "output": 47577,
+      "responses": 93,
+      "latest_turn": "01a0d5ab-8d83-76e3-bb17-f534a2c62fd3"
+    },
+    {
+      "id": "01a0d58f-2333-7523-bae1-93e374ef0aa0",
+      "parent": null,
+      "agent": null,
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T00-35-22-01a0d58f-2333-7523-bae1-93e374ef0aa0.jsonl",
+      "fresh": 49891,
+      "cached": 557440,
+      "output": 1787,
+      "responses": 14,
+      "latest_turn": "01a0d58f-23c5-74c3-8ec0-bc43b4cd37ec"
+    }
+  ],
+  "helper_threads": [
+    {
+      "id": "01a0d75f-3d81-7632-9f9b-2d35d9205cbd",
+      "parent": "01a0c060-a6f4-7ae2-ae1b-db23fb312be4",
+      "agent": "/root/smoke_deadline_cause",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-02-18-01a0d75f-3d81-7632-9f9b-2d35d9205cbd.jsonl",
+      "fresh": 74667,
+      "cached": 1076992,
+      "output": 7521,
+      "responses": 21,
+      "latest_turn": "01a0d75f-3e12-7361-a849-6fb79a47cb9d"
+    }
+  ],
+  "weekly": {
+    "first": {
+      "timestamp": "2026-09-24T21:09:16.555Z",
+      "used_percent": 38.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 1.3263498131626903
+    },
+    "latest": {
+      "timestamp": "2026-09-25T07:07:56.291Z",
+      "used_percent": 40.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 1.1564313844910015
+    },
+    "samples": 2214,
+    "pace_range": [
+      1.1564313844910015,
+      1.3484657112070844
+    ]
+  },
+  "limitations": [
+    "Local Sep20-25-created logs only; older active or remote logs missing.",
+    "Durable worker/coordinator bindings plus native descendants; unrelated same-workspace usage separated.",
+    "Account-wide pace estimated from elapsed week; samples do not establish continuous usage or campaign allowance share.",
+    "Cached tokens separate from fresh; no monetary equivalence assumed.",
+    "Review snapshot excludes later closeout responses."
+  ]
+}

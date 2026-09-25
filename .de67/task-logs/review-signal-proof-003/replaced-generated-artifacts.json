@@ -1,0 +1,12 @@
+[
+  {
+    "path": "tests/r033-headless-cata_test",
+    "sha256": "136001743fba05b5bd556240514020e82d01fadc4b2b5eaec24e080f3c02423b",
+    "size": 63976856
+  },
+  {
+    "path": "tests/r033-headless-obj/bandit_live_world_test.o",
+    "sha256": "de3a57f60787b46ba7dbb4042d361c5171d971783c0556b34ecafdebf4874f11",
+    "size": 22699192
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "scenario_id": "cannibal.r_caol_first_smoke_smoke-first_testsetup00_migration_cancel_v1",
+  "objective": "Without any valid light before smoke, activate the native smokebomb and determine whether native daylight cadence admits cannibals, materializes members, dispatches, and progresses at the controlled camp.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_smoke-first_testsetup00_migration_cancel_v1-witness.json",
+  "outcome": "Without any valid light before smoke, activate the native smokebomb and determine whether native daylight cadence admits cannibals, materializes members, dispatches, and progresses at the controlled camp.",
+  "constraints": [
+    "Only disposable source copies",
+    "Camp footprint and added supplies are zero-credit",
+    "No signal/fire/smoke/light/actor/dispatch/contact injection",
+    "Capture source binding, session/PID, requests/results, and cleanup",
+    "Stop and report first missing boundary if native route is inconclusive",
+    "Tilda id 2 activity.actor removal is setup-only migration compatibility correction; no gameplay credit."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": [
+          "smoke-first",
+          "native_cannibal_admission",
+          "member_materialization",
+          "dispatch",
+          "progression"
+        ],
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

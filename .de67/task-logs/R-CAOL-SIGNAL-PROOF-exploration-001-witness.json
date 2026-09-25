@@ -1,0 +1,60 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This source-bound native run reached game minutes 8220, 8225 and 8230 without a debug intervention. The 8220 production scan had smoke, sound and light all absent; the 8225 scan observed isolated local-field smoke at source OMT (140,41,0) and the native camp state contained one smoke-signal lead there. At 8230 smoke was observed again, but the camp state contained a new smoke-signal lead at (140,40,0) while the (140,41,0) lead retained last_seen 8225. The run therefore does not establish unchanged-source create-then-dedup.",
+  "causal_account": "The run and source/executable binding are current and exact. Accepted native waits crossed the relevant cadence boundaries. J0007 records the first cadence's smoke-absent scan; J0020 records the first observed smoke scan and corresponding camp lead; J0027 records the later smoke scan and changed lead set. Because no smoke callback existed at 8220 and a distinct OMT lead appeared at 8230, the required first-create plus unchanged identity/count/hash dedup sequence was not observed. Performance telemetry was collected but remains unassessed because the selected session had no comparable baseline or turn-alarm configuration.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Exact scenario, source, executable, run and cockpit binding.",
+      "checks": {
+        "scenario_id": "bandit.r033_registered_smoke_samelevel_dedup_mcw",
+        "run_id": "72113513ce55463467273281d3fa68e157014636bda18080bf17897bc87a8344"
+      }
+    },
+    {
+      "citation_id": "J0007",
+      "meaning": "At the first five-minute boundary, the isolated production smoke channel was absent while sound and light were also absent.",
+      "checks": {
+        "value.game_minutes": 8220,
+        "value.production_channel_observation.records.1.channel": "smoke",
+        "value.production_channel_observation.records.1.observed": false,
+        "value.production_channel_observation.records.0.observed": false,
+        "value.production_channel_observation.records.2.observed": false
+      }
+    },
+    {
+      "citation_id": "J0020",
+      "meaning": "At minute 8225, the source-bound isolated smoke channel observed local-field smoke at OMT (140,41,0); the native surface retained the staffed-camp smoke lead and no debug intervention.",
+      "checks": {
+        "value.game_minutes": 8225,
+        "value.production_channel_observation.records.6.channel": "smoke",
+        "value.production_channel_observation.records.6.observed": true,
+        "value.production_channel_observation.records.6.source_omt": "(140,41,0)",
+        "value.surface.facts.last_debug_intervention": "none_this_run"
+      }
+    },
+    {
+      "citation_id": "J0027",
+      "meaning": "At minute 8230, smoke remained observable but a distinct (140,40,0) smoke lead appeared while the prior (140,41,0) lead remained at last_seen 8225; this is not unchanged identity/count/hash dedup.",
+      "checks": {
+        "value.game_minutes": 8230,
+        "value.production_channel_observation.records.21.channel": "smoke",
+        "value.production_channel_observation.records.21.observed": true,
+        "value.production_channel_observation.records.21.source_omt": "(140,40,0)",
+        "value.surface.facts.last_debug_intervention": "none_this_run"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "J0007: the first cadence boundary had no observed smoke source, so no first-cadence create event was retained.",
+    "J0027: the later boundary added a distinct smoke lead at (140,40,0) instead of retaining a single unchanged lead identity/count/hash."
+  ],
+  "remaining_unknowns": [
+    "Whether a source whose emitted smoke footprint remains at one stable OMT across both cadence boundaries produces the required dedup receipt.",
+    "Whether the staged source's natural smoke spread is the reason for the distinct OMT lead, or exposes a production identity/dedup defect.",
+    "A comparable populated-workload baseline and configured turn alarms remain unavailable for performance acceptance."
+  ],
+  "evidence_ceiling": "focused"
+}

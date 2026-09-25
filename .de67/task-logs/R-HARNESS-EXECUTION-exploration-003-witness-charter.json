@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A fresh source-bound native one-minute wait accepts once, advances partially, and stops at a real post-acceptance native activity decision owner; the authorized lifecycle decision/cancel then resumes collection without replaying the accepted wait.",
+  "material_proof": "Bind the current source/executable, scenario, run, process generation, bridge binding, request and receipt identities. Retain the accepted public wait request, partial game-time progress, terminal native_wait_interrupted state, current native owner and advertised decision/cancel, then collect/resume the same request and show no duplicate accepted input.",
+  "current_uncertainty": "The repaired R013 source chain has not yet been exercised through the shared live cockpit against the current native activity owner.",
+  "material_contradiction": [
+    "The fixture or source binding is unavailable or mismatched.",
+    "The wait is rejected, completes normally, or leaves World ownership intact without a native decision owner.",
+    "The interruption lacks partial game-time progress or exact request/run/binding/receipt identity.",
+    "Collection or resume replays the accepted input or emits an unauthorized recovery action."
+  ],
+  "already_accepted_evidence": [
+    "Receipt a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc remains preserved and is not rerun.",
+    "Earlier normal waits and the R033 source effect remain at their original evidence ceilings and do not prove this interruption."
+  ],
+  "forbidden_shortcuts": [
+    "Synthetic prompt or live-session-file edit.",
+    "Raw save rewrite after installation, debug state mutation, guessed input, or replay of the unchanged missing-save launch.",
+    "Treating a source effect that leaves World ownership intact as an interruption."
+  ],
+  "honest_stop_conditions": [
+    "A real native_wait_interrupted receipt with a current native decision owner and partial progress is retained.",
+    "The first material source, binding, owner, receipt, or no-replay contradiction is preserved and the run is closed safely."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

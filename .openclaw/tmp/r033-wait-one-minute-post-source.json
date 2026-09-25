@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_game_minutes": 10083,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "At minute 10082 the native message history added 'Your ears ring!' after the delayed active C-4 window. One exact native minute checks whether the sound adapter consumes this fresh source before the next signal-scan cadence.",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

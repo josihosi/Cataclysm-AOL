@@ -1,0 +1,35 @@
+{
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-FIRST-SMOKE",
+    "deadline_generation": 2,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-FIRST-SMOKE",
+    "deadline_generation": 2,
+    "component": "macro",
+    "disposition": "applied",
+    "receipt_id": "afe3b0eb6d0d6e92e48d8f741c988bf37d52278c67815734b6eaa48de577d28c",
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 87,
+      "pending": true,
+      "requested_at": 1790351045.457222,
+      "reason": "deadline mutation resolved for R-CAOL-FIRST-SMOKE; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  }
+}

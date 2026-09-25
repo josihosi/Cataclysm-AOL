@@ -1,0 +1,288 @@
+{
+  "schema": "caol-contract-preflight-v1",
+  "execution_status": "not_started",
+  "scenario": "r032.camp_defense_shakedown_v004_mcw",
+  "scenario_source": {
+    "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/r032.camp_defense_shakedown_v004_mcw.json",
+    "sha256": "a27a1cd634c99477525ab11bc43bdd3537e4e059c4815e3c8219532858aa31ea"
+  },
+  "static_validation": {
+    "status": "valid",
+    "review_required": false,
+    "manifest_version": 1
+  },
+  "manifest_version": 1,
+  "normalized_contract": {
+    "name": "r032.camp_defense_shakedown_v004_mcw",
+    "manifest_version": 1,
+    "capabilities": {
+      "runtime.entry_mode": "cockpit_live_session",
+      "runtime.fixture": "r032_camp_pay_stock_v001_mcw",
+      "runtime.world": "McWilliams",
+      "capabilities.r032.camp_defense": "native-patrol-peaceful-hostile-shakedown-and-continuity",
+      "capabilities.r032.defense_attempt": "accepted-r032-live-bandit-site-164-39-handoff-receipt-fix-priority-before-zone-v4"
+    },
+    "runtime_contract": {
+      "permitted_input": [
+        "frame-bound semantic requests",
+        "cockpit:game.act",
+        "cockpit:game.wait",
+        "cockpit:run.witness",
+        "cockpit:run.finish"
+      ],
+      "forbidden_input": [
+        "physical-key",
+        "guessed-key",
+        "ocr-control",
+        "screen-coordinate",
+        "callback-injection",
+        "direct-state-mutation",
+        "direct-save-edit",
+        "fixture-restage",
+        "injected-bandit-lead-or-dispatch",
+        "shortened-bandit-cooldown"
+      ],
+      "setup_only_debug": false,
+      "disposable_copy": true,
+      "helpers": [
+        "native-semantic-broker"
+      ],
+      "permissions": [],
+      "platform": [
+        "macos"
+      ],
+      "profile": "r032-camp-defense-shakedown-exp007-20260924",
+      "fixture": "r032_camp_pay_stock_v001_mcw",
+      "requirements": {
+        "os": "macos",
+        "source": "current-worktree",
+        "executable": "build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles",
+        "profile": "r032-camp-defense-shakedown-exp006-20260924",
+        "fixture": "r032_camp_pay_stock_v001_mcw",
+        "helper": "native-semantic-broker",
+        "peekaboo": false,
+        "input": [
+          "frame-bound semantic requests"
+        ],
+        "ocr": false,
+        "cleanup": true
+      },
+      "grants_gameplay_proof": false
+    },
+    "proof_route": {
+      "precondition": [
+        "bind_r032_camp_defense_world"
+      ],
+      "production_behavior": [
+        "operate_r032_peaceful_shakedown_and_hostile_fight"
+      ],
+      "terminal_persistence": [
+        "operate_r032_peaceful_shakedown_and_hostile_fight"
+      ],
+      "artifact_verdict": [
+        "operate_r032_peaceful_shakedown_and_hostile_fight"
+      ],
+      "disallowed_shortcuts": [
+        "bind_r032_camp_defense_world"
+      ]
+    }
+  },
+  "profile": "r032-camp-defense-shakedown-exp007-20260924",
+  "world": "McWilliams",
+  "fixture_install": {
+    "fixture": "r032_camp_pay_stock_v001_mcw",
+    "profile": "r032-camp-defense-shakedown-exp007-20260924",
+    "fixture_profile": "live-debug",
+    "resolved_fixture": "r032_camp_pay_stock_v001_mcw",
+    "resolved_fixture_profile": "live-debug",
+    "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw",
+    "source_sha256": "50fb6d369c6079f3114fa67394791809977c9b7a06a730af446c27b123352fba",
+    "payload_fixture": "r032_camp_defense_from_locker_v1",
+    "payload_fixture_profile": "live-debug",
+    "payload_source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1",
+    "source_chain": [
+      "live-debug:r032_camp_pay_stock_v001_mcw",
+      "live-debug:r032_camp_defense_from_locker_v1"
+    ],
+    "binding": {
+      "schema": 1,
+      "kind": "fixture-source-chain",
+      "source_chain": [
+        {
+          "profile": "live-debug",
+          "name": "r032_camp_pay_stock_v001_mcw",
+          "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw",
+          "source_sha256": "50fb6d369c6079f3114fa67394791809977c9b7a06a730af446c27b123352fba"
+        },
+        {
+          "profile": "live-debug",
+          "name": "r032_camp_defense_from_locker_v1",
+          "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1",
+          "source_sha256": "b942d0451c87262bc20ecbb7f00cb562af7a64d4113bed54868cec3b66cc9b15"
+        }
+      ],
+      "sha256": "bbc10e7d29f342a0578ff8709622b00a0b193cc2d00f9005ce1369e1cb34dd25",
+      "requested_fixture": "r032_camp_pay_stock_v001_mcw",
+      "requested_fixture_profile": "live-debug",
+      "resolved_fixture": "r032_camp_pay_stock_v001_mcw",
+      "resolved_fixture_profile": "live-debug"
+    },
+    "installed_worlds": [
+      "McWilliams"
+    ],
+    "applied_save_transforms": [
+      {
+        "kind": "map_items_near_player",
+        "world": "McWilliams",
+        "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+        "player_location": [
+          3900,
+          876,
+          0
+        ],
+        "placed_items": [
+          {
+            "typeid": "RobofacCoin",
+            "count": 10,
+            "charges": null,
+            "owner": "your_followers",
+            "active": false,
+            "countdown_offset_turns": null,
+            "countdown_point": null,
+            "offset_ms": [
+              31,
+              0,
+              0
+            ],
+            "target_location_ms": [
+              3931,
+              876,
+              0
+            ],
+            "target_abs_omt": [
+              163,
+              36,
+              0
+            ],
+            "target_abs_sm": [
+              327,
+              73,
+              0
+            ],
+            "local_ms": [
+              7,
+              0,
+              0
+            ],
+            "map_pack": "5.1.0",
+            "map_file": "163.36.0.map"
+          }
+        ],
+        "extracted_map_packs": [
+          "5.1.0"
+        ],
+        "recompressed_maps": [
+          "maps/5.1.0/163.36.0.map"
+        ],
+        "removed_extracted_map_dirs": [
+          "maps/5.1.0"
+        ],
+        "plain_map_dirs_left_for_game_load": false
+      },
+      {
+        "kind": "source_firewood_zone_near_player",
+        "world": "McWilliams",
+        "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+        "player_location": [
+          3900,
+          876,
+          0
+        ],
+        "zone": {
+          "name": "R032 Pay Stock Spillover",
+          "type": "CAMP_STORAGE",
+          "faction": "your_followers",
+          "identity": "zone-fixture-8d320d8bff1219ff89dd8ee1",
+          "invert": false,
+          "enabled": true,
+          "temporarily_disabled": false,
+          "is_vehicle": false,
+          "is_personal": false,
+          "cached_shift": [
+            0,
+            0,
+            0
+          ],
+          "start": [
+            3931,
+            876,
+            0
+          ],
+          "end": [
+            3931,
+            876,
+            0
+          ],
+          "is_displayed": false
+        },
+        "updated_zone_files": [
+          "#Wm9yYWlkYSBWaWNr.zones.json",
+          "#Wm9yYWlkYSBWaWNr.zoneszmgr-temp.json",
+          "zones.json",
+          "zoneszmgr-temp.json"
+        ]
+      }
+    ],
+    "destination": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save",
+    "manifest": {
+      "name": "r032_camp_pay_stock_v001_mcw",
+      "source_fixture": "r032_camp_defense_from_locker_v1",
+      "source_profile": "live-debug",
+      "description": "Zero-credit payment-stock setup derived from the accepted, natively saved R032 Locker world. Keeps camp [162,36,0], character:25 and the original nearby CAMP_STORAGE. Adds only ten real RobofacCoin items and a one-tile follower-owned CAMP_STORAGE spill zone 31 map squares east of the saved player. No bandit lead, outing, contact, cooldown, player-pocket or actor state is injected.",
+      "save_transforms": [
+        {
+          "kind": "map_items_near_player",
+          "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+          "items": [
+            {
+              "typeid": "RobofacCoin",
+              "count": 10,
+              "owner": "your_followers",
+              "offset_ms": [
+                31,
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "source_firewood_zone_near_player",
+          "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+          "name": "R032 Pay Stock Spillover",
+          "zone_type": "CAMP_STORAGE",
+          "faction": "your_followers",
+          "start_offset_ms": [
+            31,
+            0,
+            0
+          ],
+          "end_offset_ms": [
+            31,
+            0,
+            0
+          ],
+          "write_temp": true,
+          "write_global": true
+        }
+      ]
+    }
+  },
+  "trait_policy": {
+    "applicable": false,
+    "required_traits": [],
+    "forbidden_traits": []
+  },
+  "status": "not_applicable_legacy_contract",
+  "accepted": true
+}

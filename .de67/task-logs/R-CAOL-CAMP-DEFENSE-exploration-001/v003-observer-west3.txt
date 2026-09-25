@@ -1,0 +1,9 @@
+World.
+moved
+avatar.absolute ms: 3896, 876, 0
+R032 Establishment Ally 1 · friendly · offset 0, -1
+dead grass: NW
+forest floor: N, W, here, E, SE
+moss: NE
+long grass: SW
+underbrush: S

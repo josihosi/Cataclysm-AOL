@@ -1,0 +1,39 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-CAMP-ASSIGNMENT-exploration-003",
+  "claim_id": "R-CAOL-CAMP-ASSIGNMENT",
+  "worker_id": "01a0d091-6cdf-77e0-a12b-16b8c3472155",
+  "disposition": "completed",
+  "verdict": "retained_noncamp_session_handed_off",
+  "outcome": "The orphaned game was identified as an R-029 rolling-save session, its live process and failed control path were reconciled, and it was explicitly handed to coordinator ownership without claiming camp proof or process exit.",
+  "summary": "Luna verified the original process identity and found that its scenario cannot prove fresh camp assignment. The helper's separate game exited, but PID 90668 did not. Native input to the retained game did not produce a save or quit. The worker handed the exact live process to Sol and stopped sending input. A fresh native camp assignment remains to be run.",
+  "material_changes": ["No product or method code changed.", "A recovery report and exact captured window were added under the task log."],
+  "tests": ["Read-only process and session identity checks matched PID 90668 and its original birth.", "Peekaboo bridge and permissions were healthy, but foreground game input hung; no native save/exit test passed."],
+  "live_actions": ["Interrupted helper /root/camp_recovery_luna has no live action authority; its separate PID 90677 exited.", "Peekaboo window capture of PID 90668 succeeded; see timed out, background keys had no visible effect, and foreground S hung before interruption.", "PID 90668 remained alive at coordinator review and was explicitly retained under coordinator ownership.", "Coordinator transferred separate Mac GUI input to the launcher Luna while forbidding input to retained PID 90668."],
+  "evidence_ceiling": ["The retained run is R-029 rolling-save, not a fresh camp assignment premise.", "No same-character CAMP_RESIDENT assignment, save/reload, ordinary camp work or game-process exit was observed.", "Terminalized harness cleanup verified PID 90677 only; it does not establish PID 90668 exit."],
+  "bindings": {
+    "worker_assignment_id": "bc5a5ad3b83b45d9b8b1f85562412033",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/bc5a5ad3b83b45d9b8b1f85562412033/eca7fedd18278cb011db810dda380261318baad180f045faa7fd434ce198a386.md",
+    "retained_pid": "90668",
+    "retained_birth": "Wed Sep 23 21:32:37 2026",
+    "session": "selected-f76d72ee54a74b7cb4bde4b28fdac3af",
+    "run": "87364de72a12822f97a9a16ec2776d911687ee3b62ab512b0261c52174981122",
+    "binding": "50b95ea2011f6b171dabf3cfae1f6963d05ecbf4c14923aef4ce51e5c7be515d",
+    "window_id": "42355"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/camp-assignment-recovery-003/recovery.md", "role": "Exact process, session and handoff report."},
+    {"path": ".de67/task-logs/camp-assignment-recovery-003/pid-90668-window.png", "role": "Captured live world window for retained PID."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-f76d72ee54a74b7cb4bde4b28fdac3af/playtest.txt", "role": "Original full R-029 session transcript, not camp proof."},
+    {"path": ".de67/state/worker-library/results/bc5a5ad3b83b45d9b8b1f85562412033/eca7fedd18278cb011db810dda380261318baad180f045faa7fd434ce198a386.md", "role": "Final worker report and explicit process limit."}
+  ],
+  "first_divergence": {"class": "retained_session_is_wrong_scenario", "summary": "The inherited live game is a rolling-save run and cannot establish native fresh camp assignment. Its save/quit control remains unresolved."},
+  "accepted_no_replay": ["Prior R-029 transcript is retained only at its original scope.", "No new camp game was launched or registry state changed."],
+  "active_work": ["Coordinator retains PID 90668 for later supported graceful closure; no OS exit is credited.", "Fresh native camp assignment with eligible follower and save/reload remains open."],
+  "first_open_boundary": "After launcher GUI ownership ends, use a fresh, valid camp scenario with actual lookup OMT and eligible follower; prove native assignment, save/reload and ordinary camp work. Resolve retained PID 90668 through supported graceful closure separately.",
+  "narrow_queries": ["Read bridge.manifest.json and playtest.txt for selected-f76d72ee54a74b7cb4bde4b28fdac3af to verify scenario identity.", "Check exact PID/birth and process exit before any cleanup claim.", "Inspect r032.fresh_camp_establishment_v001_mcw premises before a fresh run."],
+  "entrypoints": [".de67/FS.md R-CAOL-CAMP-ASSIGNMENT-S001", "tools/openclaw_harness/scenarios/r032.fresh_camp_establishment_v001_mcw.json"],
+  "context_metrics": {"native_game_launches": 0, "retained_game_pid": 90668}
+}

@@ -9,6 +9,14 @@ Use the registry to select and launch a scenario and the cockpit/player CLI to o
 input owners. The coordinator supplies the outcome and compact charter; the worker owns the
 strategy and evidence. Run CLI commands from the game worktree.
 
+## Live playtesting belongs to Luna
+
+Only GPT-6 Luna may launch and operate live harness sessions. A Sol or Astra worker must spawn
+a GPT-6 Luna subagent for playtesting instead of running the session itself. The parent keeps
+implementation and analysis responsibility; Luna receives the desired outcome, setup and
+relevant existing evidence, and returns the command/output transcript plus blockers and bloat.
+This applies to live playtesting, not code edits, builds, automated tests or reading saved logs.
+
 ## Choose the guidance for the current decision
 
 Read the relevant theme when its situation arises. This is a reference map, not a sequence to
@@ -34,6 +42,10 @@ is relevant when interpreting that feature's signal evidence.
 
 - Choose actions from the current native input owner and its advertised stable targets. Collect
   a pending request rather than submitting it again; refresh after stale authority.
+- Keep in-game safe mode off for live playtests. Check its current state after entering World,
+  use the advertised `world.toggle_safemode` action only when it is on, and verify the game
+  reports it off before movement or waiting. Recheck after save/reload or a blocked move;
+  toggling twice would turn it back on. See [live operation](references/live-operation.md).
 - When startup or interaction stops making expected progress without explanation, inspect the
   owned window and relevant native/crash logs. Distinguish loading, a modal error, semantic-ready
   and exited; a live PID is not health. Preserve PID/birth, exact error and log reference before
@@ -49,3 +61,15 @@ is relevant when interpreting that feature's signal evidence.
   cited evidence rather than duplicating the investigation.
 - Keep observations and contradictions through recovery. At closeout, distinguish the feature
   result, remaining uncertainty and actual cleanup; use the witness theme when reaching that point.
+- For fire, smoke and hostile-camp journeys, use the player's ordinary brazier and lighter actions,
+  verify a real burning tile, then give distant responses enough in-game time. Quicksave and inspect
+  camp/dispatch state at useful checkpoints while keeping an inconclusive session live. See
+  [item activation and placement](references/setup-interaction.md) and
+  [behavior and movement](references/behavior-and-movement.md); the proven controls are indexed in
+  `build_logs/harness-fixes-matrix20/INDEX.md` (row 03).
+- In the prepared closed-room and open-room smoke/light saves, the brazier, firewood and charged
+  lighter are already supplied. Go straight to lighter **Activate** and choose the brazier at
+  **Light where?** Do not use a smokebomb or open a bulk pickup on planks or splintered wood as
+  routine setup. Only investigate fuel after a concrete ignition failure. If the owner has
+  already lit the fire in the current session, verify `fd_fire` and continue observation without
+  repeating ignition. Row 03 above is the native control example.

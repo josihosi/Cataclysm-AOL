@@ -1,6 +1,6 @@
 """Bound process measurements, retained independently of the game request pipe.
 
-No background process, game input, thresholds, or inferred gameplay outcomes.
+No background process, game input, or inferred gameplay outcomes.
 """
 from __future__ import annotations
 
@@ -21,14 +21,13 @@ TURN_CONFIG_NAME = "performance-turn-config.json"
 TURN_STATE_NAME = "performance-turn-state.json"
 TURN_WINDOW_LIMIT = 256
 WAITING_WINDOW_TURNS = 100
-WAITING_LIMIT_SECONDS = 0.010
+WAITING_LIMIT_SECONDS = 0.100
 
 
 def update_waiting_performance(state: dict, measurement: dict) -> tuple[dict, dict | None]:
     """Keep current waiting cost and emit only threshold crossings.
 
-    Josef's usability budget: an hour taking a minute is already very bad.
-    Ten milliseconds per turn gives a warning at 36 seconds per game hour.
+    Josef's selected alarm threshold is 100 milliseconds per game turn.
     Native simulation time excludes input, load, save and transport pauses.
     """
     generation = measurement.get("waiting_generation")

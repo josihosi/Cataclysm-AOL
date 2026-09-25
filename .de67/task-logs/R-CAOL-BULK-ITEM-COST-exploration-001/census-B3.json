@@ -1,0 +1,30 @@
+{
+  "saved_world": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB3",
+  "census_copy": "/var/folders/wp/rdtt3_z56_l28b7bkn7x41xw0000gn/T/caol-bulk-B3-census-dv9_scsr/BulkB3",
+  "map_files_scanned": 51,
+  "map_counts": {
+    "2x4": 0,
+    "hammer": 1
+  },
+  "player_counts": {
+    "2x4": 0,
+    "hammer": 0
+  },
+  "npcs": [],
+  "nonzero_map_locations": [
+    {
+      "typeid": "hammer",
+      "count": 1,
+      "map_file": "maps/4.4.0/147.157.0.map",
+      "submap": [
+        295,
+        315,
+        0
+      ],
+      "local_xy": [
+        0,
+        0
+      ]
+    }
+  ]
+}

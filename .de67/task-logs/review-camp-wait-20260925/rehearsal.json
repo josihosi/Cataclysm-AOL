@@ -1,0 +1,51 @@
+{
+  "diagnosis": {
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-CAMP-WAIT-COST",
+    "generation": 1,
+    "source_task_id": "R-CAOL-CAMP-WAIT-COST-exploration-002",
+    "recorded_at": 1790317079.540887,
+    "short_verdict": "Owner-required Astra absent after roster replacement; Sol prep returned, implementation blocked and deadline elapsed during stopped delivery.",
+    "long_detail": ".de67/task-logs/review-camp-wait-20260925/report.md and validation.json. Exact result/checkpoint3 retained; installed roster/setup preservation correction unchanged and tested; 17 GPT-6 choices including Astra higher effort verified. Existing exploration-003 is the concrete Astra implementation handoff; saved minute7994 baseline and independent friendly-NPC diagnosis preserved. Product fix remains open.",
+    "reviewed_at": 1790320430.395044,
+    "restart_generation": null,
+    "recorded": true,
+    "pending_components": [
+      "micro",
+      "macro"
+    ]
+  },
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-CAMP-WAIT-COST",
+    "deadline_generation": 1,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-CAMP-WAIT-COST",
+    "deadline_generation": 1,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 86,
+      "pending": true,
+      "requested_at": 1790320203.070872,
+      "reason": "deadline mutation resolved for R-CAOL-FIRST-SMOKE; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  }
+}

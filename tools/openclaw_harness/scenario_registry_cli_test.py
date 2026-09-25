@@ -128,8 +128,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     scenario_registry_cli, "_current_source_executable_readiness", return_value=stale,
                 ), \
                 mock.patch.object(scenario_registry_cli, "issue_registry_repair_token") as issue, \
+                mock.patch.object(scenario_registry_cli, "registry_query_repair_action", return_value=None), \
                 mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
-            exit_code = scenario_registry_cli.main([
+            exit_code = scenario_registry_cli.main(["--json",
                 "--registry", str(Path(temp_dir) / "registry.sqlite3"),
                 "registry-repair-bootstrap", "--query-id", "query-a",
             ])
@@ -168,6 +169,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                       return_value=selection), \
                     mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
                                       return_value={"status": "ready"}), \
+                    mock.patch.object(scenario_registry_cli, "_selected_executable", return_value=root / "cataclysm-tiles"), \
                     mock.patch.object(scenario_registry_cli, "_scenario_requires_bound_live_bridge",
                                       return_value=True), \
                     mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix",
@@ -250,6 +252,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                       return_value=selection), \
                     mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
                                       return_value=stale), \
+                    mock.patch.object(scenario_registry_cli, "_selected_executable", return_value=root / "cataclysm-tiles"), \
                     mock.patch.object(scenario_registry_cli.subprocess, "run") as run, \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
                 result = scenario_registry_cli._launch_selection_file_bridge(args, root / "registry.sqlite3")
@@ -273,6 +276,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         repaired = scenario_registry_cli._registry_repair_probe_namespace(
             repair, cockpit_live_session=True,
         )
+        ordinary = scenario_registry_cli._registry_launch_probe_namespace(selection)
         continuation = scenario_registry_cli._registry_repair_probe_namespace(
             repair, cockpit_live_session=True, post_relaunch_continuation=True,
         )
@@ -282,6 +286,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             saved_world_snapshot=snapshot,
         )
         self.assertTrue(bootstrap.compact_stdout)
+        self.assertTrue(ordinary.compact_stdout)
         self.assertTrue(repaired.compact_stdout)
         self.assertTrue(continuation.post_relaunch_continuation)
         self.assertEqual(continuation.fixture, "")
@@ -337,7 +342,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
     def run_cli(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(CLI_PATH), *arguments],
+            [sys.executable, str(CLI_PATH), "--json", *arguments],
             check=False,
             capture_output=True,
             text=True,
@@ -469,7 +474,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                   return_value={"status": "ready"}), \
                 mock.patch.object(startup_harness, "run_probe_mode", return_value=23) as run_probe, \
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            result = scenario_registry_cli.main([
+            result = scenario_registry_cli.main(["--json",
                 "--registry", str(registry_path), "registry-launch", token_id,
             ])
         return result, run_probe
@@ -493,7 +498,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(startup_harness, "run_probe_mode",
                                       side_effect=FileNotFoundError("peekaboo missing after game launch")) as probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(errors):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-launch", token_id,
                 ])
             self.assertEqual(result, 1)
@@ -715,7 +720,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
                     mock.patch.object(startup_harness, "run_probe_mode", return_value=29) as run_probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
                     "--adaptive-semantic-autodrive",
                 ])
@@ -728,7 +733,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(receipt["token_id"], bootstrap.token_id)
             with mock.patch.object(startup_harness, "run_probe_mode") as reused_probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
                 ]), 1)
             reused_probe.assert_not_called()
@@ -789,7 +794,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                     mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
                 ])
 
@@ -823,7 +828,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {"OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": ""}), \
                     mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
                 ])
 
@@ -861,7 +866,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
                     mock.patch.object(scenario_registry_cli.subprocess, "run", return_value=bridge_result) as run, \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
-                exit_code = scenario_registry_cli.main([
+                exit_code = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-detached-launch",
                     bootstrap.token_id, "--session-dir", str(session_dir),
                     "--post-relaunch-continuation", "--saved-world-snapshot", "/tmp/immutable-world",
@@ -887,7 +892,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ("bootstrap_issued", "first_compatible_evidence_run"),
             ])
 
-    def test_query_routes_current_contradiction_to_query_bound_repair(self) -> None:
+    def test_failed_run_allows_normal_selection_and_launch_without_erasing_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             scenarios = root / "scenarios"
@@ -936,75 +941,47 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 connection.close()
 
             query = self.bootstrap_request()
+            charter_path = HARNESS_DIR / "charters" / "r009-macos-witness-rev2.json"
+            charter = json.loads(charter_path.read_text())
+            brief_path = root / "brief.json"
+            self.write_json(brief_path, {"query": query, "outcome": charter["claim"]})
             with mock.patch.object(
                     scenario_registry_cli, "_current_source_executable_readiness",
                     return_value={"status": "ready"}), \
+                    mock.patch.object(scenario_registry_cli.startup_harness, "load_scenario", return_value=self.strict_manifest()), \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
-                query_exit = scenario_registry_cli.main([
+                query_exit = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-query",
                     "--query-json", json.dumps(query),
+                    "--coordinator-brief", str(brief_path), "--witness-charter", str(charter_path),
                 ])
             self.assertEqual(query_exit, 0)
             query_result = write_result.call_args.args[0]["result"]
-            self.assertIsNone(query_result["token_id"])
-            self.assertTrue(Path(query_result["draft_path"]).is_file())
-            action = query_result["next_action"]
-            self.assertEqual(action["reason"], "closest_query_candidate_has_current_unresolved_contradiction")
-            self.assertEqual(action["required_identifiers"], {
-                "query_id": query_result["query_id"],
-                "manifest_id": manifest_id,
-                "route_key": route_key,
-                "red_verification_id": red["verification_id"],
-            })
-            self.assertEqual(action["command"]["cli"], [
-                "registry-repair-bootstrap", "--query-id", query_result["query_id"],
-            ])
-
-            binding = {
-                "runtime": self.bootstrap_runtime(executable),
-                "fixture": {
-                    "status": "compatible", "name": "", "profile": "",
-                    "source_path": str(root),
-                    "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
-                },
-                "profile": {
-                    "status": "compatible", "name": "", "profile": "",
-                    "source_path": str(root),
-                    "source_sha256": hashlib.sha256(b"profile").hexdigest(),
-                },
-            }
-            with mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value=binding), \
-                    mock.patch.object(
-                        scenario_registry_cli, "_current_source_executable_readiness",
-                        return_value={"status": "ready"},
-                    ), \
-                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
-                exit_code = scenario_registry_cli.main([
-                    "--registry", str(registry_path), "registry-repair-bootstrap",
-                    "--query-id", query_result["query_id"],
-                ])
-            self.assertEqual(exit_code, 0)
-            repair = write_result.call_args.args[0]["result"]
-            self.assertTrue(repair["accepted"], repair["reason"])
-
+            self.assertTrue(query_result["token_id"])
             connection = open_registry(str(registry_path))
             try:
+                loaded = scenario_registry_cli.reload_selection_token_for_launch(
+                    connection, query_result["token_id"], witness_charter=charter)
+                self.assertTrue(loaded.accepted, loaded.reason)
                 self.assertEqual(connection.execute(
-                    "SELECT COUNT(*) FROM token_history WHERE event_kind = 'issued'"
-                ).fetchone()[0], 0)
-                self.assertEqual(connection.execute(
-                    "SELECT COUNT(*) FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued'",
-                    (repair["token_id"],),
+                    "SELECT COUNT(*) FROM verification_history WHERE verification_id = ? AND proof_status = 'red'",
+                    (red["verification_id"],),
                 ).fetchone()[0], 1)
-                self.assertEqual(
-                    connection.execute(
-                        "SELECT evidence_state FROM capability_evidence_history "
-                        "WHERE manifest_id = ? AND capability_key = '_registry.proof_route' "
-                        "ORDER BY capability_evidence_id DESC LIMIT 1",
-                        (manifest_id,),
-                    ).fetchone()[0],
-                    "contradicted",
-                )
+                from scenario_registry_store import build_registry_query_candidate_snapshot
+                snapshot = build_registry_query_candidate_snapshot(connection, allow_current_manifest_retry=True)[0]
+                self.assertEqual(snapshot.facts["player.injured"]["evidence_state"], "declared")
+                self.assertEqual(snapshot.explanation["route_evidence"][0]["evidence_state"], "contradicted")
+                proved_query = {**query, "requirements": [
+                    {**query["requirements"][0], "minimum_evidence": "run-verified"},
+                ]}
+                unproved = execute_registry_query(
+                    connection, parse_registry_query_request(proved_query), drafts_root=root / "drafts")
+                self.assertIsNone(unproved.token_id)
+                connection.execute(
+                    "INSERT INTO retirement_history(manifest_id, retirement_kind, authority, reason, details_json) "
+                    "VALUES (?, 'approved', 'user', 'retired fixture', '{}')", (manifest_id,))
+                self.assertEqual(build_registry_query_candidate_snapshot(
+                    connection, allow_current_manifest_retry=True), ())
             finally:
                 connection.close()
 
@@ -1104,7 +1081,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
                     mock.patch.object(startup_harness, "run_probe_mode", return_value=31) as run_probe, \
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-repair-launch", token_id,
                 ])
             self.assertEqual(result, 31)
@@ -1244,7 +1221,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         ) as mint, mock.patch.object(
             scenario_registry_cli, "_launch_repair_file_bridge", return_value=0,
         ) as launch:
-            result = scenario_registry_cli.main([
+            result = scenario_registry_cli.main(["--json",
                 "registry-repair-reentry-detached-launch", "repair-predecessor",
                 "--session-dir", "/tmp/continuation-session",
                 "--saved-world-snapshot", "/tmp/immutable-world",
@@ -1291,7 +1268,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(result, 23)
             run_probe.assert_called_once()
             self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
-            expected = startup_harness.build_parser().parse_args(["probe", "cli"])
+            expected = startup_harness.build_parser().parse_args(["probe", "cli", "--compact-stdout"])
             expected.adaptive_semantic_autodrive = True
             received = vars(run_probe.call_args.args[0]).copy()
             receipt = json.loads(received.pop("registry_launch_receipt"))
@@ -1642,14 +1619,18 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(reconciled.returncode, 0, reconciled.stderr)
             self.assertEqual(json.loads(reconciled.stdout)["result"], {"reconciled": 1, "stale": 0})
 
-            selected = self.run_cli(
+            # This fixture lives outside the canonical scenario directory.
+            def run_query(*arguments):
+                out, err = io.StringIO(), io.StringIO()
+                with mock.patch.object(scenario_registry_cli, "_selected_executable", return_value=executable_path), \
+                        redirect_stdout(out), redirect_stderr(err):
+                    code = scenario_registry_cli.main(["--json", *arguments])
+                return subprocess.CompletedProcess([], code, out.getvalue(), err.getvalue())
+
+            selected = run_query(
                 "--registry", str(registry_path), "registry-query", "--query-json", json.dumps({
-                    "requirements": [{
-                        "key": "player.injured",
-                        "op": "eq",
-                        "value": False,
-                        "minimum_evidence": "declared",
-                    }],
+                    "requirements": [{"key": "player.injured", "op": "eq", "value": False,
+                                      "minimum_evidence": "declared"}],
                     "preferences": [],
                 }),
             )
@@ -1710,7 +1691,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(other_connection.execute("SELECT COUNT(*) FROM report_ingestion_history").fetchone()[0], 0)
             other_connection.close()
 
-            isolated_query = self.run_cli(
+            isolated_query = run_query(
                 "--registry", str(other_registry_path), "registry-query", "--query-json", json.dumps({
                     "requirements": [{
                         "key": "player.injured",
@@ -1761,7 +1742,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                     mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
                     redirect_stdout(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--scenarios-root", str(scenarios),
                 ])
@@ -1799,7 +1780,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                     mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
                     redirect_stdout(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--scenarios-root", str(scenarios),
                 ])
@@ -1948,7 +1929,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             compact_stdout = io.StringIO()
             with mock.patch.object(scenario_registry_cli, "registry_status", side_effect=status), \
                     redirect_stdout(compact_stdout):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-status", "--manifest-id", "only-this",
                 ]), 0)
             compact_payload = json.loads(compact_stdout.getvalue())
@@ -1964,7 +1945,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             direct_full_stdout = io.StringIO()
             with mock.patch.object(scenario_registry_cli, "registry_status", side_effect=status), \
                     redirect_stdout(direct_full_stdout):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-status", "--full",
                     "--manifest-id", "only-this",
                 ]), 0)
@@ -1976,7 +1957,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
             full_stdout = io.StringIO()
             with redirect_stdout(full_stdout):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-artifact", "--sha256",
                     receipt["artifact"]["sha256"],
                 ]), 0)
@@ -1988,7 +1969,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             artifact_path.write_text("{}\n", encoding="utf-8")
             failed_stderr = io.StringIO()
             with redirect_stderr(failed_stderr):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-artifact", "--sha256",
                     receipt["artifact"]["sha256"],
                 ]), 1)
@@ -2016,7 +1997,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             compact_stdout = io.StringIO()
             with mock.patch.object(scenario_registry_cli, "_runtime_status", return_value=observed) as status, \
                     redirect_stdout(compact_stdout):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "runtime-status",
                     "--executable", "/exact/cataclysm-tiles",
                 ]), 0)
@@ -2038,7 +2019,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
             full_stdout = io.StringIO()
             with redirect_stdout(full_stdout):
-                self.assertEqual(scenario_registry_cli.main([
+                self.assertEqual(scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "runtime-status-artifact", "--sha256",
                     receipt["artifact"]["sha256"],
                 ]), 0)
@@ -2073,7 +2054,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                     mock.patch.object(startup_harness, "run_probe_mode", side_effect=run_probe), \
                     redirect_stdout(io.StringIO()):
-                result = scenario_registry_cli.main([
+                result = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--scenarios-root", str(scenarios),
                 ])
@@ -2125,14 +2106,14 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(startup_harness, "userdir_for_profile", side_effect=userdir_for_profile), \
                     mock.patch.object(startup_harness, "run_probe_mode", side_effect=run_probe), \
                     redirect_stdout(io.StringIO()):
-                initial = scenario_registry_cli.main([
+                initial = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--scenarios-root", str(scenarios),
                 ])
                 self.assertEqual(initial, 0)
                 self.assertEqual(len(received), 1)
                 receipt = json.loads(received[0].registry_migration_receipt)
-                interrupted_resume = scenario_registry_cli.main([
+                interrupted_resume = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--resume", receipt["migration_run_id"],
                 ])
@@ -2151,7 +2132,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 run_dir = userdir_for_profile(receipt["profile"]) / "harness_runs" / "durable"
                 run_dir.mkdir(parents=True)
                 self.write_json(run_dir / "probe.report.json", self.migration_report(manifest_path, receipt["profile"]))
-                resumed = scenario_registry_cli.main([
+                resumed = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-migrate-all",
                     "--resume", receipt["migration_run_id"],
                 ])

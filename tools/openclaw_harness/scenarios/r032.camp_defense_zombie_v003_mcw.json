@@ -1,0 +1,188 @@
+{
+  "manifest_version": 1,
+  "name": "r032.camp_defense_zombie_v003_mcw",
+  "description": "Zero-credit R032 defense branch based on the accepted native Locker save/reload. The isolated profile receives an exact frozen copy of that saved world; camp patrol routes/orders, threats and all combat/contact outcomes must be established and observed live.",
+  "profile": "r032-camp-defense-zombie-exp003-20260924",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_camp_defense_from_locker_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_camp_defense_from_locker_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_defense": "zombie-alarm-patrol-response-save-reload",
+    "capabilities.r032.defense_attempt": "zombie-alarm-patrol-response-save-reload-observer-clear-v3"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r032-camp-defense-zombie-exp003-20260924",
+    "fixture": "r032_camp_defense_from_locker_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r032_locker_repair_20260924/cataclysm-tiles",
+      "profile": "r032-camp-defense-zombie-exp003-20260924",
+      "fixture": "r032_camp_defense_from_locker_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_equipped_camp_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.basecamp_missions"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_patrol_zombie_alarm",
+      "cleanup_on_finish": true,
+      "objective": "First use the advertised native camp roster surface to confirm R032 Assignment Camp at OMT [162,36,0], the same assigned character:25/CAMP_RESIDENT and accepted Locker loadout. Inspect all stationed/assigned NPCs and determine who is actually roster-eligible. Through native Zone Manager UI create and observe a camp-local CAMP_PATROL route; through native camp job assignment set an eligible worker to active patrol duty and advance ordinary world time until native records show order ownership and visible position/route movement. Record every eligible and excluded roster actor. Disclose and journal debug spawning a visible hostile zombie near the live patrol. Let the game advance normally and observe the camp alarm, each eligible guard mobilizing/engaging, their attacks and a real kill. Do not spawn scripted death or directly mutate actor state. Before end, natively save, quit the game process, and reenter the same isolated world; verify character:25 assignment and Locker gear plus patrol assignment/order/route remain and observe continued ordinary guard service. Keep the native journal open while gathering all behavior and reload evidence. Do not call journal as an intermediate checkpoint; invoke it once only after the zombie response, native save, process exit and post-reload continued-service evidence are complete. If the branch diverges, preserve exact receipts and use native quit without sealing an incomplete feature journal. Before the debug spawn, reposition the player observer at least six clear tiles north of the camp while remaining able to observe it; then spawn the zombie on the same nearby passable tile as the prior attempt. Do not expose the player to adjacent melee range.",
+      "proof_targets": [
+        "same native R032 Assignment Camp [162,36,0], character:25 identity, CAMP_RESIDENT and saved Locker loadout before setup",
+        "native roster and guard-eligibility evidence for every stationed/assigned follower",
+        "native CAMP_PATROL zone and job priority/order owner; actual ordinary patrol route/position movement before threat",
+        "explicit journal of debug-spawn setup for a visible hostile zombie",
+        "camp alarm with exact actor/time receipt followed by each eligible guard response, movement, attack and zombie kill",
+        "native save completion, app process exit and new process generation",
+        "post-reload same actor/camp/gear and retained live patrol order/route with continued service",
+        "all run/process/bridge artifacts reconciled and safely cleaned"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture copy and debug spawn are setup-only, no natural gameplay credit",
+        "no direct NPC/camp/mission/inventory/zone/save mutation after fixture installation",
+        "no manual combat by player to replace guard response",
+        "use current semantic owners and advertised controls only",
+        "record every roster guard and explicitly explain exclusions",
+        "native save and process replacement required; saved-file inspection does not establish persistence"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 25.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_r032_patrol_zombie_alarm",
+    "terminal_exit_timeout_seconds": 35.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_r032_patrol_after_reload",
+        "native_semantic_checkpoint": {
+          "required_actions": [
+            "world.basecamp_missions"
+          ],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r032_patrol_after_reload",
+        "cleanup_on_finish": true,
+        "objective": "Independently re-observe character:25 at the same R032 Assignment Camp, Locker-equipped inventory, same assigned patrol job/order/route and current movement/service through ordinary native game time. Do not restage or reassign any state.",
+        "proof_targets": [
+          "new game PID generation after native save and exit",
+          "same character:25/CAMP_RESIDENT and Locker gear",
+          "same live CAMP_PATROL order/route and guard service continued",
+          "native cleanup"
+        ],
+        "authority": [
+          "currently advertised native semantic actions",
+          "game.act",
+          "game.wait",
+          "run.witness",
+          "run.finish"
+        ],
+        "invariants": [
+          "fixture is not reinstalled during continuation",
+          "do not reassign patrol or manipulate actor/save state",
+          "process replacement and fresh native observations are required"
+        ],
+        "live_operations": [
+          "game.act",
+          "game.wait"
+        ],
+        "transition_timeout_seconds": 25.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {
+    "precondition": [
+      "bind_r032_equipped_camp_world"
+    ],
+    "production_behavior": [
+      "operate_r032_patrol_zombie_alarm"
+    ],
+    "terminal_persistence": [
+      "operate_r032_patrol_zombie_alarm",
+      "bind_r032_patrol_after_reload",
+      "verify_r032_patrol_after_reload"
+    ],
+    "artifact_verdict": [
+      "operate_r032_patrol_zombie_alarm",
+      "verify_r032_patrol_after_reload"
+    ],
+    "disallowed_shortcuts": [
+      "bind_r032_equipped_camp_world"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A current-source, native save-and-quit action persists an ordinary player-created checkpoint across the declared replacement process, and the continuation is admitted only after a bound successful serializer completion.",
+  "material_proof": "Bind the source/executable, scenario, run, request, original process, terminal native prompt receipt, native save-completion event, persisted world artifact, replacement process, and restored World surface. Before the save boundary, create the scenario's brazier fire and perform its guarded retreat using advertised native actions. After native process replacement, observe the same saved world through the new owner without fixture reinstallation.",
+  "current_uncertainty": "Whether the repaired native completion event, bridge reentry gate, and source-bound game binary cooperate in a real save-and-quit/reload cycle.",
+  "material_contradiction": [
+    "The native save prompt is declined, cancelled, fails serialization, or emits no fully bound successful completion event.",
+    "The original process remains live after its native exit path, or a continuation is admitted without the matching native completion evidence.",
+    "The restored world lacks the player-created brazier fire or guarded-retreat checkpoint, or the fixture is reinstalled after the save boundary.",
+    "Any source, executable, run, request, artifact, or process identity is missing or mismatched."
+  ],
+  "already_accepted_evidence": [
+    "Focused unit and bridge checks establish the intended gate behavior but do not substitute for a native process-replacement observation."
+  ],
+  "forbidden_shortcuts": [
+    "Raw save rewrite after installation.",
+    "Fixture reinstallation after the player-created checkpoint.",
+    "Direct state mutation, synthetic prompt injection, or treating a prompt response as serializer success."
+  ],
+  "honest_stop_conditions": [
+    "A bound successful native completion followed by restored-world observation is retained.",
+    "The first material binding, native-save, process-exit, reentry-gate, or persistence contradiction is retained and the owned run is closed safely."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

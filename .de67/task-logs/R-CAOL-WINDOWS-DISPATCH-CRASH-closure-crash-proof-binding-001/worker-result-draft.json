@@ -1,0 +1,53 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-WINDOWS-DISPATCH-CRASH-closure-crash-proof-binding-001",
+  "claim_id": "R-CAOL-WINDOWS-DISPATCH-CRASH",
+  "disposition": "completed",
+  "verdict": "crash_repair_proof_bound_at_current_fs_scope",
+  "outcome": "The current FS crash outcome is supported by the source-bound invalid iterator diagnosis, production predicate failing-before/passing-after regression with preserved gunmods, and natural dispatch plus four subsequent sight returns on the exact copied TestSetup00 world on Mac.",
+  "summary": "Reconciled original Windows dump/disassembly/source, one-vector production repair, focused test logs, exact copied-world Mac native journey and earlier proof limits against the current FS. The assigned proof-binding gap is closed at the specified Mac scope; no exact crashing NPC/gun identity or Windows live pass is claimed.",
+  "material_changes": [],
+  "tests": [
+    "Read-only source inspection: src/do_turn.cpp stores gun.gunmods() once and iterates that vector; the focused regression exercises the production helper and asserts false/true optic outcomes with mod-count/content preservation.",
+    "Retained before log terminates with SIGSEGV in item::has_flag through the production helper; retained after log passes 14 assertions; adjacent structural sight regression passes 31 assertions."
+  ],
+  "live_actions": [
+    "No game, Windows/WSL or GUI operation in this read-only assignment. Accepted retained Mac run 220727e9d0d84ae49dc964416cd2d109 naturally dispatched at minute 8400, returned from structural sight checks at 8460/8520/8580/8640, saved and quit at 8785; game/cockpit processes were previously verified exited."
+  ],
+  "evidence_ceiling": [
+    "Original dump/disassembly and corresponding source bind the invalid iterator range to two temporary gunmods vectors in the optic predicate; the exact crashing NPC and gun are not identified.",
+    "The Mac native sight log proves helper return after natural dispatch but does not alone prove its inner gunmod predicate ran or establish a native inventory equality trace. The focused production regression supplies the predicate and content-preservation control.",
+    "No Windows live ordinary-wait pass is claimed or required by the current FS's owner host correction."
+  ],
+  "bindings": {
+    "receipt_1": "9ff65f472052342c2f8210d952e50acc07858c4dc9b4c8d720f8265ad3f45acf",
+    "receipt_2": "a1eca41259f372ad56478f3d414eb0dbf8e24605b8dc1489e67455487a7582db",
+    "original_report": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md",
+    "native_run_id": "220727e9d0d84ae49dc964416cd2d109",
+    "native_journal": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/transition.events.jsonl",
+    "native_final": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/cockpit.live.final.json"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md", "role": "Original dump/source diagnosis, source repair, previous route comparison, copied-world native journey"},
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/original-lldb-backtrace.txt", "role": "Original dump exception and call path"},
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/original-optic-call-disassembly.txt", "role": "Original executable calls gunmods twice in one iterator expression"},
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-before-test.log", "role": "Focused production predicate regression before repair, SIGSEGV"},
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-after-test-final.log", "role": "Focused production predicate regression after repair, 14 assertions pass"},
+    {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-visibility-test.log", "role": "Adjacent structural sight regression, 31 assertions pass"},
+    {"path": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/transition.events.jsonl", "role": "Native Mac dispatch/run transition evidence"},
+    {"path": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/cockpit.live.final.json", "role": "Native Mac save/quit and process closure evidence"}
+  ],
+  "accepted_no_replay": [
+    "Preserve the original Windows dump/source diagnosis and repaired source/regression proof at their recorded scope.",
+    "Preserve Mac native run 220727e9d0d84ae49dc964416cd2d109 at its measured scope; current FS/owner correction does not require Windows replay."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Coordinator formal closure and claim acceptance; no additional crash proof is open under the current FS scope.",
+  "narrow_queries": [
+    "Compare current FS slice R-CAOL-WINDOWS-DISPATCH-CRASH-S001 with the original report and receipts 9ff65f472052342c2f8210d952e50acc07858c4dc9b4c8d720f8265ad3f45acf and a1eca41259f372ad56478f3d414eb0dbf8e24605b8dc1489e67455487a7582db.",
+    "If a new contradiction arises, inspect only optic helper/test diff, before/after logs and the copied-world native structural sight records."
+  ],
+  "entrypoints": ["src/do_turn.cpp", "src/bandit_live_world.h", "tests/bandit_live_world_test.cpp", ".de67/FS.md"]
+}

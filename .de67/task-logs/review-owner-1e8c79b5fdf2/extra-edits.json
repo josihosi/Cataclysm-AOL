@@ -1,0 +1,62 @@
+[
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/coordinator_supervisor.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/de-67-3/scripts/coordinator_supervisor.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/de-67-3/scripts/coordinator_supervisor.py"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/policy_kernel.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/de-67-3/scripts/policy_kernel.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/de-67-3/scripts/policy_kernel.py"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/worker_library.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/de-67-3/scripts/worker_library.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/de-67-3/scripts/worker_library.py"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/assets/environment/mutation-suggestions.md",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/de-67-3/assets/environment/mutation-suggestions.md",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/de-67-3/assets/environment/mutation-suggestions.md"
+  },
+  {
+    "target": "/Users/josefhorvath/.codex/skills/de67/scripts/workspace_setup.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/installed/scripts/workspace_setup.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/installed/scripts/workspace_setup.py"
+  },
+  {
+    "target": "/Users/josefhorvath/.codex/skills/de67/docs/how-de67-works.md",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/installed/docs/how-de67-works.md",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/installed/docs/how-de67-works.md"
+  },
+  {
+    "target": "/Users/josefhorvath/.codex/skills/de67/integrations/dashboard/README.md",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/installed/integrations/dashboard/README.md",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/installed/integrations/dashboard/README.md"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/scripts/workspace_setup.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/scripts/workspace_setup.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/scripts/workspace_setup.py"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/docs/how-de67-works.md",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/docs/how-de67-works.md",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/docs/how-de67-works.md"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/integrations/dashboard/README.md",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/integrations/dashboard/README.md",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/integrations/dashboard/README.md"
+  },
+  {
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/tests/test_policy_kernel.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/lab/de-67-3/tests/test_policy_kernel.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/lab/de-67-3/tests/test_policy_kernel.py"
+  },
+  {
+    "target": "/Users/josefhorvath/.codex/skills/de67/tests/test_workspace_setup.py",
+    "baseline": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-baseline/installed/tests/test_workspace_setup.py",
+    "candidate": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-1e8c79b5fdf2/extra-candidate/installed/tests/test_workspace_setup.py"
+  }
+]

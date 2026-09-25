@@ -416,9 +416,14 @@ def validate_witness_statement(
         if not isinstance(checks, Mapping):
             raise WitnessError("witness_citation_checks_must_be_an_object")
         for path, expected in checks.items():
-            actual = _path_value(cited_entry.get("value"), str(path))
+            try:
+                actual = _path_value(cited_entry.get("value"), str(path))
+            except WitnessError as error:
+                raise WitnessError(f"witness_citation_path_missing:{citation_id}:{path}; inspect this citation and use a path inside entry.value") from error
             if actual != expected:
-                raise WitnessError("witness_citation_value_mismatch:" + citation_id + ":" + str(path))
+                raise WitnessError("witness_citation_value_mismatch:" + citation_id + ":" + str(path) +
+                                   " (recorded " + type(actual).__name__ + ", supplied " +
+                                   type(expected).__name__ + "; match the raw journal value)")
         cited.add(citation_id)
         normalized_citations.append({
             "citation_id": citation_id, "meaning": meaning, "checks": dict(checks),

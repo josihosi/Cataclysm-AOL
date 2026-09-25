@@ -1,0 +1,26 @@
+{
+  "assignment_id": "60172fefb9344c368a4d98730c8fd65e",
+  "task": {
+    "task_id": "R-CAOL-CAMP-ASSIGNMENT-exploration-001",
+    "claim_id": "R-CAOL-CAMP-ASSIGNMENT",
+    "attempt_terminal_at": 1790199133.1833658,
+    "worker_id": "01a0d026-b35f-78f3-ab4b-93971d8d61e4",
+    "coordinator_session_id": "01a0d024-7e7f-7160-bb0b-6aa37fd1374a",
+    "supervisor_id": "1202",
+    "released_at": 1790199133.1833658
+  },
+  "assignment_status": "running",
+  "old_binding": {
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+    "run_id": "restart-82-be9a43d92ae84a02a87620d84d975b82",
+    "thread_id": "01a0d024-7e7f-7160-bb0b-6aa37fd1374a",
+    "runner_pid": 1908,
+    "server_pid": 1909,
+    "socket": "/Users/josefhorvath/.codex/state/de67-input/2f699c5bd169d8a6.sock",
+    "deadline_state": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/deadlines.sqlite3",
+    "lineage": "semantic-surface-cockpit",
+    "supervisor_id": "1202"
+  },
+  "idle": false,
+  "owns_under_new_coordinator": false
+}

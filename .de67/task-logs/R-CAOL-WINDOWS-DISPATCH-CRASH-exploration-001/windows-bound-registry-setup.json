@@ -1,0 +1,150 @@
+{
+  "registry": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+  "rebuild": {
+    "command": "rebuild",
+    "ok": true,
+    "registry": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+    "result": {
+      "absent": 0,
+      "changed": 0,
+      "discovered": 0,
+      "staged": 1
+    }
+  },
+  "query": {
+    "command": "registry-query",
+    "ok": true,
+    "registry": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+    "result": {
+      "artifact": {
+        "bytes": 4712,
+        "path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\command-artifacts\\registry-query\\2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb.json",
+        "sha256": "2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb"
+      },
+      "authority": "Saved query snapshot; browsing does not reselect or issue authority. The token belongs only to selected_scenario_id; launch revalidates current state.",
+      "candidates": [
+        {
+          "details_argv": [
+            "C:\\Python313\\python.exe",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\tools\\openclaw_harness\\scenario_registry_cli.py",
+            "--registry",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+            "registry-query-page",
+            "--sha256",
+            "2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb",
+            "--scenario-id",
+            "db8de1154a25346ed65099108fdeae9fbc89aa513a4c568aaef08c2b1d6c1d8d"
+          ],
+          "lifecycle_state": "active",
+          "manifest_sha256": "36c947084b3465675b7cb62b3eaa3037d5cecf29b1aee685d0fdf511847631a1",
+          "matches": [
+            {
+              "evidence_state": "declared",
+              "expected": "ordinary_wait_through_dispatch_and_subsequent_structural_observation",
+              "key": "capabilities.windows.dispatch_crash",
+              "observed": "ordinary_wait_through_dispatch_and_subsequent_structural_observation",
+              "op": "eq",
+              "passed": true,
+              "reason": "matched"
+            }
+          ],
+          "name": "windows.dispatch_crash_fixed_wait_20260924",
+          "preferences": [
+            {
+              "evidence_state": "declared",
+              "expected": "cockpit_live_session",
+              "key": "runtime.entry_mode",
+              "observed": "cockpit_live_session",
+              "op": "eq",
+              "passed": true,
+              "reason": "matched"
+            }
+          ],
+          "rank": 1,
+          "revision": 1,
+          "route_evidence_states": [],
+          "scenario_id": "db8de1154a25346ed65099108fdeae9fbc89aa513a4c568aaef08c2b1d6c1d8d",
+          "source_path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\scenarios\\windows.dispatch_crash_fixed_wait_20260924.json",
+          "token_eligible": true
+        }
+      ],
+      "command": "registry-query",
+      "draft_path": null,
+      "export": {
+        "bytes": 4712,
+        "path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\command-artifacts\\registry-query\\2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb.json",
+        "sha256": "2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb"
+      },
+      "full_result": [
+        "C:\\Python313\\python.exe",
+        "C:\\Users\\josef\\dev\\Cataclysm-AOL\\tools\\openclaw_harness\\scenario_registry_cli.py",
+        "--registry",
+        "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+        "registry-query-artifact",
+        "--sha256",
+        "2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb"
+      ],
+      "next_action": {
+        "command": {
+          "argv": [
+            "C:\\Python313\\python.exe",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\tools\\openclaw_harness\\scenario_registry_cli.py",
+            "--registry",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+            "registry-detached-launch",
+            "5e33b0778522bcd1d2fe218900e915167089210bf0978f7dc8080d5363141355",
+            "--witness-charter",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\windows-dispatch-witness-charter.json",
+            "--session-dir",
+            "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\bridge-sessions\\selected-4a42964c588c4d1897e58312791d321a"
+          ]
+        },
+        "kind": "launch_selected_scenario",
+        "precondition": "Launch revalidates the selected token and bindings; a detached session directory must not exist before launch."
+      },
+      "page": {
+        "excluded_candidates": 0,
+        "next": null,
+        "offset": 0,
+        "page_size": 5,
+        "returned": 1,
+        "scenario_id": null,
+        "total_matches": 1,
+        "view": "matches"
+      },
+      "query_id": "94ccbd713f763b66f62fac0b7b5bce8133149448651f9e088d694c2b3c6851aa",
+      "query_sha256": "f712b55b3087d9e18783839c7efb1e0e2957544a95ee20c09c0462fb2e89bdd6",
+      "rejections": {
+        "causes": [],
+        "details_argv": [
+          "C:\\Python313\\python.exe",
+          "C:\\Users\\josef\\dev\\Cataclysm-AOL\\tools\\openclaw_harness\\scenario_registry_cli.py",
+          "--registry",
+          "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\dispatch-crash-registry.sqlite3",
+          "registry-query-page",
+          "--sha256",
+          "2d6d03dd6f956e864da8183aa87c6d7d1ca2c5e7f702c3a3607907c34f448eeb",
+          "--view",
+          "excluded"
+        ]
+      },
+      "schema": "caol-command-receipt-v1",
+      "selected_scenario_id": "db8de1154a25346ed65099108fdeae9fbc89aa513a4c568aaef08c2b1d6c1d8d",
+      "selection_id": "54405f3dd86cd6b714afbbfb9a2dccffe59992dfe222172a389e3115e1ad98c5",
+      "source_executable_readiness": {
+        "evidence_ceiling": "requested run ceiling",
+        "executable_path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\cataclysm-tiles.exe",
+        "executable_sha256": "656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d",
+        "product_build_receipt": {
+          "error": "",
+          "path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\openclaw_harness\\source_bindings\\cataclysm-tiles.exe-199c2aca1e26ce00.json",
+          "status": "matched"
+        },
+        "product_source_sha256": "cd25d564350baa151119dee87897fb2bc4aed5cd2bc08fb54554edde9dc00fb9",
+        "reason": "receipt_bound_dirty_product_build",
+        "status": "ready"
+      },
+      "token_id": "5e33b0778522bcd1d2fe218900e915167089210bf0978f7dc8080d5363141355"
+    }
+  }
+}

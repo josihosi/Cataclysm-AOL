@@ -1,0 +1,32 @@
+Analysis of sampling godot (pid 30236) every 1 millisecond
+Process:         Godot [30236]
+Path:            /Applications/Godot.app/Contents/MacOS/Godot
+Load Address:    0x104174000
+Identifier:      Godot
+Version:         ???
+Code Type:       ARM64
+Parent Process:  Python [30234]
+Target Type:     live task
+
+Date/Time:       2026-09-24 03:16:56.685 +0200
+Launch Time:     2026-09-24 03:16:53.632 +0200
+OS Version:      macOS 26.6.2 (25G83)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         112K
+Physical footprint (peak):  112K
+Idle exit:                  untracked
+----
+
+Call graph:
+    2616 Thread_22633444: Main Thread   DispatchQueue_<multiple>
+      2616 _dyld_start  (in dyld) + 0  [0x1075cc9c0]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        _dyld_start  (in dyld)        2616
+
+Binary images description not available
+

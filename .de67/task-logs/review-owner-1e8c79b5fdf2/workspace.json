@@ -1,0 +1,40 @@
+{
+  "agent_transport": "app-server",
+  "agent_transport_python": "/Users/josefhorvath/.codex/venvs/de67-input/bin/python",
+  "clock": {
+    "lineage": "semantic-surface-cockpit",
+    "state": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/deadlines.sqlite3"
+  },
+  "guidance": {
+    "effective": true,
+    "fallback": false,
+    "sha256": "932616360687026b638281d4ef0d8ed8760f6985f6ae7b07bff361ebbe5c888e",
+    "source": "/Users/josefhorvath/.codex/AGENTS.md"
+  },
+  "persistent_mutator": true,
+  "source_ref": "refs/heads/dev",
+  "targets": [
+    {
+      "remote": "origin",
+      "remote_url": "git@github.com:josihosi/Cataclysm-AOL.git",
+      "target_ref": "refs/heads/dev"
+    }
+  ],
+  "upstream": "origin/dev",
+  "version": 1,
+  "worker_capabilities": [
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "low"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "medium"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "low"
+    }
+  ],
+  "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+}

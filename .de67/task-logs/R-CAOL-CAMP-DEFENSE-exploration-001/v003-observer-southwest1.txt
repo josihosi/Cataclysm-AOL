@@ -1,0 +1,10 @@
+World.
+moved
+avatar.absolute ms: 3899, 876, 0
+R032 Establishment Ally 1 · friendly · offset -8, -3
+forest floor: NW, NE, here, E
+maple tree: N, SW
+grass: W
+moss: S
+underbrush: SE
+6:05:22 AM: You see here 1 Glock 9x19mm 15-round magazine (0/15 9x19mm).

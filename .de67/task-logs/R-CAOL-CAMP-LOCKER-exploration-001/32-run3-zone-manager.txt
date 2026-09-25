@@ -1,0 +1,11 @@
+ZONE MANAGER
+enabled: false
+faction: your_followers
+faction role: display_filter; new zones belong to player faction
+revision: unknown
+show all: false
+ALLOWED HERE ONLY
+Close Zone Manager → play act zone.close
+Create zone → play act zone.create
+Show zones for faction (unavailable)
+Toggle distant zones → play act zone.show_all

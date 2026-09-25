@@ -1,0 +1,53 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 24,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276664713,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:5",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:5",
+  "kind": "dialogue",
+  "breadcrumbs": [
+    "World",
+    "Genevieve Floyd"
+  ],
+  "payload": {
+    "history": "Genevieve Floyd\n\"I'm… short… of breath…\"",
+    "prompt": "\"I'm… short… of breath…\"",
+    "speaker_id": "2",
+    "speaker_name": "Genevieve Floyd"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-1",
+      "label": "[INTIMIDATE 0%] Drop your weapon!",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-2",
+      "label": "[INTIMIDATE 0%] Get out of here or I'll kill you.",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-3",
+      "label": "What's the matter?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-4",
+      "label": "I don't care.",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

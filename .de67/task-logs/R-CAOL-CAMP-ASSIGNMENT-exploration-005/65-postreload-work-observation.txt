@@ -1,0 +1,15 @@
+Post-reload native sequence (generation 1):
+- `world.basecamp_missions --target 25` opened BASECAMP MISSION SELECTOR at (162,36,0), R032 Assignment Camp, faction your_followers.
+- `camp.open_job_assignment --target '(162,36,0)'` reopened BASECAMP WORKER ASSIGNMENT with worker count 1 and worker character:25.
+- `camp_assignment.edit_worker_jobs --target character:25` opened Assign job priority; native menu included `sorting out the loot : 1`.
+- Closed menus normally. `world.chat`, selected “Tell R032 Establishment Ally 1 to work on…”, then “Organizing loot into zones”.
+- Native result: “R032 Establishment Ally 1 sorted out every item possible.” and “R032 Establishment Ally 1 completed the assigned task.”
+- Follow-up `world.inspect_npc --target character:25` still showed R032 Establishment Ally 1, mission CAMP_RESIDENT, assigned camp 162,36,0, activity ACT_NULL.
+- Immutable source is reentry journal request `play-375ecda6f4314f7baeda928f585c8e5a` in `.userdata/openclaw_harness/bridge-sessions/selected-5418a89198024e97a2e2c128cace4828/cockpit-evidence.sqlite`; journal IDs J0016, J0018, J0021, J0038-J0044. Work completion text retrieved from J0038 `value.surface.facts.messages` and copied verbatim above. Priority label retrieved as J0021 surface action index 24.
+
+Failed/recovered input:
+- `world.basecamp_missions --target character:25` rejected; its current exact advertised target was `25`. Fresh controls, then correct target succeeded; no gameplay state change on rejection.
+- `world.chat --target 25` rejected; current controls showed chat has no target. Fresh `look`/`controls`, then `world.chat` succeeded.
+- UI row selection with `menu.select` only highlighted a row; an incorrect `dialogue.choose` was unavailable. Fresh `look` identified `menu.choose`; exact advertised menu row choices then succeeded.
+- Attempted post-journal `world.save_quit` was rejected by the sealed journal (`journal_is_sealed: submit finish --witness FILE`). This confirms input boundary; no native action was sent. Game PID 26144 remained live at that point.
+- Exact-PID Peekaboo `list windows --pid 26144` succeeded. Fresh `see --pid 26144` timed out; bridge handshake OK and all reported permissions granted. No Peekaboo click/type was sent.

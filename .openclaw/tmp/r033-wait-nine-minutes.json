@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_delta_game_minutes": 9,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "Nine exact one-minute native waits form an intermediate bounded segment; the caller records every terminal minute and never crosses the 10080 watch boundary without a separate observation.",
+      "unit": "game_minutes",
+      "maximum": 9,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

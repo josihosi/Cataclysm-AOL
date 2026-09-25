@@ -1,0 +1,58 @@
+{
+  "schema": "caol-playtest-coordinator-brief-v1",
+  "task_id": "R-CAOL-CAMP-PAY-RETURN-exploration-001",
+  "claim_id": "R-CAOL-CAMP-PAY-RETURN",
+  "scenario": "r032.camp_payment_return_v001_mcw",
+  "objective": "Prepare and prove fresh native camp-stock payment, physical departure, disclosed replenishment and ordinary bandit return ecology, using the actual peaceful branch only after its saved binding is handed off.",
+  "setup_boundary": "This scenario is source-bound to the accepted R032 Locker save and adds only ten RobofacCoin items to a one-tile follower-owned CAMP_STORAGE spill zone. Setup earns zero gameplay credit. It does not create bandit leads, dispatches, outings, contacts, operations or cooldowns.",
+  "proof_boundary": "Fresh demand/trade valuation, native payment, physical departure, later natural scheduler opportunity, replenishment and return/non-return cause must be observed in the run. Earlier R-029 payment/continuation remain outside this proof.",
+  "handoff_dependency": "Coordinator supplies the exact defense-owned peaceful-branch saved world/run binding before any live launch. Until then this isolated scenario is a dry-run preparation only; do not operate the defense session.",
+  "preservation": [
+    "Do not edit defense-owned scenario or fixture files.",
+    "Do not launch a game or send GUI input during preparation.",
+    "Preserve accepted Locker evidence, unrelated dirty work and coordinator-retained PID 90668."
+  ],
+  "outcome": "Fresh native camp-stock Pay uses an actual CAMP_STORAGE spillover tile for real tradeable RobofacCoin, commits the same bandit outing to physical return, and observes replenishment plus subsequent ordinary bandit return ecology.",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "op": "eq",
+        "value": "r032_camp_pay_stock_v001_mcw",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.world",
+        "op": "eq",
+        "value": "McWilliams",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.camp.payment",
+        "op": "eq",
+        "value": "native_camp_storage_trade_and_paid_return",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.camp.return_ecology",
+        "op": "eq",
+        "value": "ordinary_time_scheduler_outing_and_renewed_contact",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

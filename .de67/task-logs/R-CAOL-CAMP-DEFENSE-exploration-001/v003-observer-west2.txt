@@ -1,0 +1,9 @@
+World.
+moved
+avatar.absolute ms: 3897, 876, 0
+R032 Establishment Ally 1 · friendly · offset -3, -2
+forest floor: NW, NE, W, here, S
+moss: N
+grass: E
+underbrush: SW
+maple tree: SE

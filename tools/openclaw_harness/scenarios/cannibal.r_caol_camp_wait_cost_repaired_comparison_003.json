@@ -1,0 +1,168 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_camp_wait_cost_repaired_comparison_003",
+  "description": "Source-bound repaired native comparison of an equal 300-turn wait from a disposable continuation of the preserved minute-7994 closed-room TestSetup00 save.",
+  "profile": "camp-wait-cost-003-repaired-comparison",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.camp_wait_cost_comparison": {
+      "turns": 300,
+      "source": "repaired current-worktree binary",
+      "events": [
+        "active_sortie_local_contact",
+        "production_signal_dispatch_admission"
+      ],
+      "profile": "preserved minute-7994 saved continuation with documented migration cancellation"
+    },
+    "capabilities.r_caol.saved_world_continuation": "continue_disposable_copy_of_preserved_minute7994_without_fixture_install_or_replacement",
+    "capabilities.r_caol.first_smoke": [
+      "ordinary_brazier_fire",
+      "existing_smoke_source",
+      "camp_dispatch_state_observation"
+    ],
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.save",
+      "semantic:world.wait",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "camp-wait-cost-003-repaired-comparison",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "camp-wait-cost-003-repaired-comparison",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "resume_disposable_preserved_minute7994_world",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Resume the disposable copy of the preserved TestSetup00 save without fixture installation or saved-world replacement."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_saved_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.move.east"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_install_on_saved_world_continuation",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "The selected scenario declares no fixture and resumes the cloned saved world."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "compare_repaired_five_minute_wait",
+      "objective": "Verify world safe mode is OFF before movement. From saved turn 5231694 at [3157,3449,0], take exactly one ordinary native east step to [3158,3449,0], quicksave, confirm turn 5231695, then capture transition/native event file offsets and request exactly one native five-minute wait (300 turns). Capture exact turn delta and per-turn timing, wall elapsed, transition stream byte growth and counts for active_sortie_local_contact and production_signal_dispatch_admission grouped by outcome/reason, plus camp/member/dispatch/fire/inventory state after collection. Preserve changed rejections or renewed contact. Do not add fuel or setup; no injected events. Verify safe mode OFF after entry, any reload, or blocked movement. Stop after the one comparable wait and collect its evidence.",
+      "proof_targets": [
+        "source/executable binding matches repaired readiness hashes",
+        "clone derives byte-for-byte from preserved minute-7994 source before documented single-field Tilda migration cancellation",
+        "safe mode OFF verified before movement/wait/reload",
+        "one east step and quicksave produce baseline start turn 5231695 and position [3158,3449,0]",
+        "one five-minute native wait advances exactly 300 turns",
+        "native per-turn timing and wall elapsed",
+        "transition stream offsets/bytes and both required transition event families counted by outcome/reason",
+        "camp, member, dispatch, burning brazier and inventory state at equal-workload checkpoints"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "use only the disposable cloned profile; source and active smoke profile remain untouched",
+        "no fixture install or world replacement",
+        "one east step reproduces original baseline start premise; do not step onto the brazier",
+        "safe mode must be OFF before movement or waiting and rechecked after reload or blocked movement",
+        "do not inject or author smoke, fire, light, signal, contact, camp, or dispatch",
+        "do not refuel or alter inventory/camp ecology unless an actually missing required premise is established",
+        "do not conflate simulation turn duration with wall time or event-file scan cost",
+        "record event-window granularity limits explicitly"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "resume_disposable_preserved_minute7994_world",
+      "bind_saved_native_world"
+    ],
+    "production_behavior": [
+      "compare_repaired_five_minute_wait"
+    ],
+    "terminal_persistence": [
+      "compare_repaired_five_minute_wait"
+    ],
+    "artifact_verdict": [
+      "compare_repaired_five_minute_wait"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_install_on_saved_world_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "The repaired current-source binary completes an equivalent 300-turn five-minute wait from the preserved minute-7994 camp/fire continuation while reducing duplicate contact and unchanged admission diagnostic writes and keeping native stream validation incremental.",
+    "failure_rule": "Keep feature behavior and performance claims separate. Require exact source binding, exact 300-turn delta, comparable starting state, retained native turn timings, and transition-file/event counts for both event families; otherwise identify the first missing premise and report inconclusive."
+  }
+}

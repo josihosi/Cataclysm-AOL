@@ -1,0 +1,19 @@
+LOOK CURSOR
+Game time: 7559 minutes.
+mode: zone_bounds
+movement step: 1
+relative to avatar: 2, 0, 0
+selection stage: first_point
+ALLOWED HERE ONLY
+cancel → play act cursor.cancel
+confirm → play act cursor.confirm
+east → play act cursor.east
+level_down → play act cursor.level_down
+level_up → play act cursor.level_up
+north → play act cursor.north
+northeast → play act cursor.northeast
+northwest → play act cursor.northwest
+south → play act cursor.south
+southeast → play act cursor.southeast
+southwest → play act cursor.southwest
+west → play act cursor.west

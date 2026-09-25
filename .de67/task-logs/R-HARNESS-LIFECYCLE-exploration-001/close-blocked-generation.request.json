@@ -1,0 +1,4 @@
+{
+  "action": "run.quit",
+  "stop_reason": "Native save completed, but this generation's semantic trace parser rejects the completion event; close before source repair."
+}

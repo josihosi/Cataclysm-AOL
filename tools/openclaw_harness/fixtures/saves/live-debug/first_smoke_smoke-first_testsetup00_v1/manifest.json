@@ -1,0 +1,17 @@
+{
+  "name": "first_smoke_smoke-first_testsetup00_v1",
+  "description": "Task-local disposable copy of owner closed-window TestSetup00; only controlled camp footprint at OMT [135,137,0] and arm-specific setup supplies are authored. No fire, smoke, light, signal, or cannibal actors are seeded. Owner source and play behavior remain native.",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "smokebomb",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

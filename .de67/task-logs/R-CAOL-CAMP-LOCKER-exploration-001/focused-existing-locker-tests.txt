@@ -1,0 +1,17 @@
+
+
+-----------------------------------------
+03:08:20.992 : Starting log.
+03:08:20.992 INFO : Cataclysm DDA version fe8c418c16-dirty+SDL3
+03:08:20.992 INFO : Default randomness seeded to: 3181921318
+
+03:08:20.993 INFO : Running Catch2 session:
+Filters: camp_locker_service_equips_upgrades_and_returns_replaced_gear camp_locker_service_readies_ranged_loadouts_from_locker_supply camp_locker_downtime_rehydrates_transient_assignees camp_locker_new_zone_gear_requeues_worker_after_baseline_noop camp_locker_service_filters_unwearable_armor_candidates camp_locker_service_filters_unwieldable_weapon_candidates
+No test cases matched 'camp_locker_service_equips_upgrades_and_returns_replaced_gearcamp_locker_service_readies_ranged_loadouts_from_locker_supplycamp_locker_downtime_rehydrates_transient_assigneescamp_locker_new_zone_gear_requeues_worker_after_baseline_noopcamp_locker_service_filters_unwearable_armor_candidatescamp_locker_service_filters_unwieldable_weapon_candidates'
+===============================================================================
+No tests ran
+
+
+03:08:20.994 INFO : Finished in 0.000966 seconds
+03:08:20.994 INFO : Default randomness seeded to: 3181921318
+

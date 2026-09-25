@@ -1,0 +1,29 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790274920633407",
+  "sequence": 19,
+  "game_minutes": 7685,
+  "game_turn": 5213103,
+  "wall_time": 1790275236849,
+  "is_night": false,
+  "run_id": "606135bb557145dfb4073ddf4323ea5f",
+  "surface_id": "606135bb557145dfb4073ddf4323ea5f:surface:9",
+  "frame_id": "606135bb557145dfb4073ddf4323ea5f:frame:4",
+  "kind": "main_menu",
+  "breadcrumbs": [
+    "Main menu"
+  ],
+  "payload": {},
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "main_menu.quit",
+      "stable_id": "",
+      "label": "Quit",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

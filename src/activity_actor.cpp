@@ -14179,7 +14179,6 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
     }
 
     zone_sorting::zone_items items = zone_sorting::populate_items( src_bub );
-
     zone_sorting::unload_sort_options zone_unload_options = zone_sorting::set_unload_options( you, src,
             false );
 
@@ -14213,13 +14212,24 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
          ++it ) {
         ++num_processed;
         item &thisitem = *it->first;
+        const bool trace_plank = thisitem.typeId().str() == "2x4";
+        if( trace_plank ) {
+            DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=worklist n=" << num_processed
+                                          << " item=" << static_cast<const void *>( &thisitem )
+                                          << " src=" << src << " source_items=" << here.i_at( src_bub ).size();
+        }
 
         if( it->second && skip_cart_cargo ) {
             continue;
         }
 
-        if( zone_sorting::sort_skip_item( you, it->first, other_activity_items,
-                                          mgr.has( zone_type_LOOT_IGNORE_FAVORITES, src, fac_id ), src ) ) {
+        const bool skip_item = zone_sorting::sort_skip_item( you, it->first, other_activity_items,
+                                 mgr.has( zone_type_LOOT_IGNORE_FAVORITES, src, fac_id ), src );
+        if( trace_plank ) {
+            DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=skip_check item="
+                                          << static_cast<const void *>( &thisitem ) << " skipped=" << skip_item;
+        }
+        if( skip_item ) {
             continue;
         }
 
@@ -14228,6 +14238,7 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
 
         std::unordered_set<tripoint_abs_ms> dest_set =
             mgr.get_near( zt_id, abspos, MAX_VIEW_DISTANCE, &thisitem, fac_id );
+        const size_t trace_dest_count = dest_set.size();
         if( skip_personal ) {
             for( auto dit = dest_set.begin(); dit != dest_set.end(); ) {
                 if( !mgr.has_nonpersonal( zt_id, *dit, fac_id ) ) {
@@ -14247,8 +14258,22 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
             }
         }
 
+        if( trace_plank ) {
+            DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=candidates item="
+                                          << static_cast<const void *>( &thisitem ) << " zone=" << zt_id
+                                          << " raw=" << trace_dest_count << " eligible=" << dest_set.size()
+                                          << " source_items=" << here.i_at( src_bub ).size();
+        }
+
         std::optional<bool> move_and_reset = zone_sorting::unload_item( you, src,
                                              zone_unload_options, it->second ? vp : std::nullopt, it->first, dest_set, num_processed );
+        if( trace_plank ) {
+            DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=unload item="
+                                          << static_cast<const void *>( &thisitem )
+                                          << " result=" << ( move_and_reset ? ( *move_and_reset ? 1 : 0 ) : -1 )
+                                          << " moves=" << you.get_moves()
+                                          << " source_items=" << here.i_at( src_bub ).size();
+        }
         // out of moves, or unloaded item container was destroyed or prompted an activity restart
         if( !move_and_reset ) {
             return;
@@ -14291,6 +14316,13 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                                            false );
                     placed = ground.get_item() != nullptr;
                 }
+                if( trace_plank ) {
+                    DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=adjacent_place item="
+                                                  << static_cast<const void *>( &thisitem ) << " dest=" << dest
+                                                  << " vehicle_only=" << vehicle_only << " placed=" << placed
+                                                  << " source_items=" << here.i_at( src_bub ).size()
+                                                  << " destination_items=" << here.i_at( dest_bub ).size();
+                }
                 if( !placed ) {
                     continue;
                 }
@@ -14300,6 +14332,12 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                     vp->vehicle().remove_item( vp->part(), &thisitem );
                 } else {
                     here.i_rem( src_bub, &thisitem );
+                }
+                if( !it->second && trace_plank ) {
+                    DebugLog( D_WARNING, DC_ALL ) << "bulk_plank stage=source_remove item="
+                                                  << static_cast<const void *>( &thisitem )
+                                                  << " source_items=" << here.i_at( src_bub ).size()
+                                                  << " destination_items=" << here.i_at( dest_bub ).size();
                 }
                 num_processed--;
                 delivered = true;

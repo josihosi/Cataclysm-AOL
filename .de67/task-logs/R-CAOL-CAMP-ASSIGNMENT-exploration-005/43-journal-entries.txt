@@ -1,0 +1,103 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-1001c4e1f63a4530a8ada5a33f9e2928
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0001: identity
+  INDEX 0; PATH FIELD; FIELD: scenario_id, source_identity, executable_identity
+J0002: observation — world
+  INDEX 1; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0003: observation — menu
+  INDEX 2; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0004: action — world.chat
+  checks: {"action_id": "world.chat"}
+J0005: observation — menu
+  INDEX 4; same PATH/FIELD as J0003.
+J0006: observation — world
+  INDEX 5; same PATH/FIELD as J0002.
+J0007: action — menu.cancel
+  checks: {"action_id": "menu.cancel"}
+J0008: observation — npc_inspection
+  INDEX 7; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0009: action — world.inspect_npc
+  checks: {"action_id": "world.inspect_npc"}
+J0010: observation — world
+  INDEX 9; same PATH/FIELD as J0002.
+J0011: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0012: observation — menu
+  INDEX 11; same PATH/FIELD as J0003.
+J0013: action — world.chat
+  checks: {"action_id": "world.chat"}
+J0014: observation — dialogue
+  INDEX 13; PATH value.surface.facts.FIELD; FIELD: history, prompt, speaker_id, speaker_name
+J0015: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0016: observation — dialogue
+  INDEX 15; same PATH/FIELD as J0014.
+J0017: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0018: observation — dialogue
+  INDEX 17; same PATH/FIELD as J0014.
+J0019: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0020: observation — menu
+  INDEX 19; same PATH/FIELD as J0003.
+J0021: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0022: observation — string_prompt
+  INDEX 21; PATH value.surface.facts.FIELD; FIELD: text, title
+J0023: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0024: observation — world
+  INDEX 23; same PATH/FIELD as J0002.
+J0025: action — prompt.submit
+  checks: {"action_id": "prompt.submit"}
+J0026: observation — world
+  INDEX 25; same PATH/FIELD as J0002.
+J0027: observation — npc_inspection
+  INDEX 26; same PATH/FIELD as J0008.
+J0028: action — world.inspect_npc
+  checks: {"action_id": "world.inspect_npc"}
+J0029: observation — world
+  INDEX 28; same PATH/FIELD as J0002.
+J0030: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0031: observation — menu
+  INDEX 30; same PATH/FIELD as J0003.
+J0032: action — world.chat
+  checks: {"action_id": "world.chat"}
+J0033: observation — dialogue
+  INDEX 32; same PATH/FIELD as J0014.
+J0034: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0035: observation — dialogue
+  INDEX 34; same PATH/FIELD as J0014.
+J0036: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0037: observation — dialogue
+  INDEX 36; same PATH/FIELD as J0014.
+J0038: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0039: observation — basecamp_worker_assignment
+  INDEX 38; PATH value.surface.facts.FIELD; FIELD: assigned_worker_count, camp_name, camp_site, job_priority_editor, owner_faction
+J0040: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0041: observation — menu
+  INDEX 40; same PATH/FIELD as J0003.
+J0042: action — camp_assignment.edit_worker_jobs
+  checks: {"action_id": "camp_assignment.edit_worker_jobs"}
+J0043: observation — string_prompt
+  INDEX 42; PATH value.surface.facts.FIELD; FIELD: description, max_length, only_digits, text, title
+J0044: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0045: observation — menu
+  INDEX 44; same PATH/FIELD as J0003.
+J0046: action — prompt.submit
+  checks: {"action_id": "prompt.submit"}
+J0047: observation — basecamp_worker_assignment
+  INDEX 46; same PATH/FIELD as J0039.
+J0048: action — menu.cancel
+  checks: {"action_id": "menu.cancel"}
+J0049: observation — dialogue
+  INDEX 48; same PATH/FIELD as J0014.
+J0050: action — camp_assignment.close
+  checks: {"action_id": "camp_assignment.close"}
+More → play inspect result.evidence_journal.entries --offset 50 --limit 50 --request-id play-1001c4e1f63a4530a8ada5a33f9e2928

@@ -1,0 +1,6 @@
+............................coordinator supervisor: optional blocker adapter disabled: Blocker adapter command must be a JSON argument array
+...................................................
+----------------------------------------------------------------------
+Ran 79 tests in 10.276s
+
+OK

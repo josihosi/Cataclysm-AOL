@@ -1,0 +1,114 @@
+{
+  "accepted": true,
+  "surface_request": {
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:17:world.save_quit:59525e1979fb95ac",
+    "action_id": "world.save_quit"
+  },
+  "native_receipt": {
+    "event": "surface_receipt",
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "process_instance": "1790276309340552",
+    "sequence": 159,
+    "game_minutes": 7689,
+    "game_turn": 5213344,
+    "wall_time": 1790277673639,
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:17:world.save_quit:59525e1979fb95ac",
+    "requested_run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "requested_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+    "requested_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+    "consuming_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+    "consuming_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+    "action_id": "world.save_quit",
+    "accepted": true,
+    "rejection_reason": "",
+    "resulting_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:18",
+    "outcome": "",
+    "_source_offset": 1035813,
+    "_source_end": 1036621,
+    "_event_offset": 1035813,
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17"
+  },
+  "transition_event": {
+    "schema_version": 1,
+    "sequence": 5,
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "game_minutes": 7689,
+    "domain": "semantic_surface",
+    "transition": "native_surface_receipt",
+    "outcome": "accepted",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:17:world.save_quit:59525e1979fb95ac",
+    "action_id": "world.save_quit",
+    "stable_id": "",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+    "resulting_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:18",
+    "proof_step_label": "",
+    "proof_step_index": null,
+    "native_receipt": {
+      "event": "surface_receipt",
+      "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+      "process_instance": "1790276309340552",
+      "sequence": 159,
+      "game_minutes": 7689,
+      "game_turn": 5213344,
+      "wall_time": 1790277673639,
+      "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:17:world.save_quit:59525e1979fb95ac",
+      "requested_run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+      "requested_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+      "requested_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+      "consuming_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:87",
+      "consuming_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:17",
+      "action_id": "world.save_quit",
+      "accepted": true,
+      "rejection_reason": "",
+      "resulting_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:18",
+      "outcome": "",
+      "_source_offset": 1035813,
+      "_source_end": 1036621,
+      "_event_offset": 1035813
+    }
+  },
+  "next_frame": {
+    "event": "surface_descriptor",
+    "schema_version": 1,
+    "process_instance": "1790276309340552",
+    "sequence": 158,
+    "game_minutes": 7689,
+    "game_turn": 5213344,
+    "wall_time": 1790277673639,
+    "is_night": false,
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:88",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:18",
+    "kind": "prompt",
+    "breadcrumbs": [
+      "World",
+      "YESNO"
+    ],
+    "payload": {
+      "text": "Save and quit? (Case Sensitive)",
+      "title": "YESNO"
+    },
+    "live_hostile_operation": null,
+    "valid_actions": [
+      {
+        "id": "prompt.choose",
+        "stable_id": "prompt-option:1",
+        "label": "YES",
+        "enabled": true
+      },
+      {
+        "id": "prompt.choose",
+        "stable_id": "prompt-option:2",
+        "label": "NO",
+        "enabled": true
+      }
+    ],
+    "_source_offset": 1035109,
+    "_source_end": 1035813,
+    "_event_offset": 1035109
+  }
+}

@@ -1,8 +1,18 @@
+Current model direction, 2026-09-23: only GPT-6 Sol, GPT-6 Luna and GPT-6 Astra for new work. Coordinator GPT-6 Sol low; Luna workers preferred and mandatory for live harness playtests. No GPT-5.6 models or Terra. This supersedes historical model guidance below. Existing records remain evidence, not dispatch choices.
+
 # Workspace command and evidence habits
 
 Apply the global contract/deletion test here. Select evidence from the current question; these
 query patterns are aids, not an investigation sequence. Retain complete artifacts while returning
 only the facts needed for the next decision.
+
+## Harness playtesting model
+
+Only GPT-6 Luna workers may launch or operate live playtest harness sessions. Sol and Astra
+workers must delegate that work to a GPT-6 Luna subagent, even when the parent owns a complex
+task. Give Luna the test outcome and relevant setup, and use its transcript and findings for
+analysis. Code changes, builds, automated tests and reading existing evidence remain with the
+appropriate worker. See `.agents/skills/caol-harness/SKILL.md` for playtest guidance.
 
 ## Commands
 

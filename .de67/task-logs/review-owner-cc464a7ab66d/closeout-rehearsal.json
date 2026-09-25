@@ -1,0 +1,29 @@
+{
+  "first": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 85,
+      "pending": true,
+      "requested_at": 1790264029.47172,
+      "reason": "Owner-suggestion cc464a7ab66d dispositioned: Windows ordinary-wait camp crash is FIRST delivery priority, R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001. Sol diagnose/repair, Luna live proof; read .de67/task-logs/review-owner-cc464a7ab66d/report.md and marked WEC. Windows/WSL owner reservation remains; start authorized Mac diagnosis. Cause and Windows regression remain open; preserve all accepted/returned work. Request one fresh coordinator; external supervisor alone launches, any owner stop remains binding.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "again": {
+    "created": false,
+    "coordinator_restart": {
+      "generation": 85,
+      "pending": true,
+      "requested_at": 1790264029.47172,
+      "reason": "Owner-suggestion cc464a7ab66d dispositioned: Windows ordinary-wait camp crash is FIRST delivery priority, R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001. Sol diagnose/repair, Luna live proof; read .de67/task-logs/review-owner-cc464a7ab66d/report.md and marked WEC. Windows/WSL owner reservation remains; start authorized Mac diagnosis. Cause and Windows regression remain open; preserve all accepted/returned work. Request one fresh coordinator; external supervisor alone launches, any owner stop remains binding.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "preserved": true
+}

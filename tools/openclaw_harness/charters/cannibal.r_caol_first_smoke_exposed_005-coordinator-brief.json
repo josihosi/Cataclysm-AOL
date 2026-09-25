@@ -1,0 +1,28 @@
+{
+  "scenario_id": "cannibal.r_caol_first_smoke_exposed_005",
+  "objective": "Continue the coherent corrected-run minute7753 post-smoke pre-dispatch save. Preserve existing physical-smoke provenance, walk ordinarily toward the real smoke-triggered scout watch so an actual NPC can see the player, then observe assessment, same-ID return/report and applicable later faction response without injected state.",
+  "outcome": "Continue the coherent corrected-run minute7753 post-smoke pre-dispatch save. Preserve existing physical-smoke provenance, walk ordinarily toward the real smoke-triggered scout watch so an actual NPC can see the player, then observe assessment, same-ID return/report and applicable later faction response without injected state.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_exposed_005-witness.json",
+  "constraints": [
+    "No save/phase/assessment/signal edits, no teleport, no broad quick setup.",
+    "Original indoor return/report proof remains separate; this arm reuses its real pre-dispatch checkpoint.",
+    "Two viewing mutations already saved; they are setup only.",
+    "Prepared brazier already burning: no ignition, fuel manipulation or bulk pickup unless actual new obstacle.",
+    "Loaded save run_mode1 must be toggled natively to Off and verified before movement; recheck after waits/reloads.",
+    "Only ordinary player walking can create LOS; preserve death or missed opportunity honestly.",
+    "Same recovered Luna exclusive input owner; launch only after prior11040 game/bridge OS exits.",
+    "Fixed verified binarya50cf6f7e424563acbbde2dc00d21c986d29dfc04708247c9dd3bd74f478a052.",
+    "Source manifest build_logs/dispatch-visit-001/identity-route-repair/native-handoff/exposed-01-profile-copy.json."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke_exposed_005",
+        "op": "eq",
+        "value": "same_smoke_real_los",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

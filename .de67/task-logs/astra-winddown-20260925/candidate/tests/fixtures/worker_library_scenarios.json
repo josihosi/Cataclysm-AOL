@@ -1,0 +1,101 @@
+{
+  "schema": "de67.worker-library-simulation.v1",
+  "title": "Named workers and selected context on CAOL evidence interpretation",
+  "evidence_class": "Simulation of coordination using dated product evidence; no gameplay, code repair or production proof",
+  "source_snapshot": {
+    "date": "2026-09-09",
+    "repository": "Cataclysm-AOL-hostile-ecology-dev",
+    "branch": "dev",
+    "head": "b169675f762afd3acd630486e3db62304618273c",
+    "source": ".de67/work-ledger.md",
+    "note": "The excerpts below are fixed test inputs. Original identifiers are provenance only; simulation identifiers and tokens have no production authority."
+  },
+  "documents": {
+    "evidence/sound-observation.md": "# Retained sound observation\n\nSource: work-ledger.md assignments R-029-sound-eligibility-001 and -002, inspected 2026-09-09.\n\nThe recovered state has last_checked=8225 and attempt=8280, in game minutes. At minute 8280 the sound lead strength is 399. The sound observation is already accepted at its narrow detection ceiling. Aggregate drive is 347, but its components are not known from this receipt. No candidate/pair/risk/policy ordering has yet been established in the material supplied to this initial extraction job.\n\nSeparate observed facts from hypotheses. Preserve detection without replaying the shot or changing thresholds. Distant sensing versus physical investigation is an owner gameplay choice; this simulation has no authority to implement it.\n",
+    "evidence/sound-gate-order.md": "# Sound gate order and comparison\n\nSource: work-ledger.md line 276, result receipt 5f554e3152b2b4265d39662cf9a65b47cab7c8a683fe46a8dbca70e4206f0f21. This is a compact report of the source predicate reproduction, not a verbatim C++ function.\n\nThe recent-check admission rule requires 360 game minutes since last_checked. A recent-check rejection occurs before interest, risk, route, policy, pair and drive evaluation. The retained sound expires at minute 8400. The underlying snapshot still has last_checked=8225, attempt=8280 and sound strength=399. Later evaluation components remain unknown in the retained evidence.\n\nComparison only: a separate adjacent-OMT smoke observation at minute 8225 created the exact normalized smoke lead in camp memory. Its first downstream result was drive idle. The natural sensing writer updates last_checked to the observation time. This smoke receipt is not sound evidence and does not prove scouting, reporting, an operation or contact.\n\nCompute whether this sound can outlive its admission cooldown. Identify the first causal barrier, distinguish it from the unknown later gates, and describe the owner decision about whether distant sensing and completed physical investigation should share a cooldown. No gameplay policy has changed.\n",
+    "evidence/npc-readiness.md": "# Current living-NPC route readiness\n\nSource: work-ledger.md lines 248-257, inspected 2026-09-09.\n\nHistorical footing receipt ee4343aab01885ad0636b47048709f5a8bf29daf860251e916c568bc224ee61e found build_required. A later source-bound build receipt 91475412ca84e9e536042b3c5e7b558d70730904fac1f01cffa82c785a18115c proved runtime ready against executable 912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452, but exact capability query returned zero candidates. Registry reprojection receipt c294aea7745ccf56687d7ba5dd83a6284fa84df21abc96af8433464b392fec62 found the scenario quarantined as route_stale. Those are preserved historical findings, not the current next step.\n\nCurrent binding repair receipt e441c2fed5e0baaebc1931be656b604dedb4f9a1482d152386e8ed7a46c1d855 made the exact scenario active and selectable without changing old gameplay evidence. In this isolated simulation, the selected scenario is SIM-SCENARIO-NPC, manifest SIM-MANIFEST-NPC, source SIM-SOURCE-NPC, executable SIM-EXECUTABLE-NPC, fixture SIM-PREPARED-BASE and profile SIM-NPC-PROFILE. Selection SIM-SELECTION-NPC has unconsumed single-use token SIM-TOKEN-NPC. These SIM identifiers cannot launch anything.\n\nThe only missing input for the simulated next action is a matching witness charter. No game has launched. Build, registry and prepared-base setup receive zero gameplay credit.\n",
+    "evidence/npc-charter-contract.md": "# Living-NPC witness charter contract\n\nSource: work-ledger.md assignment R-026-living-route-charter-011 and receipt 8b9d9ca939bd0c57289aba33b1d4f4167808b4a2a40a708097ab136700890152.\n\nThe charter must retain every current readiness identity exactly. Its route binds the intended actor, relationship and context snapshot, request, reply, application, resulting action or state, and lifecycle cleanup. It distinguishes setup from observed behavior and reports each outcome independently at the scenario's declared ceiling. A prepared camp does not prove native camp establishment. A successfully submitted request does not prove reply application or resulting gameplay. An observed process exit does not automatically prove native-exit or reentry behavior.\n\nFor this simulation produce a JSON charter with keys identities, intended_actor, observations, evidence_ceiling, open_boundaries and next_action. Use actor SIM-ACTOR-KATHARINA, declare the missing native observations honestly, and leave the token unconsumed. The next_action must be a descriptive object with action='charter-bound gameplay launch', requires='fresh source-bound native execution', and executable=false. There is no launch executable or production route in the fixture. Validate the JSON's identities and consistency using local Python. Do not invent gameplay results.\n",
+    "evidence/night-observation.md": "# Retained night-route observation\n\nSource: work-ledger.md lines 279-280, receipt d3ab40640c44ea98b8a59ee68f2944ed422178d4b16d8aa43f4aa466846ad89a.\n\nTwo fresh source-bound runs advanced ordinary game time from 23:00 through 06:00 and crossed a same-world replacement process for camp overmap_special:cannibal_camp@140,51,0 and members 4 and 5. The operation remained rallying. These runs establish elapsed native time and replacement continuity, but no approach, later movement, contact or subjective feel. Both game PIDs are absent; the replacement has no native-exit credit because cleanup occurred outside worker control.\n\nThe reporting worker attributed the stuck operation to a missing production transition/caller. Preserve that explanation as an unverified source-search inference, separate from the observed rallying result. This initial extraction job does not have the corrected call graph yet.\n",
+    "evidence/night-source-correction.md": "# Current source correction from the mutator\n\nSource: work-ledger.md lines 280-281, assignment R-029-night-departure-repair-001, inspected 2026-09-09. This is a source-grounded report excerpt, not a complete C++ implementation.\n\nThe production caller exists: src/do_turn.cpp::advance_live_bandit_hostile_approaches, invoked by overmap_npc_move. The old report's missing-production-caller explanation is not an established cause. Preserve the observed rallying outcome and replacement continuity, but do not add a duplicate caller or claim the root cause was repaired.\n\nThe discriminating next diagnosis must locate the first failed cursor, ownership, member, route, rally or night prerequisite from exact state and a useful source-bound counterexample. The supplied excerpts do not identify which of those prerequisites failed. A correct answer preserves this uncertainty instead of guessing. The intended behavior is that a ready cannibal raid departs at night, continues through dawn and retains exact-world reload continuity. Those requirements are not fresh proof. Independent activation/arbitration and sound-drive choices remain owner-gated.\n\nThis fixture correction is staged at a real coordinator restart boundary. It is not evidence of an actual DE67 mutation review or production method promotion.\n"
+  },
+  "claims": {
+    "R-SIM-SOUND": "Interpret the accepted sound observation and first eligibility gate without replay or gameplay-policy edits.",
+    "R-SIM-NPC": "Produce a coherent witness charter from the current ready NPC route without consuming a token or claiming gameplay.",
+    "R-SIM-NIGHT": "Preserve the observed night-route result while correcting an unsupported source explanation after coordinator restart."
+  },
+  "stages": [
+    {
+      "id": "sound-footing",
+      "scenario": "related-work",
+      "publish": ["evidence/sound-observation.md"],
+      "tasks": [
+        {
+          "id": "SIM-SOUND-001",
+          "claim": "R-SIM-SOUND",
+          "outcome": "Read the recovered chronology FROM evidence/sound-observation.md and distinguish measured sound quantities from unverified eligibility hypotheses. Preserve that source excerpt. Do not settle the gate ordering yet; that source excerpt arrives in a later job. Write the interpretation only to outputs/sound-footing.md and return its evidence limits.",
+          "artifacts": ["outputs/sound-footing.md"]
+        }
+      ],
+      "observation": "Actual named worker creation with a reusable responsibility, distinct from this task ID."
+    },
+    {
+      "id": "related-and-independent",
+      "scenario": "related-work-and-separate-work",
+      "publish": ["evidence/sound-gate-order.md", "evidence/npc-readiness.md", "evidence/npc-charter-contract.md"],
+      "tasks": [
+        {
+          "id": "SIM-SOUND-002",
+          "claim": "R-SIM-SOUND",
+          "outcome": "Continue the retained sound investigation using evidence/sound-gate-order.md. Compute the admission and expiry chronology, identify the first failed gate, keep later components unknown, and identify the smallest owner policy decision. Smoke is comparison only. Preserve accepted detection without replay or thresholds changes. Write outputs/sound-eligibility.md.",
+          "artifacts": ["outputs/sound-eligibility.md"]
+        },
+        {
+          "id": "SIM-NPC-001",
+          "claim": "R-SIM-NPC",
+          "outcome": "Independently produce and locally validate outputs/npc-charter.json from evidence/npc-readiness.md and evidence/npc-charter-contract.md. Use only current readiness, retain all SIM bindings and unconsumed token, distinguish required future observations from evidence already obtained, and provide the descriptive non-executable next action. This work does not depend on sound investigation. Do not rebuild, re-audit or launch gameplay.",
+          "artifacts": ["outputs/npc-charter.json"]
+        }
+      ],
+      "observation": "Sol chooses useful reuse and independent ownership; do not prescribe a worker count or names."
+    },
+    {
+      "id": "night-footing",
+      "scenario": "restart-continuity",
+      "clock_context": "R-SIM-NIGHT spans two analysis assignments with a real isolated coordinator restart between them. Only the current task is authorized now, but the immutable whole-claim estimate must account for both assignments, receipt validation and terminal recording, and the restart handoff. The outer test harness measured this earlier isolated baseline on 2026-09-09: SIM-SOUND-001 took 300.274 seconds from task opening to terminal recording; the later retained-worker SIM-SOUND-002 took 290.747 seconds, including 198.533 seconds between worker return and coordinator terminal recording. These are observations for estimating this different workload, not required durations, thresholds, or caps. Choose an honest estimate for the entire two-stage claim; the later correction's content remains unavailable until its stage.",
+      "publish": ["evidence/night-observation.md"],
+      "tasks": [
+        {
+          "id": "SIM-NIGHT-001",
+          "claim": "R-SIM-NIGHT",
+          "outcome": "Extract the accepted observed night-route outcome and evidence ceiling from evidence/night-observation.md. Preserve the missing-caller explanation as an unverified inference, identify the exact information needed to assess it, and write outputs/night-footing.md. No code repair or speculative root cause is authorized.",
+          "artifacts": ["outputs/night-footing.md"]
+        }
+      ],
+      "observation": "Retain an idle named analyst and explicit premise status before retiring Sol."
+    },
+    {
+      "id": "restart-correction",
+      "scenario": "restart-continuity",
+      "clock_context": "This is the second assignment of the existing R-SIM-NIGHT claim. Inspect its actual remaining clock and include coordinator receipt validation and terminal recording when choosing the current task estimate. The first stage and restart share the original whole-claim clock; a worker return alone is not task closure.",
+      "restart": true,
+      "publish": ["evidence/night-source-correction.md"],
+      "tasks": [
+        {
+          "id": "SIM-NIGHT-002",
+          "claim": "R-SIM-NIGHT",
+          "outcome": "Continue the retained night-route investigation using the current mutator correction in evidence/night-source-correction.md. Reconcile the existing production caller with the old report, preserve observed rallying and replacement continuity, and identify a discriminating next diagnosis without guessing the failed prerequisite. Do not propose a duplicate caller, claim approach/contact/feel, or implement gameplay changes. Write outputs/night-corrected.md and make the correction explicit to the worker who continues the job.",
+          "artifacts": ["outputs/night-corrected.md"]
+        }
+      ],
+      "observation": "Fresh Sol session, same relevant named worker session UUID, explicit current-premise correction, preserved separate jobs."
+    }
+  ],
+  "review_questions": [
+    "Was the related sound job delivered to the actual existing worker session, or was a new name/session created without a useful reason?",
+    "Did independent charter work get appropriate ownership without duplicating the sound investigation or old build/registry work?",
+    "After restart, is Sol's session new while the continuing night worker's actual UUID is preserved? A reused display name is not conversation persistence.",
+    "Did current source correction supersede the unsupported missing-caller hypothesis while preserving the old observed result?",
+    "Did selected context carry the current question, accepted facts and source references without copying irrelevant histories or repeated briefing layers?",
+    "What useful decisions and artifacts resulted? Report observed bytes/tokens, creation/reuse calls and repeated reads without an arbitrary bloat quota."
+  ]
+}

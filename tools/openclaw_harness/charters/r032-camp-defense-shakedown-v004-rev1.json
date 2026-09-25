@@ -1,0 +1,33 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, the same accepted R032 Locker-equipped camp guard can serve real CAMP_PATROL through a natural peaceful bandit shakedown and a substantive hostile Fight branch.",
+  "material_proof": "Cite the same R032 camp [162,36,0], character:25/CAMP_RESIDENT and Locker loadout. On the new profile, natively set all unrelated camp job priorities to 0 and patrol to 9 before creating the zone; then establish the current plan, order and actual guard movement. Cite fixture stock as setup only. For the peaceful branch, record a natural same-run site/activity/member Pay/Fight demand, then natively save the unresolved demand and its exact world/time/actor identity for payment continuation. For the hostile branch, use the same saved R032 footing in a separate run, naturally reach the equivalent demand, select Fight and cite guard and bandit movement, attacks and actual damage, ammunition or casualties. Preserve the accepted zombie alarm/patrol/reload evidence at its own scope.",
+  "material_contradiction": [
+    "camp, assigned follower or equipment differs from accepted R032 Locker footing",
+    "patrol order or guard movement is declared or scripted rather than natively observed",
+    "bandit contact or shakedown is injected, stale or lacks site/activity/member binding",
+    "peaceful branch lacks a real native Pay/Fight surface or does not preserve a useful pre-choice save",
+    "hostile branch lacks meaningful movement/attacks/damage, or any kill is scripted",
+    "save/reload loses camp assignment, loadout or patrol service",
+    "source/executable drift or owned process/bridge cleanup is unresolved"
+  ],
+  "already_accepted_evidence": [
+    "R032 camp assignment and Locker transfer/reload remain accepted at their original scopes.",
+    "The separate v003 native zombie/patrol run proved alarm, guard kill and post-reload patrol service at its original scope."
+  ],
+  "current_uncertainty": "The v002 native run repeatedly rejected local-pair handoff because its schema-11 eligibility receipt copied cohesion_assembled=true; v003 binds the minimal source correction. In v003, a native plan showed character:25 active but not_assigned after zone and priority changes were made in that order. v004 changes the sequence on a fresh profile: set patrol-only priorities before creating or querying the zone, so the first cached plan is built from final eligibility. Natural outing/contact and both branches remain unobserved.",
+  "forbidden_shortcuts": [
+    "crediting fixture copy, stock, registry selection or startup as gameplay behavior",
+    "direct state/save/inventory/zone mutation after startup",
+    "injected bandit lead, dispatch, outing, operation, contact or shortened cooldown",
+    "physical keys, guessed controls, OCR, coordinates or callback injection",
+    "touching coordinator-owned R-029 PID 90668"
+  ],
+  "honest_stop_conditions": [
+    "retain the first scheduler, contact, actor-order, branch or combat divergence with exact game time and source evidence",
+    "save the live peaceful demand and hand its exact binding to the coordinator before any payment worker launch",
+    "seal only the evidence actually observed and reconcile all owned process and broker identities"
+  ],
+  "requested_evidence_ceiling": "focused",
+  "scenario": "r032.camp_defense_shakedown_v004_mcw"
+}

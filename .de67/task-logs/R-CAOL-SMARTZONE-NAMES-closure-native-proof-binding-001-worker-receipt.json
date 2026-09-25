@@ -1,0 +1,90 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SMARTZONE-NAMES-closure-native-proof-binding-001",
+  "claim_id": "R-CAOL-SMARTZONE-NAMES",
+  "worker_id": "01a0d371-4baf-7281-84ca-a0ca4d54f162",
+  "disposition": "completed",
+  "verdict": "smartzone_native_proof_binding_complete",
+  "outcome": "Independent review confirms generated Smartzone names and original Basecamp names persist after save/reload, with expected zone semantics and exact process exit.",
+  "summary": "Original generation journal shows five Basecamp zones before and 23 Smartzone helper zones plus six Basecamp zones afterward. Reload terminal display shows both name families. Focused tests and diff cover unchanged types, layout and owner-authored names. The reload report red exit flag is a feature-phase rubric result after intentional native save/quit; it does not show a live process.",
+  "material_changes": [
+    "No product source or tests changed in this closure review."
+  ],
+  "tests": [
+    "Reviewed original focused passing tests in exploration receipt 725df3216906722f77e535dfa9e3bbcabc89f37119d53c7d2fcbc4932bc9ff28.",
+    "git diff --check passed during independent review.",
+    "All three evidence artifacts matched the exploration receipt SHA-256 values."
+  ],
+  "live_actions": [
+    "No game launched or native input sent by closure reviewer.",
+    "Generation PIDs 27686 and broker 27687, and reload PID 28630, are absent after native save/quit; exact births and run IDs remain in exploration receipt.",
+    "Bulk worker owns the next native game slot."
+  ],
+  "evidence_ceiling": [
+    "Native proof is from an assignment-owned copied camp fixture; original saves remained untouched.",
+    "Initial probe attempts remain inconclusive and receive no success credit.",
+    "Reload report native_exit_credit=false is a rubric classification after intentional exit, while the native journal and process cleanup establish actual save/quit and OS exit."
+  ],
+  "bindings": {
+    "worker_assignment_id": "01f89422826d491c9c2011129412739d",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/01f89422826d491c9c2011129412739d/0287241b88a7c069dbbd044ef54ee5d0d6709f25f8d88b512607de270768fb83.md",
+    "exploration_receipt_id": "725df3216906722f77e535dfa9e3bbcabc89f37119d53c7d2fcbc4932bc9ff28",
+    "generation_run_id": "b7362aba57094b59b169384636170f68",
+    "reload_run_id": "30bf47264e834c0690218a17c560b7dc"
+  },
+  "journal_entries": [
+    {
+      "id": "generation-frame-64",
+      "sequence": "238",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "After generation the Zone Manager held 23 Smartzone helpers and six Basecamp zones."
+    },
+    {
+      "id": "reload-save-quit",
+      "sequence": "reload",
+      "event_type": "lifecycle",
+      "evidence_class": "native",
+      "summary": "Reload displayed both name families, saved successfully and exited."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_142513_a2db5fd62fdb474098f3a4b1fa4f5fae/semantic.steps.jsonl",
+      "sha256": "a50f87b83ec446db52c73c042c65e613b8cdb62eebed6e30061a4721d22bc360",
+      "role": "Native before/after generation journal"
+    },
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_143413_c369dbd9222b45bca536ad43126723ad/inspect_persisted_zone_names.after.terminal_text.txt",
+      "sha256": "5fab3829f28eecbe704545fc4d4d1be7e5d672d275b424ce7e3c23812a5c436f",
+      "role": "Native reload displayed names"
+    },
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_143413_c369dbd9222b45bca536ad43126723ad/semantic.steps.jsonl",
+      "sha256": "2bebb8e19ea62ce2625ed87dffdbc79ef0f1aa75e439f335810825f18aa95596",
+      "role": "Native reload save and quit journal"
+    }
+  ],
+  "accepted_no_replay": [
+    "Retain exploration receipt native and focused-test proof at its stated scope.",
+    "Do not replay the failed initial probe as a success."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No native-proof-binding gap remains; coordinator may close this gap and apply the separate claim-acceptance transition.",
+  "narrow_queries": [
+    "Read generation semantic.steps.jsonl frames 30 and 64 for original and generated zones.",
+    "Read reload terminal capture and native save/quit journal.",
+    "Read reload probe.report.json feature_debug_guard alongside native journal if the exit flag is questioned."
+  ],
+  "entrypoints": [
+    "src/clzones.cpp",
+    "tests/clzones_test.cpp"
+  ],
+  "context_metrics": {
+    "smartzone_helpers": 23,
+    "generation_basecamp_zones_before": 5,
+    "generation_basecamp_zones_after": 6,
+    "reviewed_artifact_hashes": 3
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-LAUNCHER-OLLAMA-SETUP-closure-setup-proof-binding-001",
+  "claim_id": "R-LAUNCHER-OLLAMA-SETUP",
+  "worker_id": "01a0d058-2bae-7832-b2c0-f0454d78be11",
+  "disposition": "completed",
+  "verdict": "ollama_setup_focused_evidence_bound",
+  "outcome": "Independent review confirms the final launcher setup diff and focused checks cover the confirmed install, re-detection, startup, endpoint and exact model route with truthful partial states.",
+  "summary": "The reviewer inspected the five-file launcher change and focused smoke, reran the backend contract and diff checks, and found no material setup defect at the assigned scope. Fresh native installs, model responses, GUI interaction and Godot PID 5649 cleanup remain open elsewhere.",
+  "material_changes": ["No repository code edit; read-only closure review of the existing launcher setup implementation."],
+  "tests": [
+    "Reviewed focused Godot 3.6.3 smoke success log covering setup sequence, error states and model controls.",
+    "Reran prove_caol_backend_contract.py against current C-AOL: passed with separate Gemma E2B and E4B options.",
+    "Launcher git diff --check: passed."
+  ],
+  "live_actions": ["No game, installer, model pull or inference launched.", "No Godot process cleanup credited; PID 5649 remains alive."],
+  "evidence_ceiling": [
+    "Focused launcher setup behavior only; platform installer branches were fixtures or injected command behavior.",
+    "The native Ollama log proves an already-ready Mistral host with zero setup steps, not a fresh installation.",
+    "Mac, Windows and WSL Linux clean install, Gemma responses, GUI interaction and PID 5649 OS exit are unproved."
+  ],
+  "bindings": {
+    "exploration_receipt": "d8955292f95cb0226ca059774596a9cd40b60006346e8f977f91298e44414090",
+    "launcher_repo": "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu",
+    "launcher_head": "366aee6bd675be9b45afbd2ab222808faceedd9d",
+    "worker_assignment_id": "e78255fb58694bf3a758ba021fe48232",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/e78255fb58694bf3a758ba021fe48232/e80c159e87b66e59f69b68f9b4e9807c5f9c02d58bc816f9239e4c0a3c8438c8.md",
+    "retained_pid": "5649",
+    "retained_birth": "2026-09-23 23:41:17.874 +0200"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": "build_logs/phase3-launcher-ollama-setup-20260924/godot-smoke.log", "sha256": "f21ec974900eabd57b49dff4ee4b4d6de25698e0e5d33cdb84ec34d1010bbe4d", "role": "Source-bound focused Godot smoke reviewed for setup and model controls."},
+    {"path": "build_logs/phase3-launcher-ollama-setup-20260924/native-ollama-recheck.log", "sha256": "c5a3a8b1e8e09f93bf097a88e9e39b7347d0980b5d41f1494b5875f448b80bfb", "role": "Read-only already-ready host check with zero setup steps."}
+  ],
+  "first_divergence": {"class": "no_material_focused_setup_defect", "summary": "The focused evidence binds the requested launcher implementation; real native installation is a separate open claim."},
+  "accepted_no_replay": ["Accepted Gemma wiring was checked without model download or inference.", "No game or native harness evidence was replayed."],
+  "active_work": ["Godot PID 5649 needs exact-identity graceful exit or an explicit retained-process handoff."],
+  "first_open_boundary": "R-LAUNCHER-CLEAN-INSTALL must prove native Mac, Windows and WSL Linux installations, model downloads and responses; PID 5649 cleanup remains open.",
+  "narrow_queries": ["Final five-file launcher diff and focused setup methods.", "Two retained setup logs and exploration receipt d8955292f95cb0226ca059774596a9cd40b60006346e8f977f91298e44414090."],
+  "entrypoints": ["/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/scripts/BackendConfigManager.gd", "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/scripts/BackendSetupUI.gd"],
+  "context_metrics": {"modified_files": 5, "focused_log_reviewed": 1}
+}

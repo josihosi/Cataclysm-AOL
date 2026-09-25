@@ -1,0 +1,51 @@
+{
+  "schema": "caol-playtest-coordinator-brief-v1",
+  "task_id": "R-CAOL-CAMP-DEFENSE-exploration-001",
+  "claim_id": "R-CAOL-CAMP-DEFENSE",
+  "scenario": "r032.camp_defense_shakedown_v003_mcw",
+  "objective": "Prove the native peaceful and hostile bandit shakedown branches with the accepted equipped R032 camp guard, while preserving a saved peaceful-demand handoff for payment continuation.",
+  "setup_boundary": "The scenario derives from accepted R032 Locker state. Its only save transform adds ten follower-owned RobofacCoin and a one-tile CAMP_STORAGE zone; both are zero-credit setup. Patrol, bandit outing/contact, branch and outcomes must be native.",
+  "proof_boundary": "Observe the existing living site at [164,39,0], native scheduler-created activity/member identities, real Pay/Fight menu, patrol guard behavior and actual branch consequences. Save the peaceful demand before payment and hand its exact binding to the payment worker; prove hostile combat on a separate fresh copy.",
+  "preservation": [
+    "Keep the accepted v003 zombie evidence at its original scope.",
+    "Keep the accepted Locker evidence and payment worker source files intact.",
+    "Do not touch coordinator-retained PID 90668."
+  ],
+  "outcome": "On current source, the same accepted R032 Locker-equipped camp guard can serve real CAMP_PATROL through a natural peaceful bandit shakedown and a substantive hostile Fight branch.",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "op": "eq",
+        "value": "r032_camp_pay_stock_v001_mcw",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.world",
+        "op": "eq",
+        "value": "McWilliams",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r032.camp_defense",
+        "op": "eq",
+        "value": "native-patrol-peaceful-hostile-shakedown-and-continuity",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r032.defense_attempt",
+        "op": "eq",
+        "value": "accepted-r032-live-bandit-site-164-39-handoff-receipt-fix-v3",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

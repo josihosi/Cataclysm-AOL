@@ -1,0 +1,11 @@
+World.
+moved
+avatar.absolute ms: 3902, 874, 0
+dead grass: NW
+oak tree: N, W
+forest floor: NE, S
+underbrush: here, SE
+grass: E
+maple tree: SW
+6:05:21 AM: Moving onto this underbrush is slow!
+6:05:21 AM: You see here 1 sharpened rebar.

@@ -1,0 +1,205 @@
+{
+  "schema": "r-caol-first-smoke-native-boundary-v1",
+  "run_id": "6677596715bcf04645ad5064921d8225a2e37780ff88cda690864b5ef3bfda7f",
+  "scenario_id": "2cc35690e887ac9d06d36664c36a7158da5cfd40276c4893ba6856ee6bc703d8",
+  "profile": "first-smoke-r-caol-001-smoke-migration",
+  "game_pid": 20113,
+  "game_birth": "posix-lstart:Thu Sep 24 23:02:35 2026",
+  "bridge_pid": 20075,
+  "child_pid": 20077,
+  "failure_reason": "missing_cockpit_session_descriptor",
+  "upstream_abort": "blocked_r019_initial_hud_world_frame_unqualified",
+  "upstream_detail": "first_same_run_semantic_frame_timeout: initial HUD frame trace exceeds the semantic trace limit; attempts=46; matching_initial_hud_world_frame_count=0",
+  "initial_world_frame_observed": true,
+  "tilda_character_2_visible": true,
+  "migration_cancel_observed": false,
+  "semantic_input_request_count": 0,
+  "smoke_used": false,
+  "first_light_launched": false,
+  "descriptor_expected_path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/observe_smoke-first_native_cannibal_route.cockpit_live_session.json",
+  "descriptor_present": false,
+  "game_stderr_bytes": 0,
+  "cleanup": "Peekaboo app quit PID 20113 success, no force; after 1.5 sec ps showed PIDs 20113,20075,20077 absent",
+  "evidence_files": [
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-query.json",
+      "bytes": 7979,
+      "sha256": "5a95f4853f0185966f00493a7803d8038bbddfe3c10be4efecb140cb9ae21c18"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-selected.json",
+      "bytes": 8423,
+      "sha256": "148deaccbb9410eeb0dfb857ecaf1946d3cc2ba9dab2ea0e5353c185fbb8ff0a"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/runtime-status-corrected-preflight.json",
+      "bytes": 2764,
+      "sha256": "885d21701b83797e6baf00e0dcacf497ed4716ab6e1468f49e977d4eb4f8608a"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/runtime-status-corrected-immediate-prelaunch.json",
+      "bytes": 2764,
+      "sha256": "885d21701b83797e6baf00e0dcacf497ed4716ab6e1468f49e977d4eb4f8608a"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-launch.json",
+      "bytes": 234,
+      "sha256": "94ffe11cd7c2b0e2dfffe6d91699e87c264ebf6c1c5408f52b291fb46f381d84"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-initial-look.txt",
+      "bytes": 22,
+      "sha256": "4839bb2896921a92f2d76c9222139043c9d41fcd95d8f1ef5ea2526008a9c8dc"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-peekaboo-see.json",
+      "bytes": 45438,
+      "sha256": "89ef2ac087bb7562c429b370c92ec4ed395dbfec408960480e0b292ec8470322"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-peekaboo-bridge-status.json",
+      "bytes": 24743,
+      "sha256": "fa30eb05c45466faa39a21a46cc0c39f2d6bcf2d6130e5c37c5af9ae979da3e8"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-peekaboo-permissions.json",
+      "bytes": 876,
+      "sha256": "a0f5132a1a7fc6f9304476da45db5ce85b4d0ef5dbf65ab4a2fb9f209bf93b85"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-diagnostic-look.json",
+      "bytes": 1673,
+      "sha256": "a6ab9cce0dd8c9e87ab7ed0ccd22780c8aa26ac313ab4cf91b329d19944ebfc7"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-peekaboo-quit.json",
+      "bytes": 319,
+      "sha256": "8621e5e25a63d8af82f8bc46d427d3bd9644f5d05a8db6e21d8dbfdfd4b63964"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-processes-before-quit.txt",
+      "bytes": 243,
+      "sha256": "2f5dfa64113a6b43f929bc6a7ba2bd4f0559a7e12153928ea78714f5832a7aaf"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-processes-after-quit.txt",
+      "bytes": 243,
+      "sha256": "2f5dfa64113a6b43f929bc6a7ba2bd4f0559a7e12153928ea78714f5832a7aaf"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-processes-after-grace.txt",
+      "bytes": 54,
+      "sha256": "e217b09ceadfdf87cd9c3db9bea05d34e9f18fa534d49bd71c6a954ecf8c80a3"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-final-bridge-status.json",
+      "bytes": 1717,
+      "sha256": "bf5ed5550c39b370e7da70a701810412c858a826aa3dc7aed94d62ba88bd353d"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/corrected-smoke-world-hud.png",
+      "bytes": 263833,
+      "sha256": "1dd0d8f18d8dec4e1691d434bcc151837da187648ad2b32a0402806b742f4caa"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/startup.result.json",
+      "bytes": 24713,
+      "sha256": "f563ee8dc0e12fd70820aac99061dacc60f62c9251c95fff3bcaf8170ab84f3b"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/probe.report.json",
+      "bytes": 54132,
+      "sha256": "652f8995538de7cf97665fdfe4660ad29be198ad044eb277c75e4fcd33da49b0"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/startup.step_ledger.json",
+      "bytes": 13936,
+      "sha256": "e9681ae61a48273406e08955260d0a79375e9b7af8717f84d4bfe649ef125066"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/probe.step_ledger.json",
+      "bytes": 8221,
+      "sha256": "5f2f6ec3e17f966f1876772ea80c78bb5c3982ccee1d999f93d19d9437608b31"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/semantic.native.events.jsonl",
+      "bytes": 282900,
+      "sha256": "5f9a381712618039fbeed20faf69ccf8269bbda4945e979de5e1a80ce27e4f1f"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/semantic.native.log",
+      "bytes": 211434,
+      "sha256": "0c00f2a0eb05d795fd37c454bcd91301470702541d4e6b86a70713a7e04aabd0"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/semantic.requests.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/game.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/game.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/process.json",
+      "bytes": 1332,
+      "sha256": "ebb8a0b2bb075151bfab579419017bee8b0c3d20cf9790859251344275565618"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/runtime.binding.json",
+      "bytes": 1878,
+      "sha256": "6bf7c43d5d160b01879899d5da8e8bb0425d76c2d4aac0e4466deacfd54e2043"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/plan.json",
+      "bytes": 1261,
+      "sha256": "6d04dde07e717337ecadbfa0dea5fb113abed70eede53788891a6aa032135687"
+    },
+    {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/debug.final.log",
+      "bytes": 285550,
+      "sha256": "ff2faae602e78986b87db8eb6e12fe6abc0020efff5324b680cef3c4e50596c2"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/status.json",
+      "bytes": 1717,
+      "sha256": "bf5ed5550c39b370e7da70a701810412c858a826aa3dc7aed94d62ba88bd353d"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/game-process.json",
+      "bytes": 1979,
+      "sha256": "bd6f2f96fd0bc1c6639e1fd2437990ae350c262abba3d0bdf325d5c79fd74d36"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/bridge.manifest.json",
+      "bytes": 969,
+      "sha256": "4c4ebb767ca6ad74c32390cb8afbe93eefc6a4c5937d57cf369395cbf8f79a0f"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/child.startup.stdout.jsonl",
+      "bytes": 14847,
+      "sha256": "0d117131af6de7534143a39012f4492b74c2b3630f303dd7a35820d777eeecce"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/child.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/playtest.txt",
+      "bytes": 35,
+      "sha256": "644b44b7898cad554221cdfa8453b55c1b80d61ba6bf40846876d0b63d528ae5"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/cockpit.bridge.safe_to_cleanup.json",
+      "bytes": 1909,
+      "sha256": "7c52e3cd4354360ff7b3d51d8df57c274a413060fa54d585b0b1a9e021e6ecba"
+    }
+  ]
+}

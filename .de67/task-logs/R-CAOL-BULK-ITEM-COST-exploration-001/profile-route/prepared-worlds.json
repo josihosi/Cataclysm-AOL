@@ -1,0 +1,465 @@
+{
+  "source_profile": "caol-bulk-item-cost-exploration-001",
+  "source_world": "Westcreek",
+  "source_world_tree_sha256": "f68a7774166ce44f4755e61b39dc3c0fb2bd25ba2997f40a7f0b618effbc2b2e",
+  "source_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+  "item_ids_verified": [
+    "2x4 (display name plank)",
+    "hammer"
+  ],
+  "applied_transforms": {
+    "A_items": {
+      "kind": "map_items_near_player",
+      "world": "BulkA0",
+      "player_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+      "player_location": [
+        84,
+        228,
+        0
+      ],
+      "placed_items": [
+        {
+          "typeid": "2x4",
+          "count": 256,
+          "charges": null,
+          "owner": "your_followers",
+          "active": false,
+          "countdown_offset_turns": null,
+          "countdown_point": null,
+          "offset_ms": [
+            0,
+            0,
+            0
+          ],
+          "target_location_ms": [
+            84,
+            228,
+            0
+          ],
+          "target_abs_omt": [
+            3,
+            9,
+            0
+          ],
+          "target_abs_sm": [
+            7,
+            19,
+            0
+          ],
+          "local_ms": [
+            0,
+            0,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map"
+        }
+      ],
+      "extracted_map_packs": [
+        "0.0.0"
+      ],
+      "recompressed_maps": [
+        "maps/0.0.0/3.9.0.map"
+      ],
+      "removed_extracted_map_dirs": [
+        "maps/0.0.0"
+      ],
+      "plain_map_dirs_left_for_game_load": false
+    },
+    "B_items": {
+      "kind": "map_items_near_player",
+      "world": "BulkB0",
+      "player_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+      "player_location": [
+        84,
+        228,
+        0
+      ],
+      "placed_items": [
+        {
+          "typeid": "2x4",
+          "count": 128,
+          "charges": null,
+          "owner": "your_followers",
+          "active": false,
+          "countdown_offset_turns": null,
+          "countdown_point": null,
+          "offset_ms": [
+            0,
+            0,
+            0
+          ],
+          "target_location_ms": [
+            84,
+            228,
+            0
+          ],
+          "target_abs_omt": [
+            3,
+            9,
+            0
+          ],
+          "target_abs_sm": [
+            7,
+            19,
+            0
+          ],
+          "local_ms": [
+            0,
+            0,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map"
+        },
+        {
+          "typeid": "hammer",
+          "count": 128,
+          "charges": null,
+          "owner": "your_followers",
+          "active": false,
+          "countdown_offset_turns": null,
+          "countdown_point": null,
+          "offset_ms": [
+            0,
+            0,
+            0
+          ],
+          "target_location_ms": [
+            84,
+            228,
+            0
+          ],
+          "target_abs_omt": [
+            3,
+            9,
+            0
+          ],
+          "target_abs_sm": [
+            7,
+            19,
+            0
+          ],
+          "local_ms": [
+            0,
+            0,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map"
+        }
+      ],
+      "extracted_map_packs": [
+        "0.0.0"
+      ],
+      "recompressed_maps": [
+        "maps/0.0.0/3.9.0.map"
+      ],
+      "removed_extracted_map_dirs": [
+        "maps/0.0.0"
+      ],
+      "plain_map_dirs_left_for_game_load": false
+    },
+    "B_zones": [
+      {
+        "kind": "source_firewood_zone_near_player",
+        "world": "BulkB0",
+        "player_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+        "player_location": [
+          84,
+          228,
+          0
+        ],
+        "zone": {
+          "name": "Bulk cost unsorted source",
+          "type": "LOOT_UNSORTED",
+          "faction": "your_followers",
+          "identity": "zone-fixture-cbda9a7000ba83c857ec8f18",
+          "invert": false,
+          "enabled": true,
+          "temporarily_disabled": false,
+          "is_vehicle": false,
+          "is_personal": false,
+          "cached_shift": [
+            0,
+            0,
+            0
+          ],
+          "start": [
+            84,
+            228,
+            0
+          ],
+          "end": [
+            84,
+            228,
+            0
+          ],
+          "is_displayed": false
+        },
+        "updated_zone_files": [
+          "#WmluYSBQYXRyaWNr.zones.json",
+          "#WmluYSBQYXRyaWNr.zoneszmgr-temp.json"
+        ]
+      },
+      {
+        "kind": "source_firewood_zone_near_player",
+        "world": "BulkB0",
+        "player_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+        "player_location": [
+          84,
+          228,
+          0
+        ],
+        "zone": {
+          "name": "Bulk cost wood destination",
+          "type": "LOOT_WOOD",
+          "faction": "your_followers",
+          "identity": "zone-fixture-f4f4b37d76f5142e0608e84b",
+          "invert": false,
+          "enabled": true,
+          "temporarily_disabled": false,
+          "is_vehicle": false,
+          "is_personal": false,
+          "cached_shift": [
+            0,
+            0,
+            0
+          ],
+          "start": [
+            84,
+            229,
+            0
+          ],
+          "end": [
+            84,
+            229,
+            0
+          ],
+          "is_displayed": false
+        },
+        "updated_zone_files": [
+          "#WmluYSBQYXRyaWNr.zones.json",
+          "#WmluYSBQYXRyaWNr.zoneszmgr-temp.json"
+        ]
+      },
+      {
+        "kind": "source_firewood_zone_near_player",
+        "world": "BulkB0",
+        "player_save": "#WmluYSBQYXRyaWNr.sav.zzip",
+        "player_location": [
+          84,
+          228,
+          0
+        ],
+        "zone": {
+          "name": "Bulk cost tools destination",
+          "type": "LOOT_TOOLS",
+          "faction": "your_followers",
+          "identity": "zone-fixture-dcdd30e28214898048226d1c",
+          "invert": false,
+          "enabled": true,
+          "temporarily_disabled": false,
+          "is_vehicle": false,
+          "is_personal": false,
+          "cached_shift": [
+            0,
+            0,
+            0
+          ],
+          "start": [
+            84,
+            227,
+            0
+          ],
+          "end": [
+            84,
+            227,
+            0
+          ],
+          "is_displayed": false
+        },
+        "updated_zone_files": [
+          "#WmluYSBQYXRyaWNr.zones.json",
+          "#WmluYSBQYXRyaWNr.zoneszmgr-temp.json"
+        ]
+      }
+    ]
+  },
+  "workloads": {
+    "A": {
+      "before_world": "BulkA0",
+      "after_world": "BulkA1",
+      "before_tree_sha256": "2a60c0767e1553bcf9078f2ce7469e11e5040f6a315d97abc333e5fece635d2e",
+      "after_tree_sha256": "2a60c0767e1553bcf9078f2ce7469e11e5040f6a315d97abc333e5fece635d2e",
+      "paired_worlds_byte_identical": true,
+      "tiles": {
+        "source": {
+          "abs_ms": [
+            84,
+            228,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            0
+          ],
+          "counts": {
+            "2x4": 256
+          },
+          "owner_counts": {
+            "your_followers": 256
+          },
+          "physical_instances": 256
+        },
+        "destination_south": {
+          "abs_ms": [
+            84,
+            229,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            1
+          ],
+          "counts": {},
+          "owner_counts": {},
+          "physical_instances": 0
+        },
+        "destination_north": {
+          "abs_ms": [
+            84,
+            227,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            11
+          ],
+          "counts": {},
+          "owner_counts": {},
+          "physical_instances": 0
+        }
+      }
+    },
+    "B": {
+      "before_world": "BulkB0",
+      "after_world": "BulkB1",
+      "before_tree_sha256": "ea3686ac58927439c6fc09ac8add151d6b8d92eca87d0bfef1562798eb0c4b7b",
+      "after_tree_sha256": "ea3686ac58927439c6fc09ac8add151d6b8d92eca87d0bfef1562798eb0c4b7b",
+      "paired_worlds_byte_identical": true,
+      "tiles": {
+        "source": {
+          "abs_ms": [
+            84,
+            228,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            0
+          ],
+          "counts": {
+            "2x4": 128,
+            "hammer": 128
+          },
+          "owner_counts": {
+            "your_followers": 256
+          },
+          "physical_instances": 256
+        },
+        "destination_south": {
+          "abs_ms": [
+            84,
+            229,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            1
+          ],
+          "counts": {},
+          "owner_counts": {},
+          "physical_instances": 0
+        },
+        "destination_north": {
+          "abs_ms": [
+            84,
+            227,
+            0
+          ],
+          "map_pack": "0.0.0",
+          "map_file": "3.9.0.map",
+          "local_tile": [
+            0,
+            11
+          ],
+          "counts": {},
+          "owner_counts": {},
+          "physical_instances": 0
+        }
+      },
+      "zones_file": "#WmluYSBQYXRyaWNr.zones.json",
+      "zones": [
+        {
+          "name": "Bulk cost unsorted source",
+          "type": "LOOT_UNSORTED",
+          "faction": "your_followers",
+          "identity": "zone-fixture-cbda9a7000ba83c857ec8f18",
+          "start": [
+            84,
+            228,
+            0
+          ],
+          "end": [
+            84,
+            228,
+            0
+          ]
+        },
+        {
+          "name": "Bulk cost wood destination",
+          "type": "LOOT_WOOD",
+          "faction": "your_followers",
+          "identity": "zone-fixture-f4f4b37d76f5142e0608e84b",
+          "start": [
+            84,
+            229,
+            0
+          ],
+          "end": [
+            84,
+            229,
+            0
+          ]
+        },
+        {
+          "name": "Bulk cost tools destination",
+          "type": "LOOT_TOOLS",
+          "faction": "your_followers",
+          "identity": "zone-fixture-dcdd30e28214898048226d1c",
+          "start": [
+            84,
+            227,
+            0
+          ],
+          "end": [
+            84,
+            227,
+            0
+          ]
+        }
+      ]
+    }
+  }
+}

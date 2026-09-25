@@ -1,0 +1,7 @@
+++ jeans > 34 pemmican (fresh) / 49 items
+filter: smoke
+Allowed actions replaced — use only these:
+Confirm highlighted item: Close contents → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter → play act inventory.reset_filter
+Cancel → play act inventory.cancel

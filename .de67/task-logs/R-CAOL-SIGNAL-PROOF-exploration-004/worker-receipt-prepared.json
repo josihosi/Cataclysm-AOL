@@ -1,0 +1,144 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-004",
+  "claim_id": "R-CAOL-SIGNAL-PROOF",
+  "worker_id": "01a0c06a-ecd4-7f73-a01a-e65302af798e",
+  "disposition": "finding",
+  "verdict": "focused_local_sound_recorder_repair_passes_but_r033_native_fixture_stops_at_drive_threshold_before_dispatch",
+  "outcome": "Resolve the local-sound focused-test contradictions and make one current-source native signal attempt without overstating the broader claim.",
+  "summary": "The recorder now preserves a typed local sound observation without treating it as route progress; the corrected fixture round-trips and all six focused cases pass. A fresh source-bound R-033 run reached the first structural scheduler slice at minute 9300/9301, where the idle camp's known road lead remained below the production dispatch drive threshold (358 < 500). The scheduler recorded no plan, no applied dispatch, and no active outing, so the run stopped before the delayed C4 source rather than asserting sound or return behavior.",
+  "material_changes": [
+    "Added the narrow local-owner recorder path that retains the generic recorder's idempotence state but restores last_progress_minutes so a sound fact cannot become route progress or dispatch.",
+    "Corrected the focused local-sound fixture to use the real abstract observing state and normal local pair handoff, allowing valid save/reload invariant coverage.",
+    "Created current-source R-033 native artifacts through the first scheduler opportunity; no fixture, lead, owner, route, report, member, or signal was injected during play."
+  ],
+  "tests": [
+    "make -j4 BUILD_PREFIX=r033-headless- SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 tests completed successfully.",
+    "tests/r033-headless-cata_test '[phase4_sound_observation]' --reporter compact passed six test cases and 606 assertions.",
+    "A current source-bound Tiles build completed after only stale generated PCH cache entries were removed; the native executable SHA-256 is 164084ff365aac3ab4db56703dfe8611ea2004f98a2e129102780c4f040f4c61.",
+    "The R-033 live run reached scheduler hour 155 at minute 9300, then was inspected at minute 9301 before any further proof-seeking wait."
+  ],
+  "live_actions": [
+    "Launched one registry-selected semantic-only live session b5efab00a403702f4932728bcb05d3299cd30ef48fea0727e60219a54f6cdbfe with binding e8a004c130f6e3d36a20f79b7e8e0ec87e5f87de4ce5947c0c6f814cacee6256.",
+    "Used only freshly advertised World, menu, and wait controls to progress from minute 9256 to the first scheduler slice. The prior automated wait interruption was retained as stale-frame harness evidence and was not replayed.",
+    "Issued the authorized run.quit at the first native divergence. The scenario terminalization recorded the owned game PID 68852, born Sun Sep 20 22:27:11 2026, absent after cleanup; bridge PID 68793 was also absent by the final OS query."
+  ],
+  "evidence_ceiling": [
+    "Focused tests prove the repaired local recorder's private typed observation, original age, idempotence, save/reload, off-route rejection, and absence of immediate route-progress advancement; they do not prove an end-to-end native return report.",
+    "The live run proves the current fixture's first dispatch opportunity and its below-threshold non-dispatch. It does not prove native sound receipt, source callback, scout return, returned_report, deduplication, aging, or comparable performance.",
+    "Fixture C4 staging remains zero credit. No C4 wait, signal injection, source mutation, or replay was performed after the dispatch contradiction."
+  ],
+  "bindings": {
+    "binding_id": "e8a004c130f6e3d36a20f79b7e8e0ec87e5f87de4ce5947c0c6f814cacee6256",
+    "game_pid_birth": "68852|Sun Sep 20 22:27:11 2026",
+    "native_executable_sha256": "164084ff365aac3ab4db56703dfe8611ea2004f98a2e129102780c4f040f4c61",
+    "product_source_sha256": "c7abef4762c2981430cb96a1556a52a2d6685c94a6b8b0b397153c73fdcad7ff",
+    "run_id": "b5efab00a403702f4932728bcb05d3299cd30ef48fea0727e60219a54f6cdbfe",
+    "scenario_id": "a81ae85461c23b66a1c06d0b05978413a57099e8eb00f7d15f371203cc0aff35"
+  },
+  "journal_entries": [
+    {
+      "id": "focused-sound-six-cases",
+      "sequence": "focused",
+      "event_type": "focused_behavior_test",
+      "evidence_class": "test",
+      "summary": "All six phase4_sound_observation cases and 606 assertions passed after the recorder and fixture corrections.",
+      "artifact_ref": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/focused-test-2.log"
+    },
+    {
+      "id": "r033-scheduler-divergence",
+      "sequence": "9300",
+      "event_type": "native_scheduler_observation",
+      "evidence_class": "native",
+      "summary": "The current run's scheduler hour 155 recorded dispatches_planned=0, dispatches_applied=0, and drive 358 below threshold.",
+      "artifact_ref": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-scheduler-threshold-source.txt"
+    },
+    {
+      "id": "r033-post-scheduler-state",
+      "sequence": "9301",
+      "event_type": "native_read_only_state",
+      "evidence_class": "native",
+      "summary": "The post-scheduler diagnostic had no structural outing owner.",
+      "artifact_ref": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-owner-at-9301.json"
+    },
+    {
+      "id": "r033-terminal-cleanup",
+      "sequence": "terminal",
+      "event_type": "authorized_run_quit_cleanup",
+      "evidence_class": "native",
+      "summary": "The authorized quit terminalization recorded the exact owned game generation absent after scenario cleanup.",
+      "artifact_ref": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-quit-collect.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/focused-test-2.log",
+      "sha256": "362b524e5c95fa5a1d3505cb479349d3d05d3483aa1148a08e9e00b2be606ee8",
+      "role": "passing focused local-sound behavior test output"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/tiles-source-build-2.log",
+      "sha256": "cc28e96ec06a6f804980adf28c50954b2931c833b9278e48e5d66d10337661db",
+      "role": "current-source Tiles build output"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-dispatch-at-9301.json",
+      "sha256": "4b321b85f92dd8e2bac858a0df795a8c9b29a3499292b456848a08eef5c6aae7",
+      "role": "post-scheduler read-only dispatch diagnostic"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-owner-at-9301.json",
+      "sha256": "22e11fa19b1c953c11a6174578526e72ef9ab56788ba894777bfac965cd20a82",
+      "role": "post-scheduler read-only owner diagnostic"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-leads-at-9301.json",
+      "sha256": "c1ac4bee8a4f26fc83f3383436c5ef5100ff449f540dca66fb719ff73e4e06b9",
+      "role": "post-scheduler read-only lead diagnostic"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-scheduler-threshold-source.txt",
+      "sha256": "03e92a43e8bd344ef6dd6ffb7dcf10d6df07770bb883d4b37c99bb5230b83ea3",
+      "role": "current-run scheduler threshold source record"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-004/native-quit-collect.json",
+      "sha256": "41b0c5bc61bb86165e255b9982e6d8dd54b100d445c9ad146b1ce991b4964f61",
+      "role": "authorized quit and exact owned-process cleanup record"
+    }
+  ],
+  "first_divergence": {
+    "class": "fixture_dispatch_premise_below_production_threshold",
+    "summary": "At the first scheduler slice, the required idle road lead was present but the production scheduler calculated drive=358, below its 500 dispatch threshold; no outing could reach the abstract watch or delayed sound source."
+  },
+  "accepted_no_replay": [
+    "Do not replay this R-033 fixture merely to re-establish its drive-358 non-dispatch.",
+    "Preserve the stale-frame activity.pause attempt as a harness-control observation, not a native product defect or reason to retry the old automated recipe.",
+    "Do not wait toward C4 or claim sound/return evidence from this run."
+  ],
+  "active_work": [
+    "Coordinator should preserve the passing recorder repair at its focused scope and classify the R-033 dispatch premise separately from broader R-CAOL-SIGNAL-PROOF acceptance."
+  ],
+  "first_open_boundary": "A distinct authorized fixture or scheduler-premise correction must establish a valid autonomous dispatch opportunity above the production threshold before a new native sound/return run can be meaningful.",
+  "narrow_queries": [
+    "Inspect routine_scout_policy and evaluate_hostile_camp_routine_dispatch inputs for the fixture's drive=358 versus the required 500 threshold.",
+    "Inspect the R-033 fixture manifest's initial camp decision, remembered pressure, bounty, and eligibility fields against a successful autonomous dispatch premise.",
+    "After a changed fixture or policy premise is independently validated, run a fresh source-bound R-033 session from its initial idle state; do not reuse this terminated run."
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp",
+    "src/do_turn.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/scenarios/r033.phase4_semantic_autonomous_sound_return_rev1_mcw.json",
+    "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_autonomous_sound_return_v1/manifest.json"
+  ],
+  "context_metrics": {
+    "focused_assertions": 606,
+    "focused_test_cases": 6,
+    "scheduler_drive": 358,
+    "scheduler_threshold": 500,
+    "verified_absent_game_and_bridge_pids": 2
+  },
+  "finding_kind": "unexpected"
+}

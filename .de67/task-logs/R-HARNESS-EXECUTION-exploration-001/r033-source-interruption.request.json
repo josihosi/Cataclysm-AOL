@@ -1,0 +1,15 @@
+{
+  "action": "game.raw_wait",
+  "raw_wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 840,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "fresh native minute 9271 to the retained R033 delayed-source timer at 10081, plus 30 minutes to expose its actual native outcome; harness-only, non-product observation",
+      "unit": "game_minutes",
+      "maximum": 840,
+      "progress_required": true
+    },
+    "recipe": ["world.wait", "wait.6h"]
+  }
+}

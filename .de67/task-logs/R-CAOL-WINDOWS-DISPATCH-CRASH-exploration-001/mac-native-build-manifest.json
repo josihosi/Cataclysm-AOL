@@ -1,0 +1,35 @@
+{
+  "isolated_executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/mac-dispatch-crash-20260924/cataclysm",
+  "executable_sha256": "a01545016845aaca8e3ea7c813650d516ffec5261f17a4ac2622a31ecfb5b600",
+  "product_source_sha256": "2b21659c4803786c921045deb8f461a5cde33830e0603cbd6a3024c065c77dec",
+  "receipt": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/source_bindings/cataclysm-2c35b5385447011c-a01545016845aaca8e3ea7c813650d516ffec5261f17a4ac2622a31ecfb5b600-2b21659c4803786c921045deb8f461a5cde33830e0603cbd6a3024c065c77dec-383c24584e2344a8.json",
+  "readiness": {
+    "status": "ready",
+    "reason": "receipt_bound_dirty_product_build",
+    "next_action": "continue with the current registry query",
+    "evidence_ceiling": "requested run ceiling",
+    "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/mac-dispatch-crash-20260924/cataclysm",
+    "captured_head": "224d7dc977",
+    "repository_head": "224d7dc977",
+    "executable_sha256": "a01545016845aaca8e3ea7c813650d516ffec5261f17a4ac2622a31ecfb5b600",
+    "product_source_sha256": "2b21659c4803786c921045deb8f461a5cde33830e0603cbd6a3024c065c77dec",
+    "binary_relevant_committed_changes": [],
+    "binary_relevant_worktree_changes": [
+      "src/activity_actor.cpp",
+      "src/bandit_live_world.cpp",
+      "src/bandit_live_world.h",
+      "src/basecamp.cpp",
+      "src/clzones.cpp",
+      "src/do_turn.cpp",
+      "src/inventory_ui.cpp",
+      "src/player_display.cpp",
+      "src/zone_manager_ui.cpp"
+    ],
+    "comparison_error": "",
+    "product_build_receipt": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/source_bindings/cataclysm-2c35b5385447011c.json",
+      "status": "matched",
+      "error": ""
+    }
+  }
+}

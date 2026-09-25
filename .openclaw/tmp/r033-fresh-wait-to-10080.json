@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_game_minutes": 10080,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "Fresh repaired-fixture retry starts at observed minute 9241. Minute 10080 is the independently observed abstract-watch boundary and precedes the scheduler-late physical-source observation at minute 10082.",
+      "unit": "game_minutes",
+      "maximum": 839,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

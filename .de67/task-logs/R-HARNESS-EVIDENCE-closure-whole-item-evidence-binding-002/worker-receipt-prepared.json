@@ -1,0 +1,105 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-002",
+  "claim_id": "R-HARNESS-EVIDENCE",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "completed",
+  "verdict": "whole_item_evidence_binding_reconciled_with_process_control",
+  "outcome": "The missing process-ID reuse/prewarm boundary is closed by a controlled retained source-level experiment. Prewarm is distinct from a qualified request, and two fresh runner processes reuse local req_0 while differing in run_id and runner process_instance; exact tuple correlation prevents cross-process joins. Reconciliation with the prior projection and focused speech receipts closes the named R-HARNESS-EVIDENCE evidence-binding boundary without replaying native speech.",
+  "summary": "A source-level control imported the current runner logger in two fresh processes. Runner A emitted prewarm then req_0; runner B emitted req_0 only. Both req_0 records retained identical prompt and response hashes, while runner process_instance, runner_pid, and run_id differed. The control therefore distinguishes prewarm from a qualified request and demonstrates that req_0 is process-local. Prior receipt d98640158432c0ee95d570bcbf8900626077b87021691bb97415f8250674ad8e remains the settled reconciliation of all other clauses, and focused native speech receipt 5ccd21efc5efa598bb23d7d238dd83e7dd199d3b4465ff19f03b095b9255a3d4 remains at its original ceiling.",
+  "material_changes": [],
+  "tests": [
+    "Controlled two-process logger experiment retained in process-local-request-control.json; JSON validation passed.",
+    "python3 -m unittest tools.llm_runner.test_runner (8 tests, OK).",
+    "Prior projection receipt recorded 26 focused tests; prior native speech witness validation and fresh retrieval remain accepted at their original scope and were not rerun."
+  ],
+  "live_actions": [
+    "Two short-lived source-level runner logger subprocesses were launched; no model backend, native game, provider call, or gameplay route was used.",
+    "No source files or coordination records were edited."
+  ],
+  "evidence_ceiling": [
+    "The new control proves prewarm/request distinction and process-local req_0 non-cross-correlation at the runner logger boundary.",
+    "The focused native speech claim remains limited to its recorded utterance, hearer and response; no broader NPC matrix, fire case, or durable follow-up is claimed.",
+    "This closes the explicit process-ID reuse/prewarm evidence-binding boundary; it is not a new native gameplay proof."
+  ],
+  "bindings": {
+    "control_artifact": ".de67/task-logs/R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-002/process-local-request-control.json",
+    "control_artifact_sha256": "49fef88e0bfa407cd631a49520ded75dde6c19a6099195a45a90d6731e968c7e",
+    "control_run_a": "control-run-a",
+    "control_run_b": "control-run-b",
+    "fs_slice": "R-HARNESS-EVIDENCE-S001",
+    "native_speech_receipt": "5ccd21efc5efa598bb23d7d238dd83e7dd199d3b4465ff19f03b095b9255a3d4",
+    "projection_receipt": "56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635",
+    "request_identity": "(run_id, process_instance, request_id)",
+    "runner_process_instance_a": "a6380b687e474fd8863833ec627a1c98",
+    "runner_process_instance_b": "f5543f53e2cc4b95917efbab2f1ab7dc",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [
+    {
+      "id": "process-control",
+      "sequence": "1",
+      "event_type": "prewarm_process_identity_control",
+      "evidence_class": "test",
+      "summary": "Prewarm is distinct; req_0 repeats across two fresh runner process identities with identical payload hashes.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-002/process-local-request-control.json"
+    },
+    {
+      "id": "whole-item-reconcile",
+      "sequence": "2",
+      "event_type": "whole_item_reconciliation",
+      "evidence_class": "audit",
+      "summary": "The new control supplies the previously missing FS Proof boundary; prior receipts remain at their original ceilings.",
+      "artifact_ref": ".de67/FS.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/FS.md",
+      "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df",
+      "role": "authoritative R-HARNESS-EVIDENCE-S001 mechanism and proof clauses"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-002/process-local-request-control.json",
+      "sha256": "49fef88e0bfa407cd631a49520ded75dde6c19a6099195a45a90d6731e968c7e",
+      "role": "controlled prewarm and process-local request identity experiment"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-001/worker-receipt-prepared-v3.json",
+      "sha256": "7013981fe4200c7f48190bc87ecff700f0016c56d8824c365e9a65d417192f61",
+      "role": "prior whole-item reconciliation with named missing boundary"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/de67-worker-result-receipt-prepared-v2.json",
+      "sha256": "4f4fd7df28da6755232d72eb912fdbe1507fb44c6ac88b664c1ade6ef4648c8c",
+      "role": "settled focused native speech lifecycle"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "No native speech replay: the new evidence is a source-level runner identity control and the accepted native chain remains unchanged.",
+    "No source edit: current runner and native prewarm implementations were inspected and hashed as bindings only."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No further boundary remains within the assigned whole-item evidence-binding revision; broader native speech/NPC behavior remains bounded by the earlier focused receipt.",
+  "narrow_queries": [
+    "Use the retained control artifact to validate any future evidence query by exact (run_id, process_instance, request_id); never join on req_0 alone.",
+    "Do not replay the settled native speech chain unless a separate broader NPC/fire/follow-up claim is assigned."
+  ],
+  "entrypoints": [
+    "tools/llm_runner/runner.py::request_event",
+    "src/llm_intent.cpp::llm_intent::prewarm",
+    "tools/openclaw_harness/evidence_events.py::_request_result_links",
+    "tools/openclaw_harness/registry_query_output.py::query_page"
+  ],
+  "context_metrics": {
+    "control_processes": 2,
+    "distinct_runner_process_instances": 2,
+    "native_replay_count": 0,
+    "prewarm_records": 2,
+    "qualified_request_records": 4,
+    "same_local_request_id": "req_0",
+    "source_edit_count": 0
+  }
+}

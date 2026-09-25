@@ -1,0 +1,141 @@
+{
+  "manifest_version": 1,
+  "name": "r032.camp_defense_shakedown_v002_mcw",
+  "description": "Native peaceful/hostile R032 camp-defense branch from the accepted Locker save plus the independently prepared payment stock footing. The fixture adds only ten RobofacCoin on a follower-owned CAMP_STORAGE tile; all guard orders, bandit dispatch/contact, branch choice and outcomes are native.",
+  "profile": "r032-camp-defense-shakedown-exp005-20260924",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_camp_pay_stock_v001_mcw",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_camp_pay_stock_v001_mcw",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_defense": "native-patrol-peaceful-hostile-shakedown-and-continuity",
+    "capabilities.r032.defense_attempt": "accepted-r032-live-bandit-site-164-39-zone-identity-v2"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage",
+      "injected-bandit-lead-or-dispatch",
+      "shortened-bandit-cooldown"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r032-camp-defense-shakedown-exp005-20260924",
+    "fixture": "r032_camp_pay_stock_v001_mcw",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r032_locker_repair_20260924/cataclysm-tiles",
+      "profile": "r032-camp-defense-shakedown-exp005-20260924",
+      "fixture": "r032_camp_pay_stock_v001_mcw",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw/manifest.json",
+    "parent_fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_camp_defense_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.basecamp_missions"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_peaceful_shakedown_and_hostile_fight",
+      "cleanup_on_finish": true,
+      "objective": "From the saved R032 Locker footing, natively verify the camp and character:25, disclose the fixture-only CAMP_STORAGE coin tile, assign and observe real CAMP_PATROL work, then allow only ordinary time until the existing staffed bandit camp produces a natural local shakedown. Preserve a pre-choice native save of the peaceful demand for the payment worker. On a separate same-source run, choose the hostile Fight branch and observe substantive guard and bandit movement, attacks and damage. Do not inject or edit bandit state.",
+      "proof_targets": [
+        "same R032 Assignment Camp [162,36,0], character:25/CAMP_RESIDENT and accepted Locker loadout",
+        "native patrol zone, actor roster/order and actual guard movement before contact",
+        "source-bound ten RobofacCoin stock and CAMP_STORAGE zone at [3931,876,0] as setup only",
+        "same-run natural site/activity/member identity, live Pay/Fight demand and game time",
+        "peaceful demand saved natively before payment, preserving exact actor/site/outing state for the separate payment handoff",
+        "separate natural Fight branch with meaningful guard and bandit movement, attacks, damage, ammunition or casualty evidence",
+        "native save/reload continuity for assigned actor, loadout and patrol service",
+        "verified exit of every game, broker and runner generation owned by this run"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "coin and CAMP_STORAGE transforms are zero-credit setup",
+        "no direct state/save/actor/item mutation after startup",
+        "no injected bandit lead, dispatch, outing, operation, contact or shortened cooldown",
+        "the saved peaceful demand is handed to payment worker only after its native save and verified process exit",
+        "do not touch coordinator-owned R-029 PID 90668",
+        "preserve native journals, full transcript, exact source/executable and all PID/birth identities"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 25.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_r032_camp_defense_world"
+    ],
+    "production_behavior": [
+      "operate_r032_peaceful_shakedown_and_hostile_fight"
+    ],
+    "terminal_persistence": [
+      "operate_r032_peaceful_shakedown_and_hostile_fight"
+    ],
+    "artifact_verdict": [
+      "operate_r032_peaceful_shakedown_and_hostile_fight"
+    ],
+    "disallowed_shortcuts": [
+      "bind_r032_camp_defense_world"
+    ]
+  }
+}

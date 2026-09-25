@@ -1,0 +1,36 @@
+{
+  "requirements": [
+    {
+      "key": "runtime.fixture",
+      "op": "eq",
+      "value": "r032_camp_pay_stock_v001_mcw",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.world",
+      "op": "eq",
+      "value": "McWilliams",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "capabilities.r032.camp_defense",
+      "op": "eq",
+      "value": "native-patrol-peaceful-hostile-shakedown-and-continuity",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "capabilities.r032.defense_attempt",
+      "op": "eq",
+      "value": "accepted-r032-live-bandit-site-164-39-handoff-receipt-fix-priority-before-zone-v4",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": [
+    {
+      "key": "runtime.entry_mode",
+      "op": "eq",
+      "value": "cockpit_live_session",
+      "minimum_evidence": "declared"
+    }
+  ]
+}

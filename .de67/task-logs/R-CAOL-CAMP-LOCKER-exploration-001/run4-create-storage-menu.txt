@@ -1,0 +1,74 @@
+Select zone type:
+filtered entry count: 66
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  67 — Auto Drink
+  68 — Auto Eat
+  69 — Basecamp: Food
+  70 — Basecamp: Locker
+  71 — Basecamp: Patrol
+  72 — Basecamp: Storage
+  73 — Loot: Ammo
+  74 — Loot: Armor
+  75 — Loot: Artifacts
+  76 — Loot: Bionics
+  77 — Loot: Books
+  78 — Loot: Chemical
+  79 — Loot: Clothing
+  80 — Loot: Containers
+  81 — Loot: Corpses
+  82 — Loot: Currency
+  83 — Loot: Custom
+  84 — Loot: Default
+  85 — Loot: Drink
+  86 — Loot: Drugs
+  87 — Loot: Filthy Armor
+  88 — Loot: Filthy Clothing
+  89 — Loot: Food
+  90 — Loot: Fuel
+  91 — Loot: Guns
+  92 — Loot: Ignore
+  93 — Loot: Ignore Favorites
+  94 — Loot: Keys
+  95 — Loot: Magazines
+  96 — Loot: Manuals
+  97 — Loot: Maps
+  98 — Loot: Martial arts manuals
+  99 — Loot: Mods
+  100 — Loot: Mutagens
+  101 — Loot: Other
+  102 — Loot: Perishable Drink
+  103 — Loot: Perishable Food
+  104 — Loot: Seeds
+  105 — Loot: Spare Parts
+  106 — Loot: Strip Corpses
+  107 — Loot: Tool Magazines
+  108 — Loot: Tools
+  109 — Loot: Traps
+  110 — Loot: Unload Everything
+  111 — Loot: Unsorted
+  112 — Loot: Vehicle Parts
+  113 — Loot: Weapons
+  114 — Loot: Wood
+  115 — No Auto Pickup
+  116 — No NPC Pickup
+  117 — NPC Ignore Sounds
+  118 — NPC Investigation Area
+  119 — NPC Retreat
+  120 — Source: Firewood
+  121 — Start Point
+  122 — Vehicle Patrol Zone
+  123 — Work: Chop Trees
+  124 — Work: Construction Blueprint
+  125 — Work: Disassembly
+  126 — Work: Farm Plot
+  127 — Work: Fishing Spot
+  128 — Work: Mine Terrain
+  129 — Work: Mop Tile
+  130 — Work: Study
+  131 — Work: Vehicle Deconstruct
+  132 — Work: Vehicle Repair

@@ -1,0 +1,3 @@
+World.
+the zombie · hostile · offset 3, -2
+R032 Establishment Ally 1 · friendly · offset -1, -2

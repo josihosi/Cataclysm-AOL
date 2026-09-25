@@ -1,0 +1,12 @@
+World.
+moved
+avatar.absolute ms: 3900, 878, 0
+R032 Establishment Ally 1 · friendly · offset -1, -2
+moss: NW, here
+underbrush: N
+forest floor: NE, E
+grass: W
+cottonwood tree: SW
+dead hickory tree: S
+long grass: SE
+6:11:27 AM: Moving off of this underbrush is slow!

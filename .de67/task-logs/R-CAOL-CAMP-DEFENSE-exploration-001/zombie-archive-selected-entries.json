@@ -1,0 +1,194 @@
+[
+  {
+    "index": 0,
+    "citation_id": "J0001",
+    "kind": "identity"
+  },
+  {
+    "index": 1,
+    "citation_id": "J0002",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:1",
+    "game_minutes": 7565,
+    "avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3900,876,0]}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "visible_entities": "[]",
+    "visible_zones": "[{\"name\":\"R032 Locker\",\"type\":\"CAMP_LOCKER\",\"dx\":0,\"dy\":0},{\"name\":\"R032 Storage\",\"type\":\"CAMP_STORAGE\",\"dx\":2,\"dy\":0}]",
+    "last_debug_intervention": "none_this_run"
+  },
+  {
+    "index": 2,
+    "citation_id": "J0003",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:2",
+    "game_minutes": 7565,
+    "diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":false,\"shift_cache_state\":\"unavailable\",\"shift_cache_available\":false}",
+    "diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"CAMP_RESIDENT\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3887,871,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+  },
+  {
+    "index": 59,
+    "citation_id": "J0060",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:32",
+    "game_minutes": 7570,
+    "diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":true,\"shift_cache_state\":\"current\",\"shift_cache_available\":true,\"shift\":\"day\",\"roster\":[\"character:25\"],\"actor_active_guard\":true,\"actor_reserve_guard\":false,\"runtime_state\":\"available\",\"runtime_available\":true,\"behavior\":\"loop\",\"target\":[3901,876,0],\"route\":[[3900,876,0],[3901,876,0],[3902,876,0]],\"coordinate_system\":\"absolute_ms\"}",
+    "diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_PATROL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3899,876,0],\"camp_patrol_order\":true,\"camp_patrol_priority\":9,\"guard_post\":[3901,876,0],\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+  },
+  {
+    "index": 90,
+    "citation_id": "J0091",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:46",
+    "game_minutes": 7572,
+    "avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3900,878,0]}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "visible_entities": "[{\"identity\":{\"kind\":\"npc\",\"id\":\"character:25\"},\"kind\":\"npc\",\"name\":\"R032 Establishment Ally 1\",\"attitude\":\"friendly\",\"dx\":-1,\"dy\":-2,\"absolute_ms\":[3899,876,0],\"health\":{\"hp\":984,\"maximum_hp\":984,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]",
+    "visible_zones": "[{\"name\":\"R032 Locker\",\"type\":\"CAMP_LOCKER\",\"dx\":0,\"dy\":-2},{\"name\":\"R032 Storage\",\"type\":\"CAMP_STORAGE\",\"dx\":2,\"dy\":-2},{\"name\":\"R032 defense patrol\",\"type\":\"CAMP_PATROL\",\"dx\":1,\"dy\":-2}]",
+    "last_debug_intervention": "none_this_run"
+  },
+  {
+    "index": 92,
+    "citation_id": "J0093",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:47",
+    "game_minutes": 7572,
+    "diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":true,\"shift_cache_state\":\"current\",\"shift_cache_available\":true,\"shift\":\"day\",\"roster\":[\"character:25\"],\"actor_active_guard\":true,\"actor_reserve_guard\":false,\"runtime_state\":\"available\",\"runtime_available\":true,\"behavior\":\"loop\",\"target\":[3901,876,0],\"route\":[[3900,876,0],[3901,876,0],[3902,876,0]],\"coordinate_system\":\"absolute_ms\"}",
+    "diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_PATROL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3899,876,0],\"camp_patrol_order\":true,\"camp_patrol_priority\":9,\"guard_post\":[3901,876,0],\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+  },
+  {
+    "index": 108,
+    "citation_id": "J0109",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:52",
+    "game_minutes": 7577,
+    "avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3900,878,0]}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "visible_entities": "[{\"identity\":{\"kind\":\"npc\",\"id\":\"character:25\"},\"kind\":\"npc\",\"name\":\"R032 Establishment Ally 1\",\"attitude\":\"friendly\",\"dx\":-1,\"dy\":-2,\"absolute_ms\":[3899,876,0],\"health\":{\"hp\":984,\"maximum_hp\":984,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]",
+    "visible_zones": "[{\"name\":\"R032 Locker\",\"type\":\"CAMP_LOCKER\",\"dx\":0,\"dy\":-2},{\"name\":\"R032 Storage\",\"type\":\"CAMP_STORAGE\",\"dx\":2,\"dy\":-2},{\"name\":\"R032 defense patrol\",\"type\":\"CAMP_PATROL\",\"dx\":1,\"dy\":-2}]",
+    "last_debug_intervention": "none_this_run"
+  },
+  {
+    "index": 110,
+    "citation_id": "J0111",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:53",
+    "game_minutes": 7577,
+    "diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":true,\"shift_cache_state\":\"current\",\"shift_cache_available\":true,\"shift\":\"day\",\"roster\":[\"character:25\"],\"actor_active_guard\":true,\"actor_reserve_guard\":false,\"runtime_state\":\"available\",\"runtime_available\":true,\"behavior\":\"loop\",\"target\":[3901,876,0],\"route\":[[3900,876,0],[3901,876,0],[3902,876,0]],\"coordinate_system\":\"absolute_ms\"}",
+    "diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_PATROL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3899,876,0],\"camp_patrol_order\":true,\"camp_patrol_priority\":9,\"guard_post\":[3901,876,0],\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+  },
+  {
+    "index": 121,
+    "citation_id": "J0122",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 122,
+    "citation_id": "J0123",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:59",
+    "game_minutes": 7577
+  },
+  {
+    "index": 123,
+    "citation_id": "J0124",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 124,
+    "citation_id": "J0125",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:60",
+    "game_minutes": 7577
+  },
+  {
+    "index": 125,
+    "citation_id": "J0126",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 126,
+    "citation_id": "J0127",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:61",
+    "game_minutes": 7577
+  },
+  {
+    "index": 127,
+    "citation_id": "J0128",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 128,
+    "citation_id": "J0129",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:62",
+    "game_minutes": 7577
+  },
+  {
+    "index": 129,
+    "citation_id": "J0130",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 130,
+    "citation_id": "J0131",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:63",
+    "game_minutes": 7577
+  },
+  {
+    "index": 131,
+    "citation_id": "J0132",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 132,
+    "citation_id": "J0133",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:64",
+    "game_minutes": 7577,
+    "avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3900,878,0]}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "visible_entities": "[{\"identity\":{\"kind\":\"monster\",\"id\":\"process:0x165d20618\"},\"kind\":\"monster\",\"name\":\"the zombie\",\"attitude\":\"hostile\",\"dx\":3,\"dy\":-2,\"absolute_ms\":[3903,876,0],\"health\":{\"hp\":80,\"maximum_hp\":80,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"},\"fixture_actor_id\":\"\",\"debug_setup_run_id\":\"\",\"typeid\":\"mon_zombie\",\"faction\":\"zombie\",\"friendly\":0,\"anger\":100,\"morale\":100,\"aggro_character\":true,\"attack_target_is_viewer\":false,\"destination_is_viewer\":false,\"provenance_attack_target\":\"native_monster_attack_target_and_dest\"},{\"identity\":{\"kind\":\"npc\",\"id\":\"character:25\"},\"kind\":\"npc\",\"name\":\"R032 Establishment Ally 1\",\"attitude\":\"friendly\",\"dx\":-1,\"dy\":-2,\"absolute_ms\":[3899,876,0],\"health\":{\"hp\":984,\"maximum_hp\":984,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]",
+    "visible_zones": "[{\"name\":\"R032 Locker\",\"type\":\"CAMP_LOCKER\",\"dx\":0,\"dy\":-2},{\"name\":\"R032 Storage\",\"type\":\"CAMP_STORAGE\",\"dx\":2,\"dy\":-2},{\"name\":\"R032 defense patrol\",\"type\":\"CAMP_PATROL\",\"dx\":1,\"dy\":-2}]",
+    "last_debug_intervention": "none_this_run"
+  },
+  {
+    "index": 133,
+    "citation_id": "J0134",
+    "kind": "action",
+    "checks": {}
+  },
+  {
+    "index": 134,
+    "citation_id": "J0135",
+    "kind": "observation",
+    "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:64",
+    "game_minutes": 7577,
+    "avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3900,878,0]}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "visible_entities": "[{\"identity\":{\"kind\":\"monster\",\"id\":\"process:0x165d20618\"},\"kind\":\"monster\",\"name\":\"the zombie\",\"attitude\":\"hostile\",\"dx\":3,\"dy\":-2,\"absolute_ms\":[3903,876,0],\"health\":{\"hp\":80,\"maximum_hp\":80,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"},\"fixture_actor_id\":\"\",\"debug_setup_run_id\":\"\",\"typeid\":\"mon_zombie\",\"faction\":\"zombie\",\"friendly\":0,\"anger\":100,\"morale\":100,\"aggro_character\":true,\"attack_target_is_viewer\":false,\"destination_is_viewer\":false,\"provenance_attack_target\":\"native_monster_attack_target_and_dest\"},{\"identity\":{\"kind\":\"npc\",\"id\":\"character:25\"},\"kind\":\"npc\",\"name\":\"R032 Establishment Ally 1\",\"attitude\":\"friendly\",\"dx\":-1,\"dy\":-2,\"absolute_ms\":[3899,876,0],\"health\":{\"hp\":984,\"maximum_hp\":984,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]",
+    "visible_zones": "[{\"name\":\"R032 Locker\",\"type\":\"CAMP_LOCKER\",\"dx\":0,\"dy\":-2},{\"name\":\"R032 Storage\",\"type\":\"CAMP_STORAGE\",\"dx\":2,\"dy\":-2},{\"name\":\"R032 defense patrol\",\"type\":\"CAMP_PATROL\",\"dx\":1,\"dy\":-2}]",
+    "last_debug_intervention": "none_this_run"
+  },
+  {
+    "index": 135,
+    "citation_id": "J0136",
+    "kind": "terminal",
+    "terminal": {
+      "observation_id": "2573645250f751861d406113ebf9254d3da434d51491208610e09924d241906b:frame:64",
+      "stop_reason": "Setup only: disclosed native debug-menu spawn of one visible hostile zombie at absolute MS [3903,876,0] after character:25 native CAMP_PATROL order and route were established. Spawn itself receives no gameplay credit; subsequent alarm, guard movement, attacks and kill must be ordinary game behavior.",
+      "unused_authority": "released",
+      "cleanup": {
+        "owner": "scenario_terminalization",
+        "status": "deferred_to_scenario_terminalization"
+      }
+    }
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "outcome": "On current source, the same character:25 equipped in the accepted R032 camp can be natively rostered to real CAMP_PATROL work, respond as an eligible guard to a disclosed visible hostile zombie, and preserve assignment/equipment/patrol service through a native save and reload.",
+  "scenario": "r032.camp_defense_zombie_v002_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "r032_camp_defense_from_locker_v1"
+      },
+      {
+        "key": "runtime.world",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "McWilliams"
+      },
+      {
+        "key": "capabilities.r032.camp_defense",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "zombie-alarm-patrol-response-save-reload"
+      },
+      {
+        "key": "capabilities.r032.defense_attempt",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "zombie-alarm-patrol-response-save-reload-journal-open-v2"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "cockpit_live_session"
+      }
+    ]
+  }
+}

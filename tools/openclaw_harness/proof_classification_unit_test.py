@@ -2480,6 +2480,14 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result[0]["pattern"], "live: sealed semantic target artifact")
         self.assertTrue(result[0]["lines"])
 
+    def test_replacement_segment_excludes_only_other_segment_guards(self) -> None:
+        route = {"artifact_verdict": ["initial", "replacement"]}
+        result = declared_screen_artifact_matches([], route, active_step_labels={"replacement"})
+        self.assertEqual(len(result), 1)
+        self.assertIn("replacement", result[0]["pattern"])
+        self.assertEqual(result[0]["lines"], [])
+        self.assertEqual(len(declared_screen_artifact_matches([], route)), 2)
+
     def test_mac_sidebar_ocr_activity_and_wield_fallback_counts_as_gameplay_hud(self) -> None:
         probe = startup_screen_probe_classification(
             ocr_payload={
@@ -2831,7 +2839,32 @@ class ScreenCheckpointVerdictTest(unittest.TestCase):
         self.assertIn("deferred_guard_not_later", ledger[1]["issues"])
 
 
+class ArtifactLogStorageTest(unittest.TestCase):
+    def test_identical_capture_is_reused_and_different_capture_is_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            existing = Path(tmp) / "feature.log"
+            destination = Path(tmp) / "artifacts.log"
+            existing.write_bytes("captured é\n".encode("utf-8"))
+            self.assertEqual(harness.write_artifact_log(destination, "captured é\n", existing), existing)
+            self.assertFalse(destination.exists())
+            self.assertEqual(harness.write_artifact_log(destination, "different\n", existing), destination)
+            self.assertEqual(destination.read_bytes(), b"different\n")
+            self.assertEqual(existing.read_bytes(), "captured é\n".encode("utf-8"))
+
+
 class CockpitLocalProofLedgerTest(unittest.TestCase):
+    def test_explicit_observation_only_step_needs_no_game_action(self) -> None:
+        report = self.report()
+        session = report["cockpit_live_session"]
+        session["descriptor"].update(live_operations=[], invariants=["no gameplay input"])
+        session["final"]["action_observation_sequence"] = [{"kind": "observation"}]
+        self.assertEqual(self.ledger(report)["verdict"], "green_step_cockpit_local_proof")
+        session["descriptor"]["invariants"] = []
+        self.assertIn("cockpit_transaction_incomplete", self.ledger(report)["issues"])
+        session["descriptor"]["invariants"] = ["no gameplay input"]
+        session["final"]["action_observation_sequence"] = []
+        self.assertIn("cockpit_transaction_incomplete", self.ledger(report)["issues"])
+
     def report(self) -> Dict[str, Any]:
         return {
             "index": 9,

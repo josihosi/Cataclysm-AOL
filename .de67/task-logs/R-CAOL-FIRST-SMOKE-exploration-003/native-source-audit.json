@@ -1,0 +1,124 @@
+{
+  "schema": "de67.native-return-original-audit.v1",
+  "source": "read-only original handles; current clock reflects later external restart normalization",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "claim_id": "R-CAOL-FIRST-SMOKE",
+  "worker_claim": {
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "coordinator_session_id": "01a0d4fd-9ed2-7973-9a86-636630250699",
+    "released_at": 1790319680.360817
+  },
+  "current_attempt": {
+    "terminal_at": 1790319680.360817,
+    "terminal_kind": "restart_normalized"
+  },
+  "codex_state": "/Users/josefhorvath/.codex/state_5.sqlite",
+  "threads": [
+    {
+      "thread_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+      "parent_id": "01a0d4fd-9ed2-7973-9a86-636630250699",
+      "edge_status": "open",
+      "agent_path": "/root/task_522d43414f4c2d46495253542d534d4f4b452d6578706c6f726174696f6e2d303031",
+      "rollout_path": "/Users/josefhorvath/.codex/sessions/2026/09/24/rollout-2026-09-24T22-06-47-01a0d507-1891-7f30-9cb7-af8e7fe1c658.jsonl",
+      "rollout_sha256": "87952c02c9beb73e0a2d9954b39bbb2bd0b466cd4eaf259ee8f1de2fb444f906",
+      "latest_turn_events": [
+        {
+          "line": 8010,
+          "type": "task_complete",
+          "turn_id": "01a0d596-7e86-7680-8249-c14a5d16e9d5",
+          "timestamp": "2026-09-24T23:30:29.226Z"
+        },
+        {
+          "line": 8011,
+          "type": "task_started",
+          "turn_id": "01a0d5c1-e665-7c13-9748-6a4181920cb1",
+          "timestamp": "2026-09-24T23:30:49.588Z"
+        },
+        {
+          "line": 9601,
+          "type": "task_complete",
+          "turn_id": "01a0d5c1-e665-7c13-9748-6a4181920cb1",
+          "timestamp": "2026-09-25T00:01:15.066Z"
+        },
+        {
+          "line": 9602,
+          "type": "task_started",
+          "turn_id": "01a0d5de-114d-7041-aa1f-7e358eb585c2",
+          "timestamp": "2026-09-25T00:01:35.579Z"
+        },
+        {
+          "line": 9729,
+          "type": "task_complete",
+          "turn_id": "01a0d5de-114d-7041-aa1f-7e358eb585c2",
+          "timestamp": "2026-09-25T00:06:14.659Z"
+        }
+      ]
+    },
+    {
+      "thread_id": "01a0d507-ef3e-7742-935b-d4bd66ef0bc2",
+      "parent_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+      "edge_status": "open",
+      "agent_path": "/root/task_522d43414f4c2d46495253542d534d4f4b452d6578706c6f726174696f6e2d303031/luna_smoke_native",
+      "rollout_path": "/Users/josefhorvath/.codex/sessions/2026/09/24/rollout-2026-09-24T22-07-42-01a0d507-ef3e-7742-935b-d4bd66ef0bc2.jsonl",
+      "rollout_sha256": "5f22ff772bbb392b6ca2e0a2edfa9e78b7169c4421d24d707f78c8dff751024f",
+      "latest_turn_events": [
+        {
+          "line": 2260,
+          "type": "task_started",
+          "turn_id": "01a0d544-9fe5-7572-b4ce-33c83938b29e",
+          "timestamp": "2026-09-24T21:13:59.541Z"
+        },
+        {
+          "line": 3846,
+          "type": "task_complete",
+          "turn_id": "01a0d544-9fe5-7572-b4ce-33c83938b29e",
+          "timestamp": "2026-09-24T21:53:31.097Z"
+        },
+        {
+          "line": 3847,
+          "type": "task_started",
+          "turn_id": "01a0d56a-5e79-7cb3-9a1d-6991a4425db9",
+          "timestamp": "2026-09-24T21:55:13.158Z"
+        },
+        {
+          "line": 5064,
+          "type": "task_started",
+          "turn_id": "01a0d59f-43ff-7441-8bb3-9569378248bd",
+          "timestamp": "2026-09-24T22:52:59.787Z"
+        },
+        {
+          "line": 5125,
+          "type": "turn_aborted",
+          "turn_id": "01a0d59f-43ff-7441-8bb3-9569378248bd",
+          "timestamp": "2026-09-24T22:54:59.373Z"
+        }
+      ]
+    }
+  ],
+  "coordinator_runs": [
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/runner-runs/20260924T222205Z-30217/status.json",
+      "status": "done",
+      "exit_code": 0,
+      "transport_pid": null,
+      "transport_birth": null
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/runner-runs/20260924T195655Z-12476/status.json",
+      "status": "done",
+      "exit_code": 0,
+      "transport_pid": null,
+      "transport_birth": null
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/runner-runs/20260924T195626Z-12358/status.json",
+      "status": "done",
+      "exit_code": 0,
+      "transport_pid": null,
+      "transport_birth": null
+    }
+  ],
+  "review_counterexample": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-first-smoke-20260925/quiescence-counterexample.json",
+  "review_report": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-first-smoke-20260925/report.md",
+  "interpretation": "worker latest turn completed; original child has an earlier unmatched start and a later abort, and historical run records lack exact PID/birth. Candidate therefore fails closed on this historical snapshot; fixture test proves the future clean native return route."
+}

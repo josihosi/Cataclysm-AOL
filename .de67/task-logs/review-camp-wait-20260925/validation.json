@@ -1,0 +1,85 @@
+{
+  "installed_correction_unchanged": {
+    "scripts/workspace_setup.py": true,
+    "tests/test_workspace_setup.py": true,
+    "de-67-3/scripts/coordinator_supervisor.py": true,
+    "de-67-3/scripts/policy_kernel.py": true,
+    "de-67-3/tests/test_policy_kernel.py": true
+  },
+  "available_pairs": [
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "low"
+    },
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "medium"
+    },
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "high"
+    },
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "xhigh"
+    },
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "max"
+    },
+    {
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "low"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "medium"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "high"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "xhigh"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "max"
+    },
+    {
+      "model": "gpt-6-sol",
+      "reasoning_effort": "ultra"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "low"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "medium"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "high"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "xhigh"
+    },
+    {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "max"
+    }
+  ],
+  "ledger_validated": true,
+  "source_result_hash_verified": true,
+  "pending_owner_entries": 0,
+  "reused_context_reproduction": ".de67/task-logs/review-first-smoke-20260925/handoff-reproduction.txt",
+  "new_tests_needed": false,
+  "reason": "No source/context changes since immediately preceding passing validation; exact installed candidate bytes and live roster rechecked."
+}

@@ -1,0 +1,119 @@
+
+
+-----------------------------------------
+10:03:31.681 : Starting log.
+10:03:31.682 INFO : Cataclysm DDA version 67d2c1d8e6-dirty+SDL3
+10:03:31.682 INFO : Default randomness seeded to: 3041296143
+
+10:03:31.682 INFO : Running Catch2 session:
+
+10:03:31.685 INFO : SDL render devices: software, metal, opengl, opengles2, vulkan, gpu
+10:03:31.686 INFO : [options] C locale set to C
+10:03:31.686 INFO : [options] C++ locale set to C
+10:03:33.190 WARNING : Dark Days Ahead pack load time:: 1400489us (avg: 1400489us) (count: 1)
+10:03:33.190 WARNING : TESTING DATA pack load time:: 45013us (avg: 45013us) (count: 1)
+10:03:43.268 INFO : Game data loaded
+
+10:03:43.666 INFO : bandit_live_world local_handoff committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 epoch=1 phase=observing route_position=(14,24,0) recenter_gate=no recentered=no members=2
+
+10:03:43.667 INFO : bandit_live_world local_cohesion site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural minute=1720 leader=4 assembled=no failed_routes=0 movement_orders=2 route_attempted=yes route_failed=no path_steps=3 member_positions=4:(348,576,0)->(349,576,0);5:(348,577,0)->(350,576,0) plan_valid=yes deadline_before=-1 deadline_after=1730 cohesion_reads=4:present=yes,dead=no,current=(348,576,0),staging=(349,576,0),distance=1,best_before=1;5:present=yes,dead=no,current=(348,577,0),staging=(350,576,0),distance=2,best_before=2 cohesion_best_after=4:staging=(349,576,0),best=1;5:staging=(350,576,0),best=2 abort=no
+
+10:03:43.668 INFO : bandit_live_world local_cohesion site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural minute=1721 leader=4 assembled=no failed_routes=0 movement_orders=1 route_attempted=yes route_failed=no path_steps=1 member_positions=4:(350,576,0)->(349,576,0);5:(350,575,0)->(350,576,0) plan_valid=yes deadline_before=1730 deadline_after=1731 cohesion_reads=4:present=yes,dead=no,current=(350,576,0),staging=(349,576,0),distance=1,best_before=1;5:present=yes,dead=no,current=(350,575,0),staging=(350,576,0),distance=1,best_before=2 cohesion_best_after=4:staging=(349,576,0),best=1;5:staging=(350,576,0),best=1 abort=no
+../tests/bandit_live_world_test.cpp:10156: FAILED: live_site.active_outing.local_handoff.cohesion_assembled for: false
+Log messages during failed test:
+12:00:00AM: You eat your holy SPAM of debugging (fresh).
+12:00:00AM: You start walking.
+
+10:03:43.903 INFO : bandit_live_world homeward materialization candidate rejected site=overmap_special:bandit_camp@10,20,0 candidate_route=(14,24,0) reason=camp route unavailable after spawn
+
+10:03:43.903 INFO : bandit_live_world homeward materialization candidate rejected site=overmap_special:bandit_camp@10,20,0 candidate_route=(13,23,0) reason=camp route unavailable after spawn
+
+10:03:43.909 INFO : bandit_live_world local_handoff committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 epoch=3 phase=returning_home route_position=(11,21,0) recenter_gate=yes recentered=yes members=2
+
+10:03:44.048 INFO : bandit_live_world local_cohesion site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural minute=720 leader=6 assembled=no failed_routes=0 movement_orders=2 route_attempted=yes route_failed=no path_steps=24 member_positions=6:(240,456,0)->(252,468,0);7:(241,456,0)->(253,468,0) plan_valid=yes deadline_before=-1 deadline_after=730 cohesion_reads=6:present=yes,dead=no,current=(240,456,0),staging=(264,505,0),distance=54,best_before=31;7:present=yes,dead=no,current=(241,456,0),staging=(265,504,0),distance=53,best_before=31 cohesion_best_after=6:staging=(252,468,0),best=16;7:staging=(253,468,0),best=16 abort=no
+
+10:03:44.055 INFO : bandit_live_world local_cohesion site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural minute=721 leader=6 assembled=no failed_routes=0 movement_orders=2 route_attempted=yes route_failed=no path_steps=24 member_positions=6:(240,456,0)->(252,468,0);7:(241,456,0)->(253,468,0) plan_valid=yes deadline_before=730 deadline_after=730 cohesion_reads=6:present=yes,dead=no,current=(240,456,0),staging=(252,468,0),distance=16,best_before=16;7:present=yes,dead=no,current=(241,456,0),staging=(253,468,0),distance=16,best_before=16 cohesion_best_after=6:staging=(252,468,0),best=16;7:staging=(253,468,0),best=16 abort=no
+
+10:03:44.055 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=0 crossings=0 casualties=0 members=2 reason=destination_in_loaded_bubble
+
+10:03:44.252 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=2 crossings=0 casualties=0 members=2 reason=not_at_departure
+
+10:03:44.252 INFO : bandit_live_world homeward_boundary_route_result member=6 departure=(263,516,0) exit=(264,515,0) route_found=yes route_safe=yes path_before=62 action=move_to_next pos_before=(313,576,0) moves_before=200 next=(60,59,0) next_passable=yes next_moveable=yes next_dangerous=no next_occupied=no movement_impaired=no pos_after=(312,575,0) moves_after=55
+
+10:03:44.254 INFO : bandit_live_world homeward_boundary_route_result member=7 departure=(264,516,0) exit=(265,515,0) route_found=yes route_safe=yes path_before=63 action=move_to_next pos_before=(314,576,0) moves_before=200 next=(61,59,0) next_passable=yes next_moveable=yes next_dangerous=no next_occupied=no movement_impaired=no pos_after=(313,575,0) moves_after=80
+
+10:03:44.446 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=0 crossings=0 casualties=0 members=2 reason=step_missing
+
+10:03:44.446 INFO : bandit_live_world loaded homeward local movement rejected member=6 phase=returning_home owner=local position=(193,336,0) goal=(10,20,0) next_omt=(5,16,0) route_found=no route_safe=no base_route_found=no npc_avoid_route_found=no nonreentry_route_found=no reason=local_route_unavailable
+
+10:03:44.446 INFO : bandit_live_world loaded homeward local movement rejected member=7 phase=returning_home owner=local position=(197,336,0) goal=(10,20,0) next_omt=(5,16,0) route_found=no route_safe=no base_route_found=no npc_avoid_route_found=no nonreentry_route_found=no reason=local_route_unavailable
+
+10:03:44.489 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=2 crossings=0 casualties=0 members=2 reason=not_at_departure
+
+10:03:44.489 INFO : bandit_live_world homeward_boundary_route_result member=6 departure=(132,359,0) exit=(131,360,0) route_found=yes route_safe=yes path_before=24 action=move_to_next pos_before=(132,383,0) moves_before=1100 next=(0,106,0) next_passable=yes next_moveable=yes next_dangerous=no next_occupied=no movement_impaired=no pos_after=(132,382,0) moves_after=998
+
+10:03:44.490 INFO : bandit_live_world homeward_boundary_route_result member=7 departure=(132,360,0) exit=(131,361,0) route_found=yes route_safe=yes path_before=18 action=move_to_next pos_before=(136,378,0) moves_before=100 next=(4,101,0) next_passable=yes next_moveable=yes next_dangerous=no next_occupied=no movement_impaired=no pos_after=(136,377,0) moves_after=15
+
+10:03:44.807 INFO : bandit_live_world local homeward boundary committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 route_position=(12,24,0) destination=(10,20,0) members=2
+
+10:03:44.972 INFO : bandit_live_world homeward materialization rejected site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 phase=returning_home waypoint=3 route_size=5 route_position=(12,24,0) persisted_waypoint=(14,24,0) persisted_resume_route=(12,24,0) approach=(13,24,0) facing=(10,20,0) egress=(10,20,0) player_omt=(5,16,0) player_sm=(10,32,0) loaded_min_ms=(60,324,0) loaded_max_ms=(191,455,0) abstract_resume=yes cohesion_assembled=yes homeward_phase=yes survivor_pair=yes recenter_gate=yes assessed_cursor=no target_distance_known=yes initial_entry_count=0 initial_entries= initial_staging_count=0 initial_staging= final_entry_count=0 final_entries= final_staging_count=0 final_staging= required_survivors=2 survivor_ids=6,7 reason=loaded bubble lacks paired entry or staging positions
+
+10:03:45.107 INFO : bandit_live_world local_handoff committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 epoch=5 phase=returning_home route_position=(12,24,0) recenter_gate=yes recentered=no members=2
+
+10:03:45.119 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=2 crossings=0 casualties=0 members=2 reason=not_at_departure
+
+10:03:45.124 INFO : bandit_live_world local homeward boundary committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 route_position=(10,21,0) destination=(10,20,0) members=2
+
+10:03:45.351 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=0 crossings=0 casualties=0 members=2 reason=destination_in_loaded_bubble
+
+10:03:45.351 INFO : bandit_live_world staffed_camp_signal_observation sites=1 eligible=0 callbacks=0 created=0 refreshed=0 unchanged=0
+
+10:03:45.351 INFO : bandit_live_world scheduler_exit reason=response_decision_not_awaiting_assessment site=overmap_special:bandit_camp@10,20,0 observed=camp_decision_state_0 proof_eligible=no
+10:03:45.351 INFO : bandit_live_world scheduler_exit reason=active_outside_pressure site=overmap_special:bandit_camp@10,20,0 observed=active_member_count_2 proof_eligible=no
+10:03:45.351 INFO : bandit_live_world structural maintenance: intelligence_sites_considered=1 intelligence_sites_cleaned=1 intelligence_leads_considered=1 intelligence_leads_aged=0 intelligence_leads_pruned=0 scan_budget=12 budget_used=1 budget_exhausted=no sites_scanned=1 candidates_sampled=1 leads_seeded=1 leads_suppressed=0 scheduler_hour=36 scheduler_cursor_before=0 scheduler_cursor_after=0 terrain_scan_cursor_before=0 terrain_scan_cursor_after=0 terrain_scan_sites_selected=1 scheduler_consider_cap=16 scheduler_replay_suppressed=no full_route_solve_cap=8 full_route_solves=0 dispatch_cap=2 dispatches_planned=0 dispatches_applied=0 materialization_attempts=0 members_materialized=0 response_denials_held=0 response_rescouts_ready=0 response_decisions_abandoned=0 response_denial_rejections=0 response_materialization_attempts=0 response_members_materialized=0 response_operations_planned=0 response_operations_applied=0 response_operation_rejections=0 hostile_departures_applied=0 hostile_departure_rejections=0 dispatch_cap_reached=no active_outings=1 stalking_checks=0 turnbacks=0 arrivals=0 members_returned=0
+- scheduler diagnostic reason=response_decision_not_awaiting_assessment proof_eligible=no
+- scheduler diagnostic reason=active_outside_pressure proof_eligible=no
+- structural outing retained off-camp physical return ownership
+- structural scan rotated one persisted near-ring sample per selected camp
+
+10:03:45.351 INFO : bandit_live_world evidence debug: now_minutes=2160 site_cap=8 lead_cap=8 observation_cap=8 rotation_hour=36 rotation_cycle=36 evidence_sites_total=1 sites_rendered=1 sites_omitted=0 start=0
+site id=overmap_special:bandit_camp@10,20,0 anchor=(10,20,0) leads_total=2 leads_rendered=2 leads_omitted=0 lead_start=0 observations_total=0 observations_rendered=0 observations_omitted=0 observation_start=0
+ lead id=overmap_special:bandit_camp@10,20,0:structural_bounty:14,20,0:forest revision=2 last_known_omt=(14,20,0) origin=structural_routine source_key=structural_bounty:forest:terrain_fit:deep_forest status=active confidence=1 times_checked_empty=0 last_outcome=structural_outing_active last_seen_minutes=0 age_minutes=+2160 expiry_minutes=none remaining_minutes=none state=unbounded
+ lead id=overmap_special:bandit_camp@10,20,0:structural_bounty:6,20,0:forest revision=1 last_known_omt=(6,20,0) origin=structural_routine source_key=structural_bounty:forest:terrain_fit:deep_forest status=suspected confidence=1 times_checked_empty=0 last_outcome=structural_bounty_suspected last_seen_minutes=2160 age_minutes=+0 expiry_minutes=none remaining_minutes=none state=unbounded
+
+10:03:45.351 INFO : bandit_live_world homeward materialization candidate rejected site=overmap_special:bandit_camp@10,20,0 candidate_route=(14,24,0) reason=camp route unavailable after spawn
+
+10:03:45.352 INFO : bandit_live_world local_handoff committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 epoch=3 phase=returning_home route_position=(11,21,0) recenter_gate=yes recentered=yes members=2
+
+10:03:45.352 INFO : bandit_live_world homeward_motor_diag site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 phase=returning_home members=[id=8,present=yes,active=yes,loaded=yes,pos_abs=(266,505,0),pos_omt=(11,21,0),goal=(10,20,0),mission=10,is_travelling=yes,has_omt_destination=yes,omt_path=2,local_path=0,motor_inbounds=yes,homeward_owned=yes,boundary_owned=no;id=9,present=yes,active=yes,loaded=yes,pos_abs=(265,505,0),pos_omt=(11,21,0),goal=(10,20,0),mission=10,is_travelling=yes,has_omt_destination=yes,omt_path=2,local_path=0,motor_inbounds=yes,homeward_owned=yes,boundary_owned=no]
+
+10:03:45.352 INFO : bandit_live_world perf: sites=1 active_sites=1 active_job_mix=camp_style:scavenge=1 signals=0 significant_sounds=0 retired_reports=0 travelling_npcs=0 npcs_need_reload=no dematerialized_handoffs=no signal_cadence_due=yes dispatch_cadence_due=yes aftermath_us=62 retirement_us=1 signal_us=331 dispatch_us=477 travel_us=38 total_us=911
+
+10:03:45.352 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=0 crossings=0 casualties=0 members=2 reason=destination_in_loaded_bubble
+
+10:03:45.352 INFO : bandit_live_world staffed_camp_signal_observation sites=1 eligible=0 callbacks=0 created=0 refreshed=0 unchanged=0
+
+10:03:45.352 INFO : bandit_live_world scheduler_exit reason=scheduler_replay_suppressed site=global observed=scheduler_hour_36,last_hour_36 proof_eligible=no
+10:03:45.352 INFO : bandit_live_world structural maintenance: intelligence_sites_considered=1 intelligence_sites_cleaned=0 intelligence_leads_considered=2 intelligence_leads_aged=0 intelligence_leads_pruned=0 scan_budget=0 budget_used=0 budget_exhausted=no sites_scanned=0 candidates_sampled=0 leads_seeded=0 leads_suppressed=0 scheduler_hour=36 scheduler_cursor_before=0 scheduler_cursor_after=0 terrain_scan_cursor_before=0 terrain_scan_cursor_after=0 terrain_scan_sites_selected=0 scheduler_consider_cap=16 scheduler_replay_suppressed=yes full_route_solve_cap=8 full_route_solves=0 dispatch_cap=2 dispatches_planned=0 dispatches_applied=0 materialization_attempts=0 members_materialized=0 response_denials_held=0 response_rescouts_ready=0 response_decisions_abandoned=0 response_denial_rejections=0 response_materialization_attempts=0 response_members_materialized=0 response_operations_planned=0 response_operations_applied=0 response_operation_rejections=0 hostile_departures_applied=0 hostile_departure_rejections=0 dispatch_cap_reached=no active_outings=1 stalking_checks=0 turnbacks=0 arrivals=0 members_returned=0
+- scheduler diagnostic reason=scheduler_replay_suppressed proof_eligible=no
+- structural maintenance dispatch skipped: scheduler hour already processed
+
+10:03:45.352 INFO : bandit_live_world evidence debug: now_minutes=2160 site_cap=8 lead_cap=8 observation_cap=8 rotation_hour=36 rotation_cycle=36 evidence_sites_total=1 sites_rendered=1 sites_omitted=0 start=0
+site id=overmap_special:bandit_camp@10,20,0 anchor=(10,20,0) leads_total=2 leads_rendered=2 leads_omitted=0 lead_start=0 observations_total=0 observations_rendered=0 observations_omitted=0 observation_start=0
+ lead id=overmap_special:bandit_camp@10,20,0:structural_bounty:14,20,0:forest revision=2 last_known_omt=(14,20,0) origin=structural_routine source_key=structural_bounty:forest:terrain_fit:deep_forest status=active confidence=1 times_checked_empty=0 last_outcome=structural_outing_active last_seen_minutes=0 age_minutes=+2160 expiry_minutes=none remaining_minutes=none state=unbounded
+ lead id=overmap_special:bandit_camp@10,20,0:structural_bounty:6,20,0:forest revision=1 last_known_omt=(6,20,0) origin=structural_routine source_key=structural_bounty:forest:terrain_fit:deep_forest status=suspected confidence=1 times_checked_empty=0 last_outcome=structural_bounty_suspected last_seen_minutes=2160 age_minutes=+0 expiry_minutes=none remaining_minutes=none state=unbounded
+
+10:03:45.352 INFO : bandit_live_world homeward_motor_diag site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 phase=returning_home members=[id=8,present=yes,active=yes,loaded=yes,pos_abs=(266,505,0),pos_omt=(11,21,0),goal=(10,20,0),mission=10,is_travelling=yes,has_omt_destination=yes,omt_path=2,local_path=0,motor_inbounds=yes,homeward_owned=yes,boundary_owned=no;id=9,present=yes,active=yes,loaded=yes,pos_abs=(265,505,0),pos_omt=(11,21,0),goal=(10,20,0),mission=10,is_travelling=yes,has_omt_destination=yes,omt_path=2,local_path=0,motor_inbounds=yes,homeward_owned=yes,boundary_owned=no]
+
+10:03:45.352 INFO : bandit_live_world perf: sites=1 active_sites=1 active_job_mix=camp_style:scavenge=1 signals=0 significant_sounds=0 retired_reports=0 travelling_npcs=0 npcs_need_reload=no dematerialized_handoffs=no signal_cadence_due=yes dispatch_cadence_due=yes aftermath_us=33 retirement_us=0 signal_us=152 dispatch_us=90 travel_us=30 total_us=308
+
+10:03:45.557 INFO : bandit_live_world local_handoff committed site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 epoch=1 phase=returning_home route_position=(14,24,0) recenter_gate=no recentered=no members=2
+
+10:03:45.557 INFO : bandit_live_world local homeward boundary collection site=overmap_special:bandit_camp@10,20,0 activity=overmap_special:bandit_camp@10,20,0#structural generation=1 steps=0 crossings=0 casualties=0 members=2 reason=destination_in_loaded_bubble
+Failed 1 test case, failed 1 assertion.
+
+
+10:03:46.265 INFO : Test world Test World 测试世界 92007 left for inspection.
+10:03:46.265 INFO : Finished in 13.8837 seconds
+10:03:46.265 INFO : Default randomness seeded to: 3041296143
+

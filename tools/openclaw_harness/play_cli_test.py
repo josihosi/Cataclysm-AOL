@@ -17,6 +17,138 @@ CLI = Path(__file__).with_name("play_cli.py")
 
 
 class PlayerCliTest(unittest.TestCase):
+    def test_repeated_world_controls_refresh_on_changed_actions_and_generation(self):
+        for generation, action, unchanged in ((0, "world.wait", False), (0, "world.wait", True),
+                                              (0, "world.fire", False), (1, "world.fire", False)):
+            self.write("status.json", {"binding_id": "bound-a", "state": "ready", "session_generation": generation})
+            pending = self.cli("look")
+            self.reply(pending["request_id"], {"ok": True, "result": {
+                "observation_id": "frame-" + pending["request_id"], "surface": {"kind": "world", "facts": {},
+                    "actions": [{"id": action, "stable_id": "", "label": action, "enabled": True}]}}})
+            result = self.cli("collect")
+            self.assertTrue(result["world_observation"])
+            self.assertEqual(result["world_controls_unchanged"], unchanged)
+
+    def test_journal_summary_keeps_finish_fields_and_stable_retrieval(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "request_id": "journal-request", "result": {
+            "evidence_journal": {"entries": [{"value": "history" * 10000}]}}})
+        for required in ("1 entries", "--request-id journal-request", "verdict", "smallest_supported_claim",
+                         "causal_account", "citation_id", "checks", "recommended_disposition", "contradictions"):
+            self.assertIn(required, text)
+        self.assertNotIn("history", text)
+
+    def test_filtered_journal_commands_keep_source_index_and_filter(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
+            "slice": [{"citation_id": "J0008", "kind": "observation", "value": {"game_minutes": 10}}],
+            "source_indices": [7], "filter": {"contains": "world"},
+            "page": {"offset": 0, "next_offset": 1}}, inspection_request_id="old-request")
+        self.assertIn("INDEX 7; PATH FIELD", text)
+        self.assertIn("--request-id old-request", text)
+        self.assertIn("--offset 1 --limit 1 --contains world --request-id old-request", text)
+
+    def test_journal_listing_does_not_expand_nested_game_history(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
+            "slice": [{"citation_id": "J0001", "kind": "observation", "value": {
+                "surface": {"kind": "world", "facts": {"irrelevant_history": "x" * 100000}}}}],
+            "page": {"offset": 0, "total": 1, "next_offset": None}})
+        self.assertIn("J0001: observation — world", text)
+        self.assertIn("play inspect result.evidence_journal.entries.INDEX.value.PATH", text)
+        self.assertNotIn("x" * 1000, text)
+        self.assertLess(len(text), 500)
+
+    def test_plain_messages_group_comfort_but_keep_damage_and_alarms(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "slice": [
+            {"text": "You feel your left leg getting warm.", "time": "12:00"},
+            {"text": "You feel your right leg getting warm.", "time": "12:00"},
+            {"text": "The zombie hits your left leg for 5 damage.", "time": "12:01"}],
+            "turn_assessment": {"alarms": [{"message": "Waiting is too slow. Tell the coordinator."}]}})
+        self.assertIn("Temperature comfort messages: 2 grouped", text)
+        self.assertIn("5 damage", text)
+        self.assertIn("Tell the coordinator", text)
+
+    def test_display_cache_replaces_previous_snapshot_in_session(self):
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "world-frame", "surface": {"kind": "world", "facts": {}, "actions": []}}})
+        self.cli("collect")
+        state = json.loads((self.session / "play-client.json").read_text())
+        self.assertIn("display", state)
+        self.assertNotIn("display_sha256", state)
+
+    def test_world_menu_only_explains_macros_allowed_in_this_session(self):
+        from gameplay_display import world_look
+        snapshot = {"current": {"facts": {}, "actions": [
+            {"id": "world.move.east", "enabled": True},
+            {"id": "world.wait", "enabled": True}]}}
+        restricted = world_look(snapshot, {"game.wait": False, "game.move_relative": False})
+        self.assertIn("play act world.move.<direction>", restricted)
+        self.assertIn("play act world.wait", restricted)
+        self.assertNotIn("play move --east", restricted)
+        self.assertNotIn("play wait <duration>", restricted)
+        allowed = world_look(snapshot, {"game.wait": True, "game.move_relative": True})
+        self.assertIn("play move --east", allowed)
+        self.assertIn("play wait <duration>", allowed)
+
+    def test_inventory_commit_does_not_invite_a_target_argument(self):
+        from gameplay_display import _plain_controls
+        text = _plain_controls([
+            {"id": "inventory.commit", "label": "Select", "enabled": True},
+            {"id": "inventory.select", "label": "lighter", "enabled": True, "stable_id": "12097"},
+        ])
+        self.assertIn("Confirm highlighted item: Select → play act inventory.commit (no --target)", text)
+        self.assertIn("select: confirm the supplied target", text)
+        self.assertIn("12097 — lighter", text)
+
+    def test_plain_startup_pending_is_not_an_action_failure(self):
+        from gameplay_display import plain_player_output
+        self.assertEqual(plain_player_output({"ok": False, "status": {
+            "state": "starting", "bridge_pid": 123, "session_generation": 0}}),
+            "Loading → play look")
+
+    def test_target_menu_prints_exact_action_and_target_together(self):
+        from gameplay_display import _plain_controls
+        text = _plain_controls([
+            {"id": "target.move_cursor", "stable_id": "north", "label": "Move cursor north"},
+            {"id": "target.choose", "stable_id": "coordinate:destination", "label": "Choose destination"},
+        ])
+        self.assertIn("play act target.move_cursor --target north", text)
+        self.assertIn("play act target.choose --target coordinate:destination", text)
+        self.assertNotIn("target.<action>", text)
+
+    def test_plain_startup_failure_omits_transport_metadata(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": False, "status": {
+            "state": "process_dead", "binding_id": "opaque", "bridge_pid": 123,
+            "reason": "pre_descriptor_no_progress", "cleanup": {"status": "accepted"}}},
+            startup_error="NPC API credential unavailable")
+        self.assertEqual(text, "Playtest stopped: NPC API credential unavailable")
+
+    def test_plain_lifecycle_collection_keeps_outcome_without_process_receipts(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": True, "state": "finished",
+            "bridge_state": "safe_to_cleanup", "cleanup": {"status": "already_exited",
+                "process_generation": {"expected": {"command": "opaque-process-command"}}},
+            "terminalization": {"cleanup": {"status": "already_exited"}},
+            "next": "inspect retained evidence"})
+        self.assertEqual(text, "Playtest ended. Cleanup complete.")
+        self.assertEqual(plain_player_output({"ok": True, "state": "reentered",
+            "session_generation": 1, "next": "look"}),
+            "Saved game reloaded. Observe → play look")
+
+    def test_plain_lifecycle_collection_keeps_failure_and_performance_alarm(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": False, "state": "cleanup_failed",
+            "reason": "replacement could not load", "bridge_state": "reentry_failed",
+            "turn_assessment": {"alarms": [{"message": "Tell the coordinator: slow turns."}]}})
+        self.assertIn("replacement could not load", text)
+        self.assertIn("Tell the coordinator: slow turns.", text)
+        self.assertEqual(plain_player_output({"state": "finished", "cleanup": {"status": "unknown"}}),
+                         "Playtest ended. Cleanup: unknown")
+
     def test_short_wait_preserves_existing_request(self):
         pending = self.cli("wait", "5m")
         sent = next(row for row in self.requests() if row["request_id"] == pending["request_id"])
@@ -36,6 +168,12 @@ class PlayerCliTest(unittest.TestCase):
         self.assertIn("play act world.wait", text)
         self.assertNotIn("Start waiting", text)
         self.assertNotIn("{", text)
+
+    def test_short_answers_before_observation_request_look_without_sending_input(self):
+        for answer in ("yes", "no", "ignore"):
+            with self.subTest(answer=answer):
+                self.assertIn("look_required", self.cli(answer, ok=False)["error"])
+        self.assertEqual(self.requests(), [])
 
     def test_short_yes_uses_existing_advertised_target(self):
         pending = self.cli("look")
@@ -71,6 +209,19 @@ class PlayerCliTest(unittest.TestCase):
         self.assertIn("Cleanup: failed", text)
         self.assertNotIn("1234", text)
 
+    def test_interrupted_menu_requires_refresh_before_advertising_input(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": False, "state": "rejected", "next": "look",
+            "response": {"current_input": {"owner": "shakedown", "view": "full"},
+                         "outcome": {"error": "keep_watch_recipe_action_not_advertised"}}},
+            snapshot={"owner": "shakedown", "current": {
+                "facts": {"title": "SHAKEDOWN DEMAND"},
+                "actions": [{"id": "shakedown.fight", "label": "Fight"}]}})
+        self.assertIn("SHAKEDOWN DEMAND", text)
+        self.assertIn("Next: play look", text)
+        self.assertIn("Refresh before choosing an action.", text)
+        self.assertNotIn("play act shakedown.fight", text)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -92,7 +243,7 @@ class PlayerCliTest(unittest.TestCase):
         shown = json.loads(process.stdout)
         # The supported CLI now presents handles; verify the complete retained
         # result as well as the serialized boundary instead of demanding a dump.
-        return recover(shown["presentation"]["full_evidence"]["sha256"])
+        return recover(shown["presentation"]["full_evidence"]["sha256"]) if "presentation" in shown else shown
 
     def cli_async(self, *arguments, wait_seconds):
         return subprocess.Popen([sys.executable, str(CLI), "--diagnostics", "--session", str(self.session),
@@ -414,6 +565,42 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual(len(self.requests()), 1)
         self.assertIn("unattempted", (self.session / "playtest.txt").read_text())
 
+    def test_plain_transcript_preserves_shell_argument_boundaries(self):
+        import shlex
+        reason = "finished O'Brien's inventory check"
+        process = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                  "--wait-seconds", "0", "quit", "--reason", reason],
+                                 capture_output=True, text=True)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        command = (self.session / "playtest.txt").read_text().splitlines()[0]
+        self.assertEqual(shlex.split(command.removeprefix("> play ")),
+                         ["quit", "--reason", reason])
+
+    def test_macro_stop_reuses_only_explicitly_released_native_decision(self):
+        for released in (False, True):
+            with self.subTest(released=released):
+                self.observe()
+                path = self.session / "interrupted-wait.json"
+                path.write_text(json.dumps({"action": "game.wait", "wait": {"enabled": True}}))
+                pending = self.cli("call", "--request", str(path))
+                self.reply(pending["request_id"], {"ok": False,
+                    "error": "keep_watch_recipe_action_not_advertised", "result": {
+                        "observation_id": "demand", "state": "interrupted",
+                        "unused_authority": "released" if released else "revoked",
+                        "session_state": "active", "terminal_observation": {
+                            "observation_id": "demand", "continuation": {"state": "released"},
+                            "surface": {"kind": "shakedown", "actions": [
+                                {"id": "shakedown.fight", "enabled": True}]}}}})
+                result = self.cli("collect", ok=False)
+                if released:
+                    self.assertNotEqual(result["next"], "look")
+                    action = self.cli("act", "shakedown.fight")
+                    sent = next(r for r in self.requests() if r["request_id"] == action["request_id"])
+                    self.assertEqual(sent["request"]["observation_id"], "demand")
+                else:
+                    self.assertEqual(result["next"], "look")
+                    self.assertIn("look_required", self.cli("act", "shakedown.fight", ok=False)["error"])
+
     def test_journal_finish_preserves_sealed_terminal_and_requires_witness(self):
         self.observe()
         witness_path = self.session / "witness.json"
@@ -519,7 +706,8 @@ class PlayerCliTest(unittest.TestCase):
         stdout, stderr = process.communicate(timeout=2)
         self.assertEqual(process.returncode, 0, stderr)
         from evidence_display import recover
-        result = recover(json.loads(stdout)["presentation"]["full_evidence"]["sha256"])
+        shown = json.loads(stdout)
+        result = recover(shown["presentation"]["full_evidence"]["sha256"]) if "presentation" in shown else shown
         self.assertEqual(result["request_id"], request_id)
         self.assertEqual(result["state"], "collected")
         self.assertEqual(len(self.requests()), 1)

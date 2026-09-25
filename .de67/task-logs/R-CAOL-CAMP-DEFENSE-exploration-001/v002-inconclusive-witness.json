@@ -1,0 +1,47 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The v002 R032 native run reached game minute 9429 at the living bandit-camp anchor with the abstract outing still returning home, no visible creatures, and no committed hostile contact. The game was saved and exited with OS exit code 0; this run proves neither shakedown branch.",
+  "causal_account": "Native observations show the player at [3936,936,0] beside overmap special [164,39,0], an abstract structural outing for members [4,5] still returning home, and hostile_contact_members.present=false. The paired handoff transition stream separately records repeated rejection at minutes 9310–9425 because the schema-11 handoff eligibility receipt was invalid. Source review found the receipt copied cohesion_assembled=true while the validator rejects true; the source repair is bound only to a later fresh run.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds this failed native generation to the v002 scenario, original source/executable hashes, run and bridge binding.",
+      "checks": {
+        "scenario_id": "r032.camp_defense_shakedown_v002_mcw",
+        "executable_identity": "8d5f5dc9935f1aad0cd7cdd23454fd7e9ee9495abaaed9d4d856c388b49d89e1",
+        "run_id": "41c0c31a18d83359cae7a6cb7d6b8a5ae5053f1e8fa50abd3ed1093292603c27",
+        "binding_id": "e18da63e6d82cdce2750538961c7a3ee3ad7d32610e96140bc48e2ef12beae84"
+      }
+    },
+    {
+      "citation_id": "J0390",
+      "meaning": "Native final world observation: game minute, player position, no visible entities, camp identity, abstract return outing and no committed hostile contact.",
+      "checks": {
+        "value.game_minutes": 9429,
+        "value.visible_entities": [],
+        "value.surface.facts.avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3936,936,0]}",
+        "value.surface.facts.current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[164,39,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+        "value.surface.facts.hostile_contact_members": "{\"schema\":\"caol-hostile-contact-member-ownership-v1\",\"present\":false,\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}",
+        "value.surface.facts.structural_outing_owner": "{\"schema\":\"caol-structural-outing-owner-v1\",\"present\":true,\"site_id\":\"overmap_special:bandit_camp@164,39,0\",\"activity_id\":\"overmap_special:bandit_camp@164,39,0#structural\",\"generation\":1,\"schema_version\":10,\"owner\":\"abstract\",\"phase\":\"returning_home\",\"waypoint_index\":3,\"last_advanced_minutes\":9420,\"member_ids\":[4,5],\"local_handoff_active\":false,\"local_handoff_phase\":\"assembling\",\"local_handoff_waypoint_index\":0,\"local_handoff_route_position\":[0,0,0],\"local_handoff_cohesion_assembled\":false,\"local_handoff_cohesion_abort_return\":false,\"waypoint_omt\":[163,39,0],\"cursor_present\":true,\"cursor_owner\":\"abstract\",\"cursor_generation\":1,\"cursor_last_advanced_minutes\":9420,\"provenance\":\"diagnostic_read_only_global_bandit_live_world_active_structural_cursor\"}"
+      }
+    },
+    {
+      "citation_id": "J0397",
+      "meaning": "OS process exit evidence for game PID 63609, exit code zero and no gameplay credit.",
+      "checks": {
+        "value.surface.facts.pid": 63609,
+        "value.surface.facts.alive": false,
+        "value.surface.facts.exit_code": 0,
+        "value.surface.facts.gameplay_credit": false,
+        "value.surface.facts.save_outcome": "not_established_by_process_exit"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether corrected local-pair handoff commits and materializes the natural outing.",
+    "Whether that outing produces a native peaceful Pay/Fight surface and useful saved branch.",
+    "Whether a separate native Fight branch shows meaningful guard and bandit movement and damage."
+  ]
+}

@@ -1,0 +1,6 @@
+MENU
+filter required: true
+filtered entry count: 1209
+Allowed actions replaced — use only these:
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel

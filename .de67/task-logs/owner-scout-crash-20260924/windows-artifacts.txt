@@ -1,0 +1,308 @@
+224d7dc9779fe3e871a6ec13de918226338e6751
+dev
+{"path":"C:\\Users\\josef\\AppData\\Local\\CrashDumps\\cataclysm-tiles.exe.10608.dmp","bytes":26831252,"modified":"2026-09-24T16:23:50.4059255+02:00","sha256":"6CA561182479C548A4518F351459315CAF8925CC56686D08A724DDF2D9581801"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-camp-20260924\\cataclysm-tiles.exe","bytes":61148602,"modified":"2026-09-24T15:56:15.0615748+02:00","sha256":"4346CFEFE14FAAB798F607130B2E4BFE233261C31BDCFDCA7C904BEFB963F365"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\windows-camp-20260924\\config\\debug.log","bytes":11960933,"modified":"2026-09-24T16:23:42.6612014+02:00","sha256":"7930BAA4D7951450DE4B9929D22FD36E95CC0C2F5EF57A0F405862B1E0EA1DA3"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\windows-camp-20260924\\audit\\camp-scenario-setup.json","bytes":4632,"modified":"2026-09-24T15:58:14.3259938+02:00","sha256":"D1BCAD8E122FAC7E6C90DCC34F62615CB98B7E76CF1CD520E2FDD74348AEA99A"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\windows-camp-20260924\\seed_camps.py","bytes":6840,"modified":"2026-09-24T15:58:13.3856656+02:00","sha256":"18AE9A55A848097F870BAD4BCD026FE5E7A9A2F383CF8453A55FCD068F836458"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\windows-camp-20260924\\prepare_launch.py","bytes":1376,"modified":"2026-09-24T15:59:13.9621536+02:00","sha256":"A3E14574D48ECBB6EACB971BE8E8695241D66877DA049D0F333E61A3E97666C8"}
+{"path":"C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\windows-camp-20260924\\save\\TestSetup00\\#VGVzdDAw.sav.zzip","bytes":21232,"modified":"2026-09-24T16:21:35.7713402+02:00","sha256":"493FF0810DA357521064C07860E6D5B07111A73A3C691255343B942B5CC13F1C"}
+{
+  "profile": "windows-camp-20260924",
+  "world": "TestSetup00",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24 / bandit_camp site 2",
+  "player_omt": [
+    131,
+    143,
+    0
+  ],
+  "transform_reports": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "world": "TestSetup00",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "source_overmap_file": "o.0.0.zzip",
+      "source_anchor_omt": [
+        140,
+        51,
+        0
+      ],
+      "player_abs_omt": [
+        131,
+        143,
+        0
+      ],
+      "player_location": [
+        3158,
+        3454,
+        0
+      ],
+      "offset_omt": [
+        -4,
+        -6,
+        0
+      ],
+      "target_abs_omt": [
+        127,
+        137,
+        0
+      ],
+      "target_overmap_file": "o.0.0.zzip",
+      "target_anchor_omt": [
+        127,
+        137,
+        0
+      ],
+      "copied_points": [
+        [
+          128,
+          138,
+          0
+        ],
+        [
+          127,
+          138,
+          1
+        ],
+        [
+          127,
+          137,
+          0
+        ],
+        [
+          127,
+          137,
+          1
+        ],
+        [
+          128,
+          138,
+          1
+        ],
+        [
+          128,
+          137,
+          0
+        ],
+        [
+          128,
+          137,
+          1
+        ],
+        [
+          127,
+          138,
+          0
+        ]
+      ],
+      "previous_target_terrain": {
+        "127,137,0": "field",
+        "127,137,1": "open_air",
+        "127,138,0": "field",
+        "127,138,1": "open_air",
+        "128,137,0": "field",
+        "128,137,1": "open_air",
+        "128,138,0": "field",
+        "128,138,1": "open_air"
+      },
+      "approx_range_omt": 6
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "world": "TestSetup00",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "source_overmap_file": "o.0.0.zzip",
+      "source_anchor_omt": [
+        140,
+        51,
+        0
+      ],
+      "player_abs_omt": [
+        131,
+        143,
+        0
+      ],
+      "player_location": [
+        3158,
+        3454,
+        0
+      ],
+      "offset_omt": [
+        4,
+        -6,
+        0
+      ],
+      "target_abs_omt": [
+        135,
+        137,
+        0
+      ],
+      "target_overmap_file": "o.0.0.zzip",
+      "target_anchor_omt": [
+        135,
+        137,
+        0
+      ],
+      "copied_points": [
+        [
+          136,
+          138,
+          0
+        ],
+        [
+          135,
+          138,
+          1
+        ],
+        [
+          135,
+          137,
+          0
+        ],
+        [
+          135,
+          137,
+          1
+        ],
+        [
+          136,
+          138,
+          1
+        ],
+        [
+          136,
+          137,
+          0
+        ],
+        [
+          136,
+          137,
+          1
+        ],
+        [
+          135,
+          138,
+          0
+        ]
+      ],
+      "previous_target_terrain": {
+        "135,137,0": "field",
+        "135,137,1": "open_air",
+        "135,138,0": "field",
+        "135,138,1": "open_air",
+        "136,137,0": "field",
+        "136,137,1": "open_air",
+        "136,138,0": "field",
+        "136,138,1": "open_air"
+      },
+      "approx_range_omt": 6
+    }
+  ],
+  "previous_target_terrain": {
+    "[128, 138, 0]": "forest_thick",
+    "[127, 138, 1]": "open_air",
+    "[127, 137, 0]": "forest_thick",
+    "[127, 137, 1]": "open_air",
+    "[128, 138, 1]": "open_air",
+    "[128, 137, 0]": "forest_thick",
+    "[128, 137, 1]": "open_air",
+    "[127, 138, 0]": "forest_thick",
+    "[136, 138, 0]": "forest",
+    "[135, 138, 1]": "open_air",
+    "[135, 137, 0]": "forest_trail_ew",
+    "[135, 137, 1]": "open_air",
+    "[136, 138, 1]": "open_air",
+    "[136, 137, 0]": "forest_trail_wn",
+    "[136, 137, 1]": "open_air",
+    "[135, 138, 0]": "forest"
+  },
+  "placement_strategy": "canonical saved camp footprint transplanted via existing seed_overmap_special_near_player transform; gameplay initialization remains native",
+  "gameplay_credit": false,
+  "original_archive_preserved": true,
+  "original_world_map_backup": ".userdata\\windows-camp-20260924\\audit\\o.0.0-original.zzip",
+  "npc_state_changed": false
+}
+[
+    {
+        "Name":  "camp-scenario-setup.json",
+        "Length":  4632
+    },
+    {
+        "Name":  "o.0.0-original.zzip",
+        "Length":  171133
+    }
+]
+16:23:42.568 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.570 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.572 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.574 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.576 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.578 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.581 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.584 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.587 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.589 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.591 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.593 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.595 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.597 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.599 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.601 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.603 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.606 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.608 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.611 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.613 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.615 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.617 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.619 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.622 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.624 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.626 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.629 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.631 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8459 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.633 INFO : bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light now_minutes=8460 tiles_examined=407 scan_radius_ms=60 weather=clear light_time=night light_weather=clear raw_weather=fog sight_penalty=1.7 windspeed=2
+
+16:23:42.645 INFO : bandit_live_world hostile_target_observation target=player@131,143,0 goods=413101 population=3 activity=2
+
+16:23:42.649 INFO : bandit_live_world staffed_camp_signal_observation sites=3 eligible=0 callbacks=0 created=0 refreshed=0 unchanged=0
+
+16:23:42.661 INFO : bandit_live_world hostile_target_observation target=player@131,143,0 goods=413101 population=3 activity=2
+
+#< CLIXML
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"><Obj S="progress" RefId="0"><TN RefId="0"><T>System.Management.Automation.PSCustomObject</T><T>System.Object</T></TN><MS><I64 N="SourceId">1</I64><PR N="Record"><AV>Preparing modules for first use.</AV><AI>0</AI><Nil /><PI>-1</PI><PC>-1</PC><T>Completed</T><SR>-1</SR><SD> </SD></PR></MS></Obj><Obj S="progress" RefId="1"><TNRef RefId="0" /><MS><I64 N="SourceId">1</I64><PR N="Record"><AV>Preparing modules for first use.</AV><AI>0</AI><Nil /><PI>-1</PI><PC>-1</PC><T>Completed</T><SR>-1</SR><SD> </SD></PR></MS></Obj></Objs>

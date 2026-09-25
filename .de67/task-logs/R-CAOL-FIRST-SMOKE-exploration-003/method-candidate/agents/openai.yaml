@@ -1,0 +1,7 @@
+interface:
+  display_name: "DE-67-3 Delivery"
+  short_description: "Deliver a FS with item clocks and role-routed mutation"
+  default_prompt: "Use $de-67-3 to implement this frozen FS through exploration, finite closure, one item deadline, and evidence-driven mutation."
+
+policy:
+  allow_implicit_invocation: false

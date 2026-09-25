@@ -1,0 +1,54 @@
+{
+  "schema": "r-harness-process-local-request-control-v1",
+  "task_id": "R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-002",
+  "claim_id": "R-HARNESS-EVIDENCE",
+  "control": "source-level runner logger; no native gameplay",
+  "method": "Two fresh Python runner processes imported the current tools/llm_runner/runner.py logger. Process A emitted a distinct prewarm request followed by req_0; process B emitted the same qualified-request req_0 without prewarm. Both used matching prompt and response payloads for req_0. The logger retained run_id, runner_pid, process_instance, request_id, sequence, prompt hash and response hash.",
+  "observations": [
+    {
+      "control_label": "runner-A-prewarm",
+      "run_id": "control-run-a",
+      "runner_pid": 58785,
+      "process_instance": "a6380b687e474fd8863833ec627a1c98",
+      "events": [
+        {"event": "llm_request_started", "request_id": "prewarm", "sequence": 1, "prompt_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},
+        {"event": "llm_response_emitted", "request_id": "prewarm", "sequence": 2, "ok": true},
+        {"event": "llm_request_started", "request_id": "req_0", "sequence": 3, "prompt_sha256": "f2b19fd2dc2927ea0261933db1a9a0011b862d70193832a07888832ed6de2550"},
+        {"event": "llm_response_emitted", "request_id": "req_0", "sequence": 4, "ok": true, "response_sha256": "b4010c4ff93857b8d0499f454315dc985bbf6f94b9658d768ebd994a2e03dc6b"}
+      ]
+    },
+    {
+      "control_label": "runner-B-request",
+      "run_id": "control-run-b",
+      "runner_pid": 58786,
+      "process_instance": "f5543f53e2cc4b95917efbab2f1ab7dc",
+      "events": [
+        {"event": "llm_request_started", "request_id": "req_0", "sequence": 1, "prompt_sha256": "f2b19fd2dc2927ea0261933db1a9a0011b862d70193832a07888832ed6de2550"},
+        {"event": "llm_response_emitted", "request_id": "req_0", "sequence": 2, "ok": true, "response_sha256": "b4010c4ff93857b8d0499f454315dc985bbf6f94b9658d768ebd994a2e03dc6b"}
+      ]
+    }
+  ],
+  "assertions": {
+    "prewarm_is_distinct": true,
+    "same_local_request_id_observed": "req_0",
+    "different_runner_process_instances": true,
+    "different_run_ids": true,
+    "same_req0_prompt_and_response_hashes": true,
+    "request_id_only_cross_correlation_is_safe": false,
+    "qualified_request_identity": "(run_id, process_instance, request_id)"
+  },
+  "interpretation": "The control demonstrates that prewarm is not a qualified speech request and that req_0 repeats across fresh runner processes. The same local request ID has identical payload hashes but different process and run identities; therefore a request-ID-only join would cross-correlate distinct processes, while the exact identity tuple prevents that. This is source-level lifecycle-control evidence, not native gameplay proof.",
+  "source_bindings": [
+    {"path": "tools/llm_runner/runner.py", "sha256": "8d128b2a3269aaccff2897d4c90ed09f2b8584b1ab85c41a32c57ae3240ee83c", "role": "current logger identity fields and process-local PROCESS_INSTANCE"},
+    {"path": "src/llm_intent.cpp", "sha256": "9a8dc64946a5b5fe51c6adb2cd231eb60e711494ecf22cd7bff8bc455a5e177a", "role": "current native prewarm request_id=prewarm and response exclusion"},
+    {"path": "tools/openclaw_harness/QUALIFICATION.md", "sha256": "977c9f57ff917a8a83ecb1d6de1a8699215fa073bb1693781edf0fb22d23092e", "role": "retained qualification distinction between startup prewarm and named request"},
+    {"path": ".de67/FS.md", "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df", "role": "frozen exact identity and prewarm proof requirement"}
+  ],
+  "settled_receipts": [
+    {"path": ".de67/task-logs/R-HARNESS-EVIDENCE-closure-whole-item-evidence-binding-001/worker-receipt-prepared-v3.json", "sha256": "7013981fe4200c7f48190bc87ecff700f0016c56d8824c365e9a65d417192f61", "receipt_id": "d98640158432c0ee95d570bcbf8900626077b87021691bb97415f8250674ad8e"},
+    {"path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/de67-worker-result-receipt-prepared-v2.json", "sha256": "4f4fd7df28da6755232d72eb912fdbe1507fb44c6ac88b664c1ade6ef4648c8c", "receipt_id": "5ccd21efc5efa598bb23d7d238dd83e7dd199d3b4465ff19f03b095b9255a3d4"}
+  ],
+  "replay": "none",
+  "source_edits": "none",
+  "native_gameplay": "not exercised"
+}

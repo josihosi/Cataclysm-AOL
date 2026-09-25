@@ -1,0 +1,14 @@
+3. After game completion, finish launcher installation journeys. Reuse accepted Gemma/setup code
+   and clean candidate commit 495ac43ef62f36685a941840405a4a8e25a1f03f with its exact manifest,
+   assets and bundle under R-LAUNCHER-CLEAN-INSTALL-exploration-003/candidate/rebuilt-from-final-commit/.
+   Josef has approved publishing that prepared unsigned prerelease after concrete validation;
+   the candidate document's old approval request is resolved. Do not ask again. Check relevance
+   to any later installer fix, publish the source-bound candidate through the existing release
+   route, download it back, and perform complete Mac, Windows and WSL Linux journeys. Publishing
+   belongs to that later launcher stage, not this Phase-2 checkpoint.
+4. Bind the game release downloaded by the launcher to the completed game fixes. After genuine
+   local responses from both exact Gemma models, API response, custom graphics, play and retained
+   save/quit/relaunch on all three OSes, assess final release readiness. A prerelease upload or
+   candidate smoke is not stable-release acceptance. Report remaining concrete defects plainly;
+   do not silently replace stable release before readiness is established. Optional Pit Crew and
+   Reflex Pilot remain deferred behind the agreed production work, never a release prerequisite.

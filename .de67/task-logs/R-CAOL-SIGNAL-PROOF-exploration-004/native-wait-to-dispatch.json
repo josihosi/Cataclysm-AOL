@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 30,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "The observed idle fixture is at minute 9241; this bounded 30-minute native wait crosses the next ordinary structural dispatch cadence without changing world state directly.",
+      "unit": "game_minutes",
+      "maximum": 30,
+      "progress_required": true
+    }
+  }
+}

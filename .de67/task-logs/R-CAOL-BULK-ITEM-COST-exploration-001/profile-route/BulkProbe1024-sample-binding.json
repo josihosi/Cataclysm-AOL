@@ -1,0 +1,21 @@
+{
+  "sample_pid": 44356,
+  "sample_started_monotonic": 1242871.910414541,
+  "sample_command": [
+    "/usr/bin/sample",
+    "44269",
+    "20",
+    "1",
+    "-file",
+    ".de67/task-logs/R-CAOL-BULK-ITEM-COST-exploration-001/profile-route/BulkProbe1024-zone-sort.sample.txt"
+  ],
+  "request": {
+    "run_id": "7d3c3c86cc8e4f86be7332a2b6d2fdbb",
+    "surface_id": "7d3c3c86cc8e4f86be7332a2b6d2fdbb:surface:2",
+    "frame_id": "7d3c3c86cc8e4f86be7332a2b6d2fdbb:frame:2",
+    "request_id": "cockpit:bulk-item-cost-stage-profile-1024:7d3c3c86cc8e4f86be7332a2b6d2fdbb:frame:2:menu.choose:sort1024",
+    "action_id": "menu.choose",
+    "stable_id": "uilist-entry:1"
+  },
+  "wake_pipe": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_163720_7db94f1616fe4993947a249ee4651b63/semantic.wake.pipe"
+}

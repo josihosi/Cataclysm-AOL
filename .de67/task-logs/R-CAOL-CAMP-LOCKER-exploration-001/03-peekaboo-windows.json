@@ -1,0 +1,194 @@
+{
+  "debug_logs" : [
+    "[2026-09-24T01:21:59.243Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))"
+  ],
+  "success" : true,
+  "data" : {
+    "windows" : [
+      {
+        "screenIndex" : 0,
+        "window_id" : 43140,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "layer" : 0,
+        "title" : "",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : true,
+        "bounds" : [
+          [
+            0,
+            2380
+          ],
+          [
+            500,
+            500
+          ]
+        ],
+        "index" : 0,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "screenIndex" : 0,
+        "window_id" : 43127,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "layer" : 0,
+        "title" : "",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "index" : 1,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "screenIndex" : 0,
+        "window_id" : 43126,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "layer" : 0,
+        "title" : "",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "index" : 2,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "screenIndex" : 0,
+        "window_id" : 43125,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "layer" : 0,
+        "title" : "",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "index" : 3,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "screenIndex" : 0,
+        "window_id" : 43124,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "layer" : 0,
+        "title" : "",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "index" : 4,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "window_id" : 43111,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "spaceName" : "0ECB5E58-E0D1-4515-87B7-625F8562C500",
+        "layer" : 0,
+        "isOffScreen" : true,
+        "isMinimized" : false,
+        "title" : "",
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            -32
+          ],
+          [
+            2560,
+            32
+          ]
+        ],
+        "index" : 5,
+        "alpha" : 0,
+        "windowLevel" : 0,
+        "spaceID" : 3651,
+        "isExcludedFromWindowsMenu" : false
+      },
+      {
+        "screenIndex" : 0,
+        "window_id" : 43109,
+        "isOnScreen" : true,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "spaceName" : "0ECB5E58-E0D1-4515-87B7-625F8562C500",
+        "layer" : 0,
+        "title" : "Cataclysm: Dark Days Ahead - 4d378c8e7c-dirty+SDL3",
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            2880
+          ]
+        ],
+        "index" : 6,
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "spaceID" : 3651,
+        "isExcludedFromWindowsMenu" : false
+      }
+    ]
+  }
+}

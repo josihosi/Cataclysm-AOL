@@ -1,0 +1,13 @@
+{
+  "action": "game.guarded_move_relative",
+  "guarded_move_relative": {
+    "enabled": true,
+    "offset_ms": [0, -1],
+    "bound": {
+      "basis": "path_progress",
+      "source": "One advertised cardinal step north from the player-created southeast brazier fire",
+      "unit": "steps",
+      "maximum": 1
+    }
+  }
+}

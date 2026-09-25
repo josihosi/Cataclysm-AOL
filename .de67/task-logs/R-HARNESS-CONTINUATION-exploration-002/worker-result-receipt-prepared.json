@@ -1,0 +1,89 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-CONTINUATION-exploration-002",
+  "claim_id": "R-HARNESS-CONTINUATION",
+  "worker_id": "01a0c221-bc8b-7752-8796-e9941d78069c",
+  "disposition": "completed",
+  "verdict": "isolated_current_canonical_fs_guard_candidate_staged_and_falsified",
+  "outcome": "An isolated, unpromoted DE67 method candidate replaces the obsolete protected DFS headings with the current canonical FS owner-scope, domain-truth and retained-accepted-contract anchors. It preserves legacy fixture interpretation without imposing the old document shape on FS.md.",
+  "summary": "The live resolver already reads FS.md directly, but random-review and universal FS validation still required retired headings. The candidate selects canonical anchors when its baseline is current-format and falls back to the legacy anchors only for isolated historical artifacts. The existing accepted-frontier and durable-slice checks remain in place. Candidate-only tests prove one legitimate owner-scoped current-format change and random-review new red work; they reject accepted-proof loss, slice deletion/rebinding, unrelated domain rewriting and unauthorized scope expansion. No installed method source, SQLite state, policy, clock, lifecycle, coordinator or game was changed.",
+  "material_changes": [
+    "Staged only method-candidate/scripts/mutation_guard.py and method-candidate/tests/test_mutation_guard.py beneath this task's artifact directory.",
+    "Changed protected FS selection to current canonical semantic anchors and retained legacy fixture support; the existing accepted-claim order/content and durable slice ownership checks are unchanged.",
+    "Added a candidate-only regression covering current-format universal and random DFS validation plus all five required counterexamples."
+  ],
+  "tests": [
+    "python3.9 -m py_compile validate_candidate.py method-candidate/scripts/mutation_guard.py method-candidate/tests/test_mutation_guard.py: passed.",
+    "PYTHONPATH=method-candidate/scripts python3.9 -m unittest discover -s method-candidate/tests -p test_mutation_guard.py -v: 68 passed.",
+    "python3.9 validate_candidate.py: passed; it validates the actual current .de67/FS.md and read-only work ledger/state binding."
+  ],
+  "live_actions": [
+    "No game, bridge, coordinator, worker helper, review cycle, receipt persistence or lifecycle process was launched; cleanup is not applicable."
+  ],
+  "evidence_ceiling": [
+    "This is a staged candidate and candidate-only validation, not exclusive promotion or an authorized random/universal review resolution.",
+    "The real current FS was read as a validation input. No canonical FS, work ledger, state database, installed method file or policy/lifecycle file was modified.",
+    "The broader owner-scoped preservation proof in review-owner-f5d913c63d0e remains independent and is neither invalidated nor reaccepted here."
+  ],
+  "bindings": {
+    "candidate_guard_sha256": "fbd57ee8904ca3009ddf03cc82db0b5ad28e181e027d7c46bfb4ac131802287a",
+    "current_active_ledger_items": "10",
+    "current_read_only_acceptance_rows": "68",
+    "diagnosis_artifact": ".de67/task-logs/review-owner-f5d913c63d0e/candidate-validation.json",
+    "installed_guard_baseline_sha256": "a2512b9fa1c961611949c8cd3860a6d8527685ac1815e3bb6b506aa56a8cb4b7",
+    "worker_request_id": "0ed0513a3c0b4b278a4f7b213c6cb205"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/method-candidate/scripts/mutation_guard.py",
+      "sha256": "fbd57ee8904ca3009ddf03cc82db0b5ad28e181e027d7c46bfb4ac131802287a",
+      "role": "Isolated unpromoted guard candidate."
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/method-candidate/tests/test_mutation_guard.py",
+      "sha256": "6f22221c86a980c8b6f9d7848cde13700d5d82c4a16ee546aa18ed7f9b36b166",
+      "role": "Candidate-only current-format guard regressions."
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/validate_candidate.py",
+      "sha256": "27c4b1fc423b8d7b26ef3db06344a7e9124bb5403211b4e2b723728521345f2e",
+      "role": "Real-current-FS, candidate-scope and counterexample validator."
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/candidate-validation.json",
+      "sha256": "c8be15bfc96c87c10f192b2629155bca5e11d8041926ca2dc54cc42bbabc9fc1",
+      "role": "Machine-readable staged result and preservation evidence."
+    },
+    {
+      "path": ".de67/task-logs/review-owner-f5d913c63d0e/candidate-validation.json",
+      "sha256": "17903910ca217a74c00d480bcc8b8b226dbbf40b047fedd5f2f80743b36d3a7f",
+      "role": "Original reproduced obsolete-heading diagnosis and owner-scoped preservation evidence."
+    }
+  ],
+  "first_divergence": {
+    "class": "obsolete_guard_anchor_mismatch",
+    "summary": "specification.resolve_path already recognizes FS.md, while mutation_guard's protected-section loops still required legacy Functional contract and Project language headings absent from the canonical FS."
+  },
+  "accepted_no_replay": [
+    "Preserved review-owner-f5d913c63d0e owner-scoped validation at its existing evidence ceiling.",
+    "Did not replay native wait, interruption, lifecycle, performance or product proof for a method-only compatibility repair."
+  ],
+  "active_work": [
+    "Exclusive mutator must independently review, validate through the authorized method lifecycle and decide whether to promote this candidate; ordinary worker staging is complete."
+  ],
+  "first_open_boundary": "Exclusive candidate review/promotion is the first remaining boundary. No due random-review or universal-review cycle was resolved here, and no installed method change is authorized by this receipt.",
+  "narrow_queries": [
+    ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/candidate-validation.json",
+    "method-candidate/scripts/mutation_guard.py::_protected_fs_sections",
+    "method-candidate/tests/test_mutation_guard.py::test_current_canonical_fs_guard_keeps_semantics_frontier_and_slices"
+  ],
+  "entrypoints": [
+    "mutation_guard.validate_random_review_mutation",
+    "mutation_guard.validate_universal_dfs_mutation",
+    "mutation_guard.validate_work_ledger",
+    "specification.resolve_path"
+  ],
+  "context_metrics": {}
+}

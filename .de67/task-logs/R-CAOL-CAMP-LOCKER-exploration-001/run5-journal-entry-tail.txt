@@ -1,0 +1,56 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-eb8ac9490a79407dbc655c711277ee18
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0121: observation — world
+  INDEX 120; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0122: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0123: observation — direction
+  INDEX 122; PATH value.surface.facts.FIELD; FIELD: allow_vertical, prompt
+J0124: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0125: observation — world
+  INDEX 124; same PATH/FIELD as J0121.
+J0126: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0127: observation — direction
+  INDEX 126; same PATH/FIELD as J0123.
+J0128: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0129: observation — world
+  INDEX 128; same PATH/FIELD as J0121.
+J0130: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0131: observation — direction
+  INDEX 130; same PATH/FIELD as J0123.
+J0132: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0133: observation — world
+  INDEX 132; same PATH/FIELD as J0121.
+J0134: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0135: observation — direction
+  INDEX 134; same PATH/FIELD as J0123.
+J0136: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0137: observation — world
+  INDEX 136; same PATH/FIELD as J0121.
+J0138: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0139: observation — prompt
+  INDEX 138; PATH value.surface.facts.FIELD; FIELD: text, title
+J0140: action — world.save_quit
+  checks: {"action_id": "world.save_quit"}
+J0141: observation — main_menu
+  No value fields.
+J0142: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0143: observation — prompt
+  INDEX 142; same PATH/FIELD as J0139.
+J0144: action — main_menu.quit
+  checks: {"action_id": "main_menu.quit"}
+J0145: observation — process_exited
+  INDEX 144; PATH value.surface.facts.FIELD; FIELD: pid, alive, exit_code, exit_observed_at, evidence_ref, gameplay_credit, save_outcome
+J0146: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0147: terminal — Native first segment: resident 25 acquired and used Locker stock, displaced gear returned to Locker, then save-quit/process exit before declared reload continuation.
+  INDEX 146; PATH FIELD; FIELD: stop_reason, unused_authority, cleanup

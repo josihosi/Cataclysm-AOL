@@ -1,0 +1,181 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_dispatch_visit_smoke_first_001",
+  "description": "Initially unaware target cannibal camp: full source-bound smoke-first lifecycle from a disposable exact copy of prepared closed-room world; no fixture item transforms or prior cannibal signal/contact.",
+  "profile": "dispatch-visit-001-smoke-first",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.dispatch_visit_smoke_first": "full_lifecycle_initially_unaware",
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "dispatch-visit-001-smoke-first",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dispatch-visit-001-smoke-first",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_initially_unaware_closed_room",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load copied unlit closed-room save; verify target camp has no prior physical signal/contact/outings."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_initial_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Registry continuation launches with no fixture declared; saved profile/world is already present."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_complete_smoke_first_lifecycle",
+      "objective": "From an initially unaware disposable closed-room camp setup in recorded clear weather, walk to and light the prepared brazier with the supplied lighter; prove valid smoke before any valid light/contact seeds the camp, then observe natural notice, dispatch, three-OMT stalking, real homeward return and the applicable later faction attack.",
+      "proof_targets": [
+        "exact initial profile/source/binary and unaware target camp",
+        "Safe Off after World; actual clear weather setup",
+        "ordinary walk/lighter/brazier fire with physical smoke provenance before valid light",
+        "natural notice and dispatch with same actor/generation identity",
+        "three-OMT watch position relative to target footprint and actual observation movement",
+        "physical homeward travel, ownership handoff, home receipts/report",
+        "later applicable faction response and individual danger choices",
+        "saved turns/fire/HP and simulation performance",
+        "owned PID/birth graceful cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "no fixture smokebomb transform installed; no smokebomb use",
+        "clear weather/clairvoyance setup distinct from ecology",
+        "target cannibal unaware; unrelated remote bandit lead retained and not credited",
+        "no fire/smoke/light/dispatch/contact/report injection or hostile teleport",
+        "no success at notice/dispatch alone",
+        "preserve actual actor identity, source, generation and epoch",
+        "verify Safe Off after World; supported unsafe waits with health/danger observations",
+        "ordinary prepared brazier and charged lighter; do not step onto fire"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_initially_unaware_closed_room",
+      "bind_initial_native_world"
+    ],
+    "production_behavior": [
+      "observe_complete_smoke_first_lifecycle"
+    ],
+    "terminal_persistence": [
+      "observe_complete_smoke_first_lifecycle"
+    ],
+    "artifact_verdict": [
+      "observe_complete_smoke_first_lifecycle"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From an initially unaware disposable closed-room camp setup in recorded clear weather, walk to and light the prepared brazier with the supplied lighter; prove valid smoke before any valid light/contact seeds the camp, then observe natural notice, dispatch, three-OMT stalking, real homeward return and the applicable later faction attack.",
+    "failure_rule": "Credit only observed native ordered transitions under valid initial conditions. Preserve first divergence and exact continuation; setup and short noticing alone cannot settle ecology."
+  }
+}

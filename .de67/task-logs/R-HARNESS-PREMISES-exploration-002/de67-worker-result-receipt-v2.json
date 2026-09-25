@@ -1,0 +1,151 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PREMISES-exploration-002",
+  "claim_id": "R-HARNESS-PREMISES",
+  "worker_id": "01a0c101-a0b9-72f2-b509-7302b2bb7102",
+  "disposition": "completed",
+  "verdict": "inconclusive_repair",
+  "outcome": "The fresh current-source R033 native run established the delayed active source, eligible observer, staffed camp, and scheduler inputs, then stopped at the first missing autonomous dispatch/watch boundary.",
+  "summary": "J0001 bound the selected scenario, source, executable, native run, and bridge binding. J0002 established the pre-input C-4 source at turn 5356860/minute 10081, an eligible observer, an idle staffed camp, and one road candidate. The changed native step was six authorized semantic waits advancing game time from minute 9241 to minute 9301; at J0094 the production diagnostic reached routine activation at minute 9300 but remained in drive_below_threshold with drive 358 < threshold 500, force_due false, and no candidates. The source countdown remained unchanged, so no autonomous watch, source emission, callback, or returned report is claimed. J0096 records the deliberate stop and exact cleanup.",
+  "material_changes": [
+    "Changed-step requirement: native semantic waits advanced the bound run from J0002 game minute 9241 to J0094 game minute 9301; this is the only new behavioral step consumed after pre-input footing.",
+    "The first structural scheduler boundary was observed with scheduler_last_hour=155 and routine_activated_minutes=9300, but production evaluation remained drive=358 below threshold=500 and candidates=[]; verdict remains inconclusive/repair.",
+    "Exact identities preserved: source dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be, executable e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811, run 36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be, binding d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3.",
+    "Process cleanup is bound to child PID 49786, bridge PID 49728, posix-lstart birth Mon Sep 21 04:34:18 2026, safe_to_cleanup terminalization, and child_alive_after_cleanup=false."
+  ],
+  "tests": [
+    "Fresh native semantic route completed through the first scheduler boundary and was witnessed at J0001, J0002, J0094, and J0096.",
+    "No replay, fixture reinjection, signal injection, or new gameplay was performed while preparing this DE67 receipt."
+  ],
+  "live_actions": [
+    "The recorded run used only the advertised native semantic wait route and stopped at the first missing autonomous dispatch/watch boundary.",
+    "No native source, lead, watcher, callback, report, operation, member, route, or owner was injected or repaired."
+  ],
+  "evidence_ceiling": [
+    "This proves source-bound pre-input footing and the first scheduler decision, not autonomous dispatch, abstract watch arrival, sound callback, or returned-report behavior.",
+    "The setup-adjacent candidate-count change noted by the CAOL witness is retained as a deviation and is not credited as feature behavior."
+  ],
+  "bindings": {
+    "binding_id": "d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3",
+    "bridge_pid": "49728",
+    "changed_step": "J0002 minute 9241 -> J0094 minute 9301 via six native semantic waits",
+    "child_alive_after_cleanup": "false",
+    "cleanup_status": "safe_to_cleanup",
+    "context_window_id": "01a0c1d9-63f0-70e0-b6a2-6b749327acb9",
+    "drive_threshold_boundary": "drive=358 < threshold=500; force_due=false",
+    "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+    "first_divergence_boundary": "autonomous dispatch/watch",
+    "native_child_birth": "posix-lstart:Mon Sep 21 04:34:18 2026",
+    "native_child_pid": "49786",
+    "run_artifact_dir": ".userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7",
+    "run_id": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+    "scenario_id": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
+    "selection_token": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+    "session_dir": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb",
+    "source_countdown": "turn=5356860; minutes=10081; unchanged at J0094",
+    "source_identity": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "run_binding",
+      "evidence_class": "native_witness",
+      "summary": "Exact scenario, source, executable, native run, and bridge binding were established before input.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json"
+    },
+    {
+      "id": "J0002",
+      "sequence": "2",
+      "event_type": "pre_input_footing",
+      "evidence_class": "native_witness",
+      "summary": "Minute 9241 pre-input frame bound the active C-4 source, countdown, eligible observer, idle camp, and one road candidate.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json"
+    },
+    {
+      "id": "J0094",
+      "sequence": "3",
+      "event_type": "scheduler_boundary",
+      "evidence_class": "native_witness",
+      "summary": "Changed native waits reached minute 9301; scheduler activated at minute 9300 but drive 358 remained below threshold 500, force_due was false, candidates were empty, and the source countdown was unchanged.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json"
+    },
+    {
+      "id": "J0096",
+      "sequence": "4",
+      "event_type": "terminal_cleanup",
+      "evidence_class": "native_witness",
+      "summary": "The run stopped at the first missing dispatch/watch boundary and terminalized with safe_to_cleanup; child PID 49786 was dead after cleanup.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json",
+      "sha256": "ac0a3e942d7be77228735d91bd99d01a7f9c592cc530dd5e3467dcd88931490a",
+      "role": "CAOL witness binding the source-bound run, changed wait step, first divergence, and cleanup"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/worker-result-receipt.json",
+      "sha256": "14884f535e56ba952f9c08c0305228f50302cdd9364f41148774e5a97e1ef13f",
+      "role": "preserved CAOL receipt; not used as the DE67 schema"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb/bridge.manifest.json",
+      "sha256": "5accecf7cb0bb082cfde2981705f437d5b50d59944a2638d413dd51a71fe09f2",
+      "role": "exact native bridge command and binding identity"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "b19d9831316d0035aafe6025f1b3bd05998f3c61d1389b86e21fd2a7a6d31ebb",
+      "role": "bridge terminalization and cleanup evidence"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb/game-process-exit.json",
+      "sha256": "8ac90f60daa011d8f989437872612f9e0cf6dde62121db1d157de59494c31111",
+      "role": "native child process exit evidence"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7/probe.report.json",
+      "sha256": "6bc909e59e21c1fd571fa86287d1f2afe90db2584197f235ee25ec2cf6a2ebd9",
+      "role": "scenario contract and startup/terminal report"
+    }
+  ],
+  "first_divergence": {
+    "class": "autonomous_dispatch_watch_not_reached",
+    "summary": "At the first scheduler boundary the production diagnostic reported drive 358 below threshold 500, force_due false, and no candidates; no autonomous dispatch or watch could be credited."
+  },
+  "accepted_no_replay": [
+    "Do not replay the R033 scenario or run a new gameplay attempt for this receipt; the existing fresh run and witness are the complete evidence.",
+    "Do not convert the numeric drive boundary or unchanged countdown into proof of autonomous watch, sound, callback, or return behavior.",
+    "Preserve verdict inconclusive_repair until a changed run reaches autonomous dispatch/watch with the same source/run identity discipline."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "Inspect J0002 versus J0094 for the changed native-wait step, source countdown, observer eligibility, scheduler inputs, drive, threshold, and candidates.",
+    "Repair the autonomous dispatch/watch footing so a subsequent authorized run can cross drive threshold 500 without injecting a signal or lead."
+  ],
+  "entrypoints": [
+    "structural_signal_dispatch native semantic surface",
+    "game.raw_wait / game.wait advertised semantic wait route",
+    "run.witness and run.finish terminalization"
+  ],
+  "context_metrics": {
+    "bridge_pid": 49728,
+    "child_alive_after_cleanup": "false",
+    "child_pid": 49786,
+    "drive": 358,
+    "native_wait_game_minutes_advanced": 60,
+    "observer_eligible": "true",
+    "pre_input_game_minutes": 9241,
+    "routine_activated_minutes": 9300,
+    "scheduler_boundary_game_minutes": 9301,
+    "scheduler_last_hour": 155,
+    "source_countdown_minutes": 10081,
+    "source_countdown_turn": 5356860,
+    "threshold": 500
+  }
+}

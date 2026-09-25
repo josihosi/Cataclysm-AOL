@@ -1,0 +1,76 @@
+{
+  "schema": "de67-independent-fresh-agent-report-v1",
+  "helper": {
+    "route": "multi_agent_v1 native fresh-worker",
+    "model": "gpt-5.6-luna",
+    "fork_context": false,
+    "agent_id": "01a0c1f6-433c-7561-a108-08b620c9d5a4",
+    "nickname": "Boyle",
+    "scope": "read-only retained evidence; no game launch, gameplay replay, source edit, or coordination-record mutation"
+  },
+  "identities_supplied": {
+    "run_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec",
+    "binding_id": "ad61386776b3984974277ce7b23506a117e54c196c54c21dcd23bd9959d68224",
+    "semantic_process_instance": "1789959634416807",
+    "runner_process_instance": "520999d79e9c4bd99bd6a88d1e51e6ff",
+    "runner_request_id": "req_0"
+  },
+  "actual_operations": [
+    {
+      "entrypoint": "cockpit_file_bridge.py log-query",
+      "command": "python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path config/llm_intent_runner.log --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --process-instance 520999d79e9c4bd99bd6a88d1e51e6ff --event llm_request_started --where request_id='\"req_0\"' --limit 20",
+      "finding": "One matching llm_request_started row; utterance recovered."
+    },
+    {
+      "entrypoint": "cockpit_file_bridge.py log-query",
+      "command": "python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path config/llm_intent_runner.log --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --process-instance 520999d79e9c4bd99bd6a88d1e51e6ff --event llm_response_emitted --where request_id='\"req_0\"' --limit 20",
+      "finding": "One matching llm_response_emitted row; response text and response SHA recovered."
+    },
+    {
+      "entrypoint": "cockpit_file_bridge.py log-query",
+      "command": "python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path .userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --process-instance 1789959634416807 --request-id 'cockpit:harness-558db2cffcd34389a4b0f35e477ccf58:c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:12:prompt.submit:375a8d3df0c6b4d9' --event surface_receipt --limit 20",
+      "finding": "One native row: sequence 73, frame 12 -> 13, action_id prompt.submit, accepted true."
+    },
+    {
+      "entrypoint": "cockpit_file_bridge.py log-query",
+      "command": "python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path .userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --process-instance 1789959634416807 --request-id 'cockpit:harness-558db2cffcd34389a4b0f35e477ccf58:c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:13:world.pause:59525e1979fb95ac' --event surface_receipt --limit 20",
+      "finding": "One native row: sequence 79, frame 13 -> 14, game turn 5241597; separate transition, not attributed to the speech request."
+    },
+    {
+      "entrypoint": "cockpit_file_bridge.py log-query",
+      "command": "python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path .userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --contains 'Take it easy.' --limit 20",
+      "finding": "Three pre-utterance-context matches, including the earlier Take it easy event."
+    },
+    {
+      "entrypoint": "play_cli.py messages",
+      "command": "Read-only retained-message retrieval through the documented session route.",
+      "finding": "Usability defect: no_displayed_observation after cleanup; helper correctly did not infer absence and used durable artifact-path queries instead."
+    }
+  ],
+  "findings": {
+    "needed_fact": "Exact runner correlation recovered the utterance and response: You got it, Zoraida—I’ll watch the camp from here.|hold_position|equip_gun.",
+    "needed_fact_handles": {
+      "request_started": {"offset": 56593,"length": 11130,"sha256":"6cdaa1d02bb0a084c3402a7a5d98360413b485436a2b19a2904386dab3367cc6"},
+      "response_emitted": {"offset": 67723,"length": 568,"sha256":"716853efa2f4bc40320be3f5c80fa1a423a1f8bca80b91d6be645a159ec1bf84"},
+      "response_sha256":"c0d7f58b285fb705969fb0958016a16e078c494646821d45b50865554497863f"
+    },
+    "contrary_fact": "The accepted world.pause surface_receipt is a separate native transition at sequence 79/frame 13 -> 14/game turn 5241597 and is not attributable to the speech request. The earlier Take it easy message is retained pre-utterance context.",
+    "typed_witness": {
+      "source":".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl",
+      "selector_root":"record",
+      "offset":549562,
+      "length":1081,
+      "sha256":"ab29ec8420e01dabe42342e23d3bd0a6cc66c8535644314d012b1b6cf9b34301",
+      "chronology":"sequence 73; frame 12 -> 13; action_id prompt.submit; accepted boolean true"
+    }
+  },
+  "effort": {
+    "retrieval_operations": 12,
+    "stdout_bytes_total": 22484,
+    "usability_defects": [
+      "play_cli.py messages required an initialized displayed observation and returned no_displayed_observation after cleanup.",
+      "Session-directory native queries produced no matches; durable artifact-path queries succeeded."
+    ]
+  },
+  "no_gameplay_replay": true
+}

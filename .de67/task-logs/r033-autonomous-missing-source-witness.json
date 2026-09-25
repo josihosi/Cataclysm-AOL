@@ -1,0 +1,27 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "This bound run establishes the autonomous dispatch and abstract watch arrival, but contradicts the fixture's promised delayed native source: at minute 10082 no native C-4 sound source had entered the observed production path, so no source-consumption or returned-report conclusion is supported.",
+  "causal_account": "The pair reached abstract observing ownership at minute 10080 before the declared timer boundary, then remained there at minute 10082. The production-channel observation remained current only through minute 10080 and contained no sound observation. Together with the exact native event stream retained for the boundary, this identifies the fixture's unloaded C-4 placement as the missing causal source, rather than a negative observer callback.",
+  "citations": [
+    {
+      "citation_id": "J0024",
+      "meaning": "The pair had reached the required abstract observing watch before the promised source boundary.",
+      "checks": {
+        "value.game_minutes": 10081
+      }
+    },
+    {
+      "citation_id": "J0032",
+      "meaning": "One native minute later the run was at minute 10082 while the retained production channel had advanced no later than minute 10080.",
+      "checks": {
+        "value.game_minutes": 10082
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether the repaired loaded-map source footing will emit and then satisfy the independent sound, callback, and returned-report conditions."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

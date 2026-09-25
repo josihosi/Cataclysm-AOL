@@ -1,0 +1,83 @@
+World.
+Waited 540 game minutes.
+7:22:31 PM: The sunset is hidden behind clouds, but you can still see the pretty amber hue. x 2
+7:35:26 PM: You finish waiting.
+8:00:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+8:00:00 PM: R032 Establishment Ally 1 completed the assigned task.
+8:05:26 PM: You finish waiting.
+8:10:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+8:20:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+8:30:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+8:30:00 PM: R032 Establishment Ally 1 completed the assigned task.
+8:35:26 PM: You finish waiting.
+8:40:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+8:50:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+9:00:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+9:00:00 PM: R032 Establishment Ally 1 completed the assigned task.
+9:05:26 PM: You finish waiting.
+9:10:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+9:30:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+9:30:00 PM: R032 Establishment Ally 1 completed the assigned task.
+9:35:26 PM: You finish waiting.
+9:40:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+9:50:00 PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+10:00:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+10:00:00PM: R032 Establishment Ally 1 completed the assigned task.
+10:05:26PM: You finish waiting.
+10:10:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+10:20:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+10:30:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+10:30:00PM: R032 Establishment Ally 1 completed the assigned task.
+10:35:26PM: You finish waiting.
+10:40:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:00:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:00:00PM: R032 Establishment Ally 1 completed the assigned task.
+11:05:26PM: You finish waiting.
+11:10:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:20:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:30:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:30:00PM: R032 Establishment Ally 1 completed the assigned task.
+11:35:26PM: You finish waiting.
+11:40:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+11:50:00PM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:00:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:00:00AM: R032 Establishment Ally 1 completed the assigned task.
+12:05:26AM: You finish waiting.
+12:10:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:20:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:30:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:30:00AM: R032 Establishment Ally 1 completed the assigned task.
+12:35:26AM: You finish waiting.
+12:40:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+12:50:00AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+1:00:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+1:00:00 AM: R032 Establishment Ally 1 completed the assigned task.
+1:05:26 AM: You finish waiting.
+1:20:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+1:30:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+1:30:00 AM: R032 Establishment Ally 1 completed the assigned task.
+1:35:26 AM: You finish waiting.
+1:40:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+1:50:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:00:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:00:00 AM: R032 Establishment Ally 1 completed the assigned task.
+2:05:26 AM: You finish waiting.
+2:10:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:20:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:30:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:30:00 AM: R032 Establishment Ally 1 completed the assigned task.
+2:35:26 AM: You finish waiting.
+2:40:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+2:50:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:00:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:00:00 AM: R032 Establishment Ally 1 completed the assigned task.
+3:05:26 AM: You finish waiting.
+3:10:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:20:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:30:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:30:00 AM: R032 Establishment Ally 1 completed the assigned task.
+3:35:26 AM: You finish waiting.
+3:40:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+3:50:00 AM: R032 Establishment Ally 1 failed to perform the ACT_MULTIPLE_BUTCHER activity because no suitable locations were found.
+4:05:26 AM: You finish waiting.
+Game time: 8885 minutes.

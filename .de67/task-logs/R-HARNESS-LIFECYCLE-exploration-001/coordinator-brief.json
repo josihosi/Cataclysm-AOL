@@ -1,0 +1,18 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-HARNESS-LIFECYCLE-exploration-001",
+  "outcome": "A current-source, native save-and-quit action persists an ordinary player-created checkpoint across the declared replacement process, and the continuation is admitted only after a bound successful serializer completion.",
+  "scenario": "cannibal.r029_natural_route_roof_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r029.cannibal_natural_route",
+        "op": "eq",
+        "value": "physical_fire_staffed_observer_scout_report_rally_response",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "charter": ".de67/task-logs/R-HARNESS-LIFECYCLE-exploration-001/witness-charter.json"
+}

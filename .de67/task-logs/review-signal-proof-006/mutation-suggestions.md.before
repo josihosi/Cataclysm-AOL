@@ -1,0 +1,27 @@
+# DE-67 mutation suggestion ledger
+
+This is a consumable mutation queue, not history. User-authored entries carry explicit
+mutation-scoped owner authority; reviewer candidates remain evidence-backed proposals. A successful
+review removes only completed entries; a failed or unproved review removes nothing. Preserve a
+blocked entry with its exact conflict, impossibility, missing authority, risk, or uncertainty.
+
+The pending section is machine-owned protocol as well as owner input. Encode each owner batch as
+one top-level `- Owner-authorized [trigger]: ...` or `- Owner-authorized [defer]: ...` entry, and
+encode a lesser-authority reviewer proposal as `- [defer] Reviewer-authored proposal: ...`. Indent
+every continuation. A trigger requests review at the next durable quiet junction; a defer does not.
+Accumulate a batch under one deferred entry and promote that entry once when ready. Any other
+top-level syntax retains legacy trigger behavior. Delete completed entries; do not keep consumed-history sections in this queue. Durable receipts
+and review artifacts retain the evidence.
+
+For a miss, keep immediate recovery distinct from the smallest repeatable method correction and
+state the counterexample that could falsify it. For random or universal review, preserve the
+applicable policy's stored target, scope, authority, and evidence limits; a guard result never proves
+more than its inputs.
+
+## Pending suggestions
+
+- Owner-authorized [defer]: DELIVERY-EFFORT-20260921 — Consider changing work packaging and handoffs to reduce repeated repairs and high total token use. This is a non-forcing suggestion for the next otherwise scheduled mutation, not a request to trigger review or a predetermined implementation mandate.
+  Investigate the hypothesis that partially integrated work and repeated context reconstruction cause avoidable cost. Prefer completing a useful player journey that advances existing gameplay obligations through the current harness, repairing demonstrated obstacles at their owning boundary. Try repaired interfaces through the documented route their receiving consumer actually uses; reuse accepted proof instead of repeating native runs for certification. Give coupled startup/session/display/evidence changes coherent ownership while retaining useful independent investigations and agent judgment.
+  Consider replacing superseded recovery prose in active context with the remaining outcome, working entry point, relevant receipts and concrete dependencies, retaining original history behind exact handles. One observed example is the ledger's old execution continuation saying the task remains open immediately before its successful result. The earlier optional screenshot admission failure illustrates an integration gap; that specific blocker was subsequently repaired and the wait/interruption run succeeded, so do not treat it as a current defect or replay it without changed evidence.
+  Judge efficiency by total effort per correctly completed outcome, including coordinator, helpers, retries, builds and closeout; distinguish fresh input, cached input and output, and account-wide allowance from campaign attribution. Reuse `.de67/task-logs/review-evidence-001/report.md`, `usage.json` and `handoff-validation.json` as prior evidence, updating only what can change the decision. That ten-hour snapshot recorded about 5.3M fresh input, 275M cached input and 538K output tokens, with documented coverage limits; it does not establish waste or measured savings from this proposal.
+  Preserve the full owner outcome, accepted proof, independent assignments and lifecycle ownership. Do not add a compulsory reviewer, audit round, checklist, fixed quota or new background optimizer merely to implement this suggestion. Validate the smallest supported correction and its actual delivery/use; retain uncertainty or reject the hypothesis if comparable evidence does not support it.

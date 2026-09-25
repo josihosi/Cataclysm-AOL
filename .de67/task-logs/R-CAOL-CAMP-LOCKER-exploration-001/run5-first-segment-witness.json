@@ -1,0 +1,47 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In isolated R032 Locker run c844ce63f33522f02770d171c8845552a6ea73321af8fa7a4a779955f733ecc8, the same CAMP_RESIDENT character:25 acquired the Locker helmet and Glock with a loaded compatible 15-round magazine and JHP rounds; the displaced sharpened rebar was visible on the Locker tile. The game accepted the native save-and-quit route and exited. Reload persistence and the remaining stock/Storage accounting still need observation.",
+  "causal_account": "Native observations identify the accepted scenario, source, executable, actor and assigned camp. After native wait, character:25 was inspected wearing the army helmet and wielding the Glock. Diagnostic inventory shows 15 compatible JHP rounds in the wielded magazine and another 15 in the spare magazine carried in the light jacket. Native pickup inspection shows the sharpened rebar, cap, bra and wrist watch on a tile inside the defined Locker zone; one original spare magazine remained in the Locker. The game returned from world.save_quit to the main menu and then exited with code 0. This run has not yet observed the replacement process, so no reload continuity is claimed.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Native run identity matches the selected R032 Locker scenario, current source build, executable and live binding.",
+      "checks": {
+        "scenario_id": "r032.assigned_camp_locker_transfer_char25_v001_mcw",
+        "executable_identity": "8d5f5dc9935f1aad0cd7cdd23454fd7e9ee9495abaaed9d4d856c388b49d89e1"
+      }
+    },
+    {
+      "citation_id": "J0095",
+      "meaning": "Native post-downtime inspection of character:25 at assigned camp [162,36,0]; its item diagnostics show the worn helmet, wielded Glock, 15 JHP in the loaded magazine, and 15 JHP in the spare magazine.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:25",
+        "value.surface.facts.diagnostic_item_count": "18"
+      }
+    },
+    {
+      "citation_id": "J0140",
+      "meaning": "The native world.save_quit action was accepted before leaving the game.",
+      "checks": {
+        "action_id": "world.save_quit"
+      }
+    },
+    {
+      "citation_id": "J0141",
+      "meaning": "The native save-and-quit route returned to the main menu before process exit.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0145",
+      "meaning": "The bound game process exited cleanly after native save-and-quit.",
+      "checks": {
+        "value.surface.facts.pid": 48168,
+        "value.surface.facts.alive": false,
+        "value.surface.facts.exit_code": 0
+      }
+    }
+  ],
+  "checks": {},
+  "recommended_disposition": "continue",
+  "contradictions": []
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "caol-cockpit-player-quit-v1",
+  "pid": 75561,
+  "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles --userdir .userdata/r032-camp-defense-shakedown-exp007-20260924/ --world McWilliams",
+  "process_generation": {
+    "pid": 75561,
+    "source": "process.json",
+    "expected": {
+      "schema": "caol-owned-process-generation-v1",
+      "pid": 75561,
+      "alive": true,
+      "birth_identity": "posix-lstart:Thu Sep 24 08:17:49 2026",
+      "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles --userdir .userdata/r032-camp-defense-shakedown-exp007-20260924/ --world McWilliams",
+      "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles"
+    },
+    "observed": {
+      "schema": "caol-owned-process-generation-v1",
+      "pid": 75561,
+      "alive": false,
+      "birth_identity": "",
+      "command": "",
+      "executable_path": ""
+    },
+    "status": "exited"
+  },
+  "run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+  "binding_id": "f36083e53b5548db13980b7400e5f9cddca39fadcd4b33c25b30e8f0d4f4b314",
+  "stop_reason": "player requested quit"
+}

@@ -1,0 +1,51 @@
+YOU
+Test00 · walk
+Position: 3156, 3449, 0
+All 12 body parts: 86/86 HP
+Stamina: 8500/8500
+Weapon: fists
+Peckish · Fresh
+
+SURROUNDINGS
+stairs: NW, N
+floor: NE, W, here, E, SW, S, SE
+Tilda Wray · friendly · 1 south
+
+MOVE — one step
+play act world.move.<direction>
+north / south / west / east / northwest / northeast / southwest / southeast
+Occupied tiles may trigger interaction or attack.
+
+ACTIONS — play act world.<action>
+Combat: fire / reload / toggle_safemode
+Items: inventory / pickup / drop
+Observe: look / overmap / messages
+Interact: zone_manager / chat
+Vertical: level_up / level_down
+Save: quicksave / save_quit
+Debug: debug_menu
+
+PEOPLE
+Copy the target listed under the exact command; target formats differ.
+play act world.basecamp_missions --target <target>
+  2 — Open Base Missions with Tilda Wray
+  3 — Open Base Missions with Casey Bolton
+play act world.inspect_npc --target <target>
+  character:2 — Inspect Tilda Wray (includes diagnostics)
+play act world.inspect_camp_npc --target <target>
+  character:2 — Inspect camp worker Tilda Wray (includes diagnostics)
+  character:3 — Inspect camp worker Casey Bolton (includes diagnostics)
+
+WAIT
+Native wait menu: play act world.wait
+play wait <duration> [ignore|safe|stop]
+1m / 5m / 30m / 1h / 2h / 3h / 6h — native availability applies; hours require a watch.
+ignore: danger and interruptions (default); safe: classified harmless interruptions; stop: stop at interruptions.
+
+OTHER ADVERTISED ACTIONS
+world.pause → play act world.pause
+Debug kill Tilda Wray at (0,1,0) - setup intervention → play act world.debug_kill_creature --target character:2
+
+SESSION
+play look — observe · play collect — retrieve pending result · play quit — end playtest
+Game time: 7737 minutes.

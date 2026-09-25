@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_game_minutes": 10080,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "At observed minute 9961 the structural outing is abstract/outbound at waypoint 0. Minute 10080 is the next structural cadence and precedes the C-4 countdown at minute 10081 by one game minute.",
+      "unit": "game_minutes",
+      "maximum": 119,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

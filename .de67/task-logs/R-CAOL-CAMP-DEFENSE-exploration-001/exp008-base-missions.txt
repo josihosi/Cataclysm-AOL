@@ -1,0 +1,16 @@
+BASECAMP MISSION SELECTOR
+modal_dispatch_queued
+camp id: (162,36,0)
+camp name: R032 Assignment Camp
+faction: your_followers
+food days no exercise: 0
+food kcal: 0
+locker policy enabled slots: 16
+locker zone defined: true
+patrol zone defined: false
+ALLOWED HERE ONLY
+Close Base Missions → play act camp.close
+play act camp.<action> --target <target> (copy the target exactly)
+Actions for every target below: distribute_food/start_looting_sorting/edit_locker_policy/open_job_assignment/start_gather_materials
+  '(162,36,0)' — Distribute camp food
+    Unavailable: start_survey_expansion: Start three-hour expansion survey; return_survey_expansion: Recover completed expansion surveyor; return_gather_materials: Recover completed materials gatherer; return_crafting: Finish completed camp crafting

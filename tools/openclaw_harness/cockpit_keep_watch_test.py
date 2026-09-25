@@ -53,14 +53,20 @@ class KeepWatchTest(unittest.TestCase):
             dispatched.append(action_id)
             index[0] += 1
             native_receipt = {
-                "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+                "run_id": issuing["run_id"], "frame_id": issuing["frame_id"],
+                "action_id": action_id, "accepted": True,
             }
+            if stable_id is not None:
+                native_receipt["stable_id"] = stable_id
             if "surface_id" in issuing:
                 native_receipt.update({
+                    "requested_run_id": issuing["run_id"],
                     "requested_frame_id": issuing["frame_id"],
                     "requested_surface_id": issuing["surface_id"],
                     "consuming_surface_id": issuing["surface_id"],
                 })
+                if frames[index[0]].get("provenance") == "native_wait_duration_receipt":
+                    native_receipt["provenance"] = "native_wait_duration_legacy_receipt"
             if omit_activity_successor and action_id.startswith("activity."):
                 native_receipt.pop("requested_surface_id", None)
                 native_receipt.pop("consuming_surface_id", None)
@@ -1478,6 +1484,59 @@ class KeepWatchTest(unittest.TestCase):
         }})
         self.assertTrue(result["ok"], result)
         self.assertEqual(dispatched, ["world.wait", "wait.1m", "prompt.choose"])
+
+    def test_stop_wait_immediate_semantic_prompt_is_not_failed_progress(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        duration = self.menu_frame(2)
+        duration["valid_actions"] = [{"id": "wait.1m", "stable_id": "",
+                                      "label": "1 minute", "enabled": True}]
+        prompt = self.menu_frame(3)
+        prompt.update({"kind": "prompt", "game_minutes": 100, "observed_turn": 1,
+            "breadcrumbs": ["Activity in progress", "YESNO"],
+            "payload": {"text": "You were attacked! Stop waiting?", "title": "YESNO"},
+            "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:1",
+                               "label": "YES", "enabled": True}]})
+        stopped = frame(4, 100, clear)
+        stopped.update({"schema_version": 1, "event": "surface_descriptor",
+                        "surface_id": "surface:4", "kind": "world", "breadcrumbs": ["World"],
+                        "payload": {}, "valid_actions": []})
+        service, dispatched = self.service([start, duration, prompt, stopped])
+        result = service.call({"action": "game.raw_wait", "raw_wait": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+        self.assertEqual(result.get("error"), "native_wait_interrupted", result)
+        self.assertEqual(result["result"]["partial_progress"], 0)
+        terminal = result["result"]["terminal_observation"]
+        accepted = service.call({"action": "game.act", "observation_id": terminal["observation_id"],
+                                 "action_id": "prompt.choose", "stable_id": "prompt-option:1"})
+        self.assertTrue(accepted["ok"], accepted)
+        self.assertEqual(dispatched, ["world.wait", "wait.1m", "prompt.choose"])
+
+    def test_duration_without_avatar_is_collected_without_repeating_wait(self) -> None:
+        duration = self.menu_frame(1, stable_id="", label="wait.1m")
+        duration["game_minutes"] = 100
+        duration["valid_actions"] = [
+            {"id": "wait.1m", "stable_id": "", "label": "1 minute", "enabled": True},
+        ]
+        activity = {
+            "run_id": "keep-watch-proof", "frame_id": "keep-watch-proof:2",
+            "state": "wait_activity", "game_minutes": 100,
+            "valid_actions": [], "action_inputs": {},
+            "provenance": "native_wait_duration_receipt",
+        }
+        complete = frame(3, 101, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        service, dispatched = self.service([duration, activity, complete])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["wait.1m"],
+        }})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["wait.1m"])
+        self.assertEqual(result["result"]["terminal_game_minutes"], 101)
 
     def test_duration_owner_prefers_longest_declared_advertisement_inside_boundary(self) -> None:
         start = frame(1, 100, {

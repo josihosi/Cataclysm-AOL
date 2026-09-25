@@ -1,0 +1,1171 @@
+{
+  "source": "/Users/josefhorvath/.codex/sessions/2026/09/21/rollout-2026-09-21T04-54-17-01a0c1e2-bd67-7953-81d9-dc41f9587134.jsonl",
+  "window": [
+    "2026-09-21T06:37:00Z",
+    "2026-09-21T08:45:30Z"
+  ],
+  "usage": {
+    "fresh_input": 175265,
+    "cached_input": 45488896,
+    "output": 28703,
+    "responses": 230
+  },
+  "counts": {
+    "exec_yield_wait": 115,
+    "assistant_message": 39,
+    "worker_wait_cli": 115
+  },
+  "calls": [
+    {
+      "line": 3600,
+      "timestamp": "2026-09-21T06:37:27.401Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3607,
+      "timestamp": "2026-09-21T06:38:00.438Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3611,
+      "timestamp": "2026-09-21T06:38:37.955Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3616,
+      "timestamp": "2026-09-21T06:39:09.638Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3620,
+      "timestamp": "2026-09-21T06:39:43.259Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3625,
+      "timestamp": "2026-09-21T06:40:16.742Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3629,
+      "timestamp": "2026-09-21T06:40:54.590Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3636,
+      "timestamp": "2026-09-21T06:41:23.436Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3640,
+      "timestamp": "2026-09-21T06:41:57.357Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3645,
+      "timestamp": "2026-09-21T06:42:35.437Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3649,
+      "timestamp": "2026-09-21T06:43:09.705Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3654,
+      "timestamp": "2026-09-21T06:43:41.786Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3658,
+      "timestamp": "2026-09-21T06:44:15.007Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3665,
+      "timestamp": "2026-09-21T06:44:49.030Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3669,
+      "timestamp": "2026-09-21T06:45:25.645Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3674,
+      "timestamp": "2026-09-21T06:45:55.220Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3678,
+      "timestamp": "2026-09-21T06:46:28.351Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3683,
+      "timestamp": "2026-09-21T06:47:03.962Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3687,
+      "timestamp": "2026-09-21T06:47:37.066Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3694,
+      "timestamp": "2026-09-21T06:48:10.675Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3698,
+      "timestamp": "2026-09-21T06:48:47.906Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3703,
+      "timestamp": "2026-09-21T06:49:16.264Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3707,
+      "timestamp": "2026-09-21T06:49:52.212Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3712,
+      "timestamp": "2026-09-21T06:50:22.009Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3716,
+      "timestamp": "2026-09-21T06:51:00.943Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3723,
+      "timestamp": "2026-09-21T06:51:28.016Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3727,
+      "timestamp": "2026-09-21T06:52:00.878Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3732,
+      "timestamp": "2026-09-21T06:52:33.585Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3736,
+      "timestamp": "2026-09-21T06:53:06.817Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3741,
+      "timestamp": "2026-09-21T06:53:39.031Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3745,
+      "timestamp": "2026-09-21T06:54:17.979Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3752,
+      "timestamp": "2026-09-21T06:54:50.671Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3756,
+      "timestamp": "2026-09-21T06:55:27.514Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3761,
+      "timestamp": "2026-09-21T06:55:55.800Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3765,
+      "timestamp": "2026-09-21T06:56:29.063Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3770,
+      "timestamp": "2026-09-21T06:57:03.821Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3774,
+      "timestamp": "2026-09-21T06:57:40.011Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3781,
+      "timestamp": "2026-09-21T06:58:11.305Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3785,
+      "timestamp": "2026-09-21T06:58:44.277Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3790,
+      "timestamp": "2026-09-21T06:59:20.875Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3794,
+      "timestamp": "2026-09-21T07:00:00.839Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3799,
+      "timestamp": "2026-09-21T07:00:26.172Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3803,
+      "timestamp": "2026-09-21T07:01:01.796Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3810,
+      "timestamp": "2026-09-21T07:01:32.464Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3814,
+      "timestamp": "2026-09-21T07:02:10.883Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3819,
+      "timestamp": "2026-09-21T07:02:41.252Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3823,
+      "timestamp": "2026-09-21T07:03:14.134Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3828,
+      "timestamp": "2026-09-21T07:03:46.470Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3832,
+      "timestamp": "2026-09-21T07:04:19.807Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3839,
+      "timestamp": "2026-09-21T07:04:52.573Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3843,
+      "timestamp": "2026-09-21T07:05:25.945Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3848,
+      "timestamp": "2026-09-21T07:05:57.645Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3852,
+      "timestamp": "2026-09-21T07:06:30.464Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3857,
+      "timestamp": "2026-09-21T07:07:02.854Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3861,
+      "timestamp": "2026-09-21T07:07:35.810Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3868,
+      "timestamp": "2026-09-21T07:08:11.124Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3872,
+      "timestamp": "2026-09-21T07:08:44.263Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3877,
+      "timestamp": "2026-09-21T07:09:18.694Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3881,
+      "timestamp": "2026-09-21T07:09:52.513Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3886,
+      "timestamp": "2026-09-21T07:10:23.867Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3890,
+      "timestamp": "2026-09-21T07:10:56.785Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3897,
+      "timestamp": "2026-09-21T07:11:30.783Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3901,
+      "timestamp": "2026-09-21T07:12:07.343Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3906,
+      "timestamp": "2026-09-21T07:12:36.698Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3910,
+      "timestamp": "2026-09-21T07:13:10.443Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3915,
+      "timestamp": "2026-09-21T07:13:43.390Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3919,
+      "timestamp": "2026-09-21T07:14:16.618Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3926,
+      "timestamp": "2026-09-21T07:14:52.803Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3930,
+      "timestamp": "2026-09-21T07:15:26.260Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3935,
+      "timestamp": "2026-09-21T07:16:05.866Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3939,
+      "timestamp": "2026-09-21T07:16:39.195Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3944,
+      "timestamp": "2026-09-21T07:17:14.585Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3948,
+      "timestamp": "2026-09-21T07:17:47.957Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3955,
+      "timestamp": "2026-09-21T07:18:21.310Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3959,
+      "timestamp": "2026-09-21T07:18:58.256Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3964,
+      "timestamp": "2026-09-21T07:19:26.589Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3968,
+      "timestamp": "2026-09-21T07:19:59.978Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3973,
+      "timestamp": "2026-09-21T07:20:35.306Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3977,
+      "timestamp": "2026-09-21T07:21:08.435Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3984,
+      "timestamp": "2026-09-21T07:21:45.293Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3988,
+      "timestamp": "2026-09-21T07:22:20.125Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 3993,
+      "timestamp": "2026-09-21T07:22:52.613Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 3997,
+      "timestamp": "2026-09-21T07:23:26.333Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4002,
+      "timestamp": "2026-09-21T07:23:59.679Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4006,
+      "timestamp": "2026-09-21T07:24:33.842Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4013,
+      "timestamp": "2026-09-21T07:25:06.643Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4017,
+      "timestamp": "2026-09-21T07:25:41.546Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4022,
+      "timestamp": "2026-09-21T07:26:15.609Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4026,
+      "timestamp": "2026-09-21T07:26:48.797Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4031,
+      "timestamp": "2026-09-21T07:27:22.000Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4035,
+      "timestamp": "2026-09-21T07:27:55.316Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4042,
+      "timestamp": "2026-09-21T07:28:28.260Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4046,
+      "timestamp": "2026-09-21T07:29:06.487Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4051,
+      "timestamp": "2026-09-21T07:29:35.526Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4055,
+      "timestamp": "2026-09-21T07:30:09.559Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4060,
+      "timestamp": "2026-09-21T07:30:42.094Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4064,
+      "timestamp": "2026-09-21T07:31:17.429Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4071,
+      "timestamp": "2026-09-21T07:31:48.685Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4075,
+      "timestamp": "2026-09-21T07:32:22.890Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4080,
+      "timestamp": "2026-09-21T07:32:55.036Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4084,
+      "timestamp": "2026-09-21T07:33:28.291Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4089,
+      "timestamp": "2026-09-21T07:34:00.793Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4093,
+      "timestamp": "2026-09-21T07:34:34.384Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4100,
+      "timestamp": "2026-09-21T07:35:07.310Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4104,
+      "timestamp": "2026-09-21T07:35:46.460Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4109,
+      "timestamp": "2026-09-21T07:36:14.893Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4113,
+      "timestamp": "2026-09-21T07:36:49.128Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4118,
+      "timestamp": "2026-09-21T07:37:21.930Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4122,
+      "timestamp": "2026-09-21T07:37:57.926Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4129,
+      "timestamp": "2026-09-21T07:38:29.418Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4133,
+      "timestamp": "2026-09-21T07:39:04.092Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4138,
+      "timestamp": "2026-09-21T07:39:35.878Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4142,
+      "timestamp": "2026-09-21T07:40:12.937Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4147,
+      "timestamp": "2026-09-21T07:40:43.965Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4151,
+      "timestamp": "2026-09-21T07:41:25.647Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4158,
+      "timestamp": "2026-09-21T07:41:52.982Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4162,
+      "timestamp": "2026-09-21T07:42:26.256Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4167,
+      "timestamp": "2026-09-21T07:42:59.257Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4171,
+      "timestamp": "2026-09-21T07:43:32.922Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4176,
+      "timestamp": "2026-09-21T07:44:07.721Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4180,
+      "timestamp": "2026-09-21T07:44:41.369Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4187,
+      "timestamp": "2026-09-21T07:45:13.965Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4191,
+      "timestamp": "2026-09-21T07:45:48.790Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4196,
+      "timestamp": "2026-09-21T07:46:19.895Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4200,
+      "timestamp": "2026-09-21T07:46:53.710Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4205,
+      "timestamp": "2026-09-21T07:47:26.136Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4209,
+      "timestamp": "2026-09-21T07:48:00.419Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4216,
+      "timestamp": "2026-09-21T07:48:32.651Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4220,
+      "timestamp": "2026-09-21T07:49:06.676Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4225,
+      "timestamp": "2026-09-21T07:49:38.868Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4229,
+      "timestamp": "2026-09-21T07:50:12.052Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4234,
+      "timestamp": "2026-09-21T07:50:47.317Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4238,
+      "timestamp": "2026-09-21T07:51:23.554Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4245,
+      "timestamp": "2026-09-21T07:51:53.880Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4249,
+      "timestamp": "2026-09-21T07:52:27.195Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4254,
+      "timestamp": "2026-09-21T07:52:59.965Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4258,
+      "timestamp": "2026-09-21T07:53:33.424Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4263,
+      "timestamp": "2026-09-21T07:54:07.372Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4267,
+      "timestamp": "2026-09-21T07:54:40.691Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4274,
+      "timestamp": "2026-09-21T07:55:14.405Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4278,
+      "timestamp": "2026-09-21T07:55:49.680Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4283,
+      "timestamp": "2026-09-21T07:56:20.041Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4287,
+      "timestamp": "2026-09-21T07:56:54.122Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4292,
+      "timestamp": "2026-09-21T07:57:26.286Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4296,
+      "timestamp": "2026-09-21T07:57:59.407Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4303,
+      "timestamp": "2026-09-21T07:58:33.889Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4307,
+      "timestamp": "2026-09-21T07:59:07.132Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4312,
+      "timestamp": "2026-09-21T07:59:41.446Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4316,
+      "timestamp": "2026-09-21T08:00:18.182Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4321,
+      "timestamp": "2026-09-21T08:00:47.537Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4325,
+      "timestamp": "2026-09-21T08:01:22.302Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4332,
+      "timestamp": "2026-09-21T08:01:54.548Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4336,
+      "timestamp": "2026-09-21T08:02:29.054Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4341,
+      "timestamp": "2026-09-21T08:03:01.221Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4345,
+      "timestamp": "2026-09-21T08:03:34.564Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4350,
+      "timestamp": "2026-09-21T08:04:07.234Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4354,
+      "timestamp": "2026-09-21T08:04:40.933Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4361,
+      "timestamp": "2026-09-21T08:05:13.510Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4365,
+      "timestamp": "2026-09-21T08:05:46.960Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4370,
+      "timestamp": "2026-09-21T08:06:20.172Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4374,
+      "timestamp": "2026-09-21T08:06:53.604Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4379,
+      "timestamp": "2026-09-21T08:07:29.192Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4383,
+      "timestamp": "2026-09-21T08:08:07.635Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4390,
+      "timestamp": "2026-09-21T08:08:35.959Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4394,
+      "timestamp": "2026-09-21T08:09:09.324Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4399,
+      "timestamp": "2026-09-21T08:09:42.889Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4403,
+      "timestamp": "2026-09-21T08:10:16.335Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4408,
+      "timestamp": "2026-09-21T08:10:48.451Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4412,
+      "timestamp": "2026-09-21T08:11:26.177Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4419,
+      "timestamp": "2026-09-21T08:11:54.835Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4423,
+      "timestamp": "2026-09-21T08:12:31.794Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4428,
+      "timestamp": "2026-09-21T08:13:02.451Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4432,
+      "timestamp": "2026-09-21T08:13:35.867Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4437,
+      "timestamp": "2026-09-21T08:14:08.128Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4441,
+      "timestamp": "2026-09-21T08:14:44.705Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4448,
+      "timestamp": "2026-09-21T08:15:14.629Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4452,
+      "timestamp": "2026-09-21T08:15:49.618Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4457,
+      "timestamp": "2026-09-21T08:16:20.255Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4461,
+      "timestamp": "2026-09-21T08:16:53.834Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4466,
+      "timestamp": "2026-09-21T08:17:25.893Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4470,
+      "timestamp": "2026-09-21T08:18:02.036Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4477,
+      "timestamp": "2026-09-21T08:18:32.127Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4481,
+      "timestamp": "2026-09-21T08:19:05.681Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4486,
+      "timestamp": "2026-09-21T08:19:37.778Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4490,
+      "timestamp": "2026-09-21T08:20:11.208Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4495,
+      "timestamp": "2026-09-21T08:20:43.474Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4499,
+      "timestamp": "2026-09-21T08:21:16.779Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4506,
+      "timestamp": "2026-09-21T08:21:54.771Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4510,
+      "timestamp": "2026-09-21T08:22:28.128Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4515,
+      "timestamp": "2026-09-21T08:23:01.198Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4519,
+      "timestamp": "2026-09-21T08:23:36.067Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4524,
+      "timestamp": "2026-09-21T08:24:07.129Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4528,
+      "timestamp": "2026-09-21T08:24:40.521Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4535,
+      "timestamp": "2026-09-21T08:25:13.590Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4539,
+      "timestamp": "2026-09-21T08:25:47.144Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4544,
+      "timestamp": "2026-09-21T08:26:19.209Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4548,
+      "timestamp": "2026-09-21T08:26:52.738Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4553,
+      "timestamp": "2026-09-21T08:27:26.058Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4557,
+      "timestamp": "2026-09-21T08:27:59.771Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4564,
+      "timestamp": "2026-09-21T08:28:33.249Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4568,
+      "timestamp": "2026-09-21T08:29:07.828Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4573,
+      "timestamp": "2026-09-21T08:29:38.924Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4577,
+      "timestamp": "2026-09-21T08:30:12.655Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4582,
+      "timestamp": "2026-09-21T08:30:45.937Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4586,
+      "timestamp": "2026-09-21T08:31:19.316Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4593,
+      "timestamp": "2026-09-21T08:31:52.515Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4597,
+      "timestamp": "2026-09-21T08:32:28.314Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4602,
+      "timestamp": "2026-09-21T08:32:59.286Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4606,
+      "timestamp": "2026-09-21T08:33:33.914Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4611,
+      "timestamp": "2026-09-21T08:34:04.983Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4615,
+      "timestamp": "2026-09-21T08:34:38.716Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4622,
+      "timestamp": "2026-09-21T08:35:13.426Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4626,
+      "timestamp": "2026-09-21T08:35:47.737Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4631,
+      "timestamp": "2026-09-21T08:36:19.228Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4635,
+      "timestamp": "2026-09-21T08:36:54.535Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4640,
+      "timestamp": "2026-09-21T08:37:25.668Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4644,
+      "timestamp": "2026-09-21T08:37:59.775Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4651,
+      "timestamp": "2026-09-21T08:38:32.843Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4655,
+      "timestamp": "2026-09-21T08:39:09.010Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4660,
+      "timestamp": "2026-09-21T08:39:39.479Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4664,
+      "timestamp": "2026-09-21T08:40:12.892Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4669,
+      "timestamp": "2026-09-21T08:40:46.732Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4673,
+      "timestamp": "2026-09-21T08:41:19.829Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4680,
+      "timestamp": "2026-09-21T08:41:54.886Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4684,
+      "timestamp": "2026-09-21T08:42:28.570Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4689,
+      "timestamp": "2026-09-21T08:43:00.777Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4693,
+      "timestamp": "2026-09-21T08:43:36.062Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4698,
+      "timestamp": "2026-09-21T08:44:08.294Z",
+      "kind": "worker_wait_cli"
+    },
+    {
+      "line": 4702,
+      "timestamp": "2026-09-21T08:44:41.874Z",
+      "kind": "exec_yield_wait"
+    },
+    {
+      "line": 4710,
+      "timestamp": "2026-09-21T08:45:24.547Z",
+      "kind": "worker_wait_cli"
+    }
+  ],
+  "limit": "Observed coordinator interval costs, not a forecast of entirely removable cost; worker continued useful work. Deadline/message/owner wake responsiveness must be preserved."
+}

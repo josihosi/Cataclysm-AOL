@@ -1,0 +1,56 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "disposition": "completed",
+  "verdict": "wrong_world_completion_reentry_rejected_without_successor",
+  "outcome": "The FileBackedCockpitBridge now binds a post-relaunch completion world to the exited registered game's --world value before freezing any saved-world snapshot or launching a successor. A mismatched completion leaves reentry closed, preserves the original finish receipt, writes no handoff snapshot and grants no replacement authority.",
+  "summary": "The prior bridge verified that completion.world_name was nonempty, but its post-relaunch handoff derived the world independently from game-process.json. A stale or wrong completion could therefore declare reentry ready. The handoff gate now compares the exact values before source-copy work. The focused production-path test supplies OtherWorld against the bound McWilliams owner and verifies reentry_failed, closed admission, generation zero, original controller retention, immutable receipt and no successor snapshot.",
+  "material_changes": [
+    "Require native_save_completion.completion.world_name to equal the bound registered owner --world before FileBackedCockpitBridge freezes a post-relaunch saved-world handoff.",
+    "Add a full bridge/reentry regression for a mismatched completion world; it drives run.finish through the FIFO and verifies closed admission, unchanged receipt and absent successor handoff."
+  ],
+  "tests": [
+    "python3 tools/openclaw_harness/save_quit_lifecycle_test.py -v: 3 passed.",
+    "python3 -m unittest tools.openclaw_harness.play_cli_test plus 9 selected CockpitFileBridgeTest and 3 selected LiveSessionTest cases: 58 passed.",
+    "python3 tools/openclaw_harness/cockpit_process_exit_test.py -v: 5 passed.",
+    "python3 -m py_compile tools/openclaw_harness/cockpit_file_bridge.py tools/openclaw_harness/cockpit_file_bridge_test.py: passed.",
+    "git diff --check for modified bridge sources/tests: passed."
+  ],
+  "live_actions": [
+    "No native gameplay, save, reload, or R-029 replay was performed.",
+    "The regression uses temporary synthetic controller and process identities, cleans them through the bridge, and the final scan found no owned game, bridge, or test process."
+  ],
+  "evidence_ceiling": [
+    "This closes the specified wrong-completion-world bridge/reentry boundary; it does not expand the retained focused macOS R-029 continuity proof to arbitrary worlds or platforms.",
+    "The broad cockpit_file_bridge_test module remains outside this result because its unrelated startup-HUD case is not claimed."
+  ],
+  "bindings": {
+    "assigned_request_id": "86e8d7e8df8f40f4a5d36ba0ccf48a7f",
+    "prior_reconciliation_receipt_id": "43d4d0e6fffdbdd2a5b579ea9078a1ac5c701af2b5a5478931343106c590a316",
+    "historical_native_run_id": "23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9",
+    "negative_test_worlds": "bound_owner_world=McWilliams; completion_world=OtherWorld"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": "tools/openclaw_harness/cockpit_file_bridge.py", "role": "Bound completion-world check before saved-world snapshot handoff."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge_test.py", "role": "Production-path mismatched-world reentry rejection regression and existing lifecycle coverage."},
+    {"path": "tools/openclaw_harness/save_quit_lifecycle_test.py", "role": "Native serializer completion failure/single-use coverage."},
+    {"path": "tools/openclaw_harness/play_cli_test.py", "role": "Duplicate collection and stale authority coverage."},
+    {"path": "tools/openclaw_harness/cockpit_live_session_test.py", "role": "Save-before-exit and stale-frame coverage."},
+    {"path": "tools/openclaw_harness/cockpit_process_exit_test.py", "role": "Exit-without-save coverage."}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserved receipt d5750204e427c3f890fc988738bd950ab19c4b5c9d88f4a0e28f2ec5309140ca and its native R-029 evidence at their original ceiling.",
+    "Preserved the public ArchiveSequence persistence correction and did not modify PlayerClient behavior."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "FileBackedCockpitBridge._freeze_saved_world_for_reentry terminal completion world binding",
+    "CockpitFileBridgeTest.test_post_relaunch_reentry_rejects_mismatched_completion_world_without_successor"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/cockpit_file_bridge_test.py"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "profile": "r032-camp-defense-shakedown-exp007-20260924",
+  "userdir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924",
+  "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles",
+  "strategy": "autoload_world",
+  "reason": "explicit world requested",
+  "target_world": "McWilliams",
+  "existing_worlds": [
+    {
+      "name": "McWilliams",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save/McWilliams",
+      "has_save": true,
+      "save_files": [
+        "#Wm9yYWlkYSBWaWNr.sav.zzip"
+      ],
+      "save_markers": [
+        "#Wm9yYWlkYSBWaWNr.mm1/#Wm9yYWlkYSBWaWNr.mm1.cold.zzip",
+        "#Wm9yYWlkYSBWaWNr.mm1/#Wm9yYWlkYSBWaWNr.mm1.hot.zzip",
+        "#Wm9yYWlkYSBWaWNr.mm1/#Wm9yYWlkYSBWaWNr.mm1.warm.zzip",
+        "#Wm9yYWlkYSBWaWNr.sav.zzip"
+      ]
+    }
+  ],
+  "fixture": "r032_camp_pay_stock_v001_mcw",
+  "run_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347",
+  "harness_new_world": "",
+  "harness_raw_seed": "",
+  "harness_new_world_scenario": "",
+  "harness_bandit_feasibility": false
+}

@@ -1,0 +1,106 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PREMISES-exploration-001",
+  "claim_id": "R-HARNESS-PREMISES",
+  "worker_id": "01a0c101-a0b9-72f2-b509-7302b2bb7102",
+  "disposition": "completed",
+  "verdict": "read_only_premise_surface_repaired_and_threshold_boundaries_proved",
+  "outcome": "Expose the selected scenario's loaded active-item/countdown surface and production-owned observer/scheduler evaluation without materialization or dispatch, with complete loaded-map coverage and explicit drive boundary tests.",
+  "summary": "The diagnostic structural-signal surface now scans every loaded map square using SEEX/SEEY multiplied by the loaded submap count, so an active source outside the first submap is not omitted. It exposes source absolute position/countdown, routine policy, observer/escort eligibility, scheduler inputs, candidate leads, and the production evaluator's drive/threshold/time-dependent reason. The threshold is owned by the production accessor in both scheduler and diagnostic paths. No public CLI/display or live-world mutation was changed.",
+  "material_changes": [
+    "src/handle_action.cpp: bounded read-only loaded-source scan now uses full loaded map-square dimensions; time_dependent uses hostile_camp_routine_dispatch_threshold().",
+    "src/bandit_live_world.{h,cpp}: public production threshold accessor; scheduler comparisons and diagnostics use it.",
+    "tests/bandit_live_world_test.cpp: outside-corner source-scan contract is covered at the harness layer, and native drive=358/500 threshold assertions are explicit.",
+    "tools/openclaw_harness/structural_signal_dispatch_contract_test.py: regression guards for second-submap coverage and threshold ownership."
+  ],
+  "tests": [
+    "make -j4 BUILD_PREFIX=r033-headless- SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 tests completed successfully after the source repair.",
+    "The same exact build command completed again after the explicit drive boundary assertion; only the changed test object relinked.",
+    "tests/r033-headless-cata_test 'hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries' passed 1 case with 37 assertions, including drive=358 below threshold and drive=500 at threshold.",
+    "tests/r033-headless-cata_test '[phase4_sound_observation]' passed 6 cases with 606 assertions.",
+    "PYTHONPATH=tools/openclaw_harness python3 -m unittest tools.openclaw_harness.structural_signal_dispatch_contract_test tools.openclaw_harness.certification_finalization_test passed 11 tests.",
+    "git diff --check passed."
+  ],
+  "live_actions": [
+    "No live public CLI/display session was launched and no live-world fixture, source, consequence, or production policy was injected.",
+    "Native tests used dedicated owned user directories under this task log directory."
+  ],
+  "evidence_ceiling": [
+    "The Python contract and rebuilt native tests prove source-level boundedness, production threshold ownership, and the numeric dispatch boundary; they do not prove an end-to-end live scenario emitted a loaded-source snapshot or completed scout/return behavior.",
+    "The outside-first-submap regression is a contract-level scan model bound to the exact C++ full-rectangle expressions; it is not a live map/display observation."
+  ],
+  "bindings": {
+    "context_window_id": "01a0c129-7adf-7a83-bc1d-862b8f8f9bce",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+    "native_executable": "tests/r033-headless-cata_test",
+    "native_executable_sha256": "ee295ce9aa1a83102aec211f0de14bcbdf4a2e811b0717766477bffb56e99c0b",
+    "source_hashes": "handle_action.cpp=7f514d3a6f6cb4a8a78e94a35c5acde05c18638498cfac0e5b190d82fd1c5fc7; bandit_live_world.cpp=d026daf23ea12e3d301b65ce280f7767cdd2d70031c64a0af3f19325df653d1d; bandit_live_world.h=25a97f9b74efa0944cb73ca6a7848e232f9e0b0052855c1816bbdda10d5263c3; bandit_live_world_test.cpp=21835957582c623ceb5cd78d4499018bb44733d2ba776c2ab6f93384f6c9dced; structural_signal_dispatch_contract_test.py=3444d13f5e7e90148e1225bf720fcbc4bfbcd011caee83be93029fca21ad846b"
+  },
+  "journal_entries": [
+    {
+      "id": "loaded-map-full-rectangle",
+      "sequence": 1,
+      "event_type": "source_scan_regression",
+      "evidence_class": "contract_test",
+      "summary": "An active source at (SEEX+1, SEEY+1) is outside the first submap but inside the complete loaded rectangle covered by the corrected loops.",
+      "artifact_ref": "tools/openclaw_harness/structural_signal_dispatch_contract_test.py"
+    },
+    {
+      "id": "drive-boundary-final",
+      "sequence": 2,
+      "event_type": "native_focused_test",
+      "evidence_class": "rebuilt_test",
+      "summary": "The exact native scheduler boundary case passed 37 assertions, including drive=358 rejection and drive=500 eligibility relations.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/drive-boundary-final.log"
+    },
+    {
+      "id": "phase4-focused-final",
+      "sequence": 3,
+      "event_type": "native_focused_test",
+      "evidence_class": "rebuilt_test",
+      "summary": "All six phase4_sound_observation cases passed with 606 assertions on the rebuilt binary.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/phase4-final.log"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/structural_signal_dispatch_contract_test.py",
+      "sha256": "3444d13f5e7e90148e1225bf720fcbc4bfbcd011caee83be93029fca21ad846b",
+      "role": "loaded-map coverage and threshold-ownership regression contract"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/drive-boundary-final.log",
+      "sha256": "fd8f95b5b75369deb591b750b698c422925d2cb0ec30ac33455cd48b6c4464e8",
+      "role": "final rebuilt native drive boundary test output"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/phase4-final.log",
+      "sha256": "ea7a28975a25994846e2a04a67332c806b69b56170b9dfb61419a9d21d736d4a",
+      "role": "final rebuilt phase4 focused test output"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not treat the numeric drive-boundary tests as a live native dispatch or sound/return proof.",
+    "Do not replay the stale pre-rebuild cata_test crash evidence; the rebuilt r033-headless binary is the qualified native test target."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A fresh authorized live run must consume the read-only structural_signal_dispatch surface and bind its loaded source, observer, scheduler, and countdown evidence before any expensive signal attempt is credited.",
+  "narrow_queries": [
+    "Use structural_signal_dispatch to inspect loaded_source, site_evaluations, dispatch_threshold and evaluation.reason before a signal run.",
+    "Retain the drive=358 invalid-premise control and drive=500 eligible boundary; neither is live dispatch proof."
+  ],
+  "entrypoints": [
+    "src/handle_action.cpp::openclaw_harness_structural_signal_dispatch_snapshot",
+    "src/bandit_live_world.cpp::hostile_camp_routine_dispatch_threshold",
+    "tools/openclaw_harness/structural_signal_dispatch_contract_test.py"
+  ],
+  "context_metrics": {
+    "python_tests": 11,
+    "native_boundary_cases": 1,
+    "native_boundary_assertions": 37,
+    "native_phase4_cases": 6,
+    "native_phase4_assertions": 606
+  }
+}

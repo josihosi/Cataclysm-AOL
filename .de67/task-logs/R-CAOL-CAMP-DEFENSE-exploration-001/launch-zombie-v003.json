@@ -1,0 +1,3 @@
+Starting playtest.
+export CAOL_PLAY_SESSION=/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/bridge-sessions/selected-8ded0eb64d924b24a458cbcf45ec8036
+python3 tools/openclaw_harness/play_cli.py look

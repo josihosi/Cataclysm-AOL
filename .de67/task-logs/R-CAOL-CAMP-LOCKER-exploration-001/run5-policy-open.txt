@@ -1,0 +1,27 @@
+Locker Policy
+filtered entry count: 18
+Choose which loadout slots the camp locker may manage.  The locker zone supplies the actual gear.
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  133 — [ ] Prefer bulletproof gear
+  134 — [x] Underwear
+  135 — [x] Socks
+  136 — [x] Gloves
+  137 — [x] Shoes
+  138 — [x] Pants
+  139 — [x] Shirt
+  140 — [x] Vest
+  141 — [x] Body armor
+  142 — [x] Helmet
+  143 — [x] Glasses
+  144 — [x] Mask
+  145 — [x] Belt
+  146 — [x] Holster
+  147 — [x] Bag
+  148 — [x] Melee weapon
+  149 — [x] Ranged weapon
+  150 — Done

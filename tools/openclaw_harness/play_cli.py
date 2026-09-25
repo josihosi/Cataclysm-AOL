@@ -8,11 +8,13 @@ shown to the player; stale frames remain the native owner's decision.
 from __future__ import annotations
 
 import argparse
+from hashlib import sha256
 from contextlib import contextmanager
 import json
 import math
 import os
 import re
+import shlex
 from pathlib import Path
 import sys
 import time
@@ -20,8 +22,8 @@ from typing import Any
 import uuid
 
 from cockpit_archive import ArchiveSequence, json_chunks
-from evidence_display import emit, retain, recover, PresentationParser
-from gameplay_display import display, bounded_player_output, plain_player_output
+from evidence_display import emit, recover
+from gameplay_display import display, bounded_player_output, plain_player_output, world_look
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -123,7 +125,7 @@ class PlayerClient:
             for key in ("finished", "finished_generation", "sealed_terminal", "process_exited",
                         "observation_id", "observation_request_id", "observation_generation",
                         "observation_binding_id", "observation_owner", "terminal_observation_id",
-                        "operation_availability", "display_sha256", "display_generation",
+                        "operation_availability", "display", "display_sha256", "display_generation",
                         "last_request_id", "last_collected_result",
                         "read_only_observation_request_id"):
                 self.state.pop(key, None)
@@ -133,6 +135,12 @@ class PlayerClient:
 
     def save(self):
         _atomic_json(self.state_path, self.state)
+
+    def display_snapshot(self):
+        if isinstance(self.state.get("display"), dict):
+            return self.state["display"]
+        # Read old sessions without creating another permanent cache copy.
+        return recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
 
     def _reentry_pending(self) -> bool:
         """Keep a declared reentry boundary across short-lived CLI processes."""
@@ -530,10 +538,20 @@ class PlayerClient:
         if isinstance(response.get("operation_availability"), dict):
             self.state["operation_availability"] = response["operation_availability"]
         observation = response.get("observation", response.get("result", {}))
-        if isinstance(observation, dict) and not observation.get("observation_id"):
+        if isinstance(observation, dict) and not isinstance(observation.get("surface"), dict):
             observation = observation.get("terminal_observation", observation)
         surface = observation.get("surface") if isinstance(observation, dict) else None
-        reusable = (response.get("ok") is True and generation_matches and binding_matches and
+        macro_result = response.get("result") or {}
+        released_decision = (isinstance(macro_result, dict) and
+                             macro_result.get("state") == "interrupted" and
+                             macro_result.get("unused_authority") == "released" and
+                             macro_result.get("session_state") == "active" and
+                             isinstance(observation, dict) and
+                             observation.get("continuation", {}).get("state") == "released")
+        # A stopped macro may return ok=False while explicitly handing its
+        # existing native decision back to the player. Preserve that grant;
+        # ordinary rejected or revoked responses still require a fresh look.
+        reusable = ((response.get("ok") is True or released_decision) and generation_matches and binding_matches and
                     isinstance(observation, dict) and bool(observation.get("observation_id")) and
                     isinstance(surface, dict) and bool(str(surface.get("kind", "")).strip()) and
                     isinstance(surface.get("actions"), list) and
@@ -572,13 +590,22 @@ class PlayerClient:
             self.state["finished_generation"] = result["receipt"].get("session_generation", 0)
             self.state.pop("observation_id", None)
         try:
-            previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
+            previous = self.display_snapshot()
         except (OSError, ValueError):
             previous = None  # A lost presentation cache never strands native grants.
         view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
         self.state["display_generation"] = receipt_generation
         if display_state is not None:
-            self.state["display_sha256"] = retain(display_state)["sha256"]
+            self.state["display"] = display_state
+            self.state.pop("display_sha256", None)
+        world_controls_unchanged = False
+        current = (display_state or {}).get("current", {})
+        world_observation = pending["request"]["action"] == "game.observe" and (display_state or {}).get("owner") == "world"
+        if world_observation:
+            controls_key = sha256(json.dumps([receipt_generation, current.get("actions", []),
+                                      self.state.get("operation_availability")], sort_keys=True).encode()).hexdigest()
+            world_controls_unchanged = self.state.get("shown_world_controls") == controls_key
+            self.state["shown_world_controls"] = controls_key
         result = {**result, "response": view}
         result.pop("retrieval", None)
         self.state["last_request_id"] = request_id
@@ -589,6 +616,8 @@ class PlayerClient:
         self.state.pop("pending", None)
         self.save()
         output = {**result, "ok": response.get("ok") is True,
+                  "world_controls_unchanged": world_controls_unchanged,
+                  "world_observation": world_observation,
                   "turn_assessment": assessment,
                   "state": "collected" if response.get("ok") else "rejected", "request_id": request_id,
                   "next": "collect" if self.state.get("finished") else
@@ -609,7 +638,7 @@ class PlayerClient:
                 "recommended_disposition": "accept | continue | repair | change-strategy",
                 "contradictions": "List every supplied contradiction with its citation_id and meaning",
                 "remaining_unknowns": "Optional list of unresolved questions",
-                "evidence_ceiling": "Do not exceed the sealed journal ceiling",
+                "evidence_ceiling": "Optional: omit this field to use the sealed journal's evidence_ceiling. If supplied, copy that exact value; this is not a prose explanation.",
             }
         if terminal_request and not confirmed_terminal:
             output.update(ok=False, state="unconfirmed_terminal_response",
@@ -829,7 +858,7 @@ def main(argv=None):
                 "--bound-source", "Player requested " + duration, "--danger-handling",
                 {"ignore": "ignore_danger_and_interruptions", "safe": "handle_classified_non_dangerous",
                  "stop": "stop_on_interruption"}[mode]]
-    parser = PresentationParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--diagnostics", action="store_true",
                         help="Show retained transport and performance diagnostics")
     parser.add_argument("--session", type=Path, default=os.environ.get("CAOL_PLAY_SESSION"),
@@ -973,7 +1002,8 @@ def main(argv=None):
                 elif args.command == "stop":
                     result = client.act("activity.pause", None, {}, args.wait_seconds)
                 elif args.command in {"yes", "no", "ignore"}:
-                    snapshot = recover(client.state["display_sha256"])
+                    client.frame()
+                    snapshot = client.display_snapshot()
                     choices = [action for action in snapshot.get("current", {}).get("actions", [])
                                if action.get("id") == "prompt.choose" and action.get("enabled", True)
                                and str(action.get("label", "")).strip().casefold() == args.command]
@@ -1006,22 +1036,50 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit", "stop", "yes", "no", "ignore", "inspect"}:
+    if not args.diagnostics:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
         snapshot = None
+        operation_availability = None
         if (result.get("state") in {"collected", "rejected"}
                 and result.get("response", {}).get("current_input", {}).get("owner")):
             try:
-                snapshot = recover(client.state["display_sha256"])
+                snapshot = client.display_snapshot()
+                operation_availability = client.state.get("operation_availability")
             except (OSError, ValueError, KeyError):
                 pass  # The existing projected reply remains usable without the presentation cache.
-        text = plain_player_output(result, snapshot=snapshot, full_look=args.command == "look")
+        startup_error = None
+        status = result.get("status")
+        if isinstance(status, dict) and status.get("state") in {"process_dead", "bridge_failed", "reentry_failed", "terminalization_failed"}:
+            try:
+                for line in reversed((args.session / "child.stderr.log").read_text(encoding="utf-8").splitlines()):
+                    if line.startswith("Cannot proceed: "):
+                        startup_error = line.removeprefix("Cannot proceed: ")
+                        break
+                    try:
+                        failure = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(failure, dict) and failure.get("ok") is False and failure.get("error"):
+                        startup_error = failure["error"]
+                        break
+            except OSError:
+                pass
+        text = plain_player_output(result, snapshot=snapshot, full_look=args.command == "look" or result.get("world_observation", False),
+                                   startup_error=startup_error, operation_availability=operation_availability,
+                                   inspection_request_id=getattr(args, "request_id", None) if args.command == "inspect" else None)
+        if args.command == "controls":
+            try:
+                retained = client.display_snapshot()
+            except (OSError, ValueError):
+                retained = None
+            if retained and retained.get("owner") == "world":
+                text += "\n\n" + world_look(retained, client.state.get("operation_availability"), controls_only=True)
         print(text)
         if args.session.is_dir():
             entered = entered_argv[entered_argv.index(args.command):]
             with (args.session / "playtest.txt").open("a", encoding="utf-8") as transcript:
-                transcript.write("> play " + " ".join(entered) + "\n" + text + "\n\n")
+                transcript.write("> play " + shlex.join(entered) + "\n" + text + "\n\n")
     else:
         emit(result)
     return 0 if result.get("ok") else 1

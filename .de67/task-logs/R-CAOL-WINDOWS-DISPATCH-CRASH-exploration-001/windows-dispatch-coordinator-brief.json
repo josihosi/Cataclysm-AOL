@@ -1,0 +1,22 @@
+{
+  "outcome": "R-CAOL-WINDOWS-DISPATCH-CRASH: the supported one-vector gunmods iterator repair lets Josef's copied TestSetup00 complete ordinary Windows camp dispatch and a subsequent structural observer sight without an invalid item pointer crash.",
+  "scenario": "windows.dispatch_crash_fixed_wait_20260924",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.windows.dispatch_crash",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "ordinary_wait_through_dispatch_and_subsequent_structural_observation"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "cockpit_live_session"
+      }
+    ]
+  }
+}

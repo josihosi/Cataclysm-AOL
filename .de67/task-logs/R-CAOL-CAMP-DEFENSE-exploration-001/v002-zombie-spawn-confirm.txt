@@ -1,0 +1,181 @@
+MENU
+filter: zombie
+filtered entry count: 171
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Clear filter → play act menu.clear_filter
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  971 — zombie dog
+  980 — zombie horse
+  982 — zombie sheep
+  983 — zombie goat
+  984 — zombie cow
+  986 — zombie llama
+  988 — zombie reindeer
+  989 — scarred zombie
+  990 — zombie
+  991 — zombie cop
+  992 — crawling zombie
+  993 — fat zombie
+  994 — firefighter zombie
+  995 — hazmat zombie
+  996 — decayed zombie
+  997 — SWAT zombie
+  998 — tough zombie
+  999 — sleek zombie
+  1000 — bouncer zombie
+  1001 — zombie
+  1002 — zombie medic
+  1003 — pupating zombie crawler
+  1004 — pupating zombie crawler
+  1005 — pupating zombie
+  1006 — pupating zombie
+  1007 — shady pupating zombie
+  1008 — shady pupating zombie
+  1009 — batwing zombie
+  1015 — acidic zombie
+  1016 — corrosive zombie
+  1017 — spitter zombie
+  1019 — acidic zombie dog
+  1034 — giant zombie bullfrog
+  1035 — colossal zombie bullfrog
+  1036 — giant zombie toad
+  1037 — bioelectric zombie frog
+  1038 — bloated zombie toad
+  1039 — giant zombie treefrog
+  1042 — death mask zombie toad
+  1047 — scorched zombie
+  1050 — scorched zombie
+  1051 — zombie child
+  1053 — zombie child
+  1060 — zombie
+  1061 — shocker zombie
+  1063 — zapper zombie
+  1066 — bloated zombie
+  1067 — sleepwalker zombie
+  1071 — rust zombie
+  1072 — rust shell zombie
+  1073 — rust plated zombie
+  1090 — zombie scientist
+  1091 — zombie security guard
+  1095 — brainless zombie
+  1097 — bruiser zombie
+  1098 — zombie brute
+  1099 — zombie wrestler
+  1100 — zombie nightstalker
+  1101 — zombie prowler
+  1102 — listener zombie
+  1104 — grabber zombie
+  1105 — grappler zombie
+  1106 — zombie hollow
+  1107 — zombie hulk
+  1108 — zombie hunter
+  1110 — zombie snapper
+  1111 — zombie master
+  1112 — zombie necromancer
+  1113 — zombie necro-boomer
+  1114 — zombie summoner
+  1115 — zombie runner
+  1116 — regenerating zombie
+  1118 — zombie predator
+  1119 — zombie rider
+  1120 — screecher zombie
+  1121 — shady zombie
+  1122 — shrieker zombie
+  1123 — skull zombie
+  1124 — ocular zombie
+  1125 — smoker zombie
+  1126 — smoker zombie test only
+  1128 — swimmer zombie
+  1129 — webbed zombie
+  1130 — zombie technician
+  1131 — zombie miner
+  1134 — fursuited zombie
+  1136 — zombie plaguebearer
+  1137 — Nomex zombie
+  1138 — fireproof zombie
+  1141 — prisoner zombie
+  1142 — prisoner zombie brute
+  1143 — fat prisoner zombie
+  1144 — tough prisoner zombie
+  1145 — skeletal zombie
+  1152 — zombie soldier
+  1153 — zombie soldier test only
+  1154 — black-ops zombie
+  1155 — hunter-killer zombie
+  1156 — bilious soldier zombie
+  1157 — caustic soldier zombie
+  1158 — Kevlar zombie
+  1161 — zombie military pilot
+  1162 — uniformed zombie
+  1163 — zombie mariner
+  1164 — zombie officer
+  1165 — zombie marine
+  1168 — armored zombie
+  1169 — survivor zombie
+  1170 — zombie survivor test only
+  1171 — paramilitary zombie
+  1172 — veteran survivor zombie
+  1173 — lashing zombie
+  1174 — tentacled zombie
+  1175 — zombie strider
+  1192 — military police zombie
+  1200 — dusted zombie
+  1201 — fungal stalk zombie
+  1202 — fungal zombie
+  1203 — dusted gasbag zombie
+  1205 — bloated fungal zombie
+  1206 — dusted smoker zombie
+  1208 — pollinator zombie
+  1209 — dusted skeletal zombie
+  1211 — fungal skeletal zombie
+  1218 — dusted zombie child
+  1224 — dusted zombie wretch
+  1230 — dusted zombie runner
+  1233 — dusted decayed zombie
+  1236 — dusted tough zombie
+  1239 — dusted brute zombie
+  1242 — dusted zombie hulk
+  1245 — dusted crawling zombie
+  1247 — fungal zombie crawler
+  1248 — dusted fat zombie
+  1251 — dusted scarred zombie
+  1252 — fungalizing scarred zombie
+  1253 — scarred fungal zombie
+  1254 — dusted acidic zombie
+  1255 — fungalizing acid zombie
+  1256 — acidic fungal zombie
+  1315 — mummified zombie
+  1334 — acidic zombie horse
+  1341 — regenerating zombie medic
+  1344 — pupating zombie
+  1345 — pupating zombie
+  1351 — scorched zombie child
+  1352 — scorched zombie brute
+  1353 — scorched zombie brute
+  1355 — zombie lich
+  1358 — crawling zombie
+  1359 — fat zombie
+  1360 — decayed zombie
+  1361 — tough zombie
+  1362 — bouncer zombie
+  1363 — pupating zombie crawler
+  1364 — pupating zombie crawler
+  1365 — pupating zombie
+  1366 — pupating zombie
+  1367 — shady pupating zombie
+  1368 — shady pupating zombie
+  1369 — zombie child
+  1370 — brainless zombie
+  1372 — fat prisoner zombie
+  1373 — tough prisoner zombie
+  1374 — dusted decayed zombie
+  1377 — dusted tough zombie
+  1380 — dusted crawling zombie
+  1382 — fungal zombie crawler
+  1383 — dusted fat zombie
+  1387 — pupating zombie
+  1388 — pupating zombie

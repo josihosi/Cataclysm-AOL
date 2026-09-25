@@ -1641,7 +1641,14 @@ class CockpitRunChannel:
                     # emitted.  This is after an accepted native dispatch,
                     # not an authority-free retry: obtain the fresh owner so
                     # the next recipe primitive is checked against that owner.
-                    observed = self.observe()
+                    next_observation = outcome.get("observation")
+                    if action_id.startswith("wait.") and isinstance(next_observation, Mapping):
+                        # An accepted duration may still be running without a
+                        # World view. Collect that operation on the next loop;
+                        # do not demand an avatar or dispatch the wait again.
+                        observed = dict(next_observation)
+                    else:
+                        observed = self.observe()
                     continue
                 if recipe_entry["action_id"] != "menu.choose":
                     # The initial semantic world owner is already the exact
@@ -2494,22 +2501,28 @@ class CockpitRunChannel:
                 return stop(f"{route}_interrupted", {"step_index": index,
                                   "native_stop_reason": "melee_attack",
                                   "action_outcome": "melee_attack"})
-            if outcome.get("ok") is not True:
+            native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
+            stationary_outcome = isinstance(native, Mapping) and native.get("outcome") in {
+                "blocked", "no_progress", "interrupted"}
+            if outcome.get("ok") is not True or stationary_outcome:
                 if "binding drift" in str(outcome.get("error", "")):
                     return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
-                native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
                 failure = str(native.get("outcome", "native_dispatch_failed")) if isinstance(native, Mapping) else \
                           str(outcome.get("error", "native_dispatch_failed"))
                 if failure in {"blocked", "no_progress", "interrupted"}:
-                    # A native refusal is an ordinary game result only when
-                    # its exact request and stationary coordinates agree.
-                    if str(native.get("requested_frame_id", native.get("frame_id", ""))) != str(observed["observation_id"]) or \
-                            native.get("action_id") != action_id or \
-                            not self._native_receipt_run_matches(native, str(observed["run_id"]),
+                    # A consumed door interaction may be stationary. Its
+                    # request identity lives in the surface receipt, while
+                    # the movement receipt retains the coordinate outcome.
+                    identity = native.get("surface_receipt") if raw.get("surface_id") else None
+                    if not isinstance(identity, Mapping):
+                        identity = native
+                    if str(identity.get("requested_frame_id", identity.get("frame_id", ""))) != str(observed["observation_id"]) or \
+                            identity.get("action_id") != action_id or \
+                            not self._native_receipt_run_matches(identity, str(observed["run_id"]),
                                     surface_owned=bool(raw.get("surface_id"))) or \
                             (raw.get("surface_id") and (
-                                native.get("requested_surface_id") != raw["surface_id"] or
-                                native.get("consuming_surface_id") != raw["surface_id"])) or \
+                                identity.get("requested_surface_id") != raw["surface_id"] or
+                                identity.get("consuming_surface_id") != raw["surface_id"])) or \
                             native.get("coordinate_space") != "absolute_ms" or \
                             native.get("before_absolute_ms") != before or \
                             native.get("expected_absolute_ms") != expected or \
@@ -2760,6 +2773,7 @@ class CockpitRunChannel:
         stable_id: Optional[str] = None, parameters: Optional[Mapping[str, str]] = None,
         recovery: Optional[Mapping[str, Any]] = None,
         completion_bridge: bool = False,
+        _refresh_message_close: bool = True,
     ) -> Dict[str, Any]:
         """Dispatch one current, observed semantic action through its native owner.
 
@@ -2974,6 +2988,14 @@ class CockpitRunChannel:
                     "receipt": dict(receipt),
                 }
             return self._fail_operation("native_receipt_missing", {"action_id": action_id})
+        if is_surface_action and str(action_id).startswith("world.move.") and \
+                native.get("coordinate_space") == "absolute_ms" and \
+                isinstance(native.get("surface_receipt"), Mapping):
+            # Movement outcome and input acceptance are different facts: a
+            # consumed movement can open a door without changing position.
+            # Validate the actual surface receipt below; retain the original
+            # coordinate receipt for movement bounds and player output.
+            native = native["surface_receipt"]
         if is_macro_stop_decision:
             # A valid native rejection may name a different consuming owner
             # (stale frame/child takeover). Authenticate its requested identity,
@@ -3001,6 +3023,32 @@ class CockpitRunChannel:
             rejection_reason = str(native.get("rejection_reason", ""))
             if rejection_reason not in {"wrong_surface", "stale_frame"}:
                 observed["used"] = False
+            if _refresh_message_close and action_id == "message_log.close" and \
+                    rejection_reason == "stale_frame" and native.get("accepted") is False and \
+                    handle is None and not parameters and recovery is None and \
+                    self._native_receipt_run_matches(native, str(observed["run_id"]), surface_owned=True) and \
+                    native.get("requested_frame_id") == str(observation_id) and \
+                    native.get("requested_surface_id") == issuing_raw.get("surface_id") and \
+                    native.get("action_id") == action_id:
+                # Message population redraws the same menu after opening it.
+                # Only a confirmed rejection permits a new close request;
+                # never replay an accepted or uncertain native action.
+                current = self._read_native_frame()
+                descriptor = self._surface_descriptor(current)
+                original = self._surface_descriptor(issuing_raw)
+                if descriptor and original and descriptor["kind"] == original["kind"] == "message_log" and \
+                        descriptor["run_id"] == original["run_id"] and \
+                        descriptor["surface_id"] == original["surface_id"] and \
+                        descriptor["frame_id"] != original["frame_id"] and \
+                        any(action == candidate and action["id"] == action_id and action["enabled"] is True
+                            for action in original["actions"] for candidate in descriptor["actions"]):
+                    self._transcript.append({"kind": "action", "action_id": str(action_id),
+                                             "observation_id": str(observation_id),
+                                             "result": {"ok": False, "error": "native_action_rejected",
+                                                        "receipt": self._public_action_receipt(receipt)}})
+                    fresh = self._observe_surface(current)
+                    return self.act(observation_id=fresh["observation_id"], action_id=action_id,
+                                    stable_id=stable_id, _refresh_message_close=False)
             return {"ok": False, "error": "native_action_rejected", "receipt": dict(receipt)}
         native_frame_id = str(native.get(
             "requested_frame_id", native.get("frame_id", "")
@@ -3180,11 +3228,20 @@ class CockpitRunChannel:
                 fresh = ended
             elif same_frame_selection:
                 fresh = self._observe_surface(next_frame) if self._surface_descriptor(next_frame) else dict(observed["public_state"])
-            # A native receipt names its immediate successor.  Preserve that
-            # exact descriptor rather than rereading a trace that may already
-            # contain a later compatibility frame or nested child surface.
+            # Keep the receipt's immediate successor as evidence, but present
+            # a newer native owner when redraw has already populated the menu.
+            # Raw compatibility frames cannot replace an actionable descriptor.
             elif self._surface_descriptor(next_frame):
-                fresh = self._observe_surface(next_frame)
+                current = self._read_native_frame()
+                display_frame = next_frame
+                successor_offset = next_frame.get("_event_offset", -1)
+                current_offset = current.get("_event_offset", -1)
+                if current.get("run_id") == next_frame.get("run_id") and \
+                        isinstance(successor_offset, int) and successor_offset >= 0 and \
+                        isinstance(current_offset, int) and current_offset > successor_offset and \
+                        self._surface_descriptor(current):
+                    display_frame = current
+                fresh = self._observe_surface(display_frame)
             elif native_wait_activity:
                 # A duration selection immediately hands control to native
                 # wait_activity.  It has no actions, but is the authentic
@@ -3248,6 +3305,18 @@ class CockpitRunChannel:
                 continuation["observation_id"] = str(fresh.get("observation_id", ""))
                 continuation["phase"] = "awaiting_wait_dispatch"
                 result["continuation"] = {"state": "awaiting_wait_dispatch"}
+                return result
+            wait_state, _ = self._collect_wait_operation(fresh)
+            if wait_state in {"running", "decision"}:
+                # Modern semantic activity/prompt owners carry no legacy
+                # wait_* state or distraction provenance.  Classify the
+                # accepted operation before asking it to prove elapsed time:
+                # an immediate interruption legitimately consumes no turn.
+                continuation["phase"] = "awaiting_native_completion"
+                continuation["observation_id"] = str(fresh.get("observation_id", ""))
+                if wait_state == "running":
+                    continuation["activity_frame_id"] = str(fresh.get("observation_id", ""))
+                result["continuation"] = {"state": "awaiting_native_completion"}
                 return result
             if str( next_frame.get( "state", "" ) ) in {
                     "wait_mode_choice", "wait_duration_choice",
@@ -3797,7 +3866,7 @@ class CockpitService:
 
     def _player_operation_availability(self) -> Dict[str, bool]:
         return {action: self.run_channel is not None and self._live_operation_is_allowed(action)
-                for action in ("game.wait", "game.move_relative")}
+                for action in ("game.act", "game.wait", "game.move_relative")}
 
     def call(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         try:

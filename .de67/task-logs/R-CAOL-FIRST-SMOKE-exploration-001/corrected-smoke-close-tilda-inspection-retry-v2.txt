@@ -1,0 +1,2 @@
+Error: This action is not available in the current menu.
+Next: play look

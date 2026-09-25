@@ -1,0 +1,131 @@
+{
+  "schema": "R-CAOL-FIRST-SMOKE-read-only-item-discrepancy-v1",
+  "run_id": "cab1f4cb222106868f42bee6bccf5d54665002e102a9fd7da145f471dc22877f",
+  "profile": "first-smoke-r-caol-001-smoke-migration-v2",
+  "session_path": ".userdata/openclaw_harness/bridge-sessions/selected-08dc2f997e2b40a8a4e6d9b064da72a7",
+  "current_frame_id": "cab1f4cb222106868f42bee6bccf5d54665002e102a9fd7da145f471dc22877f:frame:24",
+  "last_request_id": "play-21296444e80d4d25ab84c4c18d16f9e7",
+  "last_action": "inventory.filter text=smoke",
+  "last_request_sha256": "aa728db42e202cbf5b379bd748db5c1af0fd8dbff6f2fdb6681404fd8a8a6fc3",
+  "last_response_sha256": "9fb67d802b3e9c36386129694f14cbb1aa0e8d40cb07f9edce8b63749d837ccb",
+  "observations": {
+    "fixture": {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/first_smoke_smoke-first_testsetup00_migration_cancel_v1/save/TestSetup00/#VGVzdDAw.sav.zzip",
+      "sha256": "037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247",
+      "bytes": 20827,
+      "mtime_local": "2026-09-24T12:25:32+02:00",
+      "player_name": "Test00",
+      "jeans_pocket_path": "player.worn.worn[4]/contents/contents[0]/contents",
+      "jeans_pocket_item_count": 11,
+      "jeans_pocket_items": [
+        {
+          "typeid": "pemmican",
+          "uid": 118969
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118970
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118971
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118972
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118973
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118974
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118975
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118976
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118977
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 118978
+        },
+        {
+          "typeid": "screwdriver",
+          "uid": 188132
+        }
+      ],
+      "all_player_smoke_typeid_items": []
+    },
+    "copied_profile": {
+      "path": ".userdata/first-smoke-r-caol-001-smoke-migration-v2/save/TestSetup00/#VGVzdDAw.sav.zzip",
+      "sha256": "4e8c95f582884cea03727f0471e721c6ade026c90dded2ae492687c60f3c1ea2",
+      "bytes": 21018,
+      "mtime_local": "2026-09-24T23:23:22+02:00",
+      "player_name": "Test00",
+      "jeans_pocket_path": "player.worn.worn[4]/contents/contents[0]/contents",
+      "jeans_pocket_item_count": 11,
+      "jeans_pocket_items": [
+        {
+          "typeid": "pemmican",
+          "uid": 4227377
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227378
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227379
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227380
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227381
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227382
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227383
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227384
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227385
+        },
+        {
+          "typeid": "pemmican",
+          "uid": 4227386
+        },
+        {
+          "typeid": "screwdriver",
+          "uid": 4227387
+        }
+      ],
+      "all_player_smoke_typeid_items": []
+    }
+  },
+  "install_receipt_path": ".userdata/first-smoke-r-caol-001-smoke-migration-v2/harness_runs/20260924_231748_39caa55f7f4d4af9a0afdc00a092aabb/startup.result.json",
+  "install_receipt_claim": "player_items smokebomb count=1 inserted at player.worn.worn[4]/contents/contents[0]/contents[11]",
+  "native_ui_result": "Inventory root and worn-jeans contents filters found no highlighted smokebomb/smoke item. No smoke-use action issued.",
+  "boundary": "Copied profile archive currently contains no smokebomb typeid, while startup install receipt claims insertion. Profile archive mtime is later than startup; without a prelaunch transformed archive hash this report cannot determine whether insertion failed or subsequent game serialization removed it. No reinstall, save or live input performed during this comparison.",
+  "last_request_frame_id": "cab1f4cb222106868f42bee6bccf5d54665002e102a9fd7da145f471dc22877f:frame:23",
+  "native_result": "Accepted inventory.filter request at game_minutes 7738/game_turn 5216294, process_instance 1790284681386806; resulting observation frame 24 remains Inventory with filter smoke and no highlighted item."
+}

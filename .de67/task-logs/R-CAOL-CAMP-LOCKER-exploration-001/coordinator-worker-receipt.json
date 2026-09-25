@@ -1,0 +1,154 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-CAOL-CAMP-LOCKER",
+  "task_id": "R-CAOL-CAMP-LOCKER-exploration-001",
+  "worker_id": "01a0d091-6cdf-77e0-a12b-16b8c3472155",
+  "disposition": "completed",
+  "verdict": "fresh_native_locker_transfer_readiness_and_reload_proved",
+  "outcome": "The assigned R032 camp resident acquired real Locker helmet, Glock and compatible ammunition through ordinary downtime, retained readiness and camp assignment after native save and reload, and displaced gear remained accountable.",
+  "summary": "The final isolated run used a source-matched repaired build. Native service equipped character:25 with an army helmet and Glock; 15 JHP rounds were loaded and 15 were in a spare magazine. A native save, code-0 exit and replacement game preserved the same camp assignment, loadout, Locker leftovers and Storage contents. Both game generations saved and exited natively. All task-owned game, runner and bridge processes exited. The unrelated old PID 90668 remains a separate retained cleanup blocker.",
+  "bindings": {
+    "worker_assignment_id": "789645bdd0c04affa0741ec3ae778e9c",
+    "worker_result": ".de67/state/worker-library/results/789645bdd0c04affa0741ec3ae778e9c/77b4f8e490ab9a11ff681ba5a45df438669df30f2a35658cecacbbf9c700f525.md",
+    "run_id": "c844ce63f33522f02770d171c8845552a6ea73321af8fa7a4a779955f733ecc8",
+    "binding_id": "61ae10407b0140a99fff8ae75505d5ccb013a9b52f4f92013fabd28f1553166e",
+    "scenario": "r032.assigned_camp_locker_transfer_char25_v001_mcw",
+    "source_identity": "a85dc40886d1573ba299523df373798f1a017d11d0575001369e4e6a3a766ef1",
+    "executable_sha256": "8d5f5dc9935f1aad0cd7cdd23454fd7e9ee9495abaaed9d4d856c388b49d89e1",
+    "isolated_profile": "r032-camp-locker-transfer-exp005-20260924",
+    "first_pid": "48168",
+    "reentry_pid": "50750"
+  },
+  "first_divergence": {
+    "class": "earlier_native_zone_crash_and_item_return",
+    "summary": "Run 3 exposed a stale zone reference during Smart Zone redraw; run 4 exposed displaced wielded gear returning to the NPC tile. Focused repairs, tests and the separate source-bound build enabled the successful final run."
+  },
+  "material_changes": [
+    "Refreshed zone references after adding CAMP_STORAGE and before the nested Smart Zone prompt in src/zone_manager_ui.cpp.",
+    "Returned a displaced wielded weapon through the Locker item path in src/basecamp.cpp, with fallback restoration on failed equip.",
+    "Added focused zone and Locker regression assertions in tests/zone_cursor_semantic_test.cpp and tests/faction_camp_test.cpp.",
+    "Bound the isolated R032 Locker scenario to the separate repaired executable; canonical cataclysm-tiles remained untouched."
+  ],
+  "journal_entries": [
+    {
+      "id": "J0140",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "First generation accepted world.save_quit.",
+      "sequence": 140
+    },
+    {
+      "id": "J0145",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "First generation game PID 48168 exited code 0.",
+      "sequence": 145
+    },
+    {
+      "id": "J0003",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry character:25 remained CAMP_RESIDENT at [162,36,0] with helmet, Glock, and two 15-round JHP magazines.",
+      "sequence": 3
+    },
+    {
+      "id": "J0014",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry pickup menu showed Storage contents without selecting items.",
+      "sequence": 14
+    },
+    {
+      "id": "J0049",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry pickup menu showed displaced rebar and wearables on Locker tile.",
+      "sequence": 49
+    },
+    {
+      "id": "J0073",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry Base Missions board and Locker policy remained available.",
+      "sequence": 73
+    },
+    {
+      "id": "J0078",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Second generation accepted world.save_quit.",
+      "sequence": 78
+    },
+    {
+      "id": "J0083",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Second generation game PID 50750 exited code 0.",
+      "sequence": 83
+    }
+  ],
+  "tests": [
+    "Focused zone interaction test: 5 cases, 112 assertions passed.",
+    "Focused Locker service test: 1 case, 18 assertions passed.",
+    "Original native journal and final witness bind item movement, readiness and reload continuity.",
+    "Exact ps recheck found game PIDs 48168/50750, runners 48134/50719 and bridge 48133 absent."
+  ],
+  "live_actions": [
+    "Run 5 used separate source-matched tiles build and an isolated profile.",
+    "Game generations 48168 and 50750 saved and exited code 0; runners 48134/50719 and bridge 48133 exited.",
+    "Mac GUI input was explicitly released to coordinator.",
+    "Old R-029 PID 90668 born Wed Sep 23 21:32:37 2026 remains live under separate coordinator retention; owner Ollama PID 2094 was untouched."
+  ],
+  "evidence_ceiling": [
+    "The native pre-service pickup menu showed ammo identity, but not the stack charge count; the bound fixture declares 30 and native after-state shows 15+15.",
+    "This proves the isolated R032 Locker transfer and reload, not all later patrol, attack, payment or return outcomes.",
+    "Old PID 90668 has not exited and remains a separate cleanup blocker."
+  ],
+  "accepted_no_replay": [
+    "Do not replay the successful Locker transfer or save/reload solely to reproduce accepted evidence.",
+    "Use the equipped R032 state as input to later defense proof, subject to fresh owner-required game observations."
+  ],
+  "active_work": [
+    "Locker task-owned game, runner and bridge processes have exited; no Locker worker has GUI input."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-LOCKER-exploration-001/run5-final-witness.json",
+      "role": "Native transfer and reload witness.",
+      "sha256": "14d74929260c9e951cc8b5ba91e750dbbfcc16ae6f281bceccc8c440105e7cc2"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-88fe0c1c2c6d40378b5008481ef08ce3/cockpit-evidence.sqlite",
+      "role": "Original native journals for both generations.",
+      "sha256": "3e2624cd0894d68292b90b065e2dac1f9d5373fe394e160e2455ba27d03eb669"
+    },
+    {
+      "path": ".userdata/r032-camp-locker-transfer-exp005-20260924/harness_runs/20260924_051650_d47d75252ba645d796349b3c945454b6/probe.report.json",
+      "role": "Terminal broker report.",
+      "sha256": "ecf34ea7373dd55f493e810bdf728c6797dfb41b88e0b88e5de1154f9d45af72"
+    },
+    {
+      "path": ".de67/state/worker-library/results/789645bdd0c04affa0741ec3ae778e9c/77b4f8e490ab9a11ff681ba5a45df438669df30f2a35658cecacbbf9c700f525.md",
+      "role": "Worker return and limits.",
+      "sha256": "d39822bf29724f9553a2f232a5f892bf176455bcb3e40ed30b5d90e2490d0fb6"
+    }
+  ],
+  "entrypoints": [
+    "src/basecamp.cpp",
+    "src/zone_manager_ui.cpp",
+    "tests/faction_camp_test.cpp",
+    "tests/zone_cursor_semantic_test.cpp",
+    "tools/openclaw_harness/scenarios/r032.assigned_camp_locker_transfer_char25_v001_mcw.json"
+  ],
+  "first_open_boundary": "Coordinator must settle the Locker task and claim, then schedule fresh defense and payment/return playtests; Mac launcher installation still awaits a valid local authorization route.",
+  "narrow_queries": [
+    "Read exact stream c140db589eda47388523c6adae54dd0f J0140/J0145 and reentry stream e1b4a9bb6359457ca2cd88625be830e0 J0003/J0014/J0049/J0073/J0078/J0083 in the bound cockpit evidence DB.",
+    "Read probe.report.json for both native process exits and cleanup identity if disputed."
+  ],
+  "context_metrics": {
+    "native_game_generations": 2,
+    "native_save_quit_actions": 2,
+    "post_reload_pickups": 0
+  }
+}

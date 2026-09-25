@@ -1,0 +1,82 @@
+{
+  "schema": "R-CAOL-FIRST-SMOKE-npc-reference-compare-v1",
+  "method": "Copied only each overmaps/o.0.0.zzip plus worldoptions.json/overmaps.dict/master.gsav/mmr.dict into task-log scratch; decoded via startup_harness.extract_overmap_payload; compared canonical sorted-key JSON of unchanged npcs subtrees; scratch removed after artifact write.",
+  "source_npc_subtree_equals_fixture": true,
+  "records": [
+    {
+      "label": "owner_source",
+      "source_path": ".userdata/reference-saves/josef-basecamp-closed-windows-20260924-122642/save/TestSetup00",
+      "overmap_sha256": "e3fb599b309849c98ee215115ac8f5259102bf6438eff1178efc790c70d6939f",
+      "npc_count": 2,
+      "canonical_npc_subtree_sha256": "cecf1bda92e4f162cab90d751fb2ae0fb58d550773bc83041096f8168603ed59",
+      "npc_activity_owner_refs": [
+        {
+          "npc_id": 2,
+          "name": "Tilda Wray",
+          "activity": "ACT_MOVE_LOOT",
+          "actor_type": "ACT_MOVE_LOOT",
+          "item_location_refs": [
+            {
+              "list": "picked_up_stuff",
+              "item_uid": 4218921,
+              "parent": {
+                "type": "character",
+                "character": 2,
+                "idx": 19,
+                "uid": 15417
+              }
+            },
+            {
+              "list": "picked_up_stuff",
+              "item_uid": 4218970,
+              "parent": {
+                "type": "character",
+                "character": 2,
+                "idx": 19,
+                "uid": 15417
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "task_fixture",
+      "source_path": "tools/openclaw_harness/fixtures/saves/live-debug/first_smoke_smoke-first_testsetup00_v1/save/TestSetup00",
+      "overmap_sha256": "afd2754727e93157c658f9f65f9d9521defbd1e2309cebfd1d1df877b8983b47",
+      "npc_count": 2,
+      "canonical_npc_subtree_sha256": "cecf1bda92e4f162cab90d751fb2ae0fb58d550773bc83041096f8168603ed59",
+      "npc_activity_owner_refs": [
+        {
+          "npc_id": 2,
+          "name": "Tilda Wray",
+          "activity": "ACT_MOVE_LOOT",
+          "actor_type": "ACT_MOVE_LOOT",
+          "item_location_refs": [
+            {
+              "list": "picked_up_stuff",
+              "item_uid": 4218921,
+              "parent": {
+                "type": "character",
+                "character": 2,
+                "idx": 19,
+                "uid": 15417
+              }
+            },
+            {
+              "list": "picked_up_stuff",
+              "item_uid": 4218970,
+              "parent": {
+                "type": "character",
+                "character": 2,
+                "idx": 19,
+                "uid": 15417
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interpretation": "The source and fixture NPC payloads are identical. The observed startup exception occurs while overmap::unserialize loads NPC id 2 Tilda Wray ACT_MOVE_LOOT and its item_location references whose parent owner is character id 2. This localizes the observed failure to loading the saved NPC activity/reference in this source-derived world; it does not establish whether the underlying defect is stale source state or current loader ordering."
+}

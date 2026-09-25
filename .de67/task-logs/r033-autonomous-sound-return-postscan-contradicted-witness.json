@@ -1,0 +1,36 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "In the independently queried, bound rerun, the relocated physical source reached the production sound adapter at minute 10081, but the next authoritative scan at minute 10085 recorded that sound as absent.  By minute 10087 the structural signal planner had no candidates, so this run does not produce the requested autonomous sound-return delivery.",
+  "causal_account": "The source-side repair is no longer the limiting condition: the same immutable postscan observation records sound_adapter observed=true with detail 2000 at minute 10081.  Five game minutes later, its successor sound_adapter record is fresh and isolated but observed=false/detail=absent; the terminal structural dispatch diagnostic has candidates=[].  The observing outing remained active, so this is a post-observation delivery divergence rather than the prior unloaded-source divergence.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the conclusion to the selected scenario, executable, run, and session binding.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0082",
+      "meaning": "Postscan native observation containing both source-adapter observations and the structural dispatch state.",
+      "checks": {
+        "value.game_minutes": 10087,
+        "value.production_channel_observation.records.1008.scan.game_minutes": 10081,
+        "value.production_channel_observation.records.1008.channel": "sound",
+        "value.production_channel_observation.records.1008.consumer": "bandit_live_world.sound_adapter",
+        "value.production_channel_observation.records.1008.observed": true,
+        "value.production_channel_observation.records.1014.scan.game_minutes": 10085,
+        "value.production_channel_observation.records.1014.channel": "sound",
+        "value.production_channel_observation.records.1014.consumer": "bandit_live_world.sound_adapter",
+        "value.production_channel_observation.records.1014.observed": false,
+        "value.surface.facts.structural_signal_dispatch": "{\"schema\":\"caol-structural-signal-dispatch-v1\",\"current_minutes\":10087,\"scheduler_last_hour\":168,\"candidates\":[],\"provenance\":\"diagnostic_read_only_structural_signal_planner_no_materialization_or_dispatch\"}"
+      }
+    }
+  ],
+  "contradictions": [
+    "The required source observation was present at minute 10081 but absent at the fresh isolated minute-10085 sound-adapter scan; no structural dispatch candidate was materialized by minute 10087."
+  ],
+  "remaining_unknowns": [
+    "Why the sound adapter does not retain or promote the minute-10081 observed source through the minute-10085 scan."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

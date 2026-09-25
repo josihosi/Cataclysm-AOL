@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/private/tmp/r-launcher-linux-exploration-003/final-candidate-commit-checkout/tools/prove_dabubu_export_packaging.py", line 630, in <module>
+    raise SystemExit(main())
+  File "/private/tmp/r-launcher-linux-exploration-003/final-candidate-commit-checkout/tools/prove_dabubu_export_packaging.py", line 591, in main
+    checksum_artifact = write_package_checksums(package_results)
+  File "/private/tmp/r-launcher-linux-exploration-003/final-candidate-commit-checkout/tools/prove_dabubu_export_packaging.py", line 517, in write_package_checksums
+    checksum_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1275, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors) as f:
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1242, in open
+    return io.open(self, mode, buffering, encoding, errors, newline,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1110, in _opener
+    return self._accessor.open(self, flags, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/r-launcher-linux-exploration-003/final-candidate-commit-checkout/.proof-cache/dabubu-export/packages/SHA256SUMS.txt'

@@ -1,0 +1,14 @@
+{
+  "accepted": false,
+  "reason": "native_surface_receipt_timeout",
+  "surface_request": {
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:5",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:5",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:5:dialogue.choose:4e3995d5c2baab6e",
+    "action_id": "dialogue.choose",
+    "stable_id": "dialogue-response-3"
+  },
+  "native_receipt": null,
+  "next_frame": null
+}

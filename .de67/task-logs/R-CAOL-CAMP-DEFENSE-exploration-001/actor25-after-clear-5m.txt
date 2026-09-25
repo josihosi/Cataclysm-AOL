@@ -1,0 +1,16 @@
+NPC INSPECTION — R032 Establishment Ally 1
+actor id: character:25
+Camp patrol — camp found: yes; camp site: 162, 36, 0; patrol zone defined: yes; shift: day; roster: character:25; actor active guard: yes; actor reserve guard: no; runtime state: available; behavior: loop; target: 3901, 876, 0; route: [3900, 876, 0], [3901, 876, 0], [3902, 876, 0]
+All 12 body parts: 82/82 HP
+Items: Glock carry pistol [28450, wielded]; Glock 9x19mm 15-round magazine [45867, MAGAZINE_WELL]; 9x19mm JHP [45866, MAGAZINE] ×15; ++ boy shorts [4, worn]; ++ socks (pair) [6, worn]; |\ round bifocal glasses [8, worn]; ++ jeans > smartphone (UPS) (unbrowsed) [12, worn]; smartphone (UPS) (unbrowsed) [45848, CONTAINER]; battery [45847, MAGAZINE] ×56; ++ sneakers (pair) [25, worn]; ++ t-shirt [27, worn]; ++ work gloves (pair) [29, worn]; |\ barrette [31, worn]; ++ army helmet (poor fit) [28446, worn]; ++ light jacket > Glock 9x19mm 15-round magazine [33, worn]; Glock 9x19mm 15-round magazine [45859, CONTAINER]; 9x19mm JHP [45858, MAGAZINE] ×15; ++ messenger bag [89, worn]
+Full gear data: 2804 characters → play inspect observation.surface.facts.diagnostic_items
+Item details → play inspect observation.surface.facts.diagnostic_items.UID (copy an item ID; no --contains)
+AI intent: 220 characters omitted → play inspect observation.surface.facts.diagnostic_llm_intent
+Orders — attitude: Ignoring; mission: GUARD_PATROL; activity: ACT_NULL; absolute position: 3899, 876, 0; camp patrol order: yes; camp patrol priority: 9; guard post: 3901, 876, 0; assigned camp: 162, 36, 0; has companion mission: no
+Rules: 3007 characters omitted → play inspect observation.surface.facts.diagnostic_rules
+visible.health: She is uninjured.
+visible.attitude: Friendly
+visible.wielded: Glock carry pistol
+ALLOWED HERE ONLY
+Close → play act npc_inspection.close
+Item details (requires item_uid parameter) → play act npc_inspection.item_details --param item_uid=ID

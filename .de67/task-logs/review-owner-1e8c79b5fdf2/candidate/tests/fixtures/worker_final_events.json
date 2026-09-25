@@ -1,0 +1,104 @@
+[
+  {
+    "name": "sound2",
+    "source": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/.de67/state/worker-library/events/22fdd6267cd74aadb850b24d9c636a69.jsonl",
+      "item_line": 43,
+      "turn_line": 47
+    },
+    "item_completed": {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "agentMessage",
+          "id": "msg_0352f78a9105d5e7016aa1bbb313b487d2b2d2601f3d3bc043",
+          "text": "SIM-SOUND-002 completed.\n\nCreated [outputs/sound-eligibility.md](/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/outputs/sound-eligibility.md).\n\nKey result: admission is minute `8585` (`8225 + 360`), while expiry is `8400`; the sound expires 185 minutes before admission. The first failed gate is recent-check admission. Later gates remain unknown, and smoke is comparison only.\n\nNo gameplay, replay, threshold, product edits, or live actions occurred. Report and SHA-256 were sent to the coordinator via agent mailbox.",
+          "phase": "final_answer",
+          "memoryCitation": null,
+          "delivery": null,
+          "questions": null
+        },
+        "threadId": "01a087bd-22b1-7680-8b0a-ebef891162c9",
+        "turnId": "01a087c4-9d43-7220-8e06-568977ddaff9",
+        "completedAtMs": 1788984245498
+      }
+    },
+    "turn_completed": {
+      "method": "turn/completed",
+      "params": {
+        "threadId": "01a087bd-22b1-7680-8b0a-ebef891162c9",
+        "turn": {
+          "id": "01a087c4-9d43-7220-8e06-568977ddaff9",
+          "items": [
+            {
+              "type": "agentMessage",
+              "id": "msg_0352f78a9105d5e7016aa1bbb313b487d2b2d2601f3d3bc043",
+              "text": "SIM-SOUND-002 completed.\n\nCreated [outputs/sound-eligibility.md](/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/outputs/sound-eligibility.md).\n\nKey result: admission is minute `8585` (`8225 + 360`), while expiry is `8400`; the sound expires 185 minutes before admission. The first failed gate is recent-check admission. Later gates remain unknown, and smoke is comparison only.\n\nNo gameplay, replay, threshold, product edits, or live actions occurred. Report and SHA-256 were sent to the coordinator via agent mailbox.",
+              "phase": "final_answer",
+              "memoryCitation": null,
+              "delivery": null,
+              "questions": null
+            }
+          ],
+          "itemsView": "summary",
+          "status": "completed",
+          "error": null,
+          "startedAt": 1788984204,
+          "completedAt": 1788984245,
+          "durationMs": 40949
+        }
+      }
+    }
+  },
+  {
+    "name": "npc1",
+    "source": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/.de67/state/worker-library/events/0ba6812c1ebe448388ab737bea5598b7.jsonl",
+      "item_line": 55,
+      "turn_line": 59
+    },
+    "item_completed": {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "agentMessage",
+          "id": "msg_0028a19c88127947016aa1bbda28dc87d28463b901198e3c04",
+          "text": "Completed SIM-NPC-001.\n\n- Created [outputs/npc-charter.json](/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/outputs/npc-charter.json)\n- SHA-256: `5a90731cf81a42c62b78cefe1fde1c53f078bd7a27a4737aa5cfada5d638af26`\n- Local Python validation passed.\n- Preserved all SIM bindings and unconsumed token.\n- Recorded no gameplay claims; future NPC observations remain open.\n- No gameplay, rebuild, re-audit, or coordination-state mutation performed.\n- Result sent to the coordinator via agent mailbox.",
+          "phase": "final_answer",
+          "memoryCitation": null,
+          "delivery": null,
+          "questions": null
+        },
+        "threadId": "01a087c4-9d5c-7773-9a81-6548b17efcb2",
+        "turnId": "01a087c4-9dda-7bc2-8cc0-829944cd388f",
+        "completedAtMs": 1788984284928
+      }
+    },
+    "turn_completed": {
+      "method": "turn/completed",
+      "params": {
+        "threadId": "01a087c4-9d5c-7773-9a81-6548b17efcb2",
+        "turn": {
+          "id": "01a087c4-9dda-7bc2-8cc0-829944cd388f",
+          "items": [
+            {
+              "type": "agentMessage",
+              "id": "msg_0028a19c88127947016aa1bbda28dc87d28463b901198e3c04",
+              "text": "Completed SIM-NPC-001.\n\n- Created [outputs/npc-charter.json](/Volumes/CodexBulk/Schanigarten/workspaces/de67-worker-library-sim-20260909-final/outputs/npc-charter.json)\n- SHA-256: `5a90731cf81a42c62b78cefe1fde1c53f078bd7a27a4737aa5cfada5d638af26`\n- Local Python validation passed.\n- Preserved all SIM bindings and unconsumed token.\n- Recorded no gameplay claims; future NPC observations remain open.\n- No gameplay, rebuild, re-audit, or coordination-state mutation performed.\n- Result sent to the coordinator via agent mailbox.",
+              "phase": "final_answer",
+              "memoryCitation": null,
+              "delivery": null,
+              "questions": null
+            }
+          ],
+          "itemsView": "summary",
+          "status": "completed",
+          "error": null,
+          "startedAt": 1788984204,
+          "completedAt": 1788984284,
+          "durationMs": 80206
+        }
+      }
+    }
+  }
+]

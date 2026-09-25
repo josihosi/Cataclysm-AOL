@@ -1,0 +1,34 @@
+{
+  "original_receipt": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\openclaw_harness\\source_bindings\\cataclysm-tiles.exe-199c2aca1e26ce00-656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d-cd25d564350baa151119dee87897fb2bc4aed5cd2bc08fb54554edde9dc00fb9.json",
+  "corrected_receipt": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\openclaw_harness\\source_bindings\\cataclysm-tiles.exe-199c2aca1e26ce00-656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d-cd25d564350baa151119dee87897fb2bc4aed5cd2bc08fb54554edde9dc00fb9-c8af4707.json",
+  "captured_head": "224d7dc9779",
+  "corrected_receipt_sha256": "314c000febca991b8f5c371889d65b209175e951f95cb4ef966da0a41b81e131",
+  "readiness": {
+    "status": "ready",
+    "reason": "receipt_bound_dirty_product_build",
+    "next_action": "continue with the current registry query",
+    "evidence_ceiling": "requested run ceiling",
+    "executable_path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\cataclysm-tiles.exe",
+    "captured_head": "224d7dc9779",
+    "repository_head": "224d7dc977",
+    "executable_sha256": "656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d",
+    "product_source_sha256": "cd25d564350baa151119dee87897fb2bc4aed5cd2bc08fb54554edde9dc00fb9",
+    "binary_relevant_committed_changes": [],
+    "binary_relevant_worktree_changes": [
+      "src/bandit_live_world.cpp",
+      "src/bandit_live_world.h",
+      "src/basecamp.cpp",
+      "src/clzones.cpp",
+      "src/do_turn.cpp",
+      "src/inventory_ui.cpp",
+      "src/player_display.cpp",
+      "src/zone_manager_ui.cpp"
+    ],
+    "comparison_error": "",
+    "product_build_receipt": {
+      "path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\openclaw_harness\\source_bindings\\cataclysm-tiles.exe-199c2aca1e26ce00.json",
+      "status": "matched",
+      "error": ""
+    }
+  }
+}

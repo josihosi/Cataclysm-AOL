@@ -1,0 +1,62 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-CAMP-ASSIGNMENT-closure-native-proof-binding-001",
+  "claim_id": "R-CAOL-CAMP-ASSIGNMENT",
+  "worker_id": "01a0d0e7-f66e-7580-bdc2-71e705078460",
+  "disposition": "completed",
+  "verdict": "native_proof_binding_satisfied",
+  "outcome": "Independent source review confirms the one fresh R032 camp assignment, save/reload continuity and completed ordinary work required by the closure gap.",
+  "summary": "The reviewer read the original journal streams for native camp creation, assignment of character:25, first-generation save/quit, reentry of the same camp and follower, persisted job priority and completed loot sorting. The two witnesses match the source. The second game exited through finish cleanup without native exit credit. No game or GUI input was used in review.",
+  "material_changes": ["No repository, world or runtime change was made by this independent review."],
+  "tests": [
+    "Exact original first-generation and reentry journal entries were checked against both witnesses and the FS slice.",
+    "Probe report and worker process evidence were checked for the two different exit ceilings.",
+    "Task-004 witness charter and scenario criteria were checked for outcome assumptions; none were found."
+  ],
+  "live_actions": ["No game, harness, Mac GUI or process action was launched or operated by this reviewer."],
+  "evidence_ceiling": [
+    "Only this source-matched R032 fresh assignment and one save/reload continuation is proved.",
+    "First generation saved and quit natively with code 0; second generation exited through finish cleanup after journal sealing and has native_exit_credit false.",
+    "Old R-029 PID 90668 remains retained under coordinator cleanup ownership, outside this closure gap."
+  ],
+  "bindings": {
+    "closure_gap": "native-proof-binding",
+    "closure_gap_revision": "1",
+    "run_id": "2ec05b7a1796a3662f85a72e2a9db5288a6339798e851010b52219cc6181397c",
+    "binding_id": "17eac42d6d58770172f15d759da13bd9fca1763cc859b480ee8caea00d79768d",
+    "first_stream": "df1d90062838447790e3c31d9fb6caf9",
+    "reentry_stream": "acb2dc45710547e6a5117bfaa26a3ff3",
+    "worker_assignment_id": "cb8972ddf57b42309b15b02ab2528055",
+    "worker_result": ".de67/state/worker-library/results/cb8972ddf57b42309b15b02ab2528055/279daf2173d09e6f7549ff3411d8c1c16a3bec3c1b380cdda6f716e549940bb8.md"
+  },
+  "journal_entries": [
+    {"id": "J0008", "sequence": "8", "event_type": "observation", "evidence_class": "native", "summary": "Original stream identifies unassigned character:25."},
+    {"id": "J0026", "sequence": "26", "event_type": "observation", "evidence_class": "native", "summary": "Original stream identifies newly created camp at [162,36,0]."},
+    {"id": "J0039", "sequence": "39", "event_type": "observation", "evidence_class": "native", "summary": "Original stream shows one-worker native assignment UI."},
+    {"id": "J0053", "sequence": "53", "event_type": "observation", "evidence_class": "native", "summary": "Original stream shows character:25 CAMP_RESIDENT assigned to matching camp."},
+    {"id": "J0075", "sequence": "75", "event_type": "action", "evidence_class": "native", "summary": "Original stream accepts world.save_quit."},
+    {"id": "J0080", "sequence": "80", "event_type": "observation", "evidence_class": "native", "summary": "Original stream observes PID 23949 code-0 exit."},
+    {"id": "J0016", "sequence": "16", "event_type": "observation", "evidence_class": "native", "summary": "Reentry stream reopens the same camp board."},
+    {"id": "J0021", "sequence": "21", "event_type": "observation", "evidence_class": "native", "summary": "Reentry stream retains loot-sorting priority 1."},
+    {"id": "J0038", "sequence": "38", "event_type": "observation", "evidence_class": "native", "summary": "Reentry stream records completed ordinary loot sorting."},
+    {"id": "J0040", "sequence": "40", "event_type": "observation", "evidence_class": "native", "summary": "Reentry stream confirms character:25 still CAMP_RESIDENT at [162,36,0]."}
+  ],
+  "artifacts": [
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-5418a89198024e97a2e2c128cace4828/cockpit-evidence.sqlite", "sha256": "05ad48441a22c60a5bbcbdd6aeae2a0b74e106523b611f4f8f8adf87b7f7e37e", "role": "Original journal independently checked by stream and entry ID."},
+    {"path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/pre-reload-witness.json", "sha256": "2d210df74351167848c70263fc6690874b8bb4f60baa310fc8e724b987d251fe", "role": "First-generation witness checked against original stream."},
+    {"path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/final-witness.json", "sha256": "72b8c7ba64709dfc10286f012784ab87f9d661fb1b25d777ef6549806a7fabf0", "role": "Reentry witness checked against original stream."},
+    {"path": ".userdata/r032-camp-assignment-exp004-20260924/harness_runs/20260924_023846_d256cdc4803343c7845f7b580ce5c8cf/probe.report.json", "sha256": "b069f9168be18773cec7374df59505407848b4f330463b2cb9465c5d26b323cf", "role": "Second-generation finish-cleanup and native exit ceiling."},
+    {"path": ".de67/state/worker-library/results/cb8972ddf57b42309b15b02ab2528055/279daf2173d09e6f7549ff3411d8c1c16a3bec3c1b380cdda6f716e549940bb8.md", "sha256": "4f69e262fabbe210de77c8b8cbfc276bfa2b6ab2194294a381ddedc4391ac70c", "role": "Independent closure verdict and limits."}
+  ],
+  "first_divergence": {
+    "class": "none_in_assigned_outcome",
+    "summary": "No contradiction was found in the assigned native-proof binding; the second exit is explicitly limited to finish cleanup."
+  },
+  "accepted_no_replay": ["Do not replay the accepted R032 camp creation, assignment, save/reload or ordinary work evidence."],
+  "active_work": ["Mac GUI input belongs to launcher_gemma_owner; old R-029 PID 90668 is separately retained by the coordinator."],
+  "first_open_boundary": "Close this one closure gap and decide claim acceptance separately; other FS claims remain open.",
+  "narrow_queries": ["If a specific journal fact is disputed, retrieve its exact stream and entry ID from cockpit-evidence.sqlite.", "Keep generation-1 native_exit_credit false when reporting cleanup."],
+  "entrypoints": [".de67/FS.md R-CAOL-CAMP-ASSIGNMENT-S001", "tools/openclaw_harness/charters/r032-fresh-camp-establishment-rev1.json"],
+  "context_metrics": {"native_replays": 0, "journal_streams_reviewed": 2}
+}

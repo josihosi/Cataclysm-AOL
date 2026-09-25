@@ -1,0 +1,23 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-eb8ac9490a79407dbc655c711277ee18
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0001: identity
+  INDEX 0; PATH FIELD; FIELD: scenario_id, source_identity, executable_identity
+J0002: observation — world
+  INDEX 1; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0003: observation — basecamp_mission_selector
+  INDEX 2; PATH value.surface.facts.FIELD; FIELD: camp_id, camp_name, crafting_return_available, distribute_food_available, distribute_food_unavailable_reason, faction, food_days_no_exercise, food_kcal, gather_materials_available, gather_materials_return_available, job_assignment_available, locker_policy_available, locker_policy_enabled_slots, locker_zone_defined, looting_sorting_available, looting_sorting_unavailable_reason, patrol_zone_defined, survey_expansion_available, survey_expansion_return_available
+J0004: action — world.basecamp_missions
+  checks: {"action_id": "world.basecamp_missions"}
+J0005: observation — world
+  INDEX 4; same PATH/FIELD as J0002.
+J0006: action — camp.close
+  checks: {"action_id": "camp.close"}
+J0007: observation — npc_inspection
+  INDEX 6; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0008: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0009: observation — world
+  INDEX 8; same PATH/FIELD as J0002.
+J0010: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+More → play inspect result.evidence_journal.entries --offset 10 --limit 10 --request-id play-eb8ac9490a79407dbc655c711277ee18

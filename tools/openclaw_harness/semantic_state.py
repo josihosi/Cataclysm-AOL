@@ -7,6 +7,7 @@ decide a verdict.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Set
@@ -123,6 +124,32 @@ def read_semantic_step_trace(
             if not isinstance(normalized.get("accepted"), bool):
                 return [], "malformed_semantic_step"
         elif event == "surface_descriptor":
+            reference = normalized.get("valid_actions_ref")
+            if reference is not None:
+                # Only the current run may supply a lossless action catalog.
+                # The frame binds the exact catalog digest; identical action
+                # sets can be shared across redraws without duplicating artifacts.
+                # Verify before normal action validation and control discovery.
+                if not isinstance(reference, Mapping) or normalized.get("valid_actions") != []:
+                    return [], "invalid_surface_actions_reference"
+                relative = reference.get("path")
+                if not isinstance(relative, str) or Path(relative).is_absolute():
+                    return [], "invalid_surface_actions_reference"
+                catalog_path = Path(run_dir) / relative
+                if not _owned_path(catalog_path, Path(run_dir)):
+                    return [], "escaped_authority"
+                try:
+                    if catalog_path.stat().st_size != reference.get("bytes"):
+                        return [], "invalid_surface_actions_reference"
+                    catalog_bytes = catalog_path.read_bytes()
+                    if hashlib.sha256(catalog_bytes).hexdigest() != reference.get("sha256"):
+                        return [], "invalid_surface_actions_reference"
+                    catalog = json.loads(catalog_bytes)
+                except (OSError, UnicodeError, ValueError):
+                    return [], "invalid_surface_actions_reference"
+                if not isinstance(catalog, Mapping) or catalog.get("run_id") != run_id:
+                    return [], "contamination"
+                normalized["valid_actions"] = catalog.get("valid_actions")
             schema_version = normalized.get("schema_version")
             surface_id = normalized.get("surface_id")
             kind = normalized.get("kind")

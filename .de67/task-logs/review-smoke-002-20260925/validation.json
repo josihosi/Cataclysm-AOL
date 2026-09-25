@@ -1,0 +1,35 @@
+{
+  "method_changed": [
+    "scripts/coordinator_supervisor.py",
+    "scripts/policy_kernel.py",
+    "scripts/worker_library.py",
+    "tests/test_policy_kernel.py"
+  ],
+  "active_ledger_claims": 17,
+  "packets": [
+    {
+      "task": "R-CAOL-CAMP-WAIT-COST-exploration-003",
+      "bytes": 38217,
+      "role_scoped": true,
+      "owner_outcome_preserved": true
+    },
+    {
+      "task": "R-CAOL-DISPATCH-VISIT-exploration-001",
+      "bytes": 36726,
+      "role_scoped": true,
+      "owner_outcome_preserved": true
+    },
+    {
+      "task": "R-CAOL-FIRST-SMOKE-exploration-002",
+      "bytes": 45859,
+      "role_scoped": true,
+      "owner_outcome_preserved": true
+    },
+    {
+      "task": "R-CAOL-FIRST-SMOKE-exploration-004",
+      "bytes": 46258,
+      "role_scoped": true,
+      "owner_outcome_preserved": true
+    }
+  ]
+}

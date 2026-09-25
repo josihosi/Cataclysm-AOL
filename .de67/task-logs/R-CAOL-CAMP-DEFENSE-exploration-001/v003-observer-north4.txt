@@ -1,0 +1,13 @@
+World.
+moved
+avatar.absolute ms: 3895, 873, 0
+R032 Establishment Ally 1 · friendly · offset 3, 3
+blackjack oak: NW
+oak tree: N, NE
+underbrush: W
+long grass: here
+fern: E
+moss: SW
+forest floor: S
+blueberry bush: SE
+6:05:37 AM: Moving onto this long grass is slow!

@@ -1,0 +1,1904 @@
+{
+  "debug_logs" : [
+    "[2026-09-24T14:22:08.352Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))",
+    "[2026-09-24T14:22:08.365Z] VERBOSE [Operation]: Starting operation {app=none, mode=auto, annotate=false, hasAnalyzePrompt=false, operation=see_command, menubar=false}",
+    "[2026-09-24T14:22:08.365Z] VERBOSE [Performance]: Starting timer 'see_command'",
+    "[2026-09-24T14:22:08.380Z] VERBOSE [Capture]: Starting capture and detection phase",
+    "[2026-09-24T14:22:08.381Z] VERBOSE [Capture]: Using desktop observation pipeline {target=window-id:44939}",
+    "[2026-09-24T14:22:08.381Z] VERBOSE [Operation]: Starting operation {mode=window, operation=capture_phase}",
+    "[2026-09-24T14:22:08.381Z] VERBOSE [Performance]: Starting timer 'capture_phase'",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Operation]: Operation completed {operation=capture_phase, success=true, mode=window}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Timer 'capture_phase' completed {duration_ms=5674}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=0, span=state.snapshot}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=0, span=target.resolve}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=264, span=capture.window}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=5252, span=detection.ax}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=17, span=output.write}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=17, span=output.raw.write}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=0, span=snapshot.write}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Performance]: Desktop observation span {duration_ms=5643, span=desktop.observe}",
+    "[2026-09-24T14:22:14.055Z] VERBOSE [Capture]: Capture completed successfully {snapshotId=1790259728380-9470, elementCount=136, screenshotSize=185324}",
+    "[2026-09-24T14:22:14.070Z] DEBUG: Invalidated implicit latest snapshot '1790259728380-9470' after see tool execution"
+  ],
+  "data" : {
+    "window_title" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+    "ui_map" : "\/Users\/josefhorvath\/.peekaboo\/snapshots\/1790259728380-9470\/snapshot.json",
+    "element_count" : 136,
+    "capture_mode" : "window",
+    "application_name" : "cataclysm-tiles",
+    "snapshot_id" : "1790259728380-9470",
+    "screenshot_annotated" : "",
+    "screenshot_raw" : "\/Volumes\/CodexBulk\/Schanigarten\/workspaces\/Cataclysm-AOL\/.userdata\/caol-bulk-item-cost-exploration-001\/B2-quit-prompt.png",
+    "success" : true,
+    "execution_time" : 5.690692901611328,
+    "ui_elements" : [
+      {
+        "role" : "menu",
+        "id" : "menu_2",
+        "bounds" : {
+          "height" : 30,
+          "width" : 34,
+          "x" : 10,
+          "y" : 0
+        },
+        "is_actionable" : true,
+        "label" : "Apple"
+      },
+      {
+        "role" : "menu",
+        "id" : "menu_74",
+        "bounds" : {
+          "width" : 120,
+          "x" : 44,
+          "height" : 30,
+          "y" : 0
+        },
+        "is_actionable" : true,
+        "label" : "cataclysm-tiles"
+      },
+      {
+        "role" : "menu",
+        "id" : "menu_90",
+        "bounds" : {
+          "x" : 164,
+          "height" : 30,
+          "width" : 69,
+          "y" : 0
+        },
+        "is_actionable" : true,
+        "label" : "Window"
+      },
+      {
+        "is_actionable" : false,
+        "label" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "title" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "role" : "other",
+        "bounds" : {
+          "width" : 2560,
+          "height" : 2880,
+          "y" : 0,
+          "x" : 0
+        },
+        "id" : "elem_0",
+        "role_description" : "standard window"
+      },
+      {
+        "role" : "other",
+        "id" : "elem_1",
+        "bounds" : {
+          "width" : 365,
+          "height" : 16,
+          "y" : 8,
+          "x" : 82
+        },
+        "is_actionable" : true,
+        "label" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "role_description" : "text"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_3",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "label" : "Menu Item"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_4",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0
+        },
+        "is_actionable" : true,
+        "title" : "About This Mac",
+        "label" : "About This Mac"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_5",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : true,
+        "title" : "System Information",
+        "label" : "System Information"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_6",
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_7",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "title" : "System Settings…",
+        "label" : "System Settings…"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_8",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "title" : "App Store…, 5 updates",
+        "label" : "App Store…, 5 updates"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_9",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_10",
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "title" : "Recent Items",
+        "label" : "Recent Items"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_11",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : true,
+        "label" : "Menu Item"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_12",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "title" : "Applications",
+        "label" : "Applications"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_13",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "title" : "App Store",
+        "label" : "App Store"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_14",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "title" : "Show “App Store” in Finder",
+        "label" : "Show “App Store” in Finder"
+      },
+      {
+        "role" : "other",
+        "id" : "menuitem_15",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "title" : "Calculator",
+        "label" : "Calculator"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Calculator” in Finder",
+        "label" : "Show “Calculator” in Finder",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_16"
+      },
+      {
+        "role" : "other",
+        "title" : "ChatGPT",
+        "label" : "ChatGPT",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_17"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “ChatGPT” in Finder",
+        "label" : "Show “ChatGPT” in Finder",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_18"
+      },
+      {
+        "role" : "other",
+        "title" : "Codex",
+        "label" : "Codex",
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_19"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Codex” in Finder",
+        "label" : "Show “Codex” in Finder",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_20"
+      },
+      {
+        "role" : "other",
+        "title" : "Codex Storage Check",
+        "label" : "Codex Storage Check",
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_21"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Codex Storage Check” in Finder",
+        "label" : "Show “Codex Storage Check” in Finder",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_22"
+      },
+      {
+        "role" : "other",
+        "title" : "Docker Desktop",
+        "label" : "Docker Desktop",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_23"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Docker Desktop” in Finder",
+        "label" : "Show “Docker Desktop” in Finder",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_24"
+      },
+      {
+        "role" : "other",
+        "title" : "Godot",
+        "label" : "Godot",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_25"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Godot” in Finder",
+        "label" : "Show “Godot” in Finder",
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_26"
+      },
+      {
+        "role" : "other",
+        "title" : "Safari",
+        "label" : "Safari",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_27"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Safari” in Finder",
+        "label" : "Show “Safari” in Finder",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_28"
+      },
+      {
+        "role" : "other",
+        "title" : "System Settings",
+        "label" : "System Settings",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_29"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “System Settings” in Finder",
+        "label" : "Show “System Settings” in Finder",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_30"
+      },
+      {
+        "role" : "other",
+        "title" : "Terminal",
+        "label" : "Terminal",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_31"
+      },
+      {
+        "role" : "other",
+        "title" : "Show “Terminal” in Finder",
+        "label" : "Show “Terminal” in Finder",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_32"
+      },
+      {
+        "role" : "other",
+        "title" : "",
+        "label" : "",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_33"
+      },
+      {
+        "id" : "menuitem_34",
+        "title" : "Documents",
+        "role" : "other",
+        "label" : "Documents",
+        "is_actionable" : false,
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_35",
+        "title" : "caol_keychain_seed.command",
+        "role" : "other",
+        "label" : "caol_keychain_seed.command",
+        "is_actionable" : true,
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_36",
+        "title" : "Show “caol_keychain_seed.command” in Finder",
+        "role" : "other",
+        "label" : "Show “caol_keychain_seed.command” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_37",
+        "title" : "caol_keychain_unlock_and_seed.command",
+        "role" : "other",
+        "label" : "caol_keychain_unlock_and_seed.command",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_38",
+        "title" : "Show “caol_keychain_unlock_and_seed.command” in Finder",
+        "role" : "other",
+        "label" : "Show “caol_keychain_unlock_and_seed.command” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_39",
+        "title" : "de67-populated-preview.html",
+        "role" : "other",
+        "label" : "de67-populated-preview.html",
+        "is_actionable" : true,
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "id" : "menuitem_40",
+        "title" : "Show “de67-populated-preview.html” in Finder",
+        "role" : "other",
+        "label" : "Show “de67-populated-preview.html” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_41",
+        "title" : "echo",
+        "role" : "other",
+        "label" : "echo",
+        "is_actionable" : true,
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_42",
+        "title" : "Show “echo” in Finder",
+        "role" : "other",
+        "label" : "Show “echo” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "width" : 0,
+          "y" : 2880
+        }
+      },
+      {
+        "id" : "menuitem_43",
+        "title" : "herzeigen.docx",
+        "role" : "other",
+        "label" : "herzeigen.docx",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_44",
+        "title" : "Show “herzeigen.docx” in Finder",
+        "role" : "other",
+        "label" : "Show “herzeigen.docx” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_45",
+        "title" : "herzeigen2.docx",
+        "role" : "other",
+        "label" : "herzeigen2.docx",
+        "is_actionable" : true,
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_46",
+        "title" : "Show “herzeigen2.docx” in Finder",
+        "role" : "other",
+        "label" : "Show “herzeigen2.docx” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_47",
+        "title" : "INV-003.docx",
+        "role" : "other",
+        "label" : "INV-003.docx",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "id" : "menuitem_48",
+        "title" : "Show “INV-003.docx” in Finder",
+        "role" : "other",
+        "label" : "Show “INV-003.docx” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_49",
+        "title" : "launch-visible-app-review-fix.command",
+        "role" : "other",
+        "label" : "launch-visible-app-review-fix.command",
+        "is_actionable" : true,
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        }
+      },
+      {
+        "id" : "menuitem_50",
+        "title" : "Show “launch-visible-app-review-fix.command” in Finder",
+        "role" : "other",
+        "label" : "Show “launch-visible-app-review-fix.command” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "id" : "menuitem_51",
+        "title" : "live-dashboard-fixture.html",
+        "role" : "other",
+        "label" : "live-dashboard-fixture.html",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "title" : "Show “live-dashboard-fixture.html” in Finder",
+        "id" : "menuitem_52",
+        "role" : "other",
+        "label" : "Show “live-dashboard-fixture.html” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "title" : "sleep",
+        "id" : "menuitem_53",
+        "role" : "other",
+        "label" : "sleep",
+        "is_actionable" : true,
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        }
+      },
+      {
+        "title" : "Show “sleep” in Finder",
+        "id" : "menuitem_54",
+        "role" : "other",
+        "label" : "Show “sleep” in Finder",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0,
+          "width" : 0
+        }
+      },
+      {
+        "title" : "",
+        "id" : "menuitem_55",
+        "role" : "other",
+        "label" : "",
+        "is_actionable" : false,
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880
+        }
+      },
+      {
+        "title" : "Servers",
+        "id" : "menuitem_56",
+        "role" : "other",
+        "label" : "Servers",
+        "is_actionable" : false,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Macintosh HD",
+        "id" : "menuitem_57",
+        "role" : "other",
+        "label" : "Macintosh HD",
+        "is_actionable" : true,
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "",
+        "id" : "menuitem_58",
+        "role" : "other",
+        "label" : "",
+        "is_actionable" : false,
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Clear Menu",
+        "id" : "menuitem_59",
+        "role" : "other",
+        "label" : "Clear Menu",
+        "is_actionable" : true,
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "y" : 2880,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "",
+        "id" : "menuitem_60",
+        "role" : "other",
+        "label" : "",
+        "is_actionable" : false,
+        "bounds" : {
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0
+        }
+      },
+      {
+        "is_actionable" : true,
+        "label" : "Force Quit…",
+        "title" : "Force Quit…",
+        "role" : "other",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "id" : "menuitem_61",
+        "keyboard_shortcut" : "⎋"
+      },
+      {
+        "is_actionable" : true,
+        "label" : "Force Quit cataclysm-tiles",
+        "title" : "Force Quit cataclysm-tiles",
+        "role" : "other",
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        },
+        "id" : "menuitem_62",
+        "keyboard_shortcut" : "⎋"
+      },
+      {
+        "title" : "",
+        "id" : "menuitem_63",
+        "role" : "other",
+        "label" : "",
+        "is_actionable" : false,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Sleep",
+        "id" : "menuitem_64",
+        "role" : "other",
+        "label" : "Sleep",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Restart…",
+        "id" : "menuitem_65",
+        "role" : "other",
+        "label" : "Restart…",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Restart",
+        "id" : "menuitem_66",
+        "role" : "other",
+        "label" : "Restart",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Shut Down…",
+        "id" : "menuitem_67",
+        "role" : "other",
+        "label" : "Shut Down…",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0,
+          "height" : 0
+        }
+      },
+      {
+        "title" : "Shut Down",
+        "id" : "menuitem_68",
+        "role" : "other",
+        "label" : "Shut Down",
+        "is_actionable" : true,
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        }
+      },
+      {
+        "title" : "",
+        "id" : "menuitem_69",
+        "role" : "other",
+        "label" : "",
+        "is_actionable" : false,
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        }
+      },
+      {
+        "is_actionable" : true,
+        "label" : "Lock Screen",
+        "title" : "Lock Screen",
+        "role" : "other",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "id" : "menuitem_70",
+        "keyboard_shortcut" : "Q"
+      },
+      {
+        "is_actionable" : true,
+        "label" : "Log Out Josef Horvath…",
+        "title" : "Log Out Josef Horvath…",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "role" : "other",
+        "id" : "menuitem_71",
+        "keyboard_shortcut" : "Q"
+      },
+      {
+        "is_actionable" : true,
+        "label" : "Log Out Josef Horvath",
+        "title" : "Log Out Josef Horvath",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "role" : "other",
+        "id" : "menuitem_72",
+        "keyboard_shortcut" : "Q"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_73",
+        "role" : "other",
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0,
+          "height" : 0
+        },
+        "id" : "menuitem_75",
+        "role" : "other",
+        "is_actionable" : true,
+        "label" : "Menu Item"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_76",
+        "role" : "other",
+        "title" : "About cataclysm-tiles",
+        "label" : "About cataclysm-tiles"
+      },
+      {
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_77",
+        "role" : "other",
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "is_actionable" : false,
+        "label" : "Settings…",
+        "title" : "Settings…",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0
+        },
+        "role" : "other",
+        "id" : "menuitem_78",
+        "keyboard_shortcut" : ","
+      },
+      {
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_79",
+        "role" : "other",
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_80",
+        "role" : "other",
+        "title" : "Services",
+        "label" : "Services"
+      },
+      {
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_81",
+        "role" : "other",
+        "is_actionable" : true,
+        "label" : "Menu Item"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_82",
+        "role" : "other",
+        "title" : "No Services Apply",
+        "label" : "No Services Apply"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0
+        },
+        "is_actionable" : true,
+        "id" : "menuitem_83",
+        "role" : "other",
+        "title" : "Services Settings…",
+        "label" : "Services Settings…"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_84",
+        "role" : "other",
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "is_actionable" : false,
+        "label" : "Hide cataclysm-tiles",
+        "title" : "Hide cataclysm-tiles",
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "role" : "other",
+        "id" : "menuitem_85",
+        "keyboard_shortcut" : "H"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : true,
+        "keyboard_shortcut" : "H",
+        "title" : "Hide Others",
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "id" : "menuitem_86",
+        "label" : "Hide Others"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_87",
+        "role" : "other",
+        "title" : "Show All",
+        "label" : "Show All"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "id" : "menuitem_88",
+        "role" : "other",
+        "title" : "",
+        "label" : ""
+      },
+      {
+        "role" : "other",
+        "is_actionable" : true,
+        "keyboard_shortcut" : "Q",
+        "title" : "Quit cataclysm-tiles",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_89",
+        "label" : "Quit cataclysm-tiles"
+      },
+      {
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_91",
+        "role" : "other",
+        "is_actionable" : true,
+        "label" : "Menu Item"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : true,
+        "keyboard_shortcut" : "W",
+        "title" : "Close",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "id" : "menuitem_92",
+        "label" : "Close"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : true,
+        "keyboard_shortcut" : "W",
+        "title" : "Close All",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "id" : "menuitem_93",
+        "label" : "Close All"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : false,
+        "keyboard_shortcut" : "M",
+        "title" : "Minimize",
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        },
+        "id" : "menuitem_94",
+        "label" : "Minimize"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : false,
+        "keyboard_shortcut" : "M",
+        "title" : "Minimize All",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "id" : "menuitem_95",
+        "label" : "Minimize All"
+      },
+      {
+        "title" : "Zoom",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_96",
+        "label" : "Zoom"
+      },
+      {
+        "title" : "Zoom All",
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_97",
+        "label" : "Zoom All"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : false,
+        "keyboard_shortcut" : "F",
+        "title" : "Fill",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_98",
+        "label" : "Fill"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : false,
+        "keyboard_shortcut" : "C",
+        "title" : "Center",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_99",
+        "label" : "Center"
+      },
+      {
+        "title" : "",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_100",
+        "label" : ""
+      },
+      {
+        "title" : "Move & Resize",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0
+        },
+        "is_actionable" : true,
+        "role" : "other",
+        "id" : "menuitem_101",
+        "label" : "Move & Resize"
+      },
+      {
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "role" : "other",
+        "id" : "menuitem_102",
+        "label" : "Menu Item"
+      },
+      {
+        "title" : "Halves",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_103",
+        "label" : "Halves"
+      },
+      {
+        "title" : "Left",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_104",
+        "label" : "Left"
+      },
+      {
+        "title" : "Right",
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_105",
+        "label" : "Right"
+      },
+      {
+        "title" : "Top",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_106",
+        "label" : "Top"
+      },
+      {
+        "title" : "Bottom",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_107",
+        "label" : "Bottom"
+      },
+      {
+        "title" : "",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_108",
+        "label" : ""
+      },
+      {
+        "title" : "Quarters",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_109",
+        "label" : "Quarters"
+      },
+      {
+        "title" : "Top Left",
+        "bounds" : {
+          "width" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_110",
+        "label" : "Top Left"
+      },
+      {
+        "title" : "Top Right",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_111",
+        "label" : "Top Right"
+      },
+      {
+        "title" : "Bottom Left",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_112",
+        "label" : "Bottom Left"
+      },
+      {
+        "title" : "Bottom Right",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_113",
+        "label" : "Bottom Right"
+      },
+      {
+        "title" : "",
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_114",
+        "label" : ""
+      },
+      {
+        "title" : "Arrange",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "id" : "menuitem_115",
+        "label" : "Arrange"
+      },
+      {
+        "label" : "Left & Right",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Left & Right",
+        "id" : "menuitem_116"
+      },
+      {
+        "label" : "Left & Quarters",
+        "bounds" : {
+          "width" : 0,
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Left & Quarters",
+        "id" : "menuitem_117"
+      },
+      {
+        "label" : "Right & Left",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Right & Left",
+        "id" : "menuitem_118"
+      },
+      {
+        "label" : "Right & Quarters",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "width" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Right & Quarters",
+        "id" : "menuitem_119"
+      },
+      {
+        "label" : "Top & Bottom",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Top & Bottom",
+        "id" : "menuitem_120"
+      },
+      {
+        "label" : "Top & Quarters",
+        "bounds" : {
+          "width" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Top & Quarters",
+        "id" : "menuitem_121"
+      },
+      {
+        "label" : "Bottom & Top",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Bottom & Top",
+        "id" : "menuitem_122"
+      },
+      {
+        "label" : "Bottom & Quarters",
+        "bounds" : {
+          "x" : 0,
+          "width" : 0,
+          "height" : 0,
+          "y" : 2880
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Bottom & Quarters",
+        "id" : "menuitem_123"
+      },
+      {
+        "label" : "Quarters",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Quarters",
+        "id" : "menuitem_124"
+      },
+      {
+        "label" : "",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "",
+        "id" : "menuitem_125"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : false,
+        "keyboard_shortcut" : "R",
+        "title" : "Return to Previous Size",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0
+        },
+        "id" : "menuitem_126",
+        "label" : "Return to Previous Size"
+      },
+      {
+        "label" : "Full Screen Tile",
+        "bounds" : {
+          "x" : 0,
+          "y" : 2880,
+          "height" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "role" : "other",
+        "title" : "Full Screen Tile",
+        "id" : "menuitem_127"
+      },
+      {
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "role" : "other",
+        "label" : "Menu Item",
+        "id" : "menuitem_128"
+      },
+      {
+        "label" : "Left of Screen",
+        "bounds" : {
+          "y" : 2880,
+          "width" : 0,
+          "height" : 0,
+          "x" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Left of Screen",
+        "id" : "menuitem_129"
+      },
+      {
+        "label" : "Right of Screen",
+        "bounds" : {
+          "height" : 0,
+          "y" : 2880,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Right of Screen",
+        "id" : "menuitem_130"
+      },
+      {
+        "label" : "",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "",
+        "id" : "menuitem_131"
+      },
+      {
+        "label" : "Remove Window from Set",
+        "bounds" : {
+          "y" : 2880,
+          "height" : 0,
+          "x" : 0,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : "Remove Window from Set",
+        "id" : "menuitem_132"
+      },
+      {
+        "role" : "other",
+        "is_actionable" : true,
+        "keyboard_shortcut" : "F",
+        "title" : "Exit Full Screen",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "width" : 0,
+          "y" : 2880
+        },
+        "id" : "menuitem_133",
+        "label" : "Exit Full Screen"
+      },
+      {
+        "label" : "",
+        "id" : "menuitem_134",
+        "bounds" : {
+          "x" : 0,
+          "height" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : false,
+        "role" : "other",
+        "title" : ""
+      },
+      {
+        "label" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "id" : "menuitem_135",
+        "bounds" : {
+          "height" : 0,
+          "x" : 0,
+          "y" : 2880,
+          "width" : 0
+        },
+        "is_actionable" : true,
+        "role" : "other",
+        "title" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+      }
+    ],
+    "interactable_count" : 79,
+    "observation" : {
+      "target" : {
+        "requested_kind" : "window-id",
+        "window_id" : 44939,
+        "hints" : [
+
+        ],
+        "open_if_needed" : false,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            2880
+          ]
+        ],
+        "resolved_kind" : "window-id",
+        "source" : "window-id"
+      },
+      "warnings" : [
+
+      ],
+      "state_snapshot" : {
+        "window_count" : 0,
+        "display_count" : 0,
+        "running_application_count" : 0
+      },
+      "spans" : [
+        {
+          "metadata" : {
+
+          },
+          "name" : "state.snapshot",
+          "duration_ms" : 0.002292
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "target.resolve",
+          "duration_ms" : 0.494
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "capture.window",
+          "duration_ms" : 263.857792
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "detection.ax",
+          "duration_ms" : 5251.532791
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "output.write",
+          "duration_ms" : 17.355042
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "output.raw.write",
+          "duration_ms" : 17.0355
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "snapshot.write",
+          "duration_ms" : 0.307958
+        },
+        {
+          "metadata" : {
+
+          },
+          "name" : "desktop.observe",
+          "duration_ms" : 5643.418833
+        }
+      ]
+    },
+    "is_dialog" : false
+  },
+  "success" : true
+}

@@ -1516,7 +1516,19 @@ def subprocess_output_text(value: Any) -> str:
 
 def peekaboo_binary() -> str:
     configured = os.environ.get(PEEKABOO_BINARY_ENV, "").strip()
-    return configured or shutil.which("peekaboo") or "peekaboo"
+    return configured or harness_tool_binary("peekaboo") or "peekaboo"
+
+
+def harness_tool_binary(name: str) -> Optional[str]:
+    """Resolve installed tools even when a Mac worker has a minimal PATH."""
+    resolved = shutil.which(name)
+    if resolved or sys.platform != "darwin":
+        return resolved
+    for directory in ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/usr/sbin"):
+        candidate = Path(directory) / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
 
 
 def peekaboo_command(args: Sequence[str], *, channel: str) -> List[str]:
@@ -2571,8 +2583,20 @@ def apply_option_overrides_to_file(path: Path, overrides: Dict[str, str]) -> Dic
     return {"path": str(path), "applied": applied}
 
 
-def apply_profile_option_overrides(profile: str, overrides: Dict[str, str]) -> Dict[str, Any]:
-    return apply_option_overrides_to_file(config_dir_for_profile(profile) / "options.json", overrides)
+def apply_profile_option_overrides(profile: str, overrides: Dict[str, str], *,
+                                   config_profile: str = "") -> Dict[str, Any]:
+    path = config_dir_for_profile(profile) / "options.json"
+    if not path.exists():
+        # Dedicated scenario profiles may contain only an installed save. Seed
+        # their game options before applying scenario overrides, without changing
+        # an existing profile or the shared configuration source.
+        source = config_dir_for_profile(config_profile or profile) / "options.json"
+        if not source.is_file():
+            source = (profile_snapshots_root() / "live-debug" /
+                      "mcwilliams_live_debug_2026-04-07" / "config" / "options.json")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, path)
+    return apply_option_overrides_to_file(path, overrides)
 
 
 def resolve_configured_python_command(
@@ -2890,11 +2914,7 @@ def provision_llm_api_key_environment(
     environment is never mutated.
     """
 
-    if not llm_api_mode_enabled(options):
-        return {"status": "not_required", "source": "", "env_var": ""}, {}
-    env_name = options.get("LLM_INTENT_API_KEY_ENV", "").strip()
-    if not env_name:
-        return {"status": "missing_env_name", "source": "", "env_var": ""}, {}
+    env_name = options.get("LLM_INTENT_API_KEY_ENV", "").strip() or "CATA_API_KEY"
     configured_secret = os.environ.get(env_name, "")
     if configured_secret:
         return {
@@ -2915,6 +2935,20 @@ def provision_llm_api_key_environment(
                 }, {env_name: fallback_secret}
 
     secret, source = read_secure_llm_credential(env_name)
+    if not secret and sys.platform == "darwin":
+        # SSH and desktop workers need not inherit the user's login environment.
+        # Capture privately: neither shell startup output nor the key is logged.
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", env_name):
+            try:
+                result = subprocess.run(
+                    ["/bin/zsh", "-lic", f"printf '\\0'; /usr/bin/printenv {env_name}"],
+                    capture_output=True, text=True, check=False, timeout=10,
+                )
+                if result.returncode == 0 and "\0" in result.stdout:
+                    secret = result.stdout.split("\0", 1)[1].rstrip("\r\n")
+                    source = "login_environment"
+            except (OSError, subprocess.TimeoutExpired):
+                pass
     if secret:
         return {
             "status": "ready",
@@ -3302,8 +3336,7 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 def write_json(path: Path, data: Dict[str, Any]) -> None:
     ensure_dir(path.parent)
     if find_archive(data) is not None:
-        write_json_stream(path, data, exclusive=False)
-        write_report_reference(path, data)
+        write_report_reference(path, data, compact=True)
     else:
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         path.with_suffix(".ref.json").unlink(missing_ok=True)
@@ -3717,13 +3750,13 @@ def register_terminal_native_input(pid: int, endpoint: str, run_id: str, run_dir
     TERMINAL_NATIVE_INPUTS[pid] = {"endpoint": endpoint, "run_id": run_id, "run_dir": str(run_dir)}
 
 
-def terminal_native_press_sequence(pid: int, keys: List[str]) -> Dict[str, Any]:
+def terminal_native_press_sequence(pid: int, keys: List[str], delay_ms: int = 0) -> Dict[str, Any]:
     owner = TERMINAL_NATIVE_INPUTS.get(pid)
     if owner is None:
         raise RuntimeError("terminal-native input owner is not registered")
     normalized = [normalize_peekaboo_key(key) for key in keys]
     receipt = dispatch_terminal_input(Path(owner["endpoint"]), run_id=owner["run_id"], pid=pid,
-                                     keys=normalized)
+                                     keys=normalized, delay_ms=delay_ms)
     receipt["input_owner"] = "run_bound_pty"
     write_json(Path(owner["run_dir"]) / f"terminal.input.{receipt['request_id']}.receipt.json", receipt)
     return receipt
@@ -3836,7 +3869,7 @@ def peekaboo_press_sequence(
     if not keys:
         return
     if pid in TERMINAL_NATIVE_INPUTS:
-        return terminal_native_press_sequence(pid, keys)
+        return terminal_native_press_sequence(pid, keys, delay_ms=delay_ms)
     if focus_once:
         normalized = [normalize_peekaboo_key(raw_key) for raw_key in keys]
         if all(key == "." for key in normalized):
@@ -3913,9 +3946,12 @@ def peekaboo_press_sequence(
     flush_special_key_buffer()
 
 
-def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20, *, focus_pid: bool = True) -> None:
+def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20, *, focus_pid: bool = True) -> Optional[Dict[str, Any]]:
     if not text:
         return
+    if pid in TERMINAL_NATIVE_INPUTS:
+        whitespace = {" ": "space", "\t": "tab", "\n": "enter", "\r": "enter"}
+        return terminal_native_press_sequence(pid, [whitespace.get(char, char) for char in text], delay_ms=delay_ms)
     max_chunk_len = 20
     for start in range(0, len(text), max_chunk_len):
         chunk = text[start:start + max_chunk_len]
@@ -5093,8 +5129,34 @@ def refresh_semantic_step_trace(
         descriptor = next((event for event in reversed(selected_events)
                            if event.get("event") == "surface_descriptor"), None)
         receipt = next((event for event in reversed(selected_events)
-                        if event.get("event") == "receipt"), None)
+                        if event.get("event") in {"receipt", "surface_receipt"}), None)
         selected = encode([event for event in (receipt, descriptor) if event is not None])
+    if len(selected) > SEMANTIC_STEP_MAX_BYTES:
+        # A large native inventory can legitimately advertise thousands of
+        # item actions.  Keep every action in a content-addressed run artifact;
+        # the channel reader restores it before validating or exposing controls.
+        # This bounds the transport, not the set of usable native actions.
+        compact_events = []
+        for event in (receipt, descriptor):
+            if event is None:
+                continue
+            event = dict(event)
+            actions = event.get("valid_actions")
+            if event.get("event") == "surface_descriptor" and isinstance(actions, list):
+                catalog = {
+                    "run_id": event.get("run_id"), "valid_actions": actions,
+                }
+                body = json.dumps(catalog, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+                digest = hashlib.sha256(body).hexdigest()
+                catalog_path = run_dir / ("semantic.actions." + digest + ".json")
+                if not catalog_path.exists():
+                    catalog_path.write_bytes(body)
+                event["valid_actions"] = []
+                event["valid_actions_ref"] = {
+                    "path": catalog_path.name, "sha256": digest, "bytes": len(body),
+                }
+            compact_events.append(event)
+        selected = encode(compact_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
         raise ValueError("semantic events exceed the bounded run channel")
     owned = run_dir / "semantic.native.log"
@@ -5282,6 +5344,7 @@ def current_semantic_step_frame(
                     "provenance": "native_wait_duration_receipt",
                     "resolved_action": str(receipt.get("action_id", "")),
                     "game_minutes": waiting.get("game_minutes"),
+                    **{key: waiting[key] for key in ("observed_turn", "observation") if key in waiting},
                     "_event_offset": waiting.get("_event_offset", -1),
                     "_kind": "wait_activity",
                 }
@@ -5396,6 +5459,7 @@ def current_semantic_step_frame(
                     "state": "world",
                     "_event_offset": native.get("_event_offset", -1),
                     "paired_raw_frame_id": raw_frame_id,
+                    "paired_raw_state": "world",
                     "paired_raw_event_offset": native.get("_event_offset", -1),
                 })
                 native = paired
@@ -6210,10 +6274,11 @@ def finalize_cockpit_live_session(
         }
     payload = {**dict( report ), "cleanup": cleanup}
     ensure_dir( final_path.parent )
-    exported = write_json_stream(final_path, payload)
     transcript = payload.get("action_observation_sequence")
     if isinstance(transcript, ArchiveSequence):
-        write_json_stream(final_path.with_suffix(".ref.json"), transcript.archive.wire(payload, exported=exported))
+        write_report_reference(final_path, payload, compact=True)
+    else:
+        write_json_stream(final_path, payload)
     return {
         "cleanup": cleanup,
         "final_report_ref": final_path.name,
@@ -17467,6 +17532,15 @@ def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]
     raise SystemExit(f"Unsupported artifact source: {source}")
 
 
+def write_artifact_log(destination: Path, text: str, existing: Path) -> Path:
+    """Reuse an identical captured log rather than store another full copy."""
+    data = text.encode("utf-8")
+    if existing.is_file() and existing.stat().st_size == len(data) and existing.read_bytes() == data:
+        return existing
+    destination.write_bytes(data)
+    return destination
+
+
 def capture_debug_delta(
     profile: str,
     start_size: int,
@@ -18230,7 +18304,7 @@ def run_screen_ocr(image_path: Path) -> Dict[str, Any]:
             "image_path": str(image_path),
         }
 
-    swift_cmd = shutil.which("swift")
+    swift_cmd = harness_tool_binary("swift")
     if not swift_cmd:
         return {
             "ok": False,
@@ -18655,6 +18729,12 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
     while index < len(raw):
         character = raw[index]
         if character == "\x1b" and index + 1 < len(raw):
+            if raw[index + 1] in "()*+-./":
+                # Character-set designation consumes its final byte too.
+                # Printing the 0/B from ESC(0 / ESC(B shifts every cell and
+                # can hide the actual current trade balance or modal text.
+                index = min(len(raw), index + 3)
+                continue
             if raw[index + 1] == "[":
                 end = index + 2
                 while end < len(raw) and not ("@" <= raw[end] <= "~"):
@@ -18669,14 +18749,19 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
                     row = max(0, (values[0] if values and values[0] else 1) - 1)
                     col = max(0, (values[1] if len(values) > 1 and values[1] else 1) - 1)
                 elif command == "A": row = max(0, row - first)
-                elif command == "B": row = min(rows - 1, row + first)
-                elif command == "C": col = min(columns - 1, col + first)
+                elif command in "Be": row = min(rows - 1, row + first)
+                elif command in "Ca": col = min(columns - 1, col + first)
                 elif command == "D": col = max(0, col - first)
-                elif command == "G": col = max(0, first - 1)
+                elif command in "G`": col = min(columns - 1, max(0, first - 1))
+                elif command == "d": row = min(rows - 1, max(0, first - 1))
                 elif command == "J" and (not values or values[0] in {0, 2, 3}):
                     screen = [[" "] * columns for _ in range(rows)]
                 elif command == "K":
-                    for cursor in range(col, columns): screen[row][cursor] = " "
+                    mode = values[0] if values else 0
+                    start, stop = (0, col + 1) if mode == 1 else (0, columns) if mode == 2 else (col, columns)
+                    for cursor in range(start, stop): screen[row][cursor] = " "
+                elif command == "X":
+                    for cursor in range(col, min(columns, col + first)): screen[row][cursor] = " "
                 index = end + 1
                 continue
             if raw[index + 1] == "]":
@@ -19703,17 +19788,21 @@ def initial_hud_world_frame_counts(
         effective_offset = semantic_step_effective_source_offset(source, trace_offset)
         with source.open("rb") as handle:
             handle.seek(effective_offset)
-            body = handle.read(SEMANTIC_STEP_MAX_BYTES + 1)
+            body = handle.read(SEMANTIC_STEP_MAX_BYTES * SEMANTIC_STEP_MAX_EVENTS + 1)
     except OSError:
         return 0, 0
-    if len(body) > SEMANTIC_STEP_MAX_BYTES:
+    if len(body) > SEMANTIC_STEP_MAX_BYTES * SEMANTIC_STEP_MAX_EVENTS:
         return 0, 0
     matching = 0
     foreign = 0
+    event_count = 0
     for raw_line in body.splitlines():
         marker = raw_line.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
         if marker < 0:
             continue
+        event_count += 1
+        if len(raw_line) > SEMANTIC_STEP_MAX_BYTES or event_count > SEMANTIC_STEP_MAX_EVENTS:
+            return 0, 0
         try:
             event = decode_semantic_step_event(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
         except (TypeError, ValueError, json.JSONDecodeError):
@@ -19742,20 +19831,28 @@ def first_initial_hud_world_frame_after_boundary(
         effective_offset = semantic_step_effective_source_offset(source, trace_offset)
         with source.open("rb") as handle:
             handle.seek(effective_offset)
-            body = handle.read(SEMANTIC_STEP_MAX_BYTES + 1)
+            # A launch can emit several individually bounded frames/surfaces.
+            # Bound the trace slice independently from the per-event cap.
+            body = handle.read(SEMANTIC_STEP_MAX_BYTES * SEMANTIC_STEP_MAX_EVENTS + 1)
     except OSError as exc:
         raise ValueError("initial HUD frame trace is unavailable") from exc
-    if len(body) > SEMANTIC_STEP_MAX_BYTES:
-        raise ValueError("initial HUD frame trace exceeds the semantic trace limit")
+    if len(body) > SEMANTIC_STEP_MAX_BYTES * SEMANTIC_STEP_MAX_EVENTS:
+        raise ValueError("initial HUD frame trace exceeds the bounded trace slice")
 
     candidate: Dict[str, Any] | None = None
     matching = 0
     foreign = 0
     mismatched_producer = 0
+    event_count = 0
     cursor = 0
     for raw_line in body.splitlines(keepends=True):
         marker = raw_line.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
         if marker >= 0:
+            if len(raw_line) > SEMANTIC_STEP_MAX_BYTES:
+                raise ValueError("initial HUD frame event exceeds the semantic event limit")
+            event_count += 1
+            if event_count > SEMANTIC_STEP_MAX_EVENTS:
+                raise ValueError("initial HUD frame trace exceeds the semantic event count")
             try:
                 event = decode_semantic_step_event(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -20388,6 +20485,8 @@ def execute_semantic_terminal_wait_until(
     trace_start_offset: int, pid: int,
 ) -> Dict[str, Any]:
     """Advance bounded native duration windows, retaining each live operation snapshot."""
+    from cockpit import CockpitRunChannel
+
     action_chain = [str(item).strip() for item in step.get("required_action_chain", [])
                     if str(item).strip()]
     stop_action = str(step.get("stop_when_advertised_action", "") or "").strip()
@@ -20433,13 +20532,50 @@ def execute_semantic_terminal_wait_until(
                         "session_id": session_id, "session_identity_source": identity_source}
         deadline = time.monotonic() + timeout
         frame = {}
+        handled_frames: Set[str] = set()
         while time.monotonic() <= deadline:
             frame = current_semantic_step_frame(profile=profile, run_dir=run_dir, run_id=run_id,
                                                 start_offset=trace_start_offset)
             if semantic_frame_dispatch(frame, stop_action) is not None or \
                     str(frame.get("state", frame.get("kind", ""))) == "world":
                 break
+            # Use the same advertised interruption choices as play wait.
+            # A duration is still running here: sending the ordinary applying
+            # turn into its prompt would interrupt it rather than advance it.
+            choice = (CockpitRunChannel._semantic_damage_ignore_choice(frame) or
+                      CockpitRunChannel._semantic_activity_ignore_choice(frame))
+            if choice is not None and str(frame.get("frame_id", "")) not in handled_frames:
+                handled_frames.add(str(frame.get("frame_id", "")))
+                receipt = execute_semantic_act(
+                    run_dir=run_dir, profile=profile, run_id=run_id,
+                    trace_start_offset=trace_start_offset, pid=pid, session_id=session_id,
+                    frame_id=str(frame["frame_id"]), action_id=choice[0], stable_id=choice[1],
+                    transition_timeout_seconds=timeout, observe_interval_seconds=interval,
+                    observed_frame=frame,
+                )
+                receipts.append(receipt)
+                if receipt.get("accepted") is not True:
+                    native = receipt.get("native_receipt", {})
+                    if isinstance(native, Mapping) and native.get("accepted") is False and \
+                            native.get("rejection_reason") in {"wrong_surface", "stale_frame"} and \
+                            native.get("run_id") == native.get("requested_run_id") == run_id and \
+                            native.get("requested_frame_id") == frame.get("frame_id") and \
+                            native.get("requested_surface_id") == frame.get("surface_id") and \
+                            native.get("action_id") == choice[0]:
+                        # The generic activity descriptor can be replaced by
+                        # its concrete prompt before input is consumed. The
+                        # native rejection proves no action ran. Reobserve;
+                        # handled_frames prevents resending that stale request.
+                        continue
+                    return {"status": "blocked_semantic_duration_receipt_rejected", "receipts": receipts,
+                            "boundaries": boundaries, "required_action": choice[0],
+                            "session_id": session_id, "session_identity_source": identity_source}
             time.sleep(interval)
+        if semantic_frame_dispatch(frame, stop_action) is None and \
+                str(frame.get("state", frame.get("kind", ""))) != "world":
+            return {"status": "blocked_semantic_duration_incomplete", "receipts": receipts,
+                    "boundaries": boundaries, "session_id": session_id,
+                    "session_identity_source": identity_source}
         duration_snapshot = semantic_live_hostile_operation_snapshot(frame)
         boundary = {"window": window + 1, "frame_id": str(frame.get("frame_id", "")),
                     "game_minutes": frame.get("game_minutes"),
@@ -20890,12 +21026,14 @@ def cockpit_live_session_step_verdict(
             ).strip() ):
         failures.append( "cockpit_target_receipt_not_bound_to_run_and_step" )
     transcript = final.get( "action_observation_sequence" )
-    if not is_sequence( transcript ) or not any(
+    observation_only = (descriptor.get("live_operations") == [] and
+                        "no gameplay input" in descriptor.get("invariants", []))
+    if not is_sequence( transcript ) or (not observation_only and not any(
             isinstance( entry, Mapping ) and entry.get( "kind" ) == "action" and
             isinstance( entry.get( "result" ), Mapping ) and entry["result"].get( "ok" ) is True
-            for entry in transcript ) or sum(
+            for entry in transcript )) or sum(
                 isinstance( entry, Mapping ) and entry.get( "kind" ) == "observation"
-                for entry in transcript ) < 2:
+                for entry in transcript ) < (1 if observation_only else 2):
         failures.append( "cockpit_transaction_incomplete" )
     if not isinstance( watermark, Mapping ) or str( watermark.get( "run_id", "" ) ).strip() != descriptor_run_id or \
             str( watermark.get( "step_label", "" ) ).strip() != label or watermark.get( "step_index" ) != index:
@@ -21284,7 +21422,7 @@ def render_blink_compare(
 ) -> Dict[str, Any]:
     frame_paths = [(run_dir / str(name)).resolve() for name in frame_names]
     missing_inputs = [str(path) for path in frame_paths if not path.exists()]
-    ffmpeg_path = shutil.which("ffmpeg")
+    ffmpeg_path = harness_tool_binary("ffmpeg")
     output_path = run_dir / f"{label}.gif"
     concat_path = run_dir / f"{label}.ffconcat"
     report: Dict[str, Any] = {
@@ -22288,12 +22426,19 @@ def game_child_environment(profile: str) -> Dict[str, str]:
     if provision["status"] in {"missing", "missing_env_name"}:
         env_name = provision["env_var"] or "LLM_INTENT_API_KEY_ENV"
         raise RuntimeError(
-            "API LLM is enabled, but its credential is unavailable "
+            "Harness API credential is unavailable "
             f"({env_name}; status={provision['status']}; source={provision['source'] or 'none'}). "
             "Store it with the harness before launching."
         )
     env = os.environ.copy()
     env.update(child_overlay)
+    # Native setup keystrokes require the same controls in every harness profile,
+    # including profiles restored from older snapshots or created from scratch.
+    controls = profile_snapshots_root() / "live-debug" / "mcwilliams_live_debug_2026-04-07" / "config" / "keybindings.json"
+    target = config_dir_for_profile(profile) / "keybindings.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.exists() or target.read_bytes() != controls.read_bytes():
+        shutil.copyfile(controls, target)
     env["OPENCLAW_HARNESS_UI_TRACE"] = "1"
     return env
 
@@ -22892,37 +23037,37 @@ def launch_game(
         return process
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
-    # Tiles polls the native request transport from its own input loop.  Bind
-    # the same anonymous wake-pipe contract as the curses route so a cockpit
-    # request has one run-owned delivery binding regardless of renderer.
-    # Tiles does not turn the byte into input; it remains a wake-only transport
-    # record and the native semantic owner remains the sole request consumer.
+    # Tiles polls the native request transport from its own input loop.  POSIX
+    # also binds a wake FIFO; Windows uses the run-owned JSONL request path.
     read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
     env.update(wake_environment)
     # The semantic cockpit addresses this child after the short-lived startup
     # command returns.  Give Tiles the same independent session ownership as
     # the PTY route so launcher teardown cannot turn a live semantic request
     # into ESRCH.
+    wake_fds = {"pass_fds": (read_fd,)} if read_fd >= 0 else {}
     try:
         process = subprocess.Popen(
             cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log,
-            text=True, env=env, start_new_session=True, pass_fds=(read_fd,),
+            text=True, env=env, start_new_session=True, **wake_fds,
         )
         record_bridge_game_process(process, env)
     except BaseException:
-        os.close(read_fd)
+        if read_fd >= 0:
+            os.close(read_fd)
         if write_fd >= 0:
             os.close(write_fd)
         stdout_log.close()
         stderr_log.close()
         raise
-    os.close(read_fd)
+    if read_fd >= 0:
+        os.close(read_fd)
     wake_key = (str(run_dir.resolve()), binding["run_id"])
     append_semantic_wake_observation(run_dir, {
         "schema": "caol-semantic-wake-observation-v1",
         "event": "writer_bound",
         "run_id": binding["run_id"],
-        "transport": "named_fifo",
+        "transport": "named_fifo" if read_fd >= 0 else "jsonl_poll",
         "pid": process.pid,
         "writer_pid": None,
     })
@@ -27385,10 +27530,55 @@ def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform:
     end_offset = [int(value) for value in transform.get("end_offset_ms", [3, 1, 0])]
     start = [int(player_location[i]) + start_offset[i] for i in range(3)]
     end = [int(player_location[i]) + end_offset[i] for i in range(3)]
+    stem = player_zone_file_stem(player_save_name)
+    zone_paths = [world_dir / f"{stem}.zones.json"]
+    if bool(transform.get("write_temp", True)):
+        zone_paths.append(world_dir / f"{stem}.zoneszmgr-temp.json")
+    if bool(transform.get("write_global", False)):
+        zone_paths.append(world_dir / "zones.json")
+        if bool(transform.get("write_temp", True)):
+            zone_paths.append(world_dir / "zoneszmgr-temp.json")
+    # Zone identities persist in save data, while zone_data::new_identity() is
+    # process-local.  A fixture zone without an identity can therefore be
+    # assigned an ID already held by an older saved zone (for example zone-7).
+    # Give transformed zones a deterministic opaque identity that is unique in
+    # every zone file this transform writes, and reuse it across those files.
+    existing_identities: set[str] = set()
+    for zone_path in dict.fromkeys(zone_paths):
+        if not zone_path.exists():
+            continue
+        loaded = json.loads(zone_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list):
+            raise SystemExit(f"Fixture source-firewood zone transform expected zone list: {zone_path}")
+        existing_identities.update(
+            str(entry["identity"])
+            for entry in loaded
+            if isinstance(entry, dict) and isinstance(entry.get("identity"), str) and entry["identity"]
+        )
+    identity_seed = {
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "name": str(transform.get("name", "OpenClaw fuel source") or "OpenClaw fuel source"),
+        "type": str(transform.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD"),
+        "faction": str(transform.get("faction", "your_followers") or "your_followers"),
+        "start": [min(start[i], end[i]) for i in range(3)],
+        "end": [max(start[i], end[i]) for i in range(3)],
+    }
+    identity_salt = 0
+    while True:
+        identity_payload = json.dumps(
+            {**identity_seed, "salt": identity_salt}, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        zone_identity = "zone-fixture-" + hashlib.sha256(identity_payload).hexdigest()[:24]
+        if zone_identity not in existing_identities:
+            break
+        identity_salt += 1
     zone = {
         "name": str(transform.get("name", "OpenClaw fuel source") or "OpenClaw fuel source"),
         "type": str(transform.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD"),
         "faction": str(transform.get("faction", "your_followers") or "your_followers"),
+        "identity": zone_identity,
         "invert": False,
         "enabled": True,
         "temporarily_disabled": False,
@@ -27400,17 +27590,8 @@ def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform:
         "is_displayed": False,
     }
 
-    stem = player_zone_file_stem(player_save_name)
-    zone_paths = [world_dir / f"{stem}.zones.json"]
-    if bool(transform.get("write_temp", True)):
-        zone_paths.append(world_dir / f"{stem}.zoneszmgr-temp.json")
-    if bool(transform.get("write_global", False)):
-        zone_paths.append(world_dir / "zones.json")
-        if bool(transform.get("write_temp", True)):
-            zone_paths.append(world_dir / "zoneszmgr-temp.json")
-
     updated_paths: List[str] = []
-    for zone_path in zone_paths:
+    for zone_path in dict.fromkeys(zone_paths):
         existing: List[Any] = []
         if zone_path.exists():
             loaded = json.loads(zone_path.read_text(encoding="utf-8"))
@@ -32979,11 +33160,13 @@ def execute_probe_steps(
                 raise SystemExit(f"Scenario step '{label}' has no text")
             delay_ms = int(step.get("delay_ms", 20) or 20)
             focus_once = bool(step.get("focus_once", False))
-            if focus_once:
+            if focus_once and pid not in TERMINAL_NATIVE_INPUTS:
                 focus_report = peekaboo_focus_pid(pid)
                 if not focus_report.get("ok"):
                     raise RuntimeError("Peekaboo type focus failed: " + json.dumps(focus_report, ensure_ascii=False))
-            peekaboo_type_text(pid, text, delay_ms=delay_ms, focus_pid=not focus_once)
+            input_receipt = peekaboo_type_text(pid, text, delay_ms=delay_ms, focus_pid=not focus_once)
+            if input_receipt is not None:
+                report["input_receipt"] = input_receipt
             if bool(step.get("post_type_allow_hostile_auto_move_cancel", False)):
                 post_type_timeout_seconds = float(
                     step.get("post_type_timeout_seconds", 1.0) or 0.0
@@ -37713,11 +37896,14 @@ def declared_screen_artifact_matches(
     proof_route: Any,
     *,
     run_dir: Optional[Path] = None,
+    active_step_labels: Optional[set[str]] = None,
 ) -> List[Dict[str, Any]]:
     """Promote declared screen guards or sealed semantic cockpit targets."""
     if not isinstance(proof_route, dict):
         return []
     labels = normalize_string_list(proof_route.get("artifact_verdict", []))
+    if active_step_labels is not None:
+        labels = [label for label in labels if label in active_step_labels]
     if not labels:
         return []
     reports_by_label = {
@@ -37735,8 +37921,9 @@ def declared_screen_artifact_matches(
             final_path = run_dir / final_ref
             semantic_line = ""
             try:
-                final = json.loads(final_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
+                from cockpit_report_reference import load_report
+                _, _, final = load_report(final_path)
+            except (OSError, ValueError):
                 final = {}
             stop_detail = final.get("stop_detail") if isinstance(final, Mapping) else None
             target = stop_detail.get("target_receipt") if isinstance(stop_detail, Mapping) else None
@@ -38071,9 +38258,8 @@ def run_startup(args: argparse.Namespace) -> int:
             profile_snapshot,
             snapshot_profile=getattr(args, "profile_snapshot_profile", ""),
         )
-    profile_option_override_result: Dict[str, Any] = {}
-    if profile_option_overrides:
-        profile_option_override_result = apply_profile_option_overrides(profile, profile_option_overrides)
+    profile_option_override_result = apply_profile_option_overrides(
+        profile, profile_option_overrides, config_profile=config_profile)
     fixture_install_result: Dict[str, Any] = {}
     if args.fixture and not saved_world_snapshot:
         fixture_install_result = install_fixture(
@@ -39894,9 +40080,8 @@ def run_launch_only_handoff(
                 profile_snapshot,
                 snapshot_profile=profile_snapshot_profile,
             )
-        profile_option_override_result: Dict[str, Any] = {}
-        if profile_option_overrides:
-            profile_option_override_result = apply_profile_option_overrides(profile, profile_option_overrides)
+        profile_option_override_result = apply_profile_option_overrides(
+            profile, profile_option_overrides, config_profile=config_profile)
         if fixture:
             fixture_install_result = install_fixture(
                 profile,
@@ -40781,6 +40966,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         if not terminal_endpoint:
             raise RuntimeError("matched terminal-native startup omitted its run-bound input endpoint")
         register_terminal_native_input(pid, terminal_endpoint, transition_event_run_id, run_dir)
+        if args.terminal_transport == "auto":
+            args.terminal_transport = "pty"
 
     # The file-backed cockpit owns terminal interaction, but its enclosing
     # probe report is still the registry ingestion boundary.  Retain the
@@ -41444,7 +41631,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
     artifact_path = run_dir / f"{mode}.artifacts.log"
     if artifact_text:
-        artifact_path.write_text(artifact_text, encoding="utf-8")
+        artifact_path = write_artifact_log(
+            artifact_path, artifact_text, run_dir / f"{mode}.feature_debug.log")
     matches_by_pattern = []
     all_matched_lines: List[str] = []
     for pattern in artifact_patterns:
@@ -41492,6 +41680,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         step_reports,
         scenario.get("proof_route", {}),
         run_dir=run_dir,
+        # A replacement-only report does not rerun initial-segment guards.
+        # Missing guards within this segment still remain missing evidence.
+        active_step_labels={str(step.get("label", "")) for step in steps}
+        if post_relaunch_continuation else None,
     )
     if not effective_artifact_patterns and not effective_matches_by_pattern and declared_screen_matches:
         effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in declared_screen_matches]
@@ -42038,7 +42230,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("scenario", help="Scenario name, e.g. locker.weather_wait")
     probe_p.add_argument("--profile", default="", help="Override scenario profile.")
     probe_p.add_argument("--world", default="", help="Override scenario world.")
-    probe_p.add_argument("--executable", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--executable", default="", help="Use this source-matching executable for the probe.")
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     probe_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")

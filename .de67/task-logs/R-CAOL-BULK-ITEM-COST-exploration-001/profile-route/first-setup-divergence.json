@@ -1,0 +1,38 @@
+{
+  "schema": "caol.bulk-item-cost-setup-divergence.v1",
+  "classification": "invalid_disposable_fixture_setup; zero feature credit",
+  "setup_world": "BulkA0",
+  "run_id": "10da59f5e3d148a3be7f631e10b2c1e0",
+  "game_process": {
+    "pid": 31126,
+    "birth_identity": "posix-lstart:Thu Sep 24 14:52:47 2026",
+    "executable_sha256": "171616a60dcaf97e18a07cfd6e0b20039b3d472a866f0eb3c28e303ad65c8114",
+    "runtime_source_sha256": "f8c166cb306bd37b7ac6e6e646a04f9f92a52e166d44daada60c887de45f98ea",
+    "runtime_binding_sha256": "8c7487322771b69bd73f9034528e71b514710fe689bcfdb344afd2abcfc349c0",
+    "exit": "native save/quit then main-menu quit YES receipt; cockpit process observer returned alive=false; process_generation_snapshot(31126) returned alive=false"
+  },
+  "cause": {
+    "fixture_item_typeid": "plank",
+    "game_error": "Missing item definition: plank",
+    "source": "src/item_factory.cpp:3087",
+    "correct_data_item": {"typeid": "2x4", "display_name": "plank", "source": "data/json/items/resources/wood.json:178-180"},
+    "startup_status": "startup_proof_red",
+    "startup_error_count": 1,
+    "startup_native_frames_before_dismissal": 0
+  },
+  "recovery": {
+    "exact_pid_screen": ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/success.png",
+    "dismissal": "Peekaboo press space on PID 31126 after observing the native Missing item definition error; the next run-bound frame was World at game_turn 5212801",
+    "native_cleanup": "cockpit session bulk-item-cost-A0-cockpit2; world.save_quit; YES; main_menu.quit; Really quit YES",
+    "performance_data_scope": "startup, setup error, dismissal and cleanup only; not a workload profile"
+  },
+  "preserved_sources": [
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/startup.result.json",
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/debug_delta_01.log",
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/performance-owner.json",
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/performance.jsonl",
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/semantic.native.events.jsonl",
+    ".userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_145246_9f06e785adac403796345231f1d0ca9c/transition.events.jsonl"
+  ],
+  "reference_saves_used": false
+}

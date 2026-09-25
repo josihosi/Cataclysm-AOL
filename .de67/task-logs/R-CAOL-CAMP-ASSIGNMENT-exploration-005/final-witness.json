@@ -1,0 +1,15 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "In the isolated source-matched R032 run, the native UI created R032 Assignment Camp at absolute OMT [162,36,0], assigned follower character:25 / R032 Establishment Ally 1, and post-save/reload inspection still showed that same actor as CAMP_RESIDENT assigned to [162,36,0]. After reentry, the same camp mission selector and one-worker assignment UI reopened, the saved sorting out the loot priority remained 1, and the follower completed the native organizing-loot work order.",
+  "causal_account": "The first process began from the declared fresh follower fixture. Native camp dialogue created the camp and assigned the eligible follower. The first game then followed native save/quit and exited code 0; the declared scenario reentry launched generation 1 from the isolated profile. Post-reload native inspection and camp controls independently showed the same camp, follower identity and resident assignment. The ordinary job-priority menu retained sorting out the loot : 1, and the follower's native work menu allowed organizing loot into zones, which completed all possible sorting. The reloaded process was then terminalized through the scenario's sealed journal and finish route; the final save/quit action could not be sent after journal sealing.",
+  "citations": [
+    {"citation_id":"J0016","meaning":"After reentry, the ordinary camp mission selector reopened for the exact camp and faction.","checks":{"value.surface.facts.camp_id":"(162,36,0)","value.surface.facts.camp_name":"R032 Assignment Camp","value.surface.facts.faction":"your_followers","value.surface.facts.job_assignment_available":"true","value.surface.facts.looting_sorting_available":"true"}},
+    {"citation_id":"J0018","meaning":"The reopened camp assignment UI still had the same camp and one worker.","checks":{"value.surface.facts.assigned_worker_count":"1","value.surface.facts.camp_name":"R032 Assignment Camp","value.surface.facts.camp_site":"(162,36,0)","value.surface.facts.owner_faction":"your_followers"}},
+    {"citation_id":"J0021","meaning":"The reopened native priority menu retained the sorting job at priority 1.","checks":{"value.surface.actions.24.label":"sorting out the loot : 1","value.surface.actions.24.enabled":true}},
+    {"citation_id":"J0039","meaning":"The native follower work menu choice was activated after reload.","checks":{"action_id":"menu.choose"}},
+    {"citation_id":"J0038","meaning":"The world observation after the native work choice contains the game messages reporting loot sorting completion; full exact messages are retained in the journal archive and task transcript.","checks":{}},
+    {"citation_id":"J0040","meaning":"A fresh native NPC inspection after work still identified character:25 as a camp resident assigned to the same absolute camp OMT.","checks":{"value.surface.facts.actor_id":"character:25","value.surface.facts.actor_name":"R032 Establishment Ally 1","value.surface.facts.diagnostic_orders.mission":"CAMP_RESIDENT","value.surface.facts.diagnostic_orders.assigned_camp":[162,36,0]}}
+  ],
+  "recommended_disposition":"accept",
+  "contradictions":[]
+}

@@ -1,0 +1,18 @@
+ITEM INFO
+Location: forest floor 1W
+Material: Steel, Plastic
+Volume: 0.08 L  Weight: 0.07 kg
+Length: 111 mm
+Category: Magazines
+Compatible guns: Fighters' Glock 19, folding Glock carbine, Glock 26 pistol, Glock carbine, and Glock carry pistol
+Capacity: 15 rounds of 9x19mm
+Variants: 9x19mm JHP, 9x19mm FMJ, reloaded, 9x19mm JHP, reloaded, 9x19mm +P, reloaded, 9x19mm +P+, reloaded, 9x19mm FMJ, black powder, 9x19mm JHP, black powder, 9x19mm FMJ, matchhead powder, 9x19mm JHP, matchhead powder, 9x19mm FMJ, 9x19mm +P, and 9x19mm +P+
+Reload time: 100 moves per round
+* This item conducts electricity.
+* This item has a small profile consistent with a compact magazine.
+Price: $29.00  Barter value: $1.00
+Additional item text: 485 characters omitted → play inspect observation.surface.facts.item_info_text
+item name: Glock 9x19mm 15-round magazine
+type name: Glock 9x19mm 15-round magazine
+ALLOWED HERE ONLY
+Close → play act item_info.close

@@ -1,0 +1,26 @@
+ITEM INFO
+Location: forest floor
+Material: Powder, Brass, Lead
+Volume: 0.07 L  Weight: 0.36 kg
+Length: 3 cm
+Category: Ammo
+9x19mm ammunition with a 116gr jacketed hollow point bullet.  JHP rounds have inferior penetration to FMJ rounds, but their expansion slightly increases stopping power against unarmored targets and reduces overpenetration.
+Ammunition type: 9x19mm
+Ranged damage: 23
+Armor-pierce: 0
+Range: 14  Dispersion: 0.60 MOA
+Recoil: 5.00 MOA  Critical multiplier: 2
+Damage and dispersion by barrel length:
+Length: Damage, Dispersion
+15 cm: 23, 0.60 MOA
+40 cm: 27, 0.60 MOA
+60 cm: 29, 0.60 MOA
+* This item is not repairable.
+Disassembly takes about 6 seconds, requires 1 tool with bullet pulling of 1 or more and might yield: 1 primerless 9x19mm casing, 1 small pistol primer, 2 lead, 300mg smokeless pistol powder, and 1 copper.
+* This item conducts electricity.
+Price: $0.90  Barter value: $6.00
+Additional item text: 224 characters omitted → play inspect observation.surface.facts.item_info_text
+item name: 9x19mm JHP
+type name: 9x19mm JHP
+ALLOWED HERE ONLY
+Close → play act item_info.close

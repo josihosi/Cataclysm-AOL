@@ -1,0 +1,41 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 49,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276898256,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:9",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:9",
+  "kind": "dialogue",
+  "breadcrumbs": [
+    "World",
+    "Genevieve Floyd"
+  ],
+  "payload": {
+    "history": "Genevieve Floyd\n\"I'm… short… of breath…\"\n\nYou\nWhat's the matter?\n\nGenevieve Floyd\n\"I'm asthmatic.  I need you to get an inhaler for me…\"\n\nYou\nNot interested.\n\nGenevieve Floyd\n\"What?!  Please, I'll be dead soon without your help!\"\n\nYou\nI'm sorry.\n\nGenevieve Floyd\n\"Well, I guess it's just us.\"\n\nYou\nWhat should we do now?\n\nGenevieve Floyd\n\"I suppose getting a car up and running would be really be useful if we have to move.\"",
+    "prompt": "\"I suppose getting a car up and running would be really be useful if we have to move.\"",
+    "speaker_id": "2",
+    "speaker_name": "Genevieve Floyd"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-16",
+      "label": "Hmm, okay.",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.cancel",
+      "stable_id": "",
+      "label": "Goodbye",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

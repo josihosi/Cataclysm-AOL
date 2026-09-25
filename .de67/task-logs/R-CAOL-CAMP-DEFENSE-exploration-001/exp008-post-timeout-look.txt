@@ -1,0 +1,12 @@
+Select zone type:
+Game time: 7565 minutes.
+filter: Basecamp: Patrol
+filtered entry count: 1
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Clear filter → play act menu.clear_filter
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  31 — Basecamp: Patrol

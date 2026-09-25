@@ -1,0 +1,8 @@
+World.
+moved
+avatar.absolute ms: 3901, 877, 0
+R032 Establishment Ally 1 · friendly · offset -10, -4
+forest floor: NW, NE, here, S
+blackjack oak: N
+underbrush: W, SE
+moss: E, SW

@@ -1,0 +1,56 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-LIFECYCLE-exploration-001",
+  "claim_id": "R-HARNESS-LIFECYCLE",
+  "disposition": "completed",
+  "verdict": "native_save_reentry_proved_and_public_terminal_archive_serialization_repaired",
+  "outcome": "The accepted native save-and-quit continuation remains proved at its focused evidence ceiling. Public journal and finish collection now also succeeds when the bridge resolves archived evidence into a live ArchiveSequence: the public result stays lazy and the persisted PlayerClient cache records its authenticated archive reference.",
+  "native_lifecycle_proof": {
+    "scenario": "cannibal.r029_natural_route_roof_mcw",
+    "run_id": "23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9",
+    "replacement_observation": {
+      "world_minutes": 8221,
+      "avatar_absolute_ms": [3372, 995, 1]
+    },
+    "persisted_audit": {
+      "artifact": ".userdata/r029-natural-route-repair-001/harness_runs/20260921_033747_af21c7388b674864a5cb70a0f934d9ec/audit_persisted_r029_player_fire.metadata.json",
+      "relative_ms": [1, 2, 0],
+      "absolute_ms": [3373, 997, 1],
+      "contents": "f_brazier, fd_fire intensity 1 age 495, logs",
+      "verdict": "required_state_present"
+    },
+    "witness": ".de67/task-logs/R-HARNESS-LIFECYCLE-exploration-001/post-reentry-witness.json",
+    "evidence_ceiling": "focused",
+    "not_claimed": "No longer continuation or additional native replay was performed."
+  },
+  "public_archive_repair": {
+    "fault": "PlayerClient.collect persisted a bridge-resolved ArchiveSequence with json.dumps, producing Object of type ArchiveSequence is not JSON serializable after an accepted run.witness or run.finish reply.",
+    "change": "_persistent_result_cache recursively replaces an ArchiveSequence only in play-client.json with caol-archive-sequence-ref-v1 plus its authenticated reference; stdout and the collected response retain their live lazy sequence.",
+    "regression": "The actual subprocess CLI submits journal then finish, receives Archive.wire artifacts through FileBackedCockpitBridge response_artifact, validates both public responses, and validates the terminal cached archive reference/count."
+  },
+  "evidence": {
+    "tests": [
+      "python3 -m unittest tools.openclaw_harness.play_cli_test -v: 46 passed",
+      "python3 tools/openclaw_harness/cockpit_archive_test.py -v: 46 passed",
+      "python3 -m unittest tools.openclaw_harness.cockpit_file_bridge_test.CockpitFileBridgeTest.test_durable_descriptor_recovery_rejects_a_pre_reentry_artifact tools.openclaw_harness.cockpit_file_bridge_test.CockpitFileBridgeTest.test_declared_reentry_replaces_live_registry_wrapper_after_registered_game_exits -v: 2 passed",
+      "python3 tools/openclaw_harness/playtest_witness_test.py -v: 12 passed",
+      "python3 tools/openclaw_harness/save_quit_lifecycle_test.py -v: 3 passed",
+      "python3 tools/openclaw_harness/cockpit_live_session_test.py -v: 37 passed",
+      "python3 tools/openclaw_harness/cockpit_process_exit_test.py -v: 5 passed",
+      "python3 tools/openclaw_harness/test_probe_relaunch.py -v: 7 passed",
+      "git diff --check -- relevant lifecycle and public-client files: passed"
+    ],
+    "focused_test_count": 158,
+    "process_cleanup": "A final process scan found no owned native game, bridge, or test process. Existing deadline watchers are not owned gameplay or test processes."
+  },
+  "artifacts": [
+    {"path": "tools/openclaw_harness/play_cli.py", "sha256": "71df8299ddca11793cc307264e2f97a9c16597c885ce65786991ebafe382144d", "role": "Persistent client archive-reference projection."},
+    {"path": "tools/openclaw_harness/play_cli_test.py", "sha256": "73249eb7c3bbcb223507c3f1584e9cee54b29e3dcfdb55102425390deeba5f1f", "role": "Public journal/finish archived-reply regression."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge.py", "sha256": "9ac08b51c2316ac6a53b5e05691003afae497bd35820c00c03a6200ce95a1279", "role": "Prior native completion/reentry gate."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge_test.py", "sha256": "aee13d7cf2b81f26cdac961d9d67cb05cd4d1f5e540fa23a0c4222b88673317e", "role": "Prior native reentry tests."},
+    {"path": "tools/openclaw_harness/scenarios/cannibal.r029_natural_route_roof_mcw.json", "sha256": "77768173aae944b9a2c419bd6fb51337fb9fd9a523e04270e16fb82fc9589846", "role": "Focused persisted-world audit contract."},
+    {"path": ".de67/task-logs/R-HARNESS-LIFECYCLE-exploration-001/post-reentry-witness.json", "sha256": "6b2c3cda32b00833d6850658ed25347a5da05cc2c78b2c9d07c6d75661bfe576", "role": "Accepted replacement-world witness."}
+  ],
+  "material_limit": "The broad cockpit_file_bridge_test module was not represented as passing: an unrelated startup-HUD test stopped progressing and its exact owned test processes were terminated. The two lifecycle reentry tests above then passed."
+}

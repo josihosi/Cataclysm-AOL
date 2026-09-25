@@ -1,0 +1,12 @@
+World.
+moved
+avatar.absolute ms: 3895, 874, 0
+R032 Establishment Ally 1 · friendly · offset 3, 2
+underbrush: NW
+long grass: N
+fern: NE
+moss: W
+forest floor: here, SE
+blueberry bush: E
+blackjack oak: SW
+dead grass: S

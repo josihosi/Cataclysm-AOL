@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-HARNESS-PERFORMANCE native pending wait alarm journey: one source-bound advancing action is submitted exactly once, real simulation turns are measured while pending, input/transport waits remain distinct, and the original operation completes with an honest performance assessment and cleanup.",
+  "material_proof": "A current source/executable-bound native run with one accepted advancing action, bound native turn start/end records, a pending shared-poller collection, a provenance-bearing turn configuration, an honest normal or alarm/recovery assessment, completion of the original request, and exact owned PID/birth cleanup.",
+  "current_uncertainty": "Whether the current source-bound native bridge emits usable advancing-turn records during one pending operation and whether the configured assessment remains honest through completion.",
+  "material_contradiction": [
+    "A second advancing action is submitted while the first remains pending.",
+    "Input, save, load, or transport delay is classified as simulation failure.",
+    "Turn records are missing, run/process mismatched, or not bound to the current source.",
+    "The operation completes without preserving its exact performance handles.",
+    "An owned game or bridge process remains alive without an explicit handoff."
+  ],
+  "already_accepted_evidence": [
+    "Controlled instrumentation tests and native object compilation establish implementation contracts only; they do not establish live native alarm behavior."
+  ],
+  "forbidden_shortcuts": [
+    "Resubmitting a pending action.",
+    "Injecting gameplay success or direct native trace facts.",
+    "Using OCR, guessed keys, or screenshots as gameplay proof.",
+    "Treating a controlled delay as a naturally occurring regression."
+  ],
+  "honest_stop_conditions": [
+    "A clean native pending journey completes with normal or alarm/recovery assessment.",
+    "The first source-bound native instrumentation or bridge divergence is retained and the run is gracefully closed.",
+    "A required current native owner remains unavailable after supported recovery."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "In the accepted R032 camp, assigned follower character:25 can natively acquire and use real Locker equipment, compatible firearm magazines and ammunition; displaced gear and remaining stock stay accountable through save/reload.",
+  "material_proof": "A fresh current-source cockpit run starts from the natively saved R032 Assignment Camp and character:25 at assigned OMT [162,36,0]. The player observes the exact starting actor/loadout and map-stock identity, creates/observes a camp-local native Locker and separate Storage with enabled helmet and ranged slots, triggers actual resident downtime through ordinary native time, and independently observes the same worker wearing/wielding the selected Locker items with a usable loaded magazine and compatible rounds. Native observations account for every staged/replaced item and ammunition charge across the Locker tile, worker inventory and Storage. The first process natively saves and exits; a replacement process observes the same assignment, loadout, rounds and Storage without restaging or another pickup.",
+  "material_contradiction": [
+    "the accepted camp identity, character:25, CAMP_RESIDENT mission or matching camp OMT differs from the saved premise",
+    "the staged wearable, firearm, magazines or ammunition is absent, has a different type/count/location, or is picked up/placed directly in NPC inventory",
+    "the native Locker or Storage zone is unavailable, outside the camp lookup area or not observed before service",
+    "helmet/ranged policy is disabled or no real downtime service opportunity is shown",
+    "character:25 does not acquire the selected usable wearable/firearm and compatible loaded ammunition through Locker service",
+    "the firearm lacks its usable magazine/rounds, its ammo is incompatible, or reload readiness is inferred from policy or an elapsed wait",
+    "replaced gear or source magazine/9mm charge counts cannot be accounted across worker, Locker and Storage",
+    "items or charges duplicate/disappear, or the post-reload state requires a second pickup/restaging",
+    "source/executable/actor binding drifts or an owned process/broker cleanup fails"
+  ],
+  "already_accepted_evidence": [
+    "R032 separately established the camp at [162,36,0], native CAMP_RESIDENT assignment of character:25, save/reload continuity and ordinary camp work.",
+    "The derived world and its map-stock transform are zero-credit fixture preparation only."
+  ],
+  "current_uncertainty": "The accepted saved world has no CAMP_LOCKER or CAMP_STORAGE zone. Native zone creation and current policy, worker-downtime cadence, candidate eligibility/scoring, exact item transfer, replaced gear placement, compatible gun readiness and reload persistence must be observed in this run.",
+  "forbidden_shortcuts": [
+    "directly placing or equipping Locker candidates in NPC inventory",
+    "manual item pickup or equipment substitution for camp service",
+    "crediting fixture copy, map stock, native zone setup, policy state or elapsed time as transfer behavior",
+    "physical keys, guessed controls, OCR, coordinates, callback injection, direct post-launch state/save mutation or synthetic receipts",
+    "replaying or modifying accepted R032 assignment evidence or touching retained R-029 PID 90668"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if no active current-source registry selection or isolated profile is available",
+    "after launch preserve the first unavailable zone, disabled policy, ineligible candidate, absent downtime opportunity, missing transfer/readiness, item-accounting contradiction or reload divergence and inspect its actual owner",
+    "seal only after same-actor native transfer, weapon/ammunition readiness, complete accounting, native save/process replacement, persistence and cleanup are cited"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

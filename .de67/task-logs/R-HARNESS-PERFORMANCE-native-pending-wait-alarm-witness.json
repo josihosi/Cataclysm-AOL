@@ -1,0 +1,18 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "The current source-bound native run accepted the advertised wait route, submitted one wait.1m advancing action from the returned duration surface, completed it normally, and retained the run-bound performance/trace handles for the configured simulation-only assessment.",
+  "causal_account": "J0001 binds the scenario, current source identity, executable, run and bridge binding. J0003 records the native alarm-clock menu and its advertised Wait-a-while owner. J0004 records that the initial world.wait was accepted and collected without replay. J0006 records the native menu transition to the duration owner. J0008 records the single accepted wait.1m action from that duration surface. J0009 records the terminal normal-completion boundary and the retained performance evidence route; the exact alarm/recovery and four-turn measurements remain in the separate read-only performance artifacts referenced by the task log.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Source/executable/run/binding identity.","checks":{"scenario_id":"harness.cannibal_freeplay_mcw","run_id":"7200191d42aac6428b952613554ce2f23606c0e4c6b118476166659bac545358","binding_id":"e987d38f3e10fb29f16d7305b1a7c24a256afcd40fe9701bc76184e025bb2631"}},
+    {"citation_id":"J0003","meaning":"Native wait-mode menu advertised the Wait-a-while route.","checks":{"value.surface.facts.text":"You have an alarm clock.  What do you want to do?","value.surface.actions.0.stable_id":"wait-mode:wait-a-while"}},
+    {"citation_id":"J0004","meaning":"Initial world.wait was accepted once and returned a native menu frame.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.wait"}},
+    {"citation_id":"J0008","meaning":"The single duration-bound advancing action was accepted.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"wait.1m"}},
+    {"citation_id":"J0009","meaning":"Terminal boundary after the completed operation.","checks":{"observation_id":"7200191d42aac6428b952613554ce2f23606c0e4c6b118476166659bac545358:frame:4","cleanup.owner":"scenario_terminalization"}}
+  ],
+  "material_deviations": ["The initial world.wait request opened the native wait menu before the duration action; this input-phase route is retained and is not simulation work."],
+  "contradictions": [],
+  "remaining_unknowns": ["This focused run does not establish a naturally occurring gameplay regression; the measured alarm is instrumentation/control evidence only."],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

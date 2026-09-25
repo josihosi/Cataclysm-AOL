@@ -1,0 +1,35 @@
+World.
+Waited 1 game minutes. target reached.
+R032 Establishment Ally 1 · friendly · offset 0, 6
+last save result: saved
+6:06:03 AM: You hear grunting.
+6:06:03 AM: R032 Establishment Ally 1 hits the zombie for 6 damage.
+6:06:03 AM: R032 Establishment Ally 1 whacks the zombie for 16 damage.  Critical!
+6:06:04 AM: You hear whack! x 2
+6:06:04 AM: R032 Establishment Ally 1 hits the zombie for 9 damage.  Critical!
+6:06:05 AM: You hear whack!
+6:06:05 AM: R032 Establishment Ally 1 blocks all of the damage with their left arm!
+6:06:05 AM: The zombie grabs R032 Establishment Ally 1's torso!
+6:06:05 AM: R032 Establishment Ally 1 hits the zombie for 4 damage.
+6:06:06 AM: You hear whack!
+6:06:06 AM: R032 Establishment Ally 1 hits the zombie for 8 damage.
+6:06:07 AM: You hear whack!
+6:06:07 AM: The zombie lunges at R032 Establishment Ally 1, but they dodge!
+6:06:07 AM: R032 Establishment Ally 1 hits the zombie in the leg for 5 damage.
+6:06:08 AM: You hear whack!
+6:06:08 AM: The zombie hits R032 Establishment Ally 1's torso.
+6:06:08 AM: R032 Establishment Ally 1 hits the zombie in the head for 5 damage.
+6:06:09 AM: You hear whack!
+6:06:09 AM: The zombie misses R032 Establishment Ally 1!
+6:06:09 AM: R032 Establishment Ally 1 whacks the zombie for 12 damage.
+6:06:10 AM: You hear whack!
+6:06:10 AM: R032 Establishment Ally 1 hits the zombie for 8 damage.
+6:06:11 AM: You hear whack!
+6:06:11 AM: R032 Establishment Ally 1 dodges zombie attack.
+6:06:11 AM: R032 Establishment Ally 1 whacks the zombie for 15 damage.  Critical!
+6:06:11 AM: The last enemy holding R032 Establishment Ally 1 collapses!
+6:06:11 AM: The zombie dies!
+6:06:12 AM: You hear whack!
+6:06:40 AM: Saving game, this may take a while.
+6:07:01 AM: You finish waiting.
+Game time: 7567 minutes.

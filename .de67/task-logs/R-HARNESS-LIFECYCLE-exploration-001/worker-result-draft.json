@@ -1,0 +1,76 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-LIFECYCLE-exploration-001",
+  "claim_id": "R-HARNESS-LIFECYCLE",
+  "disposition": "completed",
+  "verdict": "native_save_reentry_and_public_terminal_archive_contract_proved",
+  "outcome": "A current-source native Save and Quit emitted one request-bound successful serializer completion, the original process exited, the bridge admitted one replacement generation from an immutable saved-world handoff, and the replacement World retained the player-created brazier and active fire. Public journal and finish collection now persist authenticated archive references instead of non-serializable live ArchiveSequence objects.",
+  "summary": "The lifecycle path now distinguishes prompt confirmation, serializer success, original-process exit, immutable saved-world handoff, replacement readiness, fresh World observation, and cleanup. Reentry requires the exact successful native completion bound to run, request, surface, frame, world, player and artifact. A fresh native R-029 run restored the saved checkpoint at [3372,995,1] and audited f_brazier plus fd_fire at relative [1,2,0]. The public PlayerClient journal/finish path was then corrected without replaying the native run. Coordinator verification passed 199 focused tests, Python compilation and git diff validation; all owned game, bridge and test processes were absent at closeout.",
+  "material_changes": [
+    "Emitted and validated a native serializer-completion event for world.save_quit, retained across the World-to-prompt handoff but cleared before prompt choice so cancellation and later saves cannot inherit it.",
+    "Replaced transcript-action reentry inference with exact successful native completion plus bound process exit, immutable saved-world snapshot and replacement-generation checks.",
+    "Rejected pre-reentry durable descriptors and kept old grants separate from replacement World authority.",
+    "Projected live ArchiveSequence values to authenticated archive references only when persisting PlayerClient state, while preserving lazy public replies.",
+    "Added lifecycle, relaunch, bridge, semantic trace and actual public journal/finish regressions and corrected the R-029 persisted-world audit coordinate."
+  ],
+  "tests": [
+    "make -j2 TILES=1 cataclysm-tiles: passed, with only existing macOS deployment-target linker warnings.",
+    "Coordinator: 199 focused lifecycle/session/archive/PlayerClient/bridge/witness tests passed in 19.077 seconds.",
+    "python3 -m py_compile startup_harness.py cockpit.py cockpit_file_bridge.py play_cli.py gameplay_display.py semantic_state.py: passed.",
+    "git diff --check: passed."
+  ],
+  "live_actions": [
+    "Native run 23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9 used ordinary public semantic actions to create the brazier fire, save, quit, relaunch and observe the replacement World.",
+    "Replacement observation loaded avatar position [3372,995,1]; persisted audit found f_brazier and fd_fire intensity 1 at [3373,997,1].",
+    "The terminal child and one discovered orphan were closed by exact owned process identity; final scans found no owned native game, bridge or test process.",
+    "The accepted native run was not replayed during the public archive correction."
+  ],
+  "evidence_ceiling": [
+    "The native result proves one focused macOS current-source save-to-reload journey for the R-029 world and checkpoint; it is not universal platform or arbitrary-world proof.",
+    "The broad cockpit_file_bridge_test module was not claimed as passing because an unrelated startup-HUD case stalled; five lifecycle-specific bridge tests passed in coordinator verification.",
+    "Scenario continuation beyond the restored checkpoint is outside this receipt."
+  ],
+  "bindings": {
+    "worker_request_id": "5ea74bd0da0d457da11698e03a321d47",
+    "native_run_id": "23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9",
+    "scenario_id": "cannibal.r029_natural_route_roof_mcw",
+    "replacement_binding_id": "1906741cb968f16af47ddc5a1be14b3a954e0f162b1bb27f868fc5bc106ec403"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": "src/handle_action.cpp", "role": "Native serializer-completion emission and single-use request handoff."},
+    {"path": "tools/openclaw_harness/startup_harness.py", "role": "Completion validation, immutable handoff and replacement lifecycle."},
+    {"path": "tools/openclaw_harness/cockpit.py", "role": "Exact native completion reentry gate."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge.py", "role": "Replacement-generation and durable-descriptor ownership."},
+    {"path": "tools/openclaw_harness/play_cli.py", "role": "Serializable persistent cache for archived public terminal replies."},
+    {"path": "tools/openclaw_harness/save_quit_lifecycle_test.py", "role": "Native save completion and handoff contract tests."},
+    {"path": "tools/openclaw_harness/play_cli_test.py", "role": "Actual public journal/finish ArchiveSequence regression."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge_test.py", "role": "Replacement and stale descriptor regressions."},
+    {"path": "tools/openclaw_harness/scenarios/cannibal.r029_natural_route_roof_mcw.json", "role": "Persisted checkpoint and post-relaunch audit contract."},
+    {"path": ".userdata/r029-natural-route-repair-001/harness_runs/20260921_033747_af21c7388b674864a5cb70a0f934d9ec/audit_persisted_r029_player_fire.metadata.json", "role": "Fresh replacement-world persisted-state audit."},
+    {"path": ".de67/task-logs/R-HARNESS-LIFECYCLE-exploration-001/post-reentry-witness.json", "role": "Mechanically validated replacement-world witness."}
+  ],
+  "first_divergence": {
+    "class": "prompt_confirmation_was_not_native_save_completion",
+    "summary": "The prior lifecycle path could infer a saved world from a world.save_quit transcript entry and prompt receipt without observing game::save() success; the first live repair also exposed stale replacement descriptor and archived terminal-reply persistence gaps."
+  },
+  "accepted_no_replay": [
+    "Preserved the completed session and execution receipts at their original ceilings.",
+    "Did not replay R-019 or the accepted R-029 native lifecycle after the public archive correction."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "native_save_completion and openclaw_harness_pending_save_quit_request",
+    "declared_reentry_ready and child_started_ns",
+    "_persistent_result_cache and ArchiveSequence"
+  ],
+  "entrypoints": [
+    "src/handle_action.cpp",
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/cockpit.py",
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/play_cli.py"
+  ]
+}

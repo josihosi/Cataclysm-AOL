@@ -16,6 +16,7 @@
 
 class JsonObject;
 class JsonOut;
+class npc;
 
 namespace bandit_live_world
 {
@@ -768,6 +769,10 @@ struct active_outing_state {
     character_id leader_id;
     std::vector<tripoint_abs_omt> shared_route;
     int waypoint_index = 0;
+    // Last shared waypoint reached by the assigned concrete NPC identities.
+    // -1 is a legacy/unbound outing; elapsed time cannot establish this value.
+    int actor_route_waypoint = -1;
+    bool actor_departure_observed = false;
     std::string target_id;
     tripoint_abs_omt target_omt;
     std::string job_type;
@@ -1438,6 +1443,7 @@ struct structural_local_zombie_read {
 
 std::optional<structural_local_zombie_read> read_live_structural_local_zombie_observation(
     const site_record &site );
+bool live_structural_observer_has_optic( const npc &observer );
 int burn_live_covert_scouts();
 int record_live_covert_visible_defenders();
 int record_live_covert_vehicle_wealth_cues();
@@ -1827,6 +1833,9 @@ std::vector<structural_outing_plan> plan_structural_bounty_outing_candidates(
     const site_record &site, int now_minutes, bool require_exact_pair = true );
 structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
 structural_outing_plan plan_frontier_outing( const site_record &site, int now_minutes );
+// Refine the canonical plan with actual production route and watch geography.
+bool refine_structural_outing_route( const site_record &site, int now_minutes,
+                                    const structural_route_read &read, structural_outing_plan &plan );
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         int now_minutes );
 std::optional<int> release_matching_external_reservation( site_record &site,
@@ -1964,6 +1973,10 @@ local_projection_reconciliation_result reconcile_loaded_local_projections(
 bool note_active_sortie_started( site_record &site,
                                  const simulation_advance_cursor &expected_cursor,
                                  int current_minutes );
+// Per-turn proximity observation: unchanged committed contacts do not request a transition.
+bool observe_active_sortie_local_contact( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        character_id contact_member_id, int current_minutes );
 bool note_active_sortie_local_contact( site_record &site,
                                        const simulation_advance_cursor &expected_cursor,
                                        character_id contact_member_id, int current_minutes );
@@ -2251,6 +2264,9 @@ struct covert_scout_egress_failure_effect {
     tripoint_abs_omt egress_omt;
 };
 std::optional<covert_scout_relationship_read> read_active_covert_scout_member(
+    const world_state &state, character_id npc_id );
+// Active local camp membership for native perception; never grants a movement action.
+std::optional<hostile_site_profile> active_local_camp_member_profile(
     const world_state &state, character_id npc_id );
 std::optional<covert_scout_relationship_read> read_active_covert_scout_homeward_member(
     const world_state &state, character_id npc_id );

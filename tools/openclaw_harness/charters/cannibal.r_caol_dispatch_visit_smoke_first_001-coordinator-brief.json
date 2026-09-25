@@ -1,0 +1,27 @@
+{
+  "scenario_id": "cannibal.r_caol_dispatch_visit_smoke_first_001",
+  "objective": "From an initially unaware disposable closed-room camp setup in recorded clear weather, walk to and light the prepared brazier with the supplied lighter; prove valid smoke before any valid light/contact seeds the camp, then observe natural notice, dispatch, three-OMT stalking, real homeward return and the applicable later faction attack.",
+  "outcome": "From an initially unaware disposable closed-room camp setup in recorded clear weather, walk to and light the prepared brazier with the supplied lighter; prove valid smoke before any valid light/contact seeds the camp, then observe natural notice, dispatch, three-OMT stalking, real homeward return and the applicable later faction attack.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_dispatch_visit_smoke_first_001-witness.json",
+  "constraints": [
+    "Only disposable profile; owner references untouched",
+    "Luna exclusive live operator; original retained run separately owned",
+    "Clear weather/clairvoyance setup recorded separately from ecology",
+    "Prepared smoke/light saves already supply brazier, fuel and lighter: no bulk pickup or smokebomb. Use charged lighter Activate → Light where? → brazier; investigate fuel only if ordinary ignition proves it missing. If the owner already lit the fire, do not repeat ignition: attribute owner input, verify fd_fire and physical smoke, retreat safely and watch.",
+    "Safe mode Off after World; supported unsafe wait allowed with health/danger observations",
+    "No new launch until source-bound repaired build and focused regressions",
+    "Keep exact turn/minute/generation/owner/epoch; native quicksave and diskturn verification",
+    "Game and bridge graceful closure with exact PID/birth OS exit"
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.dispatch_visit_smoke_first",
+        "op": "eq",
+        "value": "full_lifecycle_initially_unaware",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

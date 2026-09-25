@@ -45,6 +45,7 @@
 #include "point.h"
 #include "proficiency.h"
 #include "sdltiles.h"
+#include "semantic_surface.h"
 #include "skill.h"
 #include "skill_ui.h"
 #include "string_formatter.h"
@@ -1968,13 +1969,46 @@ void Character::disp_info( bool customize_character )
     // needs to have the same windows in the same order as player_display_tab so that mouse scrolling can work
     std::vector<catacurses::window *> windows{ &w_stats, &w_encumb, &w_speed, &w_skills, &w_traits, &w_bionics, &w_effects, &w_proficiencies };
 
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        std::map<std::string, std::string> facts = {
+            { "name", disp_name() },
+            { "attributes", string_format( "Strength %d; Dexterity %d; Intelligence %d; Perception %d",
+                                          get_str(), get_dex(), get_int(), get_per() ) }
+        };
+        for( const HeaderSkill &entry : skillslist ) {
+            if( !entry.is_header ) {
+                const SkillLevel &level = get_skill_level_object( entry.skill->ident() );
+                facts["skills"] += string_format( "%s: %d (knowledge %d)\n", entry.skill->name(),
+                                                  level.level(), level.knowledgeLevel() );
+            }
+        }
+        for( const trait_and_var &trait : traitslist ) {
+            facts["traits"] += trait.name() + "\n";
+        }
+        for( const auto &effect : effect_name_and_text ) {
+            facts["effects"] += effect.first + ": " + effect.second + "\n";
+        }
+        semantic_scope.emplace( *manager, "character_info", _( "Abilities" ), std::move( facts ),
+                                std::vector<semantic_action_descriptor>{
+            { "character_info.close", "", _( "Close" ), true }
+        }, [&done]( const semantic_action_request &request ) {
+            if( request.action_id != "character_info.close" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            done = true;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     do {
         ui_manager::redraw_invalidated();
 
-        done = handle_player_display_action( *this, line, info_line, curtab, ctxt, ui_tip, ui_info,
+        const bool physical_done = handle_player_display_action( *this, line, info_line, curtab, ctxt, ui_tip, ui_info,
                                              ui_stats, ui_encumb, ui_speed, ui_traits, ui_bionics, ui_effects,
                                              ui_skills, ui_proficiencies, speedlist, traitslist, bionicslist,
                                              effect_name_and_text, skillslist, customize_character,
                                              windows, w_tip, tip_btn_highlight );
+        done = done || physical_done;
     } while( !done );
 }

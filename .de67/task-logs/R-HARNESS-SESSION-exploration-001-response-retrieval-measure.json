@@ -1,0 +1,25 @@
+{
+  "schema": "r-harness-session-response-retrieval-measure-v1",
+  "fixture": {
+    "actions": 41,
+    "entities": 6,
+    "messages": 100,
+    "response_raw_bytes": 9445
+  },
+  "operations": [
+    {
+      "kind": "response_status",
+      "stdout_bytes": 4182
+    },
+    {
+      "kind": "action_page",
+      "offset": 10,
+      "limit": 2,
+      "stdout_bytes": 656
+    }
+  ],
+  "total_response_plus_followup_bytes": 4838,
+  "bulk_raw_response_bytes": 9445,
+  "ratio_to_raw_response": 0.5122,
+  "limits": "Synthetic retained bridge response; stdout cost only. It does not measure provider tokens, native gameplay, or a historical implementation."
+}

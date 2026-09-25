@@ -1,0 +1,59 @@
+{
+  "exact_query": {
+    "matched": 2,
+    "returned_rows": 1,
+    "returned_link_request_ids": [
+      "wanted"
+    ],
+    "wanted_link": {
+      "status": "complete",
+      "missing": []
+    },
+    "wanted_outcome": "accepted",
+    "scanned_records": 4,
+    "displayed_records": 1,
+    "displayed_link_bytes": 592,
+    "evidence_ceiling": "Synthetic records through current production query; no live cost measurement"
+  },
+  "query_growth_10": {
+    "matched": 2,
+    "links": 1,
+    "link_bytes": 617,
+    "scanned_records": 12,
+    "displayed_records": 1,
+    "displayed_link_bytes": 592
+  },
+  "query_growth_100": {
+    "matched": 2,
+    "links": 1,
+    "link_bytes": 617,
+    "scanned_records": 102,
+    "displayed_records": 1,
+    "displayed_link_bytes": 592
+  },
+  "display_delta": {
+    "changed_entity": "5",
+    "shown_entities": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "omitted": true,
+    "input_fields": [
+      "owner",
+      "breadcrumbs",
+      "actions",
+      "navigation"
+    ],
+    "advertised_doc_selectors_present": false,
+    "evidence_ceiling": "Synthetic observations through production display; original full facts remain retrievable"
+  },
+  "generic_run_summary": {
+    "claim_scope": "generic",
+    "verdict": "proved",
+    "proof_depth": "interaction",
+    "missing_fields": []
+  }
+}

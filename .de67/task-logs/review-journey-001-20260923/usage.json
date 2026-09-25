@@ -1,0 +1,86 @@
+{
+  "window_start": "2026-09-23T11:17:24.907257+00:00",
+  "snapshot": "2026-09-23T21:17:24.907257+00:00",
+  "campaign_full_tree": {
+    "fresh_input": 0,
+    "cached_input": 0,
+    "output": 0,
+    "responses": 0
+  },
+  "other_workspace_sessions_not_campaign_attribution": {
+    "fresh_input": 593790,
+    "cached_input": 12647552,
+    "output": 57197,
+    "responses": 132
+  },
+  "other_workspace_threads": [
+    {
+      "id": "01a0cff6-d339-7ce1-85a5-40d53a4fbaab",
+      "parent": "01a0cff3-75e5-7bd3-8f91-7d264a976891",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/23/rollout-2026-09-23T22-30-54-01a0cff6-d339-7ce1-85a5-40d53a4fbaab.jsonl",
+      "fresh_input": 86683,
+      "cached_input": 1366016,
+      "output": 5414,
+      "responses": 33
+    },
+    {
+      "id": "01a0cff3-75e5-7bd3-8f91-7d264a976891",
+      "parent": null,
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/23/rollout-2026-09-23T22-27-14-01a0cff3-75e5-7bd3-8f91-7d264a976891.jsonl",
+      "fresh_input": 455264,
+      "cached_input": 11281536,
+      "output": 51733,
+      "responses": 97
+    },
+    {
+      "id": "01a0cff9-f26e-7d12-9d89-250168ce9010",
+      "parent": "01a0cff3-75e5-7bd3-8f91-7d264a976891",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/23/rollout-2026-09-23T22-34-19-01a0cff9-f26e-7d12-9d89-250168ce9010.jsonl",
+      "fresh_input": 25424,
+      "cached_input": 0,
+      "output": 32,
+      "responses": 1
+    },
+    {
+      "id": "01a0cffa-0a8d-7ff2-9a9b-7eb68106fe60",
+      "parent": "01a0cff3-75e5-7bd3-8f91-7d264a976891",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/23/rollout-2026-09-23T22-34-25-01a0cffa-0a8d-7ff2-9a9b-7eb68106fe60.jsonl",
+      "fresh_input": 26419,
+      "cached_input": 0,
+      "output": 18,
+      "responses": 1
+    }
+  ],
+  "campaign_threads": [],
+  "review_this_turn": {
+    "fresh_input": 202999,
+    "cached_input": 844032,
+    "output": 1960,
+    "responses": 5
+  },
+  "weekly_account": {
+    "first": {
+      "timestamp": "2026-09-23T11:51:56.039Z",
+      "used_percent": 8.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 0.905473279433162
+    },
+    "latest": {
+      "timestamp": "2026-09-23T21:16:39.605Z",
+      "used_percent": 21.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 1.4545353765096483
+    },
+    "samples": 151
+  },
+  "limitations": [
+    "Only available local session files created Sep20\u201323. Older active or remote sessions may be missing.",
+    "Named campaign workers joined through durable claims; native helpers through parent ancestry. Other same-cwd sessions are not automatically campaign work.",
+    "Usage is deduplicated thread/response records; cached tokens are separate, not equivalent billing.",
+    "Review includes output only through this snapshot. No helper/provider used in this review."
+  ]
+}

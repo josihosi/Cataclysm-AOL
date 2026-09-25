@@ -1,0 +1,415 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 12,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276605172,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:3",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:3",
+  "kind": "world",
+  "breadcrumbs": [
+    "World"
+  ],
+  "payload": {
+    "avatar": "{\"name\":\"Harris Spivey\",\"absolute_ms\":[3539,3780,0]}",
+    "avatar_effects": "{\"schema\":\"caol-avatar-named-effects-v1\",\"actor_id\":\"character:1\",\"observed_turn\":5212800,\"provenance\":\"Creature::get_effects with nonempty effect::disp_name, disp_desc and disp_mod_source_info, as read by player info. Named current effects only; excludes synthesized Effects-tab entries.\",\"entries\":{\"sad\":{\"whole_body\":{\"description\":\"Effect started: <color_white>just now</color>\\nSpeed <color_white>-2</color>; \\nYou are not content with your life.\",\"mod_source\":\"Origin: 'Dark Days Ahead'\",\"name\":\"Sad\"}}}}",
+    "avatar_status": "{\"schema\":\"caol-avatar-status-v1\",\"actor_id\":\"character:1\",\"observed_turn\":5212800,\"provenance\":{\"health\":\"Native Character body-part HP getters used by sidebar widgets; exact native values, not a claim that the current medical view displays numbers.\",\"stamina\":\"Character::get_stamina/get_stamina_max, as used by sidebar widgets.\",\"needs\":\"Native display::*_text_color labels and colors; blank text remains blank.\",\"weapon\":\"Character::get_wielded_item and weapname_simple/mode/ammo; ammo text preserves native firing-mode and pocket handling.\"},\"health\":{\"unit\":\"hp\",\"body_parts\":{\"foot_l\":{\"name\":\"l. foot\",\"current\":92,\"maximum\":92},\"foot_r\":{\"name\":\"r. foot\",\"current\":92,\"maximum\":92},\"hand_l\":{\"name\":\"l. hand\",\"current\":92,\"maximum\":92},\"hand_r\":{\"name\":\"r. hand\",\"current\":92,\"maximum\":92},\"head\":{\"name\":\"head\",\"current\":92,\"maximum\":92},\"mouth\":{\"name\":\"mouth\",\"current\":92,\"maximum\":92},\"arm_l\":{\"name\":\"l. arm\",\"current\":92,\"maximum\":92},\"arm_r\":{\"name\":\"r. arm\",\"current\":92,\"maximum\":92},\"eyes\":{\"name\":\"eyes\",\"current\":92,\"maximum\":92},\"leg_l\":{\"name\":\"l. leg\",\"current\":92,\"maximum\":92},\"leg_r\":{\"name\":\"r. leg\",\"current\":92,\"maximum\":92},\"torso\":{\"name\":\"torso\",\"current\":92,\"maximum\":92}}},\"stamina\":{\"current\":8500,\"maximum\":8500,\"unit\":\"native_stamina_points\"},\"needs\":{\"hunger\":{\"text\":\"\",\"color\":\"c_white\"},\"thirst\":{\"text\":\"\",\"color\":\"c_white\"},\"sleepiness\":{\"text\":\"\",\"color\":\"c_white\"},\"pain\":{\"text\":\"\",\"color\":\"c_white\"},\"weariness\":{\"text\":\"Fresh\",\"color\":\"c_green\"},\"body_temperature\":{\"text\":\"Comfortable\",\"color\":\"c_green\"}},\"weapon\":{\"item_uid\":null,\"type_id\":null,\"name\":\"fists\",\"mode\":\"\",\"ammo\":\"\"}}",
+    "current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[147,157,0],\"found\":false,\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+    "current_site_camp_storage": "{\"schema\":\"caol-current-site-camp-storage-v1\",\"accessible\":false,\"provenance\":\"diagnostic_current_accessible_camp_storage_not_item_mutation\"}",
+    "diagnostic_active_monsters": "[]",
+    "diagnostic_zombie_rider_bands": "{\"schema\":\"caol-zombie-rider-bands-v1\",\"available\":false}",
+    "diagnostic_zombie_rider_light_memory": "{\"schema\":\"caol-zombie-rider-light-memory-v1\",\"available\":false}",
+    "hostile_contact_members": "{\"schema\":\"caol-hostile-contact-member-ownership-v1\",\"present\":false,\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}",
+    "last_debug_intervention": "none_this_run",
+    "last_save_result": "unattempted",
+    "messages": "[{\"time\":\"8:00:00 AM\",\"text\":\"You lost the conduct \\\"Nudist\\\".\"},{\"time\":\"8:00:00 AM\",\"text\":\"You have survived the initial wave of panic, and have achieved (relative) safety in one of the many government evac shelters.\"}]",
+    "minimap": "{\"schema\":\"caol-native-minimap-v1\",\"radius\":12,\"cells\":[{\"dx\":-12,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-12,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-11,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-10,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-9,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-8,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-7,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-6,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-5,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-4,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":-3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":-3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":-3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-3,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":-2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":-2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":-2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":-2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":4,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-2,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":-1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":-1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":-1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":-1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":-1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":4,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":-1,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":0,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":0,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":0,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":0,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":0,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":4,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":0,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":1,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":4,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":1,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":2,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":4,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":2,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":0,\"dy\":3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":1,\"dy\":3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":2,\"dy\":3,\"visibility\":\"clear\",\"terrain\":\"floor\"},{\"dx\":3,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":3,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":4,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":5,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":6,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":7,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":8,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":9,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":10,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":11,\"visibility\":\"unknown\"},{\"dx\":-12,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-11,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-10,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-9,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-8,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-7,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-6,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-5,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-4,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-3,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-2,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":-1,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":0,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":1,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":2,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":3,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":4,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":5,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":6,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":7,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":8,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":9,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":10,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":11,\"dy\":12,\"visibility\":\"unknown\"},{\"dx\":12,\"dy\":12,\"visibility\":\"unknown\"}]}",
+    "overmap": "{\"schema\":\"caol-avatar-overmap-v1\",\"coordinate_system\":\"avatar_relative_omt\",\"radius\":3,\"bound_source\":\"native_hud_minimap_width\",\"center_absolute_omt\":[147,157,0],\"cells\":[{\"dx\":-3,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":0,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":1,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":2,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":3,\"dy\":-3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-3,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":0,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":1,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":2,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":3,\"dy\":-2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-3,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":0,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":1,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":2,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":3,\"dy\":-1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-3,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":0,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"evac shelter A-23\"},{\"dx\":1,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":2,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":3,\"dy\":0,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-3,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":0,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":1,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":2,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":3,\"dy\":1,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-3,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":-2,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":-1,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":0,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":1,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":2,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":3,\"dy\":2,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"road\"},{\"dx\":-3,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-2,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":-1,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":0,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":1,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":2,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"},{\"dx\":3,\"dy\":3,\"state\":\"clear\",\"vision\":\"full\",\"provenance\":\"avatar_discovered_overmap\",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":5212800},\"terrain\":\"field\"}]}",
+    "staffed_camp_signal_leads": "{\"schema\":\"caol-staffed-camp-signal-leads-v1\",\"known\":true,\"current_minutes\":7680,\"sites\":[],\"provenance\":\"diagnostic_read_only_global_bandit_live_world_camp_intelligence\"}",
+    "structural_outing_owner": "{\"schema\":\"caol-structural-outing-owner-v1\",\"present\":false,\"provenance\":\"diagnostic_read_only_global_bandit_live_world_active_structural_cursor\"}",
+    "structural_signal_dispatch": "{\"schema\":\"caol-structural-signal-dispatch-v1\",\"current_minutes\":7680,\"scheduler_last_hour\":-1,\"dispatch_threshold\":500,\"loaded_source\":{\"map_loaded\":true,\"avatar_absolute_ms\":[3539,3780,0],\"items\":[{\"type_id\":\"corpse_generic_female\",\"active\":true,\"absolute_ms\":[3586,3742,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"feces_manure\",\"active\":true,\"absolute_ms\":[3476,3811,0],\"countdown_turn\":null,\"countdown_minutes\":null},{\"type_id\":\"corpse_generic_male\",\"active\":true,\"absolute_ms\":[3562,3820,0],\"countdown_turn\":null,\"countdown_minutes\":null}],\"source_found\":true},\"site_evaluations\":[],\"candidates\":[],\"provenance\":\"diagnostic_read_only_production_scheduler_evaluator_no_materialization_or_dispatch\"}",
+    "visible_entities": "[{\"identity\":{\"kind\":\"npc\",\"id\":\"character:2\"},\"kind\":\"npc\",\"name\":\"Genevieve Floyd\",\"attitude\":\"neutral\",\"dx\":0,\"dy\":-1,\"absolute_ms\":[3539,3779,0],\"health\":{\"hp\":743,\"maximum_hp\":743,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]",
+    "visible_local": "[{\"dx\":-1,\"dy\":-1,\"visibility\":\"clear\",\"identity\":{\"dx\":-1,\"dy\":-1,\"terrain\":\"t_floor\"},\"furniture\":\"f_locker\",\"fields\":[],\"terrain\":\"floor\"},{\"dx\":0,\"dy\":-1,\"visibility\":\"clear\",\"identity\":{\"dx\":0,\"dy\":-1,\"terrain\":\"t_floor\"},\"fields\":[],\"terrain\":\"floor\"},{\"dx\":1,\"dy\":-1,\"visibility\":\"clear\",\"identity\":{\"dx\":1,\"dy\":-1,\"terrain\":\"t_floor\"},\"furniture\":\"f_bench\",\"fields\":[],\"terrain\":\"floor\"},{\"dx\":-1,\"dy\":0,\"visibility\":\"clear\",\"identity\":{\"dx\":-1,\"dy\":0,\"terrain\":\"t_floor\"},\"furniture\":\"f_locker\",\"fields\":[],\"terrain\":\"floor\"},{\"dx\":0,\"dy\":0,\"visibility\":\"clear\",\"identity\":{\"dx\":0,\"dy\":0,\"terrain\":\"t_floor\"},\"fields\":[],\"terrain\":\"floor\"},{\"dx\":1,\"dy\":0,\"visibility\":\"clear\",\"identity\":{\"dx\":1,\"dy\":0,\"terrain\":\"t_floor\"},\"furniture\":\"f_bench\",\"fields\":[],\"terrain\":\"floor\"},{\"dx\":-1,\"dy\":1,\"visibility\":\"clear\",\"identity\":{\"dx\":-1,\"dy\":1,\"terrain\":\"t_floor\"},\"furniture\":\"f_locker\",\"fields\":[],\"terrain\":\"floor\"},{\"dx\":0,\"dy\":1,\"visibility\":\"clear\",\"identity\":{\"dx\":0,\"dy\":1,\"terrain\":\"t_floor\"},\"fields\":[],\"terrain\":\"floor\"},{\"dx\":1,\"dy\":1,\"visibility\":\"clear\",\"identity\":{\"dx\":1,\"dy\":1,\"terrain\":\"t_floor\"},\"furniture\":\"f_bench\",\"fields\":[],\"terrain\":\"floor\"}]",
+    "visible_zones": "[{\"name\":\"\",\"type\":\"ZONE_START_POINT\",\"dx\":0,\"dy\":0},{\"name\":\"BulkCostUnsortedSource\",\"type\":\"LOOT_UNSORTED\",\"dx\":0,\"dy\":0},{\"name\":\"BulkCostWoodDestination\",\"type\":\"LOOT_WOOD\",\"dx\":0,\"dy\":1},{\"name\":\"BulkCostToolsDestination\",\"type\":\"LOOT_TOOLS\",\"dx\":1,\"dy\":0}]",
+    "world_mode": "walk"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "world.pause",
+      "stable_id": "",
+      "label": "world.pause",
+      "enabled": true
+    },
+    {
+      "id": "world.wait",
+      "stable_id": "",
+      "label": "world.wait",
+      "enabled": true
+    },
+    {
+      "id": "world.quicksave",
+      "stable_id": "",
+      "label": "world.quicksave",
+      "enabled": true
+    },
+    {
+      "id": "world.save_quit",
+      "stable_id": "",
+      "label": "world.save_quit",
+      "enabled": true
+    },
+    {
+      "id": "world.inventory",
+      "stable_id": "",
+      "label": "world.inventory",
+      "enabled": true
+    },
+    {
+      "id": "world.pickup",
+      "stable_id": "",
+      "label": "world.pickup",
+      "enabled": true
+    },
+    {
+      "id": "world.drop",
+      "stable_id": "",
+      "label": "world.drop",
+      "enabled": true
+    },
+    {
+      "id": "world.zone_manager",
+      "stable_id": "",
+      "label": "world.zone_manager",
+      "enabled": true
+    },
+    {
+      "id": "world.look",
+      "stable_id": "",
+      "label": "Look around and inspect a visible creature",
+      "enabled": true
+    },
+    {
+      "id": "world.overmap",
+      "stable_id": "",
+      "label": "world.overmap",
+      "enabled": true
+    },
+    {
+      "id": "world.messages",
+      "stable_id": "",
+      "label": "world.messages",
+      "enabled": true
+    },
+    {
+      "id": "world.chat",
+      "stable_id": "",
+      "label": "world.chat",
+      "enabled": true
+    },
+    {
+      "id": "world.fire",
+      "stable_id": "",
+      "label": "Fire wielded weapon",
+      "enabled": true
+    },
+    {
+      "id": "world.reload",
+      "stable_id": "",
+      "label": "Reload wielded weapon",
+      "enabled": true
+    },
+    {
+      "id": "world.toggle_safemode",
+      "stable_id": "",
+      "label": "Toggle safe mode",
+      "enabled": true
+    },
+    {
+      "id": "world.debug_menu",
+      "stable_id": "",
+      "label": "world.debug_menu",
+      "enabled": true
+    },
+    {
+      "id": "world.move.north",
+      "stable_id": "",
+      "label": "Move north (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.south",
+      "stable_id": "",
+      "label": "Move south (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.west",
+      "stable_id": "",
+      "label": "Move west (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.east",
+      "stable_id": "",
+      "label": "Move east (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.northwest",
+      "stable_id": "",
+      "label": "Move northwest (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.northeast",
+      "stable_id": "",
+      "label": "Move northeast (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.southwest",
+      "stable_id": "",
+      "label": "Move southwest (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.move.southeast",
+      "stable_id": "",
+      "label": "Move southeast (interact or attack if occupied)",
+      "enabled": true
+    },
+    {
+      "id": "world.level_up",
+      "stable_id": "",
+      "label": "Go up (stairs or climb)",
+      "enabled": true
+    },
+    {
+      "id": "world.level_down",
+      "stable_id": "",
+      "label": "Go down (stairs or descend)",
+      "enabled": true
+    },
+    {
+      "id": "world.debug_kill_creature",
+      "stable_id": "character:2",
+      "label": "Debug kill Genevieve Floyd at (0,-1,0) - setup intervention",
+      "enabled": true
+    },
+    {
+      "id": "world.inspect_npc",
+      "stable_id": "character:2",
+      "label": "Inspect Genevieve Floyd (includes diagnostics)",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "observation": {
+    "schema": "caol-avatar-visible-v1",
+    "avatar": {
+      "name": "Harris Spivey",
+      "absolute_ms": [
+        3539,
+        3780,
+        0
+      ]
+    },
+    "visible_local": [
+      {
+        "dx": -1,
+        "dy": -1,
+        "visibility": "clear",
+        "identity": {
+          "dx": -1,
+          "dy": -1,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_locker",
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 0,
+        "dy": -1,
+        "visibility": "clear",
+        "identity": {
+          "dx": 0,
+          "dy": -1,
+          "terrain": "t_floor"
+        },
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 1,
+        "dy": -1,
+        "visibility": "clear",
+        "identity": {
+          "dx": 1,
+          "dy": -1,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_bench",
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": -1,
+        "dy": 0,
+        "visibility": "clear",
+        "identity": {
+          "dx": -1,
+          "dy": 0,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_locker",
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 0,
+        "dy": 0,
+        "visibility": "clear",
+        "identity": {
+          "dx": 0,
+          "dy": 0,
+          "terrain": "t_floor"
+        },
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 1,
+        "dy": 0,
+        "visibility": "clear",
+        "identity": {
+          "dx": 1,
+          "dy": 0,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_bench",
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": -1,
+        "dy": 1,
+        "visibility": "clear",
+        "identity": {
+          "dx": -1,
+          "dy": 1,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_locker",
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 0,
+        "dy": 1,
+        "visibility": "clear",
+        "identity": {
+          "dx": 0,
+          "dy": 1,
+          "terrain": "t_floor"
+        },
+        "fields": [],
+        "terrain": "floor"
+      },
+      {
+        "dx": 1,
+        "dy": 1,
+        "visibility": "clear",
+        "identity": {
+          "dx": 1,
+          "dy": 1,
+          "terrain": "t_floor"
+        },
+        "furniture": "f_bench",
+        "fields": [],
+        "terrain": "floor"
+      }
+    ],
+    "minimap": {
+      "schema": "caol-native-minimap-v1",
+      "radius": 12
+    },
+    "visible_entities": [
+      {
+        "identity": {
+          "kind": "npc",
+          "id": "character:2"
+        },
+        "kind": "npc",
+        "name": "Genevieve Floyd",
+        "attitude": "neutral",
+        "dx": 0,
+        "dy": -1,
+        "absolute_ms": [
+          3539,
+          3779,
+          0
+        ],
+        "health": {
+          "hp": 743,
+          "maximum_hp": 743,
+          "dead": false,
+          "provenance": "diagnostic_visible_creature_state"
+        }
+      }
+    ],
+    "diagnostic_active_monsters": [],
+    "diagnostic_zombie_rider_light_memory": {
+      "schema": "caol-zombie-rider-light-memory-v1",
+      "available": false
+    },
+    "diagnostic_zombie_rider_bands": {
+      "schema": "caol-zombie-rider-bands-v1",
+      "available": false
+    },
+    "visible_zones": [
+      {
+        "name": "",
+        "type": "ZONE_START_POINT",
+        "dx": 0,
+        "dy": 0
+      },
+      {
+        "name": "BulkCostUnsortedSource",
+        "type": "LOOT_UNSORTED",
+        "dx": 0,
+        "dy": 0
+      },
+      {
+        "name": "BulkCostWoodDestination",
+        "type": "LOOT_WOOD",
+        "dx": 0,
+        "dy": 1
+      },
+      {
+        "name": "BulkCostToolsDestination",
+        "type": "LOOT_TOOLS",
+        "dx": 1,
+        "dy": 0
+      }
+    ]
+  },
+  "keep_watch_safety": {
+    "classification": "clear",
+    "monster": false,
+    "danger": false,
+    "damage": false
+  },
+  "state": "world",
+  "provenance": "native_semantic_step_trace",
+  "dispatch_descriptor_event_offset": 135817,
+  "observed_turn": 5212800,
+  "paired_raw_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:5212800:3",
+  "paired_raw_state": "world",
+  "paired_raw_event_offset": 191390
+}

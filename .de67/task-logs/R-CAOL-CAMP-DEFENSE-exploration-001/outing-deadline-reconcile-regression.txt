@@ -1,0 +1,21 @@
+
+
+-----------------------------------------
+10:08:34.765 : Starting log.
+10:08:34.765 INFO : Cataclysm DDA version 67d2c1d8e6-dirty+SDL3
+10:08:34.765 INFO : Default randomness seeded to: 1178046044
+
+10:08:34.765 INFO : Running Catch2 session:
+
+10:08:34.781 INFO : SDL render devices: software, metal, opengl, opengles2, vulkan, gpu
+10:08:34.781 INFO : [options] C locale set to C
+10:08:34.781 INFO : [options] C++ locale set to C
+10:08:37.323 WARNING : Dark Days Ahead pack load time:: 2266562us (avg: 2266562us) (count: 1)
+10:08:37.323 WARNING : TESTING DATA pack load time:: 74895us (avg: 74895us) (count: 1)
+10:08:46.759 INFO : Game data loaded
+Passed 1 test case with 69 assertions.
+
+
+10:08:46.761 INFO : Finished in 11.9954 seconds
+10:08:46.761 INFO : Default randomness seeded to: 1178046044
+

@@ -1,0 +1,15 @@
+{
+  "world": "BulkB5",
+  "source_tree": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB4",
+  "snapshot_note": "cloned the unchanged prepared BulkB4 save before native save; 128 fresh source planks and hammers at [3539,3780,0], with adjacent static zones and living Genevieve",
+  "items": [
+    {
+      "typeid": "2x4",
+      "count": 128
+    },
+    {
+      "typeid": "hammer",
+      "count": 128
+    }
+  ]
+}

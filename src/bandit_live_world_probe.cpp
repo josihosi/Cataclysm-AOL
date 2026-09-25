@@ -10,8 +10,11 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <map>
+#include <tuple>
 #include <string>
 #include <utility>
+#include <sys/stat.h>
 
 #if defined(_WIN32)
 #include <process.h>
@@ -20,6 +23,8 @@
 #endif
 
 #include "json.h"
+#include "json_loader.h"
+#include "platform_win.h"
 #include "avatar.h"
 #include "calendar.h"
 #include "game.h"
@@ -32,11 +37,57 @@ namespace
 thread_local bandit_live_world_probe::session *active_session = nullptr;
 thread_local std::size_t loaded_covert_member_depth = 0;
 
+struct stream_file_stamp {
+    std::uint64_t device = 0;
+    std::uint64_t file = 0;
+    std::uintmax_t size = 0;
+    std::filesystem::file_time_type modified;
+};
+
+bool read_stream_file_stamp( const std::string &path, stream_file_stamp &stamp )
+{
+#if defined(_WIN32)
+    const HANDLE handle = CreateFileW( std::filesystem::path( path ).c_str(),
+                                      FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                      nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr );
+    if( handle == INVALID_HANDLE_VALUE ) {
+        return false;
+    }
+    BY_HANDLE_FILE_INFORMATION info;
+    const bool success = GetFileInformationByHandle( handle, &info );
+    CloseHandle( handle );
+    if( !success ) {
+        return false;
+    }
+    stamp.device = info.dwVolumeSerialNumber;
+    stamp.file = ( static_cast<std::uint64_t>( info.nFileIndexHigh ) << 32 ) | info.nFileIndexLow;
+#else
+    struct stat info;
+    if( stat( path.c_str(), &info ) != 0 ) {
+        return false;
+    }
+    stamp.device = info.st_dev;
+    stamp.file = info.st_ino;
+#endif
+    std::error_code error;
+    stamp.size = std::filesystem::file_size( path, error );
+    if( error ) {
+        return false;
+    }
+    stamp.modified = std::filesystem::last_write_time( path, error );
+    return !error;
+}
+
 struct live_transition_stream {
     std::string path;
     std::string run_id;
     std::uint64_t last_sequence = 0;
     bool initialized = false;
+    std::uint64_t revision = 0;
+    stream_file_stamp stamp;
+    // The last complete validated record also detects a truncate-and-regrow
+    // which happened between observations on the same file identity.
+    std::string last_line;
 };
 
 live_transition_stream transition_stream;
@@ -293,104 +344,95 @@ bool is_safe_run_id( const std::string_view value )
     } );
 }
 
-bool parse_unsigned_json_member( const std::string_view line, const std::string_view name,
-                                 std::uint64_t &value )
+bool reconcile_transition_stream( const std::string &path, const std::string &run_id )
 {
-    const std::string key = "\"" + std::string( name ) + "\"";
-    const std::size_t key_pos = line.find( key );
-    if( key_pos == std::string_view::npos ) {
-        return false;
-    }
-    std::size_t value_pos = line.find( ':', key_pos + key.size() );
-    if( value_pos == std::string_view::npos ) {
-        return false;
-    }
-    ++value_pos;
-    while( value_pos < line.size() && std::isspace( static_cast<unsigned char>( line[value_pos] ) ) ) {
-        ++value_pos;
-    }
-    const char *const first = line.data() + value_pos;
-    const char *const last = line.data() + line.size();
-    const auto parsed = std::from_chars( first, last, value );
-    return parsed.ec == std::errc() && parsed.ptr != first;
-}
-
-bool parse_string_json_member( const std::string_view line, const std::string_view name,
-                               std::string_view &value )
-{
-    const std::string key = "\"" + std::string( name ) + "\"";
-    const std::size_t key_pos = line.find( key );
-    if( key_pos == std::string_view::npos ) {
-        return false;
-    }
-    std::size_t value_pos = line.find( ':', key_pos + key.size() );
-    if( value_pos == std::string_view::npos ) {
-        return false;
-    }
-    ++value_pos;
-    while( value_pos < line.size() && std::isspace( static_cast<unsigned char>( line[value_pos] ) ) ) {
-        ++value_pos;
-    }
-    if( value_pos >= line.size() || line[value_pos] != '"' ) {
-        return false;
-    }
-    const std::size_t value_end = line.find( '"', value_pos + 1 );
-    if( value_end == std::string_view::npos ||
-        line.substr( value_pos + 1, value_end - value_pos - 1 ).find( '\\' ) != std::string_view::npos ) {
-        return false;
-    }
-    value = line.substr( value_pos + 1, value_end - value_pos - 1 );
-    return true;
-}
-
-bool initialize_transition_stream( const std::string &path, const std::string &run_id )
-{
-    transition_stream = {};
     if( !is_safe_run_id( run_id ) ) {
+        transition_stream = {};
         return false;
     }
-
     std::error_code error;
-    const bool stream_exists = std::filesystem::exists( path, error );
-    if( error ) {
+    if( !std::filesystem::exists( path, error ) ) {
+        transition_stream = {};
+        if( error ) {
+            return false;
+        }
+        transition_stream.path = path;
+        transition_stream.run_id = run_id;
+        return true;
+    }
+    stream_file_stamp stamp;
+    if( !read_stream_file_stamp( path, stamp ) ) {
         return false;
     }
-    if( stream_exists ) {
-        std::ifstream input( path, std::ios::binary );
-        if( !input ) {
-            return false;
-        }
-        const std::string content { std::istreambuf_iterator<char>( input ),
-                                    std::istreambuf_iterator<char>() };
-        if( !content.empty() && content.back() != '\n' ) {
-            return false;
-        }
-        std::uint64_t last_sequence = 0;
-        std::size_t start = 0;
-        while( start < content.size() ) {
-            const std::size_t end = content.find( '\n', start );
-            if( end == std::string::npos || end == start ) {
-                return false;
-            }
-            const std::string_view line( content.data() + start, end - start );
-            std::uint64_t schema_version = 0;
-            std::uint64_t sequence = 0;
-            std::string_view stored_run_id;
-            if( !parse_unsigned_json_member( line, "schema_version", schema_version ) ||
-                !parse_unsigned_json_member( line, "sequence", sequence ) ||
-                !parse_string_json_member( line, "run_id", stored_run_id ) ||
-                schema_version != 1 || stored_run_id != run_id ||
-                sequence == 0 || sequence != last_sequence + 1 ) {
-                return false;
-            }
-            last_sequence = sequence;
-            start = end + 1;
-        }
-        transition_stream.last_sequence = last_sequence;
+    const bool same_file = transition_stream.initialized &&
+                           transition_stream.path == path && transition_stream.run_id == run_id &&
+                           transition_stream.stamp.device == stamp.device &&
+                           transition_stream.stamp.file == stamp.file;
+    if( same_file && stamp.size == transition_stream.stamp.size &&
+        stamp.modified == transition_stream.stamp.modified ) {
+        return true;
     }
-    transition_stream.path = path;
-    transition_stream.run_id = run_id;
-    transition_stream.initialized = true;
+    std::ifstream input( path, std::ios::binary );
+    if( !input ) {
+        return false;
+    }
+    bool append_only = same_file && stamp.size > transition_stream.stamp.size;
+    if( append_only && !transition_stream.last_line.empty() ) {
+        const std::streamoff anchor = transition_stream.stamp.size -
+                                      transition_stream.last_line.size() - 1;
+        input.seekg( anchor );
+        std::string line;
+        append_only = static_cast<bool>( std::getline( input, line ) ) &&
+                      line == transition_stream.last_line;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::transition_stream_bytes_read, line.size() + 1 );
+    }
+    // Replacement, shrinkage, same-size edits, or an altered boundary must be
+    // validated from the beginning.  Normal broker/native appends start at the
+    // last validated byte, never at the native writer's last sequence alone.
+    live_transition_stream candidate;
+    if( append_only ) {
+        candidate = transition_stream;
+    }
+    candidate.revision = transition_stream.revision +
+                         ( transition_stream.initialized && !append_only ? 1 : 0 );
+    candidate.path = path;
+    candidate.run_id = run_id;
+    input.clear();
+    std::uintmax_t offset = append_only ? transition_stream.stamp.size : 0;
+    input.seekg( static_cast<std::streamoff>( offset ) );
+    while( offset < stamp.size ) {
+        std::string line;
+        if( !std::getline( input, line ) || input.eof() || line.empty() ) {
+            return false;
+        }
+        offset += line.size() + 1;
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::transition_stream_bytes_read, line.size() + 1 );
+        bandit_live_world_probe::increment(
+            bandit_live_world_probe::counter::transition_stream_records_validated );
+        if( offset > stamp.size ) {
+            return false;
+        }
+        try {
+            const JsonObject record = json_loader::from_string( line );
+            record.allow_omitted_members();
+            const std::uint64_t sequence = record.get_member( "sequence" ).get_uint64();
+            if( record.get_int( "schema_version" ) != 1 ||
+                record.get_string( "run_id" ) != run_id ||
+                candidate.last_sequence == std::numeric_limits<std::uint64_t>::max() ||
+                sequence != candidate.last_sequence + 1 ) {
+                return false;
+            }
+            candidate.last_sequence = sequence;
+        } catch( const JsonError & ) {
+            return false;
+        }
+        candidate.last_line = std::move( line );
+    }
+    candidate.stamp = stamp;
+    candidate.initialized = true;
+    transition_stream = std::move( candidate );
     return true;
 }
 
@@ -405,11 +447,7 @@ bool live_transition_stream_enabled()
     }
     const std::string path( path_value );
     const std::string run_id( run_id_value );
-    // The semantic broker may append a correlated receipt after this process
-    // last wrote the shared run stream.  Re-read the authoritative watermark
-    // before every native append so a delayed broker collection cannot make a
-    // later game-owned event reuse an older sequence number.
-    return initialize_transition_stream( path, run_id );
+    return reconcile_transition_stream( path, run_id );
 }
 
 bool append_live_transition_event( const bandit_live_world_probe::transition_event &event )
@@ -666,7 +704,9 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
     if( !output ) {
         return false;
     }
-    transition_stream.last_sequence = sequence;
+    // Reconcile this complete native record along with any broker append on
+    // the next observation; advancing only the sequence would skip validation
+    // of intervening records or make the byte watermark inconsistent.
     return true;
 }
 } // namespace
@@ -977,6 +1017,55 @@ void record_transition_event( transition_event event )
     events.push_back( std::move( event ) );
 }
 
+void record_signal_dispatch_admission( transition_event event )
+{
+    // This is diagnostic state only; no admission decision or gameplay cursor
+    // consults it.  Bind it to the run and file identity, not to turn/sample IDs.
+    static std::string cached_path;
+    static std::string cached_run;
+    static stream_file_stamp cached_stamp;
+    static std::uint64_t cached_revision = 0;
+    static std::map<std::string, transition_event> rejected_by_site;
+    try {
+        if( !live_transition_stream_enabled() ) {
+            rejected_by_site.clear();
+            return;
+        }
+        if( cached_path != transition_stream.path || cached_run != transition_stream.run_id ||
+            cached_revision != transition_stream.revision ||
+            ( transition_stream.initialized &&
+              ( cached_stamp.device != transition_stream.stamp.device ||
+                cached_stamp.file != transition_stream.stamp.file ||
+                cached_stamp.size > transition_stream.stamp.size ) ) ) {
+            rejected_by_site.clear();
+        }
+        cached_path = transition_stream.path;
+        cached_run = transition_stream.run_id;
+        cached_revision = transition_stream.revision;
+        const auto context = []( const transition_event &value ) {
+            return std::tie( value.outcome, value.reason, value.operation_id, value.generation,
+                             value.simulation_owner, value.handoff_epoch, value.previous_phase,
+                             value.new_phase, value.actor_ids );
+        };
+        const auto previous = rejected_by_site.find( event.site_id );
+        if( event.outcome == "rejected" && previous != rejected_by_site.end() &&
+            context( previous->second ) == context( event ) ) {
+            return;
+        }
+        if( append_live_transition_event( event ) ) {
+            if( event.outcome == "rejected" ) {
+                rejected_by_site[event.site_id] = event;
+            } else {
+                rejected_by_site.erase( event.site_id );
+            }
+            read_stream_file_stamp( transition_stream.path, cached_stamp );
+        }
+    } catch( ... ) {
+        rejected_by_site.clear();
+        transition_stream = {};
+    }
+}
+
 void record_live_transition_event( transition_event event )
 {
     if( event.reason.empty() ) {
@@ -1180,6 +1269,8 @@ std::string_view to_string( const counter target )
         "loaded_covert_members_processed",
         "loaded_covert_overmap_route_solves",
         "loaded_covert_local_path_solves",
+        "transition_stream_bytes_read",
+        "transition_stream_records_validated",
     };
     return names[enum_index( target )];
 }

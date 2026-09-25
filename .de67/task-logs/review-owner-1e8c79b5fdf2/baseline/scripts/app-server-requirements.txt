@@ -1,0 +1,2 @@
+# Optional Unix App Server transport; the default CLI runner needs no extra package.
+websockets>=15,<16

@@ -1,0 +1,69 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The isolated v003 run loaded the accepted R032 camp and character:25 Locker equipment, created a native CAMP_PATROL zone, and set patrol priority 9. The saved current shift plan listed character:25 as its active guard, but the native diagnostic still reported no patrol runtime/order, so this run reached no bandit outing or contact. The world was saved through native save and quit and the game exited through the native main-menu quit route with exit code 0.",
+  "causal_account": "This run deliberately created the patrol zone and changed priorities after loading the stock fixture. At game minute 7633, the cached day plan was current, with roster character:25 and active_guard=true, while runtime_state=not_assigned and the actor remained CAMP_RESIDENT with camp_patrol_order=false at priority 9. The game had also performed an automatic save at minute 7634. The source code computes patrol duty windows from the cached worker priorities; a fresh next run will set job priorities before creating or querying a patrol zone, so the cache is first built from the intended priority. This observation is not yet enough to establish a product defect.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Exact scenario, source identity, executable SHA, run ID and bridge binding for this attempt.",
+      "checks": {
+        "scenario_id": "r032.camp_defense_shakedown_v003_mcw",
+        "source_identity": "7699818d1544db93a70f14faa1883aeacd2d0ed9ddcb2819dd5d089e2fa20cbb",
+        "executable_identity": "c5442a8c0457cf1b2430f8496917de221395dfe0934611672dc294b4b67a4692",
+        "run_id": "cdad7e8c6018bcd25aaa7951cb4b9b18ca6d6378ac58b6219fe1292d15a40867",
+        "binding_id": "981bc0eea0af89b5a81d2d561f09d651878c8b3ae4c7faf7fd32d9282e03644c"
+      }
+    },
+    {
+      "citation_id": "J0178",
+      "meaning": "Native actor and camp patrol diagnostic at game minute 7633: same camp/guard is in roster and active slot, but runtime is not assigned and the actor has no patrol order.",
+      "checks": {
+        "value.game_minutes": 7633,
+        "value.surface.facts.diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":true,\"shift_cache_state\":\"current\",\"shift_cache_available\":true,\"shift\":\"day\",\"roster\":[\"character:25\"],\"actor_active_guard\":true,\"actor_reserve_guard\":false,\"runtime_state\":\"not_assigned\",\"runtime_available\":false}",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"CAMP_RESIDENT\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3880,870,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":9,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    },
+    {
+      "citation_id": "J0202",
+      "meaning": "Native world observation at minute 7634; last_save_result was saved and no structural bandit outing or hostile contact existed yet.",
+      "checks": {
+        "value.game_minutes": 7634,
+        "value.surface.facts.last_save_result": "saved",
+        "value.surface.facts.structural_outing_owner": "{\"schema\":\"caol-structural-outing-owner-v1\",\"present\":false,\"provenance\":\"diagnostic_read_only_global_bandit_live_world_active_structural_cursor\"}",
+        "value.surface.facts.hostile_contact_members": "{\"schema\":\"caol-hostile-contact-member-ownership-v1\",\"present\":false,\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}"
+      }
+    },
+    {
+      "citation_id": "J0219",
+      "meaning": "Native save and quit action was accepted.",
+      "checks": {
+        "action_id": "world.save_quit"
+      }
+    },
+    {
+      "citation_id": "J0224",
+      "meaning": "Native main-menu quit confirmation was accepted.",
+      "checks": {
+        "action_id": "main_menu.quit"
+      }
+    },
+    {
+      "citation_id": "J0225",
+      "meaning": "The exact game process exited with code zero through the native route; process-exit evidence does not independently certify save success.",
+      "checks": {
+        "value.surface.facts.pid": 72256,
+        "value.surface.facts.alive": false,
+        "value.surface.facts.exit_code": 0,
+        "value.surface.facts.gameplay_credit": false,
+        "value.surface.facts.save_outcome": "not_established_by_process_exit"
+      }
+    }
+  ],
+  "recommended_disposition": "change-strategy",
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether a clean priority-before-zone patrol cache produces an assigned native patrol order and visible route movement.",
+    "Whether the corrected natural bandit outing materializes a native Pay/Fight surface.",
+    "Whether a separate Fight branch yields meaningful guard/bandit movement and damage."
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-LAUNCHER-GEMMA-exploration-001",
+  "claim_id": "R-LAUNCHER-GEMMA",
+  "worker_id": "01a0d030-5a10-7b62-8c1f-67fbf00ea4bc",
+  "disposition": "completed",
+  "verdict": "gemma_catalogue_and_focused_godot_wiring_proved",
+  "outcome": "Catapult-Dabubu now offers both exact Gemma 4 Ollama tags through its existing model catalogue, setup UI, pull plan, saved settings, active-game options and runner arguments. The focused Godot workflow smoke and backend contract checks pass.",
+  "summary": "The launcher checkout at clean baseline 366aee6bd675be9b45afbd2ab222808faceedd9d has a five-file diff. Review disproved an initial broad autoload-repair hypothesis, so those four unrelated files were restored to HEAD. A portable official Godot 3.6.3 ran the isolated UI workflow smoke successfully. Existing Mistral and Nemotron choice order, default, normalization, readiness and alias creation were checked. No model was downloaded or run for inference, and native GUI capture remains blocked.",
+  "material_changes": [
+    "Added gemma4:e2b and gemma4:e4b to BackendConfigManager's catalogue and labels; each keeps its exact pull source and inventory identity.",
+    "BackendSetupUI now builds model choices and status rows from the catalogue while retaining Mistral and Nemotron behavior.",
+    "The focused smoke and backend contract fixtures cover separate Gemma selection, readiness, pull plan, options, runner arguments, backend switches, UI recreation and refresh.",
+    "Added a CATAPULT_DABUBU_DATA_DIR data-dir override so smoke execution uses isolated launcher data."
+  ],
+  "tests": [
+    "Portable official Godot 3.6.3 focused godot_ollama_workflow_smoke.gd: passed; marker and details in build_logs/phase3-launcher-gemma-20260924/final-godot-smoke.log.",
+    "prove_caol_backend_contract.py against the current C-AOL root: passed with separate Gemma E2B and E4B options fixtures.",
+    "C-AOL runner.py --dry-run with gemma4:e2b and gemma4:e4b: both passed; argument-routing proof only.",
+    "Python py_compile and launcher git diff --check: passed.",
+    "Clean HEAD baseline and minimized current launcher variant were compared; the baseline had no autoload parse failure, and current smoke passed after broad autoload edits were removed."
+  ],
+  "live_actions": [
+    "A temporary portable Godot 3.6.3 ran the focused smoke in a copied project and isolated data directory; its GUI process PID 7489 exited after graceful quit.",
+    "The installed Godot 3.6.2 GUI launch PID 5649, birth 2026-09-23 23:41:17.874 +0200, remains alive at _dyld_start with no window after Peekaboo app quit reported success. Its exact process identity and command are preserved as a cleanup blocker.",
+    "No Ollama model was pulled or used for inference; the existing Ollama service was inspected only."
+  ],
+  "evidence_ceiling": [
+    "This proves launcher configuration and focused UI workflow in a portable Godot process, not a completed real GUI interaction through Peekaboo.",
+    "Fresh installation, real local responses from both models and Mac/Windows/Linux application journeys remain separate open work.",
+    "PID 5649 did not exit; do not credit its cleanup."
+  ],
+  "bindings": {
+    "launcher_repo": "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu",
+    "launcher_head": "366aee6bd675be9b45afbd2ab222808faceedd9d",
+    "godot_version": "3.6.3.stable.official.a3378686f",
+    "godot_asset_sha256": "5324c4ef7105e6f60a0efb91d448ed36747694821eac091b29104a470d197497",
+    "godot_executable_sha256": "b8603384613cb69d1fdc7047e476edd7e26ea61e44fd82a851ab07620dfa1528",
+    "retained_pid": "5649",
+    "retained_birth": "2026-09-23 23:41:17.874 +0200",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/6fcb8987e8e54d8d96a4b2f10c6d74b4/7ea30bfaf4b6b7871e780f2418a7643af0684a576d334cfe4e59c1721e3ec582.md"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/phase3-launcher-gemma-20260924/final-godot-smoke.log",
+      "sha256": "6c3fcf04332be948ef6b95992115e3088e7dd0ae05d2d306ce17e91d5a091112",
+      "role": "Current focused portable-Godot UI workflow smoke result."
+    },
+    {
+      "path": "build_logs/phase3-launcher-gemma-20260924/clean-head-smoke-imported.log",
+      "sha256": "a6ac381024e4cc1ca66b058c05ba92f1c73514ed19e0f1d97010cb12187db5ac",
+      "role": "Clean HEAD baseline smoke with imported resources; disproves the claimed autoload parse failure."
+    },
+    {
+      "path": "build_logs/phase3-launcher-gemma-20260924/clean-head-normal-launch-imported.log",
+      "sha256": "e126fa98fc93d89f6732c4d4ea70b508a0f3eb84564d20882fcaf9fa93442330",
+      "role": "Clean HEAD ordinary launcher baseline startup evidence."
+    }
+  ],
+  "first_divergence": {
+    "class": "gemma_choices_absent_and_unlisted_selection_resets",
+    "summary": "The baseline launcher catalogue and separate UI list lacked both Gemma tags, so an unlisted saved Gemma choice could reset to the first model."
+  },
+  "accepted_no_replay": [
+    "Preserved the existing C-AOL accepted gameplay and harness evidence; no game session was launched for this task.",
+    "No model pull or inference was treated as proved by fixture or dry-run results."
+  ],
+  "active_work": [
+    "PID 5649 remains alive and needs exact-identity graceful cleanup or an explicit retained-process handoff. Its stuck startup blocks installed-Godot GUI proof."
+  ],
+  "first_open_boundary": "Prove real launcher interaction and both actual Gemma model downloads/responses in later clean-install work; resolve the retained Godot PID 5649 cleanup blocker without disturbing user data.",
+  "narrow_queries": [
+    "Launcher git diff for scripts/BackendConfigManager.gd, scripts/BackendSetupUI.gd, scripts/path_helper.gd and two focused test files.",
+    "build_logs/phase3-launcher-gemma-20260924/final-godot-smoke.log for exact success marker.",
+    "ps -p 5649 -o pid,lstart,command before any cleanup action."
+  ],
+  "entrypoints": [
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/scripts/BackendConfigManager.gd",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/tools/godot_ollama_workflow_smoke.gd"
+  ],
+  "context_metrics": {
+    "modified_files": 5,
+    "smoke_passed": 1,
+    "real_gui_interaction": 0
+  }
+}

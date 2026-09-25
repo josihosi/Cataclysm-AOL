@@ -1412,9 +1412,36 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
                << ",\"phase\":" << openclaw_harness_quote_action_value(
                    bandit_live_world::to_string( outing.phase ) )
                << ",\"waypoint_index\":" << outing.waypoint_index
+               << ",\"actor_route_waypoint\":" << outing.actor_route_waypoint
                << ",\"last_advanced_minutes\":" << outing.last_advanced_minutes
                << ",\"member_ids\":[" << outing.member_ids[0].get_value() << ','
                << outing.member_ids[1].get_value() << ']';
+        result << ",\"assigned_members\":[";
+        bool first_member = true;
+        for( const character_id id : outing.member_ids ) {
+            if( !first_member ) {
+                result << ',';
+            }
+            first_member = false;
+            const auto stored = overmap_buffer.find_npc( id );
+            const npc *member = g->find_npc( id );
+            if( member == nullptr ) {
+                member = stored.get();
+            }
+            result << "{\"id\":" << id.get_value() << ",\"found\":" << ( member ? "true" : "false" );
+            if( member ) {
+                const auto ms = member->pos_abs();
+                const auto omt = member->pos_abs_omt();
+                result << ",\"name\":" << openclaw_harness_quote_action_value( member->get_name() )
+                       << ",\"absolute_ms\":[" << ms.x() << ',' << ms.y() << ',' << ms.z() << ']'
+                       << ",\"absolute_omt\":[" << omt.x() << ',' << omt.y() << ',' << omt.z() << ']'
+                       << ",\"active\":" << ( member->is_active() ? "true" : "false" )
+                       << ",\"goal_omt\":[" << member->goal.x() << ',' << member->goal.y() << ','
+                       << member->goal.z() << ']';
+            }
+            result << '}';
+        }
+        result << ']';
         result << ",\"local_handoff_active\":" << ( outing.local_handoff.is_active() ? "true" : "false" )
                << ",\"local_handoff_phase\":" << openclaw_harness_quote_action_value(
                    bandit_live_world::to_string( outing.local_handoff.phase ) )
@@ -2103,6 +2130,9 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "messages", openclaw_harness_world_messages() },
         { "world_mode", player.current_movement_mode().str() },
         { "last_save_result", g == nullptr ? "unavailable" : g->last_save_result() },
+        { "last_save_checkpoint", std::string( "{\"confirmed_turn\":" ) +
+          ( g != nullptr && g->last_confirmed_save_turn() ?
+            std::to_string( *g->last_confirmed_save_turn() ) : "null" ) + "}" },
         { "last_debug_intervention", harness_last_debug_creature_intervention(
                 openclaw_harness_bound_semantic_run_id() ) }
     };

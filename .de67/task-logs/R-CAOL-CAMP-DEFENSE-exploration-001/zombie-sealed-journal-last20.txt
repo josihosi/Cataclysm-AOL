@@ -1,0 +1,22 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-563e20c2a688479683e395d05d45e702
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0127: observation — look_cursor
+  INDEX 126; PATH value.surface.facts.FIELD; FIELD: cursor, first_point, mode, movement_step, relative_to_avatar, selection_stage
+J0128: action — cursor.northeast
+  checks: {"action_id": "cursor.northeast"}
+J0129: observation — look_cursor
+  INDEX 128; same PATH/FIELD as J0127.
+J0130: action — cursor.east
+  checks: {"action_id": "cursor.east"}
+J0131: observation — menu
+  INDEX 130; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0132: action — cursor.confirm
+  checks: {"action_id": "cursor.confirm"}
+J0133: observation — world
+  INDEX 132; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0134: action — menu.cancel
+  checks: {"action_id": "menu.cancel"}
+J0135: observation — world
+  INDEX 134; same PATH/FIELD as J0133.
+J0136: terminal — Setup only: disclosed native debug-menu spawn of one visible hostile zombie at absolute MS [3903,876,0] after character:25 native CAMP_PATROL order and route were established. Spawn itself receives no gameplay credit; subsequent alarm, guard movement, attacks and kill must be ordinary game behavior.
+  INDEX 135; PATH FIELD; FIELD: stop_reason, unused_authority, cleanup

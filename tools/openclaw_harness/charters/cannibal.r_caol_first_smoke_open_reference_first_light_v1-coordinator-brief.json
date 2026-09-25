@@ -1,0 +1,46 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "scenario": "cannibal.r_caol_first_smoke_open_reference_first_light_v1",
+  "objective": "Run ordinary first light in a disposable copy of the separate prepared OPEN-window reference and capture source-bound physical light/smoke. This is explicitly signal-only: the reference has no cannibal camp.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_open_reference_first_light_v1-witness.json",
+  "outcome": "The prepared OPEN-window reference under ordinary lighter ignition produces native source-bound physical light/smoke. This run cannot prove cannibal response because the save has no cannibal camp.",
+  "constraints": [
+    "Do not mutate owner reference or closed v2 smoke save.",
+    "Use only ordinary advertised native lighter/inventory/direction actions.",
+    "Verify actual fd_fire then retreat safely about two tiles.",
+    "Safe mode must be verified OFF before movement/wait; use advertised toggle only if on.",
+    "No smokebomb, debug signal/source/actor injection or direct postinstall state mutation.",
+    "This reference has no cannibal camp; report signal-only evidence.",
+    "Bound elapsed time; capture quicksave and actual source state.",
+    "Save/quit gracefully and reconcile game/bridge/helper PID births/exits."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": [
+          "first-light",
+          "physical_light_signal",
+          "physical_smoke_signal"
+        ],
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.open_reference",
+        "op": "eq",
+        "value": "prepared_open_window_reference_no_camp",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

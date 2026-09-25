@@ -1,12 +1,14 @@
 {
   "schema": "caol-playtest-witness-charter-v1",
-  "claim": "On a current-source eligible pre-camp site, a player can use native semantic World, dialogue, and camp-type menu owners to establish a new camp and then observe the actual resulting camp identity and assigned actor.",
-  "material_proof": "A selected current-source run first records the fixture-derived nearby unassigned follower strictly as setup, then retains accepted native receipts through the advertised World/chat, actor-selection, follower dialogue, and camp-type menu path.  A post-establishment authoritative observation names the resulting camp's identity, owner and site together with the same actor's assigned-camp state.  The run has an accepted cleanup.",
+  "claim": "On a current-source eligible pre-camp site, a player can establish a new camp, use the native assignment UI at that camp's actual OMT to assign the same eligible follower, then native-save, quit, reload, and continue ordinary camp work with that follower's CAMP_RESIDENT and assigned-camp state intact.",
+  "material_proof": "A selected current-source run first identifies the fixture-derived nearby unassigned follower as setup only. It then retains accepted native World/chat, actor-selection, follower dialogue, camp-type, and assignment UI receipts. A post-establishment authoritative observation names the camp identity, owner and actual lookup OMT, and verifies that the same follower character ID has CAMP_RESIDENT plus assigned_camp matching that OMT and usable job priorities. After native save/quit and process replacement, an independent native observation confirms the same follower ID and camp assignment persisted and ordinary camp-work priority controls remain usable without reassigning or restaging the fixture. Each run has accepted cleanup.",
   "material_contradiction": [
     "an accepted player action lacks its matching native receipt",
     "the chosen follower is inferred rather than identified, is already assigned, or is direct-mutated after launch",
     "the site or offered camp type is inferred from presentation rather than current native state",
     "the selected menu entry produces no resulting camp identity or a camp at a different site/owner",
+    "the assignment UI is not used, the follower ID changes, the follower does not have CAMP_RESIDENT, assigned_camp does not match the camp's actual lookup OMT, or ordinary job priorities are unusable",
+    "native save/quit, process replacement, reloaded follower identity, persisted assignment, or ordinary post-reload camp work is missing or contradictory",
     "a selector opening, fixture transform, source inspection, physical key, OCR, screenshot, coordinate, callback, or direct save/NPC/camp mutation is credited as establishment",
     "binding drift or cleanup failure"
   ],
@@ -15,7 +17,7 @@
     "R-026 Base Missions recovery proves a prepared-camp selector handoff only.",
     "The historical R-009 physical/OCR camp footing is not current establishment proof."
   ],
-  "current_uncertainty": "The pre-camp fixture's derived follower and eligible terrain must be confirmed from the current native run, and the native dialogue may expose a different valid conversation/menu sequence than historical physical automation.  Mission, Food, Storage, Locker and Patrol behavior remain independent claims.",
+  "current_uncertainty": "Source inspection predicts fixture follower character:25 at OMT [162,36,0], with forest_thick terrain and the anywhere-permitted bare-bones camp recipe; the current native run must independently confirm the actor, offered camp route/type, resulting camp OMT and assignment state. The native dialogue and nested assignment/job-priority menus must be followed from their live advertised owners. Mission, Food, Storage, Locker and Patrol behavior remain independent claims.",
   "forbidden_shortcuts": [
     "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
     "synthetic receipt injection",
@@ -25,8 +27,8 @@
   ],
   "honest_stop_conditions": [
     "stop before launch if no active source-matched registry selection exists",
-    "after launch, preserve the first missing semantic owner, invalid eligibility, missing native receipt, or missing resulting camp identity and continue independent clean claims",
-    "seal the establishment claim only after the named postcondition and cleanup are cited"
+    "after launch, preserve the first missing semantic owner, invalid eligibility, missing native receipt, missing resulting camp identity, assignment mismatch, save/reload divergence, or cleanup failure and continue independent clean claims",
+    "seal the claim only after the same-actor assignment, persisted continuity, ordinary camp work, and cleanup are cited"
   ],
   "requested_evidence_ceiling": "focused"
 }

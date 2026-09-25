@@ -1,0 +1,29 @@
+{
+  "first": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 84,
+      "pending": true,
+      "requested_at": 1790249439.4057589,
+      "reason": "Owner-suggestion 1e8c79b5fdf2 resolved: GPT-6-only model guidance, capability roster and dispatch validation promoted; evidence .de67/task-logs/review-owner-1e8c79b5fdf2/report.md. Preserve live ownership and accepted proof; restored model/effort preferences are not quotas. One fresh coordinator; external supervisor owns launch.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "again": {
+    "created": false,
+    "coordinator_restart": {
+      "generation": 84,
+      "pending": true,
+      "requested_at": 1790249439.4057589,
+      "reason": "Owner-suggestion 1e8c79b5fdf2 resolved: GPT-6-only model guidance, capability roster and dispatch validation promoted; evidence .de67/task-logs/review-owner-1e8c79b5fdf2/report.md. Preserve live ownership and accepted proof; restored model/effort preferences are not quotas. One fresh coordinator; external supervisor owns launch.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "preserved": true
+}

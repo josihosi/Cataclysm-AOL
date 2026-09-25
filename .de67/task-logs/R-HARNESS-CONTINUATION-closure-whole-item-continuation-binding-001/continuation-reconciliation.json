@@ -1,0 +1,45 @@
+{
+  "schema": "r-harness-continuation-reconciliation-v1",
+  "task_id": "R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001",
+  "claim_id": "R-HARNESS-CONTINUATION",
+  "fs_slice": "R-HARNESS-CONTINUATION-S001",
+  "verdict": "whole_item_continuation_binding_reconciled_current_suite_passes",
+  "source_receipts": [
+    {"receipt_id": "257fafc70e632942cb8b8686cf9b48e769e3255d5adae2a64aaf8248e5007e59", "task_id": "R-HARNESS-CONTINUATION-exploration-001", "scope": "repository continuation repair, compact projection, build owner and guidance"},
+    {"receipt_id": "0ec33a9696b3da2ff155a4669461f86c7618038e2f98d758bbddde58757066f7", "task_id": "R-HARNESS-CONTINUATION-exploration-002", "scope": "isolated unpromoted current-format method guard candidate"},
+    {"receipt_id": "9c8c63c6ca1b84f7ef491af530a1395b25752fe9d5fb965654bf85923a3eb9d3", "task_id": "R-HARNESS-CONTINUATION-exploration-003", "scope": "fresh worker acknowledgment and ended-session deliberate no-input adoption"}
+  ],
+  "clause_matrix": [
+    {"clause": "executable current boundary and reusable build/evidence facts", "status": "supported", "evidence": "Exploration-001 receipt records compact conclusion/limits/question/handles, source-bound configuration, Makefile route, diagnostic-gated exact PCH recovery and 18 focused tests."},
+    {"clause": "state-dependent pending/completed/ready-stale/ended-unknown continuation", "status": "supported", "evidence": "Provider and guidance tests cover exact collect, replay, refresh and ended/unknown reporting; completed adoption uses request completed-adoption-1 without resubmission."},
+    {"clause": "identity-preserving lost output, timeout, handoff and no relaunch/resubmit", "status": "supported", "evidence": "Exploration-001 receipt preserves interruption/normal-wait handles and exact same-operation replay; exploration-003 verifies source/executable/run/binding/session and performs no input on ended state."},
+    {"clause": "parser, selector and Tab guidance consistency", "status": "supported", "evidence": "continuation_guidance_test passes parser-compatible global ordering and rejects superseded Tab recipe; live-operation and CONTROL_LOOKUP are hashed retained artifacts."},
+    {"clause": "selected conclusions and handles instead of archival bulk", "status": "supported", "evidence": "Compact export is exercised by work_context_test; receipt retains full artifact identities for targeted retrieval."},
+    {"clause": "fresh-worker adoption on a useful current continuation", "status": "supported", "evidence": "Halley acknowledged the projection, verified ended source-bound session and retrieved retained scheduler witness J0094; look/game input count is zero by design."},
+    {"clause": "current-format method guard candidate and protected invariants", "status": "supported", "evidence": "Candidate validation reports 68 tests passed and rejects accepted-proof loss, slice deletion/rebinding, unrelated domain rewrites and unauthorized scope; installed method remains unchanged."},
+    {"clause": "exclusive method promotion boundary", "status": "outside ordinary-worker acceptance", "evidence": "Promotion was deliberately not performed; exclusive mutator review remains open and does not invalidate product continuation evidence."}
+  ],
+  "verification": {
+    "current_focused_tests": 18,
+    "current_test_result": "OK",
+    "current_test_artifact": ".de67/task-logs/R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001-current-focused-test-result.log",
+    "current_test_artifact_sha256": "9a2979756db6f534a5b827644e801b19be29852a4e333088e554d2c6846149f6",
+    "candidate_validation": "68 candidate tests passed",
+    "source_edits": "none in closure audit",
+    "native_replay": "none"
+  },
+  "limits": [
+    "The separate fresh-worker route proves ended-session adoption and retained witness retrieval, not new gameplay.",
+    "No native replay, relaunch, save/reload, interruption or autonomous sound-return proof was performed in this closure.",
+    "The staged method candidate is not installed or promoted; exclusive promotion remains a separate ownership boundary."
+  ],
+  "artifacts": [
+    {"path": ".de67/FS.md", "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df", "role": "authoritative continuation slice"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-001-worker-result-receipt-prepared.json", "sha256": "01903c9144d779a6d08310d5bf07762805569fba83c9e8558f26c55652caa706", "role": "repair receipt"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-003/worker-receipt-prepared.json", "sha256": "c337e040d0a7f4e70b7396adf1c4578d631352b7e0a98540716ad046fc7dfe3e", "role": "fresh-worker adoption receipt"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/worker-result-receipt-prepared.json", "sha256": "32c1dbdcff2f57fbb0df69b8967337fe8e6cfbcfda12004d84953cf31aabc108", "role": "method candidate receipt"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/candidate-validation.json", "sha256": "c8be15bfc96c87c10f192b2629155bca5e11d8041926ca2dc54cc42bbabc9fc1", "role": "candidate preservation and counterexample validation"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001-current-focused-test-result.log", "sha256": "9a2979756db6f534a5b827644e801b19be29852a4e333088e554d2c6846149f6", "role": "current 18-test verification"}
+  ],
+  "first_open_boundary": "Exclusive mutator review/promotion of the staged installed-method guard candidate; native gameplay or autonomous sound-return proof remains outside this continuation claim."
+}

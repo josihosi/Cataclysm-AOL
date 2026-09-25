@@ -1,0 +1,6 @@
+{
+  "instruction": "Owner correction, 2026-09-25: Excessive repetitive diagnostic output is a game defect in its own right, not only a wait-performance issue. For R-CAOL-CAMP-WAIT-COST, fix the demonstrated rejected-contact log flood and growing-file reread cost at their supported source. Making writes faster while emitting the same useless per-turn flood is insufficient. Preserve useful failure/transition diagnostics and actual contact/ecology behavior; choose the smallest supported logging design, without arbitrary owner-invented caps or blanket suppression. Compare emitted event counts and file growth over the same gameplay interval as well as elapsed time, and verify meaningful changed conditions/failures remain diagnosable. Preserve the active Luna smoke session and its ownership; this finding does not establish the separate friendly-NPC cost.",
+  "persisted_and_rendered": true,
+  "implementation_or_delivery_proven": false,
+  "finding_source": ".de67/work-ledger.md current finding; build_logs/first-smoke-001/live-wait-sample-10s.txt"
+}

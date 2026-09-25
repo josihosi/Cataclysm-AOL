@@ -1,0 +1,14 @@
+YOU
+Test00 · walk
+Position: 3156, 3449, 0
+All 12 body parts: 86/86 HP
+Stamina: 8500/8500
+Weapon: fists
+Peckish · Fresh
+
+SURROUNDINGS
+stairs: NW, N
+floor: NE, W, here, E, SW, S, SE
+No creatures in the current visible-entity observation.
+Controls unchanged → play controls
+Game time: 7738 minutes.

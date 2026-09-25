@@ -1,0 +1,5 @@
+World.
+Movement blocked.
+the zombie · hostile · offset 1, -1
+R032 Establishment Ally 1 · friendly · offset -1, -2
+6:21:24 AM: You try to break the zombie's grab on your torso, but fail!

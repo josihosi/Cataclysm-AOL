@@ -1,0 +1,65 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The fresh current-source native R033 run bound the delayed active C-4 source, an eligible observer/escort pair, and the idle camp's road lead, then advanced through the first structural scheduler boundary. At game minute 9301 the production diagnostic still showed no autonomous dispatch: drive 358 was below threshold 500, force_due was false, and candidates was empty.",
+  "causal_account": "J0001 binds the selected R033 scenario, source identity, executable identity, native run, and bridge binding. J0002 is the pre-input semantic world frame at minute 9241 and records the loaded active C-4 timer at turn 5356860/minute 10081, the staffed camp, observer eligibility, and one road candidate with no active outing. Native semantic waits advanced 60 game minutes to J0094 at minute 9301; that production diagnostic records scheduler_last_hour 155, unchanged C-4 timer, routine activation at 9300, drive 358 versus threshold 500, force_due false, and candidates empty. J0096 records the deliberate stop at the first missing dispatch boundary, so no watch, source emission, callback, or returned_report is claimed.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Exact scenario, source, executable, native run, and bridge binding.",
+      "checks": {
+        "scenario_id": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
+        "run_id": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+        "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+        "binding_id": "d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3"
+      }
+    },
+    {
+      "citation_id": "J0002",
+      "meaning": "Pre-input native source, observer, and scheduler footing.",
+      "checks": {
+        "value.game_minutes": 9241,
+        "value.surface.facts.structural_signal_dispatch.loaded_source.source_found": true,
+        "value.surface.facts.structural_signal_dispatch.loaded_source.items.0.type_id": "c4armed",
+        "value.surface.facts.structural_signal_dispatch.loaded_source.items.0.countdown_turn": 5356860,
+        "value.surface.facts.structural_signal_dispatch.loaded_source.items.0.countdown_minutes": 10081,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.observer.eligible": true,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.scheduler_inputs.candidate_count": 1,
+        "value.surface.facts.structural_outing_owner.present": false
+      }
+    },
+    {
+      "citation_id": "J0094",
+      "meaning": "First structural scheduler boundary without autonomous dispatch.",
+      "checks": {
+        "value.game_minutes": 9301,
+        "value.surface.facts.structural_signal_dispatch.scheduler_last_hour": 155,
+        "value.surface.facts.structural_signal_dispatch.loaded_source.items.0.countdown_turn": 5356860,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.evaluation.drive": 358,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.evaluation.threshold": 500,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.evaluation.force_due": false,
+        "value.surface.facts.structural_signal_dispatch.site_evaluations.0.evaluation.reason": "drive_below_threshold",
+        "value.surface.facts.structural_signal_dispatch.candidates": [],
+        "value.surface.facts.structural_outing_owner.present": false
+      }
+    },
+    {
+      "citation_id": "J0096",
+      "meaning": "Native terminal cleanup and first-missing-boundary stop.",
+      "checks": {
+        "stop_reason": "R033 stop at first missing dispatch boundary: pre-input native frame bound current source/executable/session, idle staffed camp, observer eligibility and one road lead; native wait advanced 60 minutes through scheduler boundary to game minute 9301. Structural diagnostic then showed scheduler_last_hour=155 and routine_activated_minutes=9300, but evaluation drive=358 below threshold=500, force_due=false, candidates=[]; no autonomous watch, source emission, sound callback, or returned_report was claimed.",
+        "cleanup.status": "deferred_to_scenario_terminalization"
+      }
+    }
+  ],
+  "material_deviations": [
+    "The scheduler's first native maintenance pass discovered a second suspected road lead, changing the diagnostic candidate count from one to two; this run does not treat that setup-adjacent discovery as feature proof."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether this current source can reach an autonomous abstract watch before its minute-10081 emission after the drive/threshold footing is repaired or otherwise made eligible.",
+    "Native sound callback and matching returned_report behavior remain unobserved because dispatch never occurred."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

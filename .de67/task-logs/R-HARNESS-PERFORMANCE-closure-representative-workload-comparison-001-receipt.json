@@ -1,0 +1,64 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PERFORMANCE-closure-representative-workload-comparison-001",
+  "claim_id": "R-HARNESS-PERFORMANCE",
+  "worker_id": "01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716",
+  "disposition": "completed",
+  "verdict": "representative_native_workload_comparison_verified",
+  "outcome": "Fresh current-source signal and loaded-hostile native workload pairs each retained a 64-turn measurement window, exact workload and baseline provenance, simulation-only throughput, independent process resource intervals, alarm results, and graceful PID cleanup.",
+  "summary": "The worker ran baseline and repeat native journeys for an active fire/smoke signal scene and a loaded hostile/stalker/horde scene. Repeat configurations were exactly comparable to their own workload baselines. Coordinator review rejected operator-gap-contaminated wall-span throughput as regression evidence; the worker added simulation-only throughput, a falsifying inter-turn-gap test, and reprojected the retained runs without replaying gameplay. The final focused suite passes 260 tests.",
+  "material_changes": [
+    "Added finite and zero-safe game-turn and game-minute rates whose denominator is summed completed native simulation time.",
+    "Retained wall-span rates but explicitly scoped them as operator/input timing rather than simulation throughput.",
+    "Added a regression test proving inter-turn gaps change wall-span rates without changing simulation-only throughput."
+  ],
+  "tests": [
+    "Coordinator final focused suite: 260 tests passed across process_performance_test, play_cli_test, semantic_state_test, r009_semantic_channel_compaction_test, semantic_broker_test, and proof_classification_unit_test.",
+    "Focused process_performance_test plus play_cli_test: 61 tests passed.",
+    "git diff --check passed; four retained native game PIDs were absent after graceful cleanup."
+  ],
+  "live_actions": [
+    "Hostile baseline 058d80274e854b9ead02c6111ebfc7b4 and repeat 8e524f4896bc4d438730b75c97f92c2f each measured 64 turns and exited PIDs 23815 and 24203 gracefully.",
+    "Signal baseline 61b0e60365fc4b90ba1cac36af3a8075 and repeat 4c7d5bb1acc24724bbade492efa9bdf1 each measured 64 turns and exited PIDs 24838 and 25332 gracefully."
+  ],
+  "evidence_ceiling": [
+    "This proves representative workload measurement and within-workload baseline comparability only.",
+    "Fixture/setup facts do not prove signal/camp behavior, travelling-hostile contact behavior, or a naturally occurring performance regression.",
+    "Wall-span throughput remains operator timing and is not used as simulation regression evidence."
+  ],
+  "bindings": {
+    "dispatch_digest": "0f37eb68d79e834f054334fdd118407095127b067ef6261b1688958787455a37",
+    "worker_id": "01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716",
+    "executable_sha256": "af6014d5e3211289d3b5f7e6097b52da4692011e30499de86cb86ab424e9c125",
+    "runtime_source_sha256": "f1b53718521e7860533c939e202cc1987fafa70544c0cb42c22b35e3590b84dc"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-PERFORMANCE-closure-representative-workload-comparison-001-result.md",
+      "sha256": "f4ae8c1b9cebdd833106d6f8fba866a25d192c87627440401c986096b71e5db3",
+      "role": "native workload identities, measurements, baseline relationships, exact handles, and cleanup evidence"
+    }
+  ],
+  "first_divergence": {
+    "class": "repaired_wall_span_metric_interpretation",
+    "summary": "Initial workload tables exposed throughput derived from wall spans contaminated by operator/input gaps. The task remained live until simulation-only rates and a falsifying gap test were added."
+  },
+  "accepted_no_replay": [
+    "Preserve all four native runs and their exact traces; the simulation-only projection was derived from retained completed-turn records without replaying gameplay."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No representative-workload-comparison work remains; claim-level acceptance must preserve the separate behavior-proof ceilings.",
+  "narrow_queries": [
+    "R-HARNESS-PERFORMANCE-closure-representative-workload-comparison-001",
+    "game_turns_per_simulation_second",
+    "performance.signal_current_source_mixed_signal_v1",
+    "performance_mixed_hostile_stalker_horde_v0_2026-04-30"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/process_performance.py",
+    "tools/openclaw_harness/process_performance_test.py"
+  ],
+  "context_metrics": {}
+}

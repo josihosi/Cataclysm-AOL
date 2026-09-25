@@ -1,0 +1,21 @@
+ZONE MANAGER
+enabled: true
+faction: your_followers
+faction role: display_filter; new zones belong to player faction
+revision: unknown
+show all: false
+zone id: zone-7
+Zones:
+  zone-7 — R032 Locker; on; selected
+    type: CAMP_LOCKER; faction: your_followers; start: 3899,875,0; end: 3901,877,0
+  zone-8 — R032 Storage; on
+    type: CAMP_STORAGE; faction: your_followers; start: 3902,876,0; end: 3902,876,0
+ALLOWED HERE ONLY
+Close Zone Manager → play act zone.close
+Create zone → play act zone.create
+Show zones for faction (unavailable)
+Toggle distant zones → play act zone.show_all
+play act zone.<action> --target <target> (copy the target exactly)
+  zone-7 — R032 Locker — disable/edit/delete
+    Unavailable: select: R032 Locker; enable: Enable zone
+  zone-8 — R032 Storage — select

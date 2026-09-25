@@ -63,15 +63,6 @@
       "expected_visible_fact": "one flesh raptor starts five tiles east and three zombies occupy the north arc"
     },
     {
-      "kind": "press",
-      "label": "toggle_safe_mode_off_before_raptor_crowded_arc",
-      "keys": ["!"],
-      "delay_ms": 250,
-      "settle_seconds": 0.4,
-      "capture_after": true,
-      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor crowded-arc window is not consumed by warnings"
-    },
-    {
       "kind": "advance_turns",
       "label": "advance_raptor_crowded_arc_skirmish_window",
       "count": 140,

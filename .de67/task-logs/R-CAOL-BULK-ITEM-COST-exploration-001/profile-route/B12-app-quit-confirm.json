@@ -1,0 +1,36 @@
+{
+  "accepted": false,
+  "reason": "native_surface_successor_timeout",
+  "surface_request": {
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:90",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:20",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:20:prompt.choose:f6a3874792189056",
+    "action_id": "prompt.choose",
+    "stable_id": "prompt-option:3"
+  },
+  "native_receipt": {
+    "event": "surface_receipt",
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "process_instance": "1790276309340552",
+    "sequence": 177,
+    "game_minutes": 7689,
+    "game_turn": 5213344,
+    "wall_time": 1790277720868,
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:20:prompt.choose:f6a3874792189056",
+    "requested_run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "requested_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:90",
+    "requested_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:20",
+    "consuming_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:90",
+    "consuming_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:20",
+    "action_id": "prompt.choose",
+    "accepted": true,
+    "rejection_reason": "",
+    "resulting_frame_id": "",
+    "outcome": "",
+    "_source_offset": 1046036,
+    "_source_end": 1046799,
+    "_event_offset": 1046036
+  },
+  "next_frame": null
+}

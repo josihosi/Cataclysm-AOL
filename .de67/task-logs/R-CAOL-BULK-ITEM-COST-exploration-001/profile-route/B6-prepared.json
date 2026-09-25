@@ -1,0 +1,149 @@
+{
+  "schema": "caol.bulk-item-cost-trace-world.v1",
+  "world": "BulkB6",
+  "source_world": "La Mirada",
+  "source_save_sha256": "716a0ea661235c4b030fe4bb7580cf8a535f5b61132ab735744e1c2c7b567588",
+  "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+  "items": {
+    "kind": "map_items_near_player",
+    "world": "BulkB6",
+    "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+    "player_location": [
+      3539,
+      3780,
+      0
+    ],
+    "placed_items": [],
+    "extracted_map_packs": [],
+    "recompressed_maps": [],
+    "removed_extracted_map_dirs": [],
+    "plain_map_dirs_left_for_game_load": false
+  },
+  "zones": [
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB6",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "OpenClaw fuel source",
+        "type": "SOURCE_FIREWOOD",
+        "faction": "your_followers",
+        "identity": "zone-fixture-7dd10038ae0a8c9162985dc2",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3540,
+          3779,
+          0
+        ],
+        "end": [
+          3542,
+          3781,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json",
+        "#SGFycmlzIFNwaXZleQ==.zoneszmgr-temp.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB6",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "OpenClaw fuel source",
+        "type": "SOURCE_FIREWOOD",
+        "faction": "your_followers",
+        "identity": "zone-fixture-573683940d0af01cd85d1d26",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3540,
+          3779,
+          0
+        ],
+        "end": [
+          3542,
+          3781,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json",
+        "#SGFycmlzIFNwaXZleQ==.zoneszmgr-temp.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB6",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "OpenClaw fuel source",
+        "type": "SOURCE_FIREWOOD",
+        "faction": "your_followers",
+        "identity": "zone-fixture-7dd10038ae0a8c9162985dc2",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3540,
+          3779,
+          0
+        ],
+        "end": [
+          3542,
+          3781,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json",
+        "#SGFycmlzIFNwaXZleQ==.zoneszmgr-temp.json"
+      ]
+    }
+  ],
+  "valid_npc_premise": "living neutral Genevieve Floyd preserved from clean La Mirada at avatar north tile; verify again in native frame",
+  "note": "fresh clone from clean La Mirada; 128 2x4 + 128 hammers; no inherited destination items"
+}

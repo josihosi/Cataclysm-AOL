@@ -19,6 +19,7 @@ struct site_record;
 struct active_outing_state;
 struct structural_threat_observer_request;
 struct structural_route_read;
+struct structural_signal_read;
 struct structural_outing_plan;
 struct response_member_power_read;
 } // namespace bandit_live_world
@@ -28,12 +29,21 @@ void handle_key_blocking_activity();
 // active simulation.  Observations are never persisted in this cache.
 void reset_live_light_sample_cache();
 void run_live_light_delivery_for_test();
+int observe_live_hostile_signal_sources_for_test(
+    const std::vector<live_bandit_signal_observation> &signals );
+void maintain_live_bandit_structural_bounty_for_test(
+    const std::vector<live_bandit_signal_observation> &signals );
 int observe_live_bandit_sounds_for_test();
 void run_live_light_staffed_observer_for_test();
 bool live_light_sample_is_current_for_test();
 std::vector<live_light_delivery_stage> live_light_delivery_order_for_test();
 std::vector<live_light_delivery_stage> live_light_delivery_trace_for_test();
 bool process_live_bandit_aftermath_for_test();
+std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_signal_reads_for_test(
+    const std::vector<live_bandit_signal_observation> &signals,
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request );
 bool materialize_live_bandit_structural_handoffs_for_test();
 int materialize_live_bandit_response_members_for_test( const std::string &site_id );
 std::vector<bandit_live_world::response_member_power_read>

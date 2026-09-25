@@ -1,0 +1,38 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "caol-native-signal-proof",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006-guard-audit",
+  "claim_id": "R-033",
+  "worker_id": "/root",
+  "disposition": "completed",
+  "verdict": "repaired",
+  "outcome": "The same-minute guard now suppresses only an already persisted local structural-sound record.  A same-minute local zombie observation no longer prevents the subsequent one-shot sound callback, while an actual sound record still suppresses the replay callback.",
+  "reasoning": [
+    "game::do_turn records local zombie observations in the loaded-scene prepass before it drains significant sounds.",
+    "Both paths advance the local outing cursor.  The prior any-observation minute predicate therefore discarded a legitimate sound after a local zombie visual fact.",
+    "The narrowed predicate recognizes the durable structural sound identity: typed schema version, sound sense, structural-signal producer, and the current minute."
+  ],
+  "material_changes": [
+    "src/bandit_live_world.cpp: narrow same-minute local callback suppression from any observation to a persisted structural sound observation",
+    "tests/bandit_live_world_test.cpp: cover the actual zombie-prepass then same-minute gunfire ordering and retain replay suppression"
+  ],
+  "tests": [
+    "make -j4 BUILD_PREFIX=r033-headless- SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 tests — passed",
+    "tests/r033-headless-cata_test '[phase4_sound_observation]' --reporter compact --user-dir .userdata/r033-guard-audit — 7 test cases, 642 assertions passed",
+    "git diff --check — passed"
+  ],
+  "evidence_ceiling": [
+    "This is a focused source and unit-test audit; it does not replace the separately sealed native R-033 witness.",
+    "No native scenario was replayed because the requested change isolates ingress idempotence and the focused regression exercises its production ordering."
+  ],
+  "prior_native_witness": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/r033-drive500-success-witness.json",
+  "source_sha256": {
+    "src/bandit_live_world.cpp": "548e8551a85aa3011a38fa579e5a4ba40b9d9ac03164ec6d6e672da2832c98cf",
+    "tests/bandit_live_world_test.cpp": "435fe58763becf16dc869479881322cb4d052f57af7041a1f01a857f3fadd24d"
+  },
+  "entrypoints": [
+    "src/do_turn.cpp::record_live_bandit_local_zombie_observations",
+    "src/do_turn.cpp::observe_live_bandit_sounds",
+    "src/bandit_live_world.cpp::record_local_structural_signal_observations"
+  ]
+}

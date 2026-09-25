@@ -1,0 +1,74 @@
+{
+  "world": "BulkB12",
+  "source_world": "La Mirada",
+  "source_character_save_sha256": "716a0ea661235c4b030fe4bb7580cf8a535f5b61132ab735744e1c2c7b567588",
+  "source_tile_ms": [
+    3539,
+    3780,
+    0
+  ],
+  "source_map_coordinates": {
+    "submap": [
+      294,
+      315,
+      0
+    ],
+    "tile": [
+      11,
+      0
+    ]
+  },
+  "destination_tiles_ms": [
+    [
+      3539,
+      3781,
+      0
+    ],
+    [
+      3540,
+      3780,
+      0
+    ]
+  ],
+  "prelaunch_source_items": {
+    "2x4": 128,
+    "hammer": 128
+  },
+  "prelaunch_destination_items": {
+    "wood": 0,
+    "tools": 0
+  },
+  "fixture_coordinate_audit": {
+    "source_submap": [
+      294,
+      315,
+      0
+    ],
+    "source_local": [
+      11,
+      0
+    ],
+    "wood_submap": [
+      294,
+      315,
+      0
+    ],
+    "wood_local": [
+      11,
+      1
+    ],
+    "tools_submap": [
+      295,
+      315,
+      0
+    ],
+    "tools_local": [
+      0,
+      0
+    ]
+  },
+  "item_uids": [
+    900000000,
+    900001127
+  ]
+}

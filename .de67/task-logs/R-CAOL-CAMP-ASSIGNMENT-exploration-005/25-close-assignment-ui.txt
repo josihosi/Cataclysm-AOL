@@ -1,0 +1,29 @@
+DIALOGUE
+history: R032 Establishment Ally 1
+"What is it, friend?"
+
+You
+There's something I want you to do.
+
+R032 Establishment Ally 1
+"You gonna give me orders?"
+
+You
+Let's talk about the camp.
+
+R032 Establishment Ally 1
+"What about the camp?"
+
+You
+I want to assign you to work at this camp.
+
+R032 Establishment Ally 1
+"I'm on watch."
+prompt: "I'm on watch."
+ALLOWED HERE ONLY
+Goodbye → play act dialogue.cancel
+play act dialogue.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  dialogue-response-50 — I need you to come with me.
+  dialogue-response-51 — Let's talk.
+  dialogue-response-52 — Well, bye.

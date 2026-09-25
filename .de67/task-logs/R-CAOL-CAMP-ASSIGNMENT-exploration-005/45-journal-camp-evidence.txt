@@ -1,0 +1,22 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-1001c4e1f63a4530a8ada5a33f9e2928
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0002: observation — world
+  INDEX 1; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0006: observation — world
+  INDEX 5; same PATH/FIELD as J0002.
+J0010: observation — world
+  INDEX 9; same PATH/FIELD as J0002.
+J0024: observation — world
+  INDEX 23; same PATH/FIELD as J0002.
+J0026: observation — world
+  INDEX 25; same PATH/FIELD as J0002.
+J0029: observation — world
+  INDEX 28; same PATH/FIELD as J0002.
+J0051: observation — world
+  INDEX 50; same PATH/FIELD as J0002.
+J0055: observation — world
+  INDEX 54; same PATH/FIELD as J0002.
+J0071: observation — world
+  INDEX 70; same PATH/FIELD as J0002.
+J0073: observation — world
+  INDEX 72; same PATH/FIELD as J0002.

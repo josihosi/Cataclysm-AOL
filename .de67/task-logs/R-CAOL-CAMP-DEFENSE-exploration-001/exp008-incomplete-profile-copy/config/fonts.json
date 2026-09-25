@@ -1,0 +1,7 @@
+{
+  "//": "See docs/user-guides/FONT_OPTIONS.md for an explanation of this file.",
+  "typeface": [ { "path": "data/font/Terminus.ttf", "hinting": "Bitmap" }, { "path": "data/font/unifont.ttf", "hinting": "Default" } ],
+  "gui_typeface": [ { "path": "data/font/Terminus.ttf", "hinting": "Bitmap" }, { "path": "data/font/unifont.ttf", "hinting": "Default" } ],
+  "map_typeface": [ { "path": "data/font/Terminus.ttf", "hinting": "Bitmap" }, { "path": "data/font/unifont.ttf", "hinting": "Default" } ],
+  "overmap_typeface": [ { "path": "data/font/Terminus.ttf", "hinting": "Bitmap" }, { "path": "data/font/unifont.ttf", "hinting": "Default" } ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "In the current-source stable-OMT falsifying control, the staffed observer created one smoke lead at OMT (140,40,0) at game minute 8225 and recorded an unchanged read with the same lead identity at minute 8230, while the physical smoke sample moved within that same OMT. The preserved run 72113513ce remains the first-divergence anchor: its smoke source crossed from OMT (140,41,0) to (140,40,0), and the native lead identity changed accordingly. The available evidence supports natural smoke field spread/fixture placement across an OMT boundary, not a demonstrated production identity or dedup defect.",
+  "causal_account": "The control is source-bound to the same current source and executable as the retained run. Its production channel records show smoke observed only at OMT (140,40,0) at both cadence boundaries, with no sound/light observation. The immutable transition records show a created smoke lead at 8225 and an unchanged read at 8230; the later read's sample IDs differ only in local map-square position while the OMT and lead ID remain stable. In the retained run, the corresponding first and second reads crossed the OMT boundary and created distinct lead IDs. The source path derives each local field source's OMT by projecting its absolute map-square position, and the staffed observer keys smoke leads by source OMT, so the observed divergence is explained without a code change.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the control scenario, source identity, executable identity, run, and bridge binding."
+    },
+    {
+      "citation_id": "J0027",
+      "meaning": "At minute 8225, the green production channel observed smoke at OMT (140,40,0), and the native world surface retained exactly one smoke lead at that OMT."
+    },
+    {
+      "citation_id": "J0035",
+      "meaning": "At minute 8230, the green production channel retained the stable-OMT smoke result and the native world surface retained the same single smoke lead; the bound transition outcome was unchanged."
+    },
+    {
+      "citation_id": "J0036",
+      "meaning": "Terminal journal boundary for the sealed control run and its retained evidence handles."
+    }
+  ],
+  "material_deviations": [
+    "The wait route encountered a native activity-distraction danger prompt and was continued through the advertised native IGNORE path; the resulting cadence and transition records remain bound to the run."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "This control does not prove behavior for a source that genuinely crosses an OMT boundary while retaining a stable physical emitter identity.",
+    "The performance comparison uses a tagged one-second waiting-context baseline and is descriptive rather than a feature-performance verdict."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

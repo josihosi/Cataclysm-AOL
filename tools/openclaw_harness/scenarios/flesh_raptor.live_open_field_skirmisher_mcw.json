@@ -53,17 +53,6 @@
       "expected_visible_fact": "one hostile flesh raptor starts five tiles east at skirmish range"
     },
     {
-      "kind": "press",
-      "label": "toggle_safe_mode_off_before_raptor_open_field",
-      "keys": [
-        "!"
-      ],
-      "delay_ms": 250,
-      "settle_seconds": 0.4,
-      "capture_after": true,
-      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor window is not consumed by warnings"
-    },
-    {
       "kind": "advance_turns",
       "label": "advance_raptor_open_field_skirmish_window",
       "count": 140,

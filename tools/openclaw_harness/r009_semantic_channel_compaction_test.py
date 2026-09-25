@@ -471,6 +471,80 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
         self.assertEqual( status, "ok" )
         self.assertEqual( [event["frame_id"] for event in events], ["frame-world"] )
 
+    def test_thousand_item_pickup_keeps_every_action_discoverable(self) -> None:
+        run_id = "pickup-thousand-items"
+        actions = [
+            {"id": "inventory." + action, "stable_id": "", "label": action, "enabled": True}
+            for action in ("commit", "filter", "reset_filter", "cancel")
+        ]
+        for index in range(1000):
+            for action, label, enabled in (
+                ("details", "Details", True), ("select", "splintered wood", True),
+                ("toggle", "Toggle selection", True),
+                ("wear", "Wear — Putting on a splintered wood would be tricky.", False),
+                ("wield", "Wield", True),
+            ):
+                actions.append({"id": "inventory." + action, "stable_id": str(index),
+                                "label": label, "enabled": enabled})
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+            "surface_id": "pickup", "frame_id": "pickup:1", "kind": "inventory",
+            "breadcrumbs": ["World", "Pickup"], "payload": {"title": "Pickup"},
+            "valid_actions": actions,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "native.log"
+            run_dir = root / "run"
+            run_dir.mkdir()
+            receipt = {
+                "event": "surface_receipt", "run_id": run_id, "request_id": "pickup-request",
+                "requested_run_id": run_id, "requested_surface_id": "direction",
+                "requested_frame_id": "direction:1", "consuming_surface_id": "direction",
+                "consuming_frame_id": "direction:1", "action_id": "direction.choose",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "pickup:1",
+            }
+            source.write_text("".join(SEMANTIC_STEP_PREFIX + json.dumps(event) + "\n"
+                                      for event in (descriptor, receipt)))
+            self.assertGreater(source.stat().st_size, MAX_EVENT_BYTES)
+            with patch("startup_harness.semantic_step_source_trace", return_value=source):
+                _, owned = refresh_semantic_step_trace(
+                    profile="pickup", run_dir=run_dir, run_id=run_id, start_offset=0)
+            self.assertLessEqual(owned.stat().st_size, MAX_EVENT_BYTES)
+            events, status = read_semantic_step_trace(owned, run_dir, run_id)
+            self.assertEqual(status, "ok")
+            self.assertEqual(events[0]["request_id"], "pickup-request")
+            self.assertTrue(events[0]["accepted"])
+            self.assertEqual(events[0]["resulting_frame_id"], events[-1]["frame_id"])
+            self.assertEqual(events[-1]["valid_actions"], actions)
+            # Last-item selection, disabled wear and non-item commands all survive.
+            self.assertIn({"id": "inventory.toggle", "stable_id": "999",
+                           "label": "Toggle selection", "enabled": True}, events[-1]["valid_actions"])
+            self.assertEqual(len(events[-1]["valid_actions"]), 5004)
+            reference = events[-1]["valid_actions_ref"]
+            catalog = run_dir / reference["path"]
+            body = catalog.read_bytes()
+            descriptor["frame_id"] = "pickup:2"
+            receipt["resulting_frame_id"] = "pickup:2"
+            source.write_text("".join(SEMANTIC_STEP_PREFIX + json.dumps(event) + "\n"
+                                      for event in (descriptor, receipt)))
+            with patch("startup_harness.semantic_step_source_trace", return_value=source):
+                refresh_semantic_step_trace(
+                    profile="pickup", run_dir=run_dir, run_id=run_id, start_offset=0)
+            self.assertEqual(len(list(run_dir.glob("semantic.actions.*.json"))), 1)
+            redrawn, status = read_semantic_step_trace(owned, run_dir, run_id)
+            self.assertEqual(status, "ok")
+            self.assertEqual(redrawn[-1]["frame_id"], "pickup:2")
+            self.assertEqual(redrawn[-1]["valid_actions"], actions)
+            catalog.write_bytes(body.replace(b'splintered wood', b'splintered coal', 1))
+            self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1],
+                             "invalid_surface_actions_reference")
+            catalog.write_bytes(body)
+            compact = json.loads(owned.read_text().splitlines()[-1].split(SEMANTIC_STEP_PREFIX, 1)[1])
+            compact["valid_actions_ref"]["path"] = "../native.log"
+            owned.write_text(SEMANTIC_STEP_PREFIX + json.dumps(compact) + "\n")
+            self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1], "escaped_authority")
+
     def test_historical_surface_actions_do_not_block_a_current_child_frame( self ) -> None:
         run_id = "r009-current-child"
         actions = [

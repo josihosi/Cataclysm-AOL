@@ -1,0 +1,177 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_open_window_escape_factor_v1",
+  "description": "Native window-opening causal probe in a second disposable continuation copied from the already-saved open-reference TestSetup00. Keeps the previous first-light baseline and original owner reference untouched.",
+  "profile": "first-smoke-r-caol-001-open-window-geometry-test",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": [
+      "first-light",
+      "physical_light_signal",
+      "physical_smoke_signal"
+    ],
+    "capabilities.r_caol.open_reference": "prepared_open_window_reference_no_camp",
+    "world.signal": [
+      "physical_fire",
+      "light",
+      "smoke"
+    ],
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.open_window_geometry_probe": "open_nearby_closed_window_native_then_rescan_fire_light"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-r-caol-001-open-reference-light",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-r-caol-001-open-reference-light",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "resume_saved_closed_room_world",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Resume the exact saved task-owned TestSetup00 world without fixture installation or world replacement."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_saved_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_install_on_saved_world_continuation",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Registry continuation launches with no fixture declared; saved profile/world is already present."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_open_reference_first_light",
+      "objective": "Continue the saved, task-owned open-reference fire at night. The source-bound diagnostic identified the real brazier at [3159,3449,0] as exposure=contained, visibility_score=0. Walk to the nearest relevant closed window at [3163,3450,0], open it through ordinary gameplay only, return to the observation tile, and inspect whether that exact brazier source becomes light-viable. The profile was copied from an already-saved checkpoint, so this probe cannot alter the previous baseline or owner reference.",
+      "proof_targets": [
+        "current runtime source/profile/build binding and no fixture installation or save replacement",
+        "safe mode OFF verified before movement; advertised toggle only if it is currently on",
+        "native movement to the audited closed window [3163,3450,0] nearest the brazier east side",
+        "native gameplay opens that exact window; record native receipt, tile and in-game minute",
+        "same real brazier remains burning at [3159,3449,0] with no injected state",
+        "source-bound light adapter logs for live_light@3159,3449,0 after opening, including exposure and rejection/acceptance reason",
+        "return to safe two-tile observation position, quicksave, and graceful cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "use only ordinary advertised native actions; no debug mutation, injected signal or raw keyboard input",
+        "test copy is derived from the saved task-owned baseline; never modify baseline profile or owner reference",
+        "confirm safe mode OFF before movement/wait; toggle only if it is on",
+        "do not step onto brazier/fire",
+        "no camp is present in this copy; make no cannibal admission/dispatch claim"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "resume_saved_closed_room_world",
+      "bind_saved_native_world"
+    ],
+    "production_behavior": [
+      "observe_open_reference_first_light"
+    ],
+    "terminal_persistence": [
+      "observe_open_reference_first_light"
+    ],
+    "artifact_verdict": [
+      "observe_open_reference_first_light"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_install_on_saved_world_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On a fresh disposable continuation of the task-owned saved open reference, opening the nearby closed window through ordinary native gameplay changes the exact brazier source exposure and may make its first-light signal viable. This remains signal-only; no cannibal camp exists.",
+    "failure_rule": "Preserve baseline and owner save; credit only fresh source-bound native geometry, fire, light/smoke and saved-state evidence."
+  }
+}

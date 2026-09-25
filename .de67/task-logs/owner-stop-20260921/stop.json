@@ -1,0 +1,17 @@
+{
+  "owner_stop": true,
+  "time": "2026-09-21T12:39:23.675235+00:00",
+  "supervisor": "supported stop command confirmed stopped",
+  "bridge_cleanup_requested": [
+    "selected-2e254bbd819c4571ae4ae363c3990d85",
+    "journey-persistence-current-a"
+  ],
+  "bridge_cleanup_reports": "both accepted",
+  "orphan_game": {
+    "pid": 39972,
+    "birth": "Mon Sep 21 14:37:33 2026",
+    "action": "Peekaboo app quit without force"
+  },
+  "deadline_watcher": 27717,
+  "resume_requires_owner": true
+}

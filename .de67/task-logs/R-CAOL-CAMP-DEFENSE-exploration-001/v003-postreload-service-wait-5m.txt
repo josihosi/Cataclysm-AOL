@@ -1,0 +1,5 @@
+World.
+Waited 5 game minutes. target reached.
+R032 Establishment Ally 1 · friendly · offset 1, 6
+6:12:01 AM: You finish waiting.
+Game time: 7572 minutes.

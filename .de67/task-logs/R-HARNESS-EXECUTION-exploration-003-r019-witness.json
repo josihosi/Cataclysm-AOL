@@ -1,0 +1,99 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "This fresh source-bound R019 run accepted the disabled-master primitive wait exactly once, advanced it by 5.0 game minutes, stopped at the native monster-spotted interruption, returned the current native World owner with its advertised actions, and released the continuation so collect/cancel did not replay or inject recovery input.",
+  "causal_account": "The sealed journal binds the current scenario, source, executable, run, and bridge. It records the disabled Keep-watch rejection, one accepted world.wait followed by one accepted wait.5m receipt, then a native_wait_interrupted result with native_stop_reason monster_spotted, start 8047.0, target 8053, partial progress 5.0, terminal game minute 8052, and zero guarded handling. The terminal observation is a fresh World owner with native actions, while the terminal lifecycle record shows the continuation released; subsequent collect/cancel found no pending request. This proves the fail-closed interruption/no-replay boundary, not a broader gameplay result.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Fresh source, executable, scenario, run, and bridge binding identities.",
+      "checks": {
+        "scenario_id": "r019.keep_watch_off_interruption_control_mcw",
+        "source_identity": "14ed1f263a44741158a94f90afed3d8cd33418f23228bb174d2317288b3c5dbe",
+        "executable_identity": "164084ff365aac3ab4db56703dfe8611ea2004f98a2e129102780c4f040f4c61",
+        "run_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4",
+        "binding_id": "7c6dda74e29d2690df506d8e481e6595bb2175ef6faa493b93bb15521505b0cf"
+      }
+    },
+    {
+      "citation_id": "J0003",
+      "meaning": "The disabled Keep-watch master request was rejected and directed the route to primitive actions.",
+      "checks": {
+        "result.ok": false,
+        "result.error": "keep_watch_master_disabled_use_primitive_actions"
+      }
+    },
+    {
+      "citation_id": "J0006",
+      "meaning": "The frame-bound primitive wait owner accepted the initial world.wait exactly once.",
+      "checks": {
+        "action_id": "world.wait",
+        "native_receipt.accepted": true,
+        "native_receipt.run_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4",
+        "native_receipt.action_id": "world.wait",
+        "recovery": false
+      }
+    },
+    {
+      "citation_id": "J0011",
+      "meaning": "The duration owner accepted one wait.5m input exactly once from the current frame.",
+      "checks": {
+        "action_id": "wait.5m",
+        "native_receipt.accepted": true,
+        "native_receipt.run_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4",
+        "native_receipt.action_id": "wait.5m",
+        "recovery": false
+      }
+    },
+    {
+      "citation_id": "J0013",
+      "meaning": "The accepted wait stopped natively at monster_spotted with partial progress and released continuation authority without guarded handling.",
+      "checks": {
+        "result.native_stop_reason": "monster_spotted",
+        "result.stop_reason": "native_wait_interrupted",
+        "result.state": "interrupted",
+        "result.start_game_minutes": 8047.0,
+        "result.target_game_minutes": 8053,
+        "result.partial_progress": 5.0,
+        "result.guarded_handling_count": 0,
+        "result.unused_authority": "released",
+        "result.terminal_observation.game_minutes": 8052,
+        "result.terminal_observation.surface.family": "World",
+        "result.terminal_observation.surface.kind": "world"
+      }
+    },
+    {
+      "citation_id": "J0014",
+      "meaning": "The terminal observation is the native World owner at game minute 8052, with no debug intervention or save attempt credited.",
+      "checks": {
+        "value.game_minutes": 8052,
+        "value.surface.family": "World",
+        "value.surface.kind": "world",
+        "value.breadcrumbs": ["World"],
+        "value.surface.facts.last_debug_intervention": "none_this_run",
+        "value.surface.facts.last_save_result": "unattempted"
+      }
+    },
+    {
+      "citation_id": "J0015",
+      "meaning": "The terminal lifecycle record preserves the interruption boundary and released authority for scenario terminalization.",
+      "checks": {
+        "stop_reason": "Native wait interrupted by staged zombie dog sighting at game minute 8052 after one accepted five-minute native duration. Stop at the current World owner; no recovery or replay. Same request was collected and subsequent collect/cancel found no pending request.",
+        "unused_authority": "released_after_native_wait_interrupted",
+        "cleanup.owner": "scenario_terminalization",
+        "cleanup.status": "deferred_to_scenario_terminalization"
+      }
+    }
+  ],
+  "material_deviations": [
+    "The duration menu did not advertise a native cancel target. After the native interruption, lifecycle cancel and collect both returned no_pending_request; neither emitted a recovery action or replayed the accepted wait."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "No broader gameplay feature behavior is established by this control route.",
+    "Native save/quit and native process-exit credit were not attempted or established.",
+    "The returned World owner was observed but deliberately not resumed with another gameplay action."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

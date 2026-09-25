@@ -1,0 +1,22 @@
+MENU
+filtered entry count: 13
+Assign job priority (0 to disable)
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  14 — Clear all priorities
+  15 — Set all priorities
+  16 — patrolling the camp : 9
+  17 — butchering : 8
+  18 — chopping logs : 8
+  19 — chopping trees : 8
+  20 — constructing : 8
+  21 — disassembling things : 8
+  22 — farming : 8
+  23 — fishing : 8
+  24 — deconstructing a vehicle : 8
+  25 — repairing a vehicle : 8
+  26 — sorting out the loot : 1

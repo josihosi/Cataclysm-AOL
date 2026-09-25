@@ -1,0 +1,30 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This fresh source-bound semantic-only run reached ordinary abstract dispatch at minute 9300 and local observing waypoint 1 at minute 9360, but did not reach the selected watch, native source, physical return, or returned_report lead. At minute 9422 the exact pair remained local/observing at waypoint 1.",
+  "causal_account": "The first intermediate-waypoint repair atomically prepared both members only for the immediate egress OMT. The ingress motor, however, admits an assembled local pair only when each member's native travelling goal is the final selected-watch destination. The pair therefore remained inert after assembly. This is a diagnostic repair boundary, not evidence for the requested source-to-return route.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Seals the selected scenario, source-matched executable, native run, and bridge binding.",
+      "checks": {
+        "run_id": "175e8c02a1f8a901c7090758fec7ee8e80d3829696067a487479884a0a97e598",
+        "binding_id": "c330dcd9686b329ae299f6b7eb0de0bdf4a7a7e61604731e79803b37e05c68b9"
+      }
+    },
+    {
+      "citation_id": "J0040",
+      "meaning": "Terminal record retains the exact diagnostic boundary and releases unused authority.",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The assembled pair was bound to the immediate egress OMT while ingress eligibility requires the selected-watch destination, so it remained locally owned at waypoint 1."
+  ],
+  "remaining_unknowns": [
+    "Whether atomically binding both assembled members to the final selected-watch OMT carries the exact pair through the source, physical return, and matching returned_report path."
+  ],
+  "evidence_ceiling": "focused"
+}

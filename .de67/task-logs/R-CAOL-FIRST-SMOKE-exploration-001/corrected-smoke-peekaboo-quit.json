@@ -1,0 +1,17 @@
+{
+  "data" : {
+    "results" : [
+      {
+        "pid" : 20113,
+        "app_name" : "cataclysm-tiles",
+        "success" : true
+      }
+    ],
+    "force" : false,
+    "action" : "quit"
+  },
+  "success" : true,
+  "debug_logs" : [
+    "[2026-09-24T21:05:05.579Z] DEBUG: Runtime host: local (in-process fallback)"
+  ]
+}

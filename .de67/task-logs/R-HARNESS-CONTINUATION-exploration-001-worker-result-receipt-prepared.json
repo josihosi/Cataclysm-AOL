@@ -1,0 +1,109 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-CONTINUATION-exploration-001",
+  "claim_id": "R-HARNESS-CONTINUATION",
+  "worker_id": "01a0c221-bb0a-7451-97ba-b4438e0d42f7",
+  "disposition": "completed",
+  "verdict": "continuation_context_build_reuse_and_worker_adoption_repaired",
+  "outcome": "The current-results provider now emits a compact, executable state-dependent continuation: it collects the exact pending request, read-only replays a retained completed result, refreshes only a ready stale owner, and reports ended or unknown sessions without sending input. Its exported worker projection foregrounds conclusion, limits, question, receipt handles and source dependencies rather than receipt bodies. The macOS source-bound build owner records its exact configuration and retries the same Makefile route after removing only a diagnosed configuration's generated PCH pair.",
+  "summary": "A prepared worker context was assembled through context_library, inspected as this worker's actual input, and its supplied collect command was then run verbatim. It returned the retained completed request completed-adoption-1 with ok=true and no new submission. The integration is deliberately synthetic: it proves injection-to-use and same-operation replay semantics, not native gameplay. Guidance now matches the PlayerClient parser's global option ordering and current control evidence: Tab is no longer prescribed as an answer-injection or turn-advance action, and returned selectors remain the sole inspection roots.",
+  "material_changes": [
+    "Added authoritative session-state projection in work_context_provider for pending, completed, ready/stale, terminal/failure and unknown state, including the executable exact next-operation argv in the continuation note.",
+    "Changed current-results export from full receipt serialization to compact durable receipt, binding, artifact and entrypoint handles, with explicit conclusions, limits and current question.",
+    "Added source-bound builder configuration receipt data and a one-time, diagnostic-gated build-owner refresh of only BUILD_PREFIX+obj[/tiles]/pch/main-pch.hpp.pch and its dependency file before retrying the identical Makefile build command; literal prefixes such as r033-headless- now keep Make's concatenated directory semantics.",
+    "Corrected current live-operation command ordering and state-specific continuation guidance, and removed CONTROL_LOOKUP's contradictory Tab recipe.",
+    "Added parser-contract, provider-state, compact-export and assembled-context-to-exact-collect adoption tests."
+  ],
+  "tests": [
+    "PYTHONPATH=tools/openclaw_harness python3 -m unittest tools/openclaw_harness/work_context_test.py tools/openclaw_harness/continuation_guidance_test.py tools/openclaw_harness/build_source_bound_macos_test.py -v: 18 passed.",
+    "python3 -m py_compile tools/openclaw_harness/work_context_provider.py tools/openclaw_harness/build_source_bound_macos.py tools/openclaw_harness/continuation_guidance_test.py: passed.",
+    "The prepared-context adoption run assembled revision bdfe16e65c628f6dbfb6ba56d252870c1462ea38bbcbec595df38eaddd08278a, then executed its exact collect argv and obtained {ok:true, request_id:completed-adoption-1, state:collected, outcome:retained completion}.",
+    "git diff --check: passed."
+  ],
+  "live_actions": [
+    "No native game, bridge, registry selection, fixture, scenario or build process was launched. The only continuation operation was a read-only collect against a disposable synthetic retained-result session; it sent no game input.",
+    "No owned game or broker exists from this assignment. The disposable adoption workspace was removed after the result was recorded."
+  ],
+  "evidence_ceiling": [
+    "The adopted continuation proves prepared-context injection and exact same-operation replay with synthetic retained state; it is not a new native gameplay, interruption, save/reload or process-exit result.",
+    "The PCH retry was exercised through controlled build-owner tests. This worker did not induce a real incompatible PCH or re-run a source-bound game build because the accepted working route remains reusable and no source-binding prerequisite changed for this Python/documentation repair.",
+    "No fresh/cached/output provider accounting for this worker was available. review-signal-proof-003/report.md records the historical full observed workspace tree as 6,977,584 fresh input, 296,118,656 cached input and 746,582 output tokens; it is historical campaign context, not attribution or savings for this slice. This worker used no helper or reviewer."
+  ],
+  "bindings": {
+    "adopted_request_id": "completed-adoption-1",
+    "assignment_request_id": "cfa02fa36ade443ba32f21b68ac04e50",
+    "build_route_report": ".de67/task-logs/review-signal-proof-003/report.md",
+    "prepared_context_revision": "bdfe16e65c628f6dbfb6ba56d252870c1462ea38bbcbec595df38eaddd08278a",
+    "preserved_interruption_receipt": "074bcf0483a2b257018c70339231e75812663ae17a86d62b75cfd24b0fb70553",
+    "preserved_normal_wait_receipt": "a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/work_context_provider.py",
+      "sha256": "86f235676e57b2b0c3adfea1ff75124eee0d5623c4f2e9fd8fc522ab269bc175",
+      "role": "Compact current-results export and state-dependent exact continuation projection."
+    },
+    {
+      "path": "tools/openclaw_harness/work_context_test.py",
+      "sha256": "2eabb28e2b07836df5adac6e44cbb02ab201e6e545a780547856d7f3fd6dd206",
+      "role": "Pending/completed/ended/stale, compact export, preparation and actual same-operation adoption coverage."
+    },
+    {
+      "path": "tools/openclaw_harness/build_source_bound_macos.py",
+      "sha256": "89508446ff07e0288f4e76da3629418039e550a8e94a922c7985b9e023bdd4d2",
+      "role": "Exact source-bound Makefile configuration and narrow build-owner PCH recovery."
+    },
+    {
+      "path": "tools/openclaw_harness/build_source_bound_macos_test.py",
+      "sha256": "0e6cc71bd90704a29db69fd380fe38fd01fe50c71a497572430f18dcab5b7e6a",
+      "role": "PCH mismatch retry and non-PCH non-deletion coverage."
+    },
+    {
+      "path": "tools/openclaw_harness/continuation_guidance_test.py",
+      "sha256": "f2023e30a0cf27d1ba1dca59f88344f6e80997527aafbf740a9886630c7745f4",
+      "role": "PlayerClient parser and delivered guidance consistency tests."
+    },
+    {
+      "path": "tools/openclaw_harness/CONTROL_LOOKUP.md",
+      "sha256": "108ca4d39170339709b1dc2912a209dc39d7d88343af62bf48f26eeed251a904",
+      "role": "Current native key-control correction; Tab is not a turn or answer-injection recipe."
+    },
+    {
+      "path": ".agents/skills/caol-harness/references/live-operation.md",
+      "sha256": "0231e582a7abcfc0f09f6299da82281efb2c0cd2a2d2df59e6b1f161d2e29bae",
+      "role": "Executable player command, selector and lifecycle continuation guidance."
+    }
+  ],
+  "first_divergence": {
+    "class": "generic_look_and_full_receipt_export",
+    "summary": "The provider offered look for every recorded session and exported complete receipts, so a pending request could be ignored and a worker could receive archival bulk instead of the runnable current decision."
+  },
+  "accepted_no_replay": [
+    "Preserved accepted normal-wait receipt a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc without replay.",
+    "Preserved the real interruption receipt 074bcf0483a2b257018c70339231e75812663ae17a86d62b75cfd24b0fb70553; no native scenario was relaunched or collected.",
+    "No installed DE67 method or policy artifact was edited; the independent canonical-FS guard candidate remains separately owned."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A coordinator should deliver this compact projection to a separate live successor and record its acknowledgment/use alongside a current source-bound scenario continuation; this worker's adoption run establishes the route with synthetic retained state only.",
+  "narrow_queries": [
+    "tools/openclaw_harness/work_context_provider.py session_context/export_current_results and work_context_test.py adoption coverage",
+    "tools/openclaw_harness/build_source_bound_macos.py pch_recovery_paths/incompatible_pch_diagnostic/invalidate_owned_pch",
+    "tools/openclaw_harness/play_cli.py PlayerClient.collect/resume and the command parser",
+    ".de67/task-logs/review-signal-proof-003/report.md for the retained source-bound build/test route and historical full-tree accounting"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/work_context_provider.py",
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/play_cli.py",
+    ".agents/skills/caol-harness/references/live-operation.md"
+  ],
+  "context_metrics": {
+    "focused_tests_passed": 18,
+    "helpers_used": 0,
+    "native_runs_launched": 0,
+    "prepared_context_revision": "bdfe16e65c628f6dbfb6ba56d252870c1462ea38bbcbec595df38eaddd08278a",
+    "reviewers_used": 0
+  }
+}

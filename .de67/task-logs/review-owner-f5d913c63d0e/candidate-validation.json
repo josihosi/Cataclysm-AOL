@@ -1,0 +1,32 @@
+{
+  "ordinary_random_review": {
+    "not_applicable": "FS must contain exactly one '## Functional contract' section",
+    "reason": "Owner-directed thaw/refreeze of existing open contracts; current canonical FS also lacks the legacy protected heading names."
+  },
+  "broad_fs_contract_guard": {
+    "not_applicable": "FS must contain exactly one '## Functional contract' section"
+  },
+  "rendered_context": {
+    "owner_contract_bytes": 4446,
+    "coordinator_prompt_contains_exact_owner_contract": true,
+    "worker_assignment_previews": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-owner-f5d913c63d0e/assignment-previews.json",
+    "evidence_ceiling": "Production context extractors and prompt renderer executed; no worker or coordinator launched, adoption remains delivery work."
+  },
+  "owner_entry_consumed": [
+    "Owner-authorized [trigger]: HARNESS-FULL-STACK-20260921 \u2014 urgent forcing mutation: thaw/refreeze FS for the complete owner harness ergonomics outcome, then commission coordinator delivery; mutator owns specification/context, not implementation."
+  ],
+  "owner_scoped_contract_preservation": "passed",
+  "old_slices_preserved": 41,
+  "added_slices": [
+    "R-HARNESS-CONTINUATION-S001",
+    "R-HARNESS-EVIDENCE-S001",
+    "R-HARNESS-PREMISES-S001"
+  ],
+  "unchanged_original_slices": 37,
+  "accepted_rows_preserved": 64,
+  "accepted_status_projection_only": "R-HARNESS-PERFORMANCE",
+  "active_ledger_items": 14,
+  "all_eleven_owner_areas_mapped": true,
+  "installed_method_changes": false,
+  "policy_changes": false
+}

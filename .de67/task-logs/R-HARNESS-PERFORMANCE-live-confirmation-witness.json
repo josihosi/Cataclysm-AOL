@@ -1,0 +1,21 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "A fresh current-source native run submitted world.wait once with a zero-window pending request, preserved the accepted native receipt and resulting alarm-clock menu owner, crossed the configured observation threshold through a read-only performance poll without emitting stalled_progress, collected the original request once, completed one advertised wait.1m action, and canceled the later menu without another advancing action.",
+  "causal_account": "J0001 binds the current source/executable/run. J0004/J0005 establish the accepted world.wait transition to the native menu. The read-only performance artifact records the run-bound accepted receipt, menu_or_nested_input context, four completed turn measurements, and alarms=[] while the original play-803bf request remained pending beyond the five-second threshold. J0008/J0009 establish the single completed advancing wait, and J0014 records terminal cleanup handoff.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "Fresh source/executable/run binding.", "checks": {}},
+    {"citation_id": "J0004", "meaning": "Native alarm-clock menu surface with advertised wait choices after world.wait.", "checks": {}},
+    {"citation_id": "J0005", "meaning": "Accepted native world.wait action receipt.", "checks": {}},
+    {"citation_id": "J0008", "meaning": "World observation after one-minute advancement.", "checks": {}},
+    {"citation_id": "J0009", "meaning": "Accepted advertised wait.1m native action.", "checks": {}},
+    {"citation_id": "J0014", "meaning": "Terminal lifecycle and cleanup handoff.", "checks": {}}
+  ],
+  "recommended_disposition": "accept",
+  "contradictions": [
+    "The first structured zero-window call returned unknown_or_stale_observation and published no native facts; it was not replayed. A fresh observed-owner act route was used afterward."
+  ],
+  "remaining_unknowns": [
+    "The live assessment exposed no explicit native_input_owner_no_simulation_progress label because an incomplete native turn was already in phase=input; it did expose the accepted receipt, menu descriptor/context, no alarms, and no stalled_progress."
+  ],
+  "evidence_ceiling": "focused"
+}

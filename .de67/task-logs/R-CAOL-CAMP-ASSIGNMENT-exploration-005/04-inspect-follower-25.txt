@@ -1,0 +1,16 @@
+NPC INSPECTION — R032 Establishment Ally 1
+actor id: character:25
+Camp patrol — camp found: no
+All 12 body parts: 82/82 HP
+Items: sharpened rebar [111, wielded]; \. bra [2, worn]; ++ boy shorts [4, worn]; ++ socks (pair) [6, worn]; |\ round bifocal glasses [8, worn]; ++ soccer fan cap [10, worn]; ++ jeans > smartphone (UPS) (unbrowsed) [12, worn]; smartphone (UPS) (unbrowsed) [10141, CONTAINER]; battery [10139, MAGAZINE] ×56; coming of age novel [10140, E_FILE_STORAGE]; ++ sneakers (pair) [25, worn]; ++ t-shirt [27, worn]; ++ work gloves (pair) [29, worn]; |\ barrette [31, worn]; ++ light jacket > 5 items [33, worn]; one-dollar currency strap [10171, CONTAINER]; wallet > 6 currency [10179, CONTAINER]; cash card [10173, CONTAINER]; cent [10172, MAGAZINE] ×73; dime [10174, CONTAINER]; penny [10175, CONTAINER]; penny [10176, CONTAINER]; quarter [10177, CONTAINER]; penny [10178, CONTAINER]; saline eye drops (cold) [10180, CONTAINER]; plastic bag⁺ > corn tortilla (fresh) [10182, CONTAINER]; corn tortilla (fresh) [10181, CONTAINER]; small aluminum can⁺ (sealed) > diet cola [10184, CONTAINER]; diet cola [10183, CONTAINER] ×1; ++ wrist watch [87, worn]; ++ messenger bag > small cardboard box⁺ > 4 items [89, worn]; small cardboard box⁺ > 4 slices of meat pizza [10200, CONTAINER]; slice of meat pizza [10196, CONTAINER]; slice of meat pizza [10197, CONTAINER]; slice of meat pizza [10198, CONTAINER]; slice of meat pizza [10199, CONTAINER]
+Full gear data: 5592 characters → play inspect observation.surface.facts.diagnostic_items
+Item details → play inspect observation.surface.facts.diagnostic_items.UID (copy an item ID; no --contains)
+AI intent: 220 characters omitted → play inspect observation.surface.facts.diagnostic_llm_intent
+Orders — attitude: Ignoring; mission: GUARD_ALLY; activity: ACT_NULL; absolute position: 3902, 874, 0; camp patrol order: no; camp patrol priority: 8; has companion mission: no
+Rules: 3007 characters omitted → play inspect observation.surface.facts.diagnostic_rules
+visible.health: She is uninjured.
+visible.attitude: Friendly
+visible.wielded: sharpened rebar
+ALLOWED HERE ONLY
+Close → play act npc_inspection.close
+Item details (requires item_uid parameter) → play act npc_inspection.item_details --param item_uid=ID

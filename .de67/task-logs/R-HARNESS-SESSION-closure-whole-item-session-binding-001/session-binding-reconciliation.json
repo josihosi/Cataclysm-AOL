@@ -1,0 +1,37 @@
+{
+  "schema": "r-harness-session-binding-reconciliation-v1",
+  "task_id": "R-HARNESS-SESSION-closure-whole-item-session-binding-001",
+  "claim_id": "R-HARNESS-SESSION",
+  "source_receipt_id": "3a3f4dfe089edf19db34a66e76a089779dee01ea69e2828dd66eb9a29ebd2096",
+  "source_receipt_artifact": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-worker-result-receipt-corrected.json",
+  "verdict": "receipt_scope_reconciled_current_focused_suite_passes",
+  "clause_matrix": [
+    {"clause": "current direct operations and supported choices", "status": "supported", "evidence": "Receipt material_changes direct bounded wait/move and honest unsupported choices; current focused suite includes published wait guidance and direct request construction."},
+    {"clause": "lost output, timeout and pending restart", "status": "supported", "evidence": "Receipt summary and tests cover lost client state, timeout, pending client restart, delayed response and retained pending identity."},
+    {"clause": "duplicate collection and no resubmission", "status": "supported", "evidence": "Receipt explicitly says latest result is reused and recovery never resubmits; current tests pass duplicate collection and delayed collection no-resubmit controls."},
+    {"clause": "stale grants, owner transitions and stable selectors", "status": "supported", "evidence": "Receipt names stale grants, stable-identity deltas, full/delta/owner views; current tests pass stale generation/binding, current owner, stable IDs and replay rejection."},
+    {"clause": "paging and message cursors", "status": "supported", "evidence": "Receipt names pageable catalogs and cursor-based message additions; current display tests cover append paging, large owner catalogs, changed sixth entity and cursor behavior."},
+    {"clause": "pending-safe read-only readers", "status": "supported", "evidence": "Receipt names safe reads during pending collection; current tests pass read-only retrieval and messages during action collection."},
+    {"clause": "full evidence retrieval and honest measurement limits", "status": "supported", "evidence": "Receipt records exact retrieval, retained response roots and synthetic stdout-only measurement limits; current evidence tests pass full retrieval and diagnostic projection."},
+    {"clause": "process death/no response and cancellation", "status": "supported", "evidence": "Receipt test scope includes process-exit/result handling; current bridge tests cover process death, child exit before response, cancellation races and unknown outcomes."},
+    {"clause": "reentry/finish and stale predecessor protection", "status": "supported", "evidence": "Receipt names finish/reentry; current bridge tests cover declared reentry, save-quit marker, predecessor artifact rejection, replacement wrapper and terminalization."}
+  ],
+  "verification": {
+    "current_checkout_focused_tests": 116,
+    "current_checkout_test_result": "OK",
+    "current_test_artifact": ".de67/task-logs/R-HARNESS-SESSION-closure-whole-item-session-binding-001/current-focused-test-result.log",
+    "current_test_artifact_sha256": "61388af68588b844bc33ba4c91aa428659b4691ce62b4854fa2e88b57a27d249",
+    "historical_receipt_corrected_test_log_sha256": "10b2726ede746e09fe7bf78c39c0fa6ea13124e121ac69299e8d5da5dde94f61"
+  },
+  "identity_drift": {
+    "status": "observed_bounded",
+    "detail": "Current play_cli.py, gameplay_display.py and play_cli_test.py hashes differ from the corrected historical receipt, while the same focused suite passes 116 tests in the current checkout. This audit therefore preserves the receipt's original 115-test evidence and separately records current 116-test verification; it does not relabel the historical receipt."
+  },
+  "measurement_limits": [
+    "No native gameplay, save/reload, interruption, or process-exit run was replayed.",
+    "The response/retrieval measurement remains synthetic stdout effort, not provider tokens or universal savings.",
+    "The audit verifies session contract and retained-artifact behavior, not a new native journey result."
+  ],
+  "source_edits": "none",
+  "native_replay": "none"
+}

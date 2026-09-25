@@ -1,0 +1,262 @@
+..EFFEEF.EFF..FEEEE.FEEEEEE.
+======================================================================
+ERROR: test_coding_max_effort_reaches_worker_runtime (test_worker_library.WorkerLibraryTests.test_coding_max_effort_reaches_worker_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 135, in test_coding_max_effort_reaches_worker_runtime
+    start = next(params for method, params in reversed(self.rpc.calls)
+                 if method == "thread/start")
+StopIteration
+
+======================================================================
+ERROR: test_fresh_worker_receives_whole_prepared_assignment_inline (test_worker_library.WorkerLibraryTests.test_fresh_worker_receives_whole_prepared_assignment_inline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 164, in test_fresh_worker_receives_whole_prepared_assignment_inline
+    delivered = self.turn_input()
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 151, in turn_input
+    return [params["input"][0]["text"] for method, params in self.rpc.calls if method == "turn/start"][-1]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^
+IndexError: list index out of range
+
+======================================================================
+ERROR: test_late_worker_return_keeps_evidence_after_sol_has_settled_task (test_worker_library.WorkerLibraryTests.test_late_worker_return_keeps_evidence_after_sol_has_settled_task)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 232, in test_late_worker_return_keeps_evidence_after_sol_has_settled_task
+    self.settle()
+    ~~~~~~~~~~~^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_new_sol_resumes_returned_open_assignment_after_review (test_worker_library.WorkerLibraryTests.test_new_sol_resumes_returned_open_assignment_after_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 382, in test_new_sol_resumes_returned_open_assignment_after_review
+    before_claim = tuple(self.harness.connection.execute('SELECT * FROM worker_claims').fetchone())
+TypeError: 'NoneType' object is not iterable
+
+======================================================================
+ERROR: test_reuse_omits_identical_standing_but_delivers_changed_constraints_and_owner (test_worker_library.WorkerLibraryTests.test_reuse_omits_identical_standing_but_delivers_changed_constraints_and_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 181, in test_reuse_omits_identical_standing_but_delivers_changed_constraints_and_owner
+    self.settle()
+    ~~~~~~~~~~~^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_same_sol_can_resume_known_turn_after_new_server_and_supervisor (test_worker_library.WorkerLibraryTests.test_same_sol_can_resume_known_turn_after_new_server_and_supervisor)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 360, in test_same_sol_can_resume_known_turn_after_new_server_and_supervisor
+    queued = library.message(self.workspace, "pilot", "Continue the same task", environment=self.env)
+  File "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-002/worker_library.candidate.py", line 333, in message
+    raise WorkerLibraryError("Message requires this coordinator's known running or returned assignment")
+worker_library.WorkerLibraryError: Message requires this coordinator's known running or returned assignment
+
+======================================================================
+ERROR: test_same_task_steering_and_returned_continuation_do_not_create_new_claim (test_worker_library.WorkerLibraryTests.test_same_task_steering_and_returned_continuation_do_not_create_new_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 340, in test_same_task_steering_and_returned_continuation_do_not_create_new_claim
+    library.message(self.workspace, "pilot", "Inspect the second observation", environment=self.env)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-002/worker_library.candidate.py", line 333, in message
+    raise WorkerLibraryError("Message requires this coordinator's known running or returned assignment")
+worker_library.WorkerLibraryError: Message requires this coordinator's known running or returned assignment
+
+======================================================================
+ERROR: test_shutdown_does_not_reopen_an_already_settled_worker_claim (test_worker_library.WorkerLibraryTests.test_shutdown_does_not_reopen_an_already_settled_worker_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 243, in test_shutdown_does_not_reopen_an_already_settled_worker_claim
+    self.settle()
+    ~~~~~~~~~~~^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery (test_worker_library.WorkerLibraryTests.test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery) (damage='altered')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 210, in test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery
+    self.settle(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery (test_worker_library.WorkerLibraryTests.test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery) (damage='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 210, in test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery
+    self.settle(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery (test_worker_library.WorkerLibraryTests.test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery) (damage='uncertain-request')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 210, in test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery
+    self.settle(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery (test_worker_library.WorkerLibraryTests.test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery) (damage='missing-turn')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 210, in test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery
+    self.settle(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery (test_worker_library.WorkerLibraryTests.test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery) (damage='empty')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 210, in test_untrusted_or_unconfirmed_prior_assignment_requires_full_delivery
+    self.settle(name)
+    ~~~~~~~~~~~^^^^^^
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 116, in settle
+    saved = self.harness.record_worker_result_receipt("project", task_id, worker_id, receipt)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 3706, in record_worker_result_receipt
+    worker_id = self._identity(worker_id, "Worker id")
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py", line 1633, in _identity
+    raise DeadlineError(f"{label} must not be empty")
+deadline_harness.DeadlineError: Worker id must not be empty
+
+======================================================================
+ERROR: test_worker_result_and_usage_are_preserved_outside_sol_context (test_worker_library.WorkerLibraryTests.test_worker_result_and_usage_are_preserved_outside_sol_context)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 540, in test_worker_result_and_usage_are_preserved_outside_sol_context
+    self.assertEqual(Path(final["result_path"]).read_text(), "A precise worker result")
+                     ~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 150, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+
+======================================================================
+FAIL: test_definite_turn_rejection_keeps_known_claim_resumable (test_worker_library.WorkerLibraryTests.test_definite_turn_rejection_keeps_known_claim_resumable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 526, in test_definite_turn_rejection_keeps_known_claim_resumable
+    self.assertEqual(library.describe(self.workspace, "pilot")["status"], "failed")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'idle' != 'failed'
+- idle
++ failed
+
+
+======================================================================
+FAIL: test_double_assignment_and_busy_retirement_are_rejected (test_worker_library.WorkerLibraryTests.test_double_assignment_and_busy_retirement_are_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 333, in test_double_assignment_and_busy_retirement_are_rejected
+    with self.assertRaisesRegex(library.WorkerLibraryError, "unsettled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: WorkerLibraryError not raised
+
+======================================================================
+FAIL: test_named_worker_reuses_conversation_for_new_task_after_fresh_sol (test_worker_library.WorkerLibraryTests.test_named_worker_reuses_conversation_for_new_task_after_fresh_sol)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 263, in test_named_worker_reuses_conversation_for_new_task_after_fresh_sol
+    self.assertEqual(library.request_status(self.workspace, queued["request_id"])["state"], "submitted")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'rejected' != 'submitted'
+- rejected
++ submitted
+
+
+======================================================================
+FAIL: test_owner_correction_during_thread_load_rejects_before_claim_or_generation (test_worker_library.WorkerLibraryTests.test_owner_correction_during_thread_load_rejects_before_claim_or_generation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 516, in test_owner_correction_during_thread_load_rejects_before_claim_or_generation
+    self.assertIn("Owner instructions changed", status["error"])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'Owner instructions changed' not found in 'Worker model is retired; use GPT-6 Luna, Sol or Astra'
+
+======================================================================
+FAIL: test_parallel_dispatch_binds_exact_tasks_not_queue_order (test_worker_library.WorkerLibraryTests.test_parallel_dispatch_binds_exact_tasks_not_queue_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 290, in test_parallel_dispatch_binds_exact_tasks_not_queue_order
+    self.assertEqual(owned, {"task-b": "worker-1", "task-a": "worker-2"})
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {} != {'task-b': 'worker-1', 'task-a': 'worker-2'}
+- {}
++ {'task-a': 'worker-2', 'task-b': 'worker-1'}
+
+======================================================================
+FAIL: test_rejected_queue_does_not_bind_worker_to_another_workers_claim (test_worker_library.WorkerLibraryTests.test_rejected_queue_does_not_bind_worker_to_another_workers_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 497, in test_rejected_queue_does_not_bind_worker_to_another_workers_claim
+    self.assertEqual(library._task(self.state, "project", "task-b")["worker_id"], "worker-1")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: None != 'worker-1'
+
+======================================================================
+FAIL: test_uncertain_turn_start_is_not_replayed_or_reassigned (test_worker_library.WorkerLibraryTests.test_uncertain_turn_start_is_not_replayed_or_reassigned)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py", line 479, in test_uncertain_turn_start_is_not_replayed_or_reassigned
+    self.assertEqual(library.request_status(self.workspace, queued["request_id"])["state"], "uncertain")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'rejected' != 'uncertain'
+- rejected
++ uncertain
+
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.535s
+
+FAILED (failures=7, errors=14)
+Candidate existing suite: 24 tests, 7 failures, 14 errors

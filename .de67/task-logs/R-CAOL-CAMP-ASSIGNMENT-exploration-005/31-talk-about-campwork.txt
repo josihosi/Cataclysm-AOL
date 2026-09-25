@@ -1,0 +1,23 @@
+DIALOGUE
+history: R032 Establishment Ally 1
+"I'm working at the camp."
+
+You
+Let's talk.
+
+R032 Establishment Ally 1
+"What is it, friend?"
+prompt: "What is it, friend?"
+Allowed actions replaced — use only these:
+Goodbye → play act dialogue.cancel
+play act dialogue.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  dialogue-response-56 — [rules] Let's talk about how we'll work together.
+  dialogue-response-57 — I'd like to know a bit more about your abilities.
+  dialogue-response-58 — Please go to this location.
+  dialogue-response-59 — There's something I want you to do.
+  dialogue-response-60 — I just wanted to talk for a bit.
+  dialogue-response-61 — Can you help me understand something?  (HELP/TUTORIAL)
+  dialogue-response-62 — Go back to your camp.
+  dialogue-response-63 — I'm going to go my own way for a while.
+  dialogue-response-64 — Alright, let's go!

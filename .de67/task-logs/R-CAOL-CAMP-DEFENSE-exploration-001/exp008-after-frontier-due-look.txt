@@ -1,0 +1,20 @@
+YOU
+Zoraida Vick · walk
+Position: 3900, 878, 0
+All 12 body parts: 86/86 HP
+Stamina: 8500/50008500
+Weapon: fists
+Peckish · Very thirsty · Fresh
+Effects: Happy
+
+SURROUNDINGS
+moss: NW, here
+underbrush: N
+forest floor: NE, E
+grass: W
+cottonwood tree: SW
+dead hickory tree: S
+long grass: SE
+R032 Establishment Ally 1 · friendly · 2 west, 2 north
+Controls unchanged → play controls
+Game time: 8345 minutes.

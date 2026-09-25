@@ -1,0 +1,149 @@
+
+.de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/windows-evidence/cataclysm-tiles-original-copy.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+00000001407cedd0 <_ZN16int_distribution11deserializeERK9JsonValue>:
+1407d45d0: 49 8d 04 33                 	leaq	(%r11,%rsi), %rax
+1407d45d4: 0f 85 31 ff ff ff           	jne	0x1407d450b <_ZN16int_distribution11deserializeERK9JsonValue+0x573b>
+1407d45da: 48 8b 0a                    	movq	(%rdx), %rcx
+1407d45dd: 49 89 0b                    	movq	%rcx, (%r11)
+1407d45e0: 8b 52 08                    	movl	0x8(%rdx), %edx
+1407d45e3: 41 89 53 08                 	movl	%edx, 0x8(%r11)
+1407d45e7: e9 1f ff ff ff              	jmp	0x1407d450b <_ZN16int_distribution11deserializeERK9JsonValue+0x573b>
+1407d45ec: 0f 1f 40 00                 	nopl	(%rax)
+1407d45f0: 75 b7                       	jne	0x1407d45a9 <_ZN16int_distribution11deserializeERK9JsonValue+0x57d9>
+1407d45f2: 4c 8b 0a                    	movq	(%rdx), %r9
+1407d45f5: 4d 89 0b                    	movq	%r9, (%r11)
+1407d45f8: 44 8b 4a 08                 	movl	0x8(%rdx), %r9d
+1407d45fc: 45 89 4b 08                 	movl	%r9d, 0x8(%r11)
+1407d4600: eb a7                       	jmp	0x1407d45a9 <_ZN16int_distribution11deserializeERK9JsonValue+0x57d9>
+1407d4602: 0f 1f 00                    	nopl	(%rax)
+1407d4605: 66 66 2e 0f 1f 84 00 00 00 00 00    	nopw	%cs:(%rax,%rax)
+1407d4610: 55                          	pushq	%rbp
+1407d4611: 57                          	pushq	%rdi
+1407d4612: 56                          	pushq	%rsi
+1407d4613: 53                          	pushq	%rbx
+1407d4614: 48 83 ec 68                 	subq	$0x68, %rsp
+1407d4618: 48 89 d3                    	movq	%rdx, %rbx
+1407d461b: 48 8d 4c 24 20              	leaq	0x20(%rsp), %rcx
+1407d4620: e8 5b d1 60 00              	callq	0x140de1780 <_ZNK4item7gunmodsEv>
+1407d4625: 48 8d 4c 24 40              	leaq	0x40(%rsp), %rcx
+1407d462a: 48 89 da                    	movq	%rbx, %rdx
+1407d462d: 48 8b 7c 24 28              	movq	0x28(%rsp), %rdi
+1407d4632: e8 49 d1 60 00              	callq	0x140de1780 <_ZNK4item7gunmodsEv>
+1407d4637: 48 8b 5c 24 40              	movq	0x40(%rsp), %rbx
+1407d463c: 48 39 df                    	cmpq	%rbx, %rdi
+1407d463f: 0f 84 59 01 00 00           	je	0x1407d479e <_ZN16int_distribution11deserializeERK9JsonValue+0x59ce>
+1407d4645: 48 89 f8                    	movq	%rdi, %rax
+1407d4648: 48 8b 2d 61 58 88 02        	movq	0x2885861(%rip), %rbp   # 0x143059eb0 <.refptr.flag_ZOOM>
+1407d464f: 48 29 d8                    	subq	%rbx, %rax
+1407d4652: 48 83 e8 08                 	subq	$0x8, %rax
+1407d4656: 48 c1 e8 03                 	shrq	$0x3, %rax
+1407d465a: 48 83 c0 01                 	addq	$0x1, %rax
+1407d465e: 83 e0 03                    	andl	$0x3, %eax
+1407d4661: 0f 84 b4 00 00 00           	je	0x1407d471b <_ZN16int_distribution11deserializeERK9JsonValue+0x594b>
+1407d4667: 48 83 f8 01                 	cmpq	$0x1, %rax
+1407d466b: 0f 84 07 01 00 00           	je	0x1407d4778 <_ZN16int_distribution11deserializeERK9JsonValue+0x59a8>
+1407d4671: 48 83 f8 02                 	cmpq	$0x2, %rax
+1407d4675: 0f 84 e1 00 00 00           	je	0x1407d475c <_ZN16int_distribution11deserializeERK9JsonValue+0x598c>
+1407d467b: 48 8b 0b                    	movq	(%rbx), %rcx
+1407d467e: 48 85 c9                    	testq	%rcx, %rcx
+1407d4681: 0f 84 d1 00 00 00           	je	0x1407d4758 <_ZN16int_distribution11deserializeERK9JsonValue+0x5988>
+1407d4687: 48 89 ea                    	movq	%rbp, %rdx
+1407d468a: e8 31 85 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d468f: 84 c0                       	testb	%al, %al
+1407d4691: 0f 84 c1 00 00 00           	je	0x1407d4758 <_ZN16int_distribution11deserializeERK9JsonValue+0x5988>
+1407d4697: 66 0f 1f 84 00 00 00 00 00  	nopw	(%rax,%rax)
+1407d46a0: 48 8b 4c 24 40              	movq	0x40(%rsp), %rcx
+1407d46a5: 48 39 df                    	cmpq	%rbx, %rdi
+1407d46a8: 0f 95 c3                    	setne	%bl
+1407d46ab: 48 85 c9                    	testq	%rcx, %rcx
+1407d46ae: 74 0d                       	je	0x1407d46bd <_ZN16int_distribution11deserializeERK9JsonValue+0x58ed>
+1407d46b0: 48 8b 54 24 50              	movq	0x50(%rsp), %rdx
+1407d46b5: 48 29 ca                    	subq	%rcx, %rdx
+1407d46b8: e8 23 40 bc ff              	callq	0x1403986e0 <_ZdlPvy>
+1407d46bd: 48 8b 4c 24 20              	movq	0x20(%rsp), %rcx
+1407d46c2: 48 85 c9                    	testq	%rcx, %rcx
+1407d46c5: 74 0d                       	je	0x1407d46d4 <_ZN16int_distribution11deserializeERK9JsonValue+0x5904>
+1407d46c7: 48 8b 54 24 30              	movq	0x30(%rsp), %rdx
+1407d46cc: 48 29 ca                    	subq	%rcx, %rdx
+1407d46cf: e8 0c 40 bc ff              	callq	0x1403986e0 <_ZdlPvy>
+1407d46d4: 89 d8                       	movl	%ebx, %eax
+1407d46d6: 48 83 c4 68                 	addq	$0x68, %rsp
+1407d46da: 5b                          	popq	%rbx
+1407d46db: 5e                          	popq	%rsi
+1407d46dc: 5f                          	popq	%rdi
+1407d46dd: 5d                          	popq	%rbp
+1407d46de: c3                          	retq
+1407d46df: 90                          	nop
+1407d46e0: 48 8b 4e 08                 	movq	0x8(%rsi), %rcx
+1407d46e4: 48 8d 5e 08                 	leaq	0x8(%rsi), %rbx
+1407d46e8: 48 85 c9                    	testq	%rcx, %rcx
+1407d46eb: 74 0c                       	je	0x1407d46f9 <_ZN16int_distribution11deserializeERK9JsonValue+0x5929>
+1407d46ed: 48 89 ea                    	movq	%rbp, %rdx
+1407d46f0: e8 cb 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d46f5: 84 c0                       	testb	%al, %al
+1407d46f7: 75 a7                       	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d46f9: 48 8b 4e 10                 	movq	0x10(%rsi), %rcx
+1407d46fd: 48 8d 5e 10                 	leaq	0x10(%rsi), %rbx
+1407d4701: 48 85 c9                    	testq	%rcx, %rcx
+1407d4704: 74 0c                       	je	0x1407d4712 <_ZN16int_distribution11deserializeERK9JsonValue+0x5942>
+1407d4706: 48 89 ea                    	movq	%rbp, %rdx
+1407d4709: e8 b2 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d470e: 84 c0                       	testb	%al, %al
+1407d4710: 75 8e                       	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d4712: 48 8d 5e 18                 	leaq	0x18(%rsi), %rbx
+1407d4716: 48 39 df                    	cmpq	%rbx, %rdi
+1407d4719: 74 85                       	je	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d471b: 48 8b 0b                    	movq	(%rbx), %rcx
+1407d471e: 48 85 c9                    	testq	%rcx, %rcx
+1407d4721: 74 10                       	je	0x1407d4733 <_ZN16int_distribution11deserializeERK9JsonValue+0x5963>
+1407d4723: 48 89 ea                    	movq	%rbp, %rdx
+1407d4726: e8 95 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d472b: 84 c0                       	testb	%al, %al
+1407d472d: 0f 85 6d ff ff ff           	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d4733: 48 8b 4b 08                 	movq	0x8(%rbx), %rcx
+1407d4737: 48 8d 73 08                 	leaq	0x8(%rbx), %rsi
+1407d473b: 48 89 f3                    	movq	%rsi, %rbx
+1407d473e: 48 85 c9                    	testq	%rcx, %rcx
+1407d4741: 74 9d                       	je	0x1407d46e0 <_ZN16int_distribution11deserializeERK9JsonValue+0x5910>
+1407d4743: 48 89 ea                    	movq	%rbp, %rdx
+1407d4746: e8 75 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d474b: 84 c0                       	testb	%al, %al
+1407d474d: 0f 85 4d ff ff ff           	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d4753: eb 8b                       	jmp	0x1407d46e0 <_ZN16int_distribution11deserializeERK9JsonValue+0x5910>
+1407d4755: 0f 1f 00                    	nopl	(%rax)
+1407d4758: 48 83 c3 08                 	addq	$0x8, %rbx
+1407d475c: 48 8b 0b                    	movq	(%rbx), %rcx
+1407d475f: 48 85 c9                    	testq	%rcx, %rcx
+1407d4762: 74 10                       	je	0x1407d4774 <_ZN16int_distribution11deserializeERK9JsonValue+0x59a4>
+1407d4764: 48 89 ea                    	movq	%rbp, %rdx
+1407d4767: e8 54 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d476c: 84 c0                       	testb	%al, %al
+1407d476e: 0f 85 2c ff ff ff           	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d4774: 48 83 c3 08                 	addq	$0x8, %rbx
+1407d4778: 48 8b 0b                    	movq	(%rbx), %rcx
+1407d477b: 48 85 c9                    	testq	%rcx, %rcx
+1407d477e: 74 10                       	je	0x1407d4790 <_ZN16int_distribution11deserializeERK9JsonValue+0x59c0>
+1407d4780: 48 89 ea                    	movq	%rbp, %rdx
+1407d4783: e8 38 84 52 00              	callq	0x140cfcbc0 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407d4788: 84 c0                       	testb	%al, %al
+1407d478a: 0f 85 10 ff ff ff           	jne	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d4790: 48 83 c3 08                 	addq	$0x8, %rbx
+1407d4794: 48 39 df                    	cmpq	%rbx, %rdi
+1407d4797: 75 82                       	jne	0x1407d471b <_ZN16int_distribution11deserializeERK9JsonValue+0x594b>
+1407d4799: e9 02 ff ff ff              	jmp	0x1407d46a0 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d0>
+1407d479e: 48 89 f9                    	movq	%rdi, %rcx
+1407d47a1: e9 ff fe ff ff              	jmp	0x1407d46a5 <_ZN16int_distribution11deserializeERK9JsonValue+0x58d5>
+1407d47a6: 48 89 c3                    	movq	%rax, %rbx
+1407d47a9: eb 12                       	jmp	0x1407d47bd <_ZN16int_distribution11deserializeERK9JsonValue+0x59ed>
+1407d47ab: 48 8b 54 24 50              	movq	0x50(%rsp), %rdx
+1407d47b0: 48 8b 4c 24 40              	movq	0x40(%rsp), %rcx
+1407d47b5: 48 89 c3                    	movq	%rax, %rbx
+1407d47b8: e8 19 8d 14 02              	callq	0x14291d4d6 <__gxx_personality_seh0+0x14fc86>
+1407d47bd: 48 8b 4c 24 20              	movq	0x20(%rsp), %rcx
+1407d47c2: 48 8b 54 24 30              	movq	0x30(%rsp), %rdx
+1407d47c7: e8 0a 8d 14 02              	callq	0x14291d4d6 <__gxx_personality_seh0+0x14fc86>
+1407d47cc: 48 89 d9                    	movq	%rbx, %rcx
+1407d47cf: e8 2c 13 8d 01              	callq	0x1420a5b00 <_Unwind_Resume>

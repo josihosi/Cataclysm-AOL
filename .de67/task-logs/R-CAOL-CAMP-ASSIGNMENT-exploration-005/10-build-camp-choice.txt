@@ -1,0 +1,9 @@
+Select a camp type:
+filtered entry count: 1
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  17 — Faction Base Bare Bones Basecamp.

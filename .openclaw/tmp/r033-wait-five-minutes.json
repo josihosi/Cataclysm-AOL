@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_delta_game_minutes": 5,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "The current observed minute is 10075, so five exact native one-minute waits reach the required pre-source structural cadence at minute 10080.",
+      "unit": "game_minutes",
+      "maximum": 5,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "gate": "cc464a7ab66d",
+  "invocation": "mutation-990799a543b54300948b1b49df74aee6",
+  "resolved": true,
+  "owner_entries_consumed": 1,
+  "accepted_records": 74,
+  "tasks_and_claims_preserved": true,
+  "published_sha256": {
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/FS.md": "186bbf3fc573066cf523c55b7b5e0eb95bcbaf428d4f271e6106eda9ebbef4a4",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/WEC.md": "9bf7cab8b8aedbec28ea46c93dc8249390458f7999ff41a1893c91e1e04a63ca",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/work-ledger.md": "ebe6d82c65a50b9216ab3ae9869bf2665b259fdcbb7d6fb4d5729fc60d856a1a"
+  },
+  "restart": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 85,
+      "pending": true,
+      "requested_at": 1790264029.5265,
+      "reason": "Owner-suggestion cc464a7ab66d dispositioned: Windows ordinary-wait camp crash is FIRST delivery priority, R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001. Sol diagnose/repair, Luna live proof; read .de67/task-logs/review-owner-cc464a7ab66d/report.md and marked WEC. Windows/WSL owner reservation remains; start authorized Mac diagnosis. Cause and Windows regression remain open; preserve all accepted/returned work. Request one fresh coordinator; external supervisor alone launches, any owner stop remains binding.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "coordinator_launched": false
+}

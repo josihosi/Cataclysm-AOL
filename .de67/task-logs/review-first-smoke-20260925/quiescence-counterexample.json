@@ -1,0 +1,33 @@
+{
+  "current_live_task_fact": false,
+  "current_running_registry_rows": [
+    [
+      "evidence_scope_repair",
+      "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "running"
+    ],
+    [
+      "journey_native_prover",
+      "R-HARNESS-JOURNEY-exploration-001",
+      "running"
+    ],
+    [
+      "camp_assignment_owner",
+      "R-CAOL-CAMP-ASSIGNMENT-exploration-001",
+      "running"
+    ],
+    [
+      "camp_runtime_recovery",
+      "R-CAOL-CAMP-DEFENSE-exploration-001",
+      "running"
+    ],
+    [
+      "bulk_item_cost",
+      "R-CAOL-BULK-ITEM-COST-exploration-001",
+      "running"
+    ]
+  ],
+  "smoke_registry_assignment_count": 0,
+  "native_return_gap_source": "policy_kernel.py workspace_facts excludes only worker_library.returned_assignments; coordinator_supervisor.py mutation_gate does likewise",
+  "scope": "After-normalization counterexample: stale registry rows alone do not produce live_task. Historical gate attribution also needs native turn return evidence."
+}

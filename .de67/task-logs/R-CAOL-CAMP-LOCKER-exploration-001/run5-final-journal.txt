@@ -1,0 +1,13 @@
+Journal ready: 85 entries.
+Read entries → play inspect result.evidence_journal.entries --limit 10 --request-id play-28856661ee2245589459818a118ccd14
+Finish → play finish --witness FILE
+FILE is JSON with these existing fields:
+verdict: proved | contradicted | inconclusive
+smallest_supported_claim, causal_account: your conclusion and why
+citations: list of citation_id, meaning, checks
+checks: object mapping paths to exact values, e.g. {"action_id":"wait.1m"}; not a list
+Paths start inside entry.value: actions use action_id; observations use value.surface.facts.FIELD. Inspect first.
+Field inspection prints copyable checks with exact types; "true" differs from true.
+recommended_disposition: accept | continue | repair | change-strategy
+contradictions: list all supplied contradictions with citation_id and meaning; [] if none
+Omit evidence_ceiling. Read cited entries before finishing.

@@ -1,0 +1,37 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This fresh source-bound semantic-only run crossed the initial abstract dispatch and physically assembled its two NPCs at the first local outbound handoff, but it did not reach the selected watch, the native sound source, a physical return, or a returned_report lead.  At minute 9911 the cursor was still local/observing at waypoint 1.",
+  "causal_account": "The first repair bound only a local handoff whose immediate egress was the selected watch.  This run's canonical route has intermediate waypoints, so the assembled pair retained no eligible forward travelling mission and the ingress preflight could not admit either member.  The run is therefore a diagnostic repair boundary, not evidence for the requested return.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Seals the selected scenario, source-matched executable, native run, and bridge binding.",
+      "checks": {
+        "run_id": "6f3f3c0c6ad11f271165fbd761a5bcd0fcbbf01989727191cc5019139ef88e9f",
+        "binding_id": "037c578293776f48f17470daf3c0b869371400a6cb9128f9663abe60891f0dc9"
+      }
+    },
+    {
+      "citation_id": "J0044",
+      "meaning": "The final native World observation follows the interrupted bounded wait.",
+      "checks": {
+        "value.game_minutes": 9911
+      }
+    },
+    {
+      "citation_id": "J0046",
+      "meaning": "Terminal record preserves the exact repair boundary and releases unused authority.",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The pair assembled at the intermediate local handoff, but its route had further intermediate waypoints; no forward travelling mission was bound for both members, so the physical ingress could not proceed."
+  ],
+  "remaining_unknowns": [
+    "Whether binding both members atomically to the selected-watch destination at every pre-destination assembled local handoff carries the pair through the source, physical return, and returned_report path."
+  ],
+  "evidence_ceiling": "focused"
+}

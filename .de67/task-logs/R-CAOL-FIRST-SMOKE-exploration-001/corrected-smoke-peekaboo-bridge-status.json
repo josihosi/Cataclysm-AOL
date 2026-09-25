@@ -1,0 +1,899 @@
+{
+  "debug_logs" : [
+    "[2026-09-24T21:04:39.040Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))",
+    "[2026-09-24T21:04:39.067Z] DEBUG [Bridge]: Bridge status: handshake OK gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock"
+  ],
+  "success" : true,
+  "data" : {
+    "selected" : {
+      "handshake" : {
+        "hostKind" : "gui",
+        "supportedOperations" : [
+          "_appleScriptProbe",
+          "activateApplication",
+          "browserConnect",
+          "browserDisconnect",
+          "browserExecute",
+          "browserStatus",
+          "captureArea",
+          "captureFrontmost",
+          "captureScreen",
+          "captureWindow",
+          "cleanAllSnapshots",
+          "cleanSnapshot",
+          "cleanSnapshotsOlderThan",
+          "click",
+          "clickMenuBarItemIndex",
+          "clickMenuBarItemNamed",
+          "clickMenuExtra",
+          "clickMenuItem",
+          "clickMenuItemByName",
+          "closeWindow",
+          "createSnapshot",
+          "desktopObservation",
+          "detectElements",
+          "dialogClickButton",
+          "dialogDismiss",
+          "dialogEnterText",
+          "dialogFindActive",
+          "dialogHandleFile",
+          "dialogListElements",
+          "drag",
+          "exactWindowTargetedClick",
+          "findApplication",
+          "findDockItem",
+          "focusWindow",
+          "getDetectionResult",
+          "getFocusedWindow",
+          "getFrontmostApplication",
+          "getMostRecentSnapshot",
+          "hideApplication",
+          "hideDock",
+          "hideOtherApplications",
+          "hotkey",
+          "inspectAccessibilityTree",
+          "invalidateImplicitLatestSnapshot",
+          "isApplicationRunning",
+          "isDockHidden",
+          "launchApplication",
+          "launchApplicationWithOptions",
+          "launchDockItem",
+          "listApplications",
+          "listDockItems",
+          "listFrontmostMenus",
+          "listMenuBarItems",
+          "listMenuExtras",
+          "listMenus",
+          "listSnapshots",
+          "listWindows",
+          "maximizeWindow",
+          "menuExtraOpenMenuFrame",
+          "minimizeWindow",
+          "moveMouse",
+          "moveWindow",
+          "performAction",
+          "permissionsStatus",
+          "quitApplication",
+          "requestPostEventPermission",
+          "resizeWindow",
+          "rightClickDockItem",
+          "scroll",
+          "setValue",
+          "setWindowBounds",
+          "showAllApplications",
+          "showDock",
+          "storeAnnotatedScreenshot",
+          "storeDetectionResult",
+          "storeScreenshot",
+          "swipe",
+          "targetedClick",
+          "targetedHotkey",
+          "targetedTypeActions",
+          "type",
+          "typeActions",
+          "unhideApplication",
+          "waitForElement"
+        ],
+        "negotiatedVersion" : {
+          "major" : 1,
+          "minor" : 10
+        },
+        "permissions" : {
+          "screenRecording" : true,
+          "postEvent" : true,
+          "appleScript" : false,
+          "accessibility" : true
+        },
+        "permissionTags" : {
+          "clickMenuItemByName" : [
+            "accessibility"
+          ],
+          "launchDockItem" : [
+            "accessibility"
+          ],
+          "menuExtraOpenMenuFrame" : [
+            "accessibility"
+          ],
+          "setWindowBounds" : [
+            "accessibility"
+          ],
+          "listSnapshots" : [
+
+          ],
+          "launchApplicationWithOptions" : [
+
+          ],
+          "dialogFindActive" : [
+            "accessibility"
+          ],
+          "browserConnect" : [
+
+          ],
+          "clickMenuExtra" : [
+            "accessibility"
+          ],
+          "type" : [
+            "accessibility"
+          ],
+          "click" : [
+            "accessibility"
+          ],
+          "targetedClick" : [
+
+          ],
+          "storeAnnotatedScreenshot" : [
+
+          ],
+          "permissionsStatus" : [
+
+          ],
+          "targetedHotkey" : [
+            "postEvent"
+          ],
+          "getFocusedWindow" : [
+            "accessibility"
+          ],
+          "listMenus" : [
+            "accessibility"
+          ],
+          "showAllApplications" : [
+            "appleScript"
+          ],
+          "exactWindowTargetedClick" : [
+
+          ],
+          "browserStatus" : [
+
+          ],
+          "hotkey" : [
+            "accessibility"
+          ],
+          "showDock" : [
+            "accessibility"
+          ],
+          "dialogEnterText" : [
+            "accessibility"
+          ],
+          "detectElements" : [
+            "screenRecording"
+          ],
+          "getMostRecentSnapshot" : [
+
+          ],
+          "desktopObservation" : [
+            "screenRecording"
+          ],
+          "launchApplication" : [
+
+          ],
+          "captureFrontmost" : [
+            "screenRecording"
+          ],
+          "maximizeWindow" : [
+            "accessibility"
+          ],
+          "quitApplication" : [
+
+          ],
+          "_appleScriptProbe" : [
+
+          ],
+          "browserDisconnect" : [
+
+          ],
+          "activateApplication" : [
+            "appleScript"
+          ],
+          "moveMouse" : [
+            "accessibility"
+          ],
+          "storeScreenshot" : [
+
+          ],
+          "listMenuExtras" : [
+            "accessibility"
+          ],
+          "drag" : [
+            "accessibility"
+          ],
+          "cleanAllSnapshots" : [
+
+          ],
+          "hideApplication" : [
+            "appleScript"
+          ],
+          "isDockHidden" : [
+            "accessibility"
+          ],
+          "cleanSnapshotsOlderThan" : [
+
+          ],
+          "inspectAccessibilityTree" : [
+            "accessibility"
+          ],
+          "unhideApplication" : [
+            "appleScript"
+          ],
+          "setValue" : [
+            "accessibility"
+          ],
+          "findApplication" : [
+
+          ],
+          "hideDock" : [
+            "accessibility"
+          ],
+          "listWindows" : [
+            "accessibility"
+          ],
+          "isApplicationRunning" : [
+
+          ],
+          "listFrontmostMenus" : [
+            "accessibility"
+          ],
+          "waitForElement" : [
+            "accessibility"
+          ],
+          "storeDetectionResult" : [
+
+          ],
+          "listMenuBarItems" : [
+            "accessibility"
+          ],
+          "requestPostEventPermission" : [
+
+          ],
+          "dialogClickButton" : [
+            "accessibility"
+          ],
+          "getFrontmostApplication" : [
+
+          ],
+          "minimizeWindow" : [
+            "accessibility"
+          ],
+          "dialogHandleFile" : [
+            "accessibility"
+          ],
+          "clickMenuItem" : [
+            "accessibility"
+          ],
+          "rightClickDockItem" : [
+            "accessibility"
+          ],
+          "scroll" : [
+            "accessibility"
+          ],
+          "dialogListElements" : [
+            "accessibility"
+          ],
+          "swipe" : [
+            "accessibility"
+          ],
+          "dialogDismiss" : [
+            "accessibility"
+          ],
+          "listApplications" : [
+
+          ],
+          "clickMenuBarItemIndex" : [
+            "accessibility"
+          ],
+          "getDetectionResult" : [
+
+          ],
+          "cleanSnapshot" : [
+
+          ],
+          "targetedTypeActions" : [
+            "postEvent"
+          ],
+          "hideOtherApplications" : [
+            "appleScript"
+          ],
+          "clickMenuBarItemNamed" : [
+            "accessibility"
+          ],
+          "captureWindow" : [
+            "screenRecording"
+          ],
+          "listDockItems" : [
+            "accessibility"
+          ],
+          "createSnapshot" : [
+
+          ],
+          "focusWindow" : [
+            "accessibility"
+          ],
+          "captureArea" : [
+            "screenRecording"
+          ],
+          "findDockItem" : [
+            "accessibility"
+          ],
+          "invalidateImplicitLatestSnapshot" : [
+
+          ],
+          "captureScreen" : [
+            "screenRecording"
+          ],
+          "browserExecute" : [
+
+          ],
+          "performAction" : [
+            "accessibility"
+          ],
+          "resizeWindow" : [
+            "accessibility"
+          ],
+          "typeActions" : [
+            "accessibility"
+          ],
+          "moveWindow" : [
+            "accessibility"
+          ],
+          "closeWindow" : [
+            "accessibility"
+          ]
+        },
+        "enabledOperations" : [
+          "_appleScriptProbe",
+          "browserConnect",
+          "browserDisconnect",
+          "browserExecute",
+          "browserStatus",
+          "captureArea",
+          "captureFrontmost",
+          "captureScreen",
+          "captureWindow",
+          "cleanAllSnapshots",
+          "cleanSnapshot",
+          "cleanSnapshotsOlderThan",
+          "click",
+          "clickMenuBarItemIndex",
+          "clickMenuBarItemNamed",
+          "clickMenuExtra",
+          "clickMenuItem",
+          "clickMenuItemByName",
+          "closeWindow",
+          "createSnapshot",
+          "desktopObservation",
+          "detectElements",
+          "dialogClickButton",
+          "dialogDismiss",
+          "dialogEnterText",
+          "dialogFindActive",
+          "dialogHandleFile",
+          "dialogListElements",
+          "drag",
+          "exactWindowTargetedClick",
+          "findApplication",
+          "findDockItem",
+          "focusWindow",
+          "getDetectionResult",
+          "getFocusedWindow",
+          "getFrontmostApplication",
+          "getMostRecentSnapshot",
+          "hideDock",
+          "hotkey",
+          "inspectAccessibilityTree",
+          "invalidateImplicitLatestSnapshot",
+          "isApplicationRunning",
+          "isDockHidden",
+          "launchApplication",
+          "launchApplicationWithOptions",
+          "launchDockItem",
+          "listApplications",
+          "listDockItems",
+          "listFrontmostMenus",
+          "listMenuBarItems",
+          "listMenuExtras",
+          "listMenus",
+          "listSnapshots",
+          "listWindows",
+          "maximizeWindow",
+          "menuExtraOpenMenuFrame",
+          "minimizeWindow",
+          "moveMouse",
+          "moveWindow",
+          "performAction",
+          "permissionsStatus",
+          "quitApplication",
+          "requestPostEventPermission",
+          "resizeWindow",
+          "rightClickDockItem",
+          "scroll",
+          "setValue",
+          "setWindowBounds",
+          "showDock",
+          "storeAnnotatedScreenshot",
+          "storeDetectionResult",
+          "storeScreenshot",
+          "swipe",
+          "targetedClick",
+          "targetedHotkey",
+          "targetedTypeActions",
+          "type",
+          "typeActions",
+          "waitForElement"
+        ],
+        "build" : "3.9.1 (3090199)"
+      },
+      "source" : "remote",
+      "socketPath" : "\/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock"
+    },
+    "remoteSkipped" : false,
+    "candidates" : [
+      {
+        "result" : {
+          "success" : {
+            "_0" : {
+              "hostKind" : "gui",
+              "supportedOperations" : [
+                "_appleScriptProbe",
+                "activateApplication",
+                "browserConnect",
+                "browserDisconnect",
+                "browserExecute",
+                "browserStatus",
+                "captureArea",
+                "captureFrontmost",
+                "captureScreen",
+                "captureWindow",
+                "cleanAllSnapshots",
+                "cleanSnapshot",
+                "cleanSnapshotsOlderThan",
+                "click",
+                "clickMenuBarItemIndex",
+                "clickMenuBarItemNamed",
+                "clickMenuExtra",
+                "clickMenuItem",
+                "clickMenuItemByName",
+                "closeWindow",
+                "createSnapshot",
+                "desktopObservation",
+                "detectElements",
+                "dialogClickButton",
+                "dialogDismiss",
+                "dialogEnterText",
+                "dialogFindActive",
+                "dialogHandleFile",
+                "dialogListElements",
+                "drag",
+                "exactWindowTargetedClick",
+                "findApplication",
+                "findDockItem",
+                "focusWindow",
+                "getDetectionResult",
+                "getFocusedWindow",
+                "getFrontmostApplication",
+                "getMostRecentSnapshot",
+                "hideApplication",
+                "hideDock",
+                "hideOtherApplications",
+                "hotkey",
+                "inspectAccessibilityTree",
+                "invalidateImplicitLatestSnapshot",
+                "isApplicationRunning",
+                "isDockHidden",
+                "launchApplication",
+                "launchApplicationWithOptions",
+                "launchDockItem",
+                "listApplications",
+                "listDockItems",
+                "listFrontmostMenus",
+                "listMenuBarItems",
+                "listMenuExtras",
+                "listMenus",
+                "listSnapshots",
+                "listWindows",
+                "maximizeWindow",
+                "menuExtraOpenMenuFrame",
+                "minimizeWindow",
+                "moveMouse",
+                "moveWindow",
+                "performAction",
+                "permissionsStatus",
+                "quitApplication",
+                "requestPostEventPermission",
+                "resizeWindow",
+                "rightClickDockItem",
+                "scroll",
+                "setValue",
+                "setWindowBounds",
+                "showAllApplications",
+                "showDock",
+                "storeAnnotatedScreenshot",
+                "storeDetectionResult",
+                "storeScreenshot",
+                "swipe",
+                "targetedClick",
+                "targetedHotkey",
+                "targetedTypeActions",
+                "type",
+                "typeActions",
+                "unhideApplication",
+                "waitForElement"
+              ],
+              "negotiatedVersion" : {
+                "minor" : 10,
+                "major" : 1
+              },
+              "permissions" : {
+                "screenRecording" : true,
+                "appleScript" : false,
+                "accessibility" : true,
+                "postEvent" : true
+              },
+              "permissionTags" : {
+                "clickMenuItemByName" : [
+                  "accessibility"
+                ],
+                "launchDockItem" : [
+                  "accessibility"
+                ],
+                "menuExtraOpenMenuFrame" : [
+                  "accessibility"
+                ],
+                "setWindowBounds" : [
+                  "accessibility"
+                ],
+                "listSnapshots" : [
+
+                ],
+                "launchApplicationWithOptions" : [
+
+                ],
+                "dialogFindActive" : [
+                  "accessibility"
+                ],
+                "browserConnect" : [
+
+                ],
+                "clickMenuExtra" : [
+                  "accessibility"
+                ],
+                "type" : [
+                  "accessibility"
+                ],
+                "click" : [
+                  "accessibility"
+                ],
+                "targetedClick" : [
+
+                ],
+                "storeAnnotatedScreenshot" : [
+
+                ],
+                "permissionsStatus" : [
+
+                ],
+                "targetedHotkey" : [
+                  "postEvent"
+                ],
+                "getFocusedWindow" : [
+                  "accessibility"
+                ],
+                "listMenus" : [
+                  "accessibility"
+                ],
+                "showAllApplications" : [
+                  "appleScript"
+                ],
+                "exactWindowTargetedClick" : [
+
+                ],
+                "browserStatus" : [
+
+                ],
+                "hotkey" : [
+                  "accessibility"
+                ],
+                "showDock" : [
+                  "accessibility"
+                ],
+                "dialogEnterText" : [
+                  "accessibility"
+                ],
+                "detectElements" : [
+                  "screenRecording"
+                ],
+                "getMostRecentSnapshot" : [
+
+                ],
+                "desktopObservation" : [
+                  "screenRecording"
+                ],
+                "launchApplication" : [
+
+                ],
+                "captureFrontmost" : [
+                  "screenRecording"
+                ],
+                "maximizeWindow" : [
+                  "accessibility"
+                ],
+                "quitApplication" : [
+
+                ],
+                "_appleScriptProbe" : [
+
+                ],
+                "browserDisconnect" : [
+
+                ],
+                "activateApplication" : [
+                  "appleScript"
+                ],
+                "moveMouse" : [
+                  "accessibility"
+                ],
+                "storeScreenshot" : [
+
+                ],
+                "listMenuExtras" : [
+                  "accessibility"
+                ],
+                "drag" : [
+                  "accessibility"
+                ],
+                "cleanAllSnapshots" : [
+
+                ],
+                "hideApplication" : [
+                  "appleScript"
+                ],
+                "isDockHidden" : [
+                  "accessibility"
+                ],
+                "cleanSnapshotsOlderThan" : [
+
+                ],
+                "inspectAccessibilityTree" : [
+                  "accessibility"
+                ],
+                "unhideApplication" : [
+                  "appleScript"
+                ],
+                "setValue" : [
+                  "accessibility"
+                ],
+                "findApplication" : [
+
+                ],
+                "hideDock" : [
+                  "accessibility"
+                ],
+                "listWindows" : [
+                  "accessibility"
+                ],
+                "isApplicationRunning" : [
+
+                ],
+                "listFrontmostMenus" : [
+                  "accessibility"
+                ],
+                "waitForElement" : [
+                  "accessibility"
+                ],
+                "storeDetectionResult" : [
+
+                ],
+                "listMenuBarItems" : [
+                  "accessibility"
+                ],
+                "requestPostEventPermission" : [
+
+                ],
+                "dialogClickButton" : [
+                  "accessibility"
+                ],
+                "getFrontmostApplication" : [
+
+                ],
+                "minimizeWindow" : [
+                  "accessibility"
+                ],
+                "dialogHandleFile" : [
+                  "accessibility"
+                ],
+                "clickMenuItem" : [
+                  "accessibility"
+                ],
+                "rightClickDockItem" : [
+                  "accessibility"
+                ],
+                "scroll" : [
+                  "accessibility"
+                ],
+                "dialogListElements" : [
+                  "accessibility"
+                ],
+                "swipe" : [
+                  "accessibility"
+                ],
+                "dialogDismiss" : [
+                  "accessibility"
+                ],
+                "listApplications" : [
+
+                ],
+                "clickMenuBarItemIndex" : [
+                  "accessibility"
+                ],
+                "getDetectionResult" : [
+
+                ],
+                "cleanSnapshot" : [
+
+                ],
+                "targetedTypeActions" : [
+                  "postEvent"
+                ],
+                "hideOtherApplications" : [
+                  "appleScript"
+                ],
+                "clickMenuBarItemNamed" : [
+                  "accessibility"
+                ],
+                "captureWindow" : [
+                  "screenRecording"
+                ],
+                "listDockItems" : [
+                  "accessibility"
+                ],
+                "createSnapshot" : [
+
+                ],
+                "focusWindow" : [
+                  "accessibility"
+                ],
+                "captureArea" : [
+                  "screenRecording"
+                ],
+                "findDockItem" : [
+                  "accessibility"
+                ],
+                "invalidateImplicitLatestSnapshot" : [
+
+                ],
+                "captureScreen" : [
+                  "screenRecording"
+                ],
+                "browserExecute" : [
+
+                ],
+                "performAction" : [
+                  "accessibility"
+                ],
+                "resizeWindow" : [
+                  "accessibility"
+                ],
+                "typeActions" : [
+                  "accessibility"
+                ],
+                "moveWindow" : [
+                  "accessibility"
+                ],
+                "closeWindow" : [
+                  "accessibility"
+                ]
+              },
+              "build" : "3.9.1 (3090199)",
+              "enabledOperations" : [
+                "_appleScriptProbe",
+                "browserConnect",
+                "browserDisconnect",
+                "browserExecute",
+                "browserStatus",
+                "captureArea",
+                "captureFrontmost",
+                "captureScreen",
+                "captureWindow",
+                "cleanAllSnapshots",
+                "cleanSnapshot",
+                "cleanSnapshotsOlderThan",
+                "click",
+                "clickMenuBarItemIndex",
+                "clickMenuBarItemNamed",
+                "clickMenuExtra",
+                "clickMenuItem",
+                "clickMenuItemByName",
+                "closeWindow",
+                "createSnapshot",
+                "desktopObservation",
+                "detectElements",
+                "dialogClickButton",
+                "dialogDismiss",
+                "dialogEnterText",
+                "dialogFindActive",
+                "dialogHandleFile",
+                "dialogListElements",
+                "drag",
+                "exactWindowTargetedClick",
+                "findApplication",
+                "findDockItem",
+                "focusWindow",
+                "getDetectionResult",
+                "getFocusedWindow",
+                "getFrontmostApplication",
+                "getMostRecentSnapshot",
+                "hideDock",
+                "hotkey",
+                "inspectAccessibilityTree",
+                "invalidateImplicitLatestSnapshot",
+                "isApplicationRunning",
+                "isDockHidden",
+                "launchApplication",
+                "launchApplicationWithOptions",
+                "launchDockItem",
+                "listApplications",
+                "listDockItems",
+                "listFrontmostMenus",
+                "listMenuBarItems",
+                "listMenuExtras",
+                "listMenus",
+                "listSnapshots",
+                "listWindows",
+                "maximizeWindow",
+                "menuExtraOpenMenuFrame",
+                "minimizeWindow",
+                "moveMouse",
+                "moveWindow",
+                "performAction",
+                "permissionsStatus",
+                "quitApplication",
+                "requestPostEventPermission",
+                "resizeWindow",
+                "rightClickDockItem",
+                "scroll",
+                "setValue",
+                "setWindowBounds",
+                "showDock",
+                "storeAnnotatedScreenshot",
+                "storeDetectionResult",
+                "storeScreenshot",
+                "swipe",
+                "targetedClick",
+                "targetedHotkey",
+                "targetedTypeActions",
+                "type",
+                "typeActions",
+                "waitForElement"
+              ]
+            }
+          }
+        },
+        "socketPath" : "\/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock"
+      }
+    ],
+    "client" : {
+      "bundleIdentifier" : "boo.peekaboo.peekaboo",
+      "processIdentifier" : 20306,
+      "hostname" : "2a02-8388-6900-c280-04c2-3ec2-9a71-b19c.cable.dynamic.v6.surfer.at",
+      "teamIdentifier" : "Y5PE65HELJ"
+    }
+  }
+}

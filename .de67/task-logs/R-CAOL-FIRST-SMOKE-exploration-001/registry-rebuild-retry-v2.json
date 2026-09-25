@@ -1,0 +1,1 @@
+{"command": "rebuild", "ok": true, "registry": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/scenario_registry.sqlite3", "result": {"absent": 0, "changed": 1, "discovered": 0, "staged": 445}}

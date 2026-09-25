@@ -1,0 +1,110 @@
+[
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 1,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "delegated",
+    "evidence": "runner observed successful roster handoff",
+    "recorded_at": 1790280407.386436
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 2,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "partial_implementation",
+    "evidence": "Smoke/light producer routing and smoke source metadata implemented; focused live_light tests pass 52 assertions in 2 cases; source-bound executable ready. Native Luna helper is still preparing distinct copied-world smoke-first and light-first scenarios; no game launch yet. Direct stateful dispatch-adapter test lacks an existing seam. Keep same task and worker for native proof and remaining regression judgment. Logs: build_logs/first-smoke-001.",
+    "recorded_at": 1790281400.173302
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-CAMP-WAIT-COST-exploration-002",
+    "sequence": 1,
+    "worker_id": "01a0d58f-2333-7523-bae1-93e374ef0aa0",
+    "kind": "delegated",
+    "evidence": "Named worker contact_stream_prep; request 0f53de521cfd4a5f9008bd9442fc4518",
+    "recorded_at": 1790289322.9450922
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-CAMP-WAIT-COST-exploration-002",
+    "sequence": 2,
+    "worker_id": "01a0d58f-2333-7523-bae1-93e374ef0aa0",
+    "kind": "worker-return",
+    "evidence": "{\"result_path\": \"/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/a46648c0ae4c41608f2d2661d3dac517/40f28fe328c024b9974d305fb84b3943f7e8e57cd157bbcb7000150ee3ce48c3.md\", \"sha256\": \"132e72db458fdfe098475978d2a59754eacfc292eec81549e2c57bfd79ccfca3\", \"status\": \"returned\", \"task_id\": \"R-CAOL-CAMP-WAIT-COST-exploration-002\", \"terminal_authority\": false, \"thread_id\": \"01a0d58f-2333-7523-bae1-93e374ef0aa0\", \"turn_id\": \"01a0d58f-23c5-74c3-8ec0-bc43b4cd37ec\", \"worker_name\": \"contact_stream_prep\"}",
+    "recorded_at": 1790289379.7920718
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-CAMP-WAIT-COST-exploration-002",
+    "sequence": 3,
+    "worker_id": "01a0d58f-2333-7523-bae1-93e374ef0aa0",
+    "kind": "implementation-prep",
+    "evidence": "Read-only Sol handoff for owner-required Astra coding: worker result .de67/state/worker-library/results/a46648c0ae4c41608f2d2661d3dac517/40f28fe328c024b9974d305fb84b3943f7e8e57cd157bbcb7000150ee3ce48c3.md; mailbox message 61eecbde5ad943fdaec3a5ebc7a25ae0. Exact per-turn caller src/do_turn.cpp:4433, contact guard src/bandit_live_world.cpp:19595, full stream scan src/bandit_live_world_probe.cpp:346, broker sequence startup_harness.py:579. No code/live input changed. Policy model_choices omitted Astra, so coding remains pending; mutator question message 8117dd03bff647899edd908dcc9e9f4b queued for supported route. Same smoke run saved minute 7994 for after comparison.",
+    "recorded_at": 1790289411.6731122
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 3,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "native-partial",
+    "evidence": "Smoke code implemented/tests passed; closed-room saved-brazier native continuation run eb7d6f5bc9c960623480b3dbf75387d94ea0530b41716b8967bb58c57c728285, game PID25938 birth Thu Sep24 23:55:23. Actual fd_fire at7739; source-bound smoke_packets1/light_packets0 at7749; camp [135,137] materialized and scout IDs4/5 dispatched/contacted/repositioned through7994. Owner saw appear/fall back. Exact six-hour request safely cancelled after165 game minutes, quicksaved7994, witness build_logs/first-smoke-001/saved-brazier-continuation-witness.json; final current fire field and separate open-window first-light comparison remain unproved. Final saved player SHA a60cf75c853c3bc3d209f60154ca5ee2ffbe5cff4a8c23d8bcda6b9711824a19, dimension SHA c283c8d10b55177a3e7e0e189d13a22f7180a5e2e9c67e84f2686a62af4a3b6a. World save_quit/main_menu.quit accepted; game PID25938, bridge25912, child25913 OS absent. Native report SHA 7af825477692ea7c1ae08eab23f51786135cdd861d05e6454e34f3e66e4c65ea. Worker task remains open for after-repair closed rerun/open-room arm; safe mode off next run.",
+    "recorded_at": 1790289770.549084
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 4,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "open-window-native-partial",
+    "evidence": "Prepared open-window reference signal-only run b521266c\u2026 lit actual brazier by ordinary lighter with safe mode OFF. 43591 positive source scans through minute8471 smoke1/light0; 78 night minutes (8394-8471) light candidate from exact brazier rejected 4648 times below_threshold/exposure=contained/score0, despite fd_fire at9:11PM. Open save has some open and some closed windows and no cannibal camp. Disposable geometry continuation run441ef449\u2026 opened window[3163,3450,0] natively; fd_fire remained but post-reload scans at8473 had signal_packet=no, so no geometry conclusion. Full report build_logs/first-smoke-001/open-window-geometry-observation.md SHA ecf3ecc6c4aa581f2f9da1270fbf11bd406a19d37ddf91080971692ba29a91bc. Both games and bridges/helpers exited gracefully and OS absent; sessions safe_to_cleanup. First remaining boundary: why fire source candidate disappeared after reload, then direct first-light/camp comparison and after-performance-repair closed rerun. No product edits in continuation.",
+    "recorded_at": 1790292620.833306
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 5,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "source-geometry-diagnosis",
+    "evidence": "Fresh disposable continuation run e3fb678826f257daac1f89306dd32f38fa08ad8340ee5a3f66c74093c8c62c0e game PID39826 birth Fri Sep25 01:35:32. After reload sampler rediscovered actual brazier source by minute8480 (7 game minutes), smoke_packets1/light_packets0; 463 exact night light rejections still below_threshold/exposure=contained. Source physical_light.cpp:356-379 escape aperture radius3; newly opened window [3163,3450,0] is delta(+4,+1) from fire [3159,3449,0], outside scan radius, so cannot change exposure. No evidence of zero intensity; prior missing packet was staggered discovery. Run saved/closed, game PID39826 bridge39805 child39806 OS absent. Next route is audited outside aperture within radius3/LOS or distinct owner-authorized roof fire in disposable copy. No product edit. Task remains open for first-light proof and after-performance-repair smoke rerun.",
+    "recorded_at": 1790293387.9727519
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 6,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "exact-geometry-boundary",
+    "evidence": "Read-only saved map audit after continuation min8488 proves brazier fd_fire intensity1, age448 turns. No window/door aperture within Chebyshev radius3 of source[3159,3449,0]; opened window[3163,3450] delta(+4,+1). physical_light.cpp:356-379 escape radius3 requires outside visible candidate, so contained light at night is expected for this prepared room. Addendum build_logs/first-smoke-001/sampler-period-continuation.md SHA3bb135a898d68bff9feabe328f2ba50852cf0a6fb4db465b1ddc0c60b9fc221d. Run e3fb6788... saved/quit code0; game PID39826/bridge39805/child39806 OS absent, report SHA d2904890bf5b45b024721e29625b83d326988dd3714f596c31893e206271fad9. Distinct owner-authorized rooftop ordinary fire is next first-light route. No direct light or camp claim yet.",
+    "recorded_at": 1790293513.37625
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 7,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "roof-setup-failure",
+    "evidence": "First disposable rooftop setup run c9e0df875c3974cb70cf29c3f9046da06002e28b7ba0e0944f3ee0c5ea60dafe: debug specific-overmap-coordinate prompt received bare map-square 3156,3448,1, teleported player to distant ocean bed [13633922,14895367,-9] with injuries. No roof fire/light credit. Failed setup saved/quitted natively; game PID41835 birth Fri Sep25 01:51:53 code0, bridge41809 child41810 OS absent, session safe_to_cleanup. Exact event stream .userdata/first-smoke-r-caol-001-roof-firstlight-v1/harness_runs/20260925_015152_014cd046c71240288734888f9ae3d3bf/semantic.native.events.jsonl. Offline source derivation says prompt format coords::om region/sub-OMT and target [3156,3448,1] maps to `0\\u0027131,0\\u0027143,1`; fresh clean copy and verified position required for retry. Retain damaged copy only as failed setup evidence.",
+    "recorded_at": 1790294230.044343
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 8,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "roof-access-boundary",
+    "evidence": "Second disposable roof setup run at .userdata/first-smoke-r-caol-001-roof-firstlight-v2/harness_runs/20260925_015804_40318008e974402f9ff6d15456270009/semantic.native.events.jsonl: native debug input 0\\u0027131,0\\u0027143,1 correctly parsed to OMT[131,143,1], but game::place_player_overmap preserved local bubble XY landing on unsupported z1 tile; avatar fell one story to abs ms[3146,3439,0]. No roof fire/light evidence; no repeat. V1 bare coordinates selected remote ocean OMT, also no credit. V2 native save_quit/main_menu.quit exit0; game PID42672 birth Fri Sep25 01:58:05, bridge42647 child42648 all OS absent; session safe_to_cleanup, report SHA starts2df6851b ends3ca056. Clean source save intact. Next route requires offline audit of supported z1 landing tile under preserved offset or ordinary stair/ladder access from z0, then fresh disposable native roof ignition. Task outcome remains unfinished, no product C++ changed.",
+    "recorded_at": 1790294480.879819
+  },
+  {
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "sequence": 9,
+    "worker_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "kind": "roof-access-route",
+    "evidence": "Read-only clean-copy map audit now proves ordinary roof access: z0 t_ladder_up [3149,3454,0], z1 t_ladder_down directly above, supported t_shingle_flat_roof x3149..3162/y3441..3454, roof f_brazier [3156,3447,1]. From player[3158,3451,0], all-floor path west to[3151,3451], south to[3151,3454], west through door frame[3150,3454] onto ladder[3149,3454], then native world.level_up. Next fresh disposable first action verify safe mode OFF, follow path with native receipts, verify z1 supported tile, ordinary lighter ignition. No further live launch yet. This materially differs from two failed debug teleports; preserve both failures and clean source. Roof first-light and closed post-repair remain open.",
+    "recorded_at": 1790294699.136456
+  }
+]

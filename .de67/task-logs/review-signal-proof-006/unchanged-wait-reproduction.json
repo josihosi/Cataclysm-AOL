@@ -1,0 +1,1060 @@
+{
+  "count": 115,
+  "distinct_states": 1,
+  "first": {
+    "line": 3603,
+    "status": "running",
+    "assignment_status": "running",
+    "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+    "result_path": null,
+    "updated_at": 1789966049.478642,
+    "bytes": 1079
+  },
+  "last": {
+    "line": 4705,
+    "status": "running",
+    "assignment_status": "running",
+    "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+    "result_path": null,
+    "updated_at": 1789966049.478642,
+    "bytes": 1079
+  },
+  "returned_status_bytes": 124085,
+  "records": [
+    {
+      "line": 3603,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3614,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3623,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3632,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3643,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3652,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3661,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3672,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3681,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3690,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3701,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3710,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3719,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3730,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3739,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3748,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3759,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3768,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3777,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3788,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3797,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3806,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3817,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3826,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3835,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3846,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3855,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3864,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3875,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3884,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3893,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3904,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3913,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3922,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3933,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3942,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3951,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3962,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3971,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3980,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 3991,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4000,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4009,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4020,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4029,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4038,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4049,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4058,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4067,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4078,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4087,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4096,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4107,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4116,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4125,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4136,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4145,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4154,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4165,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4174,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4183,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4194,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4203,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4212,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4223,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4232,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4241,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4252,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4261,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4270,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4281,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4290,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4299,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4310,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4319,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4328,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4339,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4348,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4357,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4368,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4377,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4386,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4397,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4406,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4415,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4426,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4435,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4444,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4455,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4464,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4473,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4484,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4493,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4502,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4513,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4522,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4531,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4542,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4551,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4560,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4571,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4580,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4589,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4600,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4609,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4618,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4629,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4638,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4647,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4658,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4667,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4676,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4687,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4696,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    },
+    {
+      "line": 4705,
+      "status": "running",
+      "assignment_status": "running",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "result_path": null,
+      "updated_at": 1789966049.478642,
+      "bytes": 1079
+    }
+  ]
+}

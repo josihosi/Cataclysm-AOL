@@ -1,0 +1,135 @@
+--- a/scripts/coordinator_supervisor.py
++++ b/scripts/coordinator_supervisor.py
+@@ -1156,7 +1156,7 @@
+         "Do not read packaged DE-67 SKILL.md, kernel, role, reference, or guideline prose during delivery.",
+         "The hash-bound .de67/phase3-policy.d67 file is the machine-canonical routing policy.",
+         "Before each coordinator routing transition, execute the argument array in DE67_POLICY_DECIDE_ARGV_JSON as a subprocess without a shell.",
+-        current_owner_contract(workspace),
++        current_owner_contract(workspace, audience="coordinator"),
+         "The FS (Functional Specification, in .de67/FS.md) defines code behavior; the ledger owns delivery assignments and evidence references. Read the relevant contract and reconcile changed outcomes. Historical acceptance retains its scope; the current owner contract decides fresh proof.",
+         coordinator_context_contract(),
+         "Current work, independent task results, receipt search, recorded dispatch relationships and runner "
+--- a/scripts/policy_kernel.py
++++ b/scripts/policy_kernel.py
+@@ -320,8 +320,10 @@
+     return result
+ 
+ 
+-def current_owner_contract(workspace: Path) -> str:
++def current_owner_contract(workspace: Path, *, audience: str = "coordinator") -> str:
+     """Carry explicit delivery corrections, never the Phase-2 WEC handoff."""
++    if audience not in {"coordinator", "worker"}:
++        raise PolicyError("Unknown owner-contract audience")
+     path = workspace / ".de67/WEC.md"
+     if not path.is_file():
+         return ""
+@@ -339,6 +341,20 @@
+         if not marker or end in before or not body.strip():
+             raise PolicyError("Owner contract markers are empty or out of order")
+         body = body.strip()
++    # Assignment instructions are coordinator context, not a worker delegation duty.
++    # Preserve the original owner text; select only its explicitly marked audience.
++    coord_begin = "<!-- DE67:COORDINATOR-ONLY:BEGIN -->"
++    coord_end = "<!-- DE67:COORDINATOR-ONLY:END -->"
++    if coord_begin in body or coord_end in body:
++        if body.count(coord_begin) != 1 or body.count(coord_end) != 1:
++            raise PolicyError("Coordinator owner context requires one complete marked section")
++        shared_before, _, tail = body.partition(coord_begin)
++        coordinator, marker, shared_after = tail.partition(coord_end)
++        if not marker or coord_end in shared_before or not coordinator.strip():
++            raise PolicyError("Coordinator owner context markers are empty or out of order")
++        body = "\n".join(part.strip() for part in (
++            shared_before, coordinator if audience == "coordinator" else "", shared_after
++        ) if part.strip())
+     return (
+         "Current owner contract (.de67/WEC.md marked section sha256 "
+         + hashlib.sha256(body.encode("utf-8")).hexdigest() + "):\n" + body + "\n"
+@@ -707,7 +723,7 @@
+                                  if str((workspace / item["source"]).resolve()) not in injected]
+             except ContextError as error:
+                 raise PolicyError(str(error)) from error
+-            owner_contract = current_owner_contract(workspace)
++            owner_contract = current_owner_contract(workspace, audience="worker")
+             message = (
+                 f"Own assigned {phase} work {task_id} for outcome {claim_id}"
+                 + (f", focus {gap_id} revision {revision}. " if gap_id else ". ")
+--- a/scripts/worker_library.py
++++ b/scripts/worker_library.py
+@@ -166,7 +166,7 @@
+         owner_digest = metadata.get("owner_contract_sha256") if isinstance(metadata, dict) else None
+     except (TypeError, ValueError):
+         owner_digest = None
+-    if owner_digest != hashlib.sha256(current_owner_contract(workspace).encode("utf-8")).hexdigest():
++    if owner_digest != hashlib.sha256(current_owner_contract(workspace, audience="worker").encode("utf-8")).hexdigest():
+         raise WorkerLibraryError("Owner instructions changed or were not bound to this packet; prepare its current packet again")
+     from context_library import _assignment_revision, selected_context, task_view
+     revision = _assignment_revision(workspace, task_id)
+--- a/tests/test_policy_kernel.py
++++ b/tests/test_policy_kernel.py
+@@ -1298,6 +1298,66 @@
+             with self.assertRaises(kernel.PolicyError):
+                 kernel.current_owner_contract(workspace)
+ 
++    def test_owner_assignment_context_is_scoped_at_dispatch_boundary(self) -> None:
++        import coordinator_supervisor
++        import worker_library
++        with tempfile.TemporaryDirectory() as directory:
++            workspace = Path(directory)
++            de67 = workspace / ".de67"
++            de67.mkdir()
++            (de67 / "work-ledger.md").write_text(
++                "- [ ] R-SCOPE — Complete smoke ecology.\n"
++                "  - DFS slices: `R-SCOPE-S001`\n"
++                "  - Assignment scope: Implement and verify the assigned repair.\n")
++            (de67 / "FS.md").write_text(
++                "<!-- DE67:DFS-SLICE:BEGIN id=R-SCOPE-S001 claim=R-SCOPE -->\n"
++                "- Acceptance: Preserve smoke ecology and real movement.\n"
++                "<!-- DE67:DFS-SLICE:END id=R-SCOPE-S001 claim=R-SCOPE -->\n")
++            source = de67 / "WEC.md"
++            source.write_text("<!-- DE67:OWNER-CONTRACT:BEGIN -->\n"
++                "Astra owns implementation; Luna alone operates live harness playtests.\n"
++                "<!-- DE67:COORDINATOR-ONLY:BEGIN -->\n"
++                "Coordinator: assign Astra for this coupled implementation.\n"
++                "<!-- DE67:COORDINATOR-ONLY:END -->\n"
++                "Keep actual actors, save ownership and optional useful helpers.\n"
++                "<!-- DE67:OWNER-CONTRACT:END -->\n")
++            state = workspace / "state.sqlite3"
++            with DeadlineHarness(state) as harness:
++                harness.start_task("project", "scope", "R-SCOPE", 100, now=1)
++            call = kernel.unbound_worker_spawns(workspace, state, "project")[0]
++            packet = Path(call["dispatch_packet"]["path"])
++            worker = packet.read_text()
++            coordinator = coordinator_supervisor.coordinator_prompt(
++                workspace, state, "project", "test-review", None)
++            self.assertIn("Coordinator: assign Astra", coordinator)
++            self.assertNotIn("Coordinator: assign Astra", worker)
++            for text in (worker, coordinator):
++                self.assertIn("Astra owns implementation", text)
++                self.assertIn("Luna alone operates live harness", text)
++                self.assertIn("optional useful helpers", text)
++            self.assertIn(kernel.worker_helper_contract(), worker)
++            digest = hashlib.sha256(packet.read_bytes()).hexdigest()
++            worker_library._validate_packet(workspace, state, "project", "scope", packet, digest)
++            source.write_text(source.read_text().replace("Keep actual actors", "Protect actual actors"))
++            with self.assertRaisesRegex(worker_library.WorkerLibraryError, "Owner instructions changed"):
++                worker_library._validate_packet(workspace, state, "project", "scope", packet, digest)
++
++    def test_owner_audience_markers_fail_closed(self) -> None:
++        with tempfile.TemporaryDirectory() as directory:
++            workspace = Path(directory)
++            (workspace / ".de67").mkdir()
++            for section in (
++                "<!-- DE67:COORDINATOR-ONLY:BEGIN -->missing end",
++                "<!-- DE67:COORDINATOR-ONLY:END -->reversed<!-- DE67:COORDINATOR-ONLY:BEGIN -->",
++                "<!-- DE67:COORDINATOR-ONLY:BEGIN --><!-- DE67:COORDINATOR-ONLY:END -->",
++            ):
++                (workspace / ".de67/WEC.md").write_text(
++                    "<!-- DE67:OWNER-CONTRACT:BEGIN -->\n" + section +
++                    "\n<!-- DE67:OWNER-CONTRACT:END -->")
++                for audience in ("coordinator", "worker"):
++                    with self.assertRaises(kernel.PolicyError):
++                        kernel.current_owner_contract(workspace, audience=audience)
++
+     def test_successor_packet_uses_compact_receipt_and_reasoned_read_plan(self) -> None:
+         with tempfile.TemporaryDirectory() as directory:
+             workspace = Path(directory)

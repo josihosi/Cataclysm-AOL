@@ -1,0 +1,8 @@
+LOOK CURSOR
+first point: 3900, 876, 0
+mode: zone_bounds
+movement step: 1
+relative to avatar: 0, 0, 0
+selected creature name: you
+selection stage: second_corner
+Allowed actions unchanged.

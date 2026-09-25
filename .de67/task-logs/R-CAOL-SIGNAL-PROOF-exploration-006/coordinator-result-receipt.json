@@ -1,0 +1,117 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+  "claim_id": "R-CAOL-SIGNAL-PROOF",
+  "worker_id": "01a0c101-a0b9-72f2-b509-7302b2bb7102",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh source-bound run c79899abce5a7e064f1594ab06726c5b037fba81994d46ef12cc7b2c4c09ab0f established the complete native chain: an idle camp with supply_units=0 and dispatch drive=708 crossed the unchanged threshold 500; the dispatched pair reached its local watch; the delayed r033_acoustic_charge_act emitted at minute 9365 at OMT (138,52,0); the native adapter recorded one local structural-sound fact; ordinary return removed the active outing and created exactly one matching returned_structural_sound_report lead at that OMT.",
+  "summary": "The live defect was a same-minute local typed-observation rejection after the native scheduler advanced the route cursor. The narrow production repair permits that case only for typed local cursors, while the local sound wrapper prevents a repeated same-minute callback after a fact has been recorded. The targeted C++ test covers both initial persistence and replay idempotence. The terminal witness validated mechanically and the owned game and bridge PIDs were absent after finish. Coordinator review found that an any-observation same-minute guard could suppress a structural sound after the local-zombie prepass. The same bound worker narrowed the guard to an already-recorded structural sound, and a new ordering regression passed. The native witness predates this narrow change; it retains its original source-binding scope.",
+  "material_changes": [
+    "src/bandit_live_world.cpp: accept a typed local observation at the same minute as the current local cursor, retaining stricter rejection for every other mode",
+    "src/bandit_live_world.cpp: suppress repeated local structural-sound lookup in a minute already represented by an observation",
+    "native R-033 fixture/source and harness diagnostics retained from the active exploration",
+    "src/bandit_live_world.cpp: narrow same-minute local callback suppression from any observation to a persisted structural sound observation",
+    "tests/bandit_live_world_test.cpp: cover the actual zombie-prepass then same-minute gunfire ordering and retain replay suppression"
+  ],
+  "tests": [
+    "./tests/cata_test 'hostile_camp_local_structural_sound_is_persisted_before_abstract_cadence' \u2014 116 assertions passed",
+    "python3 tools/openclaw_harness/r033_autonomous_sound_return_fixture_test.py \u2014 4 tests passed",
+    "python3 tools/openclaw_harness/scenario_registry_cli.py rebuild --scenarios-root tools/openclaw_harness/scenarios \u2014 staged=425, changed=0, discovered=0, absent=0",
+    "python3 tools/openclaw_harness/build_source_bound_macos.py --renderer tiles \u2014 current dirty source/executable binding recorded successfully",
+    "git diff --check \u2014 passed",
+    "make -j4 BUILD_PREFIX=r033-headless- SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 tests \u2014 passed",
+    "tests/r033-headless-cata_test '[phase4_sound_observation]' --reporter compact --user-dir .userdata/r033-guard-audit \u2014 7 test cases, 642 assertions passed",
+    "git diff --check \u2014 passed"
+  ],
+  "live_actions": [
+    "Fresh registry query artifact 0094a3b4acb7b72e8dbad9d3c99a8a21186cb4bbdede7a2af6e68e6f40176669 selected only r033.phase4_semantic_autonomous_sound_return_drive500_rev1_mcw and revalidated executable readiness.",
+    "Native semantic waits advanced 9241 -> 9361 -> 9365 -> 9366 -> 9426; no GUI/OCR/foreground input or state injection was used.",
+    "Debug record artifact 9ff18c370effd91c9d9dbc7cf5aa8563b8cf114fc645342135641b732beeb1c0 records local_callbacks=1, local_recorded=1, local_facts=1.",
+    "run.witness and run.finish accepted the witness; finish returned target_predicate_proved at minute 9426 and witness_validation=mechanically_valid."
+  ],
+  "evidence_ceiling": [
+    "Focused, one-session native semantic proof only.",
+    "The returned lead is a suspected camp-intelligence lead; this proof does not claim a later follow-up outing or target resolution.",
+    "This is a focused source and unit-test audit; it does not replace the separately sealed native R-033 witness.",
+    "No native scenario was replayed because the requested change isolates ingress idempotence and the focused regression exercises its production ordering."
+  ],
+  "bindings": {
+    "scenario_name": "r033.phase4_semantic_autonomous_sound_return_drive500_rev1_mcw",
+    "run_id": "c79899abce5a7e064f1594ab06726c5b037fba81994d46ef12cc7b2c4c09ab0f",
+    "binding_id": "be2af072716b3be2541405d359289eb743abb5833298f9d40f1fcbb91671c523",
+    "product_source_sha256": "8bc1535cf43c56b96281e83b87a0308ef13a7cbc968d5b4cab89188c8ace0d98",
+    "executable_sha256": "7ee45418d68296158791062c146053cc4ea88075b549dd6328ac5b23658370b3",
+    "journal_sha256": "a668cdbb36151894e3877b07e106c7941333d65bd88b97f7ae4217b7e982aac9",
+    "witness_sha256": "86202cbfddf1fdf5b4476073df6b4d72b9153d11929d22bc01b3171e4ae5448e",
+    "source_event": "r033_acoustic_charge_act at (138,52,0), countdown minute 9365",
+    "returned_lead": "structural-signal:structural-explosion@(138,52,0) / returned_structural_sound_report"
+  },
+  "journal_entries": [
+    {
+      "id": "J0053",
+      "summary": "One accepted native minute crossed the delayed-source boundary at minute 9365.",
+      "sequence": 53,
+      "event_type": "witness_citation",
+      "evidence_class": "native_journal"
+    },
+    {
+      "id": "J0062",
+      "summary": "Minute-9426 World observation has no active structural outing and has the matching returned structural-sound lead.",
+      "sequence": 62,
+      "event_type": "witness_citation",
+      "evidence_class": "native_journal"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/r033-drive500-success-witness.json",
+      "role": "mechanically validated final witness",
+      "sha256": "9ad7b0b5361cdf6149d41ac502eb23affa1678e57051bf51e5e7b0d6e2e258d4"
+    },
+    {
+      "path": "build_logs/source_bound_macos/20260921T104535.964011Z/build.full.log",
+      "role": "current source-bound product-build logs",
+      "sha256": "b1c364aba0dbae026b4b47911b65aedb7072c953a0515dbf83a520972852c2e9"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260921_124613_23fbc5432b884d34b9f00e4f39de24dd/semantic.native.events.jsonl",
+      "role": "run-bound native semantic trace",
+      "sha256": "0f4ce201579bc682c7cf5b57f2ccfd52ffdece580e54063f718b6185056e0ae8"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/guard-audit-receipt.json",
+      "role": "coordinator-requested same-minute guard audit and focused regression",
+      "sha256": "c9970499d2b713469737b1a51fd4ffe1c53dc1a7de967f1ed3a35493c79f790d"
+    }
+  ],
+  "first_divergence": {
+    "class": "repaired_same_minute_recording",
+    "summary": "The prior same-minute source run invoked the valid local callback but rejected its generic typed recorder; this receipt includes the repaired successful rerun. Coordinator review also found and repaired the unrelated-fact suppression guard."
+  },
+  "accepted_no_replay": [
+    "No additional gameplay replay is needed: the selected current-source run reached its stated target predicate and sealed a mechanically valid witness."
+  ],
+  "active_work": [],
+  "first_open_boundary": "The full signal claim still needs stationary-source discovery/removal and bubble/save boundaries, original sound age after reload, independent camp clue support, and populated before/after performance evidence. A different structural sound arriving after one has already been recorded in the same minute is not proved here.",
+  "narrow_queries": [
+    "J0053 and J0062 in the sealed witness",
+    "debug record artifact 9ff18c370effd91c9d9dbc7cf5aa8563b8cf114fc645342135641b732beeb1c0",
+    ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/guard-audit-receipt.json"
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp::record_active_sortie_observations_impl",
+    "src/bandit_live_world.cpp::record_local_structural_signal_observations",
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/scenario_registry_cli.py"
+  ],
+  "context_metrics": {
+    "dispatch_drive": 708,
+    "dispatch_threshold": 500,
+    "source_minute": 9365,
+    "returned_report_minute": 9426,
+    "targeted_cpp_assertions": 116,
+    "fixture_tests_passed": 4
+  }
+}

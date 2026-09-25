@@ -1,0 +1,6 @@
+LOOK CURSOR
+mode: look
+movement step: 1
+relative to avatar: 4, 4, 0
+selection stage: first_point
+Allowed actions unchanged.

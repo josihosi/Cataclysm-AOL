@@ -1,0 +1,7 @@
+LOOK CURSOR
+first point: 3899, 875, 0
+mode: zone_bounds
+movement step: 1
+relative to avatar: -1, -1, 0
+selection stage: second_corner
+Allowed actions unchanged.

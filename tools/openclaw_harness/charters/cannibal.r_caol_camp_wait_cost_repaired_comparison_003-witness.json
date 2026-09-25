@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "The repaired current-source binary completes an equivalent 300-turn five-minute wait from the preserved minute-7994 camp/fire continuation while reducing duplicate contact and unchanged admission diagnostic writes and keeping native stream validation incremental.",
+  "material_proof": "This is a disposable continuation copied from the preserved minute-7994 TestSetup00 world. The only saved-world repair is the previously documented removal of Tilda Wray id=2 destination_activity.actor to permit migration cancellation. Reproduce the baseline with one ordinary native east step from [3157,3449,0] to [3158,3449,0], quicksave at turn 5231695, then one 300-turn native five-minute wait. Compare per-turn timing, transition bytes, contact and production_signal_dispatch_admission counts grouped by outcome/reason, and equal-time camp/member/dispatch/fire/inventory state.",
+  "current_uncertainty": "Whether the repaired binary produces the expected duplicate-log suppression and bounded transition-stream validation on the native saved-world wait path while preserving contact and dispatch behavior.",
+  "material_contradiction": [
+    "executable/source binding differs from the repaired readiness receipt",
+    "clone does not match the saved source except for documented migration cancellation",
+    "baseline start location or turn differs after the one east step and quicksave",
+    "safe mode is on during movement or wait",
+    "the request does not advance exactly 300 simulation turns",
+    "contact or admission outcomes change materially or successful dispatch/contact evidence disappears",
+    "transition stream offsets/counts or timing records are unavailable for an equivalent interval",
+    "camp, member, fire, or inventory state is materially different before comparison"
+  ],
+  "forbidden_shortcuts": [
+    "alter source save, retained baseline, active current smoke profile, inventory, fire, camp, ecology or dispatch state",
+    "fixture reinstall or saved-world replacement",
+    "debug event injection or authored smoke/fire/light/contact/dispatch",
+    "claim lower event count alone proves improved wait cost",
+    "claim simulation timing alone proves stream validation cost"
+  ],
+  "honest_stop_conditions": [
+    "one exact 300-turn equivalent interval plus retained timing and event/file evidence",
+    "first saved-state or binding mismatch that cannot be corrected without changing comparison premise",
+    "missing exact event/time/request correlation requiring a narrower follow-up"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

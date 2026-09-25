@@ -1,0 +1,28 @@
+{
+  "status": "build_required",
+  "reason": "product_binary_source_is_stale_or_unproved",
+  "next_action": "build or select a source-matching executable, then repeat the same registry query",
+  "evidence_ceiling": "none until source-matching executable revalidation",
+  "executable_path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-bound-20260924\\cataclysm-tiles.exe",
+  "captured_head": "224d7dc9779",
+  "repository_head": "224d7dc977",
+  "executable_sha256": "656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d",
+  "product_source_sha256": "cd25d564350baa151119dee87897fb2bc4aed5cd2bc08fb54554edde9dc00fb9",
+  "binary_relevant_committed_changes": [],
+  "binary_relevant_worktree_changes": [
+    "src/bandit_live_world.cpp",
+    "src/bandit_live_world.h",
+    "src/basecamp.cpp",
+    "src/clzones.cpp",
+    "src/do_turn.cpp",
+    "src/inventory_ui.cpp",
+    "src/player_display.cpp",
+    "src/zone_manager_ui.cpp"
+  ],
+  "comparison_error": "",
+  "product_build_receipt": {
+    "path": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\.userdata\\openclaw_harness\\source_bindings\\cataclysm-tiles.exe-199c2aca1e26ce00.json",
+    "status": "unmatched",
+    "error": ""
+  }
+}

@@ -1,0 +1,29 @@
+Mean: 115.9 ms/turn
+Maximum: 220.6 ms/turn
+Simulation: 8.6 turns/s
+Measured turns: 256
+CPU: 0.02 s over 0.0196 s wall time
+Memory: 1105.5 MiB
+assessment.status: measured_unassessed
+assessment.waiting.alarmed: yes
+assessment.waiting.mean seconds: 0.11670137582000001
+assessment.current incomplete turn.event.event: turn
+assessment.current incomplete turn.event.stage: start
+assessment.current incomplete turn.event.process instance: 1790286971963747
+assessment.current incomplete turn.event.sequence: 27753
+assessment.current incomplete turn.event.turn id: 9837
+assessment.current incomplete turn.event.game minutes: 7902
+assessment.current incomplete turn.event.wall time seconds: 1790288237.867973
+assessment.current incomplete turn.event.simulation seconds: 0
+assessment.current incomplete turn.event.waiting generation: 1058
+assessment.current incomplete turn.event.phase: simulation
+Game::Do Turn
+assessment.current incomplete turn.event. evidence handle.path: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/first-smoke-r-caol-001-smoke-migration-v2/harness_runs/20260924_235522_83ec6aef3ad449588e7ca1ade8619e04/semantic.native.events.jsonl
+assessment.current incomplete turn.event. evidence handle.offset: 33198488
+assessment.current incomplete turn.event. evidence handle.end: 33198874
+assessment.current incomplete turn.age seconds: 0.06462597846984863
+assessment.current incomplete turn.phase: simulation
+assessment.current incomplete turn.phase evidence.path: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/first-smoke-r-caol-001-smoke-migration-v2/harness_runs/20260924_235522_83ec6aef3ad449588e7ca1ade8619e04/semantic.native.events.jsonl
+assessment.current incomplete turn.phase evidence.offset: 33200045
+assessment.current incomplete turn.phase evidence.end: 33200434
+comparison: No baseline selected.

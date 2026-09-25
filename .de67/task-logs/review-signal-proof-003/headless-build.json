@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "make",
+    "-j4",
+    "BUILD_PREFIX=r033-headless-",
+    "SOUND=1",
+    "LOCALIZE=1",
+    "LANGUAGES=all",
+    "LINTJSON=0",
+    "ASTYLE=0",
+    "TESTS=0",
+    "tests"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 39.25799298286438
+}

@@ -152,6 +152,26 @@ class RelativeMovementTest(unittest.TestCase):
         self.assertEqual(actions, ["world.move.west"])
         self.assertEqual(stopped["result"]["partial_progress"], 0)
 
+    def test_consumed_door_action_stops_with_partial_progress_not_receipt_mismatch(self) -> None:
+        service, actions, _ = self.service([
+            frame(1, [1, 1, 0]), frame(2, [2, 1, 0]), frame(3, [2, 1, 0]),
+        ], outcomes=["moved", "no_progress"], native_overrides={"accepted": True})
+        result = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+            "enabled": True, "offset_ms": [3, 0], "bound": bound(3)}})
+        self.assertEqual(result["error"], "raw_move_relative_no_progress")
+        self.assertEqual(result["result"]["partial_progress"], 1)
+        self.assertEqual(result["result"]["terminal_absolute_ms"], [2, 1, 0])
+        self.assertEqual(actions, ["world.move.east", "world.move.east"])
+
+    def test_stationary_success_cannot_hide_wrong_coordinates(self) -> None:
+        service, _, _ = self.service([
+            frame(1, [1, 1, 0]), frame(2, [1, 1, 0]),
+        ], outcomes=["no_progress"], native_overrides={
+            "accepted": True, "expected_absolute_ms": [99, 99, 0]})
+        result = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1)}})
+        self.assertEqual(result["error"], "raw_move_relative_receipt_mismatch")
+
     def test_melee_attack_is_an_authenticated_stationary_interruption(self) -> None:
         service, actions, _ = self.service([
             frame(1, [1, 1, 0]), frame(2, [1, 1, 0]),

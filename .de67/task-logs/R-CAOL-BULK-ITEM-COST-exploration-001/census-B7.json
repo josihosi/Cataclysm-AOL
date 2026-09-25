@@ -1,0 +1,10 @@
+{
+  "schema": "caol-bulk-item-census-v1",
+  "world": "BulkB7",
+  "post_save_turn": 5212951,
+  "map_files_scanned": 51,
+  "map_item_occurrences": {
+    "hammer": 1
+  },
+  "scope": "saved map files recursive typeid/type occurrence scanner; validates saved map item presence but does not count player/NPC inventories"
+}

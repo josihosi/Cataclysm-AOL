@@ -1,0 +1,33 @@
+{
+  "schema": "r-harness-premises-reconciliation-v1",
+  "task_id": "R-HARNESS-PREMISES-closure-whole-item-premises-binding-001",
+  "claim_id": "R-HARNESS-PREMISES",
+  "fs_slice": "R-HARNESS-PREMISES-S001",
+  "source_receipts": [
+    {"receipt_id": "4be449905d7b3ef12051a976de8823562c3a09a804211c3b19d5384b79e7a2c6", "task_id": "R-HARNESS-PREMISES-exploration-001", "scope": "read-only full-map premise surface and exact production threshold boundaries"},
+    {"receipt_id": "e13e82b88141193ddbb4dfcf4e943b66afa271eecc4e37b0cf290d47cdeff682", "task_id": "R-HARNESS-PREMISES-exploration-002", "scope": "fresh native source-bound pre-input footing and first scheduler decision"}
+  ],
+  "clause_matrix": [
+    {"clause": "scenario/source/executable/run binding", "status": "supported", "evidence": "Fresh witness J0001 binds r033.phase4_semantic_autonomous_sound_return_rev1_mcw, source identity dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be, executable identity e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811, run 36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be and bridge binding d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3."},
+    {"clause": "real loaded-map source opportunity", "status": "supported", "evidence": "J0002 reports loaded_source.source_found=true, type_id c4armed, countdown turn 5356860/minute 10081; source-level receipt covers complete loaded-map scan rather than first-submap omission."},
+    {"clause": "observer/escort eligibility and staffed camp", "status": "supported", "evidence": "J0002 reports observer.eligible=true, idle staffed camp/structural_outing_owner.present=false and one road candidate."},
+    {"clause": "scheduler inputs and time-dependent opportunity", "status": "supported", "evidence": "J0002 is minute 9241; six authorized semantic waits advance 60 game minutes to J0094 minute 9301, with scheduler_last_hour=155 and routine activation at minute 9300."},
+    {"clause": "production evaluator owns drive/threshold/reason", "status": "supported", "evidence": "Source-level receipt and current contract tests bind the production threshold accessor; J0094 reports evaluator drive 358, threshold 500, reason drive_below_threshold and force_due=false."},
+    {"clause": "non-dispatch boundary preserved", "status": "supported", "evidence": "J0094 has candidates=[] and unchanged source countdown; drive 358 < 500 is retained as the non-dispatch control, not a gameplay failure."},
+    {"clause": "setup/infrastructure/gameplay separation and honest ceiling", "status": "supported", "evidence": "Receipts explicitly distinguish source-bound premise footing and first scheduler decision from autonomous watch, source emission, sound callback and returned_report, which remain unknown."}
+  ],
+  "verification": {
+    "current_contract_tests": 11,
+    "current_contract_test_result": "OK",
+    "current_contract_test_artifact": ".de67/task-logs/R-HARNESS-PREMISES-closure-whole-item-premises-binding-001/current-contract-test.log",
+    "native_witness": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json",
+    "native_witness_sha256": "ac0a3e942d7be77228735d91bd99d01a7f9c592cc530dd5e3467dcd88931490a"
+  },
+  "limits": [
+    "No new native run or replay was performed.",
+    "The source-level map coverage and threshold tests are not live map/display observations.",
+    "Autonomous dispatch/watch, sound callback and returned-report behavior remain outside this claim."
+  ],
+  "source_edits": "none",
+  "native_replay": "none"
+}

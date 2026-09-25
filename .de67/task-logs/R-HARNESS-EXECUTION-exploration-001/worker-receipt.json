@@ -1,0 +1,107 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EXECUTION-exploration-001",
+  "claim_id": "R-HARNESS-EXECUTION",
+  "worker_id": "01a0c0a1-18e7-7c23-9966-80fa989a9363",
+  "disposition": "finding",
+  "verdict": "shared_lifecycle_repaired_real_live_decision_unproved",
+  "outcome": "The shared native wait operation lifecycle is implemented and verified in focused coverage and public source-bound normal waits; the sole authorized source event did not create a native decision, so a real live operation interruption is not proved.",
+  "summary": "The cockpit now correlates an accepted wait operation across menu, duration, activity, and World surfaces instead of treating currently advertised activity controls as recipe intent. Both raw wait and the existing keep-watch consumer use the shared collector. A current R033 C-4 source event produced real Deaf/ringing-ears evidence but left the World owner intact and both operations completed, while R013 is prelaunch-blocked by a missing retained save. The correction is a lifecycle implementation success with a bounded live-evidence finding, not product acceptance.",
+  "material_changes": [
+    "Added the receipt-bound caol-native-operation-v1 model and status projection to CockpitRunChannel.",
+    "Made shared recipe and raw-wait collection distinguish running activity, menu duration selection, completed work, native decision, cancellation, and binding-drift outcome unknown from the current input surface.",
+    "Selected the longest currently advertised wait duration inside the evidence-derived remaining boundary and reset the recipe cursor after a semantic duration selection.",
+    "Migrated keep_watch to the same operation collector and added raw semantic menu/activity/cursor regression tests."
+  ],
+  "tests": [
+    "py_compile passed for cockpit.py, play_cli.py, and startup_harness.py.",
+    "139 focused tests passed in 11.858s: cockpit_raw_wait_test, cockpit_keep_watch_test, cockpit_controls_test, cockpit_live_session_test, play_cli_test, and r033_autonomous_sound_return_fixture_test.",
+    "git diff --check passed for the changed cockpit implementation and raw-wait test.",
+    "cockpit_file_bridge_test was isolated: its first test passed, then its second startup-HUD test stalled; the owned runner and all child processes were terminated, so it is not counted as a pass."
+  ],
+  "live_actions": [
+    "Public R033 game.raw_wait request play-0026c50e6c1048d2b27ed53466a35b84 completed 9241 to 9271 on run 6aa14157255c3485097af3b7a4be3cecf23624d9d1f6829e98364fc13f90bc91 and binding dfe55542646dff0841f538c83e54ed650a8e7c3929c4236547ac50efa693741e.",
+    "Public R033 game.raw_wait request play-cbe5b4cc8fa3457897acb649f4bc6387 completed 9241 to 10081 and post-boundary request play-be02871fbb5b4859b4527e75694e3b53 completed 10081 to 10111 on run 77368cf986a9fe267375bdc4cab592d9bc2d35f217b725781d29b2b83f48e213 and binding 901fd03ebe80aaef152604370e64de1d5cf51ee0d48c597fe90ff70cf7153f1e.",
+    "The post-boundary terminal facts recorded a real C-4 Deaf/ringing-ears consequence, but handled_interruptions was empty and the operation completed target_reached.",
+    "Explicit run.quit then collect verified R033 PID 86263 birth Sun Sep 20 23:46:00 2026 absent; broker PID 86210 was absent; scenario cleanup reports SIGTERM with native_exit_credit=false."
+  ],
+  "evidence_ceiling": [
+    "The live runs prove source-bound shared-operation behavior and source consequence only; they do not prove R033 signal, camp, returned report, or product acceptance.",
+    "The source effect was not an operation interruption because the native owner stayed World and neither operation reported a decision or handled interruption.",
+    "The required real live operation-interruption proof remains absent: R013 cannot launch because its retained save is missing, and no alternate scenario is authorized by current evidence.",
+    "Scenario cleanup achieved process exit but has native_exit_credit=false, so it is not native-save/exit proof."
+  ],
+  "bindings": {
+    "normal_binding": "dfe55542646dff0841f538c83e54ed650a8e7c3929c4236547ac50efa693741e",
+    "normal_run": "6aa14157255c3485097af3b7a4be3cecf23624d9d1f6829e98364fc13f90bc91",
+    "source_binding": "901fd03ebe80aaef152604370e64de1d5cf51ee0d48c597fe90ff70cf7153f1e",
+    "source_branch": "dev",
+    "source_executable_sha256": "164084ff365aac3ab4db56703dfe8611ea2004f98a2e129102780c4f040f4c61",
+    "source_run": "77368cf986a9fe267375bdc4cab592d9bc2d35f217b725781d29b2b83f48e213",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-EXECUTION-exploration-001/report.md",
+      "sha256": "8174a33b2dbb8026d4646840900eecfc0729cedbe99357539636eacefb50f972",
+      "role": "implementation, verification, live evidence, and open-boundary report"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EXECUTION-exploration-001/verification-core.log",
+      "sha256": "64d963284d16253e82724cc6ad7127d5bccc966952b00f16b93e2037188d830d",
+      "role": "passing focused lifecycle test transcript"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-2431641388eb43f08bce90f799dca4b2/responses/play-0026c50e6c1048d2b27ed53466a35b84.json",
+      "sha256": "72dd153dff599a06a56a4d5256ba9838e8ce3b108919ac552f0a877a8186aa0b",
+      "role": "public normal source-bound raw-wait response"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-2c960aa03fdc44f6867b6eaae7f239ec/responses/play-cbe5b4cc8fa3457897acb649f4bc6387.json",
+      "sha256": "fe8ec6a7c38051b83b8c43ecc7c69c326991f811c24a78d6ef140215162806d0",
+      "role": "public source-bound boundary wait response"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-2c960aa03fdc44f6867b6eaae7f239ec/responses/play-be02871fbb5b4859b4527e75694e3b53.json",
+      "sha256": "a6d20b24b82accd939e4c57931091d1fd34094784e16be3a0c5f219afc258541",
+      "role": "public post-boundary source-consequence response"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260920_234559_160276afff124945b86ba7f2a767d074/semantic.native.events.jsonl",
+      "sha256": "56d6119d9eac7dcb8d0f27367544b854a7d1835c0c8583cf364e8836bacfb009",
+      "role": "run-bound native source and turn evidence"
+    }
+  ],
+  "first_divergence": {
+    "class": "authorized_live_route_limit",
+    "summary": "At the R033 source boundary, the real C-4 consequence left the World input owner intact and both public waits completed target_reached; no authorized scenario remains that supplies a true native decision interruption."
+  },
+  "accepted_no_replay": [
+    "The normal and source-bound waits were each collected from their original public request/receipt; no accepted wait or pause was resubmitted.",
+    "R013 was not rerun because its unchanged prelaunch route is blocked by a missing retained save."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Authorize or restore a source-bound scenario that actually exposes a post-acceptance native decision owner, then capture one public native_wait_interrupted result with partial progress and verified cleanup.",
+  "narrow_queries": [
+    "R-HARNESS-EXECUTION-exploration-001",
+    "native_wait_interrupted",
+    "activity_distraction_query",
+    "R013 missing retained save"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/cockpit.py",
+    "tools/openclaw_harness/cockpit_raw_wait_test.py",
+    "tools/openclaw_harness/cockpit_keep_watch_test.py",
+    "tools/openclaw_harness/play_cli.py"
+  ],
+  "context_metrics": {
+    "focused_test_count": 139,
+    "focused_test_seconds": 11.858,
+    "normal_wait_minutes": 30,
+    "post_boundary_wait_minutes": 30,
+    "source_boundary_wait_minutes": 840
+  },
+  "finding_kind": "unexpected"
+}

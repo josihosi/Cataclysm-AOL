@@ -1,0 +1,49 @@
+{
+  "start": "2026-09-25T05:39:47.037714+00:00",
+  "snapshot": "2026-09-25T15:39:47.037714+00:00",
+  "campaign": {
+    "fresh": 7949546,
+    "cached": 598163840,
+    "output": 1506529,
+    "responses": 5135
+  },
+  "review_including_helper": {
+    "fresh": 422130,
+    "cached": 10972032,
+    "output": 50524,
+    "responses": 122
+  },
+  "other_workspace": {
+    "fresh": 0,
+    "cached": 0,
+    "output": 0,
+    "responses": 0
+  },
+  "weekly": {
+    "first": {
+      "timestamp": "2026-09-25T05:59:20.734Z",
+      "used_percent": 40.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 1.1796387448017573
+    },
+    "latest": {
+      "timestamp": "2026-09-25T15:39:38.610Z",
+      "used_percent": 60.0,
+      "resets_at": 1790715681,
+      "pace_estimate": 1.5126453323155602
+    },
+    "samples": 5579,
+    "pace_range": [
+      1.1319708916424607,
+      1.5156820590562432
+    ]
+  },
+  "limitations": [
+    "Local Sep20-25-created logs only; older active or remote logs missing.",
+    "Durable worker/coordinator bindings plus native descendants; unrelated same-workspace usage separated.",
+    "Account-wide pace estimated from elapsed week; samples do not establish continuous usage or campaign allowance share.",
+    "Cached tokens separate from fresh; no monetary equivalence assumed.",
+    "Review snapshot excludes later closeout responses."
+  ]
+}
+Top campaign: [('01a0d76b-7951-7240-9561-386cdfa04108', 1901321, 123858432, 372714, 1072), ('01a0d84b-b181-7042-857b-520079c29adf', 1526516, 113875584, 214049, 942), ('01a0d76a-2f6f-7503-841b-bdf662b48891', 1117224, 176020224, 221888, 1364), ('01a0d76b-1a7a-75a2-84dc-9a48f7091cc5', 1031983, 56044288, 220949, 593), ('01a0d84c-c326-7403-ad85-9011f1bd5ed6', 740268, 47962880, 141645, 398), ('01a0d86f-51c1-77c2-8bf2-d3996579067a', 599491, 28339200, 137521, 294), ('01a0d8e9-616c-7450-92f7-3b63d7ffc515', 496174, 31691904, 91542, 287), ('01a0d890-51fb-76e1-8528-9d99f5975dc1', 266008, 8516864, 51801, 83)]

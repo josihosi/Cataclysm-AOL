@@ -1,0 +1,6 @@
+World.
+Waited 1 game minutes. target reached.
+last save result: saved
+6:11:40 AM: Saving game, this may take a while.
+6:12:30 AM: You finish waiting.
+Game time: 7572 minutes.

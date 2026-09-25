@@ -1,0 +1,20 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_game_minutes": 8220,
+    "danger_handling": "ignore_danger_and_interruptions",
+    "recipe": [
+      "world.wait",
+      {"action_id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "label": "Wait a while"},
+      "wait.1m"
+    ],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "one native minute from the observed World frame",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    }
+  }
+}

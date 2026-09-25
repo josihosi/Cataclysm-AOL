@@ -1,0 +1,14 @@
+{
+  "ledger_guard": "passed",
+  "active_claims": 9,
+  "accepted_rows": 69,
+  "issued006_preserved": true,
+  "other_claims_preserved_except_superseded_execution_note": true,
+  "FS_WEC_policy_unchanged": true,
+  "method_assignment_source": "task-specific ledger assignment",
+  "method_assignment": "Stage an isolated installed-method candidate for the measured named-worker idle-wait overhead in `.de67/task-logs/review-signal-proof-006/idle-wait-usage.json`. This is independently useful supporting tooling, not a prerequisite to continue native gameplay or new signal acceptance. The actual delivered named_worker_contract caps each CLI wait at 60 seconds; worker_library.wait returns a full unchanged describe record and the outer functions.exec yield adds another model turn. Inspect the existing App Server mailbox/dispatcher and supervisor event ownership, then remove repeated unchanged-status model work through the smallest supported interruptible event/continuation route. Preserve owner messages, worker questions/results, cancellation, exact assignment identity, deadline wake, crash recovery, and exclusive coordinator/restart ownership. Do not solve this by blocking owner responsiveness with a long shell sleep or imposing another polling quota. Ordinary workers stage candidate files and evidence only; the exclusive mutator validates and promotes installed method changes. Reproduce unchanged-running intervals plus real message/result/deadline/error events and compare model-visible calls and total bytes against the retained trace. Run the applicable method-candidate/lifecycle tests and report capability limits, full-tree cost and any unmeasured savings. If a safe event route is unavailable, return the exact capability gap without inventing a second supervisor or changing the product outcome.",
+  "old_signal_block_bytes": 7124,
+  "new_signal_block_bytes": 7695,
+  "old_context_preserved": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/review-signal-proof-006/work-ledger.md.before",
+  "limits": "No successor delivery/use or savings claimed. Returned native result remains pending normal ingress; no lifecycle task/claim status modified."
+}

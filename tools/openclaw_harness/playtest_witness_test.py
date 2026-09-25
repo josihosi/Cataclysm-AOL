@@ -154,6 +154,9 @@ class PlaytestWitnessTest(unittest.TestCase):
         witness["citations"][0]["checks"]["value.surface.facts.last_save_result"] = "succeeded"
         with self.assertRaisesRegex(WitnessError, "witness_citation_value_mismatch"):
             validate_witness_statement(charter=CHARTER, journal=sealed, statement=witness)
+        witness["citations"][0]["checks"]["value.surface.facts.last_save_result"] = False
+        with self.assertRaisesRegex(WitnessError, "recorded str, supplied bool"):
+            validate_witness_statement(charter=CHARTER, journal=sealed, statement=witness)
         sealed["entries"][1]["value"]["value"]["surface"]["facts"]["last_save_result"] = "succeeded"
         with self.assertRaises(WitnessError):
             validate_witness_statement(charter=CHARTER, journal=sealed, statement=witness)

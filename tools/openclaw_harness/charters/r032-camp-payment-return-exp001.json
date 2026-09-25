@@ -1,0 +1,36 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Fresh native camp-stock Pay uses an actual CAMP_STORAGE spillover tile for real tradeable RobofacCoin, commits the same bandit outing to physical return, and observes replenishment plus subsequent ordinary bandit return ecology.",
+  "material_proof": "Bind the isolated scenario to the accepted R032 Locker save, native camp [162,36,0], character:25 and the exact fixture stock tile. The stock transformation is setup only. Require the real demand, trader valuation, selected map item, surrendered value and item/charge delta from the live Pay trade; the same site/activity/member outing must then commit paid returning_home and physically depart. After departure, disclose distinct stock replenishment and game time. Observe native save/reload, actual ordinary scheduler opportunity, lead/outings, map exit/return and renewed contact, with elapsed times and resources/casualties; if return does not occur, cite the concrete eligibility boundary and elapsed opportunity.",
+  "material_contradiction": [
+    "fresh Pay uses player-pocket coins, unzoned stock, unreachable stock or double-counted stock",
+    "demand or item value is inferred from the earlier R-029 run instead of this native interaction",
+    "trade confirmation lacks a paid result, item/value delta or same-operation binding",
+    "paid state does not commit returning_home and physical departure",
+    "replenishment is not distinct, disclosed, in CAMP_STORAGE or time-bound",
+    "absence is treated as a return result without an eligible scheduler opportunity",
+    "lead/dispatch/operation/cooldown is injected or shortened",
+    "save/reload changes the binding or continuity, or owned cleanup is unresolved"
+  ],
+  "already_accepted_evidence": [
+    "R032 Assignment Camp [162,36,0], character:25 Locker transfer and native save/reload remain accepted at their original scope.",
+    "R-029 $193.20/18,724-cent payment and 120-turn continuation remain accepted only at their original scope and do not prove this fresh camp-zone route."
+  ],
+  "current_uncertainty": "No fresh native payment, demand/valuation, departure, replenishment opportunity or later bandit return has been observed in this isolated setup. The defense-owned peaceful branch is a later coordinator handoff; the fixture here is bound to the accepted saved Locker baseline, not its currently active unsaved session.",
+  "forbidden_shortcuts": [
+    "crediting fixture setup, registry selection or startup as gameplay behavior",
+    "loading RobofacCoin into pants or another player pocket",
+    "direct state/save/item/actor manipulation after fixture installation",
+    "injected bandit lead, dispatch, outing, operation, contact or shortened cooldown",
+    "using the earlier R-029 payment as fresh payment proof",
+    "touching defense-owned game input, files or process, or coordinator-retained PID 90668",
+    "OCR, screenshot, terminal presentation, guessed input or callback injection as gameplay proof"
+  ],
+  "honest_stop_conditions": [
+    "record actual fresh demand and trade valuation before offering",
+    "retain the first absent natural contact or scheduler boundary with elapsed time and source evidence",
+    "require a real opportunity before explaining a non-return",
+    "seal only after source-bound native trade, physical departure, disclosed replenishment, useful save/reload and renewed contact or a causally explained eligible non-return boundary"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

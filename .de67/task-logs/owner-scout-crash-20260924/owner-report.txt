@@ -1,0 +1,61 @@
+Investigate this Cataclysm: Dark Days Ahead crash and identify the root cause. Do not assume the imported save is corrupt or that the bandit ecology is at fault merely because it appears in the call path. Trace the invalid pointer to its origin if possible, and report whether the evidence implicates save data, item/inventory lifetime or caching, or the bandit ecology caller.
+
+## Observed edge case
+
+During a Windows camp playtest using world `TestSetup00`, the game crashed at approximately 2026-09-24 16:23:44 while a bandit camp scout was active.
+
+The debug log shows the bandit camp dispatched a scout earlier in the same play session. At 16:23:31, the scheduler logged `dispatches_planned=1`, `dispatches_applied=1`, `materialization_attempts=1`, and `members_materialized=3`; subsequent performance lines show `active_job_mix=camp_style:scout=1`. Shortly before the crash, bandit threat-observation messages repeatedly reported `target=player@131,143,0`.
+
+The Windows crash was an access violation (`0xc0000005`, read) in `item::has_flag`. The faulting instruction read the `item::type` pointer at `this + 0x20`; the `this` pointer in the dump was invalid (`RBX=0x2100000000`, attempted read at `0x2100000020`). This establishes an invalid item pointer at the crash site, but not how it became invalid.
+
+The unwound stack enters `Character::cache_has_item_with` / inventory traversal from the bandit local-zombie threat-observation path (`live_bandit_local_zombie_read_impl`), during structural bounty outing maintenance in `game::do_turn`. The stack does not show cannibal ecology in the faulting path.
+
+## Save and setup provenance
+
+This was an assembled playtest save. The setup record identifies the source fixture as:
+`tools/openclaw_harness/fixtures/saves/live-debug/bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24/save/McWilliams`
+
+The playtest setup script transplanted camp footprints and overmap special placement records into the target world. Its audit record says `npc_state_changed: false` and `original_archive_preserved: true`. The source player save is from the older fixture, so inspect its character/item state and the exact world assembly path before ruling out an interaction with imported save data.
+
+The setup audit is:
+`.userdata/windows-camp-20260924/audit/camp-scenario-setup.json`
+
+The camp transplantation script is:
+`.userdata/windows-camp-20260924/seed_camps.py`
+
+The launch preparation script is:
+`.userdata/windows-camp-20260924/prepare_launch.py`
+
+The active world’s character save at crash time was:
+`.userdata/windows-camp-20260924/save/TestSetup00/#VGVzdDAw.sav.zzip`
+
+The latest character save timestamp is 16:21:35, before the crash; treat it as a pre-crash snapshot, not guaranteed to contain the final runtime state.
+
+## Evidence locations
+
+- Crash dump:
+  `C:\Users\josef\AppData\Local\CrashDumps\cataclysm-tiles.exe.10608.dmp`
+- Game executable:
+  `build/windows-camp-20260924/cataclysm-tiles.exe`
+- Debug log:
+  `.userdata/windows-camp-20260924/config/debug.log`
+- Crash site: `src/item.cpp:2311-2319`, `item::has_flag`; the dereference is `type->has_flag(f)` at line 2319.
+- Inventory cache traversal: `src/character_inventory.cpp:2110-2156`, `Character::cache_has_item_with`. This iterates cached `item_location` references or populates a cache through `visit_items`.
+- Inventory cache insertion: `src/character_inventory.cpp:2239`, `Character::add_to_inv_search_caches`.
+- Bandit local zombie observation helper: `src/do_turn.cpp:5351` onward, `live_bandit_local_zombie_read_impl`.
+- Structural outing calls the observation at `src/do_turn.cpp:3513`.
+- Public wrapper: `src/do_turn.cpp:9982-9985`, `read_live_structural_local_zombie_observation`.
+- Structural outing maintenance: `src/bandit_live_world.cpp:15963` onward, `advance_structural_bounty_outings`; invoked from `src/bandit_live_world.cpp:16714`.
+- Aftermath/test hook in turn processing: `src/do_turn.cpp:12906` onward, `note_live_bandit_aftermath_for_test`.
+
+## Questions to resolve
+
+1. Reproduce or otherwise trace why an invalid `item` reaches `item::has_flag` during inventory-cache traversal. Determine whether the stale/invalid reference originates in an item container, a cached `item_location`, character/NPC lifetime, or another caller.
+2. Check whether the imported fixture’s serialized character/item data is valid and whether the playtest’s assembly process changes anything beyond the overmap footprints and placement records.
+3. Inspect the bandit observation code and its callers for lifetime, reference invalidation, or unsafe assumptions while traversing characters/items. Determine whether the bandit ecology triggers a general inventory bug or contains the defect itself.
+4. State whether cannibal ecology is implicated by code or dump evidence. Do not infer it from the presence of a cannibal camp in the same world.
+5. Recommend the smallest fix only after identifying the faulty ownership/lifetime boundary. Add a focused regression case that covers the observed trigger.
+
+## Important limits
+
+The dump proves the faulting dereference and gives a call path into bandit scout local-threat observation. It does not by itself prove whether the underlying invalid pointer was caused by the fixture save or by runtime code. The setup audit says the camp-seeding operation did not alter NPC state; that does not validate all contents of the imported player save. The crash snapshot is from a build at `build/windows-camp-20260924/cataclysm-tiles.exe`; include the exact build revision/configuration when reporting any reproduction.

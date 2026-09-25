@@ -1,0 +1,117 @@
+{
+  "accepted": true,
+  "surface_request": {
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:11:dialogue.choose:e192925079ca3e0a",
+    "action_id": "dialogue.choose",
+    "stable_id": "dialogue-response-26"
+  },
+  "native_receipt": {
+    "event": "surface_receipt",
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "process_instance": "1790276309340552",
+    "sequence": 66,
+    "game_minutes": 7680,
+    "game_turn": 5212800,
+    "wall_time": 1790277234316,
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:11:dialogue.choose:e192925079ca3e0a",
+    "requested_run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "requested_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+    "requested_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+    "consuming_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+    "consuming_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+    "action_id": "dialogue.choose",
+    "accepted": true,
+    "rejection_reason": "",
+    "resulting_frame_id": "",
+    "outcome": "",
+    "_source_offset": 261403,
+    "_source_end": 262169,
+    "_event_offset": 261403,
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11"
+  },
+  "transition_event": {
+    "schema_version": 1,
+    "sequence": 2,
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "game_minutes": 7680,
+    "domain": "semantic_surface",
+    "transition": "native_surface_receipt",
+    "outcome": "accepted",
+    "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:11:dialogue.choose:e192925079ca3e0a",
+    "action_id": "dialogue.choose",
+    "stable_id": "dialogue-response-26",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+    "resulting_frame_id": "",
+    "proof_step_label": "",
+    "proof_step_index": null,
+    "native_receipt": {
+      "event": "surface_receipt",
+      "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+      "process_instance": "1790276309340552",
+      "sequence": 66,
+      "game_minutes": 7680,
+      "game_turn": 5212800,
+      "wall_time": 1790277234316,
+      "request_id": "cockpit:bulk-item-cost-B12:86d2cc675ed540b0a37e7572e47ffb66:frame:11:dialogue.choose:e192925079ca3e0a",
+      "requested_run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+      "requested_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+      "requested_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+      "consuming_surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:11",
+      "consuming_frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:11",
+      "action_id": "dialogue.choose",
+      "accepted": true,
+      "rejection_reason": "",
+      "resulting_frame_id": "",
+      "outcome": "",
+      "_source_offset": 261403,
+      "_source_end": 262169,
+      "_event_offset": 261403
+    }
+  },
+  "next_frame": {
+    "event": "surface_descriptor",
+    "schema_version": 1,
+    "process_instance": "1790276309340552",
+    "sequence": 67,
+    "game_minutes": 7680,
+    "game_turn": 5212800,
+    "wall_time": 1790277234317,
+    "is_night": false,
+    "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+    "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:12",
+    "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:12",
+    "kind": "dialogue",
+    "breadcrumbs": [
+      "World",
+      "Genevieve Floyd"
+    ],
+    "payload": {
+      "history": "Genevieve Floyd\n\"I'm… short… of breath…\"\n\nYou\nWhat's the matter?\n\nGenevieve Floyd\n\"I'm asthmatic.  I need you to get an inhaler for me…\"\n\nYou\nNot interested.\n\nGenevieve Floyd\n\"What?!  Please, I'll be dead soon without your help!\"\n\nYou\nI'm sorry.\n\nGenevieve Floyd\n\"Well, I guess it's just us.\"\n\nYou\nWhat should we do now?\n\nGenevieve Floyd\n\"I suppose getting a car up and running would be really be useful if we have to move.\"\n\nYou\nHmm, okay.\n\nGenevieve Floyd\n\"At least we've got shelter.\"\n\nYou\nWant to travel with me?\n\nGenevieve Floyd\n\"Why should I travel with you?\"\n\nYou\n[PERSUADE 59%] We're friends, aren't we?\n\nGenevieve Floyd\n\"Yeah… I don't think so.\"",
+      "prompt": "\"Yeah… I don't think so.\"",
+      "speaker_id": "2",
+      "speaker_name": "Genevieve Floyd"
+    },
+    "live_hostile_operation": null,
+    "valid_actions": [
+      {
+        "id": "dialogue.choose",
+        "stable_id": "dialogue-response-29",
+        "label": "Oh, okay.",
+        "enabled": true
+      },
+      {
+        "id": "dialogue.cancel",
+        "stable_id": "",
+        "label": "Goodbye",
+        "enabled": true
+      }
+    ],
+    "_source_offset": 262169,
+    "_source_end": 263659,
+    "_event_offset": 262169
+  }
+}

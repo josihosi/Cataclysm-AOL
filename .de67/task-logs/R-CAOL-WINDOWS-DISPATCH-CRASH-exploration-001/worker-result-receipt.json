@@ -1,0 +1,111 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001",
+  "claim_id": "R-CAOL-WINDOWS-DISPATCH-CRASH",
+  "worker_id": "01a0d40e-7551-7df3-a54c-bb6a4096b9dc",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "mac_repair_proved_windows_native_proof_deferred_by_owner",
+  "outcome": "The invalid gunmod iterator bug was repaired and the exact copied TestSetup00 world passed ordinary dispatch and subsequent sight checks on Mac. Windows native ordinary-wait acceptance remains open because the owner redirected live testing to the Mac mini.",
+  "summary": "The retained Windows dump and executable identify two gunmods() temporaries as the invalid iterator source. A focused production-path regression crashed before the one-vector repair and passed after it. The patched Mac game naturally dispatched the same camp scout pair at minute 8400, returned from four structural sight checks, saved at minute 8785 and quit normally. The original Windows artifacts remain intact. A fixed Windows executable exists, but no Windows ordinary-wait proof was run after the owner changed the live route.",
+  "material_changes": [
+    "src/do_turn.cpp stores gun.gunmods() once before iterating its pointers; src/bandit_live_world.h exposes the production optic helper for focused testing; tests/bandit_live_world_test.cpp adds the discriminating regression.",
+    "tools/openclaw_harness/startup_harness.py conditionally passes and closes a valid wake file descriptor on Windows; its focused launcher test passed. The Mac FIFO behavior is retained.",
+    "A separate fixed Windows executable and a patched Mac executable were built without overwriting the original Windows executable or owner save."
+  ],
+  "tests": [
+    "The pre-fix optic_lifetime regression crashed with SIGSEGV after four setup assertions; the same production helper test passed 14 assertions after repair.",
+    "The adjacent structural sight test passed 31 assertions. make -j4 tests and scoped git diff --check passed.",
+    "The exact copied TestSetup00 Mac native run reached natural dispatch at game minute 8400, four structural sight returns at 8460, 8520, 8580 and 8640, and native save/quit at 8785."
+  ],
+  "live_actions": [
+    "GPT-6 Luna alone operated Mac run 220727e9d0d84ae49dc964416cd2d109 on a byte-verified disposable copy of all 45 TestSetup00 save files. Game PID 86138 and cockpit PID 86362 exited after native save/quit.",
+    "A first fixed Windows game reached World but its SSH child job ended before gameplay; a separate short Python child ended the same way. These starts receive no crash-prevention credit. Windows game PID 13124 and probe PID 31040 exited; no second Windows game launched."
+  ],
+  "evidence_ceiling": [
+    "Mac structural sight records prove the repaired optic helper executed and returned, but optic=no records alone do not prove its inner gun predicate ran in that live scout. The focused regression enters that predicate and distinguishes before from after.",
+    "A Mac native pass on the copied Windows world does not close the FS requirement for native Windows ordinary waiting in the owner's world. This is the first assigned-outcome exit: the owner explicitly redirected live testing to Mac, leaving Windows native proof unauthorized in this attempt.",
+    "The original pre-crash save has no post-dispatch runtime inventory and cannot identify the exact gun in the Windows fault."
+  ],
+  "bindings": {
+    "worker_assignment_id": "5f547c72ee4d41e88a0105e3c953e900",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/5f547c72ee4d41e88a0105e3c953e900/c0fb6ad2be09c109e3b3e868d7406fd676ab004a014a4d8d165eee3b5dfc550e.md",
+    "mac_run_id": "220727e9d0d84ae49dc964416cd2d109",
+    "mac_executable_sha256": "a01545016845aaca8e3ea7c813650d516ffec5261f17a4ac2622a31ecfb5b600",
+    "fixed_windows_executable_sha256": "656401474a261cab918a611c43c9cf2ba4b75bc31f843e1be9995d9cd603253d",
+    "original_windows_executable_sha256": "4346cfefe14faab798f607130b2e4bfe233261c31bdcfdca7c904befb963f365"
+  },
+  "journal_entries": [
+    {
+      "id": "mac-natural-dispatch",
+      "sequence": "4",
+      "event_type": "active_sortie_dispatch",
+      "evidence_class": "native",
+      "summary": "At minute 8400, the same bandit camp and road lead dispatched observer 4 and escort 5."
+    },
+    {
+      "id": "mac-structural-sight",
+      "sequence": "8460/8520/8580/8640",
+      "event_type": "structural_visibility",
+      "evidence_class": "native",
+      "summary": "Four post-dispatch structural sight records for observer 4 returned without a crash."
+    },
+    {
+      "id": "mac-save-quit",
+      "sequence": "8785",
+      "event_type": "native_save_completion",
+      "evidence_class": "native",
+      "summary": "TestSetup00/Test00 saved, returned to menu and quit; both owned processes exited."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md",
+      "sha256": "405fbb87a503a9e1122c28997bb6083da7cf86c3005ca2bc5e278027a8933075",
+      "role": "Source-bound diagnosis, build and native run report"
+    },
+    {
+      "path": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/transition.events.jsonl",
+      "sha256": "c1e46fa59815a07c9aec348d1fa610f512737a42b3d37998d5e09371c89e5e28",
+      "role": "Native dispatch and saved-run transition journal"
+    },
+    {
+      "path": ".userdata/windows-dispatch-crash-mac-20260924/harness_runs/20260924_183615_bcacf42da76a4cdd86aec409041c2ecc/cockpit.live.final.json",
+      "sha256": "13ab375f0ca7e41d8643665b7c0cbeb152d158ccc531124d052b185e2fc6b110",
+      "role": "Native save and quit plus process exit"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-before-test.log",
+      "sha256": "6e0ceab91aa10c91f03f4aa223831183a97ebad7dc365630aa18801134678803",
+      "role": "Failing before repair production predicate regression"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-after-test-final.log",
+      "sha256": "c473edb2be56090610848ed4b289f61d4b3b5ce24ed30e69ec5b06a7243e08df",
+      "role": "Passing after repair production predicate regression"
+    }
+  ],
+  "accepted_no_replay": [
+    "Preserve prior camp, Locker, patrol and harness acceptances at their original scope.",
+    "Preserve the exact Mac native TestSetup00 dispatch and structural sight result; do not replay it for Windows credit."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Native Windows ordinary waiting through dispatch and subsequent sight in the corrected Windows executable remains unproved and is deferred under the owner's Mac-only live-test direction.",
+  "narrow_queries": [
+    "Read report.md for the exact dump/executable/source binding and earliest invalid iterator caller.",
+    "Read transition.events.jsonl for minute 8400 dispatch and cockpit.live.final.json for save/quit; read disposable config/debug.log for four structural_visibility records.",
+    "Inspect the focused do_turn.cpp, bandit_live_world.h, bandit_live_world_test.cpp and startup_harness.py diffs."
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/bandit_live_world.h",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/startup_harness.py"
+  ],
+  "context_metrics": {
+    "mac_game_minutes_advanced": 406,
+    "mac_post_dispatch_sight_records": 4,
+    "mac_game_processes_exited": 2
+  }
+}

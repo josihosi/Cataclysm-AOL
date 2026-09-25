@@ -1,0 +1,78 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PERFORMANCE-closure-native-pending-wait-alarm-journey-001",
+  "claim_id": "R-HARNESS-PERFORMANCE",
+  "worker_id": "01a0bf5a-8349-7411-856e-30193f428c40",
+  "disposition": "completed",
+  "verdict": "native_pending_wait_alarm_journey_proved_after_repair",
+  "outcome": "A current-source native run retained one pending wait request, classified its accepted menu/input owner without a false stall alarm, collected the same request once, advanced a real one-minute wait with measured turns, and cleaned every owned process.",
+  "summary": "The first native run proved one-submit collection, four measured turns, witness sealing and cleanup, but exposed a false stalled-progress alarm while a native menu owned input. The task stayed live. The worker repaired the shared poller to retain the accepted receipt and fresh native surface owner separately, added a falsifying test, and reran twice. The final zero-wait-submit run held the exact world.wait request for eight seconds, observed the accepted receipt plus menu/input owner with no alarm, collected once, completed wait.1m, and verified game and bridge exit. Coordinator reran the full focused suite: 258 tests passed.",
+  "material_changes": [
+    "Retained the latest accepted native receipt independently from later surface descriptors in ProcessPerformance assessment state.",
+    "Classified fresh native menu, prompt, and input surface owners as non-simulation progress rather than stalled simulation.",
+    "Added a falsifying accepted-receipt then menu-descriptor regression test while retaining true advancing-operation no-start detection."
+  ],
+  "tests": [
+    "Coordinator final run: 258 tests passed across process_performance_test, play_cli_test, semantic_state_test, r009_semantic_channel_compaction_test, semantic_broker_test, and proof_classification_unit_test.",
+    "Python compilation and git diff --check passed in the worker continuation.",
+    "Fresh native run b2003486c6bb58d97bd46fa29e3d3b17fbab22d9c6b91336bd80f071f342445f retained world.wait for eight seconds, reported alarms=[], collected once, and completed wait.1m with four measured turns."
+  ],
+  "live_actions": [
+    "Original run 7200191d42aac6428b952613554ce2f23606c0e4c6b118476166659bac545358 exposed the false menu stall and then exited game PID 16079 and bridge.",
+    "Intermediate run b717265307e1843b18ff5d3d747716afa7e552c814a07d051304ec46796181f3 measured turns after repair but completed too quickly for menu confirmation; game PID 17418 and bridge exited.",
+    "Final run b2003486c6bb58d97bd46fa29e3d3b17fbab22d9c6b91336bd80f071f342445f retained the exact pending request, confirmed alarm-free input ownership, completed normally, and exited game PID 18112 plus bridge."
+  ],
+  "evidence_ceiling": [
+    "This closes the focused native pending-wait alarm journey only.",
+    "The active native turn exposed phase=input, so the more specific non-simulation label was not needed in the final live assessment; receipt, menu descriptor, input context, and no-alarm result are preserved.",
+    "No naturally occurring performance regression, signal/camp behavior, travelling-hostile behavior, cross-host result, or representative workload comparison is claimed."
+  ],
+  "bindings": {
+    "dispatch_digest": "e783b2644ef890c0c98362bbff69a9b87484410b49a6aa6b05afe4bada6d3a0e",
+    "worker_id": "01a0bf5a-8349-7411-856e-30193f428c40",
+    "final_run_id": "b2003486c6bb58d97bd46fa29e3d3b17fbab22d9c6b91336bd80f071f342445f",
+    "final_binding_id": "de5a5e46ea1a0c5863b0104dc4d6e63210a14de8465b05e771ebb65a30de8f78",
+    "executable_sha256": "af6014d5e3211289d3b5f7e6097b52da4692011e30499de86cb86ab424e9c125",
+    "source_sha256": "22ff274092233f079e7f0287b86bdf4cc385a9119d01b14408525ea6a16ff3d9"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-PERFORMANCE-closure-native-pending-wait-alarm-journey-001-result.md",
+      "sha256": "ce07b720bf7527703d9489191de83060e57ee6c16ef5ac95a675d0f6ed03c6c4",
+      "role": "original divergence, repair, native reruns, and cleanup result"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-PERFORMANCE-live-confirmation-witness.json",
+      "sha256": "d5d20534d5fd0610375b8d68ada8e293b55b35a99a5bb0cb1954ba1583af9ba3",
+      "role": "final pending-owner native witness"
+    },
+    {
+      "path": ".userdata/harness-cannibal-freeplay/harness_runs/20260920_172907_038b8922f16a40e48ad1a13e2e306f57/probe.report.json",
+      "sha256": "2700540da6557fcae15e96b14e650b29034d0778b0cbec17114e3f832be3ab63",
+      "role": "final native terminalization and PID cleanup report"
+    }
+  ],
+  "first_divergence": {
+    "class": "repaired_false_input_stall_alarm",
+    "summary": "The original run classified an accepted native wait-menu owner as stalled progress. The worker preserved that evidence, repaired owner classification, and the final native rerun showed no alarm for the retained menu/input request."
+  },
+  "accepted_no_replay": [
+    "Final request play-803bf7194b4c458296fd28f24035ba57 was submitted once, retained for eight seconds, and collected once."
+  ],
+  "active_work": [],
+  "first_open_boundary": "The sibling representative-workload-comparison closure gap remains open and requires comparable source-bound signal and loaded-hostile journeys.",
+  "narrow_queries": [
+    "R-HARNESS-PERFORMANCE-closure-native-pending-wait-alarm-journey-001",
+    "b2003486c6bb58d97bd46fa29e3d3b17fbab22d9c6b91336bd80f071f342445f",
+    "play-803bf7194b4c458296fd28f24035ba57",
+    "native_input_owner_no_simulation_progress"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/process_performance.py",
+    "tools/openclaw_harness/process_performance_test.py",
+    "tools/openclaw_harness/play_cli.py"
+  ],
+  "context_metrics": {}
+}

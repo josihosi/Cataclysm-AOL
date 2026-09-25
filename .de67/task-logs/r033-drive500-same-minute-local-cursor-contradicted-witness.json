@@ -1,0 +1,25 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "This fresh source-bound drive-at-least-500 run reached the permitted selected forward watch OMT and emitted the native C-4 sound, but no local structural sound fact or returned_report lead was recorded because the local recorder rejected an event at its cursor's same game minute.",
+  "causal_account": "The correction placed the source on the selected forward OMT and native diagnostics recorded it as permitted. The run then reached minute 10081 with the local observer at its watch and native ringing/Deaf feedback. Its retained terminal observation shows no matching signal lead. The source-to-return claim is therefore not established; equality of the local time guard is the first contradicted production boundary.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds this fresh selected scenario, source-matched executable, native run, and bridge binding.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0072",
+      "meaning": "Retains the terminal observation at the native source boundary for the limited contradiction.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [
+    "The native sound was permitted at the selected forward OMT, but no same-run local structural sound fact or matching returned_report lead was retained."
+  ],
+  "remaining_unknowns": [
+    "Whether admitting the source on the local cursor's same minute produces the durable observation and ordinary returned report without changing any route or owner state."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

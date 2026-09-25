@@ -1,0 +1,29 @@
+{
+  "first": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 79,
+      "pending": true,
+      "requested_at": 1789944325.595403,
+      "reason": "Owner-suggestion f5d913c63d0e resolved; evidence .de67/task-logs/review-owner-f5d913c63d0e/report.md. Deliver refrozen FS S-HARNESS/H-ERGONOMICS: first ingest/resume returned R-HARNESS-EXECUTION-exploration-003 with preserved fixture repairs and current semantic-readiness correction; independently commission the exact-evidence repair when ownership permits. The full-stack owner outcome covers session/display, scenario premises, evidence/witness, continuation/build and varied native campaign proof, not merely the wait patch. Preserve 64 accepted records and all prior work/evidence ceilings. Read current marked WEC and concrete ledger assignments; Sol implements and validates, the mutator has changed specification/context only. One fresh coordinator; external supervisor alone launches. No inherited deadline or duplicate worker input; 50% savings and broader native reliability remain unproved.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "repeated": {
+    "created": false,
+    "coordinator_restart": {
+      "generation": 79,
+      "pending": true,
+      "requested_at": 1789944325.595403,
+      "reason": "Owner-suggestion f5d913c63d0e resolved; evidence .de67/task-logs/review-owner-f5d913c63d0e/report.md. Deliver refrozen FS S-HARNESS/H-ERGONOMICS: first ingest/resume returned R-HARNESS-EXECUTION-exploration-003 with preserved fixture repairs and current semantic-readiness correction; independently commission the exact-evidence repair when ownership permits. The full-stack owner outcome covers session/display, scenario premises, evidence/witness, continuation/build and varied native campaign proof, not merely the wait patch. Preserve 64 accepted records and all prior work/evidence ceilings. Read current marked WEC and concrete ledger assignments; Sol implements and validates, the mutator has changed specification/context only. One fresh coordinator; external supervisor alone launches. No inherited deadline or duplicate worker input; 50% savings and broader native reliability remain unproved.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "acceptance_and_tasks_preserved": true
+}

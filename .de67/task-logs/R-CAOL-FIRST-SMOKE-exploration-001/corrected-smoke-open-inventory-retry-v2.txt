@@ -1,0 +1,72 @@
+Inventory
+Highlighted: lighter [4227412]
+ALLOWED HERE ONLY
+select: confirm the supplied target; details: inspect it.
+Confirm highlighted item: Select → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter (unavailable)
+Cancel → play act inventory.cancel
+play act inventory.<action> --target <target> (copy the target exactly)
+Actions for every target below: details/select
+  3550887 — ++ military rucksack — also contents
+  4227377 — pemmican (fresh)
+  4227378 — pemmican (fresh)
+  4227379 — pemmican (fresh)
+  4227380 — pemmican (fresh)
+  4227381 — pemmican (fresh)
+  4227382 — pemmican (fresh)
+  4227383 — pemmican (fresh)
+  4227384 — pemmican (fresh)
+  4227385 — pemmican (fresh)
+  4227386 — pemmican (fresh)
+  4227387 — screwdriver
+  4227389 — pemmican (fresh)
+  4227390 — pemmican (fresh)
+  4227391 — pemmican (fresh)
+  4227392 — pemmican (fresh)
+  4227393 — pemmican (fresh)
+  4227394 — pemmican (fresh)
+  4227395 — pemmican (fresh)
+  4227396 — pemmican (fresh)
+  4227397 — pemmican (fresh)
+  4227398 — pemmican (fresh)
+  4227399 — screwdriver
+  4227402 — smartphone (UPS) (unbrowsed)
+  4227403 — one-dollar bill
+  4227405 — cash card
+  4227406 — quarter
+  4227407 — dime
+  4227408 — penny
+  4227409 — penny
+  4227410 — wallet > 6 currency — also contents
+  4227412 — lighter
+  4227414 — lighter
+  4227416 — lighter
+  4227418 — lighter
+  4227420 — lighter
+  4227422 — lighter
+  4227424 — lighter
+  4227426 — lighter
+  4227428 — lighter
+  4227430 — lighter
+  4227431 — pemmican (fresh)
+  4227432 — pemmican (fresh)
+  4227433 — pemmican (fresh)
+  4227434 — pemmican (fresh)
+  4227435 — pemmican (fresh)
+  4227437 — lighter
+  4227438 — pemmican (fresh)
+  4227439 — pemmican (fresh)
+  4227440 — pemmican (fresh)
+  4227441 — pemmican (fresh)
+  4227442 — pemmican (fresh)
+  4227443 — pemmican (fresh)
+  4227444 — pemmican (fresh)
+  4227445 — pemmican (fresh)
+  4227446 — pemmican (fresh)
+  7514 — ++ bra
+  7515 — ++ panties
+  7516 — ++ long-sleeved shirt
+  7517 — ++ socks (pair)
+  7518 — ++ jeans > 34 pemmican (fresh) / 49 items — also contents
+  7519 — ++ sneakers (pair)

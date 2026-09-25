@@ -1,0 +1,4 @@
+Really quit?
+ALLOWED HERE ONLY
+YES → play yes
+NO → play no

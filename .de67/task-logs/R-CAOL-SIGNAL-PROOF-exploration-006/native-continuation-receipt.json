@@ -1,0 +1,70 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "caol-native-signal-proof",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006-native-continuation",
+  "claim_id": "R-033",
+  "worker_id": "/root",
+  "disposition": "completed_with_inconclusive_native_claim",
+  "verdict": "inconclusive",
+  "outcome": "The final source-bound R033 native run observed the armed C4 through the production sound adapter at minute 8284, then observed the sound absent at minute 8285.  It produced neither a camp clue nor a returned report because the only structural pair was already returning_home and the scheduler reported no eligible observer or callback.  The run was mechanically-valid, sealed, and both owned processes exited.",
+  "native_run": {
+    "scenario_id": "r033.phase4_semantic_armed_sound_c4_rev4_mcw",
+    "run_id": "a1243574fda5be17991bfc880353ca2f01c1e80d8ec1bcb424a580fe8d15f968",
+    "binding_id": "d4b3bfbfcf9c4f2d7a5c13b7302b5a00b2f9135715838d3a1952227d763af58a",
+    "executable_sha256": "d6da9425abdedd7aeb7b10e207c71fcfab8e7592380f9d37c04d84989b756ab0",
+    "sound_before": {
+      "game_minutes": 8284,
+      "channel": "sound",
+      "origin": "significant_sound",
+      "observed": true,
+      "source_omt": "(136,51,0)",
+      "detail": "2000",
+      "evidence_sha256": "ac0f35be4b0ad8c93e69479dd044eb9fe2c8cd388b32dac65c0b6c317dc6fb6a"
+    },
+    "sound_after": {
+      "game_minutes": 8285,
+      "channel": "sound",
+      "origin": "significant_sound",
+      "observed": false,
+      "detail": "absent",
+      "evidence_sha256": "030f92a6cadc6c1103bd53d73141c8925f29f8572cfa950e2953119b46ef14ce"
+    },
+    "callback_divergence": {
+      "debug_log": ".userdata/dev-harness/config/debug.log",
+      "line": "13:27:05.958 INFO : bandit_live_world staffed_camp_signal_observation sites=1 eligible=0 callbacks=0 created=0 refreshed=0 unchanged=0",
+      "cause": "The structural pair was returning_home under an active external operation or unresolved reservation."
+    },
+    "save_reload": "not attempted; no camp-read/lead existed to persist",
+    "finish": {
+      "witness": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/r033-sound-expiry-ineligible-observer-witness.json",
+      "witness_semantic_sha256": "94a63bd9f4e70141c5946410545a72714e5a19f613a18cb8b4809f3dec7220c1",
+      "witness_file_sha256": "2a5d56dc6c29d6d38ee75e22ccb1d1ae86782498996d6aa5eb317629b0afa676",
+      "final_state": "finished",
+      "witness_validation": "mechanically_valid",
+      "game_pid_exit_verified": 28641,
+      "bridge_pid_exit_verified": 28587
+    }
+  },
+  "regression_evidence": {
+    "test_binary_sha256": "bcd2a169cb352ae790b46ec7567efd54ad8f3d8f75e069f15b84190ceb965b64",
+    "selectors": [
+      {"selector": "[physical_light]", "result": "pass", "test_cases": 29, "assertions": 2015},
+      {"selector": "[staggered_signals]", "result": "pass", "test_cases": 3, "assertions": 1835},
+      {"selector": "[phase4_sound_queue]", "result": "pass", "test_cases": 1, "assertions": 20},
+      {"selector": "[camp_signal]", "result": "pass", "test_cases": 9, "assertions": 634},
+      {"selector": "[phase4_signal_observation]", "result": "pass", "test_cases": 4, "assertions": 186},
+      {"selector": "[phase4_decoy_signal_control]", "result": "pass", "test_cases": 3, "assertions": 664},
+      {"selector": "[camp_map][origin]", "result": "pass", "test_cases": 3, "assertions": 57}
+    ],
+    "diff_check": "pass"
+  },
+  "performance": {
+    "status": "unassessed_not_comparable",
+    "reason": "The observed 59-turn one-minute window had no declared workload configuration, populated before/after baseline, or alarm threshold; it cannot support a performance boundary claim."
+  },
+  "preserved_prior_evidence": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-006/r033-drive500-success-witness.json",
+  "required_owner_follow_up": {
+    "owner": "HARNESS-FULL-STACK coordinator/mutator",
+    "reason": "The selected R033 fixture's source cadence occurs while its sole structural observer is ineligible.  A correction must create an eligible observer at the native source boundary and declare a genuine continuation before a camp-clue, returned-report, or age/reload claim can be tested.  This worker did not mutate the fixture, registry contract, or harness lifecycle."
+  }
+}

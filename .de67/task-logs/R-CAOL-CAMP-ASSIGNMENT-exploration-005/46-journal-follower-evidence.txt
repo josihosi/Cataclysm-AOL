@@ -1,0 +1,8 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-1001c4e1f63a4530a8ada5a33f9e2928
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0008: observation — npc_inspection
+  INDEX 7; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0027: observation — npc_inspection
+  INDEX 26; same PATH/FIELD as J0008.
+J0053: observation — npc_inspection
+  INDEX 52; same PATH/FIELD as J0008.

@@ -1,0 +1,239 @@
+{
+  "profile": "caol-bulk-item-cost-exploration-001",
+  "userdir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001",
+  "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+  "strategy": "autoload_world",
+  "reason": "explicit world requested",
+  "target_world": "BulkB4",
+  "existing_worlds": [
+    {
+      "name": "BulkA0",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkA0",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkA1",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkA1",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkB0",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB0",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkB1",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB1",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkB2",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB2",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkB3",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB3",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkB4",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB4",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkProbe1024",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkProbe1024",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkProbe1024b",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkProbe1024b",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkProbe1024c",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkProbe1024c",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkProbe1024d",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkProbe1024d",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "BulkProbe256",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkProbe256",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "La Mirada",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/La Mirada",
+      "has_save": true,
+      "save_files": [
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ],
+      "save_markers": [
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.cold.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+        "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.warm.zzip",
+        "#SGFycmlzIFNwaXZleQ==.sav.zzip"
+      ]
+    },
+    {
+      "name": "Westcreek",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/Westcreek",
+      "has_save": true,
+      "save_files": [
+        "#WmluYSBQYXRyaWNr.sav.zzip"
+      ],
+      "save_markers": [
+        "#WmluYSBQYXRyaWNr.mm1/#WmluYSBQYXRyaWNr.mm1.cold.zzip",
+        "#WmluYSBQYXRyaWNr.mm1/#WmluYSBQYXRyaWNr.mm1.hot.zzip",
+        "#WmluYSBQYXRyaWNr.mm1/#WmluYSBQYXRyaWNr.mm1.warm.zzip",
+        "#WmluYSBQYXRyaWNr.sav.zzip"
+      ]
+    }
+  ],
+  "fixture": "",
+  "run_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_194447_4f17476224a14f00922b6a877ae7913c",
+  "harness_new_world": "",
+  "harness_raw_seed": "",
+  "harness_new_world_scenario": "",
+  "harness_bandit_feasibility": false,
+  "config_profile": "caol-bulk-item-cost-exploration-001",
+  "startup_config": {
+    "play_now_default_sequence": [
+      "n",
+      "d"
+    ],
+    "debug_popup_ignore_text": "i",
+    "initial_wait_seconds": 2.5,
+    "post_input_wait_seconds": 1.0,
+    "poll_seconds": 2.0,
+    "timeout_seconds": 90.0,
+    "harness_new_world_timeout_seconds": 180.0,
+    "semantic_startup_timeout_seconds": 360.0,
+    "max_popup_dismissals": 6,
+    "post_lastworld_wait_seconds": 8.0,
+    "post_lastworld_continue_keys": [
+      "return"
+    ]
+  },
+  "profile_option_overrides": {},
+  "dry_run_contract": {
+    "profile_snapshot_install": "not_run_dry_run",
+    "fixture_install": "not_run_dry_run",
+    "launch": "not_run_dry_run",
+    "feature_proof": false,
+    "evidence_class": "plan-only"
+  }
+}

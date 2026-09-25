@@ -1,0 +1,78 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-002",
+  "claim_id": "R-CAOL-SIGNAL-PROOF",
+  "worker_id": "01a0bfe0-e862-75c2-b4f8-7644d31d6e35",
+  "disposition": "finding",
+  "finding_kind": "unexpected",
+  "verdict": "native_sound_retention_defect_repaired_but_validation_incomplete",
+  "outcome": "Fresh native runs proved a significant C-4 sound is physically emitted and observed by the sound adapter but is consumed before the later structural dispatch cadence when the outing owner is local. A narrow persistence repair is source-bound and compiles, but its focused test fixture is not yet in the required observing phase, so native rerun and whole-claim acceptance remain open.",
+  "summary": "The worker repaired an incomplete zero-credit fixture, preserved pre-repair noncredit failures, and ran current-source native evidence through the post-scan boundary. Run a2be87c5… showed the m10081 sound adapter observation followed by an absent m10085 scan, no dispatch candidate, and an unchanged observing outing. Source inspection found the non-overmap consumer drains the event while the abstract-only recorder rejects the local owner. The repair records typed local structural sound observations without advancing or dispatching. Tiles build and source binding pass; focused headless tests expose a test-fixture phase error before exercising the recorder.",
+  "material_changes": [
+    "Repaired the phase-4 fixture so its zero-credit armed source and player save are complete and loaded.",
+    "Added local structural sound observation persistence through the existing active-outing typed observation owner, without immediate advance or dispatch.",
+    "Added positive persistence/replay/invariant and negative off-route test cases; their helper still requires correction to establish a genuine observing handoff."
+  ],
+  "tests": [
+    "Normal tiles build and source-bound macOS build linked successfully; source SHA-256 801afce5f751412345f0e704e437c4d3345ec81488ee5bb7db0385ecdc3132f5 and executable SHA-256 d4d0544f2c76621fa389d84a2f10436d91adb8064e714bf6fb2c979417ee7151.",
+    "Modified source and test translation units compile with project C++17 flags; focused git diff check passes.",
+    "Isolated headless focused filter ran 49 assertions: 46 passed and 3 failed because the helper phase is outbound rather than observing, so callbacks were not invoked. No passing behavior-test claim is made.",
+    "Tiles test runner exits 139 before test bodies even for --list-tests after SDL setup; it is not counted as product evidence."
+  ],
+  "live_actions": [
+    "Preserved pre-repair absent-player-save and unloaded-source launches as noncredit fixture divergences.",
+    "Run 27eab3… proved repaired physical C-4 emission at m10082 but stopped before the next scan and is inconclusive.",
+    "Run a2be87c5329aa24fa524b6362313c340db9f02639acabb2991db4446ba13ab7e proved sound adapter observation at m10081, absence at the fresh m10085 scan, no structural dispatch candidate, and unchanged observing outing.",
+    "Every owned game, bridge, build, and test process was reconciled; no fresh native run was launched after the incomplete focused tests."
+  ],
+  "evidence_ceiling": [
+    "The native evidence proves the pre-repair local-owner retention defect, not the repaired behavior.",
+    "Compilation and source binding prove buildability only; the repaired recorder still lacks a passing focused behavior test and fresh native rerun.",
+    "Recipient return, save/reload, stationary-signal memory controls, scout-return provenance, and whole-claim performance remain open."
+  ],
+  "bindings": {
+    "dispatch_digest": "65dc4482f6b170520375f8cd8be1f068fe5ff7c3c9be57e0ed8ae7be644a7733",
+    "worker_id": "01a0bfe0-e862-75c2-b4f8-7644d31d6e35",
+    "postscan_run_id": "a2be87c5329aa24fa524b6362313c340db9f02639acabb2991db4446ba13ab7e",
+    "source_sha256": "801afce5f751412345f0e704e437c4d3345ec81488ee5bb7db0385ecdc3132f5",
+    "executable_sha256": "d4d0544f2c76621fa389d84a2f10436d91adb8064e714bf6fb2c979417ee7151"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r033-autonomous-sound-return-postscan-contradicted-witness.json",
+      "sha256": "72b7b2664b8da5b63dbb3661ba35633ff80d5b87e736705f59cc50ebc5f822d9",
+      "role": "current-source native post-scan defect witness"
+    },
+    {
+      "path": ".de67/task-logs/r033-autonomous-sound-return-retry-inconclusive-witness.json",
+      "sha256": "478fee5cd25ba1d726945082ac33d327a3bf66bd44ce63551d58d4de43e01fb5",
+      "role": "repaired physical-source emission and pre-scan boundary witness"
+    }
+  ],
+  "first_divergence": {
+    "class": "local_structural_sound_consumed_before_persistent_delivery",
+    "summary": "The non-overmap sound consumer observes and drains the significant event, while the abstract-only structural recorder rejects the active local outing owner, leaving the later cadence with no persistent observation."
+  },
+  "accepted_no_replay": [
+    "Preserve the post-scan native defect run and fixture divergences; do not replay them merely to reestablish the diagnosed loss path."
+  ],
+  "active_work": [
+    "Correct make_structural_local_sound_test_world to establish a genuine local observing handoff, rerun the focused positive and negative tests, rebuild/rebind, and rerun the native sound route through decision, return, save/reload, and cleanup.",
+    "Complete stationary signal recipient/memory controls and matching scout-return/report provenance with comparable performance evidence."
+  ],
+  "first_open_boundary": "Fix only the focused test helper's observing handoff, require the local sound persistence cases to pass, then run the already-built repair through a fresh source-bound native post-scan journey.",
+  "narrow_queries": [
+    "hostile_camp_local_structural_sound",
+    "record_local_structural_signal_observations",
+    "a2be87c5329aa24fa524b6362313c340db9f02639acabb2991db4446ba13ab7e"
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp",
+    "src/bandit_live_world.h",
+    "src/do_turn.cpp",
+    "tests/bandit_live_world_test.cpp"
+  ],
+  "context_metrics": {}
+}

@@ -1,0 +1,11 @@
+DIALOGUE
+history: R032 Establishment Ally 1
+"I'm working at the camp."
+prompt: "I'm working at the camp."
+ALLOWED HERE ONLY
+Goodbye → play act dialogue.cancel
+play act dialogue.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  dialogue-response-53 — I need you to come with me.
+  dialogue-response-54 — Let's talk.
+  dialogue-response-55 — See ya.

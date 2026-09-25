@@ -1,0 +1,85 @@
+{
+  "manifest_version": 1,
+  "name": "windows.dispatch_crash_fixed_wait_20260924",
+  "description": "Disposable copy of Josef's TestSetup00 just before the ordinary camp dispatch that crashed in the original Windows executable. Native waits in the patched source-bound Windows build must pass dispatch and the subsequent structural observer sight/optic check without item loss or process failure.",
+  "profile": "windows-dispatch-crash-bound-20260924",
+  "world": "TestSetup00",
+  "profile_option_overrides": {
+    "LLM_INTENT_PYTHON": "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe"
+  },
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.windows.dispatch_crash": "ordinary_wait_through_dispatch_and_subsequent_structural_observation"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["direct-save-edit-after-copy", "debug:inject_dispatch", "debug:inject_observation", "debug:spawn", "direct-state-mutation", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["windows"],
+    "profile": "windows-dispatch-crash-bound-20260924",
+    "fixture": "",
+    "requirements": {
+      "os": "windows",
+      "source": "current-worktree",
+      "executable": "build/windows-dispatch-crash-bound-20260924/cataclysm-tiles.exe",
+      "profile": "windows-dispatch-crash-bound-20260924",
+      "fixture": "",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["advertised native cockpit actions"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "settle_disposable_testsetup00",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the copied TestSetup00 reaches its original pre-dispatch gameplay state in the patched native Windows process"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "wait_through_native_dispatch_and_observation",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Read current game time and the copied camp/site footing. Use only ordinary native wait and advertised actions until the scheduler applies the camp dispatch and the subsequent structural observer sight/optic path has an opportunity to run. Bind site, activity, observer/escort IDs, item or gunmod identity when available, and distinct dispatch/observation times. Record whether the process remains healthy with item contents, perception and dispatch intact. If no dispatch or observation occurs, preserve the first missing eligibility or time premise and exact elapsed native time. Save and quit through the native route, then verify OS exit for every owned process.",
+      "proof_targets": [
+        "source, executable, world, profile and process-birth binding",
+        "ordinary player wait receipts and advancing game time",
+        "one actual applied camp dispatch with site, job and actor roles",
+        "subsequent structural observer sight/optic or nearest exact observation evidence",
+        "healthy native process and conserved gun/mod contents if observable",
+        "native save/quit and verified OS process exit"
+      ],
+      "authority": ["advertised native actions", "game.act", "game.wait", "run.witness", "run.finish"],
+      "invariants": [
+        "the copied owner world is setup footing only",
+        "no injected dispatch, observation, actor, item, route, or shortened timer",
+        "the original owner profile, save, executable and dump remain unchanged",
+        "a wait that never reaches observation is inconclusive for the crash fix"
+      ],
+      "live_operations": ["game.act", "game.wait"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "recommended_test_command": "python tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '{\"requirements\":[],\"preferences\":[]}'",
+  "evidence_contract": {
+    "claim": "The one-vector gunmods iterator repair survives Josef's copied TestSetup00 ordinary Windows camp dispatch and a later implicated structural observation in one source-bound native process.",
+    "load_only_verdict": "world-load footing only; inconclusive for the dispatch crash",
+    "failure_rule": "A Mac-only regression, ordinary wait without dispatch, dispatch without a later optic observation opportunity, or a different binary/world does not prove the native crash fixed."
+  },
+  "proof_route": {
+    "precondition": ["settle_disposable_testsetup00"],
+    "production_behavior": ["wait_through_native_dispatch_and_observation"],
+    "terminal_persistence": ["wait_through_native_dispatch_and_observation"],
+    "artifact_verdict": ["wait_through_native_dispatch_and_observation"],
+    "disallowed_shortcuts": ["settle_disposable_testsetup00"]
+  }
+}

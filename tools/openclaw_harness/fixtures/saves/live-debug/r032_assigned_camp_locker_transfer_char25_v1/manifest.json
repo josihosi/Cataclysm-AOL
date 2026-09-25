@@ -1,0 +1,22 @@
+{
+  "name": "r032_assigned_camp_locker_transfer_char25_v1",
+  "description": "Zero-credit disposable copy of the natively saved R032 Assignment Camp world. It preserves assigned follower character:25 at camp OMT [162,36,0] and places attributable Locker candidates on four separate, natively observed forest-floor map tiles in the same camp OMT: helmet north at [3900,875,0], Glock southeast at [3901,877,0], magazines west at [3899,876,0], and 9mm at the saved player tile [3900,876,0]. It does not create zones or modify any NPC inventory; the live run must establish/observe native Locker and Storage zones and observe the resulting equipment transfer.",
+  "source_artifact": ".userdata/r032-camp-assignment-exp004-20260924/save/McWilliams",
+  "source_witness": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/final-witness.json",
+  "source_hashes": {
+    "master.gsav": "83ffd198f251983c9477c07b0a768d1f25145c7c53cbf6fa7da398b61846538d",
+    "#Wm9yYWlkYSBWaWNr.sav.zzip": "42e73069f71756ecb9d47815da318ce561b9e26ee2f1c8b1d45c685e7f72b178"
+  },
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {"typeid": "helmet_army", "count": 1, "offset_ms": [0, -1, 0]},
+        {"typeid": "glock_19", "count": 1, "offset_ms": [1, 1, 0]},
+        {"typeid": "glockmag", "count": 3, "offset_ms": [-1, 0, 0]},
+        {"typeid": "9mm", "count": 1, "charges": 30, "offset_ms": [0, 0, 0]}
+      ]
+    }
+  ]
+}

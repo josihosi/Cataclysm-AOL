@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_game_minutes": 8053,
+    "bound": {
+      "basis": "game_mechanic",
+      "source": "six-hour native wait option from the observed 8047-minute frame",
+      "unit": "game_minutes",
+      "maximum": 6,
+      "progress_required": true
+    },
+    "recipe": ["wait.6h"],
+    "danger_handling": "stop_on_interruption"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-002",
+  "claim_id": "R-CAOL-WINDOWS-DISPATCH-CRASH",
+  "worker_id": "01a0d4ff-72d1-7563-9400-f4ce72ca7df2",
+  "disposition": "completed",
+  "verdict": "source_bound_mac_crash_repair_proof_reconciled",
+  "outcome": "Independent review found that the retained crash diagnosis, production regression and natural Mac dispatch and observation satisfy the current crash outcome at its stated scope.",
+  "summary": "The original Windows dump and source identify an invalid iterator range across two temporary gunmod lists. The repaired predicate uses one list. The production regression crashed before and passed after the repair with gunmods preserved. A copied pre-crash world naturally dispatched on Mac, returned from four later sight checks, saved and quit. Earlier Mac attempts used different world and build states. The exact crashing NPC and gun remain unidentified, and no Windows live pass is claimed.",
+  "material_changes": ["The coordinator recorded the latest Phase 3 restart in the marked owner contract and ledger. This worker made no product or test edits."],
+  "tests": ["Read-only review of retained failing-before and passing-after production test logs: before SIGSEGV; after 14 assertions; adjacent sight test 31 assertions.", "Coordinator inspected the current optic source diff and regression caller."],
+  "live_actions": ["No new live game or GUI action. Retained Mac run 220727e9d0d84ae49dc964416cd2d109 saved and quit; its game PID 86138 and cockpit PID 86362 were previously verified exited. Current process check found no cataclysm or cockpit process."],
+  "evidence_ceiling": ["Native Mac logs show the sight function returned four times after natural dispatch; they do not alone show which NPC or gun entered the gunmod predicate.", "The focused production regression exercises that predicate and preserves the test items. It is complementary evidence, not a native inventory equality trace.", "No Windows live retest occurred after the owner redirected the crash proof to Mac."],
+  "bindings": {"previous_receipt": "9ff65f472052342c2f8210d952e50acc07858c4dc9b4c8d720f8265ad3f45acf", "previous_report": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md", "native_run_id": "220727e9d0d84ae49dc964416cd2d109"},
+  "journal_entries": [],
+  "artifacts": [{"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/report.md", "sha256": "405fbb87a503a9e1122c28997bb6083da7cf86c3005ca2bc5e278027a8933075", "role": "Original causal and Mac native evidence report"}, {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-before-test.log", "sha256": "6e0ceab91aa10c91f03f4aa223831183a97ebad7dc365630aa18801134678803", "role": "Failing before repair production regression"}, {"path": ".de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/mac-after-test-final.log", "sha256": "c473edb2be56090610848ed4b289f61d4b3b5ce24ed30e69ec5b06a7243e08df", "role": "Passing after repair production regression"}],
+  "accepted_no_replay": ["Preserve original Windows crash evidence and the accepted Mac natural dispatch and sight run at their measured scope.", "Do not demand a Windows replay for this crash claim under the current FS and owner host correction."],
+  "active_work": [],
+  "first_open_boundary": "Coordinator formal closure and claim acceptance; no additional crash proof is needed at the current FS scope.",
+  "narrow_queries": ["Compare the current FS crash slice with the previous receipt and original report.", "Inspect only the optic source diff, focused regression logs and native structural sight entries if a new contradiction arises."],
+  "entrypoints": ["src/do_turn.cpp", "tests/bandit_live_world_test.cpp", ".de67/FS.md"]
+}

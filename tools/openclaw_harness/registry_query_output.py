@@ -4,6 +4,71 @@ from __future__ import annotations
 from typing import Any, Mapping, Sequence
 import json
 from pathlib import Path
+import shlex
+
+
+def plain_registry_output(value: Mapping[str, Any]) -> str | None:
+    """Present selection decisions without changing their authority or payload."""
+    result = value.get("result", {})
+    if not isinstance(result, Mapping):
+        result = {}
+    if value.get("ok") is False:
+        reason = value.get("error") or result.get("reason") or "request rejected"
+        lines = ["Cannot proceed: " + str(reason)]
+        readiness = value.get("source_executable_readiness", {})
+        build = readiness.get("build_entrypoint") or {}
+        if build.get("argv"):
+            lines.append("Build: " + shlex.join(build["argv"]))
+        if value.get("cleanup"):
+            lines.append("Cleanup: " + str(value["cleanup"]))
+        return "\n".join(lines)
+    if value.get("session_dir"):
+        session = shlex.quote(str(value["session_dir"]))
+        return ("Starting playtest.\n"
+                "export CAOL_PLAY_SESSION=" + session + "\n"
+                "python3 tools/openclaw_harness/play_cli.py look")
+    if value.get("command") in {"registry-status", "runtime-status"} and result.get("result_summary"):
+        summary = result["result_summary"]
+        if "entry_count" in summary:
+            return f"Registry: {summary['entry_count']} scenarios."
+        lines = ["Runtime: " + str(summary.get("status", "unknown"))]
+        if summary.get("status") != "ready" and (summary.get("build_entrypoint") or {}).get("argv"):
+            lines.append("Build: " + shlex.join(summary["build_entrypoint"]["argv"]))
+        return "\n".join(lines)
+    if value.get("command") == "registry-query":
+        candidates = result.get("candidates", [])
+        lines = []
+        for candidate in candidates:
+            name = candidate.get("name") or candidate.get("source_path") or candidate["scenario_id"]
+            selected = candidate.get("scenario_id") == result.get("selected_scenario_id")
+            lines.append(("Selected: " if selected else "Candidate: ") + str(name))
+        if not candidates:
+            lines.append("No matching scenario.")
+            # Repeated candidate counts and unknown facts do not change the decision.
+            causes = result.get("rejections", {}).get("causes", [])
+            for cause in causes:
+                detail = (str(cause.get("key", "requirement")) + ": "
+                          + str(cause.get("reason", "not met")).replace("_", " ")
+                          + " (requires " + str(cause.get("expected", "")) + ")")
+                if detail not in lines:
+                    lines.append(detail)
+        action = result.get("next_action") or {}
+        command = action.get("command") or {}
+        if command.get("argv"):
+            lines.append("Launch: " + shlex.join(command["argv"]))
+        elif action.get("action"):
+            lines.append(str(action["action"]))
+        readiness = result.get("source_executable_readiness", {})
+        if readiness.get("status") not in (None, "ready"):
+            lines.append("Runtime: " + str(readiness.get("reason", readiness["status"])).replace("_", " "))
+            build = readiness.get("build_entrypoint") or {}
+            if build.get("argv"):
+                lines.append("Build: " + shlex.join(build["argv"]))
+        page = result.get("page", {})
+        if page.get("next"):
+            lines.append("More candidates: " + shlex.join(page["next"]))
+        return "\n".join(lines)
+    return None
 
 
 def _staffed_camp_signal_leads_observation(steps: Sequence[Mapping[str, Any]]) -> dict | None:

@@ -1,0 +1,43 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In the bound native R033 C4 session, the production sound adapter observed the armed charge at minute 8284 and did not observe it after the native one-minute wait at 8285.  The camp did not consume the sound because its only structural observer was ineligible due to an active external operation, so this run does not establish a camp clue, returned report, or save/reload persistence.",
+  "causal_account": "The initial World observation retained the active C4 source and the native production channel recorded a significant sound.  The accepted ordinary native wait reached the next minute, where the source was absent and the sound channel reported absent.  The production scheduler facts identify the observer rejection as an active external operation or unresolved reservation; the run-bound debug record consequently reports zero eligible observers and zero callbacks.  That prevents a causal camp-read or report-provenance claim.  No debug intervention, direct state mutation, fixture reinstall, or replay was used.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "Initial native World observation at minute 8284, with no debug intervention, before the wait chain.",
+      "checks": {
+        "value.game_minutes": 8284,
+        "value.surface.facts.last_debug_intervention": "none_this_run"
+      }
+    },
+    {
+      "citation_id": "J0008",
+      "meaning": "The accepted native wait produced the minute-8285 World observation and retained the isolated production-channel scan series for the bound run.",
+      "checks": {
+        "value.game_minutes": 8285,
+        "value.latest_receipt.action_id": "wait.1m",
+        "value.latest_receipt.accepted": true,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.latest_game_minutes": 8285
+      }
+    },
+    {
+      "citation_id": "J0009",
+      "meaning": "Terminal boundary preserves the stated stop reason and releases unused authority.",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The source scan changed from observed significant_sound at minute 8284 to absent at minute 8285 before a qualified camp observer could read it.",
+    "The run-bound staffed-camp diagnostic reported eligible=0 and callbacks=0 because the structural pair was returning_home under an active external operation; no camp clue or returned report was produced."
+  ],
+  "remaining_unknowns": [
+    "Whether a fixture whose observer is eligible at the source cadence creates the camp clue with the intended original-sound provenance.",
+    "Whether that resulting clue ages across a declared save/reload continuation without changing origin or report provenance."
+  ],
+  "evidence_ceiling": "focused"
+}

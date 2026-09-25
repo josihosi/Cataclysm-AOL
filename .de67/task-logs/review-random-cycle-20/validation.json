@@ -1,0 +1,11 @@
+{
+  "random_guard_changed": [],
+  "active_claims": 12,
+  "state_preserved": {
+    "tasks": true,
+    "claim_acceptances": true,
+    "worker_claims": true,
+    "closure_gaps": true
+  },
+  "acceptances": 70
+}

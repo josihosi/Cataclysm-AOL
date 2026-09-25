@@ -1,0 +1,31 @@
+{
+  "name": "r032_camp_pay_stock_v001_mcw",
+  "source_fixture": "r032_camp_defense_from_locker_v1",
+  "source_profile": "live-debug",
+  "description": "Zero-credit payment-stock setup derived from the accepted, natively saved R032 Locker world. Keeps camp [162,36,0], character:25 and the original nearby CAMP_STORAGE. Adds only ten real RobofacCoin items and a one-tile follower-owned CAMP_STORAGE spill zone 31 map squares east of the saved player. No bandit lead, outing, contact, cooldown, player-pocket or actor state is injected.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "RobofacCoin",
+          "count": 10,
+          "owner": "your_followers",
+          "offset_ms": [31, 0, 0]
+        }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "R032 Pay Stock Spillover",
+      "zone_type": "CAMP_STORAGE",
+      "faction": "your_followers",
+      "start_offset_ms": [31, 0, 0],
+      "end_offset_ms": [31, 0, 0],
+      "write_temp": true,
+      "write_global": true
+    }
+  ]
+}

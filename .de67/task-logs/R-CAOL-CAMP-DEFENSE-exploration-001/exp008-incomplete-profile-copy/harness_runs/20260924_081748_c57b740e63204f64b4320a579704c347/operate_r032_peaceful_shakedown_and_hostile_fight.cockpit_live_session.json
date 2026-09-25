@@ -1,0 +1,99 @@
+{
+  "schema": "caol-cockpit-live-session-v1",
+  "entry_mode": "cockpit_live_session",
+  "bootstrap_only": false,
+  "run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+  "binding_id": "f36083e53b5548db13980b7400e5f9cddca39fadcd4b33c25b30e8f0d4f4b314",
+  "bridge_binding_id": "f36083e53b5548db13980b7400e5f9cddca39fadcd4b33c25b30e8f0d4f4b314",
+  "step_label": "operate_r032_peaceful_shakedown_and_hostile_fight",
+  "step_index": 2,
+  "gameplay_credit": false,
+  "objective": "From the saved R032 Locker footing, natively verify camp and character:25, set all other job priorities to zero and patrol to 9 before creating the CAMP_PATROL zone, then observe the fresh guard plan and actual movement. Disclose the fixture-only CAMP_STORAGE coin tile, allow ordinary time until the existing staffed bandit camp creates a natural local shakedown, preserve the peaceful Pay/Fight demand via native save, and later use a separate fresh source run for the hostile Fight branch. Do not inject or edit bandit state.",
+  "proof_targets": [
+    "same R032 Assignment Camp [162,36,0], character:25/CAMP_RESIDENT and accepted Locker loadout",
+    "fresh patrol plan created after native UI sets patrol-only priority 9 before native creation of CAMP_PATROL, exact actor roster/order and actual guard movement before contact",
+    "source-bound ten RobofacCoin stock and CAMP_STORAGE zone at [3931,876,0] as setup only",
+    "same-run natural site/activity/member identity, live Pay/Fight demand and game time",
+    "peaceful demand saved natively before payment, preserving exact actor/site/outing state for the separate payment handoff",
+    "separate natural Fight branch with meaningful guard and bandit movement, attacks, damage, ammunition or casualty evidence",
+    "native save/reload continuity for assigned actor, loadout and patrol service",
+    "verified exit of every game, broker and runner generation owned by this run"
+  ],
+  "authority": [
+    "currently advertised native semantic actions",
+    "game.act",
+    "game.wait",
+    "run.witness",
+    "run.finish"
+  ],
+  "invariants": [
+    "coin and CAMP_STORAGE transforms are zero-credit setup",
+    "no direct state/save/actor/item mutation after startup",
+    "no injected bandit lead, dispatch, outing, operation, contact or shortened cooldown",
+    "the saved peaceful demand is handed to payment worker only after its native save and verified process exit",
+    "do not touch coordinator-owned R-029 PID 90668",
+    "preserve native journals, full transcript, exact source/executable and all PID/birth identities",
+    "set patrol-only job priority before creating or querying the CAMP_PATROL zone on the fresh profile, so the first cached shift plan reflects final eligibility and duty"
+  ],
+  "live_operations": [
+    "game.act",
+    "game.wait"
+  ],
+  "operations": [
+    "game.observe",
+    "game.look",
+    "run.continue",
+    "game.act",
+    "run.controlled_binding_drift",
+    "run.status",
+    "game.act",
+    "game.wait",
+    "run.witness",
+    "run.finish"
+  ],
+  "witness": {
+    "action": "WITNESS / FINISH",
+    "charter": {
+      "schema": "caol-playtest-witness-charter-v1",
+      "claim": "On current source, the same accepted R032 Locker-equipped camp guard can serve real CAMP_PATROL through a natural peaceful bandit shakedown and a substantive hostile Fight branch.",
+      "material_proof": "Cite the same R032 camp [162,36,0], character:25/CAMP_RESIDENT and Locker loadout. On the new profile, natively set all unrelated camp job priorities to 0 and patrol to 9 before creating the zone; then establish the current plan, order and actual guard movement. Cite fixture stock as setup only. For the peaceful branch, record a natural same-run site/activity/member Pay/Fight demand, then natively save the unresolved demand and its exact world/time/actor identity for payment continuation. For the hostile branch, use the same saved R032 footing in a separate run, naturally reach the equivalent demand, select Fight and cite guard and bandit movement, attacks and actual damage, ammunition or casualties. Preserve the accepted zombie alarm/patrol/reload evidence at its own scope.",
+      "current_uncertainty": "The v002 native run repeatedly rejected local-pair handoff because its schema-11 eligibility receipt copied cohesion_assembled=true; v003 binds the minimal source correction. In v003, a native plan showed character:25 active but not_assigned after zone and priority changes were made in that order. v004 changes the sequence on a fresh profile: set patrol-only priorities before creating or querying the zone, so the first cached plan is built from final eligibility. Natural outing/contact and both branches remain unobserved.",
+      "material_contradiction": [
+        "camp, assigned follower or equipment differs from accepted R032 Locker footing",
+        "patrol order or guard movement is declared or scripted rather than natively observed",
+        "bandit contact or shakedown is injected, stale or lacks site/activity/member binding",
+        "peaceful branch lacks a real native Pay/Fight surface or does not preserve a useful pre-choice save",
+        "hostile branch lacks meaningful movement/attacks/damage, or any kill is scripted",
+        "save/reload loses camp assignment, loadout or patrol service",
+        "source/executable drift or owned process/bridge cleanup is unresolved"
+      ],
+      "already_accepted_evidence": [
+        "R032 camp assignment and Locker transfer/reload remain accepted at their original scopes.",
+        "The separate v003 native zombie/patrol run proved alarm, guard kill and post-reload patrol service at its original scope."
+      ],
+      "forbidden_shortcuts": [
+        "crediting fixture copy, stock, registry selection or startup as gameplay behavior",
+        "direct state/save/inventory/zone mutation after startup",
+        "injected bandit lead, dispatch, outing, operation, contact or shortened cooldown",
+        "physical keys, guessed controls, OCR, coordinates or callback injection",
+        "touching coordinator-owned R-029 PID 90668"
+      ],
+      "honest_stop_conditions": [
+        "retain the first scheduler, contact, actor-order, branch or combat divergence with exact game time and source evidence",
+        "save the live peaceful demand and hand its exact binding to the coordinator before any payment worker launch",
+        "seal only the evidence actually observed and reconcile all owned process and broker identities"
+      ],
+      "requested_evidence_ceiling": "focused",
+      "charter_id": "5928b10f15e65868716edb15e8e58d5e383253b73324c14b7e6498271fd447ed"
+    },
+    "sequence": "observe, choose, act, repair or rerun when needed, run.witness, run.finish",
+    "instruction": "Report the smallest supported conclusion for each affected claim. A single statement remains valid; use a caol-playtest-witness-bundle-v1 when one run has independent claim outcomes or a routed defect. Preserve inconvenient evidence without discarding unaffected observations, and stop requesting proof once the charter is honestly settled."
+  },
+  "bound_bases": [
+    "game_mechanic",
+    "measured_rate",
+    "path_progress",
+    "scheduler_boundary"
+  ],
+  "termination": "run.witness then run.finish to conclude the evidence, or run.quit to end without a claim. Action failures, binding drift, missing receipts, no progress, and client disconnects stop only the current operation and leave the game running."
+}

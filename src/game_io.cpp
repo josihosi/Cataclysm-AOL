@@ -382,12 +382,15 @@ bool game::load( const std::string &world )
 bool game::load( const save_t &name )
 {
     map &here = get_map();
+    last_save_result_ = "unattempted";
+    last_confirmed_save_turn_.reset();
 
     const cata_path worldpath = PATH_INFO::world_base_save_path();
     const cata_path save_file_path = PATH_INFO::world_base_save_path() /
                                      ( name.base_path() + SAVE_EXTENSION );
 
     bool abort = false;
+    std::optional<int> loaded_character_turn;
 
     using named_entry = std::pair<std::string, std::function<void()>>;
     const std::vector<named_entry> entries = {{
@@ -424,6 +427,9 @@ bool game::load( const save_t &name )
                         [this, &save_file_path]( std::istream & is ) {
                             unserialize( is, save_file_path );
                         } );
+                    }
+                    if( !abort ) {
+                        loaded_character_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
                     }
                 }
             },
@@ -569,6 +575,9 @@ bool game::load( const save_t &name )
     }
 
     loading_ui::done();
+    // The character save just loaded supplies the last turn known to be on disk.
+    // Later simulation can advance without another counted player action.
+    last_confirmed_save_turn_ = loaded_character_turn;
     return true;
 }
 
@@ -806,6 +815,10 @@ bool game::save()
         popup( _( "The game is in an unsupported state after using debug tools and cannot be saved." ) );
         return false;
     }
+    // Saving writes several files.  Until all succeed, an earlier confirmed
+    // turn cannot safely describe the possibly partial state left on disk.
+    last_confirmed_save_turn_.reset();
+    last_save_result_ = "in_progress";
     std::chrono::seconds time_since_load =
         std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - time_of_last_load );
@@ -889,10 +902,15 @@ bool game::save()
             EM_ASM( window.game_unsaved = false; );
 #endif
         last_save_result_ = "saved";
+        last_confirmed_save_turn_ = to_turns<int>( calendar::turn - calendar::turn_zero );
         return true;
     } catch( std::ios::failure & ) {
         last_save_result_ = "failed_io_exception";
         popup( _( "Failed to save game data" ) );
+        return false;
+    } catch( const std::exception &err ) {
+        last_save_result_ = "failed_exception";
+        popup( _( "Failed to save game data: %s" ), err.what() );
         return false;
     }
 }
@@ -900,6 +918,11 @@ bool game::save()
 const std::string &game::last_save_result() const
 {
     return last_save_result_;
+}
+
+const std::optional<int> &game::last_confirmed_save_turn() const
+{
+    return last_confirmed_save_turn_;
 }
 
 std::vector<std::string> game::list_active_saves()
@@ -1024,7 +1047,8 @@ bool game::quicksave()
     //Don't autosave if the player hasn't done anything since the last autosave/quicksave,
     // except for the sealed R-027 cleanup.  Its sole purpose is to persist
     // the just-removed effect without adding an otherwise unrelated turn.
-    if( !moves_since_last_save && !world_generator->active_world->world_saves.empty() &&
+    if( !moves_since_last_save && last_confirmed_save_turn_ &&
+        !world_generator->active_world->world_saves.empty() &&
         !r027_onfire_cleanup ) {
         last_save_result_ = "not_needed";
         return true;

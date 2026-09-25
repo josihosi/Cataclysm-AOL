@@ -1,0 +1,159 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-CAOL-CAMP-LOCKER",
+  "task_id": "R-CAOL-CAMP-LOCKER-closure-native-transfer-conservation-001",
+  "worker_id": "01a0d0e7-f66e-7580-bdc2-71e705078460",
+  "disposition": "completed",
+  "verdict": "native_transfer_conservation_gap_satisfied",
+  "outcome": "The original native journals and bound fixture independently support the one R032 Locker transfer, item conservation and post-reload persistence outcome.",
+  "summary": "Read-only review of the original first-generation and reentry journals confirms assigned character:25 acquired the Locker helmet and Glock through ordinary service, held two 15-round JHP magazines, left one magazine and displaced gear on the Locker tile, and retained the assignment/loadout after native save, exit and reload. The bound fixture declares 30 source ammo charges; the native pre-service menu did not print that count. A probe report wrapper binding and native_exit_credit field conflict with direct journal identity/action evidence and remain an artifact inconsistency, not a gameplay replay requirement.",
+  "bindings": {
+    "worker_assignment_id": "328dda1d66624edc9c5804a74eafe6fe",
+    "worker_result": ".de67/state/worker-library/results/328dda1d66624edc9c5804a74eafe6fe/5051f29e8c658f84552f8343a7e0b275fe2099b7c93b9b10323882399a354070.md",
+    "run_id": "c844ce63f33522f02770d171c8845552a6ea73321af8fa7a4a779955f733ecc8",
+    "binding_id": "61ae10407b0140a99fff8ae75505d5ccb013a9b52f4f92013fabd28f1553166e",
+    "scenario": "r032.assigned_camp_locker_transfer_char25_v001_mcw",
+    "source_identity": "a85dc40886d1573ba299523df373798f1a017d11d0575001369e4e6a3a766ef1",
+    "executable_sha256": "8d5f5dc9935f1aad0cd7cdd23454fd7e9ee9495abaaed9d4d856c388b49d89e1",
+    "isolated_profile": "r032-camp-locker-transfer-exp005-20260924",
+    "first_pid": "48168",
+    "reentry_pid": "50750"
+  },
+  "first_divergence": {
+    "class": "probe_wrapper_identity_and_credit_inconsistency",
+    "summary": "probe.report.json top-level binding_id equals the executable digest and cleanup.native_exit_credit is false, while original DB metadata, both J0001 identities, native save/quit receipts and process exits bind the actual run and game generations."
+  },
+  "material_changes": [
+    "No repository or runtime changes in this closure task."
+  ],
+  "journal_entries": [
+    {
+      "id": "J0007",
+      "sequence": 7,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "First-generation actor character:25 was assigned CAMP_RESIDENT with initial rebar and wearables."
+    },
+    {
+      "id": "J0043",
+      "sequence": 43,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Distinct Locker and Storage zones were enabled."
+    },
+    {
+      "id": "J0093",
+      "sequence": 93,
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "The game accepted an ordinary five-minute wait."
+    },
+    {
+      "id": "J0095",
+      "sequence": 95,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "The same actor wore helmet, wielded Glock and held two magazines with 15 JHP each."
+    },
+    {
+      "id": "J0105",
+      "sequence": 105,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Displaced wearables and rebar appeared on the Locker tile."
+    },
+    {
+      "id": "J0115",
+      "sequence": 115,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "One unused magazine remained in the Locker."
+    },
+    {
+      "id": "J0003",
+      "sequence": 3,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry retained actor assignment and loadout."
+    },
+    {
+      "id": "J0078",
+      "sequence": 78,
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Reentry accepted world.save_quit."
+    },
+    {
+      "id": "J0083",
+      "sequence": 83,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Reentry PID 50750 exited code 0."
+    }
+  ],
+  "tests": [
+    "Independently inspected first-generation and reentry native journal rows against the fixture and witness.",
+    "Reviewed the focused source diff and previously passing Locker 18-assertion and zone 112-assertion tests; no tests rerun for read-only closure."
+  ],
+  "live_actions": [
+    "This closure worker performed read-only evidence and source review, with no game launch, GUI input, repository edit or test rerun.",
+    "Exploration game PIDs 48168/50750, runners 48134/50719 and bridge 48133 were previously verified exited; old PID 90668 remains retained."
+  ],
+  "evidence_ceiling": [
+    "The pre-service native pickup menu identified 9x19mm JHP but did not display 30 charges; 30 is fixture manifest evidence and 15+15 is native after-state evidence.",
+    "probe.report.json wrapper binding_id/native_exit_credit conflict with direct original journal and process-generation evidence; preserve the exact artifact discrepancy.",
+    "This closes only the Locker native transfer and conservation gap; defense, payment and return remain separate.",
+    "Old PID 90668 remains live under coordinator retention."
+  ],
+  "accepted_no_replay": [
+    "Preserve the successful native Locker transfer and reload evidence; no replay is indicated by the report wrapper discrepancy."
+  ],
+  "active_work": [
+    "Defense and payment/return tasks are separate live assignments; this closure reviewer has no GUI ownership."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/worker-library/results/328dda1d66624edc9c5804a74eafe6fe/5051f29e8c658f84552f8343a7e0b275fe2099b7c93b9b10323882399a354070.md",
+      "role": "Read-only independent closure verdict.",
+      "sha256": "e3a221055605d20d820336359e1c9fed6d10ac7fce36492553ca11d8a4429020"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-LOCKER-exploration-001/run5-final-witness.json",
+      "role": "Native final witness.",
+      "sha256": "14d74929260c9e951cc8b5ba91e750dbbfcc16ae6f281bceccc8c440105e7cc2"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-88fe0c1c2c6d40378b5008481ef08ce3/cockpit-evidence.sqlite",
+      "role": "Original two-generation native journal.",
+      "sha256": "3e2624cd0894d68292b90b065e2dac1f9d5373fe394e160e2455ba27d03eb669"
+    },
+    {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/r032_assigned_camp_locker_transfer_char25_v1/manifest.json",
+      "role": "Bound initial map stock and ammo count.",
+      "sha256": "e259bb203576de854f00e65f75a730aa6d65ecd71349616671410aa91764d6e4"
+    },
+    {
+      "path": ".userdata/r032-camp-locker-transfer-exp005-20260924/harness_runs/20260924_051650_d47d75252ba645d796349b3c945454b6/probe.report.json",
+      "role": "Terminal report with preserved wrapper inconsistency.",
+      "sha256": "ecf34ea7373dd55f493e810bdf728c6797dfb41b88e0b88e5de1154f9d45af72"
+    }
+  ],
+  "entrypoints": [
+    "src/basecamp.cpp",
+    "src/zone_manager_ui.cpp",
+    "tests/faction_camp_test.cpp",
+    "tests/zone_cursor_semantic_test.cpp",
+    "tools/openclaw_harness/scenarios/r032.assigned_camp_locker_transfer_char25_v001_mcw.json"
+  ],
+  "first_open_boundary": "Coordinator can close the Locker closure gap and accept the Locker claim; downstream defense and payment/return tasks remain live.",
+  "narrow_queries": [
+    "Read first-generation stream c140db589eda47388523c6adae54dd0f J0007/J0043/J0093/J0095/J0105/J0115 and reentry e1b4a9bb6359457ca2cd88625be830e0 J0003/J0078/J0083 in the bound cockpit evidence DB.",
+    "Compare probe.report.json binding_id/native_exit_credit to original DB metadata, both J0001 identities and native action/exit rows if the wrapper discrepancy is disputed."
+  ],
+  "context_metrics": {
+    "original_stream_entries": 147,
+    "reentry_stream_entries": 85,
+    "native_game_generations": 2
+  }
+}

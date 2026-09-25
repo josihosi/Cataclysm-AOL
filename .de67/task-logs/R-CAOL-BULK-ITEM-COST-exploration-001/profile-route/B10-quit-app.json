@@ -1,0 +1,13 @@
+{
+  "accepted": false,
+  "reason": "native_surface_receipt_timeout",
+  "surface_request": {
+    "run_id": "606135bb557145dfb4073ddf4323ea5f",
+    "surface_id": "606135bb557145dfb4073ddf4323ea5f:surface:9",
+    "frame_id": "606135bb557145dfb4073ddf4323ea5f:frame:4",
+    "request_id": "cockpit:B10-quit-20260924:606135bb557145dfb4073ddf4323ea5f:frame:4:main_menu.quit:59525e1979fb95ac",
+    "action_id": "main_menu.quit"
+  },
+  "native_receipt": null,
+  "next_frame": null
+}

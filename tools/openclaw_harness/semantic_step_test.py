@@ -149,6 +149,30 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(frame["frame_id"], "interrupt-prompt")
         self.assertEqual(frame["kind"], "prompt")
 
+    def test_wait_duration_projection_keeps_native_avatar_without_granting_actions(self) -> None:
+        from cockpit import CockpitRunChannel
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "debug.log"
+            source.write_text("", encoding="utf-8")
+            receipt = {"event": "receipt", "run_id": self.run_id,
+                       "frame_id": f"{self.run_id}:100:duration", "action_id": "wait.1m",
+                       "accepted": True, "_source_offset": 10}
+            observation = {"schema": "caol-avatar-visible-v1",
+                           "avatar": {"absolute_ms": [3374, 996, 0]}, "visible_local": [],
+                           "visible_entities": [{"name": "zombie rider"}]}
+            waiting = self.frame("waiting", "wait_activity", {}, 100) | {
+                "_source_offset": 20, "game_minutes": 7920, "observation": observation}
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(source, source)), \
+                    patch.object(startup_harness, "read_semantic_step_trace", return_value=([receipt, waiting], "ok")), \
+                    patch.object(startup_harness, "read_latest_activity_query_trace", return_value=None):
+                frame = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0)
+            _, _, turn, visible, actions = CockpitRunChannel._frame(frame)
+            self.assertEqual(turn, 100)
+            self.assertEqual(visible, observation)
+            self.assertEqual(actions, ())
+
     def test_adaptive_baseline_prefers_current_native_frame_over_prior_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -992,6 +1016,22 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(current["frame_id"], "surface-frame")
         self.assertEqual(current["paired_raw_frame_id"], "raw-world")
         self.assertEqual(current["keep_watch_safety"]["classification"], "clear")
+
+        # Native completion may arrive in a later poll than its descriptor.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("openclaw_harness_semantic_step: " + json.dumps(raw_world) + "\n",
+                             encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                split = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                    history={"tail": [descriptor, receipt]},
+                )
+        self.assertTrue(startup_harness.is_native_wait_completion_successor(
+            split, activity_frame_id="waiting-before-completion"))
+        self.assertFalse(startup_harness.is_native_wait_completion_successor(
+            split, activity_frame_id="raw-world"))
 
     def test_refresh_trace_bounds_parsed_events_while_preserving_recent_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

@@ -1,0 +1,23 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-e28dbad7e0624562875912c8dc3b9287
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0001: identity
+  INDEX 0; PATH FIELD; FIELD: scenario_id, source_identity, executable_identity
+J0002: observation — world
+  INDEX 1; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0003: observation — zone_manager
+  INDEX 2; PATH value.surface.facts.FIELD; FIELD: enabled, faction, faction_role, revision, show_all, zone_id, zones
+J0004: action — world.zone_manager
+  checks: {"action_id": "world.zone_manager"}
+J0005: observation — menu
+  INDEX 4; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0006: action — zone.create
+  checks: {"action_id": "zone.create"}
+J0007: observation — menu
+  INDEX 6; same PATH/FIELD as J0005.
+J0008: action — menu.filter
+  checks: {"action_id": "menu.filter"}
+J0009: observation — string_prompt
+  INDEX 8; PATH value.surface.facts.FIELD; FIELD: text, title
+J0010: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+More → play inspect result.evidence_journal.entries --offset 10 --limit 10 --request-id play-e28dbad7e0624562875912c8dc3b9287

@@ -1,0 +1,44 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "After native save/quit and process replacement, character:25 still held the R032 camp assignment, Locker equipment and active CAMP_PATROL order; a five-minute ordinary wait showed continued patrol movement on the same route.",
+  "causal_account": "The restored game generation PID 61525 resumed the same isolated McWilliams profile and player location. The same R032 camp at OMT [162,36,0] and character:25 were natively observed. After a 5-minute wait the active day-shift guard remained on the same patrol loop, with the same assigned camp, priority 9, Glock, 15 loaded JHP, 15 spare JHP and helmet, and moved from [3898,876,0] to [3899,876,0]. The reentered generation completed native save/quit, then the bound process observer reported a clean exit (code 0). The prior segment witness and original native archive in this same run preserve the zombie spawn/alarm/combat/kill evidence.",
+  "citations": [
+    {
+      "citation_id": "J0014",
+      "meaning": "same player, camp and character visible in the restored native world after the 5-minute service wait",
+      "checks": {
+        "value.surface.facts.avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3898,870,0]}",
+        "value.surface.facts.current_site_camp": "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":\"absolute_omt\",\"site\":[162,36,0],\"found\":true,\"camp_name\":\"R032 Assignment Camp\",\"board_name\":\"R032 Assignment Camp Board\",\"owner_faction\":\"your_followers\",\"camp_site\":[162,36,0],\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}",
+        "value.surface.facts.visible_entities": "[{\"identity\":{\"kind\":\"npc\",\"id\":\"character:25\"},\"kind\":\"npc\",\"name\":\"R032 Establishment Ally 1\",\"attitude\":\"friendly\",\"dx\":1,\"dy\":6,\"absolute_ms\":[3899,876,0],\"health\":{\"hp\":980,\"maximum_hp\":984,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]"
+      }
+    },
+    {
+      "citation_id": "J0016",
+      "meaning": "same character identity, active guard/runtime, live patrol order/route and Locker gear after reload and ordinary time",
+      "checks": {
+        "value.surface.facts.actor_id": "character:25",
+        "value.surface.facts.diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":true,\"camp_site\":[162,36,0],\"patrol_zone_defined\":true,\"shift_cache_state\":\"current\",\"shift_cache_available\":true,\"shift\":\"day\",\"roster\":[\"character:25\"],\"actor_active_guard\":true,\"actor_reserve_guard\":false,\"runtime_state\":\"available\",\"runtime_available\":true,\"behavior\":\"loop\",\"target\":[3899,876,0],\"route\":[[3898,876,0],[3899,876,0],[3900,876,0]],\"coordinate_system\":\"absolute_ms\"}",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_PATROL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3899,876,0],\"camp_patrol_order\":true,\"camp_patrol_priority\":9,\"guard_post\":[3899,876,0],\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}",
+        "value.surface.facts.diagnostic_items": "{\"28450\":{\"item_uid\":\"28450\",\"parent_uid\":\"\",\"slot\":\"wielded\",\"name\":\"Glock carry pistol\",\"type_id\":\"glock_19\",\"charges\":0},\"51063\":{\"item_uid\":\"51063\",\"parent_uid\":\"28450\",\"slot\":\"MAGAZINE_WELL\",\"name\":\"Glock 9x19mm 15-round magazine\",\"type_id\":\"glockmag\",\"charges\":0},\"51062\":{\"item_uid\":\"51062\",\"parent_uid\":\"51063\",\"slot\":\"MAGAZINE\",\"name\":\"9x19mm JHP\",\"type_id\":\"9mm\",\"charges\":15},\"4\":{\"item_uid\":\"4\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> boy shorts\",\"type_id\":\"boy_shorts\",\"charges\":0},\"6\":{\"item_uid\":\"6\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> socks (pair)\",\"type_id\":\"socks\",\"charges\":0},\"8\":{\"item_uid\":\"8\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_yellow>|\\\\</color> round bifocal glasses\",\"type_id\":\"glasses_bifocal\",\"charges\":0},\"12\":{\"item_uid\":\"12\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> jeans > <color_c_light_gray>smartphone (UPS)<color_c_dark_gray> (unbrowsed)</color></color>\",\"type_id\":\"jeans\",\"charges\":0},\"51044\":{\"item_uid\":\"51044\",\"parent_uid\":\"12\",\"slot\":\"CONTAINER\",\"name\":\"smartphone (UPS)<color_c_dark_gray> (unbrowsed)</color>\",\"type_id\":\"smart_phone\",\"charges\":0},\"51043\":{\"item_uid\":\"51043\",\"parent_uid\":\"51044\",\"slot\":\"MAGAZINE\",\"name\":\"battery\",\"type_id\":\"battery\",\"charges\":56},\"25\":{\"item_uid\":\"25\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> sneakers (pair)\",\"type_id\":\"sneakers\",\"charges\":0},\"27\":{\"item_uid\":\"27\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> t-shirt\",\"type_id\":\"tshirt\",\"charges\":0},\"29\":{\"item_uid\":\"29\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> work gloves (pair)\",\"type_id\":\"gloves_work\",\"charges\":0},\"31\":{\"item_uid\":\"31\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_yellow>|\\\\</color> barrette\",\"type_id\":\"barrette\",\"charges\":0},\"28446\":{\"item_uid\":\"28446\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> army helmet (poor fit)\",\"type_id\":\"helmet_army\",\"charges\":0},\"33\":{\"item_uid\":\"33\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> light jacket > <color_c_light_gray>Glock 9x19mm 15-round magazine</color>\",\"type_id\":\"jacket_light\",\"charges\":0},\"51055\":{\"item_uid\":\"51055\",\"parent_uid\":\"33\",\"slot\":\"CONTAINER\",\"name\":\"Glock 9x19mm 15-round magazine\",\"type_id\":\"glockmag\",\"charges\":0},\"51054\":{\"item_uid\":\"51054\",\"parent_uid\":\"51055\",\"slot\":\"MAGAZINE\",\"name\":\"9x19mm JHP\",\"type_id\":\"9mm\",\"charges\":15},\"89\":{\"item_uid\":\"89\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> messenger bag\",\"type_id\":\"mbag\",\"charges\":0}}"
+      }
+    },
+    {
+      "citation_id": "J0021",
+      "meaning": "native save and quit action in reentered process was accepted",
+      "checks": {
+        "action_id": "world.save_quit"
+      }
+    },
+    {
+      "citation_id": "J0026",
+      "meaning": "reentered game process exited cleanly after save/quit",
+      "checks": {
+        "value.surface.facts.pid": 61525,
+        "value.surface.facts.alive": false,
+        "value.surface.facts.exit_code": 0
+      }
+    }
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": []
+}

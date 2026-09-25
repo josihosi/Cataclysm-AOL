@@ -1,0 +1,4 @@
+Inventory
+filter: smoke
+No highlighted item.
+Allowed actions unchanged.

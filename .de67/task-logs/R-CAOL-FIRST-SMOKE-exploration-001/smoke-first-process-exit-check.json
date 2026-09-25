@@ -1,0 +1,8 @@
+{
+  "command": "ps -p 18460,18461,18488 -o pid= -o ppid= -o lstart= -o command=",
+  "observed_result": "no matching processes after non-force app quit and bridge completion",
+  "session_status": "process_dead",
+  "bridge_status_path": ".userdata/openclaw_harness/bridge-sessions/selected-bf6652763a3e4423bf3b7f7b082d1541/status.json",
+  "native_game_request_count": 0,
+  "cleanup": "app quit succeeded; bridge finalized child_exit_code=1; terminal cleanup reported ownership process_exited_or_identity_changed because the exact game PID was already absent"
+}

@@ -1,0 +1,17 @@
+MENU
+filtered entry count: 8
+What do you want to do?
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  9 — Talk to R032 Establishment Ally 1
+  10 — Tell R032 Establishment Ally 1 to work on…
+  11 — Yell
+  12 — Say a sentence
+  13 — Whisper a sentence
+  14 — Yell a sentence
+  15 — Emote
+  16 — Tell R032 Establishment Ally 1 to follow

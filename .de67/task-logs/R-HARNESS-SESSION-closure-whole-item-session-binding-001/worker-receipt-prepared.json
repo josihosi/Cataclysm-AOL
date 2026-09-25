@@ -1,0 +1,119 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-SESSION-closure-whole-item-session-binding-001",
+  "claim_id": "R-HARNESS-SESSION",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "completed",
+  "verdict": "whole_item_session_binding_reconciled_current_suite_passes",
+  "outcome": "The supplied session receipt covers every R-HARNESS-SESSION mechanism and proof clause at its retained public-contract scope. Independent clause mapping confirms current operations, lost-output and timeout/restart recovery, idempotent duplicate collection, no-resubmission, stale grants and owner transitions, stable selectors, paging and message cursors, pending-safe reads, process-death/no-response handling, cancellation, reentry protection, full retrieval and honest synthetic measurement limits. The same focused suite passes 116 tests in the current checkout; the historical corrected receipt remains unchanged at its recorded 115-test scope.",
+  "summary": "Receipt 3a3f4dfe089edf19db34a66e76a089779dee01ea69e2828dd66eb9a29ebd2096 and its corrected artifact were reconciled against R-HARNESS-SESSION-S001. The receipt's direct-operation, durable request/response, idempotent collect/resume, stale-authority, full/delta/owner, stable-identity, cursor, paging, pending-safe, no-resend, process-death, reentry and measurement-limit claims map to named retained tests and artifacts. Current source hashes differ for several implementation/test files from the historical receipt, so the original receipt is preserved as historical evidence; the same focused suite independently passes 116 tests against the current checkout.",
+  "material_changes": [],
+  "tests": [
+    "Current checkout: PYTHONPATH=tools/openclaw_harness python3 -m unittest play_cli_test play_cli_evidence_test cockpit_evidence_test evidence_display_test cockpit_controls_test cockpit_cancellation_test cockpit_observation_test cockpit_file_bridge_test.CockpitFileBridgeTest.test_large_response_is_retained_without_public_stdout_backpressure cockpit_file_bridge_test.CockpitFileBridgeTest.test_response_artifact_cli_recovers_only_the_receipt_bound_payload cockpit_file_bridge_test.CockpitFileBridgeTest.test_request_identity_order_stale_rejection_and_complete_artifacts: 116 passed.",
+    "Current focused test output was retained and JSON/artifact hashes were checked.",
+    "Historical corrected receipt records 115 focused tests and remains unmodified; its correction log records 115 tests OK."
+  ],
+  "live_actions": [
+    "No native game, bridge session, scenario, save/reload, interruption or process-exit journey was launched or replayed.",
+    "Only current-checkout synthetic/unit tests and read-only receipt/artifact reconciliation were performed.",
+    "No source or coordination records were edited."
+  ],
+  "evidence_ceiling": [
+    "This closes the whole-item session-binding contract at public/retained-artifact scope, not a new native gameplay or save/reload proof.",
+    "The retrieval measurement remains synthetic stdout effort and does not establish provider-token cost or universal savings.",
+    "Current source drift from the historical receipt is bounded by the independently passing current 116-test suite; the historical 115-test receipt is not relabeled."
+  ],
+  "bindings": {
+    "current_focused_tests": "116",
+    "fs_slice": "R-HARNESS-SESSION-S001",
+    "historical_corrected_tests": "115",
+    "reconciliation_artifact_sha256": "1566b1cce3554b26dce60e4e367a66c60e15b330c3ab469822225f4df905c7bd",
+    "source_receipt_id": "3a3f4dfe089edf19db34a66e76a089779dee01ea69e2828dd66eb9a29ebd2096",
+    "source_receipt_sha256": "65eeb86552f2d56cd570bde9304a007d83ad93474b02b790d31817fc68672a96",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [
+    {
+      "id": "session-clause-map",
+      "sequence": "1",
+      "event_type": "whole_item_reconciliation",
+      "evidence_class": "audit",
+      "summary": "Every FS mechanism/proof clause maps to a retained receipt claim and named focused test family.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-SESSION-closure-whole-item-session-binding-001/session-binding-reconciliation.json"
+    },
+    {
+      "id": "current-suite",
+      "sequence": "2",
+      "event_type": "current_source_verification",
+      "evidence_class": "test",
+      "summary": "Current checkout passes the same focused session suite with 116 tests.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-SESSION-closure-whole-item-session-binding-001/current-focused-test-result.log"
+    },
+    {
+      "id": "measurement-boundary",
+      "sequence": "3",
+      "event_type": "measurement_limit",
+      "evidence_class": "retained_artifact",
+      "summary": "Synthetic stdout-only response/retrieval measurement limits remain explicit.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-response-retrieval-measure.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/FS.md",
+      "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df",
+      "role": "authoritative R-HARNESS-SESSION-S001 mechanism and proof clauses"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-worker-result-receipt-corrected.json",
+      "sha256": "65eeb86552f2d56cd570bde9304a007d83ad93474b02b790d31817fc68672a96",
+      "role": "completed historical session receipt being independently reconciled"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-closure-whole-item-session-binding-001/session-binding-reconciliation.json",
+      "sha256": "1566b1cce3554b26dce60e4e367a66c60e15b330c3ab469822225f4df905c7bd",
+      "role": "independent FS clause matrix and identity-drift boundary"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-closure-whole-item-session-binding-001/current-focused-test-result.log",
+      "sha256": "61388af68588b844bc33ba4c91aa428659b4691ce62b4854fa2e88b57a27d249",
+      "role": "current-checkout 116-test verification"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-focused-tests-correction.log",
+      "sha256": "10b2726ede746e09fe7bf78c39c0fa6ea13124e121ac69299e8d5da5dde94f61",
+      "role": "historical corrected 115-test verification"
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-response-retrieval-measure.json",
+      "sha256": "87629aaebf19094671a73e989dba477cefd9ff8095797d1f6745c1186e738950",
+      "role": "synthetic retrieval measurement and limits"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Accepted the supplied receipt only at its recorded public-contract scope; no native replay was used to inflate it.",
+    "Current source hash drift was tested with the focused suite and retained as an explicit historical/current distinction, not silently rewritten."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No unsupported clause remains within the assigned whole-item session-binding scope; native gameplay/save-reload/interruption proof remains outside this receipt's ceiling.",
+  "narrow_queries": [
+    "Use session-binding-reconciliation.json for the clause-to-test map and current-versus-historical hash boundary.",
+    "Do not treat the public session receipt as native gameplay or save/reload proof without a separately assigned native journey."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/gameplay_display.py",
+    "tools/openclaw_harness/cockpit_evidence.py"
+  ],
+  "context_metrics": {
+    "action_page_stdout_bytes": 656,
+    "current_focused_tests_passed": 116,
+    "historical_focused_tests_passed": 115,
+    "raw_synthetic_response_bytes": 9445,
+    "response_plus_followup_stdout_bytes": 4838,
+    "response_status_stdout_bytes": 4182
+  }
+}

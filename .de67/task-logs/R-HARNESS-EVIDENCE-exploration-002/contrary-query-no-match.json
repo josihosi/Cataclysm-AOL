@@ -1,0 +1,24 @@
+{
+  "schema": "de67-speech-contrary-query-v1",
+  "query_kind": "contrary_or_irrelevant_identity_check",
+  "operation": "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427 evidence --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --request-id play-b386f813d5374bd4b4112942c70be092 --select event,run_id,process_instance,request_id,actor_id,actor_name,payload.payload.accepted,payload.payload.rejection_reason,payload.payload.outcome",
+  "purpose": "Demonstrate that the cockpit-local request id alone cannot establish cross-source runner/native correlation; this is an identity limitation, not proof that no event exists.",
+  "result": {
+    "ok": true,
+    "status": "no_match",
+    "matched": 0,
+    "scanned_records": 18,
+    "scanned_bytes": 622249,
+    "unavailable_sources": [],
+    "snapshot_sha256": "8b3667ec2d4b386a272c3e882616b12431c09bdaadb4babc2ca08a7a2a461a0d",
+    "log_identity_status": "unavailable",
+    "correlation_note": "Null means unavailable. Shared request IDs or actor names alone do not establish cross-process identity. Observations are not inferred changes."
+  },
+  "contrary_context": {
+    "message": "You hear Katharina Leach saying \"Take it easy.\"",
+    "time": "3:59:55 PM",
+    "interpretation": "Retained pre-utterance context; not attributed to the new prompt."
+  },
+  "freshness": "Read-only query rerun after scenario cleanup; no gameplay or source mutation.",
+  "source_artifact": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/witness-journal-18a7a90d8e745ec323f01a2a58e056992ffd69c6489c778de578c77ba75ee9ba.json"
+}

@@ -1216,17 +1216,19 @@ void npc::assess_danger() {
         ai_cache.hostile_guys.emplace_back( g->shared_from( player_character ) );
     }
 
+    const bool camp_member = bandit_live_world::active_local_camp_member_profile(
+                                 overmap_buffer.global_state.bandit_live_world, getID() ).has_value();
     for( const monster &critter : g->all_monsters() ) {
         if( !clairvoyant && !here.has_potential_los( pos_bub(), critter.pos_bub() ) ) {
             continue;
         }
-        Creature::Attitude att = critter.attitude_to( *this );
+        Creature::Attitude att = camp_member ? attitude_to( critter ) : critter.attitude_to( *this );
         if( att == Attitude::FRIENDLY ) {
             ai_cache.friends.emplace_back( g->shared_from( critter ) );
             friendly_count += 1;
             continue;
         }
-        if( att != Attitude::HOSTILE && ( critter.friendly || !is_enemy() ) ) {
+        if( att != Attitude::HOSTILE && ( camp_member || critter.friendly || !is_enemy() ) ) {
             ai_cache.neutral_guys.emplace_back( g->shared_from( critter ) );
             continue;
         }

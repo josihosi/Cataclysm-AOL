@@ -1168,6 +1168,22 @@ vehicle *game::place_vehicle_nearby(
 }
 
 //Make any nearby overmap npcs active, and put them in the right location.
+namespace
+{
+bool abstract_scout_owns_npc( const character_id id )
+{
+    const auto &sites = overmap_buffer.global_state.bandit_live_world.sites;
+    return std::any_of( sites.begin(), sites.end(), [&id]( const auto &site ) {
+        const auto &outing = site.active_outing;
+        return outing.is_active() &&
+               outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+               outing.owner == bandit_live_world::simulation_owner::abstract &&
+               outing.actor_route_waypoint >= 0 && !outing.member_is_resolved( id ) &&
+               std::find( outing.member_ids.begin(), outing.member_ids.end(), id ) != outing.member_ids.end();
+    } );
+}
+} // namespace
+
 void game::load_npcs()
 {
     map &here = get_map();
@@ -1193,6 +1209,12 @@ void game::load_npcs()
         if( temp->has_companion_mission() ) {
             continue;
         }
+        if( abstract_scout_owns_npc( id ) ) {
+            // Paired handoff admits these identities; generic loading must not
+            // create a second local movement owner.
+            continue;
+        }
+
 
         const tripoint_abs_sm sm_loc = temp->pos_abs_sm();
         // NPCs who are out of bounds before placement would be pushed into bounds
@@ -1248,6 +1270,11 @@ void game::load_npcs( map *here )
             continue;
         }
         if( temp->has_companion_mission() ) {
+            continue;
+        }
+        if( abstract_scout_owns_npc( id ) ) {
+            // Paired handoff admits these identities; generic loading must not
+            // create a second local movement owner.
             continue;
         }
 

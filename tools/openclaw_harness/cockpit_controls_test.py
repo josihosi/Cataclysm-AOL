@@ -74,7 +74,7 @@ class ControlsTest(unittest.TestCase):
         service, dispatched = self.wait_service()
         observed = service.call({"action": "game.observe"})
         self.assertEqual(observed["operation_availability"], {
-            "game.wait": True, "game.move_relative": True,
+            "game.act": True, "game.wait": True, "game.move_relative": True,
         })
         channel = service.run_channel
         before = copy.deepcopy((channel._observations, channel._last_public_state, channel._transcript))
@@ -88,8 +88,19 @@ class ControlsTest(unittest.TestCase):
         service, dispatched = self.wait_service()
         service._allowed_live_operations = {"game.observe", "game.act"}
         controls = service.call({"action": "game.controls"})["result"]
-        self.assertEqual(controls["availability"], {"game.wait": False, "game.move_relative": False})
+        self.assertEqual(controls["availability"], {
+            "game.act": True, "game.wait": False, "game.move_relative": False})
         result = service.call(controls["move_relative"]["example_request"])
+        self.assertEqual(result["error"], "operation_not_authorized_for_live_session")
+        self.assertFalse(dispatched)
+
+    def test_observation_only_continuation_does_not_advertise_action_permission(self):
+        service, dispatched = self.wait_service()
+        service._allowed_live_operations = {"game.observe"}
+        observed = service.call({"action": "game.observe"})
+        self.assertFalse(observed["operation_availability"]["game.act"])
+        result = service.call({"action": "game.act", "action_id": "world.wait",
+                               "observation_id": observed["result"]["observation_id"]})
         self.assertEqual(result["error"], "operation_not_authorized_for_live_session")
         self.assertFalse(dispatched)
 

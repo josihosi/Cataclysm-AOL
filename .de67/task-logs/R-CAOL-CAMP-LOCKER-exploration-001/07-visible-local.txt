@@ -1,0 +1,36 @@
+dx: -1
+dy: -1
+visibility: clear
+terrain: maple tree
+dx: 0
+dy: -1
+visibility: clear
+terrain: forest floor
+dx: 1
+dy: -1
+visibility: clear
+terrain: maple tree
+dx: -1
+dy: 0
+visibility: clear
+terrain: forest floor
+dx: 0
+dy: 0
+visibility: clear
+terrain: forest floor
+dx: 1
+dy: 0
+visibility: clear
+terrain: blackjack oak
+dx: -1
+dy: 1
+visibility: clear
+terrain: moss
+dx: 0
+dy: 1
+visibility: clear
+terrain: underbrush
+dx: 1
+dy: 1
+visibility: clear
+terrain: forest floor

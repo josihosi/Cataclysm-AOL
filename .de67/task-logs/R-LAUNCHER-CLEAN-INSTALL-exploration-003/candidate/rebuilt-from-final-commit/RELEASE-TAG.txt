@@ -1,0 +1,6 @@
+Proposed tag: catapult-dabubu-gemma4-ollama-installer-2026-09-24
+Proposed title: Catapult-Dabubu Gemma 4 Ollama setup — 2026-09-24
+Proposed state: GitHub draft prerelease
+Exact target commit: 495ac43ef62f36685a941840405a4a8e25a1f03f
+Base commit: 366aee6bd675be9b45afbd2ab222808faceedd9d
+Suggested unpublished branch for approval workflow: codex/catapult-dabubu-gemma4-2026-09-24

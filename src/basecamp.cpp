@@ -4558,8 +4558,19 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       }
     }
 
-    if (removed_all_planned_blockers &&
-        equip_camp_locker_item(worker, slot, candidate)) {
+    item displaced_wielded;
+    bool equipped_candidate = false;
+    if (removed_all_planned_blockers) {
+      // A ranged replacement can displace a wielded melee weapon even when
+      // the ranged slot itself had no current item.  Take it explicitly so
+      // NPC wield fallback cannot leave it on the worker's map tile.
+      if (slot == camp_locker_slot::ranged_weapon && worker.get_wielded_item()) {
+        displaced_wielded = worker.remove_weapon();
+      }
+      equipped_candidate = equip_camp_locker_item(worker, slot, candidate);
+    }
+
+    if (equipped_candidate) {
       applied_changes = true;
       applied_changes =
           place_camp_locker_item_contents(worker, extracted_replaced_contents,
@@ -4569,8 +4580,15 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       if (!replaced_current.is_null()) {
         displaced_items.emplace_back(std::move(replaced_current));
       }
+      if (!displaced_wielded.is_null()) {
+        displaced_items.emplace_back(std::move(displaced_wielded));
+      }
       accept_planned_duplicates(pre_removed_duplicates);
       continue;
+    }
+
+    if (!displaced_wielded.is_null() && !worker.wield(displaced_wielded)) {
+      store_camp_locker_item(locker_drop_tile, std::move(displaced_wielded));
     }
 
     if (!replaced_current.is_null()) {

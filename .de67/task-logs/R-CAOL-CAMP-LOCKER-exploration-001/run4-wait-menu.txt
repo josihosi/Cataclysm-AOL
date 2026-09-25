@@ -1,0 +1,12 @@
+MENU
+Elapsed: 0.0 game minutes.
+filtered entry count: 2
+You have an alarm clock.  What do you want to do?
+ALLOWED HERE ONLY
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target <target> (copy the target exactly)
+Actions for every target below: select/choose
+  wait-mode:wait-a-while — Wait a while
+  wait-mode:set-alarm — Set an alarm for later

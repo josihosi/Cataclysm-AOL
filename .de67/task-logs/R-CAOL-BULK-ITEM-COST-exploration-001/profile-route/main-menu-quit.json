@@ -1,0 +1,116 @@
+{
+  "accepted": true,
+  "surface_request": {
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+    "frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+    "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:10:main_menu.quit:59525e1979fb95ac",
+    "action_id": "main_menu.quit"
+  },
+  "native_receipt": {
+    "event": "surface_receipt",
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "process_instance": "1790253553065007",
+    "sequence": 46,
+    "game_minutes": 7680,
+    "game_turn": 5212801,
+    "wall_time": 1790254025156,
+    "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:10:main_menu.quit:59525e1979fb95ac",
+    "requested_run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "requested_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+    "requested_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+    "consuming_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+    "consuming_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+    "action_id": "main_menu.quit",
+    "accepted": true,
+    "rejection_reason": "",
+    "resulting_frame_id": "",
+    "outcome": "",
+    "_source_offset": 450668,
+    "_source_end": 451446,
+    "_event_offset": 450668,
+    "frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10"
+  },
+  "transition_event": {
+    "schema_version": 1,
+    "sequence": 7,
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "game_minutes": 7680,
+    "domain": "semantic_surface",
+    "transition": "native_surface_receipt",
+    "outcome": "accepted",
+    "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:10:main_menu.quit:59525e1979fb95ac",
+    "action_id": "main_menu.quit",
+    "stable_id": "",
+    "surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+    "frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+    "resulting_frame_id": "",
+    "proof_step_label": "",
+    "proof_step_index": null,
+    "native_receipt": {
+      "event": "surface_receipt",
+      "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+      "process_instance": "1790253553065007",
+      "sequence": 46,
+      "game_minutes": 7680,
+      "game_turn": 5212801,
+      "wall_time": 1790254025156,
+      "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:10:main_menu.quit:59525e1979fb95ac",
+      "requested_run_id": "dce811fbe921412a8dcf04555e27bfc6",
+      "requested_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+      "requested_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+      "consuming_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:10",
+      "consuming_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:10",
+      "action_id": "main_menu.quit",
+      "accepted": true,
+      "rejection_reason": "",
+      "resulting_frame_id": "",
+      "outcome": "",
+      "_source_offset": 450668,
+      "_source_end": 451446,
+      "_event_offset": 450668
+    }
+  },
+  "next_frame": {
+    "event": "surface_descriptor",
+    "schema_version": 1,
+    "process_instance": "1790253553065007",
+    "sequence": 47,
+    "game_minutes": 7680,
+    "game_turn": 5212801,
+    "wall_time": 1790254025156,
+    "is_night": false,
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:11",
+    "frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:11",
+    "kind": "prompt",
+    "breadcrumbs": [
+      "YESNO"
+    ],
+    "payload": {
+      "text": "Really quit? (Case Sensitive)",
+      "title": "YESNO"
+    },
+    "live_hostile_operation": null,
+    "valid_actions": [
+      {
+        "id": "prompt.choose",
+        "stable_id": "prompt-option:3",
+        "label": "YES",
+        "enabled": true
+      },
+      {
+        "id": "prompt.choose",
+        "stable_id": "prompt-option:4",
+        "label": "NO",
+        "enabled": true
+      }
+    ],
+    "_source_offset": 451446,
+    "_source_end": 452139,
+    "_event_offset": 451446,
+    "native_receipt": null,
+    "provenance": "native_semantic_step_trace",
+    "_kind": "semantic_step"
+  }
+}

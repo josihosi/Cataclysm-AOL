@@ -14,10 +14,27 @@ from unittest import mock
 import scenario_registry_cli as cli
 import scenario_registry_cli_test as fixtures
 import evidence_display
-from registry_query_output import _compact_candidate_detail, _run_observation
+from registry_query_output import _compact_candidate_detail, _run_observation, plain_registry_output
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
+    def test_plain_selection_keeps_executable_launch_without_receipt_bloat(self):
+        text = plain_registry_output({"ok": True, "command": "registry-query", "result": {
+            "selected_scenario_id": "internal-id", "artifact": {"sha256": "unneeded-hash"},
+            "candidates": [{"scenario_id": "internal-id", "name": "Camp continuity"}],
+            "next_action": {"command": {"argv": ["python3", "registry.py", "registry-launch", "required-token"]}},
+            "rejections": {"causes": [{"key": "irrelevant", "reason": "unknown_fact"}]}}})
+        self.assertEqual(text, "Selected: Camp continuity\nLaunch: python3 registry.py registry-launch required-token")
+
+    def test_plain_no_match_retains_requirement_and_build_action(self):
+        text = plain_registry_output({"ok": True, "command": "registry-query", "result": {
+            "candidates": [], "rejections": {"causes": [{"key": "runtime.fixture",
+                "reason": "equality_mismatch", "expected": "camp"}]},
+            "source_executable_readiness": {"status": "blocked", "reason": "build_required",
+                "build_entrypoint": {"argv": ["python3", "build.py"]}}}})
+        self.assertIn("runtime.fixture: equality mismatch (requires camp)", text)
+        self.assertIn("Build: python3 build.py", text)
+
     def test_run_bound_projection_captures_staffed_camp_lead_before_after_payload(self):
         before = {"schema": "caol-staffed-camp-signal-leads-v1", "known": True,
                   "current_minutes": 10, "sites": [], "provenance": "native"}
@@ -105,7 +122,7 @@ class RegistryQueryOutputTest(unittest.TestCase):
                      "executable_sha256": "a" * 64, "product_source_sha256": "b" * 64}
         out = io.StringIO()
         with redirect_stdout(out), mock.patch.object(cli, "_current_source_executable_readiness", return_value=readiness):
-            self.assertEqual(cli.main(["--registry", str(self.registry), "registry-query", "--query-json", json.dumps({"requirements": [], "preferences": []})]), 0)
+            self.assertEqual(cli.main(["--json", "--registry", str(self.registry), "registry-query", "--query-json", json.dumps({"requirements": [], "preferences": []})]), 0)
         projected = json.loads(out.getvalue())["result"]["source_executable_readiness"]
         self.assertEqual(projected, readiness)
 
@@ -116,20 +133,23 @@ class RegistryQueryOutputTest(unittest.TestCase):
         self.registry = self.root / "registry.sqlite3"
         self.scenarios = self.root / "scenarios"
         self.scenarios.mkdir()
+        scenario_root = mock.patch.object(cli.startup_harness, "scenarios_root", side_effect=lambda: self.scenarios)
+        scenario_root.start()
+        self.addCleanup(scenario_root.stop)
         helper = fixtures.ScenarioRegistryCliTest()
         # The first page holds five; two further matches exercise the next-page boundary.
         for number in range(8):
             declaration = helper.strict_manifest()
             declaration["name"] = "query-fixture-" + str(number)
             declaration["capabilities"]["player.injured"] = number == 7
-            (self.scenarios / (str(number) + ".json")).write_text(json.dumps(declaration))
+            (self.scenarios / (declaration["name"] + ".json")).write_text(json.dumps(declaration))
         self.call("rebuild", "--scenarios-root", str(self.scenarios))
 
     def call(self, *argv, success=True):
         out = io.StringIO(); error = io.StringIO()
         with redirect_stdout(out), redirect_stderr(error), mock.patch.object(
                 cli, "_current_source_executable_readiness", return_value={"status": "ready"}):
-            status = cli.main(["--registry", str(self.registry), *argv])
+            status = cli.main(["--json", "--registry", str(self.registry), *argv])
         self.assertEqual(status == 0, success, error.getvalue())
         return json.loads(out.getvalue() if success else error.getvalue())
 
@@ -150,7 +170,7 @@ class RegistryQueryOutputTest(unittest.TestCase):
         full = json.loads(Path(full_receipt["result"]["artifact"]["path"]).read_text())
         expected = full["result"]["evaluation"]["evaluation"]["ranked_scenario_ids"]
         # Mutate the catalogue after the query. Browsing must retain the original snapshot.
-        (self.scenarios / "6.json").unlink()
+        (self.scenarios / "query-fixture-6.json").unlink()
         self.call("rebuild", "--scenarios-root", str(self.scenarios))
         before = self.registry.read_bytes()
         with mock.patch.object(cli, "open_registry", side_effect=AssertionError("page opened registry")):
@@ -171,7 +191,8 @@ class RegistryQueryOutputTest(unittest.TestCase):
         root = self.root / "issued"
         root.mkdir()
         helper = fixtures.ScenarioRegistryCliTest()
-        self.registry, _, issued_token = helper.issue_selection_token(root)
+        self.registry, self.scenarios, issued_token = helper.issue_selection_token(root)
+        (self.scenarios / "cli.registry.fixture.json").write_bytes((self.scenarios / "cli.json").read_bytes())
         result = self.query()["result"]
         self.assertEqual(result["token_id"], issued_token)
         before = helper.token_events(self.registry, issued_token)

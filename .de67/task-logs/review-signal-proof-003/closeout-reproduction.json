@@ -1,0 +1,81 @@
+{
+  "diagnosis": {
+    "recorded": true,
+    "incident": {
+      "lineage_id": "semantic-surface-cockpit",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-003",
+      "kind": "deadline_miss",
+      "recorded": false,
+      "recorded_at": 1789933936.117928,
+      "short_verdict": "The test handoff lost its working build command; recovered tests now expose two concrete repair failures.",
+      "reviewed_at": 1789934513.847859,
+      "reason": null,
+      "long_detail": ".de67/task-logs/review-signal-proof-003/report.md; Claim generation 1 missed the complete native outcome. Preserve partial source/fixture work and all accepted evidence. The predecessor root-Makefile recipe was absent from the successor handoff; manual root-object linking selected the game entrypoint. Recovered recipe builds and executes Catch2, which now fails progress invariance and owner serialization. Current task-specific ledger carries the recipe, exact failures and broader native obligations. Existing method permits context reuse; no broader policy change is supported. Empty pending owner queue; full-tree usage and review/helper costs recorded with limits.",
+      "units": 1,
+      "cumulative_before": 26,
+      "cumulative_after": 27,
+      "independent_review_required": false,
+      "cadence_crossed": true,
+      "cadence_threshold": 27
+    },
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "pending_components": [
+      "micro",
+      "macro"
+    ]
+  },
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "deadline_generation": 1,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "deadline_generation": 1,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 78,
+      "pending": true,
+      "requested_at": 1789934513.850518,
+      "reason": "deadline mutation resolved for R-CAOL-SIGNAL-PROOF; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "acceptance_before": {
+    "count": 64,
+    "sha256": "e2f037b585d56fafaab668b6a2247642d35a9c76cab1c201d0140a1ba906b4af"
+  },
+  "acceptance_after": {
+    "count": 64,
+    "sha256": "e2f037b585d56fafaab668b6a2247642d35a9c76cab1c201d0140a1ba906b4af"
+  },
+  "components": [
+    {
+      "component": "macro",
+      "no_change_required": 1,
+      "receipt_id": null
+    },
+    {
+      "component": "micro",
+      "no_change_required": 0,
+      "receipt_id": null
+    }
+  ],
+  "restart_requests_added": 1
+}

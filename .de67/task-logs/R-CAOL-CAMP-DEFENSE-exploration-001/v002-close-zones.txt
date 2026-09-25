@@ -1,0 +1,7 @@
+YESNOQUIT
+Save changes?
+ALLOWED HERE ONLY
+Cancel → play act prompt.cancel
+YES → play yes
+NO → play no
+QUIT → play act prompt.choose --target prompt-option:3

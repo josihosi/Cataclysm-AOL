@@ -1,0 +1,174 @@
+{
+  "manifest_version": 1,
+  "name": "r032.camp_payment_return_v001_mcw",
+  "description": "Fresh natural bandit Pay and return-ecology route using the accepted R032 Locker camp save plus an isolated reachable CAMP_STORAGE spillover payment stock. Setup provides ten RobofacCoin on a real map tile in CAMP_STORAGE; it does not create a bandit lead, dispatch, operation, contact, or cooldown change. All payment, departure, replenishment opportunity, and renewed contact evidence must come from ordinary native play.",
+  "profile": "r032-camp-payment-return-exp001-20260924",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_camp_pay_stock_v001_mcw",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_trade_ui opened demanded=",
+    "basecamp_storage_pool=",
+    "typeid=\"RobofacCoin\"",
+    "location_type=\"map\"",
+    "shakedown_trade_ui result=paid",
+    "shakedown_surface paid toll=",
+    "return=physical"
+  ],
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_camp_pay_stock_v001_mcw",
+    "runtime.world": "McWilliams",
+    "capabilities.camp.payment": "native_camp_storage_trade_and_paid_return",
+    "capabilities.camp.return_ecology": "ordinary_time_scheduler_outing_and_renewed_contact"
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw/manifest.json",
+    "parent_fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage",
+      "injected-bandit-lead-or-dispatch",
+      "shortened-bandit-cooldown"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r032-camp-payment-return-exp001-20260924",
+    "fixture": "r032_camp_pay_stock_v001_mcw",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r032_locker_repair_20260924/cataclysm-tiles",
+      "profile": "r032-camp-payment-return-exp001-20260924",
+      "fixture": "r032_camp_pay_stock_v001_mcw",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_camp_payment_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.basecamp_missions"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_natural_camp_payment_and_return_ecology",
+      "cleanup_on_finish": true,
+      "objective": "Start from the exact saved R032 Locker world. Natively confirm camp [162,36,0], assigned CAMP_RESIDENT character:25, original CAMP_STORAGE zone and the setup-only ten RobofacCoin items at the additional follower-owned CAMP_STORAGE tile. Record their actual native inventory/trade identities and current game time. Do not alter actor, camp, lead, outing, operation, or cooldown state. Advance only ordinary native time with alarms until an actually scheduler-created bandit outing produces a peaceful local Pay/Fight demand. Bind the exact site, activity, members, demand and game time. Choose Pay from that live demand; in the native trade UI offer only enough of the zone-tile coins at the displayed trade value, confirm only a complete trade, and prove the same-run item delta, paid result, returning_home commit and physical departure. After departure, disclose and replenish distinct useful stock in CAMP_STORAGE, record its identities/value/time, then continue ordinary native time and alarms through actual scheduler opportunity, map exit/return and renewed contact. Capture useful native save/reload continuity. If contact or return does not occur, retain elapsed time and exact lead, supply, cooldown, risk, route, roster or decision eligibility cause; absence without a genuine opportunity remains unproved.",
+      "proof_targets": [
+        "same native saved R032 Assignment Camp [162,36,0], character:25/CAMP_RESIDENT and accepted Locker source footing",
+        "native observation of both the existing CAMP_STORAGE tile and added spillover zone/RobofacCoin stock at the exact map tile",
+        "actual native Pay/Fight prompt from a scheduler-owned bandit outing with site, activity and member identity",
+        "same-run trade API, demanded/reachable/pool values, map-location RobofacCoin selector entry, accepted trade, and exact item/charge deltas",
+        "same-operation paid returning_home transition, physical NPC travel order/departure and useful save/reload continuity",
+        "disclosed distinct replenishment after departure with game time and item/value identity",
+        "ordinary-time lead update, scheduler eligibility/opportunity, map exit/return and renewed native contact; or an exact causal non-return boundary after a real opportunity",
+        "game time at payment/departure, replenishment and first returned contact, plus source/camp/member identity and resources/casualties"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture zone and coin stock are setup only and earn zero gameplay credit",
+        "no injected bandit lead, dispatch, outing, operation, contact, or shortened cooldown",
+        "no direct state/save/actor/item mutation after fixture installation",
+        "demand and trade valuation are read only from the actual native run",
+        "no prior R-029 payment or continuation evidence is reused as fresh camp-stock proof",
+        "use the peaceful-branch save only after coordinator identifies its exact saved state; do not touch a defense-owned process or scenario",
+        "preserve first missing scheduler premise and elapsed time; no invented return deadline"
+      ],
+      "live_operations": ["game.act", "game.wait"],
+      "transition_timeout_seconds": 25.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_natural_camp_payment_and_return_ecology",
+    "terminal_exit_timeout_seconds": 35.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_r032_paid_camp_after_reload",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.basecamp_missions"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_camp_payment_and_ecology_after_reload",
+        "cleanup_on_finish": true,
+        "objective": "Independently re-observe the same camp, paid operation identity/phase, coin and replenishment deltas, returning party/roster state and current scheduler/lead eligibility after a native save and process replacement. Continue only ordinary time with alarms until a natural eligible outing exits and returns into renewed contact, or preserve the exact opportunity and blocking cause. Do not restage fixture items or alter scheduler state.",
+        "proof_targets": [
+          "new game process generation and same saved world/camp/actor identity",
+          "persisted paid state, exact stock delta and any returning-home bandit identities",
+          "ordinary-time scheduler and lead evidence through renewed contact or causally explained non-return after opportunity",
+          "native cleanup of the owned run and bridge"
+        ],
+        "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "run.witness", "run.finish"],
+        "invariants": [
+          "no fixture reinstallation or state rewrite during continuation",
+          "no injected dispatch or shortened cooldown",
+          "process replacement and fresh native observations are required"
+        ],
+        "live_operations": ["game.act", "game.wait"],
+        "transition_timeout_seconds": 25.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {
+    "precondition": ["bind_r032_camp_payment_world"],
+    "production_behavior": ["operate_natural_camp_payment_and_return_ecology"],
+    "terminal_persistence": [
+      "operate_natural_camp_payment_and_return_ecology",
+      "bind_r032_paid_camp_after_reload",
+      "verify_camp_payment_and_ecology_after_reload"
+    ],
+    "artifact_verdict": [
+      "operate_natural_camp_payment_and_return_ecology",
+      "verify_camp_payment_and_ecology_after_reload"
+    ],
+    "disallowed_shortcuts": ["bind_r032_camp_payment_world"]
+  }
+}

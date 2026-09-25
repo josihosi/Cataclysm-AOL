@@ -177,6 +177,7 @@ class FileBackedCockpitBridge:
         self._sequence = 0
         self._session_generation = 0
         self._child: subprocess.Popen[str] | None = None
+        self._stdout_pending = b""
         self._child_stderr = None
         self._bootstrap_run_id = ""
         self._terminal_request_id = ""
@@ -195,6 +196,7 @@ class FileBackedCockpitBridge:
         stderr_path = self.session_dir / "child.stderr.log"
         self._child_stderr = stderr_path.open("a" if append_stderr else "w", encoding="utf-8")
         self._child_started_ns = time.time_ns()
+        self._stdout_pending = b""
         self._child = subprocess.Popen(
             list(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=self._child_stderr, text=True, bufsize=1, env=self._child_environment,
@@ -500,21 +502,33 @@ class FileBackedCockpitBridge:
         _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
         return receipt
 
-    def _read_complete_response(self) -> Any:
+    def _read_complete_response(self, *, timeout: float | None = None) -> Any:
         """Read one complete JSON value, including a pretty-printed startup descriptor."""
         assert self._child is not None and self._child.stdout is not None
-        parts: list[str] = []
+        deadline = None if timeout is None else time.monotonic() + timeout
         while True:
-            line = self._child.stdout.readline()
-            if not line:
-                return ""
-            parts.append(line)
-            candidate = "".join(parts)
-            try:
-                json.loads(candidate)
-            except json.JSONDecodeError:
-                continue
-            return candidate
+            # Own the read buffer: TextIO.readline() may consume the next record
+            # into its private buffer, where select() cannot see it.
+            end = self._stdout_pending.find(b"\n")
+            while end >= 0:
+                candidate = self._stdout_pending[:end + 1].decode("utf-8")
+                try:
+                    json.loads(candidate)
+                except json.JSONDecodeError:
+                    end = self._stdout_pending.find(b"\n", end + 1)
+                    continue
+                self._stdout_pending = self._stdout_pending[end + 1:]
+                return candidate
+            remaining = None if deadline is None else max(0, deadline - time.monotonic())
+            readable, _, _ = select.select([self._child.stdout], [], [], remaining)
+            if not readable:
+                return None
+            chunk = os.read(self._child.stdout.fileno(), 65536)
+            if not chunk:
+                candidate = self._stdout_pending.decode("utf-8")
+                self._stdout_pending = b""
+                return candidate
+            self._stdout_pending += chunk
 
     def _record_startup_output(self, response: str) -> None:
         """Retain each child startup envelope before deciding whether to admit it.
@@ -647,24 +661,19 @@ class FileBackedCockpitBridge:
             assert self._child is not None and self._child.stdout is not None
             # The child may have already persisted the exact bound descriptor
             # while stdout still contains a partial startup record.  Prefer
-            # that durable handoff before calling blocking readline(); this
-            # keeps a buffered/pretty startup envelope from deadlocking the
-            # bridge before native input ownership is admitted.
+            # that durable handoff before reading another startup envelope.
             durable = self._durable_session_descriptor()
             if durable is not None:
                 return durable
-            # Avoid blocking forever in readline() when startup has already
-            # persisted its descriptor but macOS has not delivered the pipe
-            # edge.  Poll briefly, then recover from the exact bound artifact.
-            readable, _, _ = select.select([self._child.stdout], [], [], 0.25)
-            if not readable:
+            # Partial records also yield so the durable handoff can be checked.
+            ready = self._read_complete_response(timeout=0.25)
+            if ready is None:
                 durable = self._durable_session_descriptor()
                 if durable is not None:
                     return durable
                 if self._child.poll() is not None:
                     raise ValueError("pre_descriptor_no_progress")
                 continue
-            ready = self._read_complete_response()
             if not ready:
                 raise ValueError("pre_descriptor_no_progress")
             self._record_startup_output(ready)
@@ -897,7 +906,8 @@ class FileBackedCockpitBridge:
         # blocked after the scenario has written its authoritative completion
         # signal.
         assert self._child.stdout is not None
-        terminal_stdout = self._child.stdout.read()
+        terminal_stdout = (self._stdout_pending + self._child.stdout.buffer.read()).decode("utf-8")
+        self._stdout_pending = b""
         if terminal_stdout:
             (self.session_dir / "terminal.stdout.log").write_text(
                 terminal_stdout, encoding="utf-8"
@@ -1364,7 +1374,9 @@ class FileBackedCockpitBridge:
         try:
             value = cockpit_evidence.select(recovered["response"], selector)
         except (KeyError, IndexError):
-            return {"ok": False, "error": "selected_response_slice_is_unavailable"}
+            return {"ok": False, "error": "selected_response_slice_is_unavailable",
+                    "selector": selector, "hint": "Inspect a field from the current view." +
+                    (" Use play performance for turn timing." if selector == "performance-turn-state" else "")}
         result = {"ok": True, "request_id": request_id, "response_sha256": receipt["response_sha256"],
                   "selector": selector}
         if isinstance(value, ArchiveSequence):
@@ -1390,7 +1402,8 @@ class FileBackedCockpitBridge:
                     "slice": selected}
         if contains is not None:
             if not isinstance(value, list):
-                return {"ok": False, "error": "slice_filter_requires_array"}
+                return {"ok": False, "error": "slice_filter_requires_array", "selector": selector,
+                        "hint": "--contains filters lists only. Remove --contains to inspect this value; for an object, append .KEY to select one field."}
             total = len(value)
             indices = [i for i, row in enumerate(value) if contains.casefold() in json.dumps(row, ensure_ascii=False).casefold()]
             value = [value[i] for i in indices]

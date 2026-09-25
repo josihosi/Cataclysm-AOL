@@ -1,0 +1,95 @@
+{
+  "disposition": "completed",
+  "verdict": "bounded_native_return_candidate_staged_without_promotion",
+  "outcome": "Staged an isolated DE67 method candidate that can reconcile clean native returned turns at mutation wind-down while preserving nonterminal task, claim, checkpoint evidence and exclusive reviewer ownership.",
+  "summary": "The original first-smoke worker latest turn completed at physical rollout line 9729, but its descendant latest turn aborted and older CLI runner records lack PID/birth. The candidate therefore fails closed on that historical snapshot. Seven focused tests and a subprocess reviewer handoff demonstrate the future clean route; all 227 adjacent tests pass. Installed method and live deadline state were not modified.",
+  "material_changes": [
+    "Added native exact claim, spawn edge, session metadata, latest-turn, descendant and CLI PID/birth quiescence checks in an isolated method copy.",
+    "Joined native returns with existing named-worker returned assignments in policy facts, mutation gate, active coordinator selection and clock retirement.",
+    "Made mutation gate inspect raw nonterminal tasks, including deadline_missed attempts; added runner transport identity recording and regression tests."
+  ],
+  "tests": [
+    "Seven focused native reconciliation tests passed, including a real subprocess reviewer launch without task terminalization.",
+    "227 aggregate native, runner, policy, supervisor, named-worker and phase-3 scenario tests passed; see candidate-test.out.",
+    "Patch applied in a temporary installed-method copy; all seven resulting files matched candidate SHA-256s.",
+    "Full deadline_harness suite: 92 passed and one random-universal-component test failed identically against the installed baseline."
+  ],
+  "live_actions": [
+    "No game, bridge, GUI, native helper or live supervisor session was launched. Original rollouts and deadline state were read only; reviewer handoff used a disposable test workspace."
+  ],
+  "evidence_ceiling": [
+    "The old child rollout ends with turn_aborted at physical line 5125; old runner records lack the new PID/birth field. Their exact historical quiescence is not automatically established by this candidate.",
+    "The current smoke task was already externally restart-normalized; this candidate neither reverses nor reclassifies that event.",
+    "The stage is a method candidate, not installed promotion or native saved-world proof."
+  ],
+  "bindings": {
+    "assignment_request_id": "230bf4e8da204f32b4c439cd4edb9c3d",
+    "original_worker_thread_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+    "original_worker_turn_id": "01a0d5de-114d-7041-aa1f-7e358eb585c2",
+    "original_child_thread_id": "01a0d507-ef3e-7742-935b-d4bd66ef0bc2",
+    "original_coordinator_session_id": "01a0d4fd-9ed2-7973-9a86-636630250699",
+    "candidate_patch_sha256": "5b8f9e1cf97914cfbf40b2617a19c96b3cc9b3865a2cd6d9da74d7b99006aed6"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate-review.md",
+      "role": "Human review summary and evidence limits."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate.patch",
+      "role": "Reviewable isolated DE67 method patch."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate-manifest.json",
+      "role": "Base and candidate file SHA-256 bindings."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/native-source-audit.json",
+      "role": "Original claimed task, native turn and descendant source handles."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate-original-replay.json",
+      "role": "Read-only replay of candidate classification on original source handles."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate-test.out",
+      "role": "Aggregate candidate regression test output."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/native_turns.py",
+      "role": "Native exact-return quiescence implementation."
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/tests/test_native_turns.py",
+      "role": "Returned, active, uncertain, historical and reviewer-handoff tests."
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Closed-room ordinary brazier ignition and smoke-only camp contact remain accepted only at their original partial-proof scope.",
+    "The review counterexample established that released historical named registry rows alone do not cause live_task."
+  ],
+  "active_work": [
+    "The separate named Luna assignment owns remaining saved-world smoke/light proof.",
+    "Sol retains exclusive decision on candidate method review and any promotion."
+  ],
+  "first_open_boundary": "An exclusive method review may decide promotion; the old native run lacks transport PID/birth and has an aborted child, so it cannot be retroactively treated as a clean return.",
+  "narrow_queries": [
+    "Read candidate-review.md, then candidate.patch and candidate-manifest.json for the exact change.",
+    "Inspect native-source-audit.json and candidate-original-replay.json for original thread, child and transport limits.",
+    "Run python3 -m unittest tests.test_native_turns tests.test_codex_runner tests.test_policy_kernel tests.test_coordinator_supervisor tests.test_worker_library tests.test_phase3_scenarios -q inside method-candidate."
+  ],
+  "entrypoints": [
+    ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/native_turns.py",
+    ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/coordinator_supervisor.py",
+    ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/policy_kernel.py",
+    ".de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/deadline_harness.py"
+  ],
+  "context_metrics": {
+    "focused_native_tests_passed": 7,
+    "aggregate_tests_passed": 227,
+    "helpers_used": 0,
+    "native_games_launched": 0
+  }
+}

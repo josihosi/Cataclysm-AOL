@@ -1,0 +1,1027 @@
+{
+  "schema": "caol-bulk-item-trace-messages-v1",
+  "run_id": "aca37cc5dddb4bf8a36a7b87c2b29ebf",
+  "message_count": 255,
+  "messages": [
+    {
+      "time": "8:01:31 AM",
+      "text": "bulk-trace iteration n=1 item=0x16201fa00 type=hammer source_items=51"
+    },
+    {
+      "time": "8:01:31 AM",
+      "text": "bulk-trace candidate n=1 item=0x16201fa00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=51"
+    },
+    {
+      "time": "8:01:31 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=77 free_ml=975360 sample_ml=320"
+    },
+    {
+      "time": "8:01:31 AM",
+      "text": "bulk-trace placement n=1 item=0x16201fa00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=51 dest_items=78"
+    },
+    {
+      "time": "8:01:31 AM",
+      "text": "bulk-trace removed n=1 item=0x16201fa00 src_items=50 dest_items=78"
+    },
+    {
+      "time": "8:01:32 AM",
+      "text": "bulk-trace iteration n=1 item=0x16201fc00 type=hammer source_items=50"
+    },
+    {
+      "time": "8:01:32 AM",
+      "text": "bulk-trace candidate n=1 item=0x16201fc00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=50"
+    },
+    {
+      "time": "8:01:32 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=78 free_ml=975040 sample_ml=320"
+    },
+    {
+      "time": "8:01:32 AM",
+      "text": "bulk-trace placement n=1 item=0x16201fc00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=50 dest_items=79"
+    },
+    {
+      "time": "8:01:32 AM",
+      "text": "bulk-trace removed n=1 item=0x16201fc00 src_items=49 dest_items=79"
+    },
+    {
+      "time": "8:01:33 AM",
+      "text": "bulk-trace iteration n=1 item=0x16201fe00 type=hammer source_items=49"
+    },
+    {
+      "time": "8:01:33 AM",
+      "text": "bulk-trace candidate n=1 item=0x16201fe00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=49"
+    },
+    {
+      "time": "8:01:33 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=79 free_ml=974720 sample_ml=320"
+    },
+    {
+      "time": "8:01:33 AM",
+      "text": "bulk-trace placement n=1 item=0x16201fe00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=49 dest_items=80"
+    },
+    {
+      "time": "8:01:33 AM",
+      "text": "bulk-trace removed n=1 item=0x16201fe00 src_items=48 dest_items=80"
+    },
+    {
+      "time": "8:01:34 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020000 type=hammer source_items=48"
+    },
+    {
+      "time": "8:01:34 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=48"
+    },
+    {
+      "time": "8:01:34 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=80 free_ml=974400 sample_ml=320"
+    },
+    {
+      "time": "8:01:34 AM",
+      "text": "bulk-trace placement n=1 item=0x162020000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=48 dest_items=81"
+    },
+    {
+      "time": "8:01:34 AM",
+      "text": "bulk-trace removed n=1 item=0x162020000 src_items=47 dest_items=81"
+    },
+    {
+      "time": "8:01:35 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020200 type=hammer source_items=47"
+    },
+    {
+      "time": "8:01:35 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=47"
+    },
+    {
+      "time": "8:01:35 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=81 free_ml=974080 sample_ml=320"
+    },
+    {
+      "time": "8:01:35 AM",
+      "text": "bulk-trace placement n=1 item=0x162020200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=47 dest_items=82"
+    },
+    {
+      "time": "8:01:35 AM",
+      "text": "bulk-trace removed n=1 item=0x162020200 src_items=46 dest_items=82"
+    },
+    {
+      "time": "8:01:37 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020400 type=hammer source_items=46"
+    },
+    {
+      "time": "8:01:37 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=46"
+    },
+    {
+      "time": "8:01:37 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=82 free_ml=973760 sample_ml=320"
+    },
+    {
+      "time": "8:01:37 AM",
+      "text": "bulk-trace placement n=1 item=0x162020400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=46 dest_items=83"
+    },
+    {
+      "time": "8:01:37 AM",
+      "text": "bulk-trace removed n=1 item=0x162020400 src_items=45 dest_items=83"
+    },
+    {
+      "time": "8:01:38 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020600 type=hammer source_items=45"
+    },
+    {
+      "time": "8:01:38 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=45"
+    },
+    {
+      "time": "8:01:38 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=83 free_ml=973440 sample_ml=320"
+    },
+    {
+      "time": "8:01:38 AM",
+      "text": "bulk-trace placement n=1 item=0x162020600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=45 dest_items=84"
+    },
+    {
+      "time": "8:01:38 AM",
+      "text": "bulk-trace removed n=1 item=0x162020600 src_items=44 dest_items=84"
+    },
+    {
+      "time": "8:01:39 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020800 type=hammer source_items=44"
+    },
+    {
+      "time": "8:01:39 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=44"
+    },
+    {
+      "time": "8:01:39 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=84 free_ml=973120 sample_ml=320"
+    },
+    {
+      "time": "8:01:39 AM",
+      "text": "bulk-trace placement n=1 item=0x162020800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=44 dest_items=85"
+    },
+    {
+      "time": "8:01:39 AM",
+      "text": "bulk-trace removed n=1 item=0x162020800 src_items=43 dest_items=85"
+    },
+    {
+      "time": "8:01:40 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020a00 type=hammer source_items=43"
+    },
+    {
+      "time": "8:01:40 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=43"
+    },
+    {
+      "time": "8:01:40 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=85 free_ml=972800 sample_ml=320"
+    },
+    {
+      "time": "8:01:40 AM",
+      "text": "bulk-trace placement n=1 item=0x162020a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=43 dest_items=86"
+    },
+    {
+      "time": "8:01:40 AM",
+      "text": "bulk-trace removed n=1 item=0x162020a00 src_items=42 dest_items=86"
+    },
+    {
+      "time": "8:01:41 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020c00 type=hammer source_items=42"
+    },
+    {
+      "time": "8:01:41 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=42"
+    },
+    {
+      "time": "8:01:41 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=86 free_ml=972480 sample_ml=320"
+    },
+    {
+      "time": "8:01:41 AM",
+      "text": "bulk-trace placement n=1 item=0x162020c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=42 dest_items=87"
+    },
+    {
+      "time": "8:01:41 AM",
+      "text": "bulk-trace removed n=1 item=0x162020c00 src_items=41 dest_items=87"
+    },
+    {
+      "time": "8:01:42 AM",
+      "text": "bulk-trace iteration n=1 item=0x162020e00 type=hammer source_items=41"
+    },
+    {
+      "time": "8:01:42 AM",
+      "text": "bulk-trace candidate n=1 item=0x162020e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=41"
+    },
+    {
+      "time": "8:01:42 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=87 free_ml=972160 sample_ml=320"
+    },
+    {
+      "time": "8:01:42 AM",
+      "text": "bulk-trace placement n=1 item=0x162020e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=41 dest_items=88"
+    },
+    {
+      "time": "8:01:42 AM",
+      "text": "bulk-trace removed n=1 item=0x162020e00 src_items=40 dest_items=88"
+    },
+    {
+      "time": "8:01:44 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021000 type=hammer source_items=40"
+    },
+    {
+      "time": "8:01:44 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=40"
+    },
+    {
+      "time": "8:01:44 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=88 free_ml=971840 sample_ml=320"
+    },
+    {
+      "time": "8:01:44 AM",
+      "text": "bulk-trace placement n=1 item=0x162021000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=40 dest_items=89"
+    },
+    {
+      "time": "8:01:44 AM",
+      "text": "bulk-trace removed n=1 item=0x162021000 src_items=39 dest_items=89"
+    },
+    {
+      "time": "8:01:45 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021200 type=hammer source_items=39"
+    },
+    {
+      "time": "8:01:45 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=39"
+    },
+    {
+      "time": "8:01:45 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=89 free_ml=971520 sample_ml=320"
+    },
+    {
+      "time": "8:01:45 AM",
+      "text": "bulk-trace placement n=1 item=0x162021200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=39 dest_items=90"
+    },
+    {
+      "time": "8:01:45 AM",
+      "text": "bulk-trace removed n=1 item=0x162021200 src_items=38 dest_items=90"
+    },
+    {
+      "time": "8:01:46 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021400 type=hammer source_items=38"
+    },
+    {
+      "time": "8:01:46 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=38"
+    },
+    {
+      "time": "8:01:46 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=90 free_ml=971200 sample_ml=320"
+    },
+    {
+      "time": "8:01:46 AM",
+      "text": "bulk-trace placement n=1 item=0x162021400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=38 dest_items=91"
+    },
+    {
+      "time": "8:01:46 AM",
+      "text": "bulk-trace removed n=1 item=0x162021400 src_items=37 dest_items=91"
+    },
+    {
+      "time": "8:01:47 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021600 type=hammer source_items=37"
+    },
+    {
+      "time": "8:01:47 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=37"
+    },
+    {
+      "time": "8:01:47 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=91 free_ml=970880 sample_ml=320"
+    },
+    {
+      "time": "8:01:47 AM",
+      "text": "bulk-trace placement n=1 item=0x162021600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=37 dest_items=92"
+    },
+    {
+      "time": "8:01:47 AM",
+      "text": "bulk-trace removed n=1 item=0x162021600 src_items=36 dest_items=92"
+    },
+    {
+      "time": "8:01:48 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021800 type=hammer source_items=36"
+    },
+    {
+      "time": "8:01:48 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=36"
+    },
+    {
+      "time": "8:01:48 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=92 free_ml=970560 sample_ml=320"
+    },
+    {
+      "time": "8:01:48 AM",
+      "text": "bulk-trace placement n=1 item=0x162021800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=36 dest_items=93"
+    },
+    {
+      "time": "8:01:48 AM",
+      "text": "bulk-trace removed n=1 item=0x162021800 src_items=35 dest_items=93"
+    },
+    {
+      "time": "8:01:50 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021a00 type=hammer source_items=35"
+    },
+    {
+      "time": "8:01:50 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=35"
+    },
+    {
+      "time": "8:01:50 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=93 free_ml=970240 sample_ml=320"
+    },
+    {
+      "time": "8:01:50 AM",
+      "text": "bulk-trace placement n=1 item=0x162021a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=35 dest_items=94"
+    },
+    {
+      "time": "8:01:50 AM",
+      "text": "bulk-trace removed n=1 item=0x162021a00 src_items=34 dest_items=94"
+    },
+    {
+      "time": "8:01:51 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021c00 type=hammer source_items=34"
+    },
+    {
+      "time": "8:01:51 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=34"
+    },
+    {
+      "time": "8:01:51 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=94 free_ml=969920 sample_ml=320"
+    },
+    {
+      "time": "8:01:51 AM",
+      "text": "bulk-trace placement n=1 item=0x162021c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=34 dest_items=95"
+    },
+    {
+      "time": "8:01:51 AM",
+      "text": "bulk-trace removed n=1 item=0x162021c00 src_items=33 dest_items=95"
+    },
+    {
+      "time": "8:01:52 AM",
+      "text": "bulk-trace iteration n=1 item=0x162021e00 type=hammer source_items=33"
+    },
+    {
+      "time": "8:01:52 AM",
+      "text": "bulk-trace candidate n=1 item=0x162021e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=33"
+    },
+    {
+      "time": "8:01:52 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=95 free_ml=969600 sample_ml=320"
+    },
+    {
+      "time": "8:01:52 AM",
+      "text": "bulk-trace placement n=1 item=0x162021e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=33 dest_items=96"
+    },
+    {
+      "time": "8:01:52 AM",
+      "text": "bulk-trace removed n=1 item=0x162021e00 src_items=32 dest_items=96"
+    },
+    {
+      "time": "8:01:53 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022000 type=hammer source_items=32"
+    },
+    {
+      "time": "8:01:53 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=32"
+    },
+    {
+      "time": "8:01:53 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=96 free_ml=969280 sample_ml=320"
+    },
+    {
+      "time": "8:01:53 AM",
+      "text": "bulk-trace placement n=1 item=0x162022000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=32 dest_items=97"
+    },
+    {
+      "time": "8:01:53 AM",
+      "text": "bulk-trace removed n=1 item=0x162022000 src_items=31 dest_items=97"
+    },
+    {
+      "time": "8:01:54 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022200 type=hammer source_items=31"
+    },
+    {
+      "time": "8:01:54 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=31"
+    },
+    {
+      "time": "8:01:54 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=97 free_ml=968960 sample_ml=320"
+    },
+    {
+      "time": "8:01:54 AM",
+      "text": "bulk-trace placement n=1 item=0x162022200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=31 dest_items=98"
+    },
+    {
+      "time": "8:01:54 AM",
+      "text": "bulk-trace removed n=1 item=0x162022200 src_items=30 dest_items=98"
+    },
+    {
+      "time": "8:01:56 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022400 type=hammer source_items=30"
+    },
+    {
+      "time": "8:01:56 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=30"
+    },
+    {
+      "time": "8:01:56 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=98 free_ml=968640 sample_ml=320"
+    },
+    {
+      "time": "8:01:56 AM",
+      "text": "bulk-trace placement n=1 item=0x162022400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=30 dest_items=99"
+    },
+    {
+      "time": "8:01:56 AM",
+      "text": "bulk-trace removed n=1 item=0x162022400 src_items=29 dest_items=99"
+    },
+    {
+      "time": "8:01:57 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022600 type=hammer source_items=29"
+    },
+    {
+      "time": "8:01:57 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=29"
+    },
+    {
+      "time": "8:01:57 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=99 free_ml=968320 sample_ml=320"
+    },
+    {
+      "time": "8:01:57 AM",
+      "text": "bulk-trace placement n=1 item=0x162022600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=29 dest_items=100"
+    },
+    {
+      "time": "8:01:57 AM",
+      "text": "bulk-trace removed n=1 item=0x162022600 src_items=28 dest_items=100"
+    },
+    {
+      "time": "8:01:58 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022800 type=hammer source_items=28"
+    },
+    {
+      "time": "8:01:58 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=28"
+    },
+    {
+      "time": "8:01:58 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=100 free_ml=968000 sample_ml=320"
+    },
+    {
+      "time": "8:01:58 AM",
+      "text": "bulk-trace placement n=1 item=0x162022800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=28 dest_items=101"
+    },
+    {
+      "time": "8:01:58 AM",
+      "text": "bulk-trace removed n=1 item=0x162022800 src_items=27 dest_items=101"
+    },
+    {
+      "time": "8:01:59 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022a00 type=hammer source_items=27"
+    },
+    {
+      "time": "8:01:59 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=27"
+    },
+    {
+      "time": "8:01:59 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=101 free_ml=967680 sample_ml=320"
+    },
+    {
+      "time": "8:01:59 AM",
+      "text": "bulk-trace placement n=1 item=0x162022a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=27 dest_items=102"
+    },
+    {
+      "time": "8:01:59 AM",
+      "text": "bulk-trace removed n=1 item=0x162022a00 src_items=26 dest_items=102"
+    },
+    {
+      "time": "8:02:00 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022c00 type=hammer source_items=26"
+    },
+    {
+      "time": "8:02:00 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=26"
+    },
+    {
+      "time": "8:02:00 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=102 free_ml=967360 sample_ml=320"
+    },
+    {
+      "time": "8:02:00 AM",
+      "text": "bulk-trace placement n=1 item=0x162022c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=26 dest_items=103"
+    },
+    {
+      "time": "8:02:00 AM",
+      "text": "bulk-trace removed n=1 item=0x162022c00 src_items=25 dest_items=103"
+    },
+    {
+      "time": "8:02:01 AM",
+      "text": "bulk-trace iteration n=1 item=0x162022e00 type=hammer source_items=25"
+    },
+    {
+      "time": "8:02:01 AM",
+      "text": "bulk-trace candidate n=1 item=0x162022e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=25"
+    },
+    {
+      "time": "8:02:01 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=103 free_ml=967040 sample_ml=320"
+    },
+    {
+      "time": "8:02:01 AM",
+      "text": "bulk-trace placement n=1 item=0x162022e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=25 dest_items=104"
+    },
+    {
+      "time": "8:02:01 AM",
+      "text": "bulk-trace removed n=1 item=0x162022e00 src_items=24 dest_items=104"
+    },
+    {
+      "time": "8:02:03 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023000 type=hammer source_items=24"
+    },
+    {
+      "time": "8:02:03 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=24"
+    },
+    {
+      "time": "8:02:03 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=104 free_ml=966720 sample_ml=320"
+    },
+    {
+      "time": "8:02:03 AM",
+      "text": "bulk-trace placement n=1 item=0x162023000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=24 dest_items=105"
+    },
+    {
+      "time": "8:02:03 AM",
+      "text": "bulk-trace removed n=1 item=0x162023000 src_items=23 dest_items=105"
+    },
+    {
+      "time": "8:02:04 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023200 type=hammer source_items=23"
+    },
+    {
+      "time": "8:02:04 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=23"
+    },
+    {
+      "time": "8:02:04 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=105 free_ml=966400 sample_ml=320"
+    },
+    {
+      "time": "8:02:04 AM",
+      "text": "bulk-trace placement n=1 item=0x162023200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=23 dest_items=106"
+    },
+    {
+      "time": "8:02:04 AM",
+      "text": "bulk-trace removed n=1 item=0x162023200 src_items=22 dest_items=106"
+    },
+    {
+      "time": "8:02:05 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023400 type=hammer source_items=22"
+    },
+    {
+      "time": "8:02:05 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=22"
+    },
+    {
+      "time": "8:02:05 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=106 free_ml=966080 sample_ml=320"
+    },
+    {
+      "time": "8:02:05 AM",
+      "text": "bulk-trace placement n=1 item=0x162023400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=22 dest_items=107"
+    },
+    {
+      "time": "8:02:05 AM",
+      "text": "bulk-trace removed n=1 item=0x162023400 src_items=21 dest_items=107"
+    },
+    {
+      "time": "8:02:06 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023600 type=hammer source_items=21"
+    },
+    {
+      "time": "8:02:06 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=21"
+    },
+    {
+      "time": "8:02:06 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=107 free_ml=965760 sample_ml=320"
+    },
+    {
+      "time": "8:02:06 AM",
+      "text": "bulk-trace placement n=1 item=0x162023600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=21 dest_items=108"
+    },
+    {
+      "time": "8:02:06 AM",
+      "text": "bulk-trace removed n=1 item=0x162023600 src_items=20 dest_items=108"
+    },
+    {
+      "time": "8:02:07 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023800 type=hammer source_items=20"
+    },
+    {
+      "time": "8:02:07 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=20"
+    },
+    {
+      "time": "8:02:07 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=108 free_ml=965440 sample_ml=320"
+    },
+    {
+      "time": "8:02:07 AM",
+      "text": "bulk-trace placement n=1 item=0x162023800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=20 dest_items=109"
+    },
+    {
+      "time": "8:02:07 AM",
+      "text": "bulk-trace removed n=1 item=0x162023800 src_items=19 dest_items=109"
+    },
+    {
+      "time": "8:02:09 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023a00 type=hammer source_items=19"
+    },
+    {
+      "time": "8:02:09 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=19"
+    },
+    {
+      "time": "8:02:09 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=109 free_ml=965120 sample_ml=320"
+    },
+    {
+      "time": "8:02:09 AM",
+      "text": "bulk-trace placement n=1 item=0x162023a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=19 dest_items=110"
+    },
+    {
+      "time": "8:02:09 AM",
+      "text": "bulk-trace removed n=1 item=0x162023a00 src_items=18 dest_items=110"
+    },
+    {
+      "time": "8:02:10 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023c00 type=hammer source_items=18"
+    },
+    {
+      "time": "8:02:10 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=18"
+    },
+    {
+      "time": "8:02:10 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=110 free_ml=964800 sample_ml=320"
+    },
+    {
+      "time": "8:02:10 AM",
+      "text": "bulk-trace placement n=1 item=0x162023c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=18 dest_items=111"
+    },
+    {
+      "time": "8:02:10 AM",
+      "text": "bulk-trace removed n=1 item=0x162023c00 src_items=17 dest_items=111"
+    },
+    {
+      "time": "8:02:11 AM",
+      "text": "bulk-trace iteration n=1 item=0x162023e00 type=hammer source_items=17"
+    },
+    {
+      "time": "8:02:11 AM",
+      "text": "bulk-trace candidate n=1 item=0x162023e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=17"
+    },
+    {
+      "time": "8:02:11 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=111 free_ml=964480 sample_ml=320"
+    },
+    {
+      "time": "8:02:11 AM",
+      "text": "bulk-trace placement n=1 item=0x162023e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=17 dest_items=112"
+    },
+    {
+      "time": "8:02:11 AM",
+      "text": "bulk-trace removed n=1 item=0x162023e00 src_items=16 dest_items=112"
+    },
+    {
+      "time": "8:02:12 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024000 type=hammer source_items=16"
+    },
+    {
+      "time": "8:02:12 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=16"
+    },
+    {
+      "time": "8:02:12 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=112 free_ml=964160 sample_ml=320"
+    },
+    {
+      "time": "8:02:12 AM",
+      "text": "bulk-trace placement n=1 item=0x162024000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=16 dest_items=113"
+    },
+    {
+      "time": "8:02:12 AM",
+      "text": "bulk-trace removed n=1 item=0x162024000 src_items=15 dest_items=113"
+    },
+    {
+      "time": "8:02:13 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024200 type=hammer source_items=15"
+    },
+    {
+      "time": "8:02:13 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=15"
+    },
+    {
+      "time": "8:02:13 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=113 free_ml=963840 sample_ml=320"
+    },
+    {
+      "time": "8:02:13 AM",
+      "text": "bulk-trace placement n=1 item=0x162024200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=15 dest_items=114"
+    },
+    {
+      "time": "8:02:13 AM",
+      "text": "bulk-trace removed n=1 item=0x162024200 src_items=14 dest_items=114"
+    },
+    {
+      "time": "8:02:14 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024400 type=hammer source_items=14"
+    },
+    {
+      "time": "8:02:14 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=14"
+    },
+    {
+      "time": "8:02:14 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=114 free_ml=963520 sample_ml=320"
+    },
+    {
+      "time": "8:02:14 AM",
+      "text": "bulk-trace placement n=1 item=0x162024400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=14 dest_items=115"
+    },
+    {
+      "time": "8:02:14 AM",
+      "text": "bulk-trace removed n=1 item=0x162024400 src_items=13 dest_items=115"
+    },
+    {
+      "time": "8:02:16 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024600 type=hammer source_items=13"
+    },
+    {
+      "time": "8:02:16 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=13"
+    },
+    {
+      "time": "8:02:16 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=115 free_ml=963200 sample_ml=320"
+    },
+    {
+      "time": "8:02:16 AM",
+      "text": "bulk-trace placement n=1 item=0x162024600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=13 dest_items=116"
+    },
+    {
+      "time": "8:02:16 AM",
+      "text": "bulk-trace removed n=1 item=0x162024600 src_items=12 dest_items=116"
+    },
+    {
+      "time": "8:02:17 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024800 type=hammer source_items=12"
+    },
+    {
+      "time": "8:02:17 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=12"
+    },
+    {
+      "time": "8:02:17 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=116 free_ml=962880 sample_ml=320"
+    },
+    {
+      "time": "8:02:17 AM",
+      "text": "bulk-trace placement n=1 item=0x162024800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=12 dest_items=117"
+    },
+    {
+      "time": "8:02:17 AM",
+      "text": "bulk-trace removed n=1 item=0x162024800 src_items=11 dest_items=117"
+    },
+    {
+      "time": "8:02:18 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024a00 type=hammer source_items=11"
+    },
+    {
+      "time": "8:02:18 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=11"
+    },
+    {
+      "time": "8:02:18 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=117 free_ml=962560 sample_ml=320"
+    },
+    {
+      "time": "8:02:18 AM",
+      "text": "bulk-trace placement n=1 item=0x162024a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=11 dest_items=118"
+    },
+    {
+      "time": "8:02:18 AM",
+      "text": "bulk-trace removed n=1 item=0x162024a00 src_items=10 dest_items=118"
+    },
+    {
+      "time": "8:02:19 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024c00 type=hammer source_items=10"
+    },
+    {
+      "time": "8:02:19 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=10"
+    },
+    {
+      "time": "8:02:19 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=118 free_ml=962240 sample_ml=320"
+    },
+    {
+      "time": "8:02:19 AM",
+      "text": "bulk-trace placement n=1 item=0x162024c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=10 dest_items=119"
+    },
+    {
+      "time": "8:02:19 AM",
+      "text": "bulk-trace removed n=1 item=0x162024c00 src_items=9 dest_items=119"
+    },
+    {
+      "time": "8:02:20 AM",
+      "text": "bulk-trace iteration n=1 item=0x162024e00 type=hammer source_items=9"
+    },
+    {
+      "time": "8:02:20 AM",
+      "text": "bulk-trace candidate n=1 item=0x162024e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=9"
+    },
+    {
+      "time": "8:02:20 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=119 free_ml=961920 sample_ml=320"
+    },
+    {
+      "time": "8:02:20 AM",
+      "text": "bulk-trace placement n=1 item=0x162024e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=9 dest_items=120"
+    },
+    {
+      "time": "8:02:20 AM",
+      "text": "bulk-trace removed n=1 item=0x162024e00 src_items=8 dest_items=120"
+    },
+    {
+      "time": "8:02:22 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025000 type=hammer source_items=8"
+    },
+    {
+      "time": "8:02:22 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025000 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=8"
+    },
+    {
+      "time": "8:02:22 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=120 free_ml=961600 sample_ml=320"
+    },
+    {
+      "time": "8:02:22 AM",
+      "text": "bulk-trace placement n=1 item=0x162025000 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=8 dest_items=121"
+    },
+    {
+      "time": "8:02:22 AM",
+      "text": "bulk-trace removed n=1 item=0x162025000 src_items=7 dest_items=121"
+    },
+    {
+      "time": "8:02:23 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025200 type=hammer source_items=7"
+    },
+    {
+      "time": "8:02:23 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025200 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=7"
+    },
+    {
+      "time": "8:02:23 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=121 free_ml=961280 sample_ml=320"
+    },
+    {
+      "time": "8:02:23 AM",
+      "text": "bulk-trace placement n=1 item=0x162025200 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=7 dest_items=122"
+    },
+    {
+      "time": "8:02:23 AM",
+      "text": "bulk-trace removed n=1 item=0x162025200 src_items=6 dest_items=122"
+    },
+    {
+      "time": "8:02:24 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025400 type=hammer source_items=6"
+    },
+    {
+      "time": "8:02:24 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025400 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=6"
+    },
+    {
+      "time": "8:02:24 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=122 free_ml=960960 sample_ml=320"
+    },
+    {
+      "time": "8:02:24 AM",
+      "text": "bulk-trace placement n=1 item=0x162025400 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=6 dest_items=123"
+    },
+    {
+      "time": "8:02:24 AM",
+      "text": "bulk-trace removed n=1 item=0x162025400 src_items=5 dest_items=123"
+    },
+    {
+      "time": "8:02:25 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025600 type=hammer source_items=5"
+    },
+    {
+      "time": "8:02:25 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025600 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=5"
+    },
+    {
+      "time": "8:02:25 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=123 free_ml=960640 sample_ml=320"
+    },
+    {
+      "time": "8:02:25 AM",
+      "text": "bulk-trace placement n=1 item=0x162025600 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=5 dest_items=124"
+    },
+    {
+      "time": "8:02:25 AM",
+      "text": "bulk-trace removed n=1 item=0x162025600 src_items=4 dest_items=124"
+    },
+    {
+      "time": "8:02:26 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025800 type=hammer source_items=4"
+    },
+    {
+      "time": "8:02:26 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025800 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=4"
+    },
+    {
+      "time": "8:02:26 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=124 free_ml=960320 sample_ml=320"
+    },
+    {
+      "time": "8:02:26 AM",
+      "text": "bulk-trace placement n=1 item=0x162025800 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=4 dest_items=125"
+    },
+    {
+      "time": "8:02:26 AM",
+      "text": "bulk-trace removed n=1 item=0x162025800 src_items=3 dest_items=125"
+    },
+    {
+      "time": "8:02:27 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025a00 type=hammer source_items=3"
+    },
+    {
+      "time": "8:02:27 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025a00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=3"
+    },
+    {
+      "time": "8:02:27 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=125 free_ml=960000 sample_ml=320"
+    },
+    {
+      "time": "8:02:27 AM",
+      "text": "bulk-trace placement n=1 item=0x162025a00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=3 dest_items=126"
+    },
+    {
+      "time": "8:02:27 AM",
+      "text": "bulk-trace removed n=1 item=0x162025a00 src_items=2 dest_items=126"
+    },
+    {
+      "time": "8:02:29 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025c00 type=hammer source_items=2"
+    },
+    {
+      "time": "8:02:29 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025c00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=2"
+    },
+    {
+      "time": "8:02:29 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=126 free_ml=959680 sample_ml=320"
+    },
+    {
+      "time": "8:02:29 AM",
+      "text": "bulk-trace placement n=1 item=0x162025c00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=2 dest_items=127"
+    },
+    {
+      "time": "8:02:29 AM",
+      "text": "bulk-trace removed n=1 item=0x162025c00 src_items=1 dest_items=127"
+    },
+    {
+      "time": "8:02:30 AM",
+      "text": "bulk-trace iteration n=1 item=0x162025e00 type=hammer source_items=1"
+    },
+    {
+      "time": "8:02:30 AM",
+      "text": "bulk-trace candidate n=1 item=0x162025e00 src=3539,3780,0 zone=LOOT_TOOLS raw=1 eligible=1 src_items=1"
+    },
+    {
+      "time": "8:02:30 AM",
+      "text": "bulk-trace dest=3540,3780,0 terrain=t_floor furniture=f_bench items=127 free_ml=959360 sample_ml=320"
+    },
+    {
+      "time": "8:02:30 AM",
+      "text": "bulk-trace placement n=1 item=0x162025e00 dest=3540,3780,0 vehicle_only=0 placed=1 src_items=1 dest_items=128"
+    },
+    {
+      "time": "8:02:30 AM",
+      "text": "bulk-trace removed n=1 item=0x162025e00 src_items=0 dest_items=128"
+    }
+  ]
+}

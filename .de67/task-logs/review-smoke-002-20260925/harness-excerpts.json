@@ -1,0 +1,134 @@
+[
+  {
+    "line": 2597,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "World.\nlast save result: not_needed\n",
+    "exit": 0
+  },
+  {
+    "line": 2982,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave; python3 tools/openclaw_harness/play_cli.py --diagnostics --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa look > build_logs/first-smoke-001/minute7999-post-wait-look.json; python3 - <<'PY'\nimport json\np='build_logs/first-smoke-001/minute7999-post-wait-look.json';d=json.load(open(p));r=d.get('response',{});print('request',d.get('request_id'),'time',r.get('game_minutes'),'turn',r.get('game_turn'));print('changed',r.get('facts_changed'));print('state',d.get('state'))\nPY"
+    ],
+    "stdout": "World.\nTilda Wray \u00b7 friendly \u00b7 offset 1, -1\nCasey Bolton \u00b7 friendly \u00b7 offset -3, 0\nfloor; fd_hot_air1: NW, N, NE, W, here, SW, S, SE\nfloor; f_brazier; fd_fire, fd_hot_air1: E\nEarlier messages: 255, 23388 characters omitted \u2192 play messages --offset 0 --limit 256\nLatest retained messages (may predate this action):\n1:19:55 PM: Saving game, this may take a while.\nrequest play-ecfc38d3a7994ac6a1b83a4eab2fa191 time {'before': 7999, 'after': 7999} turn {'before': 5231995, 'after': 5231995}\nchanged {'omitted': True, 'json_bytes': 41418, 'evidence': {'sha256': '6d734314f84713708b70eb4748f2b82c58c25ed91a47d243fce1b9932b009a2a', 'json_bytes': 50494, 'path': ['response', 'facts_changed']}}\nstate collected\n",
+    "exit": 0
+  },
+  {
+    "line": 3647,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "World.\nlast save result: not_needed\n",
+    "exit": 0
+  },
+  {
+    "line": 3833,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "World.\nElapsed: 16.0 game minutes.\nlast save result: not_needed\n",
+    "exit": 0
+  },
+  {
+    "line": 5123,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "World.\nTilda Wray \u00b7 friendly \u00b7 offset 2, -2\nCasey Bolton \u00b7 friendly \u00b7 offset -5, -7\nstairs; fd_hot_air1: NW\nfloor; fd_hot_air1: N, NE, W, here, E, SW, S, SE\nEarlier messages: 255, 18549 characters omitted \u2192 play messages --offset 0 --limit 256\nLatest retained messages (may predate this action):\n4:52:24 PM: You finish waiting.\n",
+    "exit": 0
+  },
+  {
+    "line": 5672,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "World.\nTilda Wray \u00b7 friendly \u00b7 offset -3, 3\nCasey Bolton \u00b7 friendly \u00b7 offset -5, -7\nstairs; fd_hot_air1: NW\nfloor; fd_hot_air1: N, NE, W, here, E, SW, S, SE\nEarlier messages: 255, 18918 characters omitted \u2192 play messages --offset 0 --limit 256\nLatest retained messages (may predate this action):\n5:53:08 PM: You finish waiting.\n",
+    "exit": 0
+  },
+  {
+    "line": 7386,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.pause"
+    ],
+    "stdout": "World.\n",
+    "exit": 0
+  },
+  {
+    "line": 7393,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa act world.quicksave"
+    ],
+    "stdout": "Pending \u2192 play collect\n",
+    "exit": 0
+  },
+  {
+    "line": 7399,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 -c 'import json,pathlib; d=json.loads(pathlib.Path(\".userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa/status.json\").read_text()); print({k:d.get(k) for k in [\"inflight_request_id\",\"state\",\"request_count\"]})'"
+    ],
+    "stdout": "{'inflight_request_id': None, 'state': 'ready', 'request_count': 157}\n",
+    "exit": 0
+  },
+  {
+    "line": 7406,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 - <<'PY'\nimport json,pathlib\np=pathlib.Path('.userdata/first-smoke-r-caol-001-smoke-recovery-v2-migration-cancel/harness_runs/20260925_112357_8ad6209bbe7a41be9972937a4306cd06/semantic.requests.jsonl')\nrows=[]\nfor line in p.open():\n try: rows.append(json.loads(line))\n except: pass\nfor d in rows[-8:]: print({k:d.get(k) for k in ['request_id','action_id','frame_id','surface_id']})\nPY"
+    ],
+    "stdout": "{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:151:world.wait:59525e1979fb95ac', 'action_id': 'world.wait', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:151', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:19582'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:152:menu.choose:0152015b8faa2467', 'action_id': 'menu.choose', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:152', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:19583'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:153:wait.1h:59525e1979fb95ac', 'action_id': 'wait.1h', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:153', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:19584'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:155:world.quicksave:59525e1979fb95ac', 'action_id': 'world.quicksave', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:155', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:23183'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:156:world.inspect_camp_npc:891c618ae8952f9d', 'action_id': 'world.inspect_camp_npc', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:156', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:23184'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:157:npc_inspection.close:59525e1979fb95ac', 'action_id': 'npc_inspection.close', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:157', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:23185'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:158:world.pause:59525e1979fb95ac', 'action_id': 'world.pause', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:158', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:23186'}\n{'request_id': 'cockpit:harness-c473a947d3ff4968b1f9a8896e9be415:6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:159:world.quicksave:59525e1979fb95ac', 'action_id': 'world.quicksave', 'frame_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:159', 'surface_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:surface:23187'}\n",
+    "exit": 0
+  },
+  {
+    "line": 7413,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 -c 'import json,pathlib; d=json.loads(pathlib.Path(\".userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa/status.json\").read_text()); print({k:d.get(k) for k in [\"inflight_request_id\",\"state\",\"request_count\",\"last_request_id\",\"last_response\"]})'"
+    ],
+    "stdout": "{'inflight_request_id': None, 'state': 'ready', 'request_count': 157, 'last_request_id': None, 'last_response': {'binding_id': '494cbb3c29ae7ee01a59737ba93f8641175d040c64a251d52db9fb7137910987', 'request_id': 'play-23c5974b81df4a8da9a9a8c7c8807aa6', 'request_identity': {'action': 'game.act', 'action_id': 'world.quicksave', 'observation_id': '6937eb57d90b40468268ec7f38bdbf8110b94189f80e505082d2e81a6a1a7165:frame:159'}, 'request_sha256': 'd9cea96a8608fd785cb24cb75ce4b098c961ec4ff788b828688dfb17cc5f80f7', 'response_artifact': 'responses/play-23c5974b81df4a8da9a9a8c7c8807aa6.json', 'response_sha256': '8a0900afa0d7b63e37191456311c513548197a620245793259682d5b46d03c4e', 'schema': 'caol-cockpit-file-bridge-v1', 'sequence': 157, 'session_generation': 0}}\n",
+    "exit": 0
+  },
+  {
+    "line": 7421,
+    "source": "/Users/josefhorvath/.codex/sessions/2026/09/25/rollout-2026-09-25T09-15-40-01a0d76b-7951-7240-9561-386cdfa04108.jsonl",
+    "command": [
+      "/bin/zsh",
+      "-lc",
+      "python3 tools/openclaw_harness/play_cli.py --session .userdata/openclaw_harness/bridge-sessions/selected-611f16119a7a4b2e96e6fb86b225cefa --wait-seconds 60 collect --request-id play-23c5974b81df4a8da9a9a8c7c8807aa6"
+    ],
+    "stdout": "World.\nlast save result: saved\n8:54:16 PM: Saving game, this may take a while.\n",
+    "exit": 0
+  }
+]

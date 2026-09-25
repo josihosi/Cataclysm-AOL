@@ -1,0 +1,28 @@
+Command:
+python3 -m unittest tools.openclaw_harness.play_cli_evidence_test tools.openclaw_harness.registry_query_output_test
+
+Exit status: 1
+
+Exact salient output from one run:
+.F.FFF..F{"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/query-fixture-3.json", "ok": false}
+F...
+FAIL: test_browsing_preserves_an_issued_token_and_its_history
+AssertionError: False != True : {"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/cli.registry.fixture.json", "ok": false}
+FAIL: test_excluded_candidates_explain_rejection_and_retrieve_exact_evidence
+AssertionError: False != True : {"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/query-fixture-1.json", "ok": false}
+FAIL: test_full_query_exports_without_printing_evaluation
+AssertionError: False != True : {"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/query-fixture-2.json", "ok": false}
+FAIL: test_full_recovery_is_exact_and_tampering_is_rejected
+AssertionError: False != True : {"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/query-fixture-3.json", "ok": false}
+FAIL: test_pages_keep_order_snapshot_and_authority_without_requery
+AssertionError: False != True : {"command": "registry-query", "error": "Scenario not found: /Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/scenarios/query-fixture-1.json", "ok": false}
+FAIL: test_query_preserves_build_and_binding_metadata
+AssertionError: 1 != 0
+----------------------------------------------------------------------
+Ran 13 tests in 2.074s
+
+FAILED (failures=6)
+
+These are the pre-existing Scenario-not-found fixture boundary. The focused
+evidence/projection tests below pass; no changed line produces or consumes
+these generated fixture paths.

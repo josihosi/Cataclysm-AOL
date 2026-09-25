@@ -1,0 +1,13 @@
+{
+  "candidate_parse": "passed",
+  "changed_slices": [
+    "R-CAOL-FIRST-SMOKE-S001",
+    "R-CAOL-DISPATCH-VISIT-S001"
+  ],
+  "other_slices_unchanged": 60,
+  "all_other_FS_text_unchanged_except_explicit_draft_status": true,
+  "accepted_proof_untouched": true,
+  "live_FS_not_edited": true,
+  "promotion": "exclusive reviewer required; explicit owner-authorized thaw supersedes append-only scope for these two slices only",
+  "game_fixed": false
+}

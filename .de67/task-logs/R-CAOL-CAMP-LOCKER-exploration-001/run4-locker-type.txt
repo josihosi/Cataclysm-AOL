@@ -1,0 +1,5 @@
+##6126281440
+Basecamp: Locker
+ALLOWED HERE ONLY
+Submit → play act prompt.submit --param "text=TEXT"
+Cancel → play act prompt.cancel

@@ -1,0 +1,11 @@
+{
+  "name": "r032_camp_defense_from_locker_v1",
+  "description": "Zero-credit immutable copy of the accepted, natively saved R032 Locker run world. It preserves the accepted Assignment Camp and character:25 after the native Locker transfer and reload; it declares no patrol zone/order, zombie, bandit or inventory transforms. All patrol setup and defense behavior must be observed through native UI in isolated per-branch userdirs.",
+  "source_artifact": ".userdata/r032-camp-locker-transfer-exp005-20260924/save/McWilliams",
+  "source_witness": ".de67/task-logs/R-CAOL-CAMP-LOCKER-exploration-001/run5-final-witness.json",
+  "source_hashes": {
+    "master.gsav": "42d28f9b3c9726d1755eb9dfcd63eabf9806a54165edbcf722ac0fcb0edc88ad",
+    "#Wm9yYWlkYSBWaWNr.sav.zzip": "9b6cd99a05aed19e50f34b9d0c3d56e922de30890d1fe123da7afe1f99e338f5"
+  },
+  "save_transforms": []
+}

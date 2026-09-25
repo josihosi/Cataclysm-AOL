@@ -1,0 +1,19 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "The declared replacement process restored the saved World at the guarded-retreat checkpoint; its persisted player-created brazier fire audit passed.",
+  "causal_account": "The sealed replacement-generation journal binds the new process to the same run and records its fresh World observation at the saved retreat position. The scenario-owned persisted-world audit for that generation found the expected brazier and active fire at the saved relative tile, without fixture reinstallation.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "Fresh World observation from the replacement process at the guarded-retreat position.",
+      "checks": {
+        "value.game_minutes": 8221,
+        "value.surface.kind": "world",
+        "value.surface.facts.avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3372,995,1]}"
+      }
+    }
+  ],
+  "recommended_disposition": "accept",
+  "remaining_unknowns": [],
+  "evidence_ceiling": "focused"
+}

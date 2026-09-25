@@ -1,0 +1,61 @@
+{
+  "schema": "caol-worker-result-receipt-v1",
+  "assignment": "R-HARNESS-PREMISES-exploration-002",
+  "worker": "evidence_scope_repair",
+  "scenario_id": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
+  "selection_token": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+  "run_id": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+  "source_identity": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+  "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+  "binding_id": "d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3",
+  "session_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb",
+  "run_artifact_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7",
+  "outcome": {
+    "verdict": "inconclusive",
+    "disposition": "repair",
+    "first_missing_boundary": "autonomous dispatch/watch",
+    "pre_input": {
+      "game_minutes": 9241,
+      "source": "c4armed",
+      "source_active": true,
+      "source_countdown_turn": 5356860,
+      "source_countdown_minutes": 10081,
+      "camp_site": "overmap_special:bandit_camp@140,51,0",
+      "observer_eligible": true,
+      "initial_candidate_count": 1,
+      "active_outing": false
+    },
+    "scheduler_boundary": {
+      "game_minutes": 9301,
+      "scheduler_last_hour": 155,
+      "routine_activated_minutes": 9300,
+      "drive": 358,
+      "threshold": 500,
+      "force_due": false,
+      "reason": "drive_below_threshold",
+      "candidates": [],
+      "source_countdown_unchanged": true,
+      "watch_observed": false,
+      "source_emission_observed": false,
+      "sound_callback_observed": false,
+      "returned_report_observed": false
+    }
+  },
+  "native_receipts": [
+    {"request_id": "play-adb5ae66085c4590832073b6dc3b5420", "response_sha256": "7013d8a9a7147b6ca9da375b428152176ed9491dbd5b728e6ea734b8a6930bb5"},
+    {"request_id": "play-f11a61b5616c42d8b203a4187fd1b28a", "response_sha256": "c2ae1b3e3f826e70ba8abce23a339e965a6eb2069a0c0936d5f3725389dc19f2"},
+    {"request_id": "play-632b31dd895048749a720daa946f2ac1", "response_sha256": "16cbdf267336b6e9fd44db8a26e1a2225f2b41f51ad1b5bbc96298bb07fde198"},
+    {"request_id": "play-d4663ef7b22541a7aa125573e826bc0f", "response_sha256": "6b5181dd711c4ede9cb07639e5fda8420e96fb024471ab9e42b86a7fb195ef64"},
+    {"request_id": "play-787ed5df1d134cb4986ed425e017613a", "response_sha256": "18a35d4d94ba7e41a756d39161873ac9e574e9fe2577c0c283ddeb326ac627f6"},
+    {"request_id": "play-f8eb5c8d910442aa8f8cee113726cdfb", "response_sha256": "3f36973c55cdf54a334a6d345ce1df2ddc66dc8bd1c73da7e74a6f9aa4f4ca0f"}
+  ],
+  "witness_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json",
+  "terminalization": {
+    "state": "safe_to_cleanup",
+    "report_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7/probe.report.json",
+    "report_sha256": "6bc909e59e21c1fd571fa86287d1f2afe90db2584197f235ee25ec2cf6a2ebd9",
+    "child_pid": 49786,
+    "child_alive_after_cleanup": false,
+    "bridge_cleanup": "accepted"
+  }
+}

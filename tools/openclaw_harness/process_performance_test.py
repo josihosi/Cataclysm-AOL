@@ -292,15 +292,15 @@ class PerformanceTest(unittest.TestCase):
     def test_waiting_alarm_crossing_recovery_and_duplicate_collection(self):
         self.recorder([sample(1, 0)])
         self.turn_config()  # Four-turn generic window must not shorten waiting's 100 turns.
-        self.waiting_turns(1, [.022] * 99)
+        self.waiting_turns(1, [.122] * 99)
         self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
-        self.waiting_turns(100, [.022])
+        self.waiting_turns(100, [.122])
         result = perf.collect_turn_assessment(self.directory, "binding-a")
         self.assertEqual([a["kind"] for a in result["alarms"]], ["waiting_slow"])
-        self.assertAlmostEqual(result["alarms"][0]["mean_seconds"], .022)
+        self.assertAlmostEqual(result["alarms"][0]["mean_seconds"], .122)
         self.assertIn("coordinator", result["alarms"][0]["message"])
         self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
-        self.waiting_turns(101, [.022] * 10)
+        self.waiting_turns(101, [.122] * 10)
         self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
         self.waiting_turns(111, [.001] * 100)
         recovered = perf.collect_turn_assessment(self.directory, "binding-a")
@@ -309,10 +309,10 @@ class PerformanceTest(unittest.TestCase):
 
     def test_waiting_threshold_spike_and_input_gaps(self):
         self.recorder([sample(1, 0)])
-        self.waiting_turns(1, [.010] * 100)
+        self.waiting_turns(1, [.100] * 100)
         result = perf.collect_turn_assessment(self.directory, "binding-a")
         self.assertEqual(result["alarms"], [])
-        self.assertAlmostEqual(result["waiting"]["mean_seconds"], .010)
+        self.assertAlmostEqual(result["waiting"]["mean_seconds"], .100)
         self.waiting_turns(101, [.001] * 99 + [.050], generation=2)
         self.assertEqual(perf.collect_turn_assessment(self.directory, "binding-a")["alarms"], [])
 

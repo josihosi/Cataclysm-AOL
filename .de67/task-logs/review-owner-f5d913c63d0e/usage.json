@@ -1,0 +1,179 @@
+{
+  "window_start": "2026-09-20T12:42:37.611634+00:00",
+  "snapshot": "2026-09-20T22:42:37.611634+00:00",
+  "campaign_full_tree": {
+    "fresh_input": 6741849,
+    "cached_input": 316421888,
+    "output": 716427,
+    "responses": 2575
+  },
+  "campaign_threads": [
+    {
+      "id": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "parent": null,
+      "agent_path": null,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-11-38-01a0bf28-8257-7191-8506-f66994d2fda2.jsonl",
+      "fresh_input": 390084,
+      "cached_input": 36703616,
+      "output": 67839,
+      "responses": 318
+    },
+    {
+      "id": "01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d4841524e4553532d504552464f524d414e43452d696d706c656d656e746174696f6e2d303031",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-13-40-01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc.jsonl",
+      "fresh_input": 340853,
+      "cached_input": 15053568,
+      "output": 62817,
+      "responses": 126
+    },
+    {
+      "id": "01a0bf4d-df10-7371-903c-767ecf1901e5",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/harness_performance_review",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-52-26-01a0bf4d-df10-7371-903c-767ecf1901e5.jsonl",
+      "fresh_input": 62240,
+      "cached_input": 464128,
+      "output": 2211,
+      "responses": 11
+    },
+    {
+      "id": "01a0bf5a-8349-7411-856e-30193f428c40",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d4841524e4553532d504552464f524d414e43452d636c6f737572652d6e61746976652d70656e64696e672d776169742d616c61726d2d6a6f75726e65792d303031",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T17-06-15-01a0bf5a-8349-7411-856e-30193f428c40.jsonl",
+      "fresh_input": 506339,
+      "cached_input": 24603648,
+      "output": 50741,
+      "responses": 188
+    },
+    {
+      "id": "01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d4841524e4553532d504552464f524d414e43452d636c6f737572652d726570726573656e7461746976652d776f726b6c6f61642d636f6d70617269736f6e2d303031",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T17-37-46-01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716.jsonl",
+      "fresh_input": 1070096,
+      "cached_input": 57257728,
+      "output": 133501,
+      "responses": 429
+    },
+    {
+      "id": "01a0bfbb-c2dd-7860-a762-96218ce29a60",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d43414f4c2d5349474e414c2d50524f4f462d6578706c6f726174696f6e2d303031",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T18-52-28-01a0bfbb-c2dd-7860-a762-96218ce29a60.jsonl",
+      "fresh_input": 1020314,
+      "cached_input": 41771776,
+      "output": 71277,
+      "responses": 310
+    },
+    {
+      "id": "01a0bfe0-e862-75c2-b4f8-7644d31d6e35",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d43414f4c2d5349474e414c2d50524f4f462d6578706c6f726174696f6e2d303032",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T19-33-02-01a0bfe0-e862-75c2-b4f8-7644d31d6e35.jsonl",
+      "fresh_input": 1673782,
+      "cached_input": 60382976,
+      "output": 137878,
+      "responses": 507
+    },
+    {
+      "id": "01a0c057-825b-7773-8a2a-a939712a57ae",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "agent_path": "/root/task_522d43414f4c2d5349474e414c2d50524f4f462d6578706c6f726174696f6e2d303033",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T21-42-35-01a0c057-825b-7773-8a2a-a939712a57ae.jsonl",
+      "fresh_input": 164200,
+      "cached_input": 5332992,
+      "output": 10625,
+      "responses": 61
+    },
+    {
+      "id": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "parent": null,
+      "agent_path": null,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T22-02-27-01a0c069-b1b6-7740-b0e5-934599578ee3.jsonl",
+      "fresh_input": 210428,
+      "cached_input": 18660608,
+      "output": 31885,
+      "responses": 166
+    },
+    {
+      "id": "01a0c06a-ecd4-7f73-a01a-e65302af798e",
+      "parent": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "agent_path": "/root/task_522d43414f4c2d5349474e414c2d50524f4f462d6578706c6f726174696f6e2d303034",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T22-03-48-01a0c06a-ecd4-7f73-a01a-e65302af798e.jsonl",
+      "fresh_input": 519458,
+      "cached_input": 27615744,
+      "output": 60266,
+      "responses": 215
+    },
+    {
+      "id": "01a0c0a1-18e7-7c23-9966-80fa989a9363",
+      "parent": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "agent_path": "/root/task_522d4841524e4553532d455845435554494f4e2d6578706c6f726174696f6e2d303031",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T23-02-58-01a0c0a1-18e7-7c23-9966-80fa989a9363.jsonl",
+      "fresh_input": 682632,
+      "cached_input": 25138944,
+      "output": 75282,
+      "responses": 190
+    },
+    {
+      "id": "01a0c0da-bf41-7a80-9d5e-3016c5da8176",
+      "parent": null,
+      "agent_path": null,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/21/rollout-2026-09-21T00-05-56-01a0c0da-bf41-7a80-9d5e-3016c5da8176.jsonl",
+      "fresh_input": 101423,
+      "cached_input": 3436160,
+      "output": 12105,
+      "responses": 54
+    }
+  ],
+  "review_including_luna_helper": {
+    "fresh_input": 247423,
+    "cached_input": 6229888,
+    "output": 39408,
+    "responses": 51
+  },
+  "review_helper_threads": [
+    {
+      "id": "01a0c0ec-a73d-7bc1-aeda-d7cc8f0bf799",
+      "parent": "01a0c060-a6f4-7ae2-ae1b-db23fb312be4",
+      "agent_path": "/root/latest_harness_context",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/21/rollout-2026-09-21T00-25-29-01a0c0ec-a73d-7bc1-aeda-d7cc8f0bf799.jsonl",
+      "fresh_input": 55642,
+      "cached_input": 358144,
+      "output": 3728,
+      "responses": 9
+    }
+  ],
+  "weekly_account": {
+    "first_sample": {
+      "timestamp": "2026-09-20T12:42:40.668Z",
+      "used_percent": 46.0,
+      "window_minutes": 10080,
+      "resets_at": 1790412534,
+      "elapsed_week_pace_estimate": 2.770260186268926
+    },
+    "latest_sample": {
+      "timestamp": "2026-09-20T22:42:08.906Z",
+      "used_percent": 56.0,
+      "window_minutes": 10080,
+      "resets_at": 1790412534,
+      "elapsed_week_pace_estimate": 2.4831425889193475
+    },
+    "sample_count": 3231,
+    "same_reset_pace_range": [
+      2.480675930498717,
+      2.827186302010439
+    ]
+  },
+  "parse_errors": [],
+  "limitations": [
+    "Only available local Sept20/21-created session files; earlier-created active/remote sessions may be missing.",
+    "Attribution follows coordinator and child parent IDs; unrelated owner chats and external status agents are separate, not assigned campaign cost.",
+    "Cached input is not fresh work or an equivalent bill; token counts do not assign account-wide allowance.",
+    "Review snapshot excludes subsequent completion/report responses.",
+    "Pace is an estimate from used fraction divided by elapsed week, not a supplied billing multiplier; samples do not prove continuous activity."
+  ]
+}

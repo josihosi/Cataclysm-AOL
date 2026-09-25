@@ -6,6 +6,250 @@ from gameplay_display import player_output, bounded_player_output, plain_player_
 
 
 class PlayerOutputTest(unittest.TestCase):
+    def test_enabled_zone_facts_are_not_fabricated_actions(self):
+        snapshot = {"owner": "zone_manager", "current": {
+            "facts": {"zones": [{"id": "zone-6", "enabled": True,
+                                  "name": "Basecamp: Storage"}]},
+            "actions": [{"id": "zone.select", "stable_id": "zone-6",
+                         "label": "Basecamp: Storage", "enabled": True}]}}
+        text = plain_player_output({"state": "collected", "response": {
+            "current_input": {"owner": "zone_manager", "view": "full"}}},
+            snapshot=snapshot)
+        self.assertNotIn("play act zone-6", text)
+        self.assertIn("Basecamp: Storage", text)
+        self.assertIn("play act zone.<action> --target <target>", text)
+        self.assertIn("zone-6", text)
+        self.assertIn("select", text)
+
+    def test_empty_inventory_highlight_is_explicit(self):
+        text = plain_player_output({"current_input": {"owner": "inventory", "view": "full",
+            "facts_changed": {"highlighted_item": {"available": True, "present": False}}}})
+        self.assertIn("No highlighted item.", text)
+
+    def test_native_wait_interruption_is_a_decision_not_a_failure(self):
+        text = plain_player_output({"ok": False, "error": "native_wait_interrupted"})
+        self.assertIn("Wait interrupted. Choose from the current prompt.", text)
+        self.assertNotIn("Error:", text)
+
+    def test_wait_prompt_omits_receipt_noise_and_false_rejection(self):
+        snapshot = {"owner": "prompt", "current": {
+            "facts": {"title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY", "text": "Bandit nearby. Stop waiting?"},
+            "actions": [{"id": "prompt.choose", "stable_id": "prompt-option:1", "label": "YES", "enabled": True}]}}
+        text = plain_player_output({"state": "rejected", "response": {
+            "ok": False, "current_input": {"owner": "prompt", "view": "full"},
+            "outcome": {"ok": False, "error": "native_wait_interrupted",
+                "next_action": "Choose from terminal_observation actions, or observe again; the macro has stopped.",
+                "chain": {"state": "interrupted", "partial_progress": 0,
+                          "native_stop_reason": "native_authority_required", "native_frame_id": "internal-hash:frame:25"}}}},
+            snapshot=snapshot)
+        for expected in ("Bandit nearby. Stop waiting?", "YES", "Waited 0 game minutes."):
+            self.assertIn(expected, text)
+        for unwanted in ("ok: no", "rejected", "internal-hash", "native_authority_required", "CANCEL_ACTIVITY", "terminal_observation"):
+            self.assertNotIn(unwanted, text)
+
+    def test_whole_journal_entry_lists_fields_without_dumping_embedded_observation(self):
+        text = plain_player_output({"ok": True,
+            "selector": "result.evidence_journal.entries.62",
+            "slice": {"citation_id": "J0063", "kind": "macro_interruption",
+                      "value": {"kind": "interruption", "result": {
+                          "terminal_observation": {"messages": "x" * 100000}}}}},
+            inspection_request_id="journal-request")
+        self.assertLess(len(text), 1000)
+        self.assertIn("J0063: macro interruption", text)
+        self.assertIn("INDEX 62; PATH FIELD; FIELD: kind, result", text)
+        self.assertIn("entries.INDEX.value.PATH --request-id journal-request", text)
+
+    def test_no_progress_error_directs_observation_without_claiming_a_stall(self):
+        text = plain_player_output({"ok": False, "error": "proved_no_progress"})
+        self.assertIn("No game progress was recorded", text)
+        self.assertIn("Check for an interruption → play look", text)
+        self.assertNotIn("proved_no_progress", text)
+
+    def test_collected_activity_directs_fresh_observation_not_receipt_polling(self):
+        snapshot = {"owner": "activity_wait", "current": {
+            "facts": {"activity_type": "wait"},
+            "actions": [{"id": "activity.pause", "enabled": True}]}}
+        collected = {"state": "collected", "response": {
+            "current_input": {"owner": "activity_wait", "view": "full"}}}
+        text = plain_player_output(collected, snapshot=snapshot)
+        self.assertIn("Check progress → play look", text)
+        self.assertIn("collect repeats this recorded result", text)
+        pending = plain_player_output({"state": "pending"}, snapshot=snapshot)
+        self.assertIn("Pending → play collect", pending)
+        self.assertNotIn("collect repeats", pending)
+
+    def test_journal_scalar_inspection_supplies_exact_typed_check(self):
+        for value in ("true", True, "42", 42, None):
+            text = plain_player_output({"ok": True,
+                "selector": "result.evidence_journal.entries.7.value.value.surface.facts.actual_death",
+                "slice": value})
+            check = json.loads(text.removeprefix("checks: "))
+            self.assertEqual(check, {"value.surface.facts.actual_death": value})
+            self.assertIs(type(check["value.surface.facts.actual_death"]), type(value))
+
+    def test_large_journal_string_does_not_bypass_existing_display_bounds(self):
+        text = plain_player_output({"ok": True, "selector": "entries.7.value.value.surface.facts.text",
+                                    "slice": "x" * 100000})
+        self.assertLess(len(text), 8192)
+        self.assertFalse(text.startswith("checks:"))
+        self.assertIn("98976 characters omitted; total 100000 characters", text)
+
+    def test_short_world_look_preserves_facts_and_controls_remain_retrievable(self):
+        snapshot = {"current": {"owner": "world", "facts": {"avatar": {"name": "Ada", "absolute_ms": [1, 2, 0]}},
+                               "actions": [{"id": "world.wait", "enabled": True}]}}
+        short = world_look(snapshot, show_controls=False)
+        self.assertIn("Ada", short)
+        self.assertIn("Position: 1, 2, 0", short)
+        self.assertIn("Controls unchanged", short)
+        self.assertNotIn("ACTIONS", short)
+        controls = world_look(snapshot, controls_only=True)
+        self.assertIn("play act world.wait", controls)
+        self.assertNotIn("Position:", controls)
+
+    def test_ordinary_movement_stop_drops_nested_rejection_bookkeeping(self):
+        text = plain_player_output({"ok": False, "state": "rejected", "response": {
+            "result": {"ok": False, "error": "raw_move_relative_no_progress",
+                       "next_action": "Choose from terminal_observation actions, or observe again; the macro has stopped."}}})
+        self.assertIn("Movement stopped:", text)
+        self.assertIn("Next: play look", text)
+        self.assertNotIn("ok: no", text)
+        self.assertNotIn("state: rejected", text)
+        self.assertNotIn("terminal_observation", text)
+
+    def test_waiting_alarm_keeps_measurement_limit_and_escalation_concisely(self):
+        text = plain_player_output({"turn_assessment": {"alarms": [{"kind": "waiting_slow",
+            "mean_seconds": .21997036122, "limit_seconds": .1, "sample_count": 100}]}})
+        self.assertIn("220.0 ms/turn", text)
+        self.assertIn("100-turn average; limit 100 ms", text)
+        self.assertIn("Tell the coordinator", text)
+        self.assertNotIn(".21997036122", text)
+
+    def test_text_input_examples_keep_a_sentence_in_one_shell_argument(self):
+        import shlex
+        from gameplay_display import _plain_controls
+        for action in ("prompt.submit", "menu.filter", "inventory.filter"):
+            text = _plain_controls([{"id": action}])
+            command = text.split(" → ", 1)[1].replace("TEXT", "Ada follow me")
+            self.assertEqual(shlex.split(command)[-1], "text=Ada follow me")
+
+    def test_controls_explain_only_available_shortcuts_without_technical_dump(self):
+        from cockpit import player_controls
+        for enabled in (False, True, None):
+            text = plain_player_output({"ok": True, "result": player_controls({
+                "game.wait": enabled, "game.move_relative": enabled})})
+            self.assertLess(len(text), 1800)
+            self.assertEqual("play wait 5m" in text, bool(enabled))
+            self.assertEqual("play move --east" in text, bool(enabled))
+            if enabled is None:
+                self.assertIn("permission unknown", text)
+            self.assertNotIn("example_request", text)
+            self.assertIn("play --diagnostics controls", text)
+
+    def test_journal_guidance_targets_fields_instead_of_entire_observation(self):
+        text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
+            "slice": [{"citation_id": "J0001", "kind": "observation",
+                       "value": {"game_minutes": 10, "surface": {"kind": "world"}}}]})
+        self.assertIn("INDEX 0; PATH FIELD", text)
+        self.assertIn("FIELD: game_minutes, surface", text)
+        self.assertNotIn("Details →", text)
+
+    def test_nested_journal_observation_points_directly_to_facts(self):
+        text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
+            "slice": [{"citation_id": "J0002", "kind": "observation", "value": {
+                "kind": "observation", "value": {"surface": {
+                    "kind": "world", "facts": {"text": "Returned", "game_minutes": 42}}}}}]},
+            inspection_request_id="play-journal")
+        self.assertIn("INDEX 0; PATH value.surface.facts.FIELD", text)
+        self.assertIn("--request-id play-journal", text)
+        self.assertIn("FIELD: text, game_minutes", text)
+        self.assertNotIn(".value.FIELD", text)
+
+    def test_complete_short_evidence_has_no_hash_or_retrieval_boilerplate(self):
+        text = plain_player_output({"matched": 1, "rows": [{"fields": {"event": "pickup", "item": "bandage"}}],
+            "snapshot": {"sha256": "a" * 64}})
+        self.assertIn("bandage", text)
+        self.assertNotIn("sha256", text)
+        self.assertNotIn("Full rows", text)
+
+    def test_incomplete_evidence_keeps_request_warning_and_retrieval(self):
+        text = plain_player_output({"matched": 1, "rows": [{"event": "request"}],
+            "links": [{"outcome": "accepted", "status": "partial"}],
+            "unavailable_sources": [{"error": "missing"}], "snapshot": {"sha256": "a" * 64}})
+        self.assertIn("1 incomplete or contradictory", text)
+        self.assertIn("--selector links", text)
+        self.assertIn("--selector unavailable_sources", text)
+
+    def test_large_plain_evidence_uses_existing_snapshot_and_counts_omission(self):
+        text = plain_player_output({"ok": True, "status": "matched", "matched": 1,
+            "rows": [{"event": "trace", "payload": {"text": "x" * 20000}}],
+            "links": [], "snapshot": {"sha256": "a" * 64}})
+        self.assertLessEqual(len(text.encode("utf-8")), 8192)
+        self.assertRegex(text, r"\d+ rendered characters omitted")
+        self.assertIn("--sha256 " + "a" * 64, text)
+        self.assertIn("--selector rows", text)
+
+    def test_evidence_budget_includes_footer_and_each_returned_event(self):
+        text = plain_player_output({"status": "matched", "matched": 20,
+            "rows": [{"event": f"event-{i}", "payload": {"text": "é" * 10000}} for i in range(20)],
+            "snapshot": {"sha256": "a" * 64}, "next": {"offset": 20}})
+        self.assertLessEqual(len(text.encode("utf-8")), 8192)
+        for i in range(20):
+            self.assertIn(f"event-{i}\n", text)
+        self.assertNotIn("unavailable sources: 0", text)
+
+    def test_completed_wait_is_not_repeated_on_unrelated_action(self):
+        text = plain_player_output({"ok": True, "operation": {
+            "state": "completed", "completed_progress_game_minutes": 1.0}, "outcome": "moved"})
+        self.assertNotIn("Elapsed", text)
+        self.assertNotIn("operation.state", text)
+
+    def test_interrupted_wait_keeps_elapsed_time_without_authority_metadata(self):
+        text = plain_player_output({"ok": True, "operation": {
+            "state": "awaiting_decision", "blocker": "native_authority_required",
+            "completed_progress_game_minutes": 10.0}})
+        self.assertIn("Elapsed: 10.0 game minutes.", text)
+        self.assertNotIn("awaiting_decision", text)
+        self.assertNotIn("native_authority_required", text)
+
+    def test_evidence_action_payload_is_not_mistaken_for_game_controls(self):
+        text = plain_player_output({"ok": True, "status": "matched", "matched": 1,
+            "rows": [{"event": "npc_plan", "payload": {"actions": [{"type": "pickup"}],
+                      "owner": {"name": "Mira"}}}], "links": [], "snapshot": {"sha256": "a" * 64}})
+        self.assertIn("pickup", text)
+        self.assertIn("Mira", text)
+        self.assertNotIn("ALLOWED HERE ONLY", text)
+
+    def test_native_stale_rejection_prints_one_recovery_hint(self):
+        text = plain_player_output({"ok": False, "response": {
+            "accepted": False, "rejection_reason": "stale_frame", "next": "look"}})
+        self.assertEqual(text.count("Next: play look"), 1)
+
+    def test_first_world_history_is_not_presented_as_fresh_action_messages(self):
+        from gameplay_display import display
+        old = {"time": "8:00:00 AM", "text": "Unknown command: }"}
+        latest = {"time": "3:59:54 PM", "text": "I'll see you around."}
+        response = {"ok": True, "observation": {"run_id": "run", "surface": {
+            "kind": "world", "facts": {"messages": [old, latest]}, "actions": []}}}
+        shown, snapshot = display(response)
+        result = {"ok": True, "state": "collected", "response": shown}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        self.assertNotIn("Unknown command", text)
+        self.assertIn("Earlier messages: 1", text)
+        self.assertIn("may predate this action", text)
+        self.assertIn("I'll see you around", text)
+        response = json.loads(json.dumps(response))
+        response["observation"]["surface"]["facts"]["messages"].append(
+            {"time": "3:59:55 PM", "text": "Zombie hits you for 5 damage."})
+        shown, snapshot = display(response, snapshot)
+        text = plain_player_output({**result, "response": shown}, snapshot=snapshot, full_look=False)
+        self.assertIn("5 damage", text)
+        self.assertNotIn("may predate", text)
+
+    def test_last_creature_disappearing_is_reported_in_action_output(self):
+        text = plain_player_output({"ok": True, "response": {
+            "facts_changed": {"visible_entities": []}}}, full_look=False)
+        self.assertIn("No visible creatures.", text)
+
     def test_unchanged_controls_are_not_repeated_but_look_and_changes_show_them(self):
         snapshot = {"owner": "look_cursor", "current": {"facts": {"text": "floor"},
                     "actions": [{"id": "cursor.east", "label": "east"}]}}
@@ -16,8 +260,12 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertNotIn("play act cursor.east", text)
         self.assertIn("play act cursor.east", plain_player_output(result, snapshot=snapshot))
         for change in ("actions_changed", "actions_removed"):
-            current[change] = [{"id": "cursor.west"}]
-            self.assertIn("play act cursor.east", plain_player_output(result, snapshot=snapshot, full_look=False))
+            snapshot["current"]["actions"] = [{"id": "cursor.west", "label": "west"}]
+            current[change] = [{"id": "cursor.east" if change == "actions_removed" else "cursor.west"}]
+            updated = plain_player_output(result, snapshot=snapshot, full_look=False)
+            self.assertIn("play act cursor.west", updated)
+            self.assertNotIn("play act cursor.east", updated)
+            self.assertIn("Allowed actions replaced" if change == "actions_removed" else "others unchanged", updated)
             del current[change]
 
     def test_item_summary_keeps_stats_and_counts_omitted_text_with_retrieval(self):
@@ -49,8 +297,8 @@ class PlayerOutputTest(unittest.TestCase):
         text = plain_player_output(result, snapshot=snapshot)
         self.assertIn("Pistol", text)
         self.assertIn("Ammo", text)
-        self.assertNotIn("Shirt", text)
-        self.assertIn("Other gear: 1 items", text)
+        self.assertIn("Shirt", text)
+        self.assertIn("no --contains", text)
         self.assertIn("play inspect result.surface.facts.diagnostic_items", text)
         self.assertIn("play inspect result.surface.facts.diagnostic_rules", text)
 
@@ -87,7 +335,7 @@ class PlayerOutputTest(unittest.TestCase):
                         {"id": "inventory.cancel", "label": "Cancel"}]}}
         text = plain_player_output({"state": "collected", "response": {
             "current_input": {"owner": "inventory"}}}, snapshot=snapshot)
-        self.assertIn("ALLOWED ACTIONS IN THIS VIEW", text)
+        self.assertIn("ALLOWED HERE ONLY", text)
         self.assertIn("select confirms; it does not mark", text)
         self.assertIn("Marked: 42 ×2", text)
         self.assertIn("Drop selected items → play act inventory.commit", text)
@@ -104,7 +352,25 @@ class PlayerOutputTest(unittest.TestCase):
         actions[-1].update(enabled=False, label="Choice 170 — unavailable in this mode")
         text = _plain_controls(actions)
         self.assertIn("Unavailable: choose: Choice 170 — unavailable in this mode", text)
-        self.assertIn("option:170 — Choice 170 — select", text)
+        self.assertIn("Actions for every target below: select", text)
+        self.assertIn("option:170 — Choice 170", text)
+
+    def test_inventory_common_verbs_are_shared_even_with_container_extras(self):
+        from gameplay_display import _plain_controls
+        actions = [{"id": "inventory." + verb, "stable_id": str(i), "label": f"item {i}"}
+                   for i in range(3) for verb in ("details", "select")]
+        actions.append({"id": "inventory.contents", "stable_id": "2", "label": "item 2"})
+        text = _plain_controls(actions)
+        self.assertEqual(text.count("details/select"), 1)
+        self.assertIn("2 — item 2 — also contents", text)
+
+    def test_explicit_npc_rules_read_retains_every_rule_without_repeated_subject(self):
+        text = plain_player_output({"ok": True, "selector": "observation.surface.facts.diagnostic_rules",
+            "slice": {"aim": "She will aim carefully.", "engagement": "She will attack nearby enemies.",
+                      "rules": [{"label": "She will not use grenades."}, {"label": "She will use guns."}]}})
+        for expected in ("aim carefully", "attack nearby enemies", "not use grenades", "use guns"):
+            self.assertIn(expected, text)
+        self.assertNotIn("She will", text)
 
     def test_comparison_does_not_advertise_missing_commit(self):
         from gameplay_display import _plain_controls
@@ -135,10 +401,25 @@ class PlayerOutputTest(unittest.TestCase):
         for expected in ("YOU", "SURROUNDINGS", "MOVE", "ACTIONS", "PEOPLE", "WAIT", "SESSION",
                          "left arm 50/80", "right arm 80/80", "six-shooter (0/6)", "fd_fire", "Bleeding left arm",
                          "north", "Combat: reload", "character:2", "play act world.unfamiliar_action",
-                         "play act world.wait", "--bound-maximum 5"):
+                         "play act world.wait"):
             self.assertIn(expected, text)
-        for unwanted in ("Damp", "<color", "Combat: fire", "play wait 20s"):
+        for unwanted in ("Damp", "<color", "Combat: fire", "play wait 20s", "--bound-maximum 5"):
             self.assertNotIn(unwanted, text)
+        with_movement = world_look(self.world_snapshot(), {"game.move_relative": True})
+        self.assertIn("--bound-maximum 5", with_movement)
+
+    def test_observation_only_phase_keeps_facts_without_unusable_actions(self):
+        snapshot = self.world_snapshot()
+        availability = {"game.act": False, "game.wait": False, "game.move_relative": False}
+        for show_controls in (True, False):
+            text = world_look(snapshot, availability, show_controls=show_controls)
+            self.assertIn("six-shooter (0/6)", text)
+            self.assertIn("Observation-only phase", text)
+            self.assertNotIn("play act", text)
+            self.assertNotIn("Controls unchanged", text)
+        text = world_look(snapshot, availability, controls_only=True)
+        self.assertNotIn("play act", text)
+        self.assertIn("play look", text)
 
     def test_sectioned_look_refreshes_weapon_creatures_and_position(self):
         snapshot = self.world_snapshot()
@@ -185,7 +466,7 @@ class PlayerOutputTest(unittest.TestCase):
         text = plain_player_output(result, snapshot=snapshot, full_look=False)
         for expected in ("Pickup", "42", "six-shooter", "wield", "No room",
                          "play act inventory.<action> --target <target>",
-                         "play act inventory.filter --param text=TEXT", "play act inventory.cancel"):
+                         'play act inventory.filter --param "text=TEXT"', "play act inventory.cancel"):
             self.assertIn(expected, text)
         for unwanted in ("sha256", "omitted", "facts removed", "minimap"):
             self.assertNotIn(unwanted, text)

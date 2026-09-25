@@ -1,0 +1,1 @@
+{"ok":false,"error":"look_required: no current unconsumed observation","presentation":{"budget_bytes":8192,"full_evidence":{"sha256":"cefbc5a4870b95c6304f97f59051dd407f2eec65becb39b8c0e451025e707b2f","json_bytes":71},"retrieve":"python3 tools/openclaw_harness/evidence_display.py --sha256 HASH [--selector FIELD] [--offset N --limit N] [--export FILE]"}}

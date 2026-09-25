@@ -1,0 +1,92 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SMARTZONE-NAMES-exploration-001",
+  "claim_id": "R-CAOL-SMARTZONE-NAMES",
+  "worker_id": "01a0d310-9635-7121-9505-90c0f298a045",
+  "disposition": "completed",
+  "verdict": "generated_smartzone_names_native_generation_reload_proved",
+  "outcome": "Newly generated Smart Zone Manager helper zones display Smartzone names in a native game and after save/reload; original camp names and zone mechanics remain intact.",
+  "summary": "The source changes only generated labels and the success message. Focused tests passed. An initial disposable world lacked a crafting anchor; a copied camp fixture generated 23 Smartzone helpers and retained Basecamp zones. A separate source-bound native reload displayed the saved names. All task game and broker processes exited, and native input passed to the bulk worker.",
+  "material_changes": [
+    "src/clzones.cpp changes the Smart Zone Manager generated helper labels from Basecamp to Smartzone and updates its success wording without changing zone type, filter, coordinates or creation path.",
+    "tests/clzones_test.cpp checks generated names, layout serialization/reload and preservation of an owner-authored Basecamp name."
+  ],
+  "tests": [
+    "make -j4 tests passed.",
+    "Focused [smart_zone] run passed 4 cases and 3000 assertions; [identity] passed 9 cases and 41 assertions.",
+    "git diff --check passed for src/clzones.cpp and tests/clzones_test.cpp.",
+    "Coordinator inspected the focused diff and native journals: generation frame 30 had 5 Basecamp zones and no helpers; frame 64 had 23 Smartzone helpers plus 6 Basecamp zones. Native reload terminal capture displayed Smartzone fire source and splintered wood alongside Basecamp Food, Locker, Storage and Patrol."
+  ],
+  "live_actions": [
+    "Source-bound curses executable SHA-256 77ab824d5efe8d6da729b419d57aea625c5d442c25a1c95b0053240a66450130 ran on an assignment-owned copy of the camp fixture.",
+    "Generation run b7362aba57094b59b169384636170f68 used game PID 27686 and PTY broker PID 27687, both born Thu Sep 24 14:25:13 2026. Native save/quit completed and both exited. Interrupted runner PID 27679 exited.",
+    "Reload run 30bf47264e834c0690218a17c560b7dc used PID 28630, born Thu Sep 24 14:34:13 2026. Native save/quit completed and PID exited. Earlier inconclusive probe PIDs 24124, 24484, 24592 and 26154 also exited."
+  ],
+  "evidence_ceiling": [
+    "The first native probe did not reach generation and the second lacked a crafting anchor; neither gets success credit.",
+    "Reload probe report flags expected feature-phase process exit as red, but the native journal and terminal capture show save/quit and persisted displayed names.",
+    "The native route proves naming and persistence for the copied camp fixture; focused tests cover the unchanged type/filter/geometry and custom-name paths."
+  ],
+  "bindings": {
+    "worker_assignment_id": "4969ea46018a41649834a19cf335f5e6",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/4969ea46018a41649834a19cf335f5e6/1be86ca1d958964486187a61b5b9559e75054dbcdb588929101defb1468369e7.md",
+    "generation_run_id": "b7362aba57094b59b169384636170f68",
+    "reload_run_id": "30bf47264e834c0690218a17c560b7dc",
+    "source_executable_sha256": "77ab824d5efe8d6da729b419d57aea625c5d442c25a1c95b0053240a66450130"
+  },
+  "journal_entries": [
+    {
+      "id": "generation-frame-64",
+      "sequence": "238",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Zone Manager displayed 23 generated Smartzone helpers and six Basecamp zones after accepted generation."
+    },
+    {
+      "id": "reload-zone-display",
+      "sequence": "reload",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Separate source-bound reload displayed persisted Smartzone and Basecamp names in Zone Manager."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_142513_a2db5fd62fdb474098f3a4b1fa4f5fae/semantic.steps.jsonl",
+      "sha256": "a50f87b83ec446db52c73c042c65e613b8cdb62eebed6e30061a4721d22bc360",
+      "role": "Native generation and save/quit journal"
+    },
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_143413_c369dbd9222b45bca536ad43126723ad/inspect_persisted_zone_names.after.terminal_text.txt",
+      "sha256": "5fab3829f28eecbe704545fc4d4d1be7e5d672d275b424ce7e3c23812a5c436f",
+      "role": "Native reload Zone Manager display"
+    },
+    {
+      "path": ".userdata/smartzone-names-basecamp-disposable-20260924/harness_runs/20260924_143413_c369dbd9222b45bca536ad43126723ad/semantic.steps.jsonl",
+      "sha256": "2bebb8e19ea62ce2625ed87dffdbc79ef0f1aa75e439f335810825f18aa95596",
+      "role": "Native reload save/quit journal"
+    }
+  ],
+  "accepted_no_replay": [
+    "Preserve earlier accepted camp and harness work at original scope.",
+    "Preserve original reference fixture and owner saves; native proof used an assignment-owned copy."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No assigned Smartzone naming proof remains; whole-claim acceptance still requires the policy closure route.",
+  "narrow_queries": [
+    "Read generation semantic.steps.jsonl frames 30 and 64 for before/after zone counts, names and types.",
+    "Read reload inspect_persisted_zone_names.after.terminal_text.txt for displayed persisted Smartzone and Basecamp names.",
+    "Inspect the focused source diff and test section in src/clzones.cpp and tests/clzones_test.cpp."
+  ],
+  "entrypoints": [
+    "src/clzones.cpp",
+    "tests/clzones_test.cpp"
+  ],
+  "context_metrics": {
+    "generated_smartzone_zones": 23,
+    "original_basecamp_zones_before": 5,
+    "basecamp_zones_after": 6,
+    "native_reloads": 1
+  }
+}

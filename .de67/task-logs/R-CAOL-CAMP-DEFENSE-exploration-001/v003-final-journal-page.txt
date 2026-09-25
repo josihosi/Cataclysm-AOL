@@ -1,0 +1,58 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-ce40f780a23a46eb925a88e7845976eb
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0001: identity
+  INDEX 0; PATH FIELD; FIELD: scenario_id, source_identity, executable_identity
+J0002: observation — world
+  INDEX 1; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0003: observation — npc_inspection
+  INDEX 2; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0004: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0005: observation — world
+  INDEX 4; same PATH/FIELD as J0002.
+J0006: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0007: observation — world
+  INDEX 6; same PATH/FIELD as J0002.
+J0008: observation — menu
+  INDEX 7; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0009: action — world.wait
+  checks: {"action_id": "world.wait"}
+J0010: observation — menu
+  No value fields.
+J0011: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0012: observation — menu
+  No value fields.
+J0013: action — wait.5m
+  checks: {"action_id": "wait.5m"}
+J0014: observation — world
+  INDEX 13; same PATH/FIELD as J0002.
+J0015: keep watch
+  INDEX 14; PATH FIELD; FIELD: kind, result
+J0016: observation — npc_inspection
+  INDEX 15; same PATH/FIELD as J0003.
+J0017: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0018: observation — world
+  INDEX 17; same PATH/FIELD as J0002.
+J0019: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0020: observation — prompt
+  INDEX 19; PATH value.surface.facts.FIELD; FIELD: text, title
+J0021: action — world.save_quit
+  checks: {"action_id": "world.save_quit"}
+J0022: observation — main_menu
+  No value fields.
+J0023: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0024: observation — prompt
+  INDEX 23; same PATH/FIELD as J0020.
+J0025: action — main_menu.quit
+  checks: {"action_id": "main_menu.quit"}
+J0026: observation — process_exited
+  INDEX 25; PATH value.surface.facts.FIELD; FIELD: pid, alive, exit_code, exit_observed_at, evidence_ref, gameplay_credit, save_outcome
+J0027: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0028: terminal — R032 patrol/zombie branch persisted through native save, exited process generation 59165, reentered as generation 61525, retained same character:25 Locker gear and live patrol order, continued service after native wait, and the reentered game was also saved and exited.
+  INDEX 27; PATH FIELD; FIELD: stop_reason, unused_authority, cleanup

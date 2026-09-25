@@ -1,0 +1,100 @@
+{
+  "world": "BulkB4",
+  "source_tree": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB3",
+  "cloned_post_sort_disposable": true,
+  "added_source_items": {
+    "kind": "map_items_near_player",
+    "world": "BulkB4",
+    "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+    "player_location": [
+      3539,
+      3780,
+      0
+    ],
+    "placed_items": [
+      {
+        "typeid": "2x4",
+        "count": 128,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      },
+      {
+        "typeid": "hammer",
+        "count": 128,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      }
+    ],
+    "extracted_map_packs": [
+      "4.4.0"
+    ],
+    "recompressed_maps": [
+      "maps/4.4.0/147.157.0.map"
+    ],
+    "removed_extracted_map_dirs": [
+      "maps/4.4.0"
+    ],
+    "plain_map_dirs_left_for_game_load": false
+  },
+  "input_caveat": "existing 128 hammers at the prior tools destination remain outside the unsorted source zone; only newly added source tile items are worklist inputs"
+}

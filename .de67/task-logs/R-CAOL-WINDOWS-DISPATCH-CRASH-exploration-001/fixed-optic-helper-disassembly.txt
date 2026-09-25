@@ -1,0 +1,233 @@
+
+.de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/windows-evidence/cataclysm-tiles-fixed-copy.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+00000001407f4f20 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc>:
+1407f4f20: 41 56                       	pushq	%r14
+1407f4f22: 57                          	pushq	%rdi
+1407f4f23: 56                          	pushq	%rsi
+1407f4f24: 53                          	pushq	%rbx
+1407f4f25: 48 81 ec 98 00 00 00        	subq	$0x98, %rsp
+1407f4f2c: 0f b6 05 1d dd d0 02        	movzbl	0x2d0dd1d(%rip), %eax   # 0x143502c50 <_ZGVZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f4f33: 48 89 cb                    	movq	%rcx, %rbx
+1407f4f36: 84 c0                       	testb	%al, %al
+1407f4f38: 75 14                       	jne	0x1407f4f4e <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x2e>
+1407f4f3a: 48 8d 0d 0f dd d0 02        	leaq	0x2d0dd0f(%rip), %rcx   # 0x143502c50 <_ZGVZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f4f41: e8 1a 85 fd 01              	callq	0x1427cd460 <__cxa_guard_acquire>
+1407f4f46: 85 c0                       	testl	%eax, %eax
+1407f4f48: 0f 85 52 01 00 00           	jne	0x1407f50a0 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x180>
+1407f4f4e: 48 8d 05 8b c1 8c 01        	leaq	0x18cc18b(%rip), %rax   # 0x1420c10e0 <_Z11return_trueI4itemEbRKT_>
+1407f4f55: 48 8d 74 24 30              	leaq	0x30(%rsp), %rsi
+1407f4f5a: 48 8b 15 2f 4f 86 02        	movq	0x2864f2f(%rip), %rdx   # 0x143059e90 <.refptr.flag_ZOOM>
+1407f4f61: 48 89 d9                    	movq	%rbx, %rcx
+1407f4f64: 48 89 44 24 30              	movq	%rax, 0x30(%rsp)
+1407f4f69: 48 8d 05 90 43 dc 01        	leaq	0x1dc4390(%rip), %rax   # 0x1425b9300 <_ZNSt17_Function_handlerIFbRK4itemEPS3_E10_M_managerERSt9_Any_dataRKS6_St18_Manager_operation>
+1407f4f70: 49 89 f0                    	movq	%rsi, %r8
+1407f4f73: 48 c7 44 24 38 00 00 00 00  	movq	$0x0, 0x38(%rsp)
+1407f4f7c: 66 48 0f 6e c0              	movq	%rax, %xmm0
+1407f4f81: 48 8d 05 b8 43 dc 01        	leaq	0x1dc43b8(%rip), %rax   # 0x1425b9340 <_ZNSt17_Function_handlerIFbRK4itemEPS3_E9_M_invokeERKSt9_Any_dataS2_>
+1407f4f88: 66 48 0f 6e c8              	movq	%rax, %xmm1
+1407f4f8d: 66 0f 6c c1                 	punpcklqdq	%xmm1, %xmm0    # xmm0 = xmm0[0],xmm1[0]
+1407f4f91: 0f 11 44 24 40              	movups	%xmm0, 0x40(%rsp)
+1407f4f96: e8 25 29 cd ff              	callq	0x1404c78c0 <_ZNK9Character19cache_has_item_withERK9string_idI9json_flagERKSt8functionIFbRK4itemEE>
+1407f4f9b: 84 c0                       	testb	%al, %al
+1407f4f9d: 75 17                       	jne	0x1407f4fb6 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x96>
+1407f4f9f: 48 8b 03                    	movq	(%rbx), %rax
+1407f4fa2: 48 8d 15 b7 dc d0 02        	leaq	0x2d0dcb7(%rip), %rdx   # 0x143502c60 <_ZZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f4fa9: 48 89 d9                    	movq	%rbx, %rcx
+1407f4fac: ff 90 98 03 00 00           	callq	*0x398(%rax)
+1407f4fb2: 84 c0                       	testb	%al, %al
+1407f4fb4: 74 32                       	je	0x1407f4fe8 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0xc8>
+1407f4fb6: bb 01 00 00 00              	movl	$0x1, %ebx
+1407f4fbb: 48 8b 44 24 40              	movq	0x40(%rsp), %rax
+1407f4fc0: 48 85 c0                    	testq	%rax, %rax
+1407f4fc3: 74 0e                       	je	0x1407f4fd3 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0xb3>
+1407f4fc5: 41 b8 03 00 00 00           	movl	$0x3, %r8d
+1407f4fcb: 48 89 f2                    	movq	%rsi, %rdx
+1407f4fce: 48 89 f1                    	movq	%rsi, %rcx
+1407f4fd1: ff d0                       	callq	*%rax
+1407f4fd3: 89 d8                       	movl	%ebx, %eax
+1407f4fd5: 48 81 c4 98 00 00 00        	addq	$0x98, %rsp
+1407f4fdc: 5b                          	popq	%rbx
+1407f4fdd: 5e                          	popq	%rsi
+1407f4fde: 5f                          	popq	%rdi
+1407f4fdf: 41 5e                       	popq	%r14
+1407f4fe1: c3                          	retq
+1407f4fe2: 66 0f 1f 44 00 00           	nopw	(%rax,%rax)
+1407f4fe8: f3 0f 7e 05 e8 ab 5e 02     	movq	0x25eabe8(%rip), %xmm0  # 0x142ddfbd8 <_ZL25time_between_npc_OM_moves+0x94>
+1407f4ff0: 48 8d 05 89 8f ff ff        	leaq	-0x7077(%rip), %rax     # 0x1407edf80 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_>
+1407f4ff7: 48 8d 4c 24 50              	leaq	0x50(%rsp), %rcx
+1407f4ffc: 48 c7 44 24 70 00 00 00 00  	movq	$0x0, 0x70(%rsp)
+1407f5005: 66 48 0f 6e d0              	movq	%rax, %xmm2
+1407f500a: 48 8d 15 01 22 5e 02        	leaq	0x25e2201(%rip), %rdx   # 0x142dd7212 <.rdata+0x452>
+1407f5011: 48 c7 44 24 78 00 00 00 00  	movq	$0x0, 0x78(%rsp)
+1407f501a: 66 0f 6c c2                 	punpcklqdq	%xmm2, %xmm0    # xmm0 = xmm0[0],xmm2[0]
+1407f501e: 0f 11 84 24 80 00 00 00     	movups	%xmm0, 0x80(%rsp)
+1407f5026: e8 35 e6 fd ff              	callq	0x1407d3660 <_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1IS3_EEPKcRKS3_.isra.0>
+1407f502b: 48 8b 05 7e 14 86 02        	movq	0x286147e(%rip), %rax   # 0x1430564b0 <.refptr._ZNK4item6is_gunEv>
+1407f5032: 4c 8d 4c 24 70              	leaq	0x70(%rsp), %r9
+1407f5037: 4c 8d 44 24 20              	leaq	0x20(%rsp), %r8
+1407f503c: 48 89 d9                    	movq	%rbx, %rcx
+1407f503f: 48 c7 44 24 28 00 00 00 00  	movq	$0x0, 0x28(%rsp)
+1407f5048: 48 8d 54 24 50              	leaq	0x50(%rsp), %rdx
+1407f504d: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+1407f5052: e8 b9 29 cd ff              	callq	0x1404c7a10 <_ZNK9Character19cache_has_item_withERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEM4itemKFbvERKSt8functionIFbRKS8_EE>
+1407f5057: 48 8b 4c 24 50              	movq	0x50(%rsp), %rcx
+1407f505c: 89 c3                       	movl	%eax, %ebx
+1407f505e: 48 8d 44 24 60              	leaq	0x60(%rsp), %rax
+1407f5063: 48 39 c1                    	cmpq	%rax, %rcx
+1407f5066: 74 0e                       	je	0x1407f5076 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x156>
+1407f5068: 48 8b 44 24 60              	movq	0x60(%rsp), %rax
+1407f506d: 48 8d 50 01                 	leaq	0x1(%rax), %rdx
+1407f5071: e8 6a 36 ba ff              	callq	0x1403986e0 <_ZdlPvy>
+1407f5076: 48 8b 84 24 80 00 00 00     	movq	0x80(%rsp), %rax
+1407f507e: 48 85 c0                    	testq	%rax, %rax
+1407f5081: 0f 84 34 ff ff ff           	je	0x1407f4fbb <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x9b>
+1407f5087: 48 8d 54 24 70              	leaq	0x70(%rsp), %rdx
+1407f508c: 41 b8 03 00 00 00           	movl	$0x3, %r8d
+1407f5092: 48 89 d1                    	movq	%rdx, %rcx
+1407f5095: ff d0                       	callq	*%rax
+1407f5097: e9 1f ff ff ff              	jmp	0x1407f4fbb <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x9b>
+1407f509c: 0f 1f 40 00                 	nopl	(%rax)
+1407f50a0: 48 8d 15 5b 21 5e 02        	leaq	0x25e215b(%rip), %rdx   # 0x142dd7202 <.rdata+0x442>
+1407f50a7: 48 8d 4c 24 70              	leaq	0x70(%rsp), %rcx
+1407f50ac: 48 c7 05 a9 db d0 02 ff ff ff ff    	movq	$-0x1, 0x2d0dba9(%rip) # 0x143502c60 <_ZZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f50b7: c7 05 a7 db d0 02 ff ff ff ff       	movl	$0xffffffff, 0x2d0dba7(%rip) # imm = 0xFFFFFFFF
+                                                                        # 0x143502c68 <_ZZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision+0x8>
+1407f50c1: e8 9a e5 fd ff              	callq	0x1407d3660 <_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1IS3_EEPKcRKS3_.isra.0>
+1407f50c6: 48 8d 4c 24 70              	leaq	0x70(%rsp), %rcx
+1407f50cb: e8 50 93 2f 01              	callq	0x141aee420 <_ZN22string_identity_static16string_id_internEONSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE>
+1407f50d0: 48 8b 4c 24 70              	movq	0x70(%rsp), %rcx
+1407f50d5: 89 05 91 db d0 02           	movl	%eax, 0x2d0db91(%rip)   # 0x143502c6c <_ZZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision+0xc>
+1407f50db: 48 8d 84 24 80 00 00 00     	leaq	0x80(%rsp), %rax
+1407f50e3: 48 39 c1                    	cmpq	%rax, %rcx
+1407f50e6: 74 11                       	je	0x1407f50f9 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x1d9>
+1407f50e8: 48 8b 84 24 80 00 00 00     	movq	0x80(%rsp), %rax
+1407f50f0: 48 8d 50 01                 	leaq	0x1(%rax), %rdx
+1407f50f4: e8 e7 35 ba ff              	callq	0x1403986e0 <_ZdlPvy>
+1407f50f9: 48 8d 0d 50 db d0 02        	leaq	0x2d0db50(%rip), %rcx   # 0x143502c50 <_ZGVZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f5100: e8 8b 84 fd 01              	callq	0x1427cd590 <__cxa_guard_release>
+1407f5105: e9 44 fe ff ff              	jmp	0x1407f4f4e <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x2e>
+1407f510a: 48 89 c3                    	movq	%rax, %rbx
+1407f510d: 48 8d 4c 24 70              	leaq	0x70(%rsp), %rcx
+1407f5112: e8 39 84 db 01              	callq	0x1425ad550 <_ZNSt14_Function_baseD2Ev>
+1407f5117: 48 89 f1                    	movq	%rsi, %rcx
+1407f511a: e8 31 84 db 01              	callq	0x1425ad550 <_ZNSt14_Function_baseD2Ev>
+1407f511f: 48 89 d9                    	movq	%rbx, %rcx
+1407f5122: e8 19 0a 8b 01              	callq	0x1420a5b40 <_Unwind_Resume>
+1407f5127: 48 89 c3                    	movq	%rax, %rbx
+1407f512a: eb eb                       	jmp	0x1407f5117 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x1f7>
+1407f512c: eb f9                       	jmp	0x1407f5127 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x207>
+1407f512e: 48 8d 4c 24 70              	leaq	0x70(%rsp), %rcx
+1407f5133: 48 89 c3                    	movq	%rax, %rbx
+1407f5136: e8 e5 7d ef 01              	callq	0x1426ecf20 <_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv>
+1407f513b: 48 8d 0d 0e db d0 02        	leaq	0x2d0db0e(%rip), %rcx   # 0x143502c50 <_ZGVZN17bandit_live_world34live_structural_observer_has_opticERK3npcE15enhanced_vision>
+1407f5142: e8 99 82 fd 01              	callq	0x1427cd3e0 <__cxa_guard_abort>
+1407f5147: 48 89 d9                    	movq	%rbx, %rcx
+1407f514a: e8 f1 09 8b 01              	callq	0x1420a5b40 <_Unwind_Resume>
+1407f514f: 48 89 c3                    	movq	%rax, %rbx
+1407f5152: eb e7                       	jmp	0x1407f513b <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x21b>
+1407f5154: 48 8d 4c 24 50              	leaq	0x50(%rsp), %rcx
+1407f5159: 48 89 c3                    	movq	%rax, %rbx
+1407f515c: e8 bf 7d ef 01              	callq	0x1426ecf20 <_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv>
+1407f5161: eb aa                       	jmp	0x1407f510d <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc+0x1ed>
+1407f5163: 66 90                       	nop
+1407f5165: 66 66 2e 0f 1f 84 00 00 00 00 00    	nopw	%cs:(%rax,%rax)
+
+00000001407f5170 <_ZN12_GLOBAL__N_1L37live_bandit_structural_observer_sightERK3npcRKN6coords14coord_point_obI8tripointLNS3_6originE1ELNS3_5scaleE2EEE>:
+1407f5170: 41 54                       	pushq	%r12
+1407f5172: 55                          	pushq	%rbp
+1407f5173: 57                          	pushq	%rdi
+1407f5174: 56                          	pushq	%rsi
+1407f5175: 53                          	pushq	%rbx
+1407f5176: 48 83 ec 60                 	subq	$0x60, %rsp
+1407f517a: 0f 11 74 24 50              	movups	%xmm6, 0x50(%rsp)
+1407f517f: 4c 89 c6                    	movq	%r8, %rsi
+1407f5182: 48 89 cb                    	movq	%rcx, %rbx
+1407f5185: 48 8d 4c 24 30              	leaq	0x30(%rsp), %rcx
+1407f518a: 48 89 d5                    	movq	%rdx, %rbp
+1407f518d: 4c 89 c2                    	movq	%r8, %rdx
+1407f5190: e8 db bc fd ff              	callq	0x1407d0e70 <_ZN12_GLOBAL__N_1L29live_bandit_remote_weather_atERKN6coords14coord_point_obI8tripointLNS0_6originE1ELNS0_5scaleE2EEE>
+1407f5195: 8b 4e 08                    	movl	0x8(%rsi), %ecx
+1407f5198: 85 c9                       	testl	%ecx, %ecx
+1407f519a: 0f 89 00 01 00 00           	jns	0x1407f52a0 <_ZN12_GLOBAL__N_1L37live_bandit_structural_observer_sightERK3npcRKN6coords14coord_point_obI8tripointLNS3_6originE1ELNS3_5scaleE2EEE+0x130>
+1407f51a0: f3 0f 10 0d 38 aa 5e 02     	movss	0x25eaa38(%rip), %xmm1  # 0x142ddfbe0 <_ZL25time_between_npc_OM_moves+0x9c>
+1407f51a8: 48 89 e9                    	movq	%rbp, %rcx
+1407f51ab: f3 0f 11 4c 24 2c           	movss	%xmm1, 0x2c(%rsp)
+1407f51b1: e8 6a fd ff ff              	callq	0x1407f4f20 <_ZN17bandit_live_world34live_structural_observer_has_opticERK3npc>
+1407f51b6: c7 43 10 6e 6f 6e 65        	movl	$0x656e6f6e, 0x10(%rbx) # imm = 0x656E6F6E
+1407f51bd: 8b 4c 24 3c                 	movl	0x3c(%rsp), %ecx
+1407f51c1: 89 c7                       	movl	%eax, %edi
+1407f51c3: 48 8d 43 10                 	leaq	0x10(%rbx), %rax
+1407f51c7: 48 c7 43 08 04 00 00 00     	movq	$0x4, 0x8(%rbx)
+1407f51cf: 48 89 03                    	movq	%rax, (%rbx)
+1407f51d2: b8 00 00 80 bf              	movl	$0xbf800000, %eax       # imm = 0xBF800000
+1407f51d7: c6 43 14 00                 	movb	$0x0, 0x14(%rbx)
+1407f51db: 48 c7 43 20 00 00 80 bf     	movq	$-0x40800000, 0x20(%rbx) # imm = 0xBF800000
+1407f51e3: 48 89 43 28                 	movq	%rax, 0x28(%rbx)
+1407f51e7: c6 43 30 00                 	movb	$0x0, 0x30(%rbx)
+1407f51eb: c7 43 34 ff ff ff ff        	movl	$0xffffffff, 0x34(%rbx) # imm = 0xFFFFFFFF
+1407f51f2: e8 89 8c 2f 01              	callq	0x141aede80 <_ZN22string_identity_static19get_interned_stringB5cxx11Ei>
+1407f51f7: 48 89 c2                    	movq	%rax, %rdx
+1407f51fa: 48 89 d9                    	movq	%rbx, %rcx
+1407f51fd: e8 ee a7 ef 01              	callq	0x1426ef9f0 <_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_assignERKS4_>
+1407f5202: f3 0f 10 4c 24 2c           	movss	0x2c(%rsp), %xmm1
+1407f5208: 48 89 e9                    	movq	%rbp, %rcx
+1407f520b: f3 0f 11 4b 20              	movss	%xmm1, 0x20(%rbx)
+1407f5210: 0f 28 d1                    	movaps	%xmm1, %xmm2
+1407f5213: e8 38 2d c0 ff              	callq	0x1403f7f50 <_ZNK9Character11sight_rangeEff>
+1407f5218: 89 43 24                    	movl	%eax, 0x24(%rbx)
+1407f521b: 48 8d 4c 24 30              	leaq	0x30(%rsp), %rcx
+1407f5220: e8 0b eb 80 01              	callq	0x142003d30 <_ZNK9string_idI12weather_typeE3objEv>
+1407f5225: f3 0f 10 15 b7 a9 5e 02     	movss	0x25ea9b7(%rip), %xmm2  # 0x142ddfbe4 <_ZL25time_between_npc_OM_moves+0xa0>
+1407f522d: f3 0f 10 88 94 00 00 00     	movss	0x94(%rax), %xmm1
+1407f5235: 31 d2                       	xorl	%edx, %edx
+1407f5237: 48 8d 4c 24 40              	leaq	0x40(%rsp), %rcx
+1407f523c: 8b 46 08                    	movl	0x8(%rsi), %eax
+1407f523f: 40 88 7b 30                 	movb	%dil, 0x30(%rbx)
+1407f5243: 0f 28 c2                    	movaps	%xmm2, %xmm0
+1407f5246: 66 89 54 24 4d              	movw	%dx, 0x4d(%rsp)
+1407f524b: 8b 53 24                    	movl	0x24(%rbx), %edx
+1407f524e: f3 0f c2 c1 01              	cmpltss	%xmm1, %xmm0
+1407f5253: 89 43 2c                    	movl	%eax, 0x2c(%rbx)
+1407f5256: c6 44 24 4f 00              	movb	$0x0, 0x4f(%rsp)
+1407f525b: 89 54 24 40                 	movl	%edx, 0x40(%rsp)
+1407f525f: 0f 54 c8                    	andps	%xmm0, %xmm1
+1407f5262: 0f 55 c2                    	andnps	%xmm2, %xmm0
+1407f5265: 89 44 24 48                 	movl	%eax, 0x48(%rsp)
+1407f5269: 0f 56 c1                    	orps	%xmm1, %xmm0
+1407f526c: 40 88 7c 24 4c              	movb	%dil, 0x4c(%rsp)
+1407f5271: f3 0f 11 43 28              	movss	%xmm0, 0x28(%rbx)
+1407f5276: f3 0f 11 44 24 44           	movss	%xmm0, 0x44(%rsp)
+1407f527c: e8 af 1b 9e ff              	callq	0x1401d6e30 <_ZN17bandit_live_world35structural_observer_omt_sight_rangeERKNS_35structural_observer_visibility_readE>
+1407f5281: 89 43 34                    	movl	%eax, 0x34(%rbx)
+1407f5284: 0f 10 74 24 50              	movups	0x50(%rsp), %xmm6
+1407f5289: 48 89 d8                    	movq	%rbx, %rax
+1407f528c: 48 83 c4 60                 	addq	$0x60, %rsp
+1407f5290: 5b                          	popq	%rbx
+1407f5291: 5e                          	popq	%rsi
+1407f5292: 5f                          	popq	%rdi
+1407f5293: 5d                          	popq	%rbp
+1407f5294: 41 5c                       	popq	%r12
+1407f5296: c3                          	retq
+1407f5297: 66 0f 1f 84 00 00 00 00 00  	nopw	(%rax,%rax)
+1407f52a0: 48 8b 0d 59 0d 86 02        	movq	0x2860d59(%rip), %rcx   # 0x143056000 <.refptr._ZN8calendar4turnE>
+1407f52a7: e8 04 5f b9 ff              	callq	0x14038b1b0 <_Z17sun_moon_light_atRK10time_point>
+1407f52ac: 48 8d 4c 24 30              	leaq	0x30(%rsp), %rcx
+1407f52b1: f3 0f 11 44 24 2c           	movss	%xmm0, 0x2c(%rsp)
+1407f52b7: e8 74 ea 80 01              	callq	0x142003d30 <_ZNK9string_idI12weather_typeE3objEv>
+1407f52bc: 48 8d 4c 24 30              	leaq	0x30(%rsp), %rcx
+1407f52c1: f3 0f 10 74 24 2c           	movss	0x2c(%rsp), %xmm6
+1407f52c7: f3 0f 59 b0 a0 00 00 00     	mulss	0xa0(%rax), %xmm6
+1407f52cf: e8 5c ea 80 01              	callq	0x142003d30 <_ZNK9string_idI12weather_typeE3objEv>
+1407f52d4: 66 0f ef c0                 	pxor	%xmm0, %xmm0
+1407f52d8: f3 0f 10 15 00 a9 5e 02     	movss	0x25ea900(%rip), %xmm2  # 0x142ddfbe0 <_ZL25time_between_npc_OM_moves+0x9c>
+1407f52e0: f3 0f 2a 80 98 00 00 00     	cvtsi2ssl	0x98(%rax), %xmm0
+1407f52e8: 0f 28 ca                    	movaps	%xmm2, %xmm1
+1407f52eb: f3 0f 58 c6                 	addss	%xmm6, %xmm0
+1407f52ef: f3 0f c2 c8 01              	cmpltss	%xmm0, %xmm1
+1407f52f4: 0f 54 c1                    	andps	%xmm1, %xmm0
+1407f52f7: 0f 55 ca                    	andnps	%xmm2, %xmm1
+1407f52fa: 0f 56 c8                    	orps	%xmm0, %xmm1
+1407f52fd: e9 a6 fe ff ff              	jmp	0x1407f51a8 <_ZN12_GLOBAL__N_1L37live_bandit_structural_observer_sightERK3npcRKN6coords14coord_point_obI8tripointLNS3_6originE1ELNS3_5scaleE2EEE+0x38>

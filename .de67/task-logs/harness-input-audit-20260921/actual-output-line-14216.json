@@ -1,0 +1,217 @@
+{
+  "ok": true,
+  "receipt": {
+    "binding_id": "59432a850e4b4d2085640829029d19aea6353211358f7c09267c5e44ffc6ed94",
+    "request_id": "play-66b82fffb3ed45d3a46b7a9b102c4c8e",
+    "request_identity": {
+      "action": "run.quit"
+    },
+    "request_sha256": "9e71d366694fb27f39682c899807fabf70ce8a52e4154598b4849615440dccc0",
+    "response_artifact": "responses/play-66b82fffb3ed45d3a46b7a9b102c4c8e.json",
+    "response_sha256": "131fb5a055cfd3dcb771e86da7bc19e2a86f4e1132093a817aff432e427a9826",
+    "schema": "caol-cockpit-file-bridge-v1",
+    "sequence": 5,
+    "session_generation": 0
+  },
+  "response": {
+    "ok": true,
+    "result": {
+      "schema": "caol-cockpit-live-final-v1",
+      "run_id": "dd03ec428d15c6a0d719380dc8a295ef7c0c9e6c009e663734b6364532cbf098",
+      "binding_id": "59432a850e4b4d2085640829029d19aea6353211358f7c09267c5e44ffc6ed94",
+      "state": "finished",
+      "termination_requested": true,
+      "stop_reason": "local source callback valid but generic typed recorder rejects same-minute route cursor; repair equality case",
+      "stop_detail": {
+        "unused_authority": "released",
+        "explicit_player_quit": true,
+        "gameplay_credit": false
+      },
+      "action_observation_sequence": {
+        "omitted": true,
+        "evidence": {
+          "sha256": "7c9d516c20e6dfbc1d8bedbf064debfff97ff126f303a28c2995115bef4570fc",
+          "json_bytes": 5961322
+        }
+      },
+      "bound_derivation": {},
+      "unused_authority": "released",
+      "declared_reentry_ready": false,
+      "native_save_completion": {
+        "status": "missing_or_ambiguous",
+        "world_receipt_count": 0,
+        "completion_receipt_count": 0
+      },
+      "cleanup": {
+        "status": "deferred_to_scenario_terminalization",
+        "pid": 21949,
+        "process_generation": {
+          "pid": 21949,
+          "source": "process.json",
+          "expected": {
+            "schema": "caol-owned-process-generation-v1",
+            "pid": 21949,
+            "alive": true,
+            "birth_identity": "posix-lstart:Mon Sep 21 12:32:13 2026",
+            "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles --userdir .userdata/dev-harness/ --world McWilliams",
+            "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles"
+          },
+          "observed": {
+            "schema": "caol-owned-process-generation-v1",
+            "pid": 21949,
+            "alive": true,
+            "birth_identity": "posix-lstart:Mon Sep 21 12:32:13 2026",
+            "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles --userdir .userdata/dev-harness/ --world McWilliams",
+            "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles"
+          },
+          "status": "alive"
+        }
+      },
+      "final_report_ref": "operate_r033_autonomous_sound_return_drive500.cockpit.live.final.json"
+    }
+  },
+  "request_result": {
+    "request_id": "play-66b82fffb3ed45d3a46b7a9b102c4c8e",
+    "status": "recorded",
+    "retrieve": "request-result --session-dir SESSION --request-id REQUEST"
+  },
+  "turn_assessment": {
+    "status": "measured_unassessed",
+    "owner": {
+      "pid": 21949,
+      "run_id": "dd03ec428d15c6a0d719380dc8a295ef7c0c9e6c009e663734b6364532cbf098",
+      "binding_id": "59432a850e4b4d2085640829029d19aea6353211358f7c09267c5e44ffc6ed94",
+      "process_identity": "Mon Sep 21 12:32:13 2026",
+      "platform": "macos",
+      "host": "Josefs-Mac-mini.local",
+      "machine": "arm64",
+      "source_binding": {
+        "runtime_binding_sha256": "b3ea5d1654b5089e7aa1aa27ce17351ab43172e1abd3feb030e4aa0350d24b4a"
+      }
+    },
+    "configuration": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/bridge-sessions/selected-79a0d7810d53407b8890bfdb88c8d119/performance-turn-config.json",
+      "provenance": null,
+      "reference": null,
+      "status": "unavailable",
+      "reason": "missing_or_invalid_turn_configuration"
+    },
+    "trace": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_123212_e0b54a1afd0f44499ed1407d203e4472/semantic.native.events.jsonl",
+      "offset": 6950314
+    },
+    "baseline": {
+      "status": "unavailable",
+      "reason": "missing_baseline",
+      "measurement_binding": {
+        "source_binding": {
+          "runtime_binding_sha256": "b3ea5d1654b5089e7aa1aa27ce17351ab43172e1abd3feb030e4aa0350d24b4a"
+        },
+        "host": "Josefs-Mac-mini.local",
+        "machine": "arm64",
+        "platform": "macos",
+        "workload": null
+      }
+    },
+    "metric": {
+      "sample_count": 256,
+      "window_turns": 256,
+      "window_first": "dd03ec428d15c6a0d719380dc8a295ef7c0c9e6c009e663734b6364532cbf098:1789986762458469:7244:end:Mon Sep 21 12:32:13 2026",
+      "window_last": "dd03ec428d15c6a0d719380dc8a295ef7c0c9e6c009e663734b6364532cbf098:1789986762458469:7499:end:Mon Sep 21 12:32:13 2026",
+      "mean_seconds": 0.0008676678398437485,
+      "tail_percentile": null,
+      "tail_seconds": null,
+      "max_seconds": 0.024665332999999734,
+      "simulation_elapsed_seconds": 0.22212296699999962,
+      "elapsed_wall_seconds": 10.646071910858154,
+      "elapsed_wall_scope": "native_turn_window_including_inter_turn_input_gaps",
+      "cpu_seconds": 0.0,
+      "cpu_scope": "latest existing ProcessPerformance interval; it is reported separately from native turn wall time",
+      "cpu_evidence": {
+        "record_id": "6a4bb644467e470baffcee3291e3c1d5",
+        "journal": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/bridge-sessions/selected-79a0d7810d53407b8890bfdb88c8d119/performance.jsonl"
+      },
+      "completed_turns": 256,
+      "game_turns_advanced": 256,
+      "game_turns_per_wall_second": 24.046427841512152,
+      "game_turns_per_wall_second_scope": "window_wall_span_including_inter_turn_input_gaps_not_simulation_throughput",
+      "game_minutes_advanced": 4,
+      "game_minutes_per_wall_second": 0.3757254350236274,
+      "game_minutes_per_wall_second_scope": "window_wall_span_including_inter_turn_input_gaps_not_simulation_throughput",
+      "game_turns_per_simulation_second": 1152.5147689928006,
+      "game_minutes_per_simulation_second": 18.00804326551251,
+      "simulation_throughput_scope": "completed_native_turn_simulation_seconds_only"
+    },
+    "current_incomplete_turn": {
+      "event": {
+        "event": "turn",
+        "stage": "start",
+        "run_id": "dd03ec428d15c6a0d719380dc8a295ef7c0c9e6c009e663734b6364532cbf098",
+        "process_instance": "1789986762458469",
+        "sequence": 15387,
+        "turn_id": "7500",
+        "game_turn": 5313960,
+        "game_minutes": 9366,
+        "wall_time_seconds": 1789986784.995031,
+        "simulation_seconds": 0,
+        "phase": "simulation",
+        "owner": "game::do_turn",
+        "_evidence_handle": {
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_123212_e0b54a1afd0f44499ed1407d203e4472/semantic.native.events.jsonl",
+          "offset": 6818756,
+          "end": 6819116
+        }
+      },
+      "age_seconds": 129.69851279258728,
+      "phase": "input",
+      "phase_evidence": {
+        "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_123212_e0b54a1afd0f44499ed1407d203e4472/semantic.native.events.jsonl",
+        "offset": 6819116,
+        "end": 6819477
+      }
+    },
+    "source_freshness": {
+      "last_event": {
+        "event": "surface_descriptor",
+        "stage": null,
+        "accepted": null,
+        "request_id": null,
+        "turn_id": null,
+        "game_turn": 5313960,
+        "phase": null,
+        "wall_time_seconds": 1789986785.009,
+        "evidence": {
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/dev-harness/harness_runs/20260921_123212_e0b54a1afd0f44499ed1407d203e4472/semantic.native.events.jsonl",
+          "offset": 6819477,
+          "end": 6903641
+        }
+      },
+      "pending_observation": {
+        "request_id": "play-66b82fffb3ed45d3a46b7a9b102c4c8e",
+        "observed_unix_seconds": 1789986914.560214,
+        "first_trace_offset": 6950314
+      }
+    },
+    "alarms": [],
+    "recoveries": [],
+    "pending_operation": {
+      "request_id": "play-66b82fffb3ed45d3a46b7a9b102c4c8e",
+      "action": "run.quit",
+      "action_id": null,
+      "submitted_unix_seconds": 1789986914.560214
+    },
+    "observation_uncertainty": null,
+    "note": "Native turn boundaries measure simulation only. Input, pause, load, save and transport phases do not create simulation alarms."
+  },
+  "state": "collected",
+  "request_id": "play-66b82fffb3ed45d3a46b7a9b102c4c8e",
+  "next": "collect",
+  "presentation": {
+    "budget_bytes": 8192,
+    "full_evidence": {
+      "sha256": "29b7485756798f165bd0c166fef81a594bd00410e7862159898d0f6e105b03c2",
+      "json_bytes": 5968375
+    },
+    "retrieve": "python3 tools/openclaw_harness/evidence_display.py --sha256 HASH [--selector FIELD] [--offset N --limit N] [--export FILE]"
+  }
+}

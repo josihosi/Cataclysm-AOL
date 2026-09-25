@@ -1,0 +1,4 @@
+World.
+Waited 30 game minutes.
+8:05:26 AM: You finish waiting.
+Game time: 7685 minutes.

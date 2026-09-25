@@ -1,0 +1,1 @@
+error: journal_is_sealed: submit finish --witness FILE

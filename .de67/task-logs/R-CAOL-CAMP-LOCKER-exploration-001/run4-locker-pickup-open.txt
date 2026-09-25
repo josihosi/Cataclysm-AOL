@@ -1,0 +1,16 @@
+DIRECTION
+allow vertical: false
+prompt: Pick up items where?
+ALLOWED HERE ONLY
+Cancel → play act direction.cancel
+play act direction.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  north — North
+  south — South
+  west — West
+  east — East
+  northwest — Northwest
+  northeast — Northeast
+  southwest — Southwest
+  southeast — Southeast
+  pause — Here (current tile)

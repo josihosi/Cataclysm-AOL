@@ -1,0 +1,18 @@
+{
+  "action": "game.raw_wait",
+  "raw_wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 30,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "the staged source timer was crossed at native minute 10081; the fixture contract observes its actual native sound outcome at 10085, so this is the smallest freshly advertised post-boundary native wait; harness-only, non-product observation",
+      "unit": "game_minutes",
+      "maximum": 30,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      "wait.30m"
+    ]
+  }
+}

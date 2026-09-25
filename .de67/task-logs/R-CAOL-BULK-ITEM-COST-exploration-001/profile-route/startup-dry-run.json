@@ -1,0 +1,15 @@
+{
+  "profile": "caol-bulk-item-cost-exploration-001",
+  "userdir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001",
+  "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+  "strategy": "play_now_default",
+  "reason": "explicit world 'BulkItemCostSandbox' not found",
+  "target_world": "",
+  "existing_worlds": [],
+  "fixture": "",
+  "run_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_135521_330b97c146344d4cbc37ea86395bbf65",
+  "harness_new_world": "",
+  "harness_raw_seed": "",
+  "harness_new_world_scenario": "",
+  "harness_bandit_feasibility": false
+}

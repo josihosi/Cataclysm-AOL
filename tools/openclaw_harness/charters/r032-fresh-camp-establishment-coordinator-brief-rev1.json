@@ -1,5 +1,5 @@
 {
-  "outcome": "On a current-source eligible pre-camp site, a player can use native semantic World, dialogue, and camp-type menu owners to establish a new camp and then observe the actual resulting camp identity and assigned actor.",
+  "outcome": "On a current-source eligible pre-camp site, a player can establish a new camp, use the native assignment UI at that camp's actual OMT to assign the same eligible follower, then native-save, quit, reload, and continue ordinary camp work with that follower's CAMP_RESIDENT and assigned-camp state intact.",
   "scenario": "r032.fresh_camp_establishment_v001_mcw",
   "query": {
     "requirements": [
@@ -20,6 +20,12 @@
         "minimum_evidence": "declared",
         "op": "eq",
         "value": "native_semantic_dialogue_and_menu_to_new_camp_identity"
+      },
+      {
+        "key": "capabilities.r032.native_assignment_continuity",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_assignment_at_camp_omt_then_save_quit_reload"
       }
     ],
     "preferences": [

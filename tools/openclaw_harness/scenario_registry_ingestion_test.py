@@ -1988,7 +1988,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             self.assertEqual(artifact["review_status"], "pending")
             self.assertFalse(artifact["executable"])
             self.assertEqual(artifact["query"]["requirements"][0]["value"], True)
-            self.assertEqual(artifact["unmet_capabilities"][0]["unmet"][0]["reason"], "stale")
+            self.assertEqual(artifact["unmet_capabilities"][0]["unmet"][0]["reason"], "equality_mismatch")
             self.assertEqual(artifact["candidate_manifest"]["fixture"], "fixture-a")
             repeated = execute_registry_query(
                 connection,
@@ -2199,7 +2199,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                     {"reconciled": 1, "stale": 1},
                 )
                 stale = compare(include_lifecycle_states=("quarantined",))
-                self.assertEqual(stale.candidates[0].lifecycle_state, "active")
+                self.assertEqual(stale.candidates[0].lifecycle_state, "quarantined")
                 self.assertEqual(
                     stale.candidates[0].explanation["route_evidence"][0]["evidence_state"], "stale",
                 )

@@ -1,0 +1,63 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-e28dbad7e0624562875912c8dc3b9287
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0071: observation — npc_inspection
+  INDEX 70; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0072: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0073: observation — world
+  INDEX 72; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0074: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0075: observation — menu
+  INDEX 74; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0076: action — world.debug_menu
+  checks: {"action_id": "world.debug_menu"}
+J0077: observation — menu
+  INDEX 76; same PATH/FIELD as J0075.
+J0078: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0079: observation — menu
+  INDEX 78; same PATH/FIELD as J0075.
+J0080: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0081: observation — menu
+  INDEX 80; same PATH/FIELD as J0075.
+J0082: action — menu.filter
+  checks: {"action_id": "menu.filter"}
+J0083: observation — look_cursor
+  INDEX 82; PATH value.surface.facts.FIELD; FIELD: cursor, first_point, mode, movement_step, relative_to_avatar, selected_creature_name, selection_stage
+J0084: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0085: observation — look_cursor
+  INDEX 84; PATH value.surface.facts.FIELD; FIELD: cursor, first_point, mode, movement_step, relative_to_avatar, selection_stage
+J0086: action — cursor.east
+  checks: {"action_id": "cursor.east"}
+J0087: observation — look_cursor
+  INDEX 86; same PATH/FIELD as J0085.
+J0088: action — cursor.east
+  checks: {"action_id": "cursor.east"}
+J0089: observation — look_cursor
+  INDEX 88; same PATH/FIELD as J0085.
+J0090: action — cursor.east
+  checks: {"action_id": "cursor.east"}
+J0091: observation — look_cursor
+  INDEX 90; same PATH/FIELD as J0085.
+J0092: action — cursor.east
+  checks: {"action_id": "cursor.east"}
+J0093: observation — look_cursor
+  INDEX 92; same PATH/FIELD as J0085.
+J0094: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0095: observation — look_cursor
+  INDEX 94; same PATH/FIELD as J0085.
+J0096: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0097: observation — look_cursor
+  INDEX 96; same PATH/FIELD as J0085.
+J0098: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0099: observation — look_cursor
+  INDEX 98; same PATH/FIELD as J0085.
+J0100: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+More → play inspect result.evidence_journal.entries --offset 100 --limit 30 --request-id play-e28dbad7e0624562875912c8dc3b9287

@@ -1,0 +1,56 @@
+ITEM INFO
+Location: forest floor 1SE
+Material: Steel, Plastic
+Volume: 0.39 L  Weight: 0.60 kg
+Length: 211 mm
+Category: Guns
+Weapon is not loaded, so stats below assume the default ammo: 9x19mm JHP
+Ranged damage: 21
+Barrel Length: 102 mm
+Critical multiplier: 2
+Maximum range: 14
+Armor-pierce: 0
+Dispersion: 5.40 MOA
+Sight dispersion: 0.74 MOA
+Effective recoil: 3.12 MOA
+Theoretical minimum recoil: 3.12 MOA (when strength reaches: 2)
+Reload time: 150 moves
+Loudness with current fire mode: 74
+Skill used: handguns
+Type: 9x19mm
+Even chance of good hit at range: 2
+Time to reach aim level: 221 moves
+Even chance of good hit at range: 3
+Time to reach aim level: 370 moves
+Even chance of good hit at range: 4
+Time to reach aim level: 563 moves
+Fire modes: semi-auto (1)
+Compatible magazines:
+Types: Glock 9x19mm 10-round magazine, Glock 9x19mm 17-round magazine, Glock 9x19mm 22-round magazine, Glock 9x19mm 100-round double drum magazine, Glock 9x19mm 50-round drum magazine, Glock 9x19mm 33-round magazine, Glock 9x19mm 15-round magazine, and Glock 19 9x19mm 10-round magazine
+Mods:
+# barrel:
+# mechanism:
+# rail:
+# sights mount:
+# stock mount:
+Actions: Detach gunmods and Modify attached equipment
+Has qualities:
+* This item conducts electricity.
+* This item can be used as AUTOMATIC PISTOLS.
+* This item won't prevent you from blocking with your body, such as arms or legs when wielded as a weapon.
+Melee damage: Bash: 7  To-hit bonus: -2
+Base moves per attack: 81
+Typical damage per second:
+Best: 3.14  Vs. Agile: 1.31  Vs. Armored: 0.09
+Stamina use: Costs less than 0.10% stamina to swing.
+Typical damage per stamina:
+Best: 3.61  Vs. Agile: 1.50  Vs. Armored: 0.11
+Average melee damage:
+Can be stored in 162 unworn wearables.
+Price: $690.00  Barter value: $8.00
+You could install it in a vehicle: mounted Glock carry pistol
+Additional item text: 952 characters omitted → play inspect observation.surface.facts.item_info_text
+item name: Glock carry pistol
+type name: Glock carry pistol
+ALLOWED HERE ONLY
+Close → play act item_info.close

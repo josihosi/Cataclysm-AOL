@@ -1,0 +1,19 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The first bound process reached the saved-world continuation boundary; persistence in its replacement process remains to be observed.",
+  "causal_account": "The sealed terminal record identifies the completed native save-and-exit segment, but it cannot by itself establish that a replacement process restored the checkpoint.",
+  "citations": [
+    {
+      "citation_id": "J0042",
+      "meaning": "sealed terminal boundary for the original process",
+      "checks": {
+        "stop_reason": "Bound native save completion and original native process exit observed; request declared saved-world continuation."
+      }
+    }
+  ],
+  "recommended_disposition": "continue",
+  "remaining_unknowns": [
+    "Whether the declared replacement process restores the same player-created fire and guarded retreat checkpoint."
+  ],
+  "evidence_ceiling": "focused"
+}

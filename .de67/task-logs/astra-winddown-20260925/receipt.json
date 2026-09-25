@@ -1,0 +1,25 @@
+{
+  "installed_files": [
+    "scripts/workspace_setup.py",
+    "tests/test_workspace_setup.py",
+    "de-67-3/scripts/coordinator_supervisor.py",
+    "de-67-3/scripts/policy_kernel.py",
+    "de-67-3/tests/test_policy_kernel.py"
+  ],
+  "lab_narrow_patch": true,
+  "method_guard": [
+    "scripts/coordinator_supervisor.py",
+    "scripts/policy_kernel.py",
+    "tests/test_policy_kernel.py"
+  ],
+  "tests": {
+    "policy": 74,
+    "supervisor": 78,
+    "setup": 36
+  },
+  "roster_pairs": 17,
+  "fresh_process_check": "17 model/effort choices, Astra low/high/ultra, recommendation and wind-down routes verified",
+  "deadline_state_edited": false,
+  "stale_workers_cleared": false,
+  "supervisor_started": false
+}

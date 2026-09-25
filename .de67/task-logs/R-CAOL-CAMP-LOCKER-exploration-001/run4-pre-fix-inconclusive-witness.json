@@ -1,0 +1,29 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In isolated R032 run 5a740fcaeaa49d27790568b1bba8d485cd8a3814c789fd748645e937dcbc6769, native camp downtime after a five-minute wait equipped assigned character:25 with a helmet and a Glock whose native inspection showed a loaded compatible magazine and additional compatible rounds. This run does not satisfy full item-location accounting or save/reload continuity.",
+  "causal_account": "The same actor was inspected after a native ordinary wait. The Glock and helmet came from observed Locker stock through the actual camp service path, and the actor inspection showed loaded Glock magazine and compatible JHP ammunition. The displaced sharpened rebar was subsequently found at the NPC's former map tile rather than in the Locker, worker inventory, or Storage. The native journal was submitted before persistence work and sealed gameplay input, so no native save/reload was observed in this run. A focused regression now reproduces that ranged-upgrade displacement and verifies return to the Locker.",
+  "citations": [
+    {
+      "citation_id": "J0095",
+      "meaning": "Native post-downtime inspection of the same R032 follower; its observed item list includes the helmet, wielded Glock, loaded 9x19mm JHP magazine, spare compatible magazine and JHP rounds.",
+      "checks": {
+        "value.surface.facts.actor_name": "R032 Establishment Ally 1"
+      }
+    },
+    {
+      "citation_id": "J0169",
+      "meaning": "The last unselected native pickup surface was inspected while locating the displaced sharpened rebar; nothing was picked up.",
+      "checks": {
+        "value.surface.facts.title": "Pickup"
+      }
+    }
+  ],
+  "checks": {},
+  "recommended_disposition": "continue",
+  "contradictions": [
+    {
+      "citation_id": "J0169",
+      "meaning": "The displaced sharpened rebar was on the map tile at the NPC's former position instead of being returned to the camp Locker."
+    }
+  ]
+}

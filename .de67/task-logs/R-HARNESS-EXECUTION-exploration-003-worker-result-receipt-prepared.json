@@ -1,0 +1,133 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EXECUTION-exploration-003",
+  "claim_id": "R-HARNESS-EXECUTION",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "worker_request_id": "a7b6fcce8921480a8029c2f59fb951f9",
+  "disposition": "completed",
+  "verdict": "fixture_caller_reconciled_real_native_interruption_proved",
+  "outcome": "The affected R-019 source-resolution caller was reconciled to the authoritative-save repair and now asserts the current mcwilliams payload, source chain, stabilizer set, and staged/cleared active-monster transform contract. The source/startup repair and one real source-bound native interruption with partial progress and no replay are proved. Broader shared-consumer coverage remains separate from this completed assignment.",
+  "summary": "The failing caller expected the superseded bandit_r002 payload. The current r012 authoritative-save manifest explicitly resolves to mcwilliams_live_debug_2026-04-07 and adds the mandatory observer stabilizers; r013 then preserves the staged-monster setup contract while clearing inherited active monsters for its clean route. The caller was updated accordingly. Current focused fixture/startup and lifecycle checks pass 43/43. The retained native R019 run remains bound to scenario r019.keep_watch_off_interruption_control_mcw, run 79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4, binding 7c6dda74e29d2690df506d8e481e6595bb2175ef6faa493b93bb15521505b0cf, and its native interruption evidence was not replayed.",
+  "material_changes": [
+    "Updated tools/openclaw_harness/r019_fixture_source_resolution_test.py to expect payload_fixture mcwilliams_live_debug_2026-04-07 and the source chain r019_keep_watch_safe_popup_v1 -> r013_clean_wait_duration_v1 -> r012_avatar_visible_bootstrap_v1 -> mcwilliams_live_debug_2026-04-07.",
+    "Added caller assertions for the mandatory DEBUG_LS/DEBUG_NOTEMP/DEBUG_STAMINA/DEBUG_CARDIO/DEBUG_CLAIRVOYANCE/DEBUG_NIGHTVISION stabilizers and the staged mon_zombie_dog active-monster transform at offset [0,12,0], followed by the inherited clean clear-existing transform.",
+    "Updated the source-leak guard to use the current authoritative payload identity, updated stale startup-boundary assertions to the current world-context activation and handle_action binding, and updated current-source repair-successor test bindings to the declared r019_keep_watch_safe_popup_v1 fixture.",
+    "Preserved the earlier authoritative-save repair in tools/openclaw_harness/fixtures/saves/live-debug/r012_avatar_visible_bootstrap_v1/manifest.json and the R019 stale-Escape/nonvisual admission-guard correction in tools/openclaw_harness/scenarios/r019.keep_watch_off_interruption_control_mcw.json."
+  ],
+  "tests": [
+    "python3 -m unittest tools.openclaw_harness.r019_fixture_source_resolution_test: 3/3 passed.",
+    "python3 -m unittest tools.openclaw_harness.r019_fixture_source_resolution_test tools.openclaw_harness.r019_validation_startup_test tools.openclaw_harness.r019_startup_boundary_observation_test tools.openclaw_harness.r019_current_source_revalidation_test tools.openclaw_harness.r019_current_source_repair_successor_test tools.openclaw_harness.r019_binding_drift_current_source_successor_test tools.openclaw_harness.r013_long_wait_plan_order_test tools.openclaw_harness.r013_clean_wait_validation_input_test: 43/43 passed.",
+    "git diff --check: passed."
+  ],
+  "live_actions": [
+    "No native interruption replay, relaunch, wait, setup mutation, or gameplay input occurred during this reconciliation.",
+    "Retained native proof was read-only: the disabled Keep-watch request was rejected, one world.wait and one wait.5m native receipt were retained, and the prior run.finish/terminalization artifacts were not regenerated.",
+    "The earlier terminalization already verified game PID 97614 absent after SIGTERM and bridge PID 97579 exited with child_exit_code 0; cleanup was not repeated.",
+    "No OCR, screenshots, terminal bytes, or rendered text were used as proof of the native interruption."
+  ],
+  "evidence_ceiling": [
+    "Fixture and startup changes are zero-credit source/binding evidence; they establish the authoritative source chain and transform contract only.",
+    "The native journal ceiling is focused: it proves the exact R019 disabled-master primitive interruption/no-replay boundary, not a broader gameplay feature result.",
+    "Native wait interruption identity: native_wait_interrupted, native_stop_reason monster_spotted, start game minute 8047.0, target 8053, partial progress 5.0, terminal game minute 8052, guarded_handling_count 0, World owner, continuation released.",
+    "The duration menu did not advertise a separate native cancel target; post-interruption lifecycle cancel and collect returned no_pending_request and emitted no recovery or replay input.",
+    "Native save/quit and native process-exit credit were not established; cleanup remains explicitly native_exit_credit=false."
+  ],
+  "bindings": {
+    "scenario_id": "r019.keep_watch_off_interruption_control_mcw",
+    "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+    "payload_fixture": "mcwilliams_live_debug_2026-04-07",
+    "payload_fixture_profile": "live-debug",
+    "source_identity": "14ed1f263a44741158a94f90afed3d8cd33418f23228bb174d2317288b3c5dbe",
+    "executable_identity": "164084ff365aac3ab4db56703dfe8611ea2004f98a2e129102780c4f040f4c61",
+    "run_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4",
+    "binding_id": "7c6dda74e29d2690df506d8e481e6595bb2175ef6faa493b93bb15521505b0cf",
+    "process_instance": "1789944605800156",
+    "session_dir": ".userdata/openclaw_harness/bridge-sessions/selected-d1f3ce565a584c14a798f560a9a14a3a",
+    "bridge_pid": "97579",
+    "bridge_birth_identity": "posix-lstart:Mon Sep 21 00:49:52 2026",
+    "game_pid": "97614",
+    "game_birth_identity": "posix-lstart:Mon Sep 21 00:49:53 2026",
+    "game_command": "cataclysm-tiles --userdir .userdata/r009-m095/ --world McWilliams",
+    "keep_watch_request_id": "play-b97655bfd0dd46f0b7332211223c15ae",
+    "keep_watch_request_sha256": "8a2700b7f43f2a1b6bee8cf3f0d2a991dac9d8562c80441d29e0d1fb9384ea97",
+    "keep_watch_response_sha256": "c706e02541733378184f1ad0f662fa69dd27010e38d63afeb159dd4d996bd119",
+    "world_wait_request_id": "play-8e4a1f3d1b714303aba025b00e13c5c0",
+    "world_wait_observation_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4:frame:1",
+    "duration_menu_request_id": "play-f7a06401d6b04a928af3d740c7db4bd9",
+    "duration_menu_observation_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4:frame:2",
+    "native_wait_request_id": "cockpit:harness-a0a96826c39747fc93eba9928c0fee99:79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4:frame:3:wait.5m:59525e1979fb95ac",
+    "native_wait_frame_id": "79fb8543c0ed68de44e80698a23ad6fae8711146f226327b1a723b48f1d3dbb4:frame:3",
+    "native_wait_receipt_action_id": "wait.5m",
+    "native_wait_receipt_accepted": "true",
+    "native_wait_request_wrapper_id": "play-5fe3f2620a1e4757aa6455e3f10c25fa",
+    "native_wait_request_wrapper_sha256": "65f5a8e779019241734a072771e60bd1182ce48571b7cde1239f7d6ff2eb13ca",
+    "native_wait_response_sha256": "539e313c3084f11b42b0fdb1709db5a9d02891db6b653a4b27809d8ca662cf0a",
+    "witness_request_id": "play-ba5faacb1d0d407b9217bf3fb7028277",
+    "witness_request_sha256": "76587c07a5ce8500a00ecba365553ed5bdd2cc6dddbd4d0fa142536dc367734b",
+    "witness_response_sha256": "144bc7fa8dad3fc9efa50d0b8cb1e480a7c5afa675d5151015692a9e605df15a",
+    "finish_request_id": "play-21f34aadd7ff4e7485e050b0980d5057",
+    "finish_request_sha256": "755ceb37fac64d3f1e3751483925725d29d6ed7f09329fb4e43041a3837ee0f6",
+    "finish_response_sha256": "83980e9179c8049983b6a98411d42ad7d19ab4b02f2562895d8b59fb1984dbfa",
+    "journal_sha256": "4b26f182d200463bb64a7744911945f5fcc38d7c0477645bed6764ffe3a310c2",
+    "witness_sha256": "359399f88b267fb279457d7f114249ebda37de03d9fd2a9339ecb32c21ddaf06",
+    "journal_archive_stream": "d65a6cc8bce4426897a0a66442d658eb",
+    "journal_archive_count": "15",
+    "journal_archive_sha256": "b2fc41c2c30171f3fcf822d9ffead660a3fb0192a27fa9f1b17c979f2b215cbc",
+    "preserved_prior_receipt": "a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc"
+  },
+  "journal_entries": [
+    {"id": "J0001", "sequence": 1, "event_type": "identity", "evidence_class": "native_binding", "summary": "Scenario, source, executable, run, and bridge binding identities match."},
+    {"id": "J0003", "sequence": 3, "event_type": "action_rejection", "evidence_class": "native_transport", "summary": "Disabled Keep-watch master request rejected with keep_watch_master_disabled_use_primitive_actions."},
+    {"id": "J0006", "sequence": 6, "event_type": "native_receipt", "evidence_class": "native", "summary": "world.wait accepted once from frame 1."},
+    {"id": "J0011", "sequence": 11, "event_type": "native_receipt", "evidence_class": "native", "summary": "wait.5m accepted once from frame 3."},
+    {"id": "J0013", "sequence": 13, "event_type": "native_interruption", "evidence_class": "native", "summary": "native_wait_interrupted at monster_spotted with partial_progress 5.0 and guarded_handling_count 0."},
+    {"id": "J0014", "sequence": 14, "event_type": "observation", "evidence_class": "native", "summary": "Fresh terminal World owner at game minute 8052; no debug intervention and no save attempt credited."},
+    {"id": "J0015", "sequence": 15, "event_type": "terminal", "evidence_class": "lifecycle", "summary": "Continuation released; collect/cancel found no pending request; terminalization cleanup remained separate from native-exit credit."}
+  ],
+  "artifacts": [
+    {"path": "tools/openclaw_harness/fixtures/saves/live-debug/r012_avatar_visible_bootstrap_v1/manifest.json", "sha256": "7502f48bf2d9acfd82baa9a4db5b6b2ca4d6b90f9d3760dc0c4fba436236e7d1", "role": "Authoritative-save source and stabilizer/active-monster transform declaration."},
+    {"path": "tools/openclaw_harness/scenarios/r019.keep_watch_off_interruption_control_mcw.json", "sha256": "e526af240ca635878320dad4a0b4cbf639985e7ca8224f72437a935ad9e40903", "role": "R019 stale-Escape and nonvisual-admission correction."},
+    {"path": "tools/openclaw_harness/r019_fixture_source_resolution_test.py", "sha256": "286b173fcb5b2c81ee1eaf2f984e4e6be9bbc7e685f4d9e040cec65fa5db365c", "role": "Updated affected caller and transform-contract test."},
+    {"path": "tools/openclaw_harness/r019_validation_startup_test.py", "sha256": "306e50e5859aeef79fc543452bdb9b07aba1ab8186d1c7811163a0fb38b4772a", "role": "Current native world-context startup assertions."},
+    {"path": "tools/openclaw_harness/r019_startup_boundary_observation_test.py", "sha256": "113a15168f749f1acf9d4618359fdd18a640fb5d55eeebb8a5b01233bf381fe7", "role": "Current post-HUD/input-dispatch ordering assertions."},
+    {"path": "tools/openclaw_harness/r019_current_source_repair_successor_test.py", "sha256": "d96e1835281d058d8a7d6fc3b6b8f6af9448a63f6ed743da0f812eb9e8697687", "role": "Current declared fixture identity for repair-successor authority."},
+    {"path": ".de67/task-logs/R-HARNESS-EXECUTION-exploration-003-r019-witness.json", "sha256": "bdf20877cf65f21c40b61c9b5305631777892c1640d1caf7d34ca9a70a360135", "role": "Mechanically valid focused witness statement."},
+    {"path": ".de67/task-logs/R-HARNESS-EXECUTION-exploration-003-r019-finish-result.json", "sha256": "58f9b7f619f12204379209c569e3b7788b8e23a5d083e7c232b4b6b2ed3b91ca", "role": "Target-predicate-proved finish result and witness validation."},
+    {"path": ".de67/task-logs/R-HARNESS-EXECUTION-exploration-003-r019-terminalize-collect-1.json", "sha256": "dcef7aeacc91d7148a95ff4ca234e6ee8c24cc2a4154cb79c57ec3c3dcf0fc2f", "role": "Scenario terminalization and exact game cleanup result."},
+    {"path": ".userdata/r009-m095/harness_runs/20260921_004953_1a8cb84cef364011a69fbb86e7ee0ae4/probe.report.json", "sha256": "cfcca19a5e6848062ee91fec6154ebedf9f8df2b12d967bbb3b2aca4fbc9c81b", "role": "Run-bound startup, fixture-install, native semantic, and cleanup report."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-d1f3ce565a584c14a798f560a9a14a3a/status.json", "sha256": "484db319040ba38ed4201b8dda5886512d93cfbab110da369774c07c5f98cbc6", "role": "Bridge binding, child exit code, terminalization state, and game PID/birth cleanup record."}
+  ],
+  "first_divergence": {
+    "class": "stale_affected_caller_expectation",
+    "summary": "The caller still asserted bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22 after the authoritative r012 repair changed the payload to mcwilliams_live_debug_2026-04-07. The fixture source and native interruption evidence were not mistaken; the caller was stale."
+  },
+  "accepted_no_replay": [
+    "Preserved receipt a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc was not rerun.",
+    "The successful native R019 interruption was not relaunched or replayed; only retained request/receipt/journal/cleanup artifacts were read.",
+    "The prior accepted wait was not treated as a new test after the caller correction; source-resolution and lifecycle tests were rerun because their inputs changed.",
+    "No native save/quit or process-exit gameplay credit was inferred from scenario terminalization cleanup."
+  ],
+  "active_work": [],
+  "first_open_boundary": "The remaining R-HARNESS-EXECUTION shared-consumer and fault coverage belongs to a successor assignment; this native interruption boundary is closed without replay.",
+  "narrow_queries": [
+    "resolve_fixture_payload(r019_keep_watch_safe_popup_v1, live-debug) => payload_fixture mcwilliams_live_debug_2026-04-07 and source chain through r013/r012.",
+    "Resolved transform contract: mandatory six stabilizers; one staged mon_zombie_dog at [0,12,0], hp 80, faction zombie, friendly 0; inherited clear-existing empty-monster transform.",
+    "Native interruption: one accepted wait.5m receipt at frame 3; native_wait_interrupted at frame 5; partial_progress 5.0; terminal World at game minute 8052.",
+    "Cleanup: game PID 97614 expected/observed birth posix-lstart:Mon Sep 21 00:49:53 2026, terminated SIGTERM, final alive false; bridge PID 97579 child_exit_code 0; native_exit_credit false."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/fixtures/saves/live-debug/r012_avatar_visible_bootstrap_v1/manifest.json",
+    "tools/openclaw_harness/scenarios/r019.keep_watch_off_interruption_control_mcw.json",
+    "tools/openclaw_harness/r019_fixture_source_resolution_test.py",
+    "tools/openclaw_harness/r019_validation_startup_test.py",
+    "tools/openclaw_harness/r019_startup_boundary_observation_test.py",
+    "tools/openclaw_harness/r019_current_source_repair_successor_test.py",
+    "tools/openclaw_harness/r013_long_wait_plan_order_test.py",
+    "tools/openclaw_harness/r013_clean_wait_validation_input_test.py",
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/playtest_witness.py"
+  ],
+  "context_metrics": {}
+}

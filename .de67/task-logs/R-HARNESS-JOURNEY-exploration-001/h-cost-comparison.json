@@ -1,0 +1,16 @@
+{
+  "schema": "de67-h-cost-comparison-v1",
+  "status": "insufficient_for_50_percent_claim",
+  "claim": "Equivalent completed-outcome comparison is not available from this campaign; native evidence is retained and missing provider usage is explicit.",
+  "source": {"branch":"dev","commit":"fe8c418c1636bdfa6e16d0009af83873a079e24f","product_source_sha256":"a76a113102a5ec7e9b23a420d5cfecb7bb2f1d1d5c70cf18a3ac0ee034933b58","runtime_source_sha256":"8f77ba026cfc83533a76a188de1df6792a6f68d9a3ca965401cc1386f1b14a7f","executable_sha256":"e86ec67a5435570e6152060f59b37b19e55e783eb0eb54a7341e922ffae2a5bb"},
+  "native_campaign": {
+    "completed_objectives": ["nested inventory/item-details journey", "5-minute native wait", "30-minute native wait", "source-bound launch/save-and-quit boundary"],
+    "inconclusive_objectives": ["real post-cancel next decision", "save/quit/reload/continue", "original ten-waits trace", "live accepted activity.pause receipt on repaired source-bound rerun"],
+    "transport_commands": "available in full play_cli receipts; not converted to token usage",
+    "provider_usage": {"fresh_input_tokens": null, "cached_input_tokens": null, "output_tokens": null, "usd": null},
+    "proxies": {"focused_python_tests": 73, "repair_dispatch_cpp_assertions": 11, "persistence_requests": 9, "persistence_run_game_minutes": 8159, "repair_native_activity_wait_descriptors": 469, "repair_native_pause_receipts": 0, "repair_native_run_game_minutes": 1080, "displayed_artifact_bytes": "retained in evidence handles, not a billing measure"},
+    "categories": {"playing":"measured qualitatively", "polling":"reduced by receipt-bound collection; exact token cost missing", "evidence_retrieval":"measured by retained artifacts only", "diagnosis":"present", "repair":"source/test repair verified; live accepted activity.pause remains unproven; exact provider usage missing", "reporting_closeout":"present"}
+  },
+  "comparison": {"before": null, "after": null, "target_reduction": 0.5, "target_result": "not assessed", "reason":"No equivalent before/after workflow with actual model request accounting was recorded."},
+  "next_measurement": "Repeat only after a changed continuation boundary is repaired, capturing coordinator/worker/helper/reviewer/retry/recovery request records and fresh versus cached input/output tokens for the same completed diagnostic/action/resume/closeout outcome."
+}

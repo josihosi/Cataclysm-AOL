@@ -1,0 +1,46 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This current-source semantic-only diagnostic run dispatched and assembled the two-member outing locally, but it remained local/observing at waypoint 1 from minute 9360 through minute 9482. It did not reach the selected watch, consume the native sound source, physically return, or produce a returned_report lead.",
+  "causal_account": "A bounded native 60-minute wait after the previously observed local assembly reached its target without changing the structural outing owner. The terminal observation still reports the same local owner, observing phase, waypoint index 1, and last advance minute 9360. That settles this run as a route-handoff diagnostic boundary rather than evidence for the requested sound-to-return sequence.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds this diagnostic result to the selected scenario, current source, current executable, native run, and bridge binding.",
+      "checks": {
+        "run_id": "3bc57da05eb4ba6475f6581a5d2106cbe77a03aa7aa4faaffa7412ed9d32f06e",
+        "binding_id": "3bce20a5a1e701a30a515d562fcb4449f3e736f3c73fb63611255a101359d3ae"
+      }
+    },
+    {
+      "citation_id": "J0050",
+      "meaning": "The bounded native wait advanced 60 game minutes and ended at minute 9482.",
+      "checks": {
+        "result.terminal_observation.game_minutes": 9482,
+        "result.stop_reason": "target_reached"
+      }
+    },
+    {
+      "citation_id": "J0051",
+      "meaning": "The terminal World observation preserves the unchanged local structural outing owner after the wait.",
+      "checks": {
+        "value.game_minutes": 9482,
+        "value.surface.facts.structural_outing_owner": "{\"schema\":\"caol-structural-outing-owner-v1\",\"present\":true,\"site_id\":\"overmap_special:bandit_camp@140,51,0\",\"activity_id\":\"overmap_special:bandit_camp@140,51,0#structural\",\"generation\":1,\"owner\":\"local\",\"phase\":\"observing\",\"waypoint_index\":1,\"last_advanced_minutes\":9360,\"member_ids\":[4,5],\"waypoint_omt\":[139,51,0],\"cursor_present\":true,\"cursor_owner\":\"local\",\"cursor_generation\":1,\"cursor_last_advanced_minutes\":9360,\"provenance\":\"diagnostic_read_only_global_bandit_live_world_active_structural_cursor\"}"
+      }
+    },
+    {
+      "citation_id": "J0052",
+      "meaning": "Seals the diagnostic boundary and releases native authority for cleanup.",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The pair physically assembled, but the cursor remained local/observing at waypoint 1 with no advance for 122 game minutes; the requested source-to-return sequence therefore never became eligible for credit in this run."
+  ],
+  "remaining_unknowns": [
+    "Whether the atomic forward route binding succeeds at local assembly and whether the ingress motor subsequently sees valid relationship, travelling mission, goal, and path state for both members."
+  ],
+  "evidence_ceiling": "focused"
+}

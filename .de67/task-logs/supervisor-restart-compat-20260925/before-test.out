@@ -1,0 +1,19 @@
+........................E...coordinator supervisor: optional blocker adapter disabled: Blocker adapter command must be a JSON argument array
+...................................................
+======================================================================
+ERROR: test_fresh_prompt_accepts_cached_pre_audience_owner_contract (test_coordinator_supervisor.CoordinatorSupervisorTests.test_fresh_prompt_accepts_cached_pre_audience_owner_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_coordinator_supervisor.py", line 1305, in test_fresh_prompt_accepts_cached_pre_audience_owner_contract
+    prompt = fresh.coordinator_prompt(
+        self.workspace.resolve(), self.state_path.resolve(),
+        "project", "mixed-version-prompt", None)
+  File "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py", line 1159, in coordinator_prompt
+    current_owner_contract(workspace, audience="coordinator"),
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: CoordinatorSupervisorTests.test_fresh_prompt_accepts_cached_pre_audience_owner_contract.<locals>.<lambda>() got an unexpected keyword argument 'audience'
+
+----------------------------------------------------------------------
+Ran 79 tests in 10.257s
+
+FAILED (errors=1)

@@ -1,0 +1,15 @@
+{
+  "action": "game.raw_wait",
+  "raw_wait": {
+    "enabled": true,
+    "target_game_minutes": 9961,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "The run begins at observed minute 9241; minute 9961 is the first intermediate checkpoint before the 10080 watch cadence and 10081 C-4 countdown.",
+      "unit": "game_minutes",
+      "maximum": 720,
+      "progress_required": true
+    },
+    "recipe": ["world.wait", "wait.1m"]
+  }
+}

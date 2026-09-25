@@ -1,0 +1,25 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "This fresh drive-at-least-500 run reached the real timed C-4 explosion while the paired outing was locally observing, but it did not retain the required local structural sound observation or a returned-report lead.",
+  "causal_account": "The native message and deaf effect establish that the physical source emitted.  The terminal structural diagnostic instead reports no loaded source and no candidate because the regular overmap pass consumed the one-shot sound with its abstract-only fallback before the later local-observer delivery path could record it.  This is an implementation delivery defect, not a valid source-to-return proof.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds this result to the fresh selected scenario, executable, native run, and bridge binding.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0080",
+      "meaning": "Terminal retained run observation used for the limited contradiction.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [
+    "The physical significant sound was observed by the production channel at minute 10081, but no local structural sound fact or returned-report lead was retained."
+  ],
+  "remaining_unknowns": [
+    "Whether replaying the same fresh premise after local delivery is added to the overmap sound-consumption path produces the expected retained observation and return provenance."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

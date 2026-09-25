@@ -1,0 +1,1837 @@
+{
+  "source": "/Users/josefhorvath/.codex/sessions/2026/09/21/rollout-2026-09-21T00-48-24-01a0c101-a0b9-72f2-b509-7302b2bb7102.jsonl",
+  "source_lines_at_capture": 14612,
+  "method": "Parse response_item tool outputs, flatten text blocks; select calls containing exec_command and play_cli.py; count complete single-line JSON objects with top-level turn_assessment. Bytes are UTF-8 serialized JSON, excluding newline. Not token counts or billing. Sample mixes assignments and gameplay/repair work.",
+  "parseable_responses": 268,
+  "json_bytes": 1809239,
+  "turn_assessment_value_bytes": 1125910,
+  "median_json_bytes": 7135.5,
+  "doc_read_call_mentions": {
+    ".agents/skills/caol-harness/SKILL.md": 23,
+    ".agents/skills/caol-harness/references/evidence-and-diagnostics.md": 18,
+    ".agents/skills/caol-harness/references/selection-and-launch.md": 19,
+    ".agents/skills/caol-harness/references/live-operation.md": 19,
+    ".agents/skills/caol-harness/references/witness-and-finish.md": 16,
+    ".agents/skills/caol-harness/references/setup-and-interactions.md": 2,
+    ".agents/skills/caol-harness/references/behavior-and-movement.md": 6,
+    ".agents/skills/caol-harness/references/searching.md": 4,
+    ".agents/skills/caol-harness/references/r029-signal-evidence.md": 3
+  },
+  "doc_read_outputs_include_mixed_content": true,
+  "doc_read_returned_text_bytes": 591183,
+  "compactions": 22,
+  "responses": [
+    {
+      "line": 1878,
+      "json_bytes": 6822,
+      "turn_assessment_value_bytes": 3391
+    },
+    {
+      "line": 1966,
+      "json_bytes": 7702,
+      "turn_assessment_value_bytes": 4639
+    },
+    {
+      "line": 2029,
+      "json_bytes": 5117,
+      "turn_assessment_value_bytes": 4590
+    },
+    {
+      "line": 2036,
+      "json_bytes": 7008,
+      "turn_assessment_value_bytes": 3152
+    },
+    {
+      "line": 2069,
+      "json_bytes": 7920,
+      "turn_assessment_value_bytes": 4559
+    },
+    {
+      "line": 2087,
+      "json_bytes": 7129,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 2215,
+      "json_bytes": 5888,
+      "turn_assessment_value_bytes": 4558
+    },
+    {
+      "line": 2783,
+      "json_bytes": 7894,
+      "turn_assessment_value_bytes": 3423
+    },
+    {
+      "line": 2790,
+      "json_bytes": 7960,
+      "turn_assessment_value_bytes": 3559
+    },
+    {
+      "line": 2797,
+      "json_bytes": 5908,
+      "turn_assessment_value_bytes": 3578
+    },
+    {
+      "line": 2847,
+      "json_bytes": 7630,
+      "turn_assessment_value_bytes": 4429
+    },
+    {
+      "line": 2854,
+      "json_bytes": 7766,
+      "turn_assessment_value_bytes": 3356
+    },
+    {
+      "line": 2861,
+      "json_bytes": 7649,
+      "turn_assessment_value_bytes": 4422
+    },
+    {
+      "line": 2868,
+      "json_bytes": 7133,
+      "turn_assessment_value_bytes": 4423
+    },
+    {
+      "line": 2875,
+      "json_bytes": 7754,
+      "turn_assessment_value_bytes": 4279
+    },
+    {
+      "line": 2882,
+      "json_bytes": 7767,
+      "turn_assessment_value_bytes": 4281
+    },
+    {
+      "line": 2889,
+      "json_bytes": 8135,
+      "turn_assessment_value_bytes": 2619
+    },
+    {
+      "line": 4301,
+      "json_bytes": 6822,
+      "turn_assessment_value_bytes": 3391
+    },
+    {
+      "line": 4350,
+      "json_bytes": 6920,
+      "turn_assessment_value_bytes": 3521
+    },
+    {
+      "line": 4357,
+      "json_bytes": 6560,
+      "turn_assessment_value_bytes": 3525
+    },
+    {
+      "line": 4364,
+      "json_bytes": 7515,
+      "turn_assessment_value_bytes": 4654
+    },
+    {
+      "line": 4413,
+      "json_bytes": 7627,
+      "turn_assessment_value_bytes": 4653
+    },
+    {
+      "line": 4420,
+      "json_bytes": 8099,
+      "turn_assessment_value_bytes": 4665
+    },
+    {
+      "line": 4420,
+      "json_bytes": 5088,
+      "turn_assessment_value_bytes": 4561
+    },
+    {
+      "line": 4427,
+      "json_bytes": 7243,
+      "turn_assessment_value_bytes": 3148
+    },
+    {
+      "line": 4469,
+      "json_bytes": 5090,
+      "turn_assessment_value_bytes": 4563
+    },
+    {
+      "line": 4476,
+      "json_bytes": 6753,
+      "turn_assessment_value_bytes": 3149
+    },
+    {
+      "line": 4523,
+      "json_bytes": 5096,
+      "turn_assessment_value_bytes": 4569
+    },
+    {
+      "line": 4530,
+      "json_bytes": 7966,
+      "turn_assessment_value_bytes": 4568
+    },
+    {
+      "line": 4546,
+      "json_bytes": 5125,
+      "turn_assessment_value_bytes": 4598
+    },
+    {
+      "line": 4553,
+      "json_bytes": 7762,
+      "turn_assessment_value_bytes": 4589
+    },
+    {
+      "line": 4567,
+      "json_bytes": 5119,
+      "turn_assessment_value_bytes": 4592
+    },
+    {
+      "line": 4574,
+      "json_bytes": 5103,
+      "turn_assessment_value_bytes": 4576
+    },
+    {
+      "line": 4583,
+      "json_bytes": 5102,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 4692,
+      "json_bytes": 8052,
+      "turn_assessment_value_bytes": 5018
+    },
+    {
+      "line": 5006,
+      "json_bytes": 5111,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 5521,
+      "json_bytes": 6820,
+      "turn_assessment_value_bytes": 3389
+    },
+    {
+      "line": 5539,
+      "json_bytes": 7673,
+      "turn_assessment_value_bytes": 4647
+    },
+    {
+      "line": 5546,
+      "json_bytes": 7179,
+      "turn_assessment_value_bytes": 3151
+    },
+    {
+      "line": 5557,
+      "json_bytes": 6963,
+      "turn_assessment_value_bytes": 3160
+    },
+    {
+      "line": 5564,
+      "json_bytes": 7574,
+      "turn_assessment_value_bytes": 4589
+    },
+    {
+      "line": 5571,
+      "json_bytes": 7962,
+      "turn_assessment_value_bytes": 4588
+    },
+    {
+      "line": 5580,
+      "json_bytes": 5111,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 5589,
+      "json_bytes": 5111,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 5635,
+      "json_bytes": 5112,
+      "turn_assessment_value_bytes": 4585
+    },
+    {
+      "line": 5708,
+      "json_bytes": 5112,
+      "turn_assessment_value_bytes": 4585
+    },
+    {
+      "line": 5758,
+      "json_bytes": 8135,
+      "turn_assessment_value_bytes": 4569
+    },
+    {
+      "line": 5767,
+      "json_bytes": 7930,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 5985,
+      "json_bytes": 5112,
+      "turn_assessment_value_bytes": 4585
+    },
+    {
+      "line": 5992,
+      "json_bytes": 7156,
+      "turn_assessment_value_bytes": 4586
+    },
+    {
+      "line": 6071,
+      "json_bytes": 7164,
+      "turn_assessment_value_bytes": 3161
+    },
+    {
+      "line": 6281,
+      "json_bytes": 5916,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 6524,
+      "json_bytes": 6787,
+      "turn_assessment_value_bytes": 3356
+    },
+    {
+      "line": 6561,
+      "json_bytes": 7651,
+      "turn_assessment_value_bytes": 4644
+    },
+    {
+      "line": 6568,
+      "json_bytes": 7160,
+      "turn_assessment_value_bytes": 3141
+    },
+    {
+      "line": 6575,
+      "json_bytes": 6942,
+      "turn_assessment_value_bytes": 3153
+    },
+    {
+      "line": 6582,
+      "json_bytes": 7534,
+      "turn_assessment_value_bytes": 4560
+    },
+    {
+      "line": 6589,
+      "json_bytes": 7973,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 6596,
+      "json_bytes": 7883,
+      "turn_assessment_value_bytes": 4569
+    },
+    {
+      "line": 6603,
+      "json_bytes": 7962,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 6738,
+      "json_bytes": 5091,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 6745,
+      "json_bytes": 7134,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 6764,
+      "json_bytes": 5896,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 6852,
+      "json_bytes": 6808,
+      "turn_assessment_value_bytes": 3377
+    },
+    {
+      "line": 6859,
+      "json_bytes": 7644,
+      "turn_assessment_value_bytes": 4637
+    },
+    {
+      "line": 6866,
+      "json_bytes": 7143,
+      "turn_assessment_value_bytes": 3143
+    },
+    {
+      "line": 6873,
+      "json_bytes": 6913,
+      "turn_assessment_value_bytes": 3153
+    },
+    {
+      "line": 6880,
+      "json_bytes": 7523,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 6887,
+      "json_bytes": 7933,
+      "turn_assessment_value_bytes": 4568
+    },
+    {
+      "line": 6924,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 6965,
+      "json_bytes": 5109,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 7020,
+      "json_bytes": 7898,
+      "turn_assessment_value_bytes": 4869
+    },
+    {
+      "line": 7091,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 7109,
+      "json_bytes": 5109,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 7123,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 7144,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 7151,
+      "json_bytes": 7008,
+      "turn_assessment_value_bytes": 3153
+    },
+    {
+      "line": 7162,
+      "json_bytes": 5098,
+      "turn_assessment_value_bytes": 4571
+    },
+    {
+      "line": 7169,
+      "json_bytes": 7958,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 7178,
+      "json_bytes": 8006,
+      "turn_assessment_value_bytes": 4568
+    },
+    {
+      "line": 7249,
+      "json_bytes": 5093,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 7256,
+      "json_bytes": 7137,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 7298,
+      "json_bytes": 5900,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 7412,
+      "json_bytes": 6822,
+      "turn_assessment_value_bytes": 3391
+    },
+    {
+      "line": 7419,
+      "json_bytes": 7835,
+      "turn_assessment_value_bytes": 4637
+    },
+    {
+      "line": 7419,
+      "json_bytes": 7835,
+      "turn_assessment_value_bytes": 4637
+    },
+    {
+      "line": 7426,
+      "json_bytes": 5119,
+      "turn_assessment_value_bytes": 4592
+    },
+    {
+      "line": 7426,
+      "json_bytes": 7338,
+      "turn_assessment_value_bytes": 3151
+    },
+    {
+      "line": 7433,
+      "json_bytes": 5105,
+      "turn_assessment_value_bytes": 4578
+    },
+    {
+      "line": 7433,
+      "json_bytes": 7107,
+      "turn_assessment_value_bytes": 3159
+    },
+    {
+      "line": 7483,
+      "json_bytes": 8007,
+      "turn_assessment_value_bytes": 4572
+    },
+    {
+      "line": 7490,
+      "json_bytes": 5120,
+      "turn_assessment_value_bytes": 4593
+    },
+    {
+      "line": 7497,
+      "json_bytes": 7720,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 7504,
+      "json_bytes": 5127,
+      "turn_assessment_value_bytes": 4600
+    },
+    {
+      "line": 7509,
+      "json_bytes": 8112,
+      "turn_assessment_value_bytes": 4567
+    },
+    {
+      "line": 7518,
+      "json_bytes": 5130,
+      "turn_assessment_value_bytes": 4603
+    },
+    {
+      "line": 7525,
+      "json_bytes": 8062,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 7539,
+      "json_bytes": 5266,
+      "turn_assessment_value_bytes": 4739
+    },
+    {
+      "line": 7546,
+      "json_bytes": 8114,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 7566,
+      "json_bytes": 5238,
+      "turn_assessment_value_bytes": 4711
+    },
+    {
+      "line": 7571,
+      "json_bytes": 7740,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 7585,
+      "json_bytes": 5239,
+      "turn_assessment_value_bytes": 4712
+    },
+    {
+      "line": 7590,
+      "json_bytes": 7879,
+      "turn_assessment_value_bytes": 4583
+    },
+    {
+      "line": 7604,
+      "json_bytes": 5243,
+      "turn_assessment_value_bytes": 4716
+    },
+    {
+      "line": 7609,
+      "json_bytes": 5113,
+      "turn_assessment_value_bytes": 4586
+    },
+    {
+      "line": 7618,
+      "json_bytes": 5114,
+      "turn_assessment_value_bytes": 4587
+    },
+    {
+      "line": 7646,
+      "json_bytes": 7123,
+      "turn_assessment_value_bytes": 3168
+    },
+    {
+      "line": 7653,
+      "json_bytes": 6416,
+      "turn_assessment_value_bytes": 4590
+    },
+    {
+      "line": 7660,
+      "json_bytes": 7675,
+      "turn_assessment_value_bytes": 3176
+    },
+    {
+      "line": 7667,
+      "json_bytes": 7563,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 7674,
+      "json_bytes": 6702,
+      "turn_assessment_value_bytes": 4589
+    },
+    {
+      "line": 7681,
+      "json_bytes": 7461,
+      "turn_assessment_value_bytes": 3181
+    },
+    {
+      "line": 7688,
+      "json_bytes": 8020,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 7695,
+      "json_bytes": 5240,
+      "turn_assessment_value_bytes": 4713
+    },
+    {
+      "line": 7700,
+      "json_bytes": 7469,
+      "turn_assessment_value_bytes": 4594
+    },
+    {
+      "line": 8021,
+      "json_bytes": 5249,
+      "turn_assessment_value_bytes": 4722
+    },
+    {
+      "line": 8028,
+      "json_bytes": 7783,
+      "turn_assessment_value_bytes": 4590
+    },
+    {
+      "line": 8042,
+      "json_bytes": 8032,
+      "turn_assessment_value_bytes": 4593
+    },
+    {
+      "line": 8095,
+      "json_bytes": 5120,
+      "turn_assessment_value_bytes": 4593
+    },
+    {
+      "line": 8102,
+      "json_bytes": 7166,
+      "turn_assessment_value_bytes": 4595
+    },
+    {
+      "line": 8165,
+      "json_bytes": 7179,
+      "turn_assessment_value_bytes": 3163
+    },
+    {
+      "line": 8179,
+      "json_bytes": 5119,
+      "turn_assessment_value_bytes": 4592
+    },
+    {
+      "line": 8186,
+      "json_bytes": 5927,
+      "turn_assessment_value_bytes": 4591
+    },
+    {
+      "line": 8632,
+      "json_bytes": 6821,
+      "turn_assessment_value_bytes": 3390
+    },
+    {
+      "line": 8686,
+      "json_bytes": 5112,
+      "turn_assessment_value_bytes": 4585
+    },
+    {
+      "line": 8693,
+      "json_bytes": 7436,
+      "turn_assessment_value_bytes": 3150
+    },
+    {
+      "line": 8702,
+      "json_bytes": 5109,
+      "turn_assessment_value_bytes": 4582
+    },
+    {
+      "line": 8753,
+      "json_bytes": 7140,
+      "turn_assessment_value_bytes": 3163
+    },
+    {
+      "line": 8760,
+      "json_bytes": 6391,
+      "turn_assessment_value_bytes": 4589
+    },
+    {
+      "line": 8767,
+      "json_bytes": 7672,
+      "turn_assessment_value_bytes": 3173
+    },
+    {
+      "line": 8774,
+      "json_bytes": 6700,
+      "turn_assessment_value_bytes": 4590
+    },
+    {
+      "line": 8781,
+      "json_bytes": 7613,
+      "turn_assessment_value_bytes": 4719
+    },
+    {
+      "line": 8911,
+      "json_bytes": 5230,
+      "turn_assessment_value_bytes": 4703
+    },
+    {
+      "line": 8918,
+      "json_bytes": 7273,
+      "turn_assessment_value_bytes": 4705
+    },
+    {
+      "line": 8967,
+      "json_bytes": 6042,
+      "turn_assessment_value_bytes": 4709
+    },
+    {
+      "line": 9396,
+      "json_bytes": 6820,
+      "turn_assessment_value_bytes": 3389
+    },
+    {
+      "line": 9410,
+      "json_bytes": 5101,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 9417,
+      "json_bytes": 7314,
+      "turn_assessment_value_bytes": 3147
+    },
+    {
+      "line": 9426,
+      "json_bytes": 5086,
+      "turn_assessment_value_bytes": 4559
+    },
+    {
+      "line": 9433,
+      "json_bytes": 8063,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 9440,
+      "json_bytes": 5110,
+      "turn_assessment_value_bytes": 4583
+    },
+    {
+      "line": 9445,
+      "json_bytes": 7734,
+      "turn_assessment_value_bytes": 4557
+    },
+    {
+      "line": 9526,
+      "json_bytes": 7141,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 9575,
+      "json_bytes": 5903,
+      "turn_assessment_value_bytes": 4573
+    },
+    {
+      "line": 9680,
+      "json_bytes": 6818,
+      "turn_assessment_value_bytes": 3387
+    },
+    {
+      "line": 9687,
+      "json_bytes": 5101,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 9692,
+      "json_bytes": 7306,
+      "turn_assessment_value_bytes": 3148
+    },
+    {
+      "line": 9699,
+      "json_bytes": 4257,
+      "turn_assessment_value_bytes": 3730
+    },
+    {
+      "line": 9704,
+      "json_bytes": 8064,
+      "turn_assessment_value_bytes": 4567
+    },
+    {
+      "line": 9711,
+      "json_bytes": 5096,
+      "turn_assessment_value_bytes": 4569
+    },
+    {
+      "line": 9716,
+      "json_bytes": 7747,
+      "turn_assessment_value_bytes": 4580
+    },
+    {
+      "line": 9822,
+      "json_bytes": 5110,
+      "turn_assessment_value_bytes": 4583
+    },
+    {
+      "line": 9829,
+      "json_bytes": 8122,
+      "turn_assessment_value_bytes": 4561
+    },
+    {
+      "line": 9836,
+      "json_bytes": 7998,
+      "turn_assessment_value_bytes": 4563
+    },
+    {
+      "line": 9866,
+      "json_bytes": 7130,
+      "turn_assessment_value_bytes": 4563
+    },
+    {
+      "line": 9959,
+      "json_bytes": 5892,
+      "turn_assessment_value_bytes": 4560
+    },
+    {
+      "line": 10191,
+      "json_bytes": 6817,
+      "turn_assessment_value_bytes": 3386
+    },
+    {
+      "line": 10198,
+      "json_bytes": 5101,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 10205,
+      "json_bytes": 7182,
+      "turn_assessment_value_bytes": 3147
+    },
+    {
+      "line": 10212,
+      "json_bytes": 5106,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 10219,
+      "json_bytes": 8133,
+      "turn_assessment_value_bytes": 4576
+    },
+    {
+      "line": 10265,
+      "json_bytes": 7531,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 10272,
+      "json_bytes": 7611,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 10412,
+      "json_bytes": 6819,
+      "turn_assessment_value_bytes": 3388
+    },
+    {
+      "line": 10419,
+      "json_bytes": 5103,
+      "turn_assessment_value_bytes": 4576
+    },
+    {
+      "line": 10426,
+      "json_bytes": 7281,
+      "turn_assessment_value_bytes": 3147
+    },
+    {
+      "line": 10444,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 10451,
+      "json_bytes": 7720,
+      "turn_assessment_value_bytes": 4568
+    },
+    {
+      "line": 10563,
+      "json_bytes": 6818,
+      "turn_assessment_value_bytes": 3387
+    },
+    {
+      "line": 10570,
+      "json_bytes": 5102,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 10577,
+      "json_bytes": 7366,
+      "turn_assessment_value_bytes": 3147
+    },
+    {
+      "line": 10642,
+      "json_bytes": 7452,
+      "turn_assessment_value_bytes": 4550
+    },
+    {
+      "line": 10775,
+      "json_bytes": 6821,
+      "turn_assessment_value_bytes": 3390
+    },
+    {
+      "line": 10796,
+      "json_bytes": 5087,
+      "turn_assessment_value_bytes": 4560
+    },
+    {
+      "line": 10803,
+      "json_bytes": 7350,
+      "turn_assessment_value_bytes": 3148
+    },
+    {
+      "line": 10810,
+      "json_bytes": 5106,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 10817,
+      "json_bytes": 6804,
+      "turn_assessment_value_bytes": 3149
+    },
+    {
+      "line": 10826,
+      "json_bytes": 5224,
+      "turn_assessment_value_bytes": 4697
+    },
+    {
+      "line": 10833,
+      "json_bytes": 5105,
+      "turn_assessment_value_bytes": 4578
+    },
+    {
+      "line": 10840,
+      "json_bytes": 5104,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 10863,
+      "json_bytes": 7164,
+      "turn_assessment_value_bytes": 3150
+    },
+    {
+      "line": 10870,
+      "json_bytes": 8014,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 10906,
+      "json_bytes": 7503,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 11017,
+      "json_bytes": 6820,
+      "turn_assessment_value_bytes": 3389
+    },
+    {
+      "line": 11024,
+      "json_bytes": 5103,
+      "turn_assessment_value_bytes": 4576
+    },
+    {
+      "line": 11031,
+      "json_bytes": 7336,
+      "turn_assessment_value_bytes": 3147
+    },
+    {
+      "line": 11038,
+      "json_bytes": 5114,
+      "turn_assessment_value_bytes": 4587
+    },
+    {
+      "line": 11045,
+      "json_bytes": 6762,
+      "turn_assessment_value_bytes": 3149
+    },
+    {
+      "line": 11054,
+      "json_bytes": 7668,
+      "turn_assessment_value_bytes": 4568
+    },
+    {
+      "line": 11063,
+      "json_bytes": 5088,
+      "turn_assessment_value_bytes": 4561
+    },
+    {
+      "line": 11070,
+      "json_bytes": 8014,
+      "turn_assessment_value_bytes": 4588
+    },
+    {
+      "line": 11079,
+      "json_bytes": 7481,
+      "turn_assessment_value_bytes": 4592
+    },
+    {
+      "line": 11317,
+      "json_bytes": 7513,
+      "turn_assessment_value_bytes": 4589
+    },
+    {
+      "line": 11459,
+      "json_bytes": 6818,
+      "turn_assessment_value_bytes": 3387
+    },
+    {
+      "line": 11482,
+      "json_bytes": 8002,
+      "turn_assessment_value_bytes": 4573
+    },
+    {
+      "line": 11493,
+      "json_bytes": 8013,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 11596,
+      "json_bytes": 7572,
+      "turn_assessment_value_bytes": 4578
+    },
+    {
+      "line": 11675,
+      "json_bytes": 7527,
+      "turn_assessment_value_bytes": 4573
+    },
+    {
+      "line": 11812,
+      "json_bytes": 7555,
+      "turn_assessment_value_bytes": 4590
+    },
+    {
+      "line": 12058,
+      "json_bytes": 6823,
+      "turn_assessment_value_bytes": 3392
+    },
+    {
+      "line": 12072,
+      "json_bytes": 5106,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 12079,
+      "json_bytes": 7225,
+      "turn_assessment_value_bytes": 3151
+    },
+    {
+      "line": 12086,
+      "json_bytes": 7288,
+      "turn_assessment_value_bytes": 4560
+    },
+    {
+      "line": 12093,
+      "json_bytes": 5101,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 12100,
+      "json_bytes": 7463,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 12114,
+      "json_bytes": 7587,
+      "turn_assessment_value_bytes": 4570
+    },
+    {
+      "line": 12121,
+      "json_bytes": 7916,
+      "turn_assessment_value_bytes": 4578
+    },
+    {
+      "line": 12135,
+      "json_bytes": 5236,
+      "turn_assessment_value_bytes": 4709
+    },
+    {
+      "line": 12142,
+      "json_bytes": 7909,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 12151,
+      "json_bytes": 7682,
+      "turn_assessment_value_bytes": 4576
+    },
+    {
+      "line": 12200,
+      "json_bytes": 6821,
+      "turn_assessment_value_bytes": 3390
+    },
+    {
+      "line": 12207,
+      "json_bytes": 5107,
+      "turn_assessment_value_bytes": 4580
+    },
+    {
+      "line": 12212,
+      "json_bytes": 7230,
+      "turn_assessment_value_bytes": 3149
+    },
+    {
+      "line": 12219,
+      "json_bytes": 5113,
+      "turn_assessment_value_bytes": 4586
+    },
+    {
+      "line": 12224,
+      "json_bytes": 6793,
+      "turn_assessment_value_bytes": 3153
+    },
+    {
+      "line": 12231,
+      "json_bytes": 7830,
+      "turn_assessment_value_bytes": 4563
+    },
+    {
+      "line": 12238,
+      "json_bytes": 6704,
+      "turn_assessment_value_bytes": 4578
+    },
+    {
+      "line": 12247,
+      "json_bytes": 7427,
+      "turn_assessment_value_bytes": 3162
+    },
+    {
+      "line": 12254,
+      "json_bytes": 8014,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 12295,
+      "json_bytes": 7562,
+      "turn_assessment_value_bytes": 4574
+    },
+    {
+      "line": 12367,
+      "json_bytes": 6808,
+      "turn_assessment_value_bytes": 3377
+    },
+    {
+      "line": 12374,
+      "json_bytes": 5104,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 12379,
+      "json_bytes": 7225,
+      "turn_assessment_value_bytes": 3149
+    },
+    {
+      "line": 12386,
+      "json_bytes": 5226,
+      "turn_assessment_value_bytes": 4699
+    },
+    {
+      "line": 12391,
+      "json_bytes": 6779,
+      "turn_assessment_value_bytes": 3150
+    },
+    {
+      "line": 12398,
+      "json_bytes": 7893,
+      "turn_assessment_value_bytes": 4575
+    },
+    {
+      "line": 12412,
+      "json_bytes": 5110,
+      "turn_assessment_value_bytes": 4583
+    },
+    {
+      "line": 12419,
+      "json_bytes": 5108,
+      "turn_assessment_value_bytes": 4581
+    },
+    {
+      "line": 12444,
+      "json_bytes": 7107,
+      "turn_assessment_value_bytes": 3155
+    },
+    {
+      "line": 12451,
+      "json_bytes": 6726,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 12458,
+      "json_bytes": 7439,
+      "turn_assessment_value_bytes": 3172
+    },
+    {
+      "line": 12458,
+      "json_bytes": 6341,
+      "turn_assessment_value_bytes": 4584
+    },
+    {
+      "line": 12465,
+      "json_bytes": 8008,
+      "turn_assessment_value_bytes": 4572
+    },
+    {
+      "line": 12735,
+      "json_bytes": 8008,
+      "turn_assessment_value_bytes": 4571
+    },
+    {
+      "line": 13021,
+      "json_bytes": 7389,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 13190,
+      "json_bytes": 6822,
+      "turn_assessment_value_bytes": 3391
+    },
+    {
+      "line": 13208,
+      "json_bytes": 6203,
+      "turn_assessment_value_bytes": 3387
+    },
+    {
+      "line": 13263,
+      "json_bytes": 6823,
+      "turn_assessment_value_bytes": 3392
+    },
+    {
+      "line": 13284,
+      "json_bytes": 7197,
+      "turn_assessment_value_bytes": 3151
+    },
+    {
+      "line": 13291,
+      "json_bytes": 7509,
+      "turn_assessment_value_bytes": 4565
+    },
+    {
+      "line": 13305,
+      "json_bytes": 7889,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 13319,
+      "json_bytes": 5093,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 13330,
+      "json_bytes": 5092,
+      "turn_assessment_value_bytes": 4565
+    },
+    {
+      "line": 13337,
+      "json_bytes": 7939,
+      "turn_assessment_value_bytes": 4856
+    },
+    {
+      "line": 13351,
+      "json_bytes": 7042,
+      "turn_assessment_value_bytes": 3156
+    },
+    {
+      "line": 13374,
+      "json_bytes": 7401,
+      "turn_assessment_value_bytes": 4566
+    },
+    {
+      "line": 13614,
+      "json_bytes": 6816,
+      "turn_assessment_value_bytes": 3385
+    },
+    {
+      "line": 13642,
+      "json_bytes": 7206,
+      "turn_assessment_value_bytes": 3148
+    },
+    {
+      "line": 13649,
+      "json_bytes": 7500,
+      "turn_assessment_value_bytes": 4558
+    },
+    {
+      "line": 13665,
+      "json_bytes": 7880,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 13679,
+      "json_bytes": 7605,
+      "turn_assessment_value_bytes": 4567
+    },
+    {
+      "line": 13795,
+      "json_bytes": 7492,
+      "turn_assessment_value_bytes": 4563
+    },
+    {
+      "line": 13874,
+      "json_bytes": 6806,
+      "turn_assessment_value_bytes": 3375
+    },
+    {
+      "line": 13881,
+      "json_bytes": 7606,
+      "turn_assessment_value_bytes": 3153
+    },
+    {
+      "line": 13888,
+      "json_bytes": 7506,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 13895,
+      "json_bytes": 8148,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 13908,
+      "json_bytes": 7510,
+      "turn_assessment_value_bytes": 4560
+    },
+    {
+      "line": 14019,
+      "json_bytes": 6820,
+      "turn_assessment_value_bytes": 3389
+    },
+    {
+      "line": 14033,
+      "json_bytes": 7604,
+      "turn_assessment_value_bytes": 3151
+    },
+    {
+      "line": 14040,
+      "json_bytes": 7512,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 14056,
+      "json_bytes": 8154,
+      "turn_assessment_value_bytes": 4579
+    },
+    {
+      "line": 14074,
+      "json_bytes": 7536,
+      "turn_assessment_value_bytes": 4577
+    },
+    {
+      "line": 14116,
+      "json_bytes": 6823,
+      "turn_assessment_value_bytes": 3392
+    },
+    {
+      "line": 14123,
+      "json_bytes": 7599,
+      "turn_assessment_value_bytes": 3146
+    },
+    {
+      "line": 14130,
+      "json_bytes": 7503,
+      "turn_assessment_value_bytes": 4564
+    },
+    {
+      "line": 14137,
+      "json_bytes": 8021,
+      "turn_assessment_value_bytes": 4565
+    },
+    {
+      "line": 14216,
+      "json_bytes": 7467,
+      "turn_assessment_value_bytes": 4562
+    },
+    {
+      "line": 14574,
+      "json_bytes": 6818,
+      "turn_assessment_value_bytes": 3387
+    }
+  ],
+  "doc_reads": [
+    {
+      "line": 24,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 31,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md"
+      ],
+      "returned_text_bytes": 7312
+    },
+    {
+      "line": 624,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 15339
+    },
+    {
+      "line": 805,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 1716,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 1723,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 18804
+    },
+    {
+      "line": 1857,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 4620
+    },
+    {
+      "line": 1864,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 11540
+    },
+    {
+      "line": 2565,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 2572,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 21286
+    },
+    {
+      "line": 2949,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 2979,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 9745
+    },
+    {
+      "line": 3635,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/setup-and-interactions.md"
+      ],
+      "returned_text_bytes": 11208
+    },
+    {
+      "line": 3709,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 40156
+    },
+    {
+      "line": 4072,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 21273
+    },
+    {
+      "line": 4167,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 4174,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 21911
+    },
+    {
+      "line": 4664,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 4671,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md"
+      ],
+      "returned_text_bytes": 8006
+    },
+    {
+      "line": 4685,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md"
+      ],
+      "returned_text_bytes": 10206
+    },
+    {
+      "line": 4997,
+      "files": [
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 2481
+    },
+    {
+      "line": 5299,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 5306,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 4256
+    },
+    {
+      "line": 5498,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md"
+      ],
+      "returned_text_bytes": 8006
+    },
+    {
+      "line": 5776,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md"
+      ],
+      "returned_text_bytes": 7312
+    },
+    {
+      "line": 5978,
+      "files": [
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 2481
+    },
+    {
+      "line": 6211,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 6220,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 6689
+    },
+    {
+      "line": 6241,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md"
+      ],
+      "returned_text_bytes": 9687
+    },
+    {
+      "line": 7004,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 6216
+    },
+    {
+      "line": 7013,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 17703
+    },
+    {
+      "line": 7312,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 4256
+    },
+    {
+      "line": 7469,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 7476,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 17703
+    },
+    {
+      "line": 7991,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 7998,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 14647
+    },
+    {
+      "line": 8123,
+      "files": [
+        ".agents/skills/caol-harness/references/searching.md"
+      ],
+      "returned_text_bytes": 8560
+    },
+    {
+      "line": 8665,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 8672,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 20597
+    },
+    {
+      "line": 9231,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 11973
+    },
+    {
+      "line": 9289,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 9296,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 17541
+    },
+    {
+      "line": 9808,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 9815,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 20597
+    },
+    {
+      "line": 9917,
+      "files": [
+        ".agents/skills/caol-harness/references/searching.md"
+      ],
+      "returned_text_bytes": 2318
+    },
+    {
+      "line": 9924,
+      "files": [
+        ".agents/skills/caol-harness/references/searching.md"
+      ],
+      "returned_text_bytes": 2517
+    },
+    {
+      "line": 10127,
+      "files": [
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 4256
+    },
+    {
+      "line": 10615,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 10622,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 19478
+    },
+    {
+      "line": 11143,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 11150,
+      "files": [
+        ".agents/skills/caol-harness/references/behavior-and-movement.md",
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 20597
+    },
+    {
+      "line": 11368,
+      "files": [
+        ".agents/skills/caol-harness/references/r029-signal-evidence.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 7104
+    },
+    {
+      "line": 11798,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 11805,
+      "files": [
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/r029-signal-evidence.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 13287
+    },
+    {
+      "line": 11865,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 11520
+    },
+    {
+      "line": 13459,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 13466,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md",
+        ".agents/skills/caol-harness/references/witness-and-finish.md"
+      ],
+      "returned_text_bytes": 21911
+    },
+    {
+      "line": 13621,
+      "files": [
+        ".agents/skills/caol-harness/references/searching.md",
+        ".agents/skills/caol-harness/references/setup-and-interactions.md"
+      ],
+      "returned_text_bytes": 11349
+    },
+    {
+      "line": 14200,
+      "files": [
+        ".agents/skills/caol-harness/SKILL.md"
+      ],
+      "returned_text_bytes": 3811
+    },
+    {
+      "line": 14209,
+      "files": [
+        ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+        ".agents/skills/caol-harness/references/live-operation.md",
+        ".agents/skills/caol-harness/references/r029-signal-evidence.md",
+        ".agents/skills/caol-harness/references/selection-and-launch.md"
+      ],
+      "returned_text_bytes": 22326
+    }
+  ]
+}

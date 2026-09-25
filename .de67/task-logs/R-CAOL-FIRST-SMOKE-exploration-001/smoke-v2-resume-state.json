@@ -1,0 +1,256 @@
+{
+  "schema": "R-CAOL-FIRST-SMOKE-resume-state-v2",
+  "run_id": "cab1f4cb222106868f42bee6bccf5d54665002e102a9fd7da145f471dc22877f",
+  "profile": "first-smoke-r-caol-001-smoke-migration-v2",
+  "profile_root": ".userdata/first-smoke-r-caol-001-smoke-migration-v2",
+  "world": "TestSetup00",
+  "player_save": {
+    "path": ".userdata/first-smoke-r-caol-001-smoke-migration-v2/save/TestSetup00/#VGVzdDAw.sav.zzip",
+    "sha256": "954c068f7894eeb985c609668fe52748b2e74d5658197b43d9328a082400ed18",
+    "bytes": 20989,
+    "mtime_local": "2026-09-24T23:45:41+02:00",
+    "savegame_loading_version": 39,
+    "turn": 5216299,
+    "player_name": "Test00",
+    "position_ms": [
+      3158,
+      3449,
+      0
+    ],
+    "activity": {
+      "type": "ACT_NULL"
+    },
+    "world_timestamp": "\"20260924094648261534000\""
+  },
+  "native_last_frame": {
+    "frame_id": "cab1f4cb222106868f42bee6bccf5d54665002e102a9fd7da145f471dc22877f:frame:38",
+    "game_minutes": 7738,
+    "game_turn": 5216299,
+    "avatar_ms": [
+      3158,
+      3449,
+      0
+    ],
+    "player_basecamp_omt": [
+      131,
+      143,
+      0
+    ],
+    "zones": [
+      {
+        "name": "Basecamp: Storage",
+        "type": "CAMP_STORAGE",
+        "dx": -3,
+        "dy": -2
+      },
+      {
+        "name": "Basecamp fire source",
+        "type": "SOURCE_FIREWOOD",
+        "dx": 1,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp splintered wood",
+        "type": "LOOT_CUSTOM",
+        "dx": 2,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp kindling",
+        "type": "SOURCE_FIREWOOD",
+        "dx": 2,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp wood",
+        "type": "LOOT_WOOD",
+        "dx": 1,
+        "dy": -1
+      },
+      {
+        "name": "Basecamp tools",
+        "type": "LOOT_TOOLS",
+        "dx": 0,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp spare parts",
+        "type": "LOOT_SPARE_PARTS",
+        "dx": 0,
+        "dy": -1
+      },
+      {
+        "name": "Basecamp books",
+        "type": "LOOT_BOOKS",
+        "dx": 2,
+        "dy": -1
+      },
+      {
+        "name": "Basecamp manuals",
+        "type": "LOOT_MANUALS",
+        "dx": 2,
+        "dy": -1
+      },
+      {
+        "name": "Basecamp containers",
+        "type": "LOOT_CONTAINERS",
+        "dx": -1,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp weapon magazines",
+        "type": "LOOT_MAGAZINES",
+        "dx": 3,
+        "dy": 0
+      },
+      {
+        "name": "Basecamp chemicals",
+        "type": "LOOT_CHEMICAL",
+        "dx": 0,
+        "dy": 1
+      },
+      {
+        "name": "Basecamp drugs",
+        "type": "LOOT_DRUGS",
+        "dx": 2,
+        "dy": 1
+      },
+      {
+        "name": "Basecamp food",
+        "type": "LOOT_FOOD",
+        "dx": -3,
+        "dy": -1
+      },
+      {
+        "name": "Basecamp guns",
+        "type": "LOOT_GUNS",
+        "dx": 1,
+        "dy": 2
+      },
+      {
+        "name": "Basecamp ammo",
+        "type": "LOOT_AMMO",
+        "dx": 1,
+        "dy": 1
+      },
+      {
+        "name": "Basecamp weapon magazines",
+        "type": "LOOT_MAGAZINES",
+        "dx": 1,
+        "dy": 1
+      },
+      {
+        "name": "Basecamp unsorted",
+        "type": "LOOT_UNSORTED",
+        "dx": -3,
+        "dy": -2
+      },
+      {
+        "name": "Basecamp auto eat",
+        "type": "AUTO_EAT",
+        "dx": -3,
+        "dy": -2
+      },
+      {
+        "name": "Basecamp auto drink",
+        "type": "AUTO_DRINK",
+        "dx": -3,
+        "dy": -2
+      },
+      {
+        "name": "Basecamp: Food",
+        "type": "CAMP_FOOD",
+        "dx": 1,
+        "dy": 5
+      }
+    ]
+  },
+  "target_source": {
+    "map_archive_path": ".userdata/first-smoke-r-caol-001-smoke-migration-v2/save/TestSetup00/maps/4.4.0.zzip",
+    "map_archive_sha256": "2dceea2b8b419d2dd9dd1d3414d340a73fd2f91133045f4ff6718cae68f2e328",
+    "brazier": {
+      "position_ms": [
+        3159,
+        3449,
+        0
+      ],
+      "terrain": "t_floor",
+      "fields_at_tile": [],
+      "submap_fields": [
+        3,
+        10,
+        [
+          "fd_basecamp_food_zone",
+          1,
+          65,
+          {
+            "character_id": null,
+            "faction_id": null
+          }
+        ]
+      ],
+      "submap_furniture": [
+        [
+          3,
+          0,
+          "f_cupboard"
+        ],
+        [
+          3,
+          5,
+          "f_brazier"
+        ],
+        [
+          3,
+          7,
+          "f_cupboard"
+        ],
+        [
+          3,
+          8,
+          "f_cupboard"
+        ],
+        [
+          3,
+          9,
+          "f_cupboard"
+        ],
+        [
+          3,
+          10,
+          "f_cupboard"
+        ],
+        [
+          6,
+          10,
+          "f_bulletin_evac"
+        ]
+      ],
+      "submap_coordinates": [
+        263,
+        287,
+        0
+      ]
+    },
+    "controlled_cannibal_camp_omt": [
+      135,
+      137,
+      0
+    ],
+    "fire_field_at_start": "none observed in current native surface and saved map near brazier",
+    "smoke_field_at_start": "none observed in current native surface and saved map near brazier"
+  },
+  "native_session_cleanup": {
+    "game_pid": 21605,
+    "game_birth": "posix-lstart:Thu Sep 24 23:17:49 2026",
+    "game_os_exit": "verified absent by ps",
+    "bridge_pid": 21565,
+    "bridge_birth": "Thu Sep 24 23:17:48 2026",
+    "cli_child_pid": 21567,
+    "cli_child_birth": "Thu Sep 24 23:17:48 2026",
+    "bridge_and_cli_os_exit": "verified absent by ps",
+    "session_status": "safe_to_cleanup",
+    "cleanup_status": "accepted"
+  },
+  "resume_assessment": "Saved profile/world exists and is intact. Prior run is terminalized and bridge manifest has no reentry command; current scenario binds a fixture installer, so a fresh registry binding must explicitly attach to the existing profile/world without reinstalling or replacing TestSetup00. Do not launch through the old fixture-install route."
+}

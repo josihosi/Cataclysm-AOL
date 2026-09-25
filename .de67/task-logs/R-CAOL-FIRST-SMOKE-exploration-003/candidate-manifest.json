@@ -1,0 +1,51 @@
+{
+  "schema": "de67.native-return-candidate.v1",
+  "installed_method": "/Users/josefhorvath/.codex/skills/de67/de-67-3",
+  "candidate_root": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate",
+  "patch_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/candidate.patch",
+  "patch_sha256": "5b8f9e1cf97914cfbf40b2617a19c96b3cc9b3865a2cd6d9da74d7b99006aed6",
+  "files": [
+    {
+      "method_relative_path": "scripts/native_turns.py",
+      "base_sha256": null,
+      "candidate_sha256": "c357a401c7e39de0c9db73511cf0aea7f3c604f516253cad9744811eda85337d",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/native_turns.py"
+    },
+    {
+      "method_relative_path": "scripts/codex_runner.py",
+      "base_sha256": "9262471f9950b4bd6dd6eb6aac2afba39a41b9745948e91dc65d6393de8f72ee",
+      "candidate_sha256": "5cf3f135def7baab0b99db93c7a77c0c6e8f474fb8bb1c0cf3aed0c119a869b5",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/codex_runner.py"
+    },
+    {
+      "method_relative_path": "scripts/policy_kernel.py",
+      "base_sha256": "a08bc8a112bdda76a967878bf993c52d82584c60514f354fff630014dc7e4f79",
+      "candidate_sha256": "90450e886b410041681036ab233257e36344ff1d8d7772fadfa01e44bcc34963",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/policy_kernel.py"
+    },
+    {
+      "method_relative_path": "scripts/coordinator_supervisor.py",
+      "base_sha256": "0bf992b26eb70f2e10580c73e1428f64ed097fa2b98b43538ca845c0ff2f9847",
+      "candidate_sha256": "5bf153a3b846d19ad2d41b525875bfb7755569ff9a95b866ca67fc3e124c16f8",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/coordinator_supervisor.py"
+    },
+    {
+      "method_relative_path": "scripts/deadline_harness.py",
+      "base_sha256": "0feae9cfb8b84ca17b65ae9cb0112f58f567fc886788eaab50cf055d5d1b50bc",
+      "candidate_sha256": "739060c183359586320b33bd956825dafd344f227406ae97060dca988ceb1bb9",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/scripts/deadline_harness.py"
+    },
+    {
+      "method_relative_path": "tests/test_native_turns.py",
+      "base_sha256": null,
+      "candidate_sha256": "a21c30c0dc4205c54a32512e105f42f680a7324881772e8eb5c48fa40eaa5c9f",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/tests/test_native_turns.py"
+    },
+    {
+      "method_relative_path": "tests/test_codex_runner.py",
+      "base_sha256": "c0060d90954ee7196e521b449e728dabac626ad4dcd3e7ae5ef975a7a5d9432c",
+      "candidate_sha256": "4290252b8edd17ecac29f7ed229b0d1775e53b1d94501043d5b07af05983e9df",
+      "candidate_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/method-candidate/tests/test_codex_runner.py"
+    }
+  ]
+}

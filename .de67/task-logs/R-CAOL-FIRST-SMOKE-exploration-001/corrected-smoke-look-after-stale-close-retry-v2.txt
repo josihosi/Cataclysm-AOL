@@ -1,0 +1,14 @@
+YOU
+Test00 · walk
+Position: 3156, 3449, 0
+All 12 body parts: 86/86 HP
+Stamina: 8500/8500
+Weapon: fists
+Peckish · Fresh
+
+SURROUNDINGS
+stairs: NW, N
+floor: NE, W, here, E, SW, S, SE
+Tilda Wray · friendly · 1 south
+Controls unchanged → play controls
+Game time: 7737 minutes.

@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-09-20T22:19:27.677877+00:00",
+  "entry_id": "HARNESS-FULL-STACK-20260921",
+  "source_attachment": "/Users/josefhorvath/.codex/state/de67-agent-input/media/1551356651347509440/1551356651091525743-message.txt",
+  "attachment_sha256": "064417f8173779129dd2e835a14d4a62a439100e6616b5a96c68b84a3294445e",
+  "prior_audit_sha256": "8ebba38580b65700e8c91cd82523e921aa5c0e541c18aca466d6a4ed59e7a3d0",
+  "queue_before_sha256": "186e56fe091b3c657bddd0c2ea7e208d84a196b5d11dac6069b9b561b616f218",
+  "entry_sha256": "e2466b8d4897fbe8595ee3442bb70280d5f36d6e5e33a14364a97d1cfac8cbc1",
+  "queue_after_sha256": "06c380e69408027090d214acf2345c64564c6785bbcbf98ac5e0a344c4f96d7b"
+}

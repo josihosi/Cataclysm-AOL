@@ -1,0 +1,47 @@
+{
+  "TCP": {
+    "10000": {
+      "HTTPS": true
+    },
+    "2222": {
+      "TCPForward": "127.0.0.1:22"
+    },
+    "8443": {
+      "HTTPS": true
+    }
+  },
+  "Web": {
+    "josefs-mac-mini.tail79910c.ts.net:10000": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:8767"
+        }
+      }
+    },
+    "josefs-mac-mini.tail79910c.ts.net:8443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://127.0.0.1:18790"
+        }
+      }
+    }
+  },
+  "Foreground": {
+    "11b2353f73bf20df": {
+      "TCP": {
+        "443": {
+          "HTTPS": true
+        }
+      },
+      "Web": {
+        "josefs-mac-mini.tail79910c.ts.net:443": {
+          "Handlers": {
+            "/": {
+              "Proxy": "http://127.0.0.1:50162"
+            }
+          }
+        }
+      }
+    }
+  }
+}

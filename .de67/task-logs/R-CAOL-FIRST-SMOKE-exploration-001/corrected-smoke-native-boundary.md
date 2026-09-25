@@ -1,0 +1,22 @@
+# Corrected smoke-first native startup boundary
+
+The corrected smoke-only run installed the task-owned fixture into isolated profile `first-smoke-r-caol-001-smoke-migration` and loaded `TestSetup00` with the current source-bound executable. Owner source save was not changed. The original archived source was copied to disposable fixtures; fixture transform removes only Tilda Wray (NPC id 2)'s saved `activity.actor`, retaining `ACT_MOVE_LOOT`; the scenario manifest also declares its zero-credit smokebomb supply transform. The transform receipt is `migration-cancel-fixture-transform.json` (SHA-256 `812fdd7485fb991c670220af8312dd72677cf81dda4ec45a68b7872b3d8e4412`). The installed fixture source tree was bound at SHA-256 `66157a4cdb5acbfa42b44c1ab45efc5934a019e69856b44ca565fd585185f82b` in startup evidence.
+
+Runtime preflight and immediate prelaunch status both reported ready: executable SHA-256 `a99f455e69bea382401c6255f7fe763534ef42dc0c3e764882948df40efae5ac`, matched product source receipt `7e65390983c57c76210659e02b763e77c48ee072e6058494c6c19580b8be1ca5`. Selected scenario `cannibal.r_caol_first_smoke_smoke-first_testsetup00_migration_cancel_v1`, ID `2cc35690e887ac9d06d36664c36a7158da5cfd40276c4893ba6856ee6bc703d8`, token `6677596715bcf04645ad5064921d8225a2e37780ff88cda690864b5ef3bfda7f`.
+
+Native startup rendered a current-run `hud_world_ready` frame at turn 5216234 / 7737 game minutes. The screenshot `corrected-smoke-world-hud.png` shows the gameplay HUD and Tilda. This establishes world-load success only; no native cancellation event or post-cancellation Tilda state was observed.
+
+The first missing boundary is semantic bootstrap/session handoff. `probe.report.json` records `blocked_r019_initial_hud_world_frame_unqualified`, with metadata `first_same_run_semantic_frame_timeout`, error `initial HUD frame trace exceeds the semantic trace limit`, 46 attempts over 90 seconds, and `matching_initial_hud_world_frame_count: 0`. The expected descriptor `<run_dir>/observe_smoke-first_native_cannibal_route.cockpit_live_session.json` is absent. `semantic.native.events.jsonl` contains the HUD frame and a world `surface_descriptor`, but the bridge did not receive the required `cockpit_live_session` handoff. It ended `process_dead`, `reason=missing_cockpit_session_descriptor`, request count 0. This points to the bootstrap/bridge contract path, not a demonstrated save/NPC deserialization exception; whether the migration cancellation ran remains unproved.
+
+No `semantic.requests.jsonl` input was recorded; no ordinary native action and no smoke were sent. The separate first-light run was not launched.
+
+Cleanup: exact game PID 20113, birth `posix-lstart:Thu Sep 24 23:02:35 2026`, command bound to the isolated profile/world, received non-force Peekaboo `app quit`. The command returned success; after 1.5 seconds `ps` showed game 20113, bridge 20075 and child 20077 absent. `game.stderr.log` was empty (SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`). Peekaboo bridge handshake and Screen Recording/Accessibility grants were available; Event Synthesizing was granted too.
+
+## Evidence handles
+
+- `corrected-smoke-native-boundary.json` inventories 36 run, bridge, query, runtime and cleanup artifacts with byte counts and SHA-256; file SHA-256 `f7e77b2d9ce5bdbe8fabeb8994f57b7610a8bdfc1e9d9511afd1210413278846`.
+- Run artifacts: `.userdata/first-smoke-r-caol-001-smoke-migration/harness_runs/20260924_230234_f8f4aef9e12343f3953b15dcee6377ae/`.
+- Session artifacts: `.userdata/openclaw_harness/bridge-sessions/selected-b32300f876264ac89bf7bee5bcde5f71/`.
+- Native event log SHA-256 `5f9a381712618039fbeed20faf69ccf8269bbda4945e979de5e1a80ce27e4f1f`; native semantic log SHA-256 `0c00f2a0eb05d795fd37c454bcd91301470702541d4e6b86a70713a7e04aabd0`.
+- Startup result SHA-256 `f563ee8dc0e12fd70820aac99061dacc60f62c9251c95fff3bcaf8170ab84f3b`; probe report SHA-256 `652f8995538de7cf97665fdfe4660ad29be198ad044eb277c75e4fcd33da49b0`.
+- Prior read-only NPC subtree comparison: `.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-001/smoke-first-npc-reference-audit.json`, SHA-256 `7d87972ae61c25a53b2beb6eb13e5c030ef6062ed108b8779b93c1cbe6ac9475`, produced by `audit_smoke_first_npc_refs.py` in the same directory. That audit found the original canonical NPC subtree byte-equivalent between source and uncorrected fixture. It is counterevidence for the old copy and does not substitute for observing correction at native runtime.

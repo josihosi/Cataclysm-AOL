@@ -1,0 +1,12 @@
+World.
+moved
+avatar.absolute ms: 3898, 870, 0
+R032 Establishment Ally 1 · friendly · offset 0, 6
+hickory tree: NW
+moss: N
+underbrush: NE, S
+shrub: W
+forest floor: here, E, SE
+dead grass: SW
+6:05:58 AM: Moving off of this underbrush is slow!
+Game time: 7566 minutes.

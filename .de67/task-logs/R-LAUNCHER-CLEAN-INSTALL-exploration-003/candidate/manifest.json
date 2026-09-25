@@ -1,0 +1,250 @@
+{
+  "app_exports": [
+    {
+      "artifact": {
+        "bytes": 90600313,
+        "file_count": 17,
+        "kind": "directory",
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.app",
+        "sha256_tree": "751b487aa06afc6e64af4caa165bde6da01407e58f496bf29619db935984f9e8"
+      },
+      "log": ".proof-cache/dabubu-export/logs/macOS-App.log",
+      "preset": "macOS App",
+      "returncode": 0,
+      "shape": {
+        "bundle_info": {
+          "CFBundleExecutable": "Catapult-Dabubu",
+          "CFBundleIdentifier": "at.schanigarten.catapult-dabubu",
+          "CFBundleName": "Catapult-Dabubu",
+          "CFBundleShortVersionString": "0.2.0-prep"
+        },
+        "executable_files": [
+          ".proof-cache/dabubu-export/app/Catapult-Dabubu.app/Contents/MacOS/Catapult-Dabubu"
+        ],
+        "info_plist_exists": true,
+        "is_app_directory": true,
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.app",
+        "pck_exists": true,
+        "platform": "macos",
+        "ready_unsigned_local_app": true,
+        "signed_or_notarized": false
+      }
+    },
+    {
+      "artifact": {
+        "bytes": 66772896,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.x86_64",
+        "sha256": "959039eafbd1fcef664890b5b5b68fb36052f615fc297eb4e8ad2b8a15b81158"
+      },
+      "log": ".proof-cache/dabubu-export/logs/Linux-App.log",
+      "preset": "Linux App",
+      "returncode": 0,
+      "shape": {
+        "embedded_pck_expected": true,
+        "executable_bit": true,
+        "exists": true,
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.x86_64",
+        "platform": "linux",
+        "ready_unsigned_local_executable": true
+      }
+    },
+    {
+      "artifact": {
+        "bytes": 68154144,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.exe",
+        "sha256": "3c76c756dd071499876cc31b6ab47af7cef98d24b919a9589fc6564051d34b24"
+      },
+      "log": ".proof-cache/dabubu-export/logs/Windows-App.log",
+      "preset": "Windows App",
+      "returncode": 0,
+      "shape": {
+        "embedded_pck_expected": true,
+        "exists": true,
+        "mz_header": true,
+        "path": ".proof-cache/dabubu-export/app/Catapult-Dabubu.exe",
+        "platform": "windows",
+        "ready_unsigned_local_executable": true,
+        "suffix_is_exe": true
+      }
+    }
+  ],
+  "godot": "/tmp/catapult-gemma-godot-3.6.3/engine/Godot.app/Contents/MacOS/Godot",
+  "godot_version": "3.6.3.stable.official.a3378686f",
+  "output_root": ".proof-cache/dabubu-export",
+  "pack_exports": [
+    {
+      "artifact": {
+        "bytes": 32107792,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packs/Catapult-Dabubu-macos.pck",
+        "sha256": "88877aeac56be47968d0ac3ee7f10ea445c7fba831249927cb1288ba7fa9a560"
+      },
+      "log": ".proof-cache/dabubu-export/logs/macOS-Pack.log",
+      "preset": "macOS Pack",
+      "returncode": 0
+    },
+    {
+      "artifact": {
+        "bytes": 32107792,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packs/Catapult-Dabubu-linux.pck",
+        "sha256": "88877aeac56be47968d0ac3ee7f10ea445c7fba831249927cb1288ba7fa9a560"
+      },
+      "log": ".proof-cache/dabubu-export/logs/Linux-Pack.log",
+      "preset": "Linux Pack",
+      "returncode": 0
+    },
+    {
+      "artifact": {
+        "bytes": 32107792,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packs/Catapult-Dabubu-windows.pck",
+        "sha256": "88877aeac56be47968d0ac3ee7f10ea445c7fba831249927cb1288ba7fa9a560"
+      },
+      "log": ".proof-cache/dabubu-export/logs/Windows-Pack.log",
+      "preset": "Windows Pack",
+      "returncode": 0
+    }
+  ],
+  "package_checksums": {
+    "bytes": 308,
+    "kind": "file",
+    "path": ".proof-cache/dabubu-export/packages/SHA256SUMS.txt",
+    "sha256": "b2f40d4f0fe279a43e8d2aaedbc9a20ec1b4da187a9a8aca0bdfde6b5677a01c"
+  },
+  "package_exports": [
+    {
+      "artifact": {
+        "bytes": 90603649,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-macos-unsigned.zip",
+        "sha256": "be333113608e5a4149bc43e77548ab1011891239dd498c1e5142feea9bed89ca"
+      },
+      "platform": "macos",
+      "shape": {
+        "contains_7zip_sidecar": true,
+        "contains_expected_root": true,
+        "contains_root_executable": false,
+        "format": "zip",
+        "member_count": 17,
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-macos-unsigned.zip",
+        "platform": "macos",
+        "ready_unsigned_local_package": true
+      },
+      "staging": {
+        "sidecar_utils": [],
+        "staged": false
+      }
+    },
+    {
+      "artifact": {
+        "bytes": 37579575,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-linux-unsigned.tar.gz",
+        "sha256": "5c023ef70c4fe6ff02bcef9434f38162c92ad996e5e15fa07514d7cd71b88d07"
+      },
+      "platform": "linux",
+      "shape": {
+        "contains_7zip_sidecar": true,
+        "executable_members": [
+          "linux/Catapult-Dabubu.x86_64",
+          "linux/utils/7za"
+        ],
+        "format": "tar.gz",
+        "member_count": 5,
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-linux-unsigned.tar.gz",
+        "platform": "linux",
+        "ready_unsigned_local_package": true
+      },
+      "staging": {
+        "sidecar_utils": [
+          "utils/7za",
+          "utils/7-ZIP_LICENSE"
+        ],
+        "source": ".proof-cache/dabubu-export/app/Catapult-Dabubu.x86_64",
+        "staged": true,
+        "staging_root": ".proof-cache/dabubu-export/staging/linux"
+      }
+    },
+    {
+      "artifact": {
+        "bytes": 68745801,
+        "kind": "file",
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-windows-unsigned.zip",
+        "sha256": "ccb4658eba8a1b21d2bd555d854f461f7ae3a0ba7bde477e436237b20e03d439"
+      },
+      "platform": "windows",
+      "shape": {
+        "contains_7zip_sidecar": true,
+        "contains_expected_root": false,
+        "contains_root_executable": true,
+        "format": "zip",
+        "member_count": 3,
+        "path": ".proof-cache/dabubu-export/packages/Catapult-Dabubu-windows-unsigned.zip",
+        "platform": "windows",
+        "ready_unsigned_local_package": true
+      },
+      "staging": {
+        "sidecar_utils": [
+          "utils/7za.exe",
+          "utils/7-ZIP_LICENSE"
+        ],
+        "source": ".proof-cache/dabubu-export/app/Catapult-Dabubu.exe",
+        "staged": true,
+        "staging_root": ".proof-cache/dabubu-export/staging/windows"
+      }
+    }
+  ],
+  "skipped_app_exports": [],
+  "template_probe": {
+    "all_app_templates_ready": true,
+    "checked_roots": [
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable.official",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable.official.a3378686f",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/export_templates/3.6.3.stable",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/export_templates/3.6.3.stable.official",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/export_templates/3.6.3.stable.official.a3378686f",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.local/share/godot/templates/3.6.3.stable",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.local/share/godot/templates/3.6.3.stable.official",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.local/share/godot/templates/3.6.3.stable.official.a3378686f",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.godot/templates/3.6.3.stable",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.godot/templates/3.6.3.stable.official",
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/.godot/templates/3.6.3.stable.official.a3378686f"
+    ],
+    "existing_roots": [
+      "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable"
+    ],
+    "platforms": {
+      "linux": {
+        "found": [
+          "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable/linux_x11_64_release"
+        ],
+        "missing": [],
+        "ready": true
+      },
+      "macos": {
+        "found": [
+          "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable/osx.zip"
+        ],
+        "missing": [],
+        "ready": true
+      },
+      "windows": {
+        "found": [
+          "/tmp/r-launcher-linux-exploration-003/isolated-home-3.6.3/Library/Application Support/Godot/templates/3.6.3.stable/windows_64_release.exe"
+        ],
+        "missing": [],
+        "ready": true
+      }
+    },
+    "version_candidates": [
+      "3.6.3.stable",
+      "3.6.3.stable.official",
+      "3.6.3.stable.official.a3378686f"
+    ]
+  },
+  "temporary_export_presets_restored": true
+}

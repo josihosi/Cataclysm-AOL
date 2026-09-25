@@ -1,0 +1,149 @@
+--- a/scripts/workspace_setup.py
++++ b/scripts/workspace_setup.py
+@@ -611,6 +611,10 @@
+         configured_workers = _worker_capabilities(
+             worker_capabilities, required=True
+         )
++        # Fresh probes add evidence; a partial setup probe is not a roster reset.
++        for capability in _configured_worker_capabilities(existing_config or {}):
++            if capability not in configured_workers:
++                configured_workers.append(capability)
+     else:
+         if worker_capabilities:
+             raise SetupError("Worker capabilities are recorded only while binding the clock")
+--- a/tests/test_workspace_setup.py
++++ b/tests/test_workspace_setup.py
+@@ -233,6 +233,17 @@
+                 [("origin", "dev"), ("checkpoint", "main")],
+                 bind_clock=False,
+             )
++
++    def test_partial_refreeze_probes_preserve_astra_and_higher_effort(self):
++        self.freeze_dfs()
++        broad = (*VERIFIED_WORKERS, ("gpt-6-astra", "low"),
++                 ("gpt-6-astra", "high"), ("gpt-6-sol", "max"))
++        configure(self.workspace, [("origin", "dev")], bind_clock=True,
++                  lineage="stable-lineage", worker_capabilities=broad)
++        configure(self.workspace, [("origin", "dev")], bind_clock=True,
++                  worker_capabilities=VERIFIED_WORKERS)
++        roster = json.loads((self.workspace / CONFIG_RELATIVE_PATH).read_text())["worker_capabilities"]
++        self.assertEqual({(x["model"], x["reasoning_effort"]) for x in roster}, set(broad))
+ 
+     def test_repeated_setup_is_idempotent_and_rejects_added_target(self) -> None:
+         self.freeze_dfs()
+@@ -655,7 +666,7 @@
+ 
+         self.assertFalse((self.workspace / CONFIG_RELATIVE_PATH).exists())
+ 
+-    def test_repeated_phase_two_setup_replaces_the_roster_with_fresh_probe_results(self) -> None:
++    def test_repeated_phase_two_setup_adds_probe_results_without_erasing_roster(self) -> None:
+         self.freeze_dfs()
+         configure(
+             self.workspace,
+@@ -683,6 +694,8 @@
+             [
+                 {"model": "gpt-6-luna", "reasoning_effort": "low"},
+                 {"model": "gpt-6-sol", "reasoning_effort": "medium"},
++                {"model": "gpt-6-luna", "reasoning_effort": "high"},
++                {"model": "gpt-6-sol", "reasoning_effort": "low"},
+             ],
+         )
+ 
+--- a/de-67-3/scripts/coordinator_supervisor.py
++++ b/de-67-3/scripts/coordinator_supervisor.py
+@@ -1084,6 +1084,29 @@
+     return "Use worker_library.py message/wait for named workers; use native send_message/followup_task/wait_agent for native children. Native workers address /root. Sol owns direction and scope. While a worker owns execution, resolve an independent source, interface or acceptance question when its answer can change the current work or successor, and send the useful finding through that worker's message route. Preserve exclusive input/edit ownership and do not duplicate the worker's investigation. At useful coordination boundaries, inspect compact CPU, memory pressure/swap and task-owned process state when it can reveal missed cleanup or a stalled operation. Reconcile games, bridges, helpers and builds with active assignments and explicit retained-session purposes. Sol owns noticing and arranging cleanup when a worker forgets; verified finished or unused task-owned processes may be closed through their supported graceful lifecycle without asking again. Check exact PID/birth identity and OS exit, preserving journals, unsaved state and exclusive input ownership. Low CPU, age or RSS alone does not establish disuse; keep active work, Josef's applications, shared services in use and intentionally retained sessions. For a stalled active operation, diagnose the specific process and coordinate bounded recovery with its worker; report an exact unresolved ownership or recovery gap while continuing independent work. Use no monitoring daemon, fixed polling quota or arbitrary kill threshold. If no such question remains, waiting is correct. When execution reveals a substantial independent tooling problem, decide who owns it without interrupting useful live state or handing off merely for a changed tactic. After hard diagnosis, reassess whether Luna can perform substantial remaining execution at lower total cost. Apply the returned-work judgment in the result ingress contract before settling consequential changes. Carry forward current findings, retiring source-specific advice once regression proof absorbs it. Notice recurring context/tool obstructions in worker evidence and commission a bounded repair through the existing work ledger; validate that it removes the demonstrated repetition. DE67 method edits retain exclusive mutation/guard ownership. Do not convert worker discovery transcripts into coordinator context or request parallel summaries, periodic reports or new receipts. Use current-root token_usage in work_context as feedback with helper/handoff costs; distinguish expected savings from measured use, never quotas. At worker return or a natural adoption event, reassess remaining whole-claim proof against its immutable deadline; schedule the unmet boundary with an honest estimate. When no useful decision remains, use the worker's wait route, waking no later than the item deadline; apply policy at routing transitions."
+ 
+ 
++def mutation_wind_down_contract() -> str:
++    """Remind the coordinator what to reconcile before exclusive review."""
++    return (
++        "Mutation pending: wind down and reconcile workers; dispatch no new work. "
++        "Use worker_library list/status/wait for named workers and native child status for native helpers. "
++        "Ask active owners to reach a safe checkpoint, return their turn, and report retained saves, "
++        "evidence, child turns and exact game/bridge/helper PID ownership. A returned turn may leave "
++        "an unfinished recoverable task; do not complete, abandon or release that task just to clear review. "
++        "If a catalogue still says running after an owner stop or worker return, inspect its exact "
++        "assignment, request id, turn id, coordinator/server binding and last event. Compare those "
++        "with the transport's actual thread/turn state and the owning server's PID/birth identity. "
++        "A stale running flag, old event or quiet CPU alone proves neither activity nor abandonment. "
++        "Use supported reconciliation to record a verified returned/interrupted turn without replaying "
++        "canceled work. Do not repeatedly wait on the same unchanged stale row. If the available route "
++        "cannot reconcile it, report the exact identities, transport evidence and missing operation "
++        "to the supervisor/reviewer; never patch lifecycle SQLite or manufacture a terminal result. "
++        "Arrange graceful cleanup of verified finished task-owned processes through their owners, "
++        "preserving unsaved work and intentional retained sessions. Keep exclusive review blocked "
++        "while an editing turn or its ownership remains genuinely uncertain. Once workers are quiet, "
++        "rerun policy and retire when directed; the external supervisor owns reviewer launch."
++    )
++
++
+ def coordinator_continuation_prompt() -> str:
+     """Resume the same session without replaying its stable role contracts."""
+     return (
+@@ -1096,6 +1119,8 @@
+         "are outstanding. The external supervisor owns coordinator/reviewer launches and restarts; "
+         "you own coordination of task processes, including supported graceful cleanup under the "
+         "existing identity, unsaved-state and input-ownership safeguards.\n"
++        + "If policy reports wait_for_mutation_quiescence, apply this fallback reminder: "
++        + mutation_wind_down_contract()
+     )
+ 
+ 
+@@ -1150,6 +1175,7 @@
+         "Never review, apply, or resolve a mutation. When the compiled policy says retire_for_mutation_review, dispatch no worker, make no guidance change, and exit immediately so the external supervisor can run the exclusive reviewer.",
+         "Do not infer policy from workspace guideline prose; those files are legacy differential fixtures on this branch.",
+         worker_selection_contract(),
++        "When a mutation is pending: " + mutation_wind_down_contract(),
+         "For every newly spawned ordinary worker, set fork_turns=\"none\" and provide a self-contained task brief. Never omit model selection or pass coordinator or predecessor history. Reusing an already relevant worker remains allowed.",
+         coordinator_ledger_contract(),
+         ordinary_worker_evidence_contract(),
+--- a/de-67-3/scripts/policy_kernel.py
++++ b/de-67-3/scripts/policy_kernel.py
+@@ -259,13 +259,18 @@
+ 
+ 
+ def decision_json(decision: Decision, facts: Iterable[str]) -> dict[str, Any]:
+-    return {
++    payload = {
+         "action": decision.action,
+         "rule": decision.rule_id,
+         "reads": list(decision.reads),
+         "obligations": list(decision.obligations),
+         "facts": sorted(set(facts)),
+     }
++
++    if decision.action == "wait_for_mutation_quiescence":
++        from coordinator_supervisor import mutation_wind_down_contract
++        payload["coordinator_next_action"] = mutation_wind_down_contract()
++    return payload
+ 
+ 
+ def _ledger_objective(route: str) -> str:
+--- a/de-67-3/tests/test_policy_kernel.py
++++ b/de-67-3/tests/test_policy_kernel.py
+@@ -27,6 +27,24 @@
+ 
+ def source_policy() -> dict:
+     return json.loads(SOURCE.read_text(encoding="utf-8"))
++
++
++class MutationWindDownTests(unittest.TestCase):
++    def test_pending_mutation_delivers_cleanup_reminder_without_changing_route(self):
++        facts = {"deadline_incident", "live_task"}
++        decision = kernel.decide(source_policy(), facts)
++        reply = kernel.decision_json(decision, facts)
++        self.assertEqual(reply["action"], "wait_for_mutation_quiescence")
++        reminder = reply["coordinator_next_action"]
++        for text in ["request id", "turn id", "PID/birth", "transport", "unfinished recoverable task",
++                     "without replaying", "never patch lifecycle SQLite"]:
++            self.assertIn(text, reminder)
++        self.assertNotIn("coordinator_next_action", kernel.decision_json(
++            kernel.decide(source_policy(), {"deadline_incident"}), {"deadline_incident"}))
++
++    def test_supervisor_continuation_repeats_fallback_for_pending_mutation(self):
++        from coordinator_supervisor import coordinator_continuation_prompt, mutation_wind_down_contract
++        self.assertIn(mutation_wind_down_contract(), coordinator_continuation_prompt())
+ 
+ 
+ class WorkerCapabilityTests(unittest.TestCase):

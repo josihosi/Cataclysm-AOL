@@ -1,0 +1,66 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-1001c4e1f63a4530a8ada5a33f9e2928
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0051: observation — world
+  INDEX 50; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0052: action — dialogue.cancel
+  checks: {"action_id": "dialogue.cancel"}
+J0053: observation — npc_inspection
+  INDEX 52; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0054: action — world.inspect_npc
+  checks: {"action_id": "world.inspect_npc"}
+J0055: observation — world
+  INDEX 54; same PATH/FIELD as J0051.
+J0056: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0057: observation — menu
+  INDEX 56; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0058: action — world.chat
+  checks: {"action_id": "world.chat"}
+J0059: observation — dialogue
+  INDEX 58; PATH value.surface.facts.FIELD; FIELD: history, prompt, speaker_id, speaker_name
+J0060: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0061: observation — dialogue
+  INDEX 60; same PATH/FIELD as J0059.
+J0062: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0063: observation — dialogue
+  INDEX 62; same PATH/FIELD as J0059.
+J0064: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0065: observation — dialogue
+  INDEX 64; same PATH/FIELD as J0059.
+J0066: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0067: observation — basecamp_mission_selector
+  INDEX 66; PATH value.surface.facts.FIELD; FIELD: camp_id, camp_name, crafting_return_available, distribute_food_available, distribute_food_unavailable_reason, faction, food_days_no_exercise, food_kcal, gather_materials_available, gather_materials_return_available, job_assignment_available, locker_policy_available, locker_policy_enabled_slots, locker_zone_defined, looting_sorting_available, looting_sorting_unavailable_reason, patrol_zone_defined, survey_expansion_available, survey_expansion_return_available
+J0068: action — dialogue.choose
+  checks: {"action_id": "dialogue.choose"}
+J0069: observation — basecamp_worker_assignment
+  INDEX 68; PATH value.surface.facts.FIELD; FIELD: assigned_worker_count, camp_name, camp_site, job_priority_editor, owner_faction
+J0070: action — camp.open_job_assignment
+  checks: {"action_id": "camp.open_job_assignment"}
+J0071: observation — world
+  INDEX 70; same PATH/FIELD as J0051.
+J0072: action — camp_assignment.close
+  checks: {"action_id": "camp_assignment.close"}
+J0073: observation — world
+  INDEX 72; same PATH/FIELD as J0051.
+J0074: observation — prompt
+  INDEX 73; PATH value.surface.facts.FIELD; FIELD: text, title
+J0075: action — world.save_quit
+  checks: {"action_id": "world.save_quit"}
+J0076: observation — main_menu
+  No value fields.
+J0077: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0078: observation — prompt
+  INDEX 77; same PATH/FIELD as J0074.
+J0079: action — main_menu.quit
+  checks: {"action_id": "main_menu.quit"}
+J0080: observation — process_exited
+  INDEX 79; PATH value.surface.facts.FIELD; FIELD: pid, alive, exit_code, exit_observed_at, evidence_ref, gameplay_credit, save_outcome
+J0081: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0082: terminal — Fresh native camp establishment and same-follower assignment; save and quit completed; continue with declared reload persistence and ordinary work.
+  INDEX 81; PATH FIELD; FIELD: stop_reason, unused_authority, cleanup

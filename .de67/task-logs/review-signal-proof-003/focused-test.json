@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "tests/r033-headless-cata_test",
+    "[phase4_sound_observation]",
+    "--reporter",
+    "compact",
+    "--user-dir",
+    ".de67/task-logs/review-signal-proof-003/test-user"
+  ],
+  "exit_code": 2,
+  "elapsed_seconds": 12.489803075790405,
+  "binary_sha256": "98655347c6df18480c40a87fa91d52fc46a090d5b9e593fcf6192bf9ff6d5ea7"
+}

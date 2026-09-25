@@ -1,0 +1,28 @@
+{
+  "schema": "caol-bulk-item-census-v1",
+  "world": "BulkB3",
+  "post_save_turn": 5212951,
+  "map_files_scanned": 51,
+  "map_item_counts": {
+    "hammer": 128
+  },
+  "player_location": [
+    3539,
+    3780,
+    0
+  ],
+  "player_item_counts_recursive": {},
+  "npcs": [
+    {
+      "name": "Genevieve Floyd",
+      "location": [
+        3539,
+        3779,
+        0
+      ],
+      "item_counts_recursive": {}
+    }
+  ],
+  "census_scope": "saved map item objects with serialized [item,count] repetitions expanded; saved player and named NPC object trees recursively counted",
+  "source_copy": "/var/folders/wp/rdtt3_z56_l28b7bkn7x41xw0000gn/T/caol-bulk-B3-census-dv9_scsr/BulkB3"
+}

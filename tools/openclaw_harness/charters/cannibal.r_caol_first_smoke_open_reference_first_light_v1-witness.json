@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "The prepared OPEN-window reference under ordinary lighter ignition produces native source-bound physical light/smoke. This run cannot prove cannibal response because the save has no cannibal camp.",
+  "material_proof": "Bind exact copied open reference/profile to current executable; verify safe mode OFF; use native item inventory lighter activation toward prepared brazier; verify actual fire; retreat safely; inspect event source/channel and quicksave state.",
+  "current_uncertainty": "Whether physical first light/smoke is recorded at the brazier in the open-window source.",
+  "material_contradiction": [
+    "wrong profile/source binding",
+    "safe mode remained on during movement/wait",
+    "no actual fire after ordinary activation",
+    "source-bound light/smoke absent or source not brazier",
+    "injected signal/fire/light or smokebomb used",
+    "claimed cannibal response despite absence of camp",
+    "unsafe approach to burning tile"
+  ],
+  "forbidden_shortcuts": [
+    "owner/reference save edits",
+    "smokebomb",
+    "debug injection of signal, smoke, fire, light, actor or dispatch",
+    "direct-state-mutation after launch",
+    "step onto brazier/fire"
+  ],
+  "honest_stop_conditions": [
+    "actual fire and source-bound physical light/smoke recorded",
+    "first native ignition/source/safe-mode blocker after exact observation",
+    "chosen bounded observation checkpoint with save and cleanup"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

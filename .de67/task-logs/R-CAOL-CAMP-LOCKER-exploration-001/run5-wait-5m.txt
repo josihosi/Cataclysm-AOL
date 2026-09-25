@@ -1,0 +1,2 @@
+Error: This shortcut is unavailable in this scenario. Use the controls shown by play look.
+Next: play look

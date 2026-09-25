@@ -1,0 +1,172 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EVIDENCE-exploration-002",
+  "claim_id": "R-HARNESS-EVIDENCE",
+  "worker_id": "01a0c101-a0b9-72f2-b509-7302b2bb7102",
+  "disposition": "completed",
+  "verdict": "proved_focused_speech_boundary",
+  "outcome": "The fresh R026 native run closes the speech chronology boundary: an accepted utterance was correlated by exact run and process identities through runner start and model completion to an applied native Katharina reply, then sealed in a mechanically valid focused witness with exact typed acceptance checks.",
+  "summary": "A current-source registry-bound R026 run used the advertised native world.chat -> Say a sentence -> prompt.submit route. The utterance `Katharina, please keep an eye on the camp.` was accepted at frame 12/game turn 5241596. Exact run_id plus runner process_instance 520999d79e9c4bd99bd6a88d1e51e6ff matched llm_request_started req_0 and llm_response_emitted req_0 after 3276.99 ms, with response `You got it, Zoraida—I’ll watch the camp from here.|hold_position|equip_gun`. An accepted world.pause exposed the corresponding native reply at frame 14/game turn 5241597. The focused witness was accepted; no broader NPC matrix, fire case, or durable follow-up is claimed.",
+  "material_changes": [
+    "Changed native step: one fresh free-text utterance plus one advertised pause advanced the bound run from game turn 5241595 to 5241597 and produced a new native reply; no unchanged lifecycle or payment-projection test was replayed.",
+    "The request-to-application chronology is now usable: cockpit/native request ids, semantic process instance, runner process instance, local req_0, prompt hash, response hash, exact timestamps and native message records are all retained with byte-range handles.",
+    "A fresh-agent retrieval artifact records the needed fact, the no-match/irrelevant contrary query, selector roots, chronology, retrieval effort, unavailable original fire/NPC cases, preserved prior payment/non-payment receipt, and cleanup.",
+    "Prior completed evidence receipt 56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635 remains preserved and was not replayed."
+  ],
+  "tests": [
+    "Native prompt, runner start, runner completion, native application, run.witness, run.finish and collect completed on the bound current-source run.",
+    "speech-witness.json passed cockpit witness validation; both exact boolean native_receipt.accepted checks were retained.",
+    "python3 -m json.tool passed for speech-witness.json and fresh-agent-retrieval.json.",
+    "Owned game PID 53620 was observed exited after terminalization; bridge cleanup was accepted and state was safe_to_cleanup."
+  ],
+  "live_actions": [
+    "One native speech chain was exercised from utterance/hearer to model completion and applied native response; world.pause was used only after completion evidence and from its advertised World owner.",
+    "No debug intervention, fire action, source mutation, NPC mutation, guessed input, fixture reinjection, or replacement gameplay was used.",
+    "Payment/non-payment registry projection work was preserved at its prior receipt scope rather than replayed."
+  ],
+  "evidence_ceiling": [
+    "The focused native speech claim is proved for this utterance, hearer and response; this does not prove the full NPC command matrix, durable follow-up, fire behavior, or all speech hearers.",
+    "Runner req_0 is process-local; exact run_id and runner process_instance are required for correlation.",
+    "Native exit credit is false: finish requested scenario terminalization, and cleanup separately verified the process had already exited."
+  ],
+  "bindings": {
+    "binding_id": "ad61386776b3984974277ce7b23506a117e54c196c54c21dcd23bd9959d68224",
+    "cleanup_status": "safe_to_cleanup/already_exited",
+    "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+    "native_child_birth": "posix-lstart:Mon Sep 21 05:00:15 2026",
+    "native_child_pid": "53620",
+    "native_exit_credit": "false",
+    "run_artifact_dir": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57",
+    "run_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec",
+    "runner_pid": "54101",
+    "runner_process_instance": "520999d79e9c4bd99bd6a88d1e51e6ff",
+    "scenario_id": "r026.speech_turn_diagnostic_mcw",
+    "semantic_process_instance": "1789959634416807",
+    "session_dir": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427",
+    "source_identity": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+    "worker_request_id": "3e4f0a4563224ddaafb0f18f966f0aab"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "run_binding",
+      "evidence_class": "native_witness",
+      "summary": "Scenario, source, executable, run and binding identity.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/witness-journal-18a7a90d8e745ec323f01a2a58e056992ffd69c6489c778de578c77ba75ee9ba.json"
+    },
+    {
+      "id": "J0028",
+      "sequence": "28",
+      "event_type": "speech_prompt_submit",
+      "evidence_class": "native_witness",
+      "summary": "Accepted prompt.submit at frame 12; exact typed check native_receipt.accepted=true.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json"
+    },
+    {
+      "id": "J0029",
+      "sequence": "29",
+      "event_type": "speech_native_observation",
+      "evidence_class": "native_witness",
+      "summary": "Frame 14 retains the utterance and Katharina reply in the native message surface.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/fresh-agent-retrieval.json"
+    },
+    {
+      "id": "J0030",
+      "sequence": "30",
+      "event_type": "speech_application_pause",
+      "evidence_class": "native_witness",
+      "summary": "Accepted world.pause at frame 13 exposed the asynchronous applied NPC reply.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json"
+    },
+    {
+      "id": "J0031",
+      "sequence": "31",
+      "event_type": "terminal_cleanup",
+      "evidence_class": "native_witness",
+      "summary": "Witness terminal boundary; finish delegated cleanup to scenario terminalization.",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json",
+      "sha256": "96512760896c31249a7b21a74faa3dc2b780ce584945d627ef8f5da4813b47a2",
+      "role": "Mechanically valid focused CAOL witness with exact native acceptance checks."
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/fresh-agent-retrieval.json",
+      "sha256": "0aca7962e6073270902048f4562b65f3c737737936cdfbc5038525c804826b20",
+      "role": "Fresh-agent retrieval/chronology/contrary-fact/effort/cleanup handoff."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/witness-journal-18a7a90d8e745ec323f01a2a58e056992ffd69c6489c778de578c77ba75ee9ba.json",
+      "sha256": "ef05ffbf33b2591b205f9c2b4896ea7c4e3b9b2c5704439e675680305b640816",
+      "role": "Sealed native evidence journal cited by J0001 and the terminal witness."
+    },
+    {
+      "path": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl",
+      "sha256": "073046475482a79c197f014c956d2045a4963c9daff62d04baa17939ce51a0ce",
+      "role": "Run-bound native surface receipts and exact byte-range citations."
+    },
+    {
+      "path": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.requests.jsonl",
+      "sha256": "8eb781dfe581151b31316c7a9011e3b265b227e9e47c8c95a6e9f84f7cb58004",
+      "role": "Run-bound prompt.submit parameter record."
+    },
+    {
+      "path": "config/llm_intent_runner.log",
+      "sha256": "66e04586c6a3c12ecbe8d23d0473b68bc7d0aa83f17dba2984586c5901fd8ff6",
+      "role": "Shared runner start/completion records; correlated by exact run_id and process_instance."
+    },
+    {
+      "path": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/probe.report.json",
+      "sha256": "9bd13eb91affa3ff273a4d66a33cea99233fb4a258d1350926e01920fd4e839c",
+      "role": "Scenario terminalization and cleanup report."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/game-process-exit.json",
+      "sha256": "bddbd83ada8705eb1c265cea902c9ce17c624846fdbc56c058bd570cb77c99b7",
+      "role": "Owned native child exit evidence."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "4043989e879537ec644a38c8d84395280ac5edb9174ecfa6e8ab9994652f6af3",
+      "role": "Bridge cleanup disposition."
+    }
+  ],
+  "first_divergence": {
+    "class": "none_for_focused_speech_chain",
+    "summary": "The requested focused speech chronology reached native application. Broader fire/NPC matrix and durable follow-up remain outside the sealed ceiling."
+  },
+  "accepted_no_replay": [
+    "Preserve exploration-001 receipt 56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635 and its payment/non-payment projection scope.",
+    "Do not replay settled lifecycle or source-repair tests merely for confidence.",
+    "Do not promote the native response into unobserved durable behavior or other NPC command coverage."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Broader speech/NPC matrix, native fire case, and durable follow-up behavior.",
+  "narrow_queries": [
+    "Use fresh-agent-retrieval.json chronology and exact log-query commands to recover the prompt/start/completion/native-apply chain.",
+    "Use speech-witness.json J0028/J0030 checks for exact typed native receipt validation.",
+    "Use the prior exploration-001 receipt for payment/non-payment projection; do not replay it in this task."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/play_cli.py --session SESSION act",
+    "tools/openclaw_harness/play_cli.py --session SESSION controls/messages/journal/finish/collect",
+    "tools/openclaw_harness/cockpit_file_bridge.py log-query",
+    "tools/openclaw_harness/evidence_display.py",
+    ".agents/skills/caol-harness/references/evidence-and-diagnostics.md",
+    ".agents/skills/caol-harness/references/witness-and-finish.md"
+  ],
+  "context_metrics": {
+    "game_turn_after_native_reply": 5241597,
+    "game_turn_after_prompt": 5241596,
+    "game_turn_before_utterance": 5241595,
+    "lifecycle_actions_after_speech": 4,
+    "llm_generation_ms": 3276.9905420718715,
+    "retrieval_stdout_bytes_before_closeout": 29497,
+    "targeted_queries": 6
+  }
+}

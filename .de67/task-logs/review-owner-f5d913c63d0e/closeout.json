@@ -1,0 +1,32 @@
+{
+  "invocation": "mutation-48bcebae6cd84750aecc249a942956f5",
+  "gate": "f5d913c63d0e",
+  "resolved": true,
+  "owner_entry": "HARNESS-FULL-STACK-20260921",
+  "pending_entries": 0,
+  "published_sha256": {
+    "FS.md": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df",
+    "WEC.md": "8e2d3af760f92a976dca6cb44a814ece3bed088cae35df07d4d969d386e3c9a0",
+    "work-ledger.md": "576ad8ad0ec52106ba0d0a6088d01b0648a955c6266e4d071bd08cc6d11de2e8",
+    "mutation-suggestions.md": "186e56fe091b3c657bddd0c2ea7e208d84a196b5d11dac6069b9b561b616f218"
+  },
+  "accepted_count": 64,
+  "acceptance_rows_sha256": "1eb18395c82a40beddc7528ecaff550ba691422f7b51d3dd4d89d833eff26423",
+  "tasks_and_claims_unchanged": true,
+  "returned_task_preserved": "R-HARNESS-EXECUTION-exploration-003",
+  "restart": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 79,
+      "pending": true,
+      "requested_at": 1789944325.6352232,
+      "reason": "Owner-suggestion f5d913c63d0e resolved; evidence .de67/task-logs/review-owner-f5d913c63d0e/report.md. Deliver refrozen FS S-HARNESS/H-ERGONOMICS: first ingest/resume returned R-HARNESS-EXECUTION-exploration-003 with preserved fixture repairs and current semantic-readiness correction; independently commission the exact-evidence repair when ownership permits. The full-stack owner outcome covers session/display, scenario premises, evidence/witness, continuation/build and varied native campaign proof, not merely the wait patch. Preserve 64 accepted records and all prior work/evidence ceilings. Read current marked WEC and concrete ledger assignments; Sol implements and validates, the mutator has changed specification/context only. One fresh coordinator; external supervisor alone launches. No inherited deadline or duplicate worker input; 50% savings and broader native reliability remain unproved.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "launched_coordinator": false,
+  "product_or_method_code_changed": false
+}

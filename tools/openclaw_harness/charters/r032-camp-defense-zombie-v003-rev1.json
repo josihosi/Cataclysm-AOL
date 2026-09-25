@@ -1,0 +1,30 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, the same character:25 equipped in the accepted R032 camp can be natively rostered to real CAMP_PATROL work, respond as an eligible guard to a disclosed visible hostile zombie, and preserve assignment/equipment/patrol service through a native save and reload.",
+  "material_proof": "Cite same-run native camp identity [162,36,0], character:25 CAMP_RESIDENT and Locker equipment; each stationed/assigned actor and eligibility; native CAMP_PATROL zone and job assignment; ordinary patrol movement/order ownership before the disclosed debug spawn; alarm; each eligible guard movement, attack and zombie kill; then native save, process exit, reentry and continued patrol service with same assignment, gear and route.",
+  "material_contradiction": [
+    "camp, actor or gear differs from accepted R032 Locker footing",
+    "patrol zone/order is only fixture-declared or has no actual worker movement",
+    "eligible roster guard omits mobilization or engagement without explanation",
+    "zombie alarm, movement, attacks or kill are absent or scripted",
+    "save/reload changes assignment, equipment or live patrol service",
+    "source/executable drift or owned process/bridge cleanup unresolved"
+  ],
+  "already_accepted_evidence": [
+    "R032 camp assignment and Locker transfer/reload remain accepted at their original scopes; this scenario starts from an exact copy of the Locker-saved world."
+  ],
+  "current_uncertainty": "The prior v002 run confirms real patrol movement but spawn too near the observer; reposition the observer before visible hostile spawn.",
+  "forbidden_shortcuts": [
+    "crediting fixture copy or debug spawn as feature behavior",
+    "direct state/save/inventory/zone manipulation after startup",
+    "player combat as substitute for camp guard response",
+    "synthetic receipts, physical keys, OCR, coordinates or callback injection",
+    "touching coordinator-owned R-029 PID 90668"
+  ],
+  "honest_stop_conditions": [
+    "retain the first unavailable roster/job/zone route, missing alarm or response, combat divergence, native save/reload gap or cleanup failure",
+    "seal only after native patrol movement, alarm/each eligible response and post-reload continued service are cited"
+  ],
+  "requested_evidence_ceiling": "focused",
+  "scenario": "r032.camp_defense_zombie_v003_mcw"
+}

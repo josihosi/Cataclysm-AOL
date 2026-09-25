@@ -1,0 +1,120 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-SESSION-exploration-001",
+  "claim_id": "R-HARNESS-SESSION",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "completed",
+  "verdict": "decision_complete_public_session_contract_reconciled",
+  "outcome": "The coupled public PlayerClient, bridge response, display/retrieval, CLI and guidance surfaces now provide direct bounded wait/move operations, monotonic idempotent collection and restart recovery, safe read-only retrieval while collection is pending, opt-in routine diagnostics, and consistent source/action selectors with stable-identity deltas and pageable catalogs.",
+  "summary": "The implementation uses the existing durable request/response artifacts and client state only; it adds no session database, polling loop, scripted player or scenario mutation. Collection reuses an already recorded latest result; recovery reconstructs only a genuinely outstanding request after confirming no retained response exists, never resubmitting. An older retained response stays read-only and names its exact retrieval route, so it cannot roll back newer display or action authority. The compact display now makes its retained response roots explicit, surfaces changed stable identities before unchanged previews, reports cursor-based message additions without grouping them away, and pages large action catalogs while preserving controls. The 115 focused tests cover success/rejection duplicate collection, lost client state, monotonic A-to-B recovery, timeout, stale grants, finish/reentry behavior, safe reads during pending collection, direct request construction, large menus, sixth-entity change, message cursors, response diagnostics and exact retrieval.",
+  "material_changes": [
+    "Extended PlayerClient and play_cli with direct bounded wait/move arguments and monotonic idempotent collect/resume: only a genuinely outstanding request can be restored, the latest collected receipt can be returned from cache, and older recorded receipts stay read-only without a transport resend or state mutation.",
+    "Moved controls, inspect and messages onto the existing read-only route; messages retain the last displayed receipt only while its successor operation is pending and never reuse its input grant.",
+    "Made bridge startup diagnostics opt-in on ordinary successful response-status calls while preserving automatic failure diagnostics and exact artifact retrieval.",
+    "Unified gameplay display selectors and large-catalog behavior with cockpit evidence, added stable identity entity deltas and cursor-based ungrouped message additions, and updated executable usage/search guidance.",
+    "Recorded a synthetic public response-plus-action-page stdout measurement with its stated limits."
+  ],
+  "tests": [
+    "PYTHONPATH=tools/openclaw_harness python3 -m unittest play_cli_test play_cli_evidence_test cockpit_evidence_test evidence_display_test cockpit_controls_test cockpit_cancellation_test cockpit_observation_test cockpit_file_bridge_test.CockpitFileBridgeTest.test_large_response_is_retained_without_public_stdout_backpressure cockpit_file_bridge_test.CockpitFileBridgeTest.test_response_artifact_cli_recovers_only_the_receipt_bound_payload cockpit_file_bridge_test.CockpitFileBridgeTest.test_request_identity_order_stale_rejection_and_complete_artifacts: 115 passed.",
+    "python3 -m py_compile tools/openclaw_harness/play_cli.py tools/openclaw_harness/gameplay_display.py tools/openclaw_harness/cockpit_file_bridge.py tools/openclaw_harness/cockpit_evidence.py: passed.",
+    "git diff --check: passed."
+  ],
+  "live_actions": [
+    "No native game, bridge or scenario was launched for this public-surface repair; focused tests used retained/synthetic bridge artifacts only.",
+    "The completed R019 interruption was not replayed, relaunched, collected, finished or cleaned up.",
+    "The only stalled broad test invocation was stopped after it made no progress for four minutes; its exact owned unittest and synthetic child PIDs were then verified absent. The final focused suite completed normally."
+  ],
+  "evidence_ceiling": [
+    "This establishes public contract and retained-artifact behavior only; it does not establish a new native gameplay, save/reload, interruption or process-exit result.",
+    "The response/retrieval measure is a synthetic 41-action, 6-entity, 100-message response and measures stdout bytes and follow-up count only, not provider tokens, native cost, historical behavior or universal savings.",
+    "Current direct commands expose only supported game.wait and game.move_relative operations; specialized macros remain explicit call requests and unsupported operations are not invented."
+  ],
+  "bindings": {
+    "correction_request_id": "796762bf413042b3a8230c807c58b424",
+    "preserved_evidence_receipt": "56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635",
+    "preserved_execution_receipt": "a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc",
+    "source_surface": "PlayerClient/FileBackedCockpitBridge/gameplay_display/cockpit_evidence",
+    "worker_request_id": "9ff35443464a45e98f5dc229d366ea05"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/play_cli.py",
+      "sha256": "678cdd611ba70d41ef8ef18534d01bfc0db6da91ee8e726b3405b54204e678aa",
+      "role": "Persistent public client, direct operations, monotonic idempotent collection, no-resend restart recovery and safe read-only routing."
+    },
+    {
+      "path": "tools/openclaw_harness/cockpit_file_bridge.py",
+      "sha256": "f4a3818ba759d57eed91dc73e5e5c7a4fffbca9b630ed44b9b99181d342466bb",
+      "role": "Verified response status with opt-in startup diagnostics and unchanged exact response retrieval."
+    },
+    {
+      "path": "tools/openclaw_harness/gameplay_display.py",
+      "sha256": "c0a5e507d63d0f0d26e187ef159fcee9290d7fa7e1f61b2894288a19c7e077dc",
+      "role": "Selector-consistent full/delta owner display with stable entity and message changes."
+    },
+    {
+      "path": "tools/openclaw_harness/play_cli_test.py",
+      "sha256": "faf7e75116a2fca0355df26f45773509e2ad37dee8c4afd475181d4b63f3b92c",
+      "role": "Focused public client recovery, safe-read, direct-operation and no-resubmission tests."
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_display_test.py",
+      "sha256": "96e3b385ccbc01ce350e1d2194c81c011de3ae6a45a632c88a1ae439630453c6",
+      "role": "Focused selector, sixth-entity, cursor and large-catalog display tests."
+    },
+    {
+      "path": "tools/openclaw_harness/cockpit_evidence_test.py",
+      "sha256": "fd019ffc13b44d2afc2ca46a62afb954261e46b2de790e1e3048ccba41818097",
+      "role": "Routine diagnostics and exact retrieval projection test."
+    },
+    {
+      "path": ".agents/skills/caol-harness/references/live-operation.md",
+      "sha256": "09a75e41ec11fbe0e1609dabf6460ba5bcb40e0a960f29e2885a581acb1f0217",
+      "role": "Player-facing direct-operation, recovery and safe-read guidance."
+    },
+    {
+      "path": ".agents/skills/caol-harness/references/searching.md",
+      "sha256": "67b294670c828a73a7f246549e4440c7ed040e74e19552b8635f0828d1b09e06",
+      "role": "Selector and on-demand diagnostic retrieval guidance."
+    },
+    {
+      "path": ".de67/task-logs/R-HARNESS-SESSION-exploration-001-response-retrieval-measure.json",
+      "sha256": "87629aaebf19094671a73e989dba477cefd9ff8095797d1f6745c1186e738950",
+      "role": "Measured synthetic response-plus-follow-up retrieval stdout effort and limits."
+    }
+  ],
+  "first_divergence": {
+    "class": "public_decision_view_omitted_current_contract_facts",
+    "summary": "Current display omitted its documented selectors and could retain only the first five nearby entities, while normal bridge status included unrelated startup diagnostics and the public macro path required a request file."
+  },
+  "accepted_no_replay": [
+    "Preserved accepted shared execution receipt a665ac048c6de459f5e42fd8858b360dfed1adaf8462e7b06c30f7b8bfb643bc without replay.",
+    "Preserved accepted R-HARNESS-EVIDENCE receipt 56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635 and did not modify evidence_events.py or registry_query_output.py.",
+    "Did not replay the completed R019 interruption or alter scenario, fixture, registry or startup_harness premise-worker surfaces."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "play_cli.py PlayerClient.collect/resume/_restore_pending_request/_read_only_recovery and public CLI parser",
+    "cockpit_file_bridge.py FileBackedCockpitBridge.response_status/response_slice",
+    "gameplay_display.py display and cockpit_evidence.py action_catalog/current_input",
+    ".de67/task-logs/R-HARNESS-SESSION-exploration-001-response-retrieval-measure.json"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/gameplay_display.py",
+    "tools/openclaw_harness/cockpit_evidence.py",
+    ".agents/skills/caol-harness/references/live-operation.md"
+  ],
+  "context_metrics": {
+    "action_page_stdout_bytes": 656,
+    "focused_tests_passed": 115,
+    "raw_synthetic_response_bytes": 9445,
+    "response_plus_followup_stdout_bytes": 4838,
+    "response_plus_followup_to_raw_ratio": 0.5122,
+    "response_status_stdout_bytes": 4182
+  }
+}

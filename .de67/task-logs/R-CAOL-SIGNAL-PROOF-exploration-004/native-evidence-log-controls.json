@@ -1,0 +1,1 @@
+{"ok":false,"error":"'value'","presentation":{"budget_bytes":8192,"full_evidence":{"sha256":"4ba06a02b9ce7641a48680b8d1438131f46c96e7c637567a99216fffeaa74028","json_bytes":30},"retrieve":"python3 tools/openclaw_harness/evidence_display.py --sha256 HASH [--selector FIELD] [--offset N --limit N] [--export FILE]"}}

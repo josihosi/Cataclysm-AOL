@@ -1,0 +1,27 @@
+DIALOGUE
+history: R032 Establishment Ally 1
+"What is it, friend?"
+
+You
+There's something I want you to do.
+
+R032 Establishment Ally 1
+"You gonna give me orders?"
+prompt: "You gonna give me orders?"
+Allowed actions replaced — use only these:
+Goodbye → play act dialogue.cancel
+play act dialogue.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  dialogue-response-9 — Can you teach me anything?
+  dialogue-response-10 — Can you host a training seminar?
+  dialogue-response-11 — I have something to teach you.
+  dialogue-response-12 — Let's trade items.
+  dialogue-response-13 — I want you to use this item.
+  dialogue-response-14 — Hold on to this item.
+  dialogue-response-15 — Guard this position.
+  dialogue-response-16 — Find a horse and mount up!
+  dialogue-response-17 — Drop off any items you're not using.
+  dialogue-response-18 — Set up pickup rules.
+  dialogue-response-19 — Let's talk about your current activity.
+  dialogue-response-20 — Let's talk about the camp.
+  dialogue-response-21 — Let's head out.

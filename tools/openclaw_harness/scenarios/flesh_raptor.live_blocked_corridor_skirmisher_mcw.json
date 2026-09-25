@@ -111,17 +111,6 @@
       "expected_visible_fact": "one hostile flesh raptor starts five tiles east down the only open lane"
     },
     {
-      "kind": "press",
-      "label": "toggle_safe_mode_off_before_raptor_blocked_corridor",
-      "keys": [
-        "!"
-      ],
-      "delay_ms": 250,
-      "settle_seconds": 0.4,
-      "capture_after": true,
-      "expected_visible_fact": "safe mode is toggled off so the bounded live raptor blocked-corridor window is not consumed by warnings"
-    },
-    {
       "kind": "advance_turns",
       "label": "advance_raptor_blocked_corridor_window",
       "count": 80,

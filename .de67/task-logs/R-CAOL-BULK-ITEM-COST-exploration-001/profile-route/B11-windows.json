@@ -1,0 +1,196 @@
+{
+  "debug_logs" : [
+    "[2026-09-24T18:49:15.035Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))"
+  ],
+  "success" : true,
+  "data" : {
+    "windows" : [
+      {
+        "alpha" : 1,
+        "windowLevel" : 8,
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "spaceID" : 3817,
+        "window_id" : 45678,
+        "screenIndex" : 0,
+        "bounds" : [
+          [
+            1150,
+            638
+          ],
+          [
+            260,
+            330
+          ]
+        ],
+        "isMainWindow" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "isOnScreen" : true,
+        "index" : 0,
+        "layer" : 8,
+        "title" : ""
+      },
+      {
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "window_id" : 45665,
+        "screenIndex" : 0,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "isExcludedFromWindowsMenu" : false,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "isOnScreen" : true,
+        "index" : 1,
+        "layer" : 0,
+        "title" : ""
+      },
+      {
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "window_id" : 45664,
+        "screenIndex" : 0,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "isExcludedFromWindowsMenu" : false,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "isOnScreen" : true,
+        "index" : 2,
+        "layer" : 0,
+        "title" : ""
+      },
+      {
+        "alpha" : 1,
+        "windowLevel" : 0,
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "window_id" : 45663,
+        "screenIndex" : 0,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "isExcludedFromWindowsMenu" : false,
+        "sharingState" : 1,
+        "screenName" : "2560×2880 Display",
+        "isOnScreen" : true,
+        "index" : 3,
+        "layer" : 0,
+        "title" : ""
+      },
+      {
+        "alpha" : 0,
+        "windowLevel" : 0,
+        "isMinimized" : false,
+        "isOffScreen" : true,
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "spaceID" : 3817,
+        "window_id" : 45648,
+        "bounds" : [
+          [
+            0,
+            -32
+          ],
+          [
+            2560,
+            32
+          ]
+        ],
+        "isMainWindow" : false,
+        "isExcludedFromWindowsMenu" : false,
+        "sharingState" : 1,
+        "isOnScreen" : true,
+        "index" : 4,
+        "layer" : 0,
+        "title" : ""
+      },
+      {
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "alpha" : 1,
+        "screenName" : "2560×2880 Display",
+        "windowLevel" : 0,
+        "isOnScreen" : true,
+        "screenIndex" : 0,
+        "spaceID" : 3817,
+        "index" : 5,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            2880
+          ]
+        ],
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "isMainWindow" : false,
+        "window_id" : 45646,
+        "title" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "sharingState" : 1,
+        "isExcludedFromWindowsMenu" : false,
+        "layer" : 0
+      },
+      {
+        "isMinimized" : false,
+        "isOffScreen" : false,
+        "alpha" : 1,
+        "screenName" : "2560×2880 Display",
+        "windowLevel" : 0,
+        "isOnScreen" : true,
+        "screenIndex" : 0,
+        "index" : 6,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "window_id" : 45662,
+        "title" : "",
+        "sharingState" : 1,
+        "isExcludedFromWindowsMenu" : false,
+        "layer" : 0
+      }
+    ]
+  }
+}

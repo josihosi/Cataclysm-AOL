@@ -1,0 +1,83 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-eb8ac9490a79407dbc655c711277ee18
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0081: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0082: observation — item_info
+  INDEX 81; PATH value.surface.facts.FIELD; FIELD: item_info_text, item_info_text_source, item_name, type_name
+J0083: action — inventory.details
+  checks: {"action_id": "inventory.details"}
+J0084: observation — inventory
+  INDEX 83; PATH value.surface.facts.FIELD; FIELD: filter, selected_items, selection_source, title
+J0085: action — item_info.close
+  checks: {"action_id": "item_info.close"}
+J0086: observation — world
+  INDEX 85; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0087: action — inventory.cancel
+  checks: {"action_id": "inventory.cancel"}
+J0088: observation — menu
+  INDEX 87; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0089: action — world.wait
+  checks: {"action_id": "world.wait"}
+J0090: observation — menu
+  No value fields.
+J0091: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0092: observation — menu
+  No value fields.
+J0093: action — wait.5m
+  checks: {"action_id": "wait.5m"}
+J0094: observation — world
+  INDEX 93; same PATH/FIELD as J0086.
+J0095: observation — npc_inspection
+  INDEX 94; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0096: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0097: observation — world
+  INDEX 96; same PATH/FIELD as J0086.
+J0098: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0099: observation — direction
+  INDEX 98; PATH value.surface.facts.FIELD; FIELD: allow_vertical, prompt
+J0100: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0101: observation — world
+  INDEX 100; same PATH/FIELD as J0086.
+J0102: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0103: observation — direction
+  INDEX 102; same PATH/FIELD as J0099.
+J0104: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0105: observation — inventory
+  INDEX 104; same PATH/FIELD as J0084.
+J0106: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0107: observation — world
+  INDEX 106; same PATH/FIELD as J0086.
+J0108: action — inventory.cancel
+  checks: {"action_id": "inventory.cancel"}
+J0109: observation — direction
+  INDEX 108; same PATH/FIELD as J0099.
+J0110: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0111: observation — world
+  INDEX 110; same PATH/FIELD as J0086.
+J0112: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0113: observation — direction
+  INDEX 112; same PATH/FIELD as J0099.
+J0114: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+J0115: observation — inventory
+  INDEX 114; same PATH/FIELD as J0084.
+J0116: action — direction.choose
+  checks: {"action_id": "direction.choose"}
+J0117: observation — world
+  INDEX 116; same PATH/FIELD as J0086.
+J0118: action — inventory.cancel
+  checks: {"action_id": "inventory.cancel"}
+J0119: observation — direction
+  INDEX 118; same PATH/FIELD as J0099.
+J0120: action — world.pickup
+  checks: {"action_id": "world.pickup"}
+More → play inspect result.evidence_journal.entries --offset 120 --limit 40 --request-id play-eb8ac9490a79407dbc655c711277ee18

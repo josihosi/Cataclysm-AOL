@@ -1,0 +1,9 @@
+World.
+moved
+avatar.absolute ms: 3902, 876, 0
+maple tree: NW
+forest floor: N, here, E, SW, SE
+underbrush: NE
+blackjack oak: W
+moss: S
+6:05:17 AM: You see here 1 coming of age novel (16), 1 one-dollar currency strap and 5 more items.

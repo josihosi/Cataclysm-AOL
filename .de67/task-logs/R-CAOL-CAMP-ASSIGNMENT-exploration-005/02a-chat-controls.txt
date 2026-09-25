@@ -1,0 +1,8 @@
+Use only the current menu's actions → play look
+Pending result → play collect; end playtest → play quit
+Short wait unavailable in this scenario; use the advertised native wait menu.
+Multi-step move unavailable in this scenario; use advertised single-step actions.
+After rejection/interruption, read the current state; do not blindly replay input.
+Speech: an emitted LLM response may need play act world.pause to apply (only when advertised).
+look/collect do not advance game time. Use play evidence to check request/response events.
+Full technical examples → play --diagnostics controls

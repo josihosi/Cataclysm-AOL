@@ -1,0 +1,10 @@
+{
+  "requirements": [
+    {"key": "runtime.fixture", "op": "eq", "value": "r032_assigned_camp_locker_transfer_char25_v1", "minimum_evidence": "declared"},
+    {"key": "runtime.world", "op": "eq", "value": "McWilliams", "minimum_evidence": "declared"},
+    {"key": "capabilities.r032.camp_locker", "op": "eq", "value": "native_equipment_transfer_compatible_firearm_ammunition_and_reload", "minimum_evidence": "declared"}
+  ],
+  "preferences": [
+    {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+  ]
+}

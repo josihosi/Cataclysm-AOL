@@ -1,0 +1,45 @@
+--- /Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/worker_library.py	2026-09-23 23:31:23
++++ .de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-002/worker_library.candidate.py	2026-09-24 01:20:55
+@@ -565,10 +565,41 @@
+     def _reconcile_one(self, assignment: dict[str, Any]) -> None:
+         previous_binding = json.loads(assignment["binding"])
+         changed_server = not _same_binding(previous_binding, self.binding)
+-        if previous_binding["thread_id"] != self.binding["thread_id"]:
++        task = _task(Path(assignment["state_path"]), assignment["lineage"], assignment["task_id"])
++        released_recovery = (changed_server and task["attempt_terminal_at"] is not None
++                             and task["released_at"] is not None
++                             and task["worker_id"] == assignment["worker_id"])
++        if previous_binding["thread_id"] != self.binding["thread_id"] and not released_recovery:
+             return
+         if changed_server and _old_server_present(previous_binding):
+             return
++        if released_recovery:
++            # The old task cannot be reclaimed. Read its exact turn only to
++            # preserve a result that arrived before its owner was released.
++            thread = self.rpc.call("thread/read", {"threadId": assignment["worker_id"], "includeTurns": True})["thread"]
++            if (thread.get("id") != assignment["worker_id"]
++                    or (thread.get("cwd") is not None and Path(thread["cwd"]).resolve() != self.workspace)):
++                raise WorkerLibraryError("Recovery thread identity or workspace does not match its assignment")
++            matches = [turn for turn in thread.get("turns", []) if (
++                assignment["turn_id"] and turn.get("id") == assignment["turn_id"]
++            ) or any(self._matches_request(item, assignment) for item in turn.get("items", []))]
++            if len(matches) > 1:
++                raise WorkerLibraryError("More than one stored turn matches this worker request; inspect the conversation")
++            if thread.get("status", {}).get("type") == "active":
++                return  # Do not adopt a live turn after its deadline ownership was released.
++            if not matches or matches[0].get("status") == "inProgress":
++                explanation = ("Released previous owner has no completed exact turn; outcome remains uncertain. "
++                               "Inspect retained artifacts before an intentional successor. No work was replayed.")
++                self._update(assignment["id"], status="interrupted", error=explanation)
++                self._notice(assignment, "Worker " + assignment["name"] + ": " + explanation)
++                return
++            turn = dict(matches[0])
++            self._update(assignment["id"], binding=json.dumps(self.binding))
++            assignment["binding"] = json.dumps(self.binding)
++            if self._adopt_turn(assignment, turn.get("id"), "released owner's stored exact turn"):
++                self.observe({"method": "turn/completed", "params": {
++                    "threadId": assignment["worker_id"], "turn": turn}})
++            return
+         if changed_server and assignment["status"] in {"pending", "starting"}:
+             # The persisted phase precedes turn/start; no generation was submitted.
+             task = _task(Path(assignment["state_path"]), assignment["lineage"], assignment["task_id"])

@@ -1,0 +1,8 @@
+Inventory
+filter: smokebomb
+No highlighted item.
+Allowed actions replaced — use only these:
+Confirm highlighted item: Select → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter → play act inventory.reset_filter
+Cancel → play act inventory.cancel

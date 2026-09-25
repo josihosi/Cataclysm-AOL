@@ -1,0 +1,6 @@
+Game exited.
+exit code: 0
+save outcome: not_established_by_process_exit
+ALLOWED HERE ONLY
+next action: run.witness
+next: journal --reason REASON

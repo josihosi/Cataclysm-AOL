@@ -1,0 +1,53 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-563e20c2a688479683e395d05d45e702
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0091: observation — world
+  INDEX 90; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0092: keep watch
+  INDEX 91; PATH FIELD; FIELD: kind, result
+J0093: observation — npc_inspection
+  INDEX 92; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0094: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0095: observation — npc_inspection
+  INDEX 94; same PATH/FIELD as J0093.
+J0096: macro interruption
+  INDEX 95; same PATH/FIELD as J0092.
+J0097: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0098: observation — npc_inspection
+  INDEX 97; same PATH/FIELD as J0093.
+J0099: observation — world
+  INDEX 98; same PATH/FIELD as J0091.
+J0100: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0101: observation — world
+  INDEX 100; same PATH/FIELD as J0091.
+J0102: observation — menu
+  INDEX 101; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0103: action — world.wait
+  checks: {"action_id": "world.wait"}
+J0104: observation — menu
+  No value fields.
+J0105: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0106: observation — menu
+  No value fields.
+J0107: observation — activity_wait
+  INDEX 106; PATH value.surface.facts.FIELD; FIELD: activity_generation, activity_type, native_action, native_owner
+J0108: action — wait.5m
+  checks: {"action_id": "wait.5m"}
+J0109: observation — world
+  INDEX 108; same PATH/FIELD as J0091.
+J0110: keep watch
+  INDEX 109; same PATH/FIELD as J0092.
+J0111: observation — npc_inspection
+  INDEX 110; same PATH/FIELD as J0093.
+J0112: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0113: observation — world
+  INDEX 112; same PATH/FIELD as J0091.
+J0114: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0115: observation — menu
+  INDEX 114; same PATH/FIELD as J0102.
+More → play inspect result.evidence_journal.entries --offset 115 --limit 25 --request-id play-563e20c2a688479683e395d05d45e702

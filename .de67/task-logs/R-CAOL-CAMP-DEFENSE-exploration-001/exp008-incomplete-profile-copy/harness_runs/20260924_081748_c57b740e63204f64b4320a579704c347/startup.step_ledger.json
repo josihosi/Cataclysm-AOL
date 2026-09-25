@@ -1,0 +1,415 @@
+{
+  "startup_step_ledger": [
+    {
+      "primitive_or_step": "dry plan / runtime resolution",
+      "preconditions": "repo checkout and requested profile/world/fixture are known",
+      "action": "build_plan(profile, world, fixture)",
+      "expected_immediate_state": "profile, userdir, executable, strategy, target world, existing worlds, and run dir are resolved without launching",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/plan.json",
+      "failure_rule": "missing executable/profile/run_dir or contradictory target world is red; valid metadata is plan-only proof",
+      "next_step_gate": "launch may run only after plan metadata resolves",
+      "verdict": "green_plan_resolved",
+      "metadata": {
+        "profile": "r032-camp-defense-shakedown-exp007-20260924",
+        "target_world": "McWilliams",
+        "strategy": "autoload_world",
+        "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles",
+        "fixture": "r032_camp_pay_stock_v001_mcw",
+        "harness_new_world": "",
+        "harness_raw_seed": ""
+      }
+    },
+    {
+      "primitive_or_step": "profile snapshot install metadata",
+      "preconditions": "optional disposable profile snapshot requested before launch",
+      "action": "install_profile_snapshot(...) if --profile-snapshot is present",
+      "expected_immediate_state": "requested snapshot entries are copied into the harness profile userdir, or explicitly not requested",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/startup.result.json",
+      "failure_rule": "requested snapshot with no copied entries is red; not requested is not feature evidence",
+      "next_step_gate": "fixture install/launch may continue when snapshot is installed or explicitly not requested",
+      "verdict": "green_profile_snapshot_installed",
+      "metadata": {
+        "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+        "result": {
+          "profile": "r032-camp-defense-shakedown-exp007-20260924",
+          "snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+          "snapshot_profile": "live-debug",
+          "resolved_snapshot": "mcwilliams_live_debug_2026-04-07",
+          "resolved_snapshot_profile": "live-debug",
+          "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/profiles/live-debug/mcwilliams_live_debug_2026-04-07",
+          "source_sha256": "5d11ff9936cf33560a833ed68292178910b805cc1b83ea3533fd4c8f73e4dbfe",
+          "destination": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924",
+          "copied_entries": [
+            "achievements",
+            "config",
+            "gfx",
+            "templates"
+          ],
+          "skipped_entries": [
+            "cache",
+            "harness_runs",
+            "manifest.json",
+            "save"
+          ],
+          "source_chain": [
+            "live-debug:bandit_basecamp_prepared_base_v1_2026-04-22",
+            "live-debug:mcwilliams_live_debug_2026-04-07"
+          ],
+          "binding": {
+            "schema": 1,
+            "kind": "profile-snapshot-source-chain",
+            "source_chain": [
+              {
+                "profile": "live-debug",
+                "name": "bandit_basecamp_prepared_base_v1_2026-04-22",
+                "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22",
+                "source_sha256": "57367d893ed9348ed9bc5efce4d589b249cd7b83ca2022a7a315032a78947357"
+              },
+              {
+                "profile": "live-debug",
+                "name": "mcwilliams_live_debug_2026-04-07",
+                "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/profiles/live-debug/mcwilliams_live_debug_2026-04-07",
+                "source_sha256": "5d11ff9936cf33560a833ed68292178910b805cc1b83ea3533fd4c8f73e4dbfe"
+              }
+            ],
+            "sha256": "cfc0eb664d590b724e3b1d8a6bbdab1057bda3f300b6754e1dcbc68ca6af9728",
+            "requested_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+            "requested_snapshot_profile": "live-debug",
+            "resolved_snapshot": "mcwilliams_live_debug_2026-04-07",
+            "resolved_snapshot_profile": "live-debug"
+          },
+          "manifest": {}
+        }
+      }
+    },
+    {
+      "primitive_or_step": "fixture install metadata",
+      "preconditions": "optional disposable save fixture requested before launch",
+      "action": "install_fixture(...) if --fixture is present",
+      "expected_immediate_state": "requested fixture world(s) copied into target profile save dir, including manifest/save-transform metadata when present",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/startup.result.json",
+      "failure_rule": "requested fixture with no installed worlds is red; manifest metadata remains fixture/setup proof only",
+      "next_step_gate": "launch may continue when fixture is installed or explicitly not requested",
+      "verdict": "green_fixture_installed",
+      "metadata": {
+        "fixture": "r032_camp_pay_stock_v001_mcw",
+        "result": {
+          "fixture": "r032_camp_pay_stock_v001_mcw",
+          "profile": "r032-camp-defense-shakedown-exp007-20260924",
+          "fixture_profile": "live-debug",
+          "resolved_fixture": "r032_camp_pay_stock_v001_mcw",
+          "resolved_fixture_profile": "live-debug",
+          "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw",
+          "source_sha256": "50fb6d369c6079f3114fa67394791809977c9b7a06a730af446c27b123352fba",
+          "payload_fixture": "r032_camp_defense_from_locker_v1",
+          "payload_fixture_profile": "live-debug",
+          "payload_source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1",
+          "source_chain": [
+            "live-debug:r032_camp_pay_stock_v001_mcw",
+            "live-debug:r032_camp_defense_from_locker_v1"
+          ],
+          "binding": {
+            "schema": 1,
+            "kind": "fixture-source-chain",
+            "source_chain": [
+              {
+                "profile": "live-debug",
+                "name": "r032_camp_pay_stock_v001_mcw",
+                "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_pay_stock_v001_mcw",
+                "source_sha256": "50fb6d369c6079f3114fa67394791809977c9b7a06a730af446c27b123352fba"
+              },
+              {
+                "profile": "live-debug",
+                "name": "r032_camp_defense_from_locker_v1",
+                "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/tools/openclaw_harness/fixtures/saves/live-debug/r032_camp_defense_from_locker_v1",
+                "source_sha256": "b942d0451c87262bc20ecbb7f00cb562af7a64d4113bed54868cec3b66cc9b15"
+              }
+            ],
+            "sha256": "bbc10e7d29f342a0578ff8709622b00a0b193cc2d00f9005ce1369e1cb34dd25",
+            "requested_fixture": "r032_camp_pay_stock_v001_mcw",
+            "requested_fixture_profile": "live-debug",
+            "resolved_fixture": "r032_camp_pay_stock_v001_mcw",
+            "resolved_fixture_profile": "live-debug"
+          },
+          "installed_worlds": [
+            "McWilliams"
+          ],
+          "applied_save_transforms": [
+            {
+              "kind": "map_items_near_player",
+              "world": "McWilliams",
+              "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+              "player_location": [
+                3900,
+                876,
+                0
+              ],
+              "placed_items": [
+                {
+                  "typeid": "RobofacCoin",
+                  "count": 10,
+                  "charges": null,
+                  "owner": "your_followers",
+                  "active": false,
+                  "countdown_offset_turns": null,
+                  "countdown_point": null,
+                  "offset_ms": [
+                    31,
+                    0,
+                    0
+                  ],
+                  "target_location_ms": [
+                    3931,
+                    876,
+                    0
+                  ],
+                  "target_abs_omt": [
+                    163,
+                    36,
+                    0
+                  ],
+                  "target_abs_sm": [
+                    327,
+                    73,
+                    0
+                  ],
+                  "local_ms": [
+                    7,
+                    0,
+                    0
+                  ],
+                  "map_pack": "5.1.0",
+                  "map_file": "163.36.0.map"
+                }
+              ],
+              "extracted_map_packs": [
+                "5.1.0"
+              ],
+              "recompressed_maps": [
+                "maps/5.1.0/163.36.0.map"
+              ],
+              "removed_extracted_map_dirs": [
+                "maps/5.1.0"
+              ],
+              "plain_map_dirs_left_for_game_load": false
+            },
+            {
+              "kind": "source_firewood_zone_near_player",
+              "world": "McWilliams",
+              "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+              "player_location": [
+                3900,
+                876,
+                0
+              ],
+              "zone": {
+                "name": "R032 Pay Stock Spillover",
+                "type": "CAMP_STORAGE",
+                "faction": "your_followers",
+                "identity": "zone-fixture-8d320d8bff1219ff89dd8ee1",
+                "invert": false,
+                "enabled": true,
+                "temporarily_disabled": false,
+                "is_vehicle": false,
+                "is_personal": false,
+                "cached_shift": [
+                  0,
+                  0,
+                  0
+                ],
+                "start": [
+                  3931,
+                  876,
+                  0
+                ],
+                "end": [
+                  3931,
+                  876,
+                  0
+                ],
+                "is_displayed": false
+              },
+              "updated_zone_files": [
+                "#Wm9yYWlkYSBWaWNr.zones.json",
+                "#Wm9yYWlkYSBWaWNr.zoneszmgr-temp.json",
+                "zones.json",
+                "zoneszmgr-temp.json"
+              ]
+            }
+          ],
+          "destination": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save",
+          "manifest": {
+            "name": "r032_camp_pay_stock_v001_mcw",
+            "source_fixture": "r032_camp_defense_from_locker_v1",
+            "source_profile": "live-debug",
+            "description": "Zero-credit payment-stock setup derived from the accepted, natively saved R032 Locker world. Keeps camp [162,36,0], character:25 and the original nearby CAMP_STORAGE. Adds only ten real RobofacCoin items and a one-tile follower-owned CAMP_STORAGE spill zone 31 map squares east of the saved player. No bandit lead, outing, contact, cooldown, player-pocket or actor state is injected.",
+            "save_transforms": [
+              {
+                "kind": "map_items_near_player",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "items": [
+                  {
+                    "typeid": "RobofacCoin",
+                    "count": 10,
+                    "owner": "your_followers",
+                    "offset_ms": [
+                      31,
+                      0,
+                      0
+                    ]
+                  }
+                ]
+              },
+              {
+                "kind": "source_firewood_zone_near_player",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "name": "R032 Pay Stock Spillover",
+                "zone_type": "CAMP_STORAGE",
+                "faction": "your_followers",
+                "start_offset_ms": [
+                  31,
+                  0,
+                  0
+                ],
+                "end_offset_ms": [
+                  31,
+                  0,
+                  0
+                ],
+                "write_temp": true,
+                "write_global": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "primitive_or_step": "launch process",
+      "preconditions": "plan resolved and previous game processes have been killed",
+      "action": "launch_game(profile, target_world, run_dir)",
+      "expected_immediate_state": "cataclysm process starts with the requested userdir/world arguments",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/process.json",
+      "failure_rule": "missing pid or early process exit is red",
+      "next_step_gate": "focus/load polling may continue only with a live pid",
+      "verdict": "green_process_started",
+      "metadata": {
+        "pid": 75561,
+        "harness_new_world": "",
+        "harness_raw_seed": ""
+      }
+    },
+    {
+      "primitive_or_step": "window focus",
+      "preconditions": "cataclysm process is running",
+      "action": "peekaboo window focus --pid <pid>",
+      "expected_immediate_state": "the game window is selected before any title/load keystrokes or screenshots",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/startup.result.json",
+      "failure_rule": "non-zero focus returncode is yellow for startup and red for any keystroke-dependent feature proof",
+      "next_step_gate": "startup polling may continue, but feature proof needs a green focus row before key delivery is trusted",
+      "verdict": "green_focus_returned",
+      "metadata": {
+        "ok": true,
+        "status": "not_required_native_semantic"
+      }
+    },
+    {
+      "primitive_or_step": "load/readiness gate",
+      "preconditions": "game process is running after focus and optional default-flow keystrokes",
+      "action": "poll lastworld.json and world save markers until expected world readiness changes",
+      "expected_immediate_state": "lastworld metadata or a save marker changes for the requested world",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/lastworld.after.json",
+      "failure_rule": "timeout, wrong world, missing character/save metadata, or process exit is red",
+      "next_step_gate": "success screenshot may be captured only after readiness metadata changes",
+      "verdict": "green_load_ready",
+      "metadata": {
+        "kind": "lastworld",
+        "reason": "lastworld_updated",
+        "marker": {},
+        "baseline_save_marker": {
+          "world_name": "McWilliams",
+          "marker": "#Wm9yYWlkYSBWaWNr.mm1/#Wm9yYWlkYSBWaWNr.mm1.hot.zzip",
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save/McWilliams/#Wm9yYWlkYSBWaWNr.mm1/#Wm9yYWlkYSBWaWNr.mm1.hot.zzip",
+          "mtime": 1790220237.9917765,
+          "reason": "world_save_marker"
+        },
+        "pid": 75561
+      }
+    },
+    {
+      "primitive_or_step": "success/failure screenshot capture",
+      "preconditions": "readiness gate reached or failure state needs artifact capture",
+      "action": "peekaboo image capture label=success",
+      "expected_immediate_state": "named PNG/Peekaboo JSON records the actual window selected for the startup result",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/success.png",
+      "failure_rule": "capture failure is red; stale runtime metadata is yellow; screenshot alone remains startup/load proof only",
+      "next_step_gate": "startup command may report success, but no feature step may close from this ledger alone",
+      "verdict": "red_screen_capture_failed",
+      "metadata": {
+        "capture_success": false,
+        "capture_status": "not_requested_native_semantic",
+        "capture_process_pid": 75561,
+        "native_semantic_startup": {
+          "artifact_kind": "r014_native_semantic_bootstrap_frame",
+          "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/semantic.native.log",
+          "gameplay_credit": false,
+          "provenance": "native_semantic_step_trace",
+          "run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+          "required_state": "world",
+          "required_actions": [
+            "world.wait"
+          ],
+          "press_trace_offset": 25784,
+          "frame_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2:frame:1",
+          "frame_run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+          "frame_event": "surface_descriptor",
+          "frame_state": "world",
+          "frame_trace_offset": 140965,
+          "advertised_actions": [
+            "world.pause",
+            "world.wait",
+            "world.quicksave",
+            "world.save_quit",
+            "world.inventory",
+            "world.pickup",
+            "world.drop",
+            "world.zone_manager",
+            "world.look",
+            "world.overmap",
+            "world.messages",
+            "world.chat",
+            "world.fire",
+            "world.reload",
+            "world.toggle_safemode",
+            "world.debug_menu",
+            "world.move.north",
+            "world.move.south",
+            "world.move.west",
+            "world.move.east",
+            "world.move.northwest",
+            "world.move.northeast",
+            "world.move.southwest",
+            "world.move.southeast",
+            "world.level_up",
+            "world.level_down",
+            "world.basecamp_missions",
+            "world.inspect_camp_npc"
+          ],
+          "frame_producer": "",
+          "initial_world_ready": null,
+          "status": "required_state_present",
+          "startup_owner": "nonworld_native_input_owner",
+          "bootstrap": "launcher_first_same_run_semantic_frame",
+          "attempts": 1,
+          "timeout_seconds": 360.0,
+          "poll_seconds": 2.0
+        },
+        "startup_screen_probe": {
+          "classification": "not_requested_native_semantic",
+          "native_run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+          "visible_error_popup": false
+        }
+      }
+    }
+  ]
+}

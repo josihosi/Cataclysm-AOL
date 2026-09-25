@@ -1,0 +1,10 @@
+{
+  "error" : {
+    "code" : "PERMISSION_ERROR_SCREEN_RECORDING",
+    "message" : "Screen recording permission is required. Please grant it in System Settings > Privacy & Security > Screen Recording."
+  },
+  "debug_logs" : [
+    "[2026-09-24T18:51:00.874Z] DEBUG: Runtime host: local (in-process fallback)"
+  ],
+  "success" : false
+}

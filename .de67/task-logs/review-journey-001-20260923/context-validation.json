@@ -1,0 +1,11 @@
+{
+  "before_guard_error": "Work item mentions a task owned by another FS claim: R-LAUNCHER-CLEAN-INSTALL \u2014 Complete independent macOS, Windows and Linux installation journeys.",
+  "after_guard": "passed",
+  "active_claim_count": 13,
+  "same_active_claim_set": true,
+  "journey_not_active": true,
+  "all_issued_assignments_and_subtasks_preserved": true,
+  "FS_WEC_policy_queue_unchanged": true,
+  "correction": "Move seven new claim blocks unchanged to ledger end, eliminating historical-task bleed into R-LAUNCHER-CLEAN-INSTALL; replace three stale journey current-status notes with explicit historical disposition.",
+  "adoption_limit": "Production parser/guard proof, not successor execution or measured token savings."
+}

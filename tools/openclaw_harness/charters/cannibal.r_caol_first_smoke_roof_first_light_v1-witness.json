@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On a separate task-owned saved-world copy, ordinary lighter ignition of the prepared roof brazier produces a source-identified nighttime physical-light observation.",
+  "material_proof": "Record safe mode OFF; use setup-only debug teleport to the adjacent safe roof tile; ignite the existing roof brazier using the supplied lighter through ordinary inventory activation and direction choice; verify fd_fire and inspect the source-specific nighttime physical signal; quicksave and close gracefully.",
+  "current_uncertainty": "The prepared roof brazier has not yet been ignited in this source-bound run. The result is signal-only; this profile has no cannibal camp.",
+  "material_contradiction": ["baseline or owner save changed", "safe mode on during movement or wait", "actual fd_fire absent after ordinary ignition", "no source-specific signal after the sampler discovery interval", "fire or signal injected", "unsafe step onto fire"],
+  "forbidden_shortcuts": ["owner/reference save edits", "smokebomb", "debug injection of fire, smoke, light, signal, actor, or dispatch", "direct postlaunch serialized save mutation", "raw keyboard or mouse action", "step onto brazier/fire"],
+  "honest_stop_conditions": ["source-specific nighttime packet result with quicksave", "first concrete ordinary lighter/action blocker", "full sampler discovery interval with real fire and exact source rejection/absence recorded"],
+  "requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,5 @@
+usage: play_cli.py [-h] [--diagnostics] --session SESSION
+                   [--wait-seconds WAIT_SECONDS]
+                   {look,yes,no,ignore,stop,collect,resume,cancel,quit,messages,act,wait,move,performance,evidence,compare,response-compare,request-result,controls,call,inspect,journal,finish}
+                   ...
+play_cli.py: error: argument command: invalid choice: 'status' (choose from 'look', 'yes', 'no', 'ignore', 'stop', 'collect', 'resume', 'cancel', 'quit', 'messages', 'act', 'wait', 'move', 'performance', 'evidence', 'compare', 'response-compare', 'request-result', 'controls', 'call', 'inspect', 'journal', 'finish')

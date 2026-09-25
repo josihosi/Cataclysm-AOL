@@ -1,0 +1,18 @@
+{
+  "success" : false,
+  "debug_logs" : [
+    "[2026-09-24T00:24:22.022Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))",
+    "[2026-09-24T00:24:22.035Z] VERBOSE [Operation]: Starting operation {hasAnalyzePrompt=false, mode=auto, annotate=false, menubar=false, app=none, operation=see_command}",
+    "[2026-09-24T00:24:22.035Z] VERBOSE [Performance]: Starting timer 'see_command'",
+    "[2026-09-24T00:24:22.044Z] VERBOSE [Capture]: Starting capture and detection phase",
+    "[2026-09-24T00:24:22.044Z] VERBOSE [Capture]: Using desktop observation pipeline {target=pid:23949}",
+    "[2026-09-24T00:24:22.044Z] VERBOSE [Operation]: Starting operation {operation=capture_phase, mode=window}",
+    "[2026-09-24T00:24:22.044Z] VERBOSE [Performance]: Starting timer 'capture_phase'",
+    "[2026-09-24T00:24:32.263Z] VERBOSE [Operation]: Operation completed {error=The operation couldn’t be completed. Operation timed out, operation=see_command, success=false}",
+    "[2026-09-24T00:24:32.263Z] VERBOSE [Performance]: Timer 'see_command' completed {duration_ms=10228}"
+  ],
+  "error" : {
+    "code" : "TIMEOUT",
+    "message" : "The operation couldn’t be completed. Operation timed out"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "success" : true,
+  "data" : {
+    "permissions" : [
+      {
+        "name" : "Screen Recording",
+        "grantInstructions" : "System Settings > Privacy & Security > Screen Recording",
+        "isRequired" : true,
+        "isGranted" : true
+      },
+      {
+        "name" : "Accessibility",
+        "grantInstructions" : "System Settings > Privacy & Security > Accessibility",
+        "isRequired" : true,
+        "isGranted" : true
+      },
+      {
+        "name" : "Event Synthesizing",
+        "grantInstructions" : "System Settings > Privacy & Security > Accessibility",
+        "isRequired" : false,
+        "isGranted" : true
+      }
+    ],
+    "source" : "bridge"
+  },
+  "debug_logs" : [
+    "[2026-09-24T21:04:39.126Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))"
+  ]
+}

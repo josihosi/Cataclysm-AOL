@@ -1,0 +1,55 @@
+
+
+-----------------------------------------
+03:08:29.768 : Starting log.
+03:08:29.769 INFO : Cataclysm DDA version fe8c418c16-dirty+SDL3
+03:08:29.769 INFO : Default randomness seeded to: 3388104476
+
+03:08:29.769 INFO : Running Catch2 session:
+Filters: camp_locker_service_equips_upgrades_and_returns_replaced_gear,camp_locker_service_readies_ranged_loadouts_from_locker_supply,camp_locker_downtime_rehydrates_transient_assignees,camp_locker_new_zone_gear_requeues_worker_after_baseline_noop,camp_locker_service_filters_unwearable_armor_candidates,camp_locker_service_filters_unwieldable_weapon_candidates
+
+03:08:29.783 INFO : SDL render devices: software, metal, opengl, opengles2, vulkan, gpu
+03:08:29.784 INFO : [options] C locale set to C
+03:08:29.784 INFO : [options] C++ locale set to C
+03:08:32.357 WARNING : Dark Days Ahead pack load time:: 2295743us (avg: 2295743us) (count: 1)
+03:08:32.357 WARNING : TESTING DATA pack load time:: 71449us (avg: 71449us) (count: 1)
+03:08:42.488 INFO : Game data loaded
+
+03:08:42.516 INFO : camp locker: before Yu Grimm worker=[bag=[daypack<daypack>]] locker=[bag=[duffel bag<duffelbag>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.516 INFO : camp locker: plan for Yu Grimm locker_tiles=1 current_items=1 candidates=1 changed_slots=1 reservations=1 changes=[bag upgrade daypack<daypack> -> duffel bag<duffelbag>] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.516 INFO : camp locker: after Yu Grimm applied=true worker=[bag=[duffel bag<duffelbag>]] locker=[bag=[daypack<daypack>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.518 INFO : camp patrol: cache camp=faction_camp shift=night reason=no_patrol_zone
+03:08:42.527 INFO : camp patrol: cache camp=faction_camp shift=night reason=no_patrol_zone
+03:08:42.537 INFO : camp patrol: cache camp=faction_camp shift=night reason=no_patrol_zone
+03:08:42.549 INFO : camp locker: servicing Freddie Benjamin queue_size=1 now=0
+03:08:42.549 INFO : camp locker: before Freddie Benjamin worker=[bag=[backpack<backpack>]; ranged_weapon=[Glock carry pistol<glock_19>]] locker=[none] cleanup=[none] orphan=[none] ranged=[weapon=Glock carry pistol<glock_19> mags=0 take=2 reload=2 ready=yes] medical=[none]
+03:08:42.549 INFO : camp locker: plan for Freddie Benjamin locker_tiles=1 current_items=2 candidates=0 changed_slots=0 reservations=0 changes=[none] cleanup=[none] orphan=[none] ranged=[weapon=Glock carry pistol<glock_19> mags=0 take=2 reload=2 ready=yes] medical=[none]
+03:08:42.549 INFO : camp locker: after Freddie Benjamin applied=true worker=[bag=[backpack > <color_c_light_gray>Glock 9x19mm 15-round magazine</color><backpack>]; ranged_weapon=[Glock carry pistol<glock_19>]] locker=[none] cleanup=[dump=0 items=[none]; kept=[Glock 9x19mm 15-round magazine<glockmag>]] orphan=[none] ranged=[weapon=Glock carry pistol<glock_19> mags=1 take=1 reload=0 ready=no] medical=[none]
+03:08:42.549 INFO : camp locker: serviced Freddie Benjamin applied=true queue_remaining=0 next_turn=600
+03:08:42.549 INFO : camp locker: skip Freddie Benjamin reason=queue-empty queue_size=0 worker_in_queue=false assigned_here=true valid_workers=1 last_service=0 has_changes=true now=600 next_turn=600
+03:08:42.550 INFO : camp patrol: cache camp=faction_camp shift=night reason=no_patrol_zone
+03:08:42.558 INFO : camp locker: servicing Jorge Dailey queue_size=1 now=0
+03:08:42.558 INFO : camp locker: before Jorge Dailey worker=[bag=[daypack<daypack>]] locker=[none] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: plan for Jorge Dailey locker_tiles=1 current_items=1 candidates=0 changed_slots=0 reservations=0 changes=[none] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: after Jorge Dailey applied=false worker=[bag=[daypack<daypack>]] locker=[none] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: serviced Jorge Dailey applied=false queue_remaining=0 next_turn=120
+03:08:42.558 INFO : camp locker: queued Jorge Dailey state-dirty queue_size=1 next_turn=120 plan=[bag upgrade daypack<daypack> -> duffel bag<duffelbag>] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: skip Jorge Dailey reason=cooldown-until=120 queue_size=1 worker_in_queue=false assigned_here=true valid_workers=1 last_service=0 has_changes=true now=0 next_turn=120
+03:08:42.558 INFO : camp locker: servicing Jorge Dailey queue_size=1 now=120
+03:08:42.558 INFO : camp locker: before Jorge Dailey worker=[bag=[daypack<daypack>]] locker=[bag=[duffel bag<duffelbag>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: plan for Jorge Dailey locker_tiles=1 current_items=1 candidates=1 changed_slots=1 reservations=1 changes=[bag upgrade daypack<daypack> -> duffel bag<duffelbag>] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: after Jorge Dailey applied=true worker=[bag=[duffel bag<duffelbag>]] locker=[bag=[daypack<daypack>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.558 INFO : camp locker: serviced Jorge Dailey applied=true queue_remaining=0 next_turn=720
+03:08:42.560 INFO : camp patrol: cache camp=faction_camp shift=night reason=no_patrol_zone
+03:08:42.568 INFO : camp locker: queued Mike French wake_dirty=false queue_size=1 next_turn=0
+03:08:42.568 INFO : camp locker: servicing Mike French queue_size=1 now=0
+03:08:42.568 INFO : camp locker: before Mike French worker=[bag=[daypack<daypack>]] locker=[bag=[duffel bag<duffelbag>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.568 INFO : camp locker: plan for Mike French locker_tiles=1 current_items=1 candidates=1 changed_slots=1 reservations=1 changes=[bag upgrade daypack<daypack> -> duffel bag<duffelbag>] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.568 INFO : camp locker: after Mike French applied=true worker=[bag=[duffel bag<duffelbag>]] locker=[bag=[daypack<daypack>]] cleanup=[none] orphan=[none] ranged=[none] medical=[none]
+03:08:42.568 INFO : camp locker: serviced Mike French applied=true queue_remaining=0 next_turn=600===============================================================================
+All tests passed (66 assertions in 6 test cases)
+
+
+03:08:42.569 INFO : Finished in 12.7995 seconds
+03:08:42.569 INFO : Default randomness seeded to: 3388104476
+

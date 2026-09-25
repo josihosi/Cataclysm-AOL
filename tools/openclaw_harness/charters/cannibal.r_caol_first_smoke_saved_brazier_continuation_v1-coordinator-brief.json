@@ -1,0 +1,48 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "scenario": "cannibal.r_caol_first_smoke_saved_brazier_continuation_v1",
+  "objective": "Resume the already saved task-owned closed-room TestSetup00 and prove ordinary brazier fire produces smoke reaching the cannibal camp before any valid light, then observe native admission and response over a patient in-game window.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_saved_brazier_continuation_v1-witness.json",
+  "outcome": "A normal player-lit brazier fire in the closed room generates physical smoke that reaches the task-added cannibal camp and produces the native admission/materialization/dispatch/progression sequence before any valid light.",
+  "constraints": [
+    "Reuse the exact saved task-owned v2 profile/world; do not reinstall or replace its fixture/world.",
+    "Use the existing charged lighter and prepared brazier through advertised native semantic item-use and direction actions.",
+    "Verify actual fire before moving about two tiles away; never step onto the fire.",
+    "Keep windows and curtains closed and maintain the fire with existing supplies.",
+    "No smokebomb activation, authored/injected smoke, fire, light, signal, actor, dispatch or contact.",
+    "Observe over the next couple of in-game days with intermittent exact-time checks of the source, camp, actors and movement.",
+    "Keep player basecamp [131,143,0] distinct from controlled cannibal camp [135,137,0].",
+    "Save, quit and verify exact process cleanup at the end."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": [
+          "smoke-first",
+          "native_cannibal_admission",
+          "member_materialization",
+          "dispatch",
+          "progression"
+        ],
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.saved_world_continuation",
+        "op": "eq",
+        "value": "continue_existing_saved_v2_world_without_fixture_install_or_replacement",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

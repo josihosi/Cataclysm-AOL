@@ -1,0 +1,8 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-HARNESS-PERFORMANCE-closure-native-pending-wait-alarm-journey-001",
+  "outcome": "R-HARNESS-PERFORMANCE native pending wait alarm journey: one source-bound advancing action is submitted exactly once, real simulation turns are measured while pending, input/transport waits remain distinct, and the original operation completes with an honest performance assessment and cleanup.",
+  "scenario": "harness.cannibal_freeplay_mcw",
+  "query": {"requirements":[{"key":"capabilities.playtest.factory","op":"eq","value":"cannibal","minimum_evidence":"declared"}],"preferences":[]},
+  "charter": ".de67/task-logs/R-HARNESS-PERFORMANCE-native-pending-wait-alarm-charter.json"
+}

@@ -6,7 +6,23 @@ Translate the proof question into typed requirements, then query with:
 python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '<request>'
 ```
 
-The result shows five ranked matches by default (`--page-size` changes that presentation). Each
+Every launch loads the API credential and installs the standard harness controls, even when
+the scenario does not use them. On Mac, the launcher privately resolves a missing key from
+the user's login environment after checking the secure store; workers need no special shell.
+Use `/opt/homebrew/bin/python3` when Homebrew is absent from PATH. Never print the key or put it
+in arguments. Loading the credential does not enable API use in the game.
+
+A previous failed or stale run does not block another ordinary playtest of a valid, present
+scenario. Select it normally with the playtest brief and charter. Prior results remain visible
+in the route history; selecting the declared scenario does not turn those results into proof.
+Retired or missing scenarios and incompatible executables still need their actual setup fixed.
+
+The default reply is plain text: matching scenario names, the exact launch command, or the
+unmet requirements and build command. Use global `--json` before the subcommand when a script
+needs receipt fields or when diagnosing selection. It does not change selection or launch behavior.
+When scripting needs JSON, capture it to a file and print only the chosen command or relevant
+failure. Do not dump the whole receipt into the worker conversation for ordinary selection.
+The machine-readable result shows five ranked matches by default (`--page-size` changes that presentation). Each
 match gives its fit, evidence, lifecycle, and manifest binding. Follow `page.next` to browse the same
 saved result; paging does not rerun selection or issue another token. Rejection causes explain
 excluded candidates; their `details_argv` pages the exclusions. For a known scenario identity,
@@ -51,6 +67,12 @@ Launch revalidates source, executable, scenario, world, ownership, and runtime. 
 stale binding, fixture defects, or tool defects are agent-owned repair when the outcome remains in
 scope. The worker may change strategy, repair, obtain fresh authority, and rerun without another
 human request.
+
+The three `flesh_raptor.live_*_skirmisher_mcw` probes check native planner logs.
+Their executable must be built with `CPPFLAGS='-DDEBUG_INFO -DDEBUG_ENABLE_GAME'`
+using `build_source_bound_macos.py` and a separate build prefix. An ordinary release
+build suppresses those planner records even when combat works; keep the original
+audit checks and pass the diagnostic executable through the existing `--executable` option.
 
 ## Inspect registry and runtime continuity
 

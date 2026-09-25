@@ -1,0 +1,12 @@
+20:46:07.215 INFO : [i18n] Scanning mod translations from .userdata/caol-bulk-item-cost-exploration-001/mods/
+20:46:07.215 INFO : [i18n] Scanning core translations from lang/mo/
+20:46:07.419 INFO : USE_COLOR_MODULATED_TEXTURES is set to 0
+20:46:07.486 INFO : Setting language to: 'en'
+20:46:07.486 INFO : [i18n] Scanning mod translations from .userdata/caol-bulk-item-cost-exploration-001/mods/
+20:46:07.486 INFO : [i18n] Scanning core translations from lang/mo/
+20:46:07.536 INFO : src/mod_tracker.h:68: Tried check if 'vector_null' had a duplicate, but type 'attack_vector' does not track object sources
+20:46:09.607 WARNING : Dark Days Ahead pack load time:: 2049431us (avg: 2049431us) (count: 1)
+20:46:09.607 WARNING : Disable NPC Needs pack load time:: 105us (avg: 105us) (count: 1)
+20:46:09.607 WARNING : Portal Storms Ignore NPCs pack load time:: 404us (avg: 404us) (count: 1)
+20:46:15.142 INFO : Loaded tileset: ASCIITiles
+20:46:15.200 INFO : Loaded tileset: Larwick Overmap

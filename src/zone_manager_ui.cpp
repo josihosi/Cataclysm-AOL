@@ -841,6 +841,11 @@ void zone_manager_ui::display_zone_manager()
                 mgr.add( name, id, get_player_character().get_faction()->id, false, true,
                          position->first, position->second, options );
                 if( id == zone_type_CAMP_STORAGE ) {
+                    // Adding a zone may reallocate the manager's vector and
+                    // invalidate the cached reference_wrappers.  The Smart
+                    // Zone prompt redraws this adaptor before the normal loop
+                    // refresh below, so refresh before entering the prompt.
+                    zones = get_zones();
                     maybe_offer_basecamp_smart_zoning( position->first, position->second,
                                                        get_player_character().get_faction()->id );
                 }

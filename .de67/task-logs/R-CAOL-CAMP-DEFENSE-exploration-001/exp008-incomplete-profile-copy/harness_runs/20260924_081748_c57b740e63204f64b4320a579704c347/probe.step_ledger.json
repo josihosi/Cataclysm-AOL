@@ -1,0 +1,259 @@
+{
+  "mode": "probe",
+  "scenario": "r032.camp_defense_shakedown_v004_mcw",
+  "portal_storm_warning": {
+    "status": "not_observed",
+    "summary": "Portal storm not observed in saved weather metadata.",
+    "classification": "clear",
+    "allowed": false,
+    "required": false,
+    "observed": false,
+    "contaminates_result": false,
+    "observed_weather_ids": [
+      "fog",
+      "clear"
+    ],
+    "current_weather_id": "fog",
+    "audit_status": "scanned",
+    "current_audit": {
+      "world": "McWilliams",
+      "world_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save/McWilliams",
+      "dimension_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/save/McWilliams/dimension_data.gsav",
+      "dimension_mtime_ns": 1790237417271459449,
+      "dimension_mtime_iso": "2026-09-24T10:10:17.271459",
+      "version_line": "# version 39",
+      "required_weather_id": "",
+      "required_temperature_f": null,
+      "temperature_tolerance_f": 0.75,
+      "observed_weather_id": "fog",
+      "observed_temperature_f": 60.990875,
+      "observed_forced_temperature_f": null,
+      "observed_effective_temperature_f": 60.990875,
+      "observed_weather": {
+        "weather_id": "fog",
+        "next_weather": 5307319,
+        "temperature": 60.990875,
+        "forced_temperature": null,
+        "winddirection": 202,
+        "windspeed": 5,
+        "lightning": false
+      },
+      "missing_required_weather": [],
+      "status": "scanned"
+    },
+    "step_weather_audit_count": 1
+  },
+  "feature_debug_guard": {
+    "status": "green",
+    "verdict": "green_feature_phase_error_free",
+    "error_evidence_lines": [],
+    "expected_error_evidence_lines": [],
+    "unexpected_error_evidence_lines": [],
+    "expected_debug_log_messages": [],
+    "visible_error_popup": false,
+    "process_alive": false,
+    "expected_clean_terminal_exit": true,
+    "capture_observable": false,
+    "ocr_observable": false,
+    "black_capture_warning": false,
+    "require_screen_observability": false,
+    "debug_tail_classified": true,
+    "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/probe.feature_debug.log",
+    "debug_capture": {
+      "previous_size": 219150,
+      "current_size": 135335335,
+      "raw_current_size": 135335335,
+      "unclassified_trailing_bytes": 0,
+      "unclassified_trailing_text": "",
+      "tail_classification": "none",
+      "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/probe.feature_debug.log",
+      "error_evidence_lines": [],
+      "expected_identity": {
+        "device": 16777244,
+        "inode": 4633763
+      },
+      "current_identity": {
+        "device": 16777244,
+        "inode": 4633763
+      },
+      "identity_changed": false,
+      "truncated": false,
+      "stable_tail_attempts": 1,
+      "tail_classified": true
+    },
+    "screen_probe": {
+      "classification": "not_requested_native_semantic",
+      "native_run_id": "",
+      "visible_error_popup": false
+    },
+    "ledger_row": {
+      "index": "feature_debug_guard",
+      "label": "feature_debug_guard",
+      "kind": "debug_log_guard",
+      "primitive_step": "feature_phase_debug_log_guard",
+      "expected_visible_fact": "feature steps complete without an undeclared new ERROR/DEBUG log or visible error modal",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/probe.feature_debug.log",
+      "issues": [
+        "feature_phase_process_liveness_unproven"
+      ],
+      "verdict": "green_feature_phase_error_free"
+    },
+    "rule": "Any undeclared feature-phase ERROR/DEBUG line or visible error modal blocks feature proof.  A declared CDDA debugmsg record is retained as scenario-bound evidence.  Screen observability is mandatory unless this native-receipt-only scenario explicitly opts out; the guard never sends dismissal or input keys."
+  },
+  "step_ledger_summary": {
+    "status": "yellow_step_local_proof_incomplete",
+    "count": 3,
+    "green_count": 2,
+    "yellow_count": 1,
+    "red_or_blocked_count": 0,
+    "verdicts": [
+      "green_step_metadata_required_state_present",
+      "yellow_step_cockpit_local_proof_unbound",
+      "green_feature_phase_error_free"
+    ],
+    "non_green_steps": [
+      {
+        "label": "operate_r032_peaceful_shakedown_and_hostile_fight",
+        "verdict": "yellow_step_cockpit_local_proof_unbound",
+        "issues": [
+          "cockpit_target_not_explicitly_proved",
+          "cockpit_target_receipt_not_bound_to_run_and_step"
+        ]
+      }
+    ],
+    "review_rule": "Artifact matches are not feature proof unless every scenario step has green step-local proof."
+  },
+  "step_ledger": [
+    {
+      "index": 1,
+      "primitive_step": "bind_r032_camp_defense_world",
+      "kind": "native_semantic_bootstrap",
+      "preconditions": "previous scenario gate allowed this step; profile/world/fixture from probe contract",
+      "action": "native_semantic_bootstrap",
+      "expected_immediate_state": "step-local state must be observed before this can support feature proof",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/semantic.native.log",
+      "expected_visible_fact": "",
+      "screen_text_expectation": {},
+      "metadata_expectation": {
+        "required_terrain": [],
+        "required_fields": [],
+        "required_items": [],
+        "required_furniture": [],
+        "required_traps": [],
+        "required_radiation": [],
+        "required_monsters": [],
+        "required_npcs": [],
+        "required_new_npcs": [],
+        "required_observed_npc_count_delta": null,
+        "required_observed_npc_count": null,
+        "observed_npc_count": null,
+        "observed_npc_count_delta": null,
+        "missing_required_terrain": [],
+        "missing_required_fields": [],
+        "missing_required_items": [],
+        "missing_required_furniture": [],
+        "missing_required_traps": [],
+        "missing_required_radiation": [],
+        "missing_required_monsters": [],
+        "missing_required_npcs": [],
+        "missing_required_new_npcs": [],
+        "missing_required_npc_count_delta": false,
+        "missing_required_npc_count": false,
+        "missing_required_weather": [],
+        "required_weapon": "",
+        "observed_weapon": "",
+        "required_weapon_ammo_type": "",
+        "required_weapon_ammo_min": 0,
+        "observed_weapon_ammo_remaining": 0,
+        "missing_required_weapon": [],
+        "missing_required_weapon_ammo": [],
+        "required_weather_id": "",
+        "required_temperature_f": null,
+        "required_bandit_fields": {},
+        "required_min_delta_turns": null,
+        "observed_delta_turns": null,
+        "missing_required_min_delta_turns": false,
+        "active_member_scan_error": ""
+      },
+      "proof_deferred_to_label": "",
+      "failure_rule": "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green",
+      "next_step_gate": "next step may run mechanically, but feature closure requires this ledger row to be green",
+      "issues": [],
+      "verdict": "green_step_metadata_required_state_present",
+      "materiality_waivers": []
+    },
+    {
+      "index": 2,
+      "primitive_step": "operate_r032_peaceful_shakedown_and_hostile_fight",
+      "kind": "cockpit_live_session",
+      "preconditions": "previous scenario gate allowed this step; profile/world/fixture from probe contract",
+      "action": "cockpit_live_session",
+      "expected_immediate_state": "step-local state must be observed before this can support feature proof",
+      "evidence_artifact": "probe.report.json:steps[].metadata",
+      "expected_visible_fact": "",
+      "screen_text_expectation": {},
+      "metadata_expectation": {
+        "required_terrain": [],
+        "required_fields": [],
+        "required_items": [],
+        "required_furniture": [],
+        "required_traps": [],
+        "required_radiation": [],
+        "required_monsters": [],
+        "required_npcs": [],
+        "required_new_npcs": [],
+        "required_observed_npc_count_delta": null,
+        "required_observed_npc_count": null,
+        "observed_npc_count": null,
+        "observed_npc_count_delta": null,
+        "missing_required_terrain": [],
+        "missing_required_fields": [],
+        "missing_required_items": [],
+        "missing_required_furniture": [],
+        "missing_required_traps": [],
+        "missing_required_radiation": [],
+        "missing_required_monsters": [],
+        "missing_required_npcs": [],
+        "missing_required_new_npcs": [],
+        "missing_required_npc_count_delta": false,
+        "missing_required_npc_count": false,
+        "missing_required_weather": [],
+        "required_weapon": "",
+        "observed_weapon": "",
+        "required_weapon_ammo_type": "",
+        "required_weapon_ammo_min": 0,
+        "observed_weapon_ammo_remaining": 0,
+        "missing_required_weapon": [],
+        "missing_required_weapon_ammo": [],
+        "required_weather_id": "",
+        "required_temperature_f": null,
+        "required_bandit_fields": {},
+        "required_min_delta_turns": null,
+        "observed_delta_turns": null,
+        "missing_required_min_delta_turns": false,
+        "active_member_scan_error": ""
+      },
+      "proof_deferred_to_label": "",
+      "failure_rule": "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green",
+      "next_step_gate": "next step may run mechanically, but feature closure requires this ledger row to be green",
+      "issues": [
+        "cockpit_target_not_explicitly_proved",
+        "cockpit_target_receipt_not_bound_to_run_and_step"
+      ],
+      "verdict": "yellow_step_cockpit_local_proof_unbound",
+      "materiality_waivers": []
+    },
+    {
+      "index": "feature_debug_guard",
+      "label": "feature_debug_guard",
+      "kind": "debug_log_guard",
+      "primitive_step": "feature_phase_debug_log_guard",
+      "expected_visible_fact": "feature steps complete without an undeclared new ERROR/DEBUG log or visible error modal",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/probe.feature_debug.log",
+      "issues": [
+        "feature_phase_process_liveness_unproven"
+      ],
+      "verdict": "green_feature_phase_error_free"
+    }
+  ]
+}

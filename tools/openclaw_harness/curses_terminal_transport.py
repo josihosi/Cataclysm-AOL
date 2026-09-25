@@ -137,11 +137,12 @@ class CursesTerminalTransport:
         raise RuntimeError("terminal dispatcher did not create its run-bound endpoint")
 
 
-def dispatch_input(endpoint: Path, *, run_id: str, pid: int, keys: list[str]) -> dict:
+def dispatch_input(endpoint: Path, *, run_id: str, pid: int, keys: list[str], delay_ms: int = 0) -> dict:
     """Deliver one exact request to the detached terminal owner and await receipt."""
-    request = {"request_id": uuid.uuid4().hex, "run_id": run_id, "pid": pid, "keys": keys}
+    request = {"request_id": uuid.uuid4().hex, "run_id": run_id, "pid": pid, "keys": keys,
+               "delay_ms": max(0, int(delay_ms))}
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(2.0)
+        client.settimeout(2.0 + len(keys) * request["delay_ms"] / 1000)
         client.connect(str(endpoint))
         client.sendall((json.dumps(request, sort_keys=True) + "\n").encode())
         response = b""
@@ -158,7 +159,7 @@ def dispatch_input(endpoint: Path, *, run_id: str, pid: int, keys: list[str]) ->
 
 def _key_bytes(keys: list[str]) -> bytes:
     named = {"return": b"\r", "enter": b"\r", "tab": b"\t", "escape": b"\x1b", "space": b" ", "F1": b"\x1bOP",
-             "up": b"\x1b[A", "down": b"\x1b[B", "right": b"\x1b[C", "left": b"\x1b[D"}
+             "up": b"\x1bOA", "down": b"\x1bOB", "right": b"\x1bOC", "left": b"\x1bOD"}
     output = bytearray()
     for key in keys:
         if key in named:
@@ -204,7 +205,14 @@ def _broker(master_fd: int, transcript_path: Path, endpoint: Path, run_id: str, 
                         raise ValueError("run_or_pid_mismatch")
                     keys = [str(key) for key in request.get("keys", [])]
                     payload = _key_bytes(keys)
-                    os.write(master_fd, payload)
+                    delay = max(0, int(request.get("delay_ms", 0))) / 1000
+                    if delay and len(keys) > 1:
+                        for index, key in enumerate(keys):
+                            if index:
+                                time.sleep(delay)
+                            os.write(master_fd, _key_bytes([key]))
+                    else:
+                        os.write(master_fd, payload)
                     receipt = {"ok": True, "request_id": request["request_id"], "run_id": run_id,
                                "pid": pid, "keys": keys, "payload_sha256": hashlib.sha256(payload).hexdigest(),
                                "owner": "run_bound_pty"}

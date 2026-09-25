@@ -1,0 +1,13 @@
+World.
+moved
+avatar.absolute ms: 3897, 873, 0
+R032 Establishment Ally 1 · friendly · offset 1, 3
+oak tree: NW, E
+beech tree: N
+forest floor: NE
+fern: W
+underbrush: here
+blueberry bush: SW
+hickory tree: S
+willow tree: SE
+6:05:43 AM: Moving onto this underbrush is slow!

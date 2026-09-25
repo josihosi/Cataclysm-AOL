@@ -231,6 +231,53 @@ class R019ValidationStartupTest(unittest.TestCase):
         self.assertEqual(selected["frame_id"], "run-1:initial")
         self.assertEqual(selected["_event_offset"], len(prefix))
 
+    def test_initial_frame_selector_accepts_multiple_bounded_events_over_256kib(self) -> None:
+        eligible = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",
+            "valid_actions": ["world.wait"], "producer": "hud_world_ready",
+            "initial_world_ready": True, "native_frame_payload": "x" * 39_000,
+        }
+        descriptor = {
+            "event": "surface_descriptor", "run_id": "run-1", "frame_id": "run-1:surface",
+            "surface": {"label": "retained full descriptor", "payload": "x" * 203_000},
+        }
+        later = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:later", "state": "world",
+            "valid_actions": ["world.wait"], "producer": "", "initial_world_ready": False,
+            "native_frame_payload": "x" * 39_000,
+        }
+        prefix = b"openclaw_harness_semantic_step: "
+        events = [prefix + json.dumps(event, separators=(",", ":")).encode() + b"\n"
+                  for event in (eligible, descriptor, later)]
+        self.assertGreater(sum(map(len, events)), 256 * 1024)
+        self.assertTrue(all(len(event) < 256 * 1024 for event in events))
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "semantic.log"
+            trace.write_bytes(b"".join(events))
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                selected = first_initial_hud_world_frame_after_boundary(
+                    profile="test", trace_offset=0, run_id="run-1", required_state="world",
+                    required_actions=["world.wait"],
+                )
+        self.assertEqual(selected["frame_id"], "run-1:initial")
+        self.assertEqual(selected["_event_offset"], 0)
+
+    def test_initial_frame_selector_rejects_a_single_oversized_event(self) -> None:
+        eligible = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",
+            "valid_actions": ["world.wait"], "producer": "hud_world_ready",
+            "initial_world_ready": True, "padding": "x" * (256 * 1024),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "semantic.log"
+            trace.write_bytes(b"openclaw_harness_semantic_step: " + json.dumps(eligible).encode() + b"\n")
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                with self.assertRaisesRegex(ValueError, "event exceeds the semantic event limit"):
+                    first_initial_hud_world_frame_after_boundary(
+                        profile="test", trace_offset=0, run_id="run-1", required_state="world",
+                        required_actions=["world.wait"],
+                    )
+
     def test_initial_frame_selector_rebases_after_debug_log_truncation(self) -> None:
         eligible = {
             "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",

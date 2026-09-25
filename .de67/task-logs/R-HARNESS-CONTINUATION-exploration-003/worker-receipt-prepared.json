@@ -1,0 +1,80 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-CONTINUATION-exploration-003",
+  "claim_id": "R-HARNESS-CONTINUATION",
+  "worker_id": "01a0c23a-98af-74c2-a150-ac45547bbaad",
+  "disposition": "completed",
+  "verdict": "fresh_worker_verified_ended_session_and_retrieved_retained_scheduler_witness",
+  "outcome": "The fresh worker acknowledged the exact projection, verified the source-bound ended session and performed deliberate no-input continuation by retrieving witness J0094.",
+  "summary": "The selected source-bound session remained safe_to_cleanup under the supplied status binding. The prior first scheduler decision was drive_below_threshold at game minute 9301; no look or game input was issued.",
+  "material_changes": [
+    "No repository, source, scenario, binding, session or coordination state was modified."
+  ],
+  "tests": [
+    "Fresh worker acknowledgment and exact scenario/source/executable/run/binding/session/state verification passed.",
+    "Retained witness J0094 was retrieved and matched the projected ended_or_failed safe_to_cleanup route."
+  ],
+  "live_actions": [
+    "Spawned and received result from fresh worker Halley.",
+    "Verified ended session status and retrieved retained evidence only.",
+    "No look, game input, launch, replay, resubmission or source edit occurred."
+  ],
+  "evidence_ceiling": [
+    "Proves compact projection acknowledgment, exact binding verification, state-aware deliberate no-action and retained witness retrieval.",
+    "Does not add new gameplay, interruption, sound callback or autonomous-watch proof."
+  ],
+  "bindings": {
+    "binding_sha256": "d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3",
+    "executable_sha256": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+    "fresh_worker": "Halley/01a0c23b-c186-7260-b7eb-f0d9cd1daff8",
+    "prepared_context_revision": "bdfe16e65c628f6dbfb6ba56d252870c1462ea38bbcbec595df38eaddd08278a",
+    "projection_observed_at": "1789965061.0091672",
+    "provider_receipt": "257fafc70e632942cb8b8686cf9b48e769e3255d5adae2a64aaf8248e5007e59",
+    "run_id": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+    "scenario": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
+    "scheduler_witness": "J0094",
+    "session": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb",
+    "source_sha256": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+    "status_sha256": "7d6df48d6ae5d1f35bc709e662ffcfc0a29ca0d24008c0464f77c150ce87c1b1"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb/witness-journal-57c622f0c5c95e4a8996708ecbf18e20bc514d49364e14f9d4ce1c351ee62745.json",
+      "sha256": "91d99ff923b40d7e3d7692609139966a9f572d756177f678f9ca40f5b6cac6c0",
+      "role": "Retained witness journal containing J0094 first scheduler decision."
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7/semantic.native.events.jsonl",
+      "sha256": "ae87a38fe7e5c065f73e23ee0382248b5427642e814a9f37e7ab004ea2cd782e",
+      "role": "Retained native semantic event stream."
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260921_043417_02dabf7f3aed47659629190ac31b5dc7/r008.production.channels.jsonl",
+      "sha256": "7ce1e61437e6952f91bde93db27c63efa4af3de44221b46975643a3d8842f14b",
+      "role": "Retained production channel evidence."
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserved the ended session and retrieved evidence without look or game input.",
+    "Did not relaunch, replay, resubmit, or edit source."
+  ],
+  "active_work": [],
+  "first_open_boundary": "New native gameplay or autonomous sound-return proof remains outside this continuation adoption slice.",
+  "narrow_queries": [
+    "Inspect J0094 in the witness journal if exact scheduler chronology is needed.",
+    "Use retained semantic.native.events.jsonl and r008.production.channels.jsonl for corroboration only."
+  ],
+  "entrypoints": [
+    ".userdata/openclaw_harness/bridge-sessions/selected-15a8d93970d246d3aff880e08f1ab1eb",
+    "tools/openclaw_harness/work_context_provider.py",
+    ".agents/skills/caol-harness/references/live-operation.md"
+  ],
+  "context_metrics": {
+    "helpers_used": 1,
+    "look_or_game_input_count": 0,
+    "native_runs_launched": 0
+  }
+}

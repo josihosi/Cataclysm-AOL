@@ -1,0 +1,17 @@
+.......F............
+======================================================================
+FAIL: test_owner_correction_during_thread_load_rejects_before_claim_or_generation (test_worker_library.WorkerLibraryTests.test_owner_correction_during_thread_load_rejects_before_claim_or_generation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/tests/test_worker_library.py", line 407, in test_owner_correction_during_thread_load_rejects_before_claim_or_generation
+    self.assertEqual(status["state"], "rejected")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'submitted' != 'rejected'
+- submitted
++ rejected
+
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.835s
+
+FAILED (failures=1)

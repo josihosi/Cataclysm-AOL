@@ -1,0 +1,102 @@
+[
+  {
+    "path": "/Users/josefhorvath/Library/Application Support/DE67 Dashboard/de67_dashboard.py",
+    "retained_owner_and_helper_regression": "passed",
+    "live": {
+      "counts": {
+        "luna": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "sol": {
+          "low": 0,
+          "medium": 0,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "astra": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        }
+      },
+      "available": true,
+      "error": null
+    }
+  },
+  {
+    "path": "/Users/josefhorvath/.codex/skills/de67/integrations/dashboard/de67_dashboard.py",
+    "retained_owner_and_helper_regression": "passed",
+    "live": {
+      "counts": {
+        "luna": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "terra": {
+          "low": 0,
+          "medium": 0,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "astra": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "sol": {
+          "low": 0,
+          "medium": 0,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        }
+      },
+      "available": true,
+      "error": null
+    }
+  },
+  {
+    "path": "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/integrations/dashboard/de67_dashboard.py",
+    "retained_owner_and_helper_regression": "passed",
+    "live": {
+      "counts": {
+        "luna": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "sol": {
+          "low": 0,
+          "medium": 0,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        },
+        "astra": {
+          "low": 0,
+          "medium": 1,
+          "high": 0,
+          "xhigh": 0,
+          "max": 0
+        }
+      },
+      "available": true,
+      "error": null
+    }
+  }
+]

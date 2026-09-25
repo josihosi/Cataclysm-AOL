@@ -1,0 +1,67 @@
+{
+  "git_path": {
+    "args": [
+      "where",
+      "git"
+    ],
+    "returncode": 0,
+    "stdout": "C:\\Users\\josef\\dev\\msys64\\usr\\bin\\git.exe\nC:\\Program Files\\Git\\cmd\\git.exe\nC:\\Program Files\\Git\\bin\\git.exe\n",
+    "stderr": ""
+  },
+  "cat_type": {
+    "args": [
+      "git",
+      "-C",
+      "C:\\Users\\josef\\dev\\Cataclysm-AOL",
+      "cat-file",
+      "-t",
+      "224d7dc9779"
+    ],
+    "returncode": 0,
+    "stdout": "commit\n",
+    "stderr": ""
+  },
+  "cat_commit": {
+    "args": [
+      "git",
+      "-C",
+      "C:\\Users\\josef\\dev\\Cataclysm-AOL",
+      "cat-file",
+      "-e",
+      "224d7dc9779^{commit}"
+    ],
+    "returncode": 128,
+    "stdout": "",
+    "stderr": "fatal: Not a valid object name 224d7dc9779^commit\n"
+  },
+  "rev_commit": {
+    "args": [
+      "git",
+      "-C",
+      "C:\\Users\\josef\\dev\\Cataclysm-AOL",
+      "rev-parse",
+      "--verify",
+      "224d7dc9779^{commit}"
+    ],
+    "returncode": 128,
+    "stdout": "",
+    "stderr": "fatal: Needed a single revision\n"
+  },
+  "rev_full": {
+    "args": [
+      "git",
+      "-C",
+      "C:\\Users\\josef\\dev\\Cataclysm-AOL",
+      "rev-parse",
+      "HEAD"
+    ],
+    "returncode": 0,
+    "stdout": "224d7dc9779fe3e871a6ec13de918226338e6751\n",
+    "stderr": ""
+  },
+  "shutil_git": "C:\\Users\\josef\\dev\\msys64\\usr\\bin\\git.EXE",
+  "runtime_relevant_changes_since": [
+    [],
+    "fatal: Not a valid object name 224d7dc9779^commit"
+  ]
+}

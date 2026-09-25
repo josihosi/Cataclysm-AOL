@@ -1,0 +1,44 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "In this fresh source-bound R026 run, the native Say-a-sentence prompt accepted the utterance `Katharina, please keep an eye on the camp.`; the bound runner emitted a response, and the next native turn applied Katharina Leach's reply `You got it, Zoraida—I’ll watch the camp from here.` with the requested hold-position and equip-gun actions visible in the correlated runner record.",
+  "causal_account": "The sealed journal binds the source, executable, run and cockpit session. J0028 records the accepted native prompt submission, J0029 retains the resulting World observation with the utterance and reply in native messages, and J0030 records the accepted world.pause used to expose the asynchronous NPC response. Independent exact log queries match the same run to runner process 520999d79e9c4bd99bd6a88d1e51e6ff, request req_0, llm_request_started, and llm_response_emitted; the emitted response text is preserved in the runner artifact. This proves the speech request's observed application, not a broader NPC command matrix or durable follow-up behavior.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the conclusion to the selected scenario, current source/executable, run, and bridge binding.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0028",
+      "meaning": "The native free-text prompt submission was accepted at the advertised prompt owner.",
+      "checks": {
+        "action_id": "prompt.submit",
+        "native_receipt.accepted": true,
+        "observation_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:12"
+      }
+    },
+    {
+      "citation_id": "J0029",
+      "meaning": "The post-submission native World observation retains the chronological message surface used by the exact external message query.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0030",
+      "meaning": "The accepted world.pause exposed the asynchronous native reply without another user utterance.",
+      "checks": {
+        "action_id": "world.pause",
+        "native_receipt.accepted": true,
+        "observation_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:13"
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "No native fire case was attempted in this speech-focused run; no cause is inferred.",
+    "No separate NPC inspect/command-matrix case was needed after the exact speech reply; durable follow-up behavior is not claimed.",
+    "The retained payment and non-payment registry projection evidence remains at its prior completed exploration-001 scope; this run does not replay it.",
+    "Runner request IDs are process-local (`req_0`); correlation is established by the exact run_id and runner process_instance, not by the local request ID alone."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

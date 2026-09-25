@@ -53,6 +53,31 @@ with the recent ignition result message, establishes the observed burning setup.
 fixture history and input transport success cannot substitute for these facts. Retain the exact
 request and message time. Manufactured setup has zero ecology credit.
 
+## Ordinary fire for smoke and camp playtests
+
+When the owner has prepared a brazier, fuel and a firewood source zone, use them through ordinary
+gameplay. From an adjacent safe tile, open inventory, select the current charged lighter, choose
+its **Activate** item action, and at **Light where?** choose the brazier tile from the current
+direction controls. Row 03 of `build_logs/harness-fixes-matrix20/INDEX.md` and its transcript prove
+this native route: it returned World with `fd_fire` and `fd_hot_air1` on the chosen tile. Use fresh
+item and direction IDs in each run. A brazier alone, an accepted command, hot air elsewhere, or a
+preseeded fire does not prove this run ignited the brazier. After confirming actual fire, step
+about two tiles away without stepping onto the burning tile. Check that fuel and fire persist.
+
+The prepared smoke/light saves need no routine inventory or fuel collection. Do not open a bulk
+pickup on the plank or splintered-wood stack, and do not substitute a smokebomb. If ordinary
+lighter use fails, inspect that exact failure before changing setup. If the owner has already
+lit the fire in the live session, attribute that input to the owner, verify `fd_fire`, and continue
+the smoke/camp watch without trying to light it again.
+
+For the owner's closed-room smoke and open-room light comparisons, use the prepared separate save
+copies and ordinary fires. Keep the windows and curtains at their stated starting positions;
+avoid a smokebomb or injected signal as a substitute. When fuel is genuinely absent, use only an
+owner-authorized, recorded setup intervention; it earns no natural signal credit. The owner has
+specifically authorized at least 1,000 splintered wood units on the tile right of the brazier if
+that prepared fuel is missing. Read [behavior and movement](behavior-and-movement.md) for the
+long observation and quicksave decision loop.
+
 The reusable isolated scenario `r029.setup_information_diagnostic_mcw` and its matching brief/charter
 under `tools/openclaw_harness/charters/r029-setup-information-diagnostic*.json` exercise this route
 without ecology credit. It uses a separate profile and semantic startup, avoiding profile startup

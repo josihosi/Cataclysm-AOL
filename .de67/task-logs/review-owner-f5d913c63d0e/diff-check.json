@@ -1,0 +1,22 @@
+[
+  {
+    "file": "FS.md",
+    "exit_code": 1,
+    "output": ""
+  },
+  {
+    "file": "WEC.md",
+    "exit_code": 1,
+    "output": ""
+  },
+  {
+    "file": "work-ledger.md",
+    "exit_code": 1,
+    "output": ""
+  },
+  {
+    "file": "mutation-suggestions.md",
+    "exit_code": 1,
+    "output": ""
+  }
+]

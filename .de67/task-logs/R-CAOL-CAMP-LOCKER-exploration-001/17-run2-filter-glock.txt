@@ -1,0 +1,8 @@
+Pickup
+filter: Glock
+Selected: none
+Allowed actions replaced — use only these:
+Confirm highlighted item: Pick up selected items → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter → play act inventory.reset_filter
+Cancel → play act inventory.cancel

@@ -1,0 +1,32 @@
+{
+  "pid": 75561,
+  "command": [
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles",
+    "--userdir",
+    ".userdata/r032-camp-defense-shakedown-exp007-20260924/",
+    "--world",
+    "McWilliams"
+  ],
+  "process_generation": {
+    "schema": "caol-owned-process-generation-v1",
+    "pid": 75561,
+    "alive": true,
+    "birth_identity": "posix-lstart:Thu Sep 24 08:17:49 2026",
+    "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles --userdir .userdata/r032-camp-defense-shakedown-exp007-20260924/ --world McWilliams",
+    "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build/r032_camp_defense_receiptfix_20260924/cataclysm-tiles"
+  },
+  "harness_new_world": "",
+  "harness_raw_seed": "",
+  "harness_bandit_feasibility": false,
+  "transition_event_run_id": "2595fe07b1e4513ccfd4220090f0f4e8532cea51e24860755989375d15053aa2",
+  "transition_event_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r032-camp-defense-shakedown-exp007-20260924/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/transition.events.jsonl",
+  "wait_input_trace_run_id": "",
+  "scheduler_trace_eoc": "",
+  "wait_diagnostic": {
+    "status": "disabled"
+  },
+  "semantic_step_trace_start_offset": 25784,
+  "killed_previous_pids": [],
+  "certification_lease": null,
+  "surface_identity": null
+}

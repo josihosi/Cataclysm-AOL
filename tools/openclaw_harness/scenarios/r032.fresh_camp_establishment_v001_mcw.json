@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "r032.fresh_camp_establishment_v001_mcw",
-  "description": "R-032 fresh establishment route: a disposable current-source pre-camp world has one setup-only nearby unassigned follower, then the player follows only advertised native semantic dialogue and menu owners to establish a camp on the eligible site.  The independent run must retain the accepted conversation and camp-type receipts plus the resulting native camp identity; fixture setup and selector opening have no outcome credit.",
+  "description": "R-032 fresh establishment and assignment route: a disposable current-source pre-camp world has one setup-only nearby unassigned follower, then the player follows only advertised native semantic dialogue and menu owners to establish a camp on the eligible site, assign that same follower through the native camp-assignment UI at the camp OMT, and preserve the assignment through native save, quit, process replacement, and ordinary camp-work continuation.  Fixture setup and selector opening have no outcome credit.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "r032_fresh_camp_establishment_follower_v1",
@@ -15,7 +15,8 @@
     "runtime.entry_mode": "cockpit_live_session",
     "runtime.fixture": "r032_fresh_camp_establishment_follower_v1",
     "runtime.world": "McWilliams",
-    "capabilities.r032.establishment": "native_semantic_dialogue_and_menu_to_new_camp_identity"
+    "capabilities.r032.establishment": "native_semantic_dialogue_and_menu_to_new_camp_identity",
+    "capabilities.r032.native_assignment_continuity": "native_assignment_at_camp_omt_then_save_quit_reload"
   },
   "runtime_contract": {
     "permitted_input": [
@@ -61,7 +62,7 @@
       "ocr": false,
       "cleanup": true
     },
-    "grants_gameplay_proof": false
+    "grants_gameplay_proof": true
   },
   "source_binding": {
     "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_fresh_camp_establishment_follower_v1/manifest.json",
@@ -83,12 +84,13 @@
       "kind": "cockpit_live_session",
       "label": "establish_r032_camp",
       "cleanup_on_finish": true,
-      "objective": "Use only currently advertised native semantic actions to select the setup-only nearby follower, enter the native camp conversation, select an eligible offered camp type, and inspect the resulting camp identity and assigned actor state.",
+      "objective": "Use only currently advertised native semantic actions to select the setup-only nearby follower, establish a camp, position that follower at the resulting camp's actual lookup OMT, and use the native assignment UI.  Verify the identical character ID changes from unassigned to CAMP_RESIDENT with assigned_camp exactly matching the new camp; make at least one ordinary camp job priority usable before native save and quit.",
       "proof_targets": [
         "fixture-derived follower identity and no assigned camp, recorded as setup only",
         "accepted native World, dialogue, and menu receipts for the chosen establishment route",
-        "resulting authoritative camp identity, owner, site, and actor assignment",
-        "independent native postcondition observation after establishment",
+        "resulting authoritative camp identity, owner, and actual lookup OMT",
+        "same follower character ID before/after native assignment, CAMP_RESIDENT mission, matching assigned_camp, and usable job priorities",
+        "independent native postcondition observation after native assignment",
         "accepted cleanup"
       ],
       "authority": [
@@ -101,7 +103,8 @@
         "fixture installation and its added follower are setup only and receive zero establishment credit",
         "do not use physical controls, OCR, coordinates, source inference, direct NPC/camp/save mutation, or synthetic receipt injection",
         "camp selector availability or selection alone does not prove establishment",
-        "a passing establishment verdict requires a same-run authoritative resulting camp identity and the actual assigned actor",
+        "a passing assignment verdict requires a same-run authoritative resulting camp identity, its actual lookup OMT, and the same actual assigned actor",
+        "creation and assignment are distinct: do not infer assignment from camp creation, follower placement, or selector reachability",
         "leave missions, Food, Storage, Locker, and Patrol as separate R-032 verdicts",
         "stop the affected claim at missing native receipt, source-binding drift, stale owner, or cleanup failure while retaining independent evidence"
       ],
@@ -112,6 +115,49 @@
       "observe_interval_seconds": 0.1
     }
   ],
+  "post_relaunch": {
+    "terminal_save_step_label": "establish_r032_camp",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_r032_reloaded_camp_world",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r032_assigned_camp_continuity",
+        "cleanup_on_finish": true,
+        "objective": "After the native save, main-menu quit, and process replacement, use only currently advertised native semantic actions to inspect the same follower character ID.  Verify CAMP_RESIDENT and assigned_camp still match the saved camp's actual OMT, then reopen ordinary camp work and confirm the job-priority controls remain usable without reassigning or restaging the fixture.",
+        "proof_targets": [
+          "native save/quit boundary and process replacement",
+          "same follower character ID after reload",
+          "persisted CAMP_RESIDENT mission and assigned_camp matching the same camp OMT",
+          "ordinary post-reload camp-work/job-priority controls usable without a new assignment",
+          "accepted cleanup"
+        ],
+        "authority": [
+          "currently advertised native semantic actions",
+          "game.act",
+          "run.witness",
+          "run.finish"
+        ],
+        "invariants": [
+          "relaunch is lifecycle evidence, not assignment credit",
+          "do not restage the fixture or create/assign a replacement follower",
+          "do not mutate NPC, camp, or save state directly",
+          "missing identity, camp match, resident mission, priority usability, or native save/quit receipt leaves continuity unproved"
+        ],
+        "live_operations": ["game.act"],
+        "transition_timeout_seconds": 15.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
   "proof_route": {
     "precondition": [
       "bind_r032_pre_camp_world"
@@ -119,11 +165,9 @@
     "production_behavior": [
       "establish_r032_camp"
     ],
-    "terminal_persistence": [
-      "establish_r032_camp"
-    ],
+    "terminal_persistence": ["establish_r032_camp", "bind_r032_reloaded_camp_world", "verify_r032_assigned_camp_continuity"],
     "artifact_verdict": [
-      "establish_r032_camp"
+      "establish_r032_camp", "verify_r032_assigned_camp_continuity"
     ],
     "disallowed_shortcuts": [
       "bind_r032_pre_camp_world"

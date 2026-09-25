@@ -1,0 +1,104 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 6,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276452743,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:2",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:2",
+  "kind": "zone_manager",
+  "breadcrumbs": [
+    "World",
+    "Zone Manager"
+  ],
+  "payload": {
+    "enabled": "true",
+    "faction": "your_followers",
+    "faction_role": "display_filter; new zones belong to player faction",
+    "revision": "1",
+    "show_all": "false",
+    "zone_id": "zone-1",
+    "zones": "[{\"id\":\"zone-1\",\"name\":\"\",\"type\":\"ZONE_START_POINT\",\"faction\":\"your_followers\",\"start\":[3538,3775,0],\"end\":[3540,3785,0],\"enabled\":true,\"selected\":true},{\"id\":\"zone-fixture-54ed8d2c59a3faa6f14bc5b9\",\"name\":\"BulkCostUnsortedSource\",\"type\":\"LOOT_UNSORTED\",\"faction\":\"your_followers\",\"start\":[3539,3780,0],\"end\":[3539,3780,0],\"enabled\":true,\"selected\":false},{\"id\":\"zone-fixture-1136b948b83cf981ec799c32\",\"name\":\"BulkCostWoodDestination\",\"type\":\"LOOT_WOOD\",\"faction\":\"your_followers\",\"start\":[3539,3781,0],\"end\":[3539,3781,0],\"enabled\":true,\"selected\":false},{\"id\":\"zone-fixture-10921be294013bba66bde992\",\"name\":\"BulkCostToolsDestination\",\"type\":\"LOOT_TOOLS\",\"faction\":\"your_followers\",\"start\":[3540,3780,0],\"end\":[3540,3780,0],\"enabled\":true,\"selected\":false}]"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "zone.close",
+      "stable_id": "",
+      "label": "Close Zone Manager",
+      "enabled": true
+    },
+    {
+      "id": "zone.create",
+      "stable_id": "",
+      "label": "Create zone",
+      "enabled": true
+    },
+    {
+      "id": "zone.filter_faction",
+      "stable_id": "",
+      "label": "Show zones for faction",
+      "enabled": false
+    },
+    {
+      "id": "zone.show_all",
+      "stable_id": "",
+      "label": "Toggle distant zones",
+      "enabled": true
+    },
+    {
+      "id": "zone.select",
+      "stable_id": "zone-1",
+      "label": "",
+      "enabled": false
+    },
+    {
+      "id": "zone.select",
+      "stable_id": "zone-fixture-54ed8d2c59a3faa6f14bc5b9",
+      "label": "BulkCostUnsortedSource",
+      "enabled": true
+    },
+    {
+      "id": "zone.select",
+      "stable_id": "zone-fixture-1136b948b83cf981ec799c32",
+      "label": "BulkCostWoodDestination",
+      "enabled": true
+    },
+    {
+      "id": "zone.select",
+      "stable_id": "zone-fixture-10921be294013bba66bde992",
+      "label": "BulkCostToolsDestination",
+      "enabled": true
+    },
+    {
+      "id": "zone.enable",
+      "stable_id": "zone-1",
+      "label": "Enable zone",
+      "enabled": false
+    },
+    {
+      "id": "zone.disable",
+      "stable_id": "zone-1",
+      "label": "Disable zone",
+      "enabled": true
+    },
+    {
+      "id": "zone.edit",
+      "stable_id": "zone-1",
+      "label": "Edit zone",
+      "enabled": true
+    },
+    {
+      "id": "zone.delete",
+      "stable_id": "zone-1",
+      "label": "Delete zone",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

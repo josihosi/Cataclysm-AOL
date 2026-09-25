@@ -1,0 +1,316 @@
+{
+  "manifest_version": 1,
+  "profile": "smartzone-names-basecamp-disposable-20260924",
+  "world": "McWilliams",
+  "artifact_source": "debug.log",
+  "capabilities": {
+    "runtime.entry_mode": "startup_harness_probe",
+    "runtime.world": "McWilliams",
+    "capabilities.smart_zone.generated_labels": "Generated helper zone names are Smartzone-prefixed and survive native save/reload on a copied basecamp fixture"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "press",
+      "type",
+      "native:semantic_terminal_action_chain"
+    ],
+    "forbidden_input": [
+      "tiles-gui",
+      "screen-coordinate",
+      "direct-state-mutation",
+      "direct-save-edit"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "terminal_transport": "pty",
+    "helpers": [
+      "CursesTerminalTransport"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "smartzone-names-basecamp-disposable-20260924",
+    "fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "./smartzone-names-20260924-cataclysm",
+      "profile": "smartzone-names-basecamp-disposable-20260924",
+      "fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+      "helper": "CursesTerminalTransport",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "terminal-native keys",
+        "native semantic save and quit"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "name": "smart_zone.assignment_owned_basecamp_fixture_pty_generate_v4_20260924",
+  "description": "Generate Smart Zone Manager helpers from a copied McWilliams basecamp fixture with native fast-scroll rectangle selection, then save and native exit.",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "fresh_gameplay_before_zone_setup",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the assignment-owned disposable world is active before input"
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode_before_zone_setup",
+      "keys": [
+        "!"
+      ],
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "safe mode is disabled"
+    },
+    {
+      "kind": "press",
+      "label": "open_zones_manager",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "Zone Manager is open"
+    },
+    {
+      "kind": "press",
+      "label": "add_basecamp_storage_zone",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the zone type picker is open"
+    },
+    {
+      "kind": "press",
+      "label": "filter_zone_type_picker",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.3,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the type picker filter is active"
+    },
+    {
+      "kind": "type",
+      "label": "filter_for_basecamp_storage",
+      "text": "Basecamp: Storage",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 24,
+      "expected_visible_fact": "the picker is filtered to Basecamp: Storage"
+    },
+    {
+      "kind": "press",
+      "label": "select_basecamp_storage_type",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "Basecamp: Storage is selected"
+    },
+    {
+      "kind": "press",
+      "label": "accept_default_basecamp_storage_name",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the default Basecamp: Storage name is accepted and first-corner selection opens"
+    },
+    {
+      "kind": "press",
+      "label": "enable_fast_scroll_for_first_corner",
+      "keys": [
+        "f"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "native look-cursor fast scroll is enabled"
+    },
+    {
+      "kind": "press",
+      "label": "move_first_corner_to_basecamp_footing",
+      "keys": [
+        "right",
+        "down"
+      ],
+      "delay_ms": 300,
+      "settle_seconds": 0.6,
+      "capture_after": true,
+      "expected_visible_fact": "first point is moved approximately 50 tiles east and south toward the copied basecamp"
+    },
+    {
+      "kind": "wait",
+      "label": "observe_first_corner_before_confirmation",
+      "seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "first-corner picker remains open at the copied basecamp footing"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_first_basecamp_rectangle_corner",
+      "keys": [
+        "enter"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "first corner is accepted and the second-point selector opens"
+    },
+    {
+      "kind": "press",
+      "label": "move_second_corner_across_basecamp",
+      "keys": [
+        "right",
+        "down"
+      ],
+      "delay_ms": 300,
+      "settle_seconds": 0.6,
+      "capture_after": true,
+      "expected_visible_fact": "second corner encloses copied basecamp anchors and existing camp storage area"
+    },
+    {
+      "kind": "wait",
+      "label": "observe_second_corner_before_confirmation",
+      "seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "second-corner picker is open before confirmation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_second_basecamp_rectangle_corner",
+      "keys": [
+        "enter"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the basecamp inventory zone is accepted and the Smart Zone Manager prompt opens"
+    },
+    {
+      "kind": "press",
+      "label": "accept_smart_zone_prompt",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 1.2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the Smart Zone Manager prompt is accepted and its result is shown"
+    },
+    {
+      "kind": "wait",
+      "label": "observe_generated_zone_manager_result",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the Smart Zone result and helper rows settle in the manager"
+    },
+    {
+      "kind": "press",
+      "label": "close_generated_zone_manager",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the generated layout is closed and save confirmation is handled next"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_zone_manager_save",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "zone manager changes are saved"
+    },
+    {
+      "kind": "wait",
+      "label": "after_zone_manager_save",
+      "seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "gameplay returns after zone manager save"
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "native_save_and_exit_after_generation",
+      "objective": "Use the current native save and quit owner, confirm the save, then use native main-menu quit and its confirmation.",
+      "observation_timeout_seconds": 30,
+      "observation_interval_seconds": 0.2,
+      "required_action_chain": [
+        "world.save_quit",
+        "prompt.yes",
+        "main_menu.quit",
+        "prompt.yes"
+      ],
+      "expected_visible_fact": "the source-bound native process saved the generated layout and exited"
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[smart_zone]\"",
+  "proof_route": {
+    "precondition": [
+      "fresh_gameplay_before_zone_setup"
+    ],
+    "production_behavior": [
+      "confirm_second_basecamp_rectangle_corner",
+      "accept_smart_zone_prompt"
+    ],
+    "terminal_persistence": [
+      "native_save_and_exit_after_generation"
+    ],
+    "artifact_verdict": [
+      "observe_generated_zone_manager_result"
+    ],
+    "disallowed_shortcuts": [
+      "fresh_gameplay_before_zone_setup"
+    ]
+  },
+  "fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "profile_option_overrides": {
+    "FAST_SCROLL_OFFSET": "50",
+    "LLM_INTENT_ENABLE": "false"
+  }
+}

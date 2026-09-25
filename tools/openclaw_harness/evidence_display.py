@@ -1,12 +1,12 @@
-"""Byte-bounded CLI presentation backed by immutable, exactly recoverable JSON.
+"""Bounded machine diagnostics; ordinary player commands use plain text.
 
-This is a display boundary, never a retention or gameplay limit. Internal callers
-continue to receive complete objects. All CLI output uses this serializer.
+Small replies need no cache. Oversized explicit diagnostics remain recoverable.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import gzip
 import json
 import os
 from pathlib import Path
@@ -27,12 +27,12 @@ def retain(value, directory=STORE):
     raw = encoded(value)
     digest = hashlib.sha256(raw).hexdigest()
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / (digest + ".json")
-    if not path.exists():
+    path = directory / (digest + ".json.gz")
+    if not path.exists() and not (directory / (digest + ".json")).exists():
         fd, temporary = tempfile.mkstemp(dir=directory, prefix=".writing-")
         try:
             with os.fdopen(fd, "wb") as stream:
-                stream.write(raw)
+                stream.write(gzip.compress(raw, compresslevel=6, mtime=0))
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, path)
@@ -45,7 +45,9 @@ def retain(value, directory=STORE):
 def recover(digest, directory=STORE):
     if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
         raise ValueError("invalid_evidence_digest")
-    raw = (directory / (digest + ".json")).read_bytes()
+    compressed = directory / (digest + ".json.gz")
+    raw = (gzip.decompress(compressed.read_bytes()) if compressed.exists()
+           else (directory / (digest + ".json")).read_bytes())
     if hashlib.sha256(raw).hexdigest() != digest:
         raise ValueError("evidence_hash_mismatch")
     return json.loads(raw)
@@ -53,13 +55,19 @@ def recover(digest, directory=STORE):
 
 def bounded(value, budget=DEFAULT_BYTES, directory=STORE):
     """Preserve structure where it fits; every omission is an exact value handle."""
+    # Small machine replies already fit. They need no permanent display artifact.
+    if len(encoded(value)) + 1 <= budget:
+        return value
     original = retain(value, directory)
 
-    def project(item, allowance):
+    def project(item, allowance, path=()):
         raw = encoded(item)
         if len(raw) <= allowance:
             return item
-        ref = {"omitted": True, "evidence": retain(item, directory)}
+        # Every omitted piece points into the one retained response. Do not
+        # save the same large history again under each nested field's hash.
+        ref = {"omitted": True, "json_bytes": len(raw),
+               "evidence": {**original, "path": list(path)}}
         if isinstance(item, (dict, list)) and item:
             pairs = list(item.items()) if isinstance(item, dict) else list(enumerate(item))
             empty = {k: None for k, _ in pairs} if isinstance(item, dict) else [None] * len(item)
@@ -71,7 +79,7 @@ def bounded(value, budget=DEFAULT_BYTES, directory=STORE):
                 key = max(sizes, key=sizes.get)
                 size = sizes.pop(key)
                 deficit = len(encoded(candidate)) - allowance
-                candidate[key] = project(candidate[key], max(150, size - deficit - 16))
+                candidate[key] = project(candidate[key], max(150, size - deficit - 16), (*path, key))
             if len(encoded(candidate)) <= allowance:
                 return candidate
         return ref

@@ -134,12 +134,15 @@ class ArchiveTest(unittest.TestCase):
         wire = json.loads(final_path.with_suffix(".ref.json").read_text())
         recovered = resolve_wire(wire, directory=self.directory, binding_id="binding-a", exported_path=final_path)
         self.addCleanup(recovered["action_observation_sequence"].archive.close)
-        self.assertEqual(json.loads(final_path.read_text(encoding="utf-8")), json.loads("".join(json_chunks(recovered))))
+        self.assertEqual(list(recovered["action_observation_sequence"]), list(report["action_observation_sequence"]))
+        self.assertIn("caol-archive-sequence-ref-v1", final_path.read_text(encoding="utf-8"))
         scenario = {"steps": [{"cockpit_live_session": {"final": recovered}}]}
         output = self.directory / "probe.report.json"
         startup_harness.write_json(output, scenario)
         startup_harness.write_json(output, scenario)  # Existing mutable report writer may overwrite.
-        self.assertEqual(json.loads(output.read_text()), json.loads("".join(json_chunks(scenario))))
+        from cockpit_report_reference import load_report
+        _, _, loaded = load_report(output)
+        self.assertEqual(json.loads("".join(json_chunks(loaded))), json.loads("".join(json_chunks(scenario))))
 
     def test_live_eof_records_disconnect_without_finalizing_or_materializing(self):
         service = self.service()
@@ -191,7 +194,7 @@ class ArchiveTest(unittest.TestCase):
         self.assertEqual(len(restored), 5000)
         self.assertEqual(restored[4999]["frame_id"], "frame:4999")
 
-    def test_terminal_export_streams_indexed_sidecar_without_full_sequence_decode(self):
+    def test_terminal_export_streams_records_without_duplicate_sidecars(self):
         """A terminal export must scale with one record, not its full history."""
         sequence = self.archive.sequence()
         payload = "terminal-native-observation" * 4096
@@ -213,6 +216,8 @@ class ArchiveTest(unittest.TestCase):
         # decode that sequence merely to export or calculate its reference.
         self.assertGreater(output.stat().st_size, 8_000_000)
         self.assertLess(peak, 2_000_000)
+        self.assertEqual(list(self.directory.glob("*.canonical.jsonl")), [])
+        self.assertEqual(list(self.directory.glob("*.export.jsonl")), [])
 
     def test_consumed_observation_releases_duplicate_authority_payload(self):
         records = ArchiveMap(self.archive, "observations")

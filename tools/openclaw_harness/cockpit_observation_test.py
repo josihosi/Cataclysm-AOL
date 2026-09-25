@@ -76,6 +76,141 @@ def observed_activity_interruption_frame(marker: int) -> dict[str, object]:
 
 
 class CockpitObservationTest(unittest.TestCase):
+    def test_macro_stationary_door_uses_nested_surface_identity(self) -> None:
+        initial = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "door-test",
+            "surface_id": "world-1", "frame_id": "frame-1", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {"avatar": json.dumps({"absolute_ms": [1, 1, 0]})},
+            "valid_actions": [{"id": "world.move.east", "stable_id": "", "label": "East", "enabled": True}],
+        }
+        successor = {**initial, "surface_id": "world-2", "frame_id": "frame-2"}
+        current = [initial]
+        calls = []
+        def dispatch(frame, action_id):
+            calls.append(action_id)
+            current[0] = successor
+            return {"accepted": True, "next_frame": successor, "native_receipt": {
+                "run_id": "door-test", "frame_id": "transient-move", "action_id": action_id,
+                "accepted": False, "outcome": "no_progress", "coordinate_space": "absolute_ms",
+                "before_absolute_ms": [1, 1, 0], "expected_absolute_ms": [2, 1, 0],
+                "after_absolute_ms": [1, 1, 0], "after_terrain": "t_floor",
+                "surface_receipt": {"run_id": "door-test", "requested_run_id": "door-test",
+                    "requested_frame_id": "frame-1", "requested_surface_id": "world-1",
+                    "consuming_frame_id": "frame-1", "consuming_surface_id": "world-1",
+                    "action_id": action_id, "accepted": True}}}
+        channel = cockpit.CockpitRunChannel(lambda: current[0], dispatch)
+        result = channel.raw_move_relative({"enabled": True, "offset_ms": [2, 0],
+            "bound": {"basis": "path_progress", "source": "two east", "unit": "steps", "maximum": 2}})
+        self.assertEqual(result["error"], "raw_move_relative_no_progress", result)
+        self.assertEqual(result["result"]["terminal_absolute_ms"], [1, 1, 0])
+        self.assertEqual(result["result"]["partial_progress"], 0)
+        self.assertEqual(calls, ["world.move.east"])
+
+    def test_consumed_movement_without_displacement_returns_fresh_world(self) -> None:
+        for outcome in ("no_progress", "blocked"):
+            with self.subTest(outcome=outcome):
+                initial = {
+                    "event": "surface_descriptor", "schema_version": 1, "run_id": "door-test",
+                    "surface_id": "world-1", "frame_id": "frame-1", "kind": "world",
+                    "breadcrumbs": ["World"], "payload": {},
+                    "valid_actions": [{"id": "world.move.east", "stable_id": "", "label": "East", "enabled": True}],
+                }
+                successor = {**initial, "surface_id": "world-2", "frame_id": "frame-2",
+                             "payload": {"terrain": "open door"}}
+                current = [initial]
+                calls = []
+                def dispatch(frame, action_id):
+                    calls.append(action_id)
+                    current[0] = successor
+                    surface = {"run_id": "door-test", "requested_run_id": "door-test",
+                               "requested_frame_id": "frame-1", "requested_surface_id": "world-1",
+                               "consuming_frame_id": "frame-1", "consuming_surface_id": "world-1",
+                               "action_id": action_id, "accepted": True}
+                    return {"accepted": True, "next_frame": successor, "native_receipt": {
+                        **surface, "accepted": False, "frame_id": "transient-move",
+                        "coordinate_space": "absolute_ms", "outcome": outcome,
+                        "before_absolute_ms": [1, 1, 0], "after_absolute_ms": [1, 1, 0],
+                        "surface_receipt": surface}}
+                channel = cockpit.CockpitRunChannel(lambda: current[0], dispatch)
+                observed = channel.observe()
+                result = channel.act(observation_id=observed["observation_id"], action_id="world.move.east")
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(calls, ["world.move.east"])
+                self.assertEqual(result["observation"]["frame_id"], "frame-2")
+                self.assertFalse(result["receipt"]["native_receipt"]["accepted"])
+                self.assertEqual(result["receipt"]["native_receipt"]["outcome"], outcome)
+
+    def test_message_close_refreshes_only_confirmed_same_menu_rejection(self) -> None:
+        for case in ("redraw", "different_owner", "disabled", "wrong_receipt", "uncertain", "accepted"):
+            with self.subTest(case=case):
+                initial = {
+                    "event": "surface_descriptor", "schema_version": 1, "run_id": "menu-test",
+                    "surface_id": "messages", "frame_id": "messages-1", "kind": "message_log",
+                    "breadcrumbs": ["Message log"], "payload": {"matching_lines": "0"},
+                    "valid_actions": [{"id": "message_log.close", "stable_id": "", "label": "Close", "enabled": True}],
+                }
+                populated = {**initial, "frame_id": "messages-2", "payload": {"matching_lines": "232"}}
+                if case == "different_owner":
+                    populated["surface_id"] = "other-messages"
+                if case == "disabled":
+                    populated["valid_actions"] = [{**initial["valid_actions"][0], "enabled": False}]
+                world = {**initial, "surface_id": "world", "frame_id": "world-3",
+                         "kind": "world", "valid_actions": [], "payload": {}}
+                current = [initial]
+                dispatched = []
+
+                def dispatch(frame, action_id):
+                    dispatched.append(frame["frame_id"])
+                    accepted = len(dispatched) == 2 or case == "accepted"
+                    current[0] = world if accepted else populated
+                    receipt = {
+                        "run_id": "menu-test", "requested_run_id": "menu-test",
+                        "requested_frame_id": frame["frame_id"],
+                        "requested_surface_id": frame["surface_id"],
+                        "consuming_surface_id": frame["surface_id"],
+                        "action_id": action_id, "accepted": accepted,
+                        "rejection_reason": "" if accepted else "stale_frame",
+                    }
+                    if case == "wrong_receipt":
+                        receipt["requested_frame_id"] = "unrelated"
+                    return {"native_receipt": None if case == "uncertain" else receipt,
+                            "next_frame": world if accepted else None}
+
+                channel = cockpit.CockpitRunChannel(lambda: current[0], dispatch)
+                observed = channel.observe()
+                result = channel.act(observation_id=observed["observation_id"], action_id="message_log.close")
+                self.assertEqual(result["ok"], case in {"redraw", "accepted"}, result)
+                self.assertEqual(dispatched, ["messages-1", "messages-2"] if case == "redraw" else ["messages-1"])
+
+    def test_action_displays_populated_menu_after_its_initial_successor(self) -> None:
+        before = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "menu-test",
+            "surface_id": "world", "frame_id": "world-1", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "_event_offset": 10,
+            "valid_actions": [{"id": "world.messages", "stable_id": "", "label": "Messages", "enabled": True}],
+        }
+        initial = {
+            **before, "surface_id": "messages", "frame_id": "messages-1", "kind": "message_log",
+            "breadcrumbs": ["Message log"], "payload": {"matching_lines": "0"}, "_event_offset": 20,
+            "valid_actions": [{"id": "message_log.close", "stable_id": "", "label": "Close", "enabled": True}],
+        }
+        populated = {**initial, "frame_id": "messages-2", "payload": {"matching_lines": "246"}, "_event_offset": 30}
+        current = [before]
+
+        def dispatch(frame, action_id):
+            current[0] = populated
+            return {"native_receipt": {
+                "requested_frame_id": frame["frame_id"], "requested_surface_id": frame["surface_id"],
+                "consuming_surface_id": frame["surface_id"], "action_id": action_id, "accepted": True,
+            }, "next_frame": initial}
+
+        channel = cockpit.CockpitRunChannel(lambda: current[0], dispatch)
+        observed = channel.observe()
+        result = channel.act(observation_id=observed["observation_id"], action_id="world.messages")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["observation"]["observation_id"], "messages-2")
+        self.assertEqual(result["observation"]["surface"]["facts"]["matching_lines"], "246")
+
     def test_native_top_descriptor_replaces_world_view_for_every_surface_family(self) -> None:
         descriptors = [
             ("world", "World"), ("overmap", "Overmap"), ("inventory", "Inventory"),
@@ -154,7 +289,7 @@ class CockpitObservationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported native surface advertised an action"):
             cockpit.CockpitRunChannel(lambda: frame).observe()
 
-    def test_descriptor_action_does_not_reread_same_cycle_legacy_frame(self) -> None:
+    def test_descriptor_action_does_not_replace_successor_with_legacy_frame(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
             "surface_id": "surface-world", "frame_id": "surface-proof:1", "kind": "world",
@@ -165,7 +300,7 @@ class CockpitObservationTest(unittest.TestCase):
         successor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
             "surface_id": "surface-inventory", "frame_id": "surface-proof:2", "kind": "inventory",
-            "breadcrumbs": ["World", "Inventory"], "payload": {"owner": "inventory"},
+            "breadcrumbs": ["World", "Inventory"], "payload": {"owner": "inventory"}, "_event_offset": 20,
             "valid_actions": [],
         }
         reads = 0
@@ -174,7 +309,9 @@ class CockpitObservationTest(unittest.TestCase):
         def read_frame() -> dict[str, object]:
             nonlocal reads
             reads += 1
-            return descriptor
+            return descriptor if reads == 1 else {
+                **native_frame(3), "run_id": "surface-proof", "_event_offset": 30,
+            }
 
         def dispatch(frame: dict[str, object], action_id: str) -> dict[str, object]:
             dispatches.append({"frame_id": frame["frame_id"], "action_id": action_id})
@@ -195,7 +332,7 @@ class CockpitObservationTest(unittest.TestCase):
         self.assertTrue(acted["ok"])
         self.assertEqual(dispatches, [{"frame_id": "surface-proof:1", "action_id": "world.inventory"}])
         self.assertEqual(acted["observation"]["frame_id"], "surface-proof:2")
-        self.assertEqual(reads, 1)
+        self.assertEqual(reads, 2)
 
     def test_activity_continuation_rejects_parent_when_nested_prompt_is_consuming(self) -> None:
         parent = {

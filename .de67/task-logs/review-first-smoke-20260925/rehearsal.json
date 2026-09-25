@@ -1,0 +1,51 @@
+{
+  "diagnosis": {
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-FIRST-SMOKE",
+    "generation": 1,
+    "source_task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+    "recorded_at": 1790294794.684639,
+    "short_verdict": "Smoke fire proved; incomplete light/continuation proof, log flood and setup detours; native returned-turn routing gap held review.",
+    "long_detail": ".de67/task-logs/review-first-smoke-20260925/report.md; exact checkpoints, native return at physical line9729, quiescence counterexample and rendered successor briefs retained. No new acceptance. Ordinary ladder route and saved minute7994 continuation retained; Astra log repair first for closed-run replay. Existing roster/reminder fix reused; native return method candidate commissioned for Sol.",
+    "reviewed_at": 1790320203.048157,
+    "restart_generation": null,
+    "recorded": true,
+    "pending_components": [
+      "micro",
+      "macro"
+    ]
+  },
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-FIRST-SMOKE",
+    "deadline_generation": 1,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-FIRST-SMOKE",
+    "deadline_generation": 1,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 86,
+      "pending": true,
+      "requested_at": 1790320203.0502532,
+      "reason": "deadline mutation resolved for R-CAOL-FIRST-SMOKE; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  }
+}

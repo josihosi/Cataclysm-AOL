@@ -1,0 +1,22 @@
+[
+  {
+    "path": ".de67/state/worker-dispatch/task_522d43414f4c2d5349474e414c2d50524f4f462d6578706c6f726174696f6e2d303033-b3298c19ea913d318cf98f46020fe2ceb87aaffa971671858f223c29a4021e0f.md",
+    "sha256": "b3298c19ea913d318cf98f46020fe2ceb87aaffa971671858f223c29a4021e0f"
+  },
+  {
+    "path": "tests/bandit_live_world_test.cpp",
+    "sha256": "137194037f4d861926aa53508266d9ebc9d0c7e60863ebacdbb46800647d7827"
+  },
+  {
+    "path": "Makefile",
+    "sha256": "d7feaaebcf24f8cdd0d043594f115f639a56fc8c88ced8f84a0d6358d5d3a31b"
+  },
+  {
+    "path": "tests/Makefile",
+    "sha256": "055f1c65e26cfc43dd8ab1f66183925aa03a86438a1296895c1fdd99bfcafff9"
+  },
+  {
+    "path": ".de67/mutation-suggestions.md",
+    "sha256": "186e56fe091b3c657bddd0c2ea7e208d84a196b5d11dac6069b9b561b616f218"
+  }
+]

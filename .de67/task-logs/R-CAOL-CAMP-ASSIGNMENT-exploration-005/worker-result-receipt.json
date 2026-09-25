@@ -1,0 +1,91 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-CAMP-ASSIGNMENT-exploration-005",
+  "claim_id": "R-CAOL-CAMP-ASSIGNMENT",
+  "worker_id": "01a0d091-6cdf-77e0-a12b-16b8c3472155",
+  "disposition": "completed",
+  "verdict": "fresh_native_camp_assignment_reload_and_work_proved",
+  "outcome": "A fresh R032 camp was created in the game, follower character:25 was assigned through the native UI, and the same assignment and ordinary work controls persisted after save, quit and reload.",
+  "summary": "The isolated R032 run created R032 Assignment Camp at OMT [162,36,0], assigned R032 Establishment Ally 1 through the game UI, saved and quit, reentered the saved world, reopened the camp controls, retained sorting out the loot at priority 1, and completed the follower's organizing-loot work. The first game generation exited natively with code 0. The second generation exited through scenario finish after its journal sealed, so its exit has no second native quit credit. All R032 game and bridge processes exited; the unrelated old R-029 PID 90668 remains live under coordinator cleanup ownership.",
+  "material_changes": [
+    "Created and saved an isolated R032 McWilliams world under .userdata/r032-camp-assignment-exp004-20260924 without replacing .userdata/dev-harness/McWilliams.",
+    "No product code changed in this task. The task-004 charter alignment and prior preparation remain at their original scope."
+  ],
+  "tests": [
+    "Native camp creation, follower assignment, first-generation save/quit and code-0 exit observed in the immutable journal.",
+    "Declared scenario reentry independently showed character:25 CAMP_RESIDENT assigned to [162,36,0], a one-worker camp board, persisted sorting priority 1 and completed ordinary loot-sorting work.",
+    "Fresh ps check confirmed R032 game PIDs 23949 and 26144, reentry child 26111 and bridge 23913 absent after finish."
+  ],
+  "live_actions": [
+    "Generation 0: PID 23949 born Thu Sep 24 02:23:45 2026, native world.save_quit, main_menu.quit and code-0 OS exit.",
+    "Generation 1: PID 26144 born Thu Sep 24 02:38:47 2026, reentered saved world, performed post-reload camp observations and ordinary follower work, then exited code 0 through scenario finish after journal sealing; native_exit_credit false for this generation.",
+    "Bridge PID 23913 and child 26111 exited. Exclusive Mac GUI input was handed back to the coordinator and then to the launcher worker. Old PID 90668 born Wed Sep 23 21:32:37 2026 was not operated."
+  ],
+  "evidence_ceiling": [
+    "The evidence proves this one fresh isolated camp assignment and one save/reload continuation, not every camp site or follower recipe.",
+    "Post-journal world.save_quit was rejected before native input; generation 1 cleanup is verified OS exit, not a second native save/quit.",
+    "Peekaboo see timed out after journal sealing despite healthy bridge and granted permissions; no Peekaboo click or typing was used, and the canonical journal carries the gameplay proof.",
+    "Old R-029 PID 90668 remains a separate retained cleanup blocker and is not part of R032 gameplay proof."
+  ],
+  "bindings": {
+    "scenario": "r032.fresh_camp_establishment_v001_mcw",
+    "run_id": "2ec05b7a1796a3662f85a72e2a9db5288a6339798e851010b52219cc6181397c",
+    "binding_id": "17eac42d6d58770172f15d759da13bd9fca1763cc859b480ee8caea00d79768d",
+    "isolated_profile": "r032-camp-assignment-exp004-20260924",
+    "first_pid": "23949 born Thu Sep 24 02:23:45 2026",
+    "reentry_pid": "26144 born Thu Sep 24 02:38:47 2026",
+    "executable_sha256": "d9afc5f7c7cd82899369320c6763bba880dc2139cf27e1d0945ca5d095c19921",
+    "source_identity": "ab355505feef8a44ca232504ab1bb3db131bfa6d565ee6e8d6e36eb8ede685eb",
+    "worker_assignment_id": "3b90059c713a4af6a86dca5afa04d1ad",
+    "worker_result": ".de67/state/worker-library/results/3b90059c713a4af6a86dca5afa04d1ad/296306a232954a7c67fa7b8a0734c9fba5fc232d1fe9d663b4f580a34a27fd15.md"
+  },
+  "journal_entries": [
+    {"id": "J0008", "sequence": "8", "event_type": "observation", "evidence_class": "native", "summary": "First generation identified unassigned follower character:25."},
+    {"id": "J0026", "sequence": "26", "event_type": "observation", "evidence_class": "native", "summary": "First generation observed new camp at OMT [162,36,0]."},
+    {"id": "J0039", "sequence": "39", "event_type": "observation", "evidence_class": "native", "summary": "First generation opened the camp assignment UI with one worker."},
+    {"id": "J0053", "sequence": "53", "event_type": "observation", "evidence_class": "native", "summary": "First generation identified character:25 as CAMP_RESIDENT assigned to the camp OMT."},
+    {"id": "J0075", "sequence": "75", "event_type": "action", "evidence_class": "native", "summary": "First generation accepted world.save_quit."},
+    {"id": "J0080", "sequence": "80", "event_type": "observation", "evidence_class": "native", "summary": "First game process PID 23949 exited code 0 after native quit."},
+    {"id": "J0016", "sequence": "16", "event_type": "observation", "evidence_class": "native", "summary": "Reentry reopened the saved camp mission selector."},
+    {"id": "J0021", "sequence": "21", "event_type": "observation", "evidence_class": "native", "summary": "Reentry showed sorting out the loot priority still 1."},
+    {"id": "J0038", "sequence": "38", "event_type": "observation", "evidence_class": "native", "summary": "Reentry game messages confirmed the follower completed loot sorting."},
+    {"id": "J0040", "sequence": "40", "event_type": "observation", "evidence_class": "native", "summary": "Reentry identified character:25 still CAMP_RESIDENT assigned to [162,36,0]."}
+  ],
+  "artifacts": [
+    {"path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/pre-reload-witness.json", "sha256": "2d210df74351167848c70263fc6690874b8bb4f60baa310fc8e724b987d251fe", "role": "First-generation native camp assignment and save/quit witness."},
+    {"path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/final-witness.json", "sha256": "72b8c7ba64709dfc10286f012784ab87f9d661fb1b25d777ef6549806a7fabf0", "role": "Post-reload assignment and ordinary-work witness."},
+    {"path": ".de67/task-logs/R-CAOL-CAMP-ASSIGNMENT-exploration-005/65-postreload-work-observation.txt", "sha256": "05b346d6049634bc96108ce0e4e6847972d97b8c4b8a032dc86b226ea3bdd930", "role": "Readable post-reload controls, completed work and rejected sealed-journal action."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-5418a89198024e97a2e2c128cace4828/cockpit-evidence.sqlite", "sha256": "05ad48441a22c60a5bbcbdd6aeae2a0b74e106523b611f4f8f8adf87b7f7e37e", "role": "Immutable original source journal for both game generations."},
+    {"path": ".userdata/r032-camp-assignment-exp004-20260924/harness_runs/20260924_023846_d256cdc4803343c7845f7b580ce5c8cf/probe.report.json", "sha256": "b069f9168be18773cec7374df59505407848b4f330463b2cb9465c5d26b323cf", "role": "Reentry run report and generation-1 cleanup ceiling."},
+    {"path": ".de67/state/worker-library/results/3b90059c713a4af6a86dca5afa04d1ad/296306a232954a7c67fa7b8a0734c9fba5fc232d1fe9d663b4f580a34a27fd15.md", "sha256": "4724cd02b0335b4444a6af18efa17f68a7a8eb66bd00dad9c024277f5aea0cc3", "role": "Worker result with gameplay and cleanup limitations."}
+  ],
+  "first_divergence": {
+    "class": "post_journal_native_quit_unavailable",
+    "summary": "The reentry journal sealed after successful gameplay evidence, so an additional world.save_quit could not be sent; scenario finish still confirmed exact process exit without native quit credit."
+  },
+  "accepted_no_replay": [
+    "Do not replay first-generation camp creation or assignment: the original journal and native saved world prove them.",
+    "Do not replay post-reload follower work: the reentry journal and final witness prove it.",
+    "Preserve the old R-029 PID 90668 cleanup scope separately."
+  ],
+  "active_work": [
+    "Mac GUI input was released to the coordinator and transferred to launcher_gemma_owner for the live Mac clean-install task.",
+    "No R032 game, reentry child or bridge process remains live."
+  ],
+  "first_open_boundary": "Coordinator must decide claim-level acceptance from this complete assigned outcome; the unrelated retained R-029 process cleanup remains a separate exact blocker.",
+  "narrow_queries": [
+    "Inspect the original journal entries J0075/J0080 and reentry J0016/J0021/J0038/J0040 in cockpit-evidence.sqlite if the native sequence is disputed.",
+    "Inspect probe.report.json cleanup.native_exit_credit to retain the generation-1 exit limit.",
+    "Confirm the old PID 90668 separately before any cleanup route."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/charters/r032-fresh-camp-establishment-rev1.json",
+    "tools/openclaw_harness/scenarios/r032.fresh_camp_establishment_v001_mcw.json"
+  ],
+  "context_metrics": {
+    "native_game_generations": 2,
+    "native_first_generation_save_quit": 1,
+    "post_reload_completed_work_orders": 1
+  }
+}

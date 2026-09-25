@@ -1,0 +1,17 @@
+MENU
+Elapsed: 0.0 game minutes.
+Allowed actions replaced — use only these:
+wait.20s → play act wait.20s
+wait.1m → play act wait.1m
+wait.5m → play act wait.5m
+wait.30m → play act wait.30m
+wait.1h → play act wait.1h
+wait.2h → play act wait.2h
+wait.3h → play act wait.3h
+wait.6h → play act wait.6h
+wait.daylight → play act wait.daylight
+wait.noon → play act wait.noon
+wait.night → play act wait.night
+wait.midnight → play act wait.midnight
+wait.weather_change → play act wait.weather_change
+wait.catch_breath → play act wait.catch_breath

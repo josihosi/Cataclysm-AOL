@@ -1,0 +1,38 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790274920633407",
+  "sequence": 26,
+  "game_minutes": 7685,
+  "game_turn": 5213103,
+  "wall_time": 1790275285726,
+  "is_night": false,
+  "run_id": "606135bb557145dfb4073ddf4323ea5f",
+  "surface_id": "606135bb557145dfb4073ddf4323ea5f:surface:10",
+  "frame_id": "606135bb557145dfb4073ddf4323ea5f:frame:5",
+  "kind": "prompt",
+  "breadcrumbs": [
+    "YESNO"
+  ],
+  "payload": {
+    "text": "Really quit? (Case Sensitive)",
+    "title": "YESNO"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "prompt.choose",
+      "stable_id": "prompt-option:3",
+      "label": "YES",
+      "enabled": true
+    },
+    {
+      "id": "prompt.choose",
+      "stable_id": "prompt-option:4",
+      "label": "NO",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

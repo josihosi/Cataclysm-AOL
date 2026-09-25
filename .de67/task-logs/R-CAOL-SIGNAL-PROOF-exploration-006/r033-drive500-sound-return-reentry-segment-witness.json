@@ -1,0 +1,58 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The first native process established the zero-supply drive-708 premise, a source-bound explosion observation at (138,52,0) in minute 9365, and a returned sound report with original observation minute 9365; native save and clean exit completed, but replacement-process persistence has not yet been observed.",
+  "causal_account": "The sealed source-bound journal first records the eligible five-member zero-supply scheduler footing, then the exact local watch and significant-sound callback, then the returned structural sound lead.  The reported lead's key and original observation minute match the source.  The final native save-and-quit chain is an intentional continuation boundary, so it cannot itself establish replacement-process persistence.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the sealed segment to the selected scenario, executable, run, and bridge.",
+      "checks": {
+        "scenario_id": "r033.phase4_semantic_autonomous_sound_return_drive500_age_reentry_rev1_mcw"
+      }
+    },
+    {
+      "citation_id": "J0002",
+      "meaning": "Initial native World observation records zero supplies, drive 708, threshold 500, eligible observer pair, and the armed source timer at minute 9365.",
+      "checks": {
+        "value.game_minutes": 9241
+      }
+    },
+    {
+      "citation_id": "J0017",
+      "meaning": "After the native five-minute wait, the source is consumed; its run-bound production channel records the minute-9365 significant explosion at (138,52,0), while the pair's local watch is at that OMT.",
+      "checks": {
+        "value.game_minutes": 9366
+      }
+    },
+    {
+      "citation_id": "J0025",
+      "meaning": "After the native one-hour return window, the durable sound lead has source key structural-signal:structural-explosion@(138,52,0), last_seen_minutes 9365, and returned_structural_sound_report outcome.",
+      "checks": {
+        "value.game_minutes": 9426,
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.source_key": "structural-signal:structural-explosion@(138,52,0)",
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.last_seen_minutes": 9365,
+        "value.surface.facts.staffed_camp_signal_leads.sites.0.leads.0.last_outcome": "returned_structural_sound_report"
+      }
+    },
+    {
+      "citation_id": "J0028",
+      "meaning": "The advertised native save-and-quit action was accepted from the returned-report World frame.",
+      "checks": {
+        "action_id": "world.save_quit"
+      }
+    },
+    {
+      "citation_id": "J0034",
+      "meaning": "The advertised main-menu quit confirmation was accepted, ending the saved segment cleanly.",
+      "checks": {
+        "action_id": "prompt.choose"
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The replacement process must still show the same returned-report origin, source key, OMT, original observation minute, and a nondecreasing age."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

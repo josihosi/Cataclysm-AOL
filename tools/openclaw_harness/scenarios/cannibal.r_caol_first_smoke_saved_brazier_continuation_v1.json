@@ -1,0 +1,147 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_saved_brazier_continuation_v1",
+  "description": "Task-owned continuation from the already saved v2 smoke-first TestSetup00 profile. Fixture installation and world replacement are intentionally omitted so the exact saved player position, canceled Tilda activity, closed-room geometry and cannibal camp are resumed without reseeding.",
+  "profile": "first-smoke-r-caol-001-smoke-migration-v2",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.saved_world_continuation": "continue_existing_saved_v2_world_without_fixture_install_or_replacement",
+    "capabilities.r_caol.first_smoke": [
+      "smoke-first",
+      "native_cannibal_admission",
+      "member_materialization",
+      "dispatch",
+      "progression"
+    ],
+    "world.signal": ["physical_fire", "smoke"],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "first-smoke-r-caol-001-smoke-migration-v2",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-r-caol-001-smoke-migration-v2",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": ["source-bound native cockpit actions"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "resume_saved_closed_room_world",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Resume the exact saved task-owned TestSetup00 world without fixture installation or world replacement."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_saved_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait", "world.inventory"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_install_on_saved_world_continuation",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Registry continuation launches with no fixture declared; saved profile/world is already present."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_closed_room_brazier_smoke_first",
+      "objective": "Resume the exact saved player/world/camp state. Pick up the already supplied charged lighter if it remains on the floor; use its ordinary item action and choose the prepared brazier at Light where. Verify an actual burning brazier, step about two tiles away without entering fire, keep the closed-room fire supplied, and observe physical smoke/cannibal camp response over the next couple of in-game days with intermittent state checks.",
+      "proof_targets": [
+        "same saved v2 profile/world and player position, with no fixture reinstall",
+        "brazier identity and position inside the closed room",
+        "charged lighter identity and native ignition choice",
+        "actual brazier fire state after input",
+        "two-tile observation position outside the fire",
+        "closed windows/curtains and fire maintenance state",
+        "physical smoke origin/channel reaching the task-added cannibal camp at OMT [135,137,0]",
+        "camp actor identity, admission, dispatch and progression or their first missing boundary",
+        "exact elapsed in-game time and intermittent native camp/movement observations"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "resume the existing saved task-owned world without fixture installation or replacement",
+        "the ordinary brazier fire is the only smoke-first source; no smokebomb credit",
+        "no authored or injected smoke, fire, light, signal, actor, dispatch, or contact",
+        "keep windows and curtains closed and maintain the fire through ordinary gameplay",
+        "do not step onto the brazier/fire when moving to the observation position",
+        "distinguish the player's basecamp at [131,143,0] from the cannibal camp at [135,137,0]",
+        "absence within a short observation window is inconclusive"
+      ],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["resume_saved_closed_room_world", "bind_saved_native_world"],
+    "production_behavior": ["observe_closed_room_brazier_smoke_first"],
+    "terminal_persistence": ["observe_closed_room_brazier_smoke_first"],
+    "artifact_verdict": ["observe_closed_room_brazier_smoke_first"],
+    "disallowed_shortcuts": ["no_fixture_install_on_saved_world_continuation"]
+  },
+  "evidence_contract": {
+    "claim": "A normal player-lit brazier fire in the closed room generates physical smoke that reaches the task-added cannibal camp and produces the native admission/materialization/dispatch/progression sequence before any valid light.",
+    "failure_rule": "The existing saved world is continuation footing only. Feature proof requires exact saved-world binding, actual native fire, closed-room state, source-identified physical smoke at the cannibal camp, ordered native response evidence and exact cleanup; otherwise report the first missing boundary as inconclusive."
+  }
+}

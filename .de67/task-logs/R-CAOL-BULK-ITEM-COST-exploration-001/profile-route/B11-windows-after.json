@@ -1,0 +1,196 @@
+{
+  "data" : {
+    "windows" : [
+      {
+        "screenName" : "2560×2880 Display",
+        "isMinimized" : false,
+        "alpha" : 1,
+        "layer" : 0,
+        "isOffScreen" : false,
+        "isOnScreen" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "title" : "",
+        "screenIndex" : 0,
+        "window_id" : 45665,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : true,
+        "index" : 0,
+        "windowLevel" : 0,
+        "sharingState" : 1
+      },
+      {
+        "screenName" : "2560×2880 Display",
+        "isMinimized" : false,
+        "alpha" : 1,
+        "layer" : 0,
+        "isOffScreen" : false,
+        "isOnScreen" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "title" : "",
+        "screenIndex" : 0,
+        "window_id" : 45664,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "index" : 1,
+        "windowLevel" : 0,
+        "sharingState" : 1
+      },
+      {
+        "screenName" : "2560×2880 Display",
+        "isMinimized" : false,
+        "alpha" : 1,
+        "layer" : 0,
+        "isOffScreen" : false,
+        "isOnScreen" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "title" : "",
+        "screenIndex" : 0,
+        "window_id" : 45663,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isMainWindow" : false,
+        "index" : 2,
+        "windowLevel" : 0,
+        "sharingState" : 1
+      },
+      {
+        "spaceID" : 3817,
+        "isMinimized" : false,
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "alpha" : 0,
+        "layer" : 0,
+        "isOffScreen" : true,
+        "isOnScreen" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "title" : "",
+        "window_id" : 45648,
+        "bounds" : [
+          [
+            0,
+            -32
+          ],
+          [
+            2560,
+            32
+          ]
+        ],
+        "isMainWindow" : false,
+        "index" : 3,
+        "windowLevel" : 0,
+        "sharingState" : 1
+      },
+      {
+        "spaceID" : 3817,
+        "screenName" : "2560×2880 Display",
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "alpha" : 1,
+        "isMinimized" : false,
+        "layer" : 0,
+        "isOffScreen" : false,
+        "isOnScreen" : true,
+        "isExcludedFromWindowsMenu" : false,
+        "title" : "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+        "screenIndex" : 0,
+        "window_id" : 45646,
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            2880
+          ]
+        ],
+        "isMainWindow" : false,
+        "index" : 4,
+        "windowLevel" : 0,
+        "sharingState" : 1
+      },
+      {
+        "bounds" : [
+          [
+            0,
+            0
+          ],
+          [
+            2560,
+            30
+          ]
+        ],
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "window_id" : 45662,
+        "windowLevel" : 0,
+        "layer" : 0,
+        "sharingState" : 1,
+        "isExcludedFromWindowsMenu" : false,
+        "screenName" : "2560×2880 Display",
+        "title" : "",
+        "screenIndex" : 0,
+        "isMinimized" : false,
+        "index" : 5,
+        "isOnScreen" : true,
+        "alpha" : 1
+      },
+      {
+        "bounds" : [
+          [
+            1150,
+            642
+          ],
+          [
+            260,
+            314
+          ]
+        ],
+        "isOffScreen" : false,
+        "isMainWindow" : false,
+        "window_id" : 45694,
+        "windowLevel" : 8,
+        "layer" : 8,
+        "sharingState" : 1,
+        "spaceName" : "E81FC976-42EE-4C98-AA8D-B8301441653C",
+        "isExcludedFromWindowsMenu" : false,
+        "screenName" : "2560×2880 Display",
+        "spaceID" : 3817,
+        "title" : "",
+        "screenIndex" : 0,
+        "isMinimized" : false,
+        "index" : 6,
+        "isOnScreen" : true,
+        "alpha" : 1
+      }
+    ]
+  },
+  "success" : true,
+  "debug_logs" : [
+    "[2026-09-24T18:50:11.596Z] DEBUG: Runtime host: remote gui via \/Users\/josefhorvath\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.9.1 (3090199))"
+  ]
+}

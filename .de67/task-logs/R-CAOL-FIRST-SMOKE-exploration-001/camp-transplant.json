@@ -1,0 +1,282 @@
+{
+  "schema": "task-first-smoke-camp-transplant-v1",
+  "owner_source_untouched": true,
+  "records": [
+    {
+      "arm": "smoke-first",
+      "source_copy": ".userdata/first-smoke-exploration-001/smoke-first/TestSetup00",
+      "fixture": "tools/openclaw_harness/fixtures/saves/live-debug/first_smoke_smoke-first_testsetup00_v1",
+      "source_target_omt": [
+        135,
+        137,
+        0
+      ],
+      "offset_from_player": [
+        4,
+        -6,
+        0
+      ],
+      "donor_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22 -> tmp_bandit_live_world_local_contact_raw_2026-04-23",
+      "donor_special": "bandit_camp",
+      "donor_anchor": [
+        140,
+        51,
+        0
+      ],
+      "donor_points": [
+        [
+          141,
+          52,
+          0
+        ],
+        [
+          140,
+          52,
+          1
+        ],
+        [
+          140,
+          51,
+          0
+        ],
+        [
+          140,
+          51,
+          1
+        ],
+        [
+          141,
+          52,
+          1
+        ],
+        [
+          141,
+          51,
+          0
+        ],
+        [
+          141,
+          51,
+          1
+        ],
+        [
+          140,
+          52,
+          0
+        ]
+      ],
+      "target_anchor_local": [
+        135,
+        137,
+        0
+      ],
+      "target_points": [
+        [
+          136,
+          138,
+          0
+        ],
+        [
+          135,
+          138,
+          1
+        ],
+        [
+          135,
+          137,
+          0
+        ],
+        [
+          135,
+          137,
+          1
+        ],
+        [
+          136,
+          138,
+          1
+        ],
+        [
+          136,
+          137,
+          0
+        ],
+        [
+          136,
+          137,
+          1
+        ],
+        [
+          135,
+          138,
+          0
+        ]
+      ],
+      "old_terrain": {
+        "(136, 138, 0)": "forest",
+        "(135, 138, 1)": "open_air",
+        "(135, 137, 0)": "forest_trail_ew",
+        "(135, 137, 1)": "open_air",
+        "(136, 138, 1)": "open_air",
+        "(136, 137, 0)": "forest_trail_wn",
+        "(136, 137, 1)": "open_air",
+        "(135, 138, 0)": "forest"
+      },
+      "new_terrain": {
+        "(136, 138, 0)": "bandit_camp_2_east",
+        "(135, 138, 1)": "bandit_camp_4_roof_east",
+        "(135, 137, 0)": "bandit_camp_3_east",
+        "(135, 137, 1)": "bandit_camp_3_roof_east",
+        "(136, 138, 1)": "bandit_camp_2_roof_east",
+        "(136, 137, 0)": "bandit_camp_1_east",
+        "(136, 137, 1)": "bandit_camp_1_roof_east",
+        "(135, 138, 0)": "bandit_camp_4_east"
+      },
+      "changed_files": {
+        "overmaps/o.0.0.zzip": {
+          "before": "e3fb599b309849c98ee215115ac8f5259102bf6438eff1178efc790c70d6939f",
+          "after": "afd2754727e93157c658f9f65f9d9521defbd1e2309cebfd1d1df877b8983b47"
+        }
+      },
+      "tree_sha256": null
+    },
+    {
+      "arm": "first-light",
+      "source_copy": ".userdata/first-smoke-exploration-001/first-light/TestSetup00",
+      "fixture": "tools/openclaw_harness/fixtures/saves/live-debug/first_smoke_first-light_testsetup00_v1",
+      "source_target_omt": [
+        135,
+        137,
+        0
+      ],
+      "offset_from_player": [
+        4,
+        -6,
+        0
+      ],
+      "donor_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22 -> tmp_bandit_live_world_local_contact_raw_2026-04-23",
+      "donor_special": "bandit_camp",
+      "donor_anchor": [
+        140,
+        51,
+        0
+      ],
+      "donor_points": [
+        [
+          141,
+          52,
+          0
+        ],
+        [
+          140,
+          52,
+          1
+        ],
+        [
+          140,
+          51,
+          0
+        ],
+        [
+          140,
+          51,
+          1
+        ],
+        [
+          141,
+          52,
+          1
+        ],
+        [
+          141,
+          51,
+          0
+        ],
+        [
+          141,
+          51,
+          1
+        ],
+        [
+          140,
+          52,
+          0
+        ]
+      ],
+      "target_anchor_local": [
+        135,
+        137,
+        0
+      ],
+      "target_points": [
+        [
+          136,
+          138,
+          0
+        ],
+        [
+          135,
+          138,
+          1
+        ],
+        [
+          135,
+          137,
+          0
+        ],
+        [
+          135,
+          137,
+          1
+        ],
+        [
+          136,
+          138,
+          1
+        ],
+        [
+          136,
+          137,
+          0
+        ],
+        [
+          136,
+          137,
+          1
+        ],
+        [
+          135,
+          138,
+          0
+        ]
+      ],
+      "old_terrain": {
+        "(136, 138, 0)": "forest",
+        "(135, 138, 1)": "open_air",
+        "(135, 137, 0)": "forest_trail_ew",
+        "(135, 137, 1)": "open_air",
+        "(136, 138, 1)": "open_air",
+        "(136, 137, 0)": "forest_trail_wn",
+        "(136, 137, 1)": "open_air",
+        "(135, 138, 0)": "forest"
+      },
+      "new_terrain": {
+        "(136, 138, 0)": "bandit_camp_2_east",
+        "(135, 138, 1)": "bandit_camp_4_roof_east",
+        "(135, 137, 0)": "bandit_camp_3_east",
+        "(135, 137, 1)": "bandit_camp_3_roof_east",
+        "(136, 138, 1)": "bandit_camp_2_roof_east",
+        "(136, 137, 0)": "bandit_camp_1_east",
+        "(136, 137, 1)": "bandit_camp_1_roof_east",
+        "(135, 138, 0)": "bandit_camp_4_east"
+      },
+      "changed_files": {
+        "overmaps/o.0.0.zzip": {
+          "before": "e3fb599b309849c98ee215115ac8f5259102bf6438eff1178efc790c70d6939f",
+          "after": "afd2754727e93157c658f9f65f9d9521defbd1e2309cebfd1d1df877b8983b47"
+        }
+      },
+      "tree_sha256": null
+    }
+  ]
+}

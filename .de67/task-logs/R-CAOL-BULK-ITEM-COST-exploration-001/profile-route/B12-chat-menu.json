@@ -1,0 +1,115 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 18,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276633984,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:4",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:4",
+  "kind": "menu",
+  "breadcrumbs": [
+    "World",
+    "What do you want to do?"
+  ],
+  "payload": {
+    "filter": "",
+    "filter_required": "false",
+    "filtered_entry_count": "6",
+    "selected_stable_id": "uilist-entry:1",
+    "text": "What do you want to do?",
+    "title": ""
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:1",
+      "label": "Talk to Genevieve Floyd",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:1",
+      "label": "Talk to Genevieve Floyd",
+      "enabled": true
+    },
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:2",
+      "label": "Yell",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:2",
+      "label": "Yell",
+      "enabled": true
+    },
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:3",
+      "label": "Say a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:3",
+      "label": "Say a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:4",
+      "label": "Whisper a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:4",
+      "label": "Whisper a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:5",
+      "label": "Yell a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:5",
+      "label": "Yell a sentence",
+      "enabled": true
+    },
+    {
+      "id": "menu.select",
+      "stable_id": "uilist-entry:6",
+      "label": "Emote",
+      "enabled": true
+    },
+    {
+      "id": "menu.choose",
+      "stable_id": "uilist-entry:6",
+      "label": "Emote",
+      "enabled": true
+    },
+    {
+      "id": "menu.filter",
+      "stable_id": "",
+      "label": "Filter",
+      "enabled": true
+    },
+    {
+      "id": "menu.cancel",
+      "stable_id": "",
+      "label": "Cancel",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

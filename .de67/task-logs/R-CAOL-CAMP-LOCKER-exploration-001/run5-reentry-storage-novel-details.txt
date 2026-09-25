@@ -1,0 +1,15 @@
+ITEM INFO
+Location: forest floor
+Material: Paper
+Volume: 0.50 L  Weight: 0.19 kg
+Memory: 740 KB
+Category: Books
+Disassembly takes about 6 seconds and might yield: 62 paper.
+* This item does not conduct electricity.
+* This item can use all of its features in darkness.
+Price: $7.50  Barter value: $0.50
+Additional item text: 422 characters omitted → play inspect observation.surface.facts.item_info_text
+item name: coming of age novel
+type name: coming of age novel
+ALLOWED HERE ONLY
+Close → play act item_info.close

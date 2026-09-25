@@ -1,0 +1,12 @@
+{
+  "baseline": {
+    "error": "Work item mentions a task owned by another FS claim: R-CAOL-CAMP-WAIT-COST \u2014 Profile and repair the actual two-NPC wait/sleep cost without disabling camp behavior; separate from bulk-item timing/loss."
+  },
+  "candidate": {
+    "pass": true,
+    "claims": 17
+  },
+  "old_ledger_lines_preserved": true,
+  "real_context_render_pass": true,
+  "live_roof_proof": false
+}

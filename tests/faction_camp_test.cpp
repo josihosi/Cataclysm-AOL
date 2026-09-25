@@ -7411,6 +7411,7 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
 
   create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
   here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_glock_19));
   here.add_item_or_charges(locker_local, item(itype_glockmag));
   here.add_item_or_charges(locker_local, item(itype_glockmag));
   here.add_item_or_charges(locker_local, item(itype_glockmag));
@@ -7428,10 +7429,8 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
   npc &worker = spawn_npc(npc_local.xy(), "thug");
   clear_character(worker, true);
   REQUIRE(worker.wear_item(item(itype_backpack), false).has_value());
-  item empty_glock(itype_glock_19);
-  REQUIRE(worker.wield(empty_glock));
-  REQUIRE(worker.get_wielded_item());
-  CHECK(worker.get_wielded_item()->ammo_remaining() == 0);
+  item initial_melee(itype_id("sharp_rebar"));
+  REQUIRE(worker.wield(initial_melee));
 
   test_camp->add_assignee(worker.getID());
 
@@ -7476,6 +7475,17 @@ TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
   }
   CHECK(locker_magazines == 1);
   CHECK(locker_ammo_remaining == 0);
+
+  bool locker_has_displaced_melee = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_displaced_melee =
+        locker_has_displaced_melee || it.typeId() == itype_id("sharp_rebar");
+  }
+  CHECK(locker_has_displaced_melee);
+  CHECK(std::none_of(here.i_at(npc_local).begin(), here.i_at(npc_local).end(),
+                     [](const item &it) {
+                       return it.typeId() == itype_id("sharp_rebar");
+                     }));
 
   calendar::turn += 10_minutes;
   CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));

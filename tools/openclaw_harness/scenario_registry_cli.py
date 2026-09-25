@@ -76,7 +76,7 @@ from scenario_registry_store import (
 import startup_harness
 import production_capture
 from command_receipts import read_command_artifact, write_command_artifact
-from registry_query_output import load_run_report, query_page
+from registry_query_output import load_run_report, query_page, plain_registry_output
 from startup_harness import (
     CLEANUP_ACCEPTED_STATUSES,
     fixture_source_binding,
@@ -88,6 +88,9 @@ from startup_harness import (
 )
 
 
+_JSON_OUTPUT = False
+
+
 class _ArgumentParser(argparse.ArgumentParser):
     """Keep command failures machine-readable as well as nonzero."""
 
@@ -97,8 +100,10 @@ class _ArgumentParser(argparse.ArgumentParser):
 
 
 def _write_result(value: Mapping[str, Any], *, stream: Optional[Any] = None) -> None:
-    """Write JSON to the caller's current stdout unless an explicit stream is supplied."""
-    print(json.dumps(value, ensure_ascii=False, sort_keys=True), file=sys.stdout if stream is None else stream)
+    """Keep machine output explicit; ordinary selection shows decisions and commands."""
+    text = None if _JSON_OUTPUT else plain_registry_output(value)
+    print(text if text is not None else json.dumps(value, ensure_ascii=False, sort_keys=True),
+          file=sys.stdout if stream is None else stream)
 
 
 def _positive_page_size(value: str) -> int:
@@ -1208,7 +1213,9 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
             "Selected scenario source is not the canonical probe manifest: "
             f"{source_path}"
         )
-    command = ["probe", selection.scenario]
+    # The full report is retained and ingested from disk, as for bootstrap
+    # and repair launches. Do not echo all native artifacts to the worker.
+    command = ["probe", selection.scenario, "--compact-stdout"]
     if profile_override:
         command.extend(["--profile", profile_override])
     if post_relaunch_continuation:
@@ -1326,6 +1333,7 @@ def _registry_post_finalize_ingest(receipt: str) -> Any:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = _ArgumentParser(description=__doc__)
+    parser.add_argument("--json", action="store_true", help="Return machine-readable receipts instead of plain selection output")
     parser.add_argument("--registry", help="SQLite registry path; defaults to the shared harness registry")
     commands = parser.add_subparsers(dest="command", required=True, parser_class=_ArgumentParser)
     rebuild = commands.add_parser("rebuild", help="project scenario declarations into the registry")
@@ -2318,6 +2326,8 @@ def _mint_repair_reentry_token(registry_path: Path, predecessor_token: str) -> s
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    global _JSON_OUTPUT
+    _JSON_OUTPUT = "--json" in (sys.argv[1:] if argv is None else argv)
     args = build_parser().parse_args(argv)
     if args.command == "production-observe":
         # This deliberately bypasses registry open/query/token paths.  The
@@ -3260,9 +3270,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         )
                 except Exception as invalidation_error:
                     failure["selection_invalidation_error"] = str(invalidation_error)
-            # Retain exception chains, including cleanup failures; no successful
-            # cleanup or gameplay outcome is inferred from a caught exception.
-            traceback.print_exc(file=sys.stderr)
+            # Detailed exception chains are opt-in; ordinary launch errors need
+            # the cause and cleanup uncertainty, not two copies of the failure.
+            if _JSON_OUTPUT:
+                traceback.print_exc(file=sys.stderr)
             _write_result(failure, stream=sys.stderr)
             return 1
         finally:

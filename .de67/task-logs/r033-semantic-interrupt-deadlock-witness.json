@@ -1,0 +1,38 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This source-bound, semantic-only run observed the native structural sound event but did not reach a physical return or a returned_report lead.  At minute 10447 its structural outing remained locally owned at forward waypoint 1.",
+  "causal_account": "The final World observation retains the local observing cursor at waypoint 1 after a bounded 180-minute native wait.  This is a first divergence from the required return journey, not evidence of a returned report.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Sealed source, executable, scenario, run, and binding identity.",
+      "checks": {
+        "run_id": "7e9726643e453dd27ec2e17553eaae1587720ce7218086b2e8291a4779d5ffd1",
+        "binding_id": "3e1fb9a6b3accdb3ece1e639b8dc6592f1b6a99fe871efa11f658ea7d3853608"
+      }
+    },
+    {
+      "citation_id": "J0139",
+      "meaning": "Final native World observation after the bounded wait.",
+      "checks": {
+        "value.game_minutes": 10447
+      }
+    },
+    {
+      "citation_id": "J0140",
+      "meaning": "Terminal record preserves the explicit deadlock boundary and releases unused authority.",
+      "checks": {
+        "stop_reason": "Fresh source-bound semantic-only run proved a native structural sound receipt at minute 10081, then exposed a local forward-pair ingress deadlock: owner remained local observing at waypoint 1 through minute 10447. This run does not establish physical return or returned_report. The follow-up product repair will make the forward route native at materialization so ingress preflight can admit both members.",
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The forward pair remained locally owned at waypoint 1 after the source observation, so this run cannot establish a physical return or returned_report."
+  ],
+  "remaining_unknowns": [
+    "Whether a forward route bound during materialization carries the complete pair to the selected watch and through its native report-return path."
+  ],
+  "evidence_ceiling": "focused"
+}

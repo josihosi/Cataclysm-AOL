@@ -1,0 +1,34 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "scenario": "cannibal.r_caol_first_smoke_open_window_escape_factor_v1",
+  "objective": "Test the source-bound contained-light rejection after natively opening the closest audited closed east window on an isolated copy of the saved open-reference baseline. Keep this arm signal-only.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_open_window_escape_factor_v1-witness.json",
+  "outcome": "A native gameplay opening of the audited east-side window changes the geometry of the already-burning brazier source live_light@3159,3449,0; the resulting light exposure and acceptance/rejection are observed from the fresh task-owned continuation.",
+  "constraints": [
+    "No owner/reference or closed-room save edits.",
+    "Use only advertised native movement and native world interaction to open the chosen closed window.",
+    "Verify safe mode OFF first; toggle only if currently on.",
+    "Confirm brazier fire persists and stay off the fire tile.",
+    "No injected signal/fire/light/smoke or smokebomb.",
+    "No camp exists; claim signal behavior only.",
+    "Quicksave after material observation and graceful save/quit; verify PID births/exits."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.open_window_geometry_probe",
+        "op": "eq",
+        "value": "open_nearby_closed_window_native_then_rescan_fire_light",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "requirements": [
+    {
+      "key": "runtime.fixture",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "r032_camp_defense_from_locker_v1"
+    },
+    {
+      "key": "runtime.world",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "McWilliams"
+    },
+    {
+      "key": "capabilities.r032.camp_defense",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "zombie-alarm-patrol-response-save-reload"
+    },
+    {
+      "key": "capabilities.r032.defense_attempt",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "zombie-alarm-patrol-response-save-reload-observer-clear-v3"
+    }
+  ],
+  "preferences": [
+    {
+      "key": "runtime.entry_mode",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "cockpit_live_session"
+    }
+  ]
+}

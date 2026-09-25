@@ -51,6 +51,8 @@ enum class counter : std::size_t {
     loaded_covert_members_processed,
     loaded_covert_overmap_route_solves,
     loaded_covert_local_path_solves,
+    transition_stream_bytes_read,
+    transition_stream_records_validated,
     count
 };
 
@@ -333,6 +335,9 @@ void record_transition_event( transition_event event );
 void record_fixture_monster_lifecycle( const monster &critter, std::string_view event,
                                        std::string_view owner );
 void record_live_transition_event( transition_event event );
+// Admission is evaluated each turn.  Record the first rejection and changed
+// rejection context, while retaining every successful admission.
+void record_signal_dispatch_admission( transition_event event );
 // Writes one opt-in, launch-bound, canonical persistence snapshot for a committed
 // local-pair handoff.  The caller owns serializing the exact site payload so this
 // probe stays independent of the live-world persistence types.

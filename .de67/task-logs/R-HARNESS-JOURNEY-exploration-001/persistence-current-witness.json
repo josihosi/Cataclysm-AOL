@@ -1,0 +1,54 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "The current source-bound run provided a stable NPC inspection modal, accepted native close and save/quit decisions, and produced a native serializer completion for McWilliams/Zoraida Vick before a clean process exit. Reloaded-world continuation is a separate claim and remains unproved until the declared post-relaunch route emits its own bound World frame.",
+  "causal_account": "The claims are tied to the current run identity and exact native receipts in the sealed journal; the save fact is additionally bound to the run's native_save_completion record with serializer_result saved and save_succeeded true. Process exit is not used as save proof.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Current scenario, source, executable, run and binding identity.",
+      "checks": {
+        "scenario_id": "harness.living_persistence_freeplay_mcw",
+        "executable_identity": "e86ec67a5435570e6152060f59b37b19e55e783eb0eb54a7341e922ffae2a5bb"
+      }
+    },
+    {
+      "citation_id": "J0004",
+      "meaning": "Native NPC inspection was accepted for character:2.",
+      "checks": {
+        "action_id": "world.inspect_npc",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0006",
+      "meaning": "The NPC inspection modal closed through its advertised native action.",
+      "checks": {
+        "action_id": "npc_inspection.close",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0008",
+      "meaning": "Native save-and-quit action was accepted and handed off to the YES/NO owner.",
+      "checks": {
+        "action_id": "world.save_quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0013",
+      "meaning": "The bound game process exited cleanly; this is lifecycle evidence only.",
+      "checks": {
+        "value.surface.facts.exit_code": 0,
+        "value.surface.facts.save_outcome": "not_established_by_process_exit"
+      }
+    }
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The declared post-relaunch continuation has not yet emitted a new bound World owner or a continued native action.",
+    "No item transfer or cancellation comparison was attempted in this bounded pass."
+  ],
+  "evidence_ceiling": "zero-credit"
+}

@@ -1,0 +1,11 @@
+BASECAMP WORKER ASSIGNMENT
+assigned worker count: 1
+camp name: R032 Assignment Camp
+camp site: (162,36,0)
+job priority editor: Native uilist and numeric prompt after selecting an advertised worker
+owner faction: your_followers
+ALLOWED HERE ONLY
+Close worker assignment → play act camp_assignment.close
+play act camp_assignment.<action> --target <target> (copy the target exactly)
+Actions for every target below: edit_worker_jobs
+  character:25 — Edit R032 Establishment Ally 1's job priorities

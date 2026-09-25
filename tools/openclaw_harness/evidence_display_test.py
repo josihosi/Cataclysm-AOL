@@ -13,10 +13,48 @@ from evidence_events import parse, envelopes
 
 
 class EvidenceDisplayTest(unittest.TestCase):
+    def test_small_response_does_not_create_display_artifacts(self):
+        value = {"ok": True, "state": "pending"}
+        self.assertEqual(bounded(value, directory=self.root), value)
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_nested_omissions_retain_the_response_only_once(self):
+        value = {"first": {"history": "a" * 100000}, "second": {"history": "b" * 100000}}
+        output = bounded(value, directory=self.root)
+        self.assertEqual(len(list(self.root.glob("*.json.gz"))), 1)
+        self.assertLess(sum(p.stat().st_size for p in self.root.iterdir()), len(encoded(value)))
+        for key in ("first", "second"):
+            omitted = output[key]
+            expected = value[key]
+            if "omitted" not in omitted:
+                omitted = omitted["history"]
+                expected = expected["history"]
+            self.assertTrue(omitted["omitted"])
+            source = recover(omitted["evidence"]["sha256"], self.root)
+            for part in omitted["evidence"]["path"]:
+                source = source[part]
+            self.assertEqual(source, expected)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+
+    def test_existing_uncompressed_snapshot_remains_readable_without_duplicate(self):
+        value = {"history": "retained older evidence"}
+        raw = encoded(value)
+        digest = hashlib.sha256(raw).hexdigest()
+        (self.root / (digest + ".json")).write_bytes(raw)
+        self.assertEqual(recover(digest, self.root), value)
+        self.assertEqual(retain(value, self.root)["sha256"], digest)
+        self.assertEqual(len(list(self.root.iterdir())), 1)
+
+    def test_compressed_snapshot_still_checks_content_integrity(self):
+        import gzip
+        digest = retain({"value": "original"}, self.root)["sha256"]
+        (self.root / (digest + ".json.gz")).write_bytes(gzip.compress(b'{}'))
+        with self.assertRaisesRegex(ValueError, "evidence_hash_mismatch"):
+            recover(digest, self.root)
 
     def test_single_fields_objects_metadata_and_errors_are_bounded_and_exact(self):
         values = [{"ok": True, "fields": {"text": "雪\\\"" * 100000}},

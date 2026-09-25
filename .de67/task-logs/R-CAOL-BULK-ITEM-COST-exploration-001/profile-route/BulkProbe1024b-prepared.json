@@ -1,0 +1,227 @@
+{
+  "schema": "caol.bulk-item-cost-sample-probe.v1",
+  "source_world": "La Mirada",
+  "world": "BulkProbe1024b",
+  "items_transform": {
+    "kind": "map_items_near_player",
+    "world": "BulkProbe1024b",
+    "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+    "player_location": [
+      3539,
+      3780,
+      0
+    ],
+    "placed_items": [
+      {
+        "typeid": "2x4",
+        "count": 512,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      },
+      {
+        "typeid": "hammer",
+        "count": 512,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      }
+    ],
+    "extracted_map_packs": [
+      "4.4.0"
+    ],
+    "recompressed_maps": [
+      "maps/4.4.0/147.157.0.map"
+    ],
+    "removed_extracted_map_dirs": [
+      "maps/4.4.0"
+    ],
+    "plain_map_dirs_left_for_game_load": false
+  },
+  "zones_transform": [
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkProbe1024b",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostUnsortedSource",
+        "type": "LOOT_UNSORTED",
+        "faction": "your_followers",
+        "identity": "zone-fixture-37953ed20979b18edb740b1f",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3539,
+          3780,
+          0
+        ],
+        "end": [
+          3539,
+          3780,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkProbe1024b",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostWoodDestination",
+        "type": "LOOT_WOOD",
+        "faction": "your_followers",
+        "identity": "zone-fixture-0889fff526b33b6ce382d19d",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3539,
+          3781,
+          0
+        ],
+        "end": [
+          3539,
+          3781,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkProbe1024b",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostToolsDestination",
+        "type": "LOOT_TOOLS",
+        "faction": "your_followers",
+        "identity": "zone-fixture-fbfc2de708e76327198e8148",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3540,
+          3780,
+          0
+        ],
+        "end": [
+          3540,
+          3780,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    }
+  ],
+  "baseline_turn": 5212800,
+  "expected_items": {
+    "2x4": 512,
+    "hammer": 512
+  },
+  "owner_slow_case_count_estimate": "about 1000, possibly several thousand"
+}

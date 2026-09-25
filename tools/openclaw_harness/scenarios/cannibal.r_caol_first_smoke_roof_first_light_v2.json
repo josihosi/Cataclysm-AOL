@@ -1,0 +1,154 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_roof_first_light_v2",
+  "description": "Signal-only first-light probe using the prepared upper-roof brazier in a separate task-owned saved-world copy. Debug teleport is setup only; ignition and light observation are ordinary production gameplay.",
+  "profile": "first-smoke-r-caol-001-roof-firstlight-v2",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": [
+      "first-light",
+      "physical_light_signal"
+    ],
+    "capabilities.r_caol.roof_first_light": "ordinary_lighter_ignition_on_prepared_roof_brazier_correct_om_coords",
+    "world.signal": [
+      "physical_fire",
+      "light"
+    ],
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.debug_menu",
+      "setup:debug_teleport",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:world.wait",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:prompt.choose",
+      "semantic:main_menu.quit",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_smoke",
+      "debug:inject_signal",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-r-caol-001-roof-firstlight-v1",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-r-caol-001-roof-firstlight-v1",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "setup-only debug teleport; source-bound native controls; ordinary lighter ignition"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_prepared_roof_saved_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.debug_menu",
+          "world.inventory",
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_ordinary_roof_fire_first_light",
+      "objective": "On this separate disposable profile copy only, verify in-game safe mode OFF; use debug teleport solely as recorded setup to stand on roof tile [3156,3448,1], adjacent to the prepared brazier at [3156,3447,1]. Use the already supplied lighter and 2x4 fuel through ordinary inventory activation and choose north to ignite the brazier. Verify the actual fire, remain safely off the fire tile, and inspect source-specific nighttime light/smoke packets. Keep any existing z0 room source distinguished by absolute position. This profile has no cannibal camp; make no camp claim.",
+      "proof_targets": [
+        "exact copied saved-world profile and current source/executable binding",
+        "safe mode OFF before wait",
+        "debug teleport uses exact verified region/sub-OMT input 0'131,0'143,1, then actual position and health are checked before any ordinary action",
+        "ordinary lighter activation and north direction selection for roof brazier [3156,3447,1]",
+        "actual fd_fire at the roof brazier and no injected source",
+        "source-specific live_light and live_smoke packet outcome at night",
+        "exact elapsed game time and graceful saved cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "setup-only debug teleport",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "no fixture install or world replacement; use only the separate task-owned copy",
+        "debug teleport is setup only and earns no fire/signal/ecology credit",
+        "the roof brazier fire must be created through ordinary lighter use",
+        "no injected fire, smoke, light, signal, actor, dispatch, or contact",
+        "do not step onto the fire tile",
+        "do not claim cannibal camp behavior from this profile"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_prepared_roof_saved_world"
+    ],
+    "production_behavior": [
+      "observe_ordinary_roof_fire_first_light"
+    ],
+    "terminal_persistence": [
+      "observe_ordinary_roof_fire_first_light"
+    ],
+    "artifact_verdict": [
+      "observe_ordinary_roof_fire_first_light"
+    ],
+    "disallowed_shortcuts": [
+      "observe_ordinary_roof_fire_first_light"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On a separate task-owned saved-world copy, ordinary lighter ignition of a roof brazier produces a source-identified nighttime physical-light observation.",
+    "failure_rule": "Credit only the ordinary player-created roof fire and exact physical packet result; debug teleport is setup only, and any missing native/source evidence remains a stated boundary."
+  }
+}

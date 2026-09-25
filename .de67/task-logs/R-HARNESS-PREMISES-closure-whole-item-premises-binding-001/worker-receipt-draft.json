@@ -1,0 +1,103 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-PREMISES-closure-whole-item-premises-binding-001",
+  "claim_id": "R-HARNESS-PREMISES",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "completed",
+  "verdict": "whole_item_premises_binding_reconciled",
+  "outcome": "The read-only premise surface and fresh native decision receipt together cover every R-HARNESS-PREMISES-S001 mechanism and proof clause at the assigned premise boundary. The source-level evaluator exposes complete loaded-map opportunity, source countdown, observer/escort eligibility and production scheduler inputs; the fresh source-bound run establishes those facts in a real loaded world and reaches the first time-dependent scheduler decision. Drive 358 below threshold 500 is retained as the non-dispatch control. Autonomous dispatch, sound and return behavior remain outside this claim.",
+  "summary": "Receipts 4be449905d7b3ef12051a976de8823562c3a09a804211c3b19d5384b79e7a2c6 and e13e82b88141193ddbb4dfcf4e943b66afa271eecc4e37b0cf290d47cdeff682 were independently reconciled to R-HARNESS-PREMISES-S001. The source receipt covers full-map scan, threshold ownership and exact evaluator fields. The native witness binds scenario/source/executable/run/bridge, records a loaded C-4 source with countdown turn 5356860/minute 10081, eligible observer, idle staffed camp and one road candidate at minute 9241, then six authorized waits reach minute 9301 and the first routine scheduler boundary: drive 358 < threshold 500, force_due false, candidates empty, countdown unchanged. This establishes a genuine opportunity and honest non-dispatch boundary without claiming autonomous behavior.",
+  "material_changes": [],
+  "tests": [
+    "Current checkout: PYTHONPATH=tools/openclaw_harness python3 -m unittest tools.openclaw_harness.structural_signal_dispatch_contract_test tools.openclaw_harness.certification_finalization_test: 11 passed.",
+    "Historical receipt 4be449... records rebuilt exact native drive-boundary tests (37 assertions), phase4 focused tests (606 assertions), and 11 Python tests; not replayed.",
+    "Fresh native receipt e13e82... and witness were inspected at J0001/J0002/J0094/J0096; no new gameplay was run."
+  ],
+  "live_actions": [
+    "No native run, gameplay replay, fixture reinjection, signal injection, source mutation or sound/return attempt was performed.",
+    "Only current source-level contract tests and read-only receipt/witness reconciliation were performed."
+  ],
+  "evidence_ceiling": [
+    "The premise surface is proven source-level and the pre-input/first scheduler opportunity is proven in a fresh native run.",
+    "Drive 358 below threshold 500 is a real non-dispatch control, not proof of permanent inability or a gameplay contradiction.",
+    "Autonomous dispatch/watch, source emission, sound callback and returned_report behavior remain unobserved and outside this claim."
+  ],
+  "bindings": {
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+    "fs_slice": "R-HARNESS-PREMISES-S001",
+    "source_receipt_id": "4be449905d7b3ef12051a976de8823562c3a09a804211c3b19d5384b79e7a2c6",
+    "native_receipt_id": "e13e82b88141193ddbb4dfcf4e943b66afa271eecc4e37b0cf290d47cdeff682",
+    "native_run_id": "36d2c127726a0ee9d7fd8d0171de86fe4bf0c500f2c790e4c4dd903e333042be",
+    "native_binding_id": "d21492775d08a0bc5bd1baeff4d88c4da08ca980caf2269ef370169eb12794a3",
+    "source_identity": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+    "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+    "drive_threshold_boundary": "drive=358 < threshold=500; force_due=false",
+    "source_countdown": "turn=5356860; minutes=10081; unchanged at J0094",
+    "game_minutes": "9241 -> 9301 via six authorized semantic waits"
+  },
+  "journal_entries": [
+    {
+      "id": "premise-map",
+      "sequence": "1",
+      "event_type": "source_premise_reconciliation",
+      "evidence_class": "contract_test",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-closure-whole-item-premises-binding-001/premises-reconciliation.json",
+      "summary": "Full-map source opportunity, evaluator threshold ownership and time-dependent inputs map to the frozen premise clause."
+    },
+    {
+      "id": "native-footing",
+      "sequence": "2",
+      "event_type": "native_pre_input_footing",
+      "evidence_class": "native_witness",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json",
+      "summary": "J0001/J0002 bind a real loaded source, eligible observer, idle staffed camp and candidate before waits."
+    },
+    {
+      "id": "first-decision-boundary",
+      "sequence": "3",
+      "event_type": "scheduler_boundary",
+      "evidence_class": "native_witness",
+      "artifact_ref": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json",
+      "summary": "J0094 reaches the first routine scheduler decision and retains drive 358 below threshold 500 with no dispatch."
+    }
+  ],
+  "artifacts": [
+    {"path": ".de67/FS.md", "sha256": "c03b792570b2858d336d4498aa8d32cbe58cae11bf74b170e9ef8f0892f992df", "role": "authoritative R-HARNESS-PREMISES-S001 mechanism and proof clauses"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/worker-result-receipt.json", "sha256": "e7e9dac45eb8c26cd574fe2b07b2eb5005035fea3bd9dad07feb72154b50bc6f", "role": "read-only source premise and threshold receipt"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/de67-worker-result-receipt-v2.json", "sha256": "62ed6b15578517e327e6e75ca5bcbf1540f03de7ecd66dd43a676640e14a5cee", "role": "fresh native first-decision receipt"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-002/witness.json", "sha256": "ac0a3e942d7be77228735d91bd99d01a7f9c592cc530dd5e3467dcd88931490a", "role": "exact native witness J0001/J0002/J0094/J0096"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-closure-whole-item-premises-binding-001/premises-reconciliation.json", "sha256": "7de657f93872c7fb194d4cdc6970beb614ec1c11adebf6278e1d7be80ea7525b", "role": "independent clause matrix and evidence ceiling"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-closure-whole-item-premises-binding-001/current-contract-test.log", "sha256": "96a09335b561c68104d8ffae291eef26ef637a87b5437cbc07eed61f80fcab7b", "role": "current source-level structural premise contract tests"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/drive-boundary-final.log", "sha256": "fd8f95b5b75369deb591b750b698c422925d2cb0ec30ac33455cd48b6c4464e8", "role": "historical rebuilt native drive boundary test"},
+    {"path": ".de67/task-logs/R-HARNESS-PREMISES-exploration-001/phase4-final.log", "sha256": "ea7a28975a25994846e2a04a67332c806b69b56170b9dfb61419a9d21d736d4a", "role": "historical rebuilt phase4 focused tests"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Accepted the source and native receipts at their recorded scopes; no R033 replay or autonomous dispatch attempt was made.",
+    "Preserved drive 358 below threshold 500 as a non-dispatch control and retained the unknown sound/return boundaries."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No unsupported premise clause remains within the assigned scope; autonomous dispatch/watch, sound callback and returned_report remain separate open behavior claims.",
+  "narrow_queries": [
+    "Use J0002 and J0094 in witness.json for exact pre-input and first-decision selectors; do not infer dispatch from the candidate lead or unchanged countdown.",
+    "Any future autonomous behavior attempt must change the premise or eligibility conditions and retain the same source/run identity discipline."
+  ],
+  "entrypoints": [
+    "src/handle_action.cpp::openclaw_harness_structural_signal_dispatch_snapshot",
+    "src/bandit_live_world.cpp::hostile_camp_routine_dispatch_threshold",
+    "tools/openclaw_harness/structural_signal_dispatch_contract_test.py",
+    "game.raw_wait / game.wait",
+    "run.witness and run.finish"
+  ],
+  "context_metrics": {
+    "current_contract_tests_passed": 11,
+    "historical_drive_boundary_assertions": 37,
+    "historical_phase4_assertions": 606,
+    "native_waits": 6,
+    "native_game_minutes_advanced": 60,
+    "drive": 358,
+    "threshold": 500,
+    "candidates_at_boundary": 0
+  }
+}

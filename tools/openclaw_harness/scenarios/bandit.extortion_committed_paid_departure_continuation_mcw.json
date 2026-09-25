@@ -30,7 +30,7 @@
     "capabilities.persistence": "full_save_exit_relaunch_same_world"
   },
   "runtime_contract": {
-    "permitted_input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold coin", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+    "permitted_input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold coin", "press:F1", "press:down", "press:enter", "press:Y", "press:S", "press:left"],
     "forbidden_input": ["debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
     "setup_only_debug": true,
     "disposable_copy": true,
@@ -49,7 +49,7 @@
       "helper": "CursesTerminalTransport",
       "peekaboo": false,
       "ocr": false,
-      "input": ["advance_turns", "semantic:shakedown.pay", "press:tab", "press:/", "type:gold coin", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+      "input": ["advance_turns", "semantic:shakedown.pay", "press:tab", "press:/", "type:gold coin", "press:F1", "press:down", "press:enter", "press:Y", "press:S", "press:left"],
       "cleanup": true
     },
     "grants_gameplay_proof": false
@@ -161,12 +161,19 @@
     },
     {
       "kind": "press",
+      "label": "balance_remaining_fixture_gold_stack",
+      "keys": ["down", "F1", "down", "F1"],
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "native auto balance covers the three observed filtered fixture gold stacks (2, 142, 856 coins); it leaves a balanced offer unchanged"
+    },
+    {
+      "kind": "press",
       "label": "confirm_paid_offer",
       "keys": ["enter"],
       "settle_seconds": 0.5,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "expected_screen_text_after_contains": ["trade?", "Case Sensitive"],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_paid_trade_confirmation_missing",
       "abort_reason": "the balanced native Pay offer did not reach its confirmation prompt"

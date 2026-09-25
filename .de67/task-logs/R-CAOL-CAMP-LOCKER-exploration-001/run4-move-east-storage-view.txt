@@ -1,0 +1,8 @@
+World.
+moved
+avatar.absolute ms: 3902, 877, 0
+blackjack oak: NW
+forest floor: N, NE, W, E, SW
+moss: here
+underbrush: S
+beech tree: SE

@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "new_owner_outcome_delivered": false,
+    "assignment_origin": "whole-claim assignment; no narrower task assignment supplied",
+    "exact_query_bug_in_assignment": false,
+    "owner_bytes": 3433
+  },
+  "candidate": {
+    "new_owner_outcome_delivered": true,
+    "assignment_origin": "task-specific ledger assignment",
+    "exact_query_bug_in_assignment": true,
+    "owner_bytes": 4446
+  }
+}

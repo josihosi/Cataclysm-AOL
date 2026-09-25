@@ -1,6 +1,10 @@
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 
 #include "avatar.h"
@@ -17,6 +21,7 @@
 #include "map_helpers_tests.h"
 #include "monster_helpers.h"
 #include "mtype.h"
+#include "overmapbuffer.h"
 #include "physical_light.h"
 #include "player_helpers.h"
 #include "pocket_type.h"
@@ -413,6 +418,7 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
     int memory_aging = 0;
     int discoveries = 0;
     int deliveries = 0;
+    std::vector<live_bandit_signal_observation> cannibal_packets;
     live_light::callbacks callbacks;
     callbacks.reconcile_riders = [&reconciliations]() {
         ++reconciliations;
@@ -424,6 +430,7 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
         ++discoveries;
         live_bandit_signal_observation sample;
         sample.has_light_projection = true;
+        sample.mark.kind = "light";
         sample.sample_id = "cadence-fixture";
         return std::vector<live_bandit_signal_observation> { sample };
     };
@@ -433,14 +440,19 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
     callbacks.deliver_hordes = count_delivery;
     callbacks.deliver_stalkers = count_delivery;
     callbacks.deliver_riders = count_delivery;
-    callbacks.deliver_cannibals = count_delivery;
+    callbacks.deliver_cannibals = [&cannibal_packets](
+                                      const std::vector<live_bandit_signal_observation> &samples ) {
+        cannibal_packets.insert( cannibal_packets.end(), samples.begin(), samples.end() );
+    };
 
     const time_point first_turn = calendar::turn_zero + 100_turns;
     live_light::run_advancing_turn( first_turn, callbacks );
     CHECK( reconciliations == 1 );
     CHECK( memory_aging == 1 );
     CHECK( discoveries == 1 );
-    CHECK( deliveries == 4 );
+    CHECK( deliveries == 3 );
+    REQUIRE( cannibal_packets.size() == 1 );
+    CHECK( cannibal_packets.back().sample_id == "cadence-fixture" );
     REQUIRE( live_light::samples_for_turn( first_turn ).size() == 1 );
 
     // A duplicate call in one real turn is a no-op, but the next advancing
@@ -450,7 +462,8 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
     CHECK( reconciliations == 1 );
     CHECK( memory_aging == 1 );
     CHECK( discoveries == 1 );
-    CHECK( deliveries == 4 );
+    CHECK( deliveries == 3 );
+    CHECK( cannibal_packets.size() == 1 );
     CHECK( live_light::delivery_trace().empty() );
 
     const time_point second_turn = first_turn + 1_turns;
@@ -458,7 +471,8 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
     CHECK( reconciliations == 2 );
     CHECK( memory_aging == 2 );
     CHECK( discoveries == 2 );
-    CHECK( deliveries == 8 );
+    CHECK( deliveries == 6 );
+    CHECK( cannibal_packets.size() == 2 );
     CHECK( live_light::sample_is_current( second_turn ) );
     CHECK( live_light::delivery_trace() == std::vector<live_light_delivery_stage> {
         live_light_delivery_stage::rider_reconciliation,
@@ -469,6 +483,286 @@ TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
         live_light_delivery_stage::rider_delivery,
         live_light_delivery_stage::cannibal_delivery,
     } );
+}
+
+TEST_CASE( "live_light_routes_smoke_to_cannibals_but_keeps_optics_light_only",
+           "[physical_light][continuity][smoke_first]" )
+{
+    live_light::reset();
+    std::vector<std::vector<live_bandit_signal_observation>> optical_packets;
+    std::vector<std::vector<live_bandit_signal_observation>> cannibal_packets;
+    live_light::callbacks callbacks;
+    callbacks.reconcile_riders = []() {};
+    callbacks.age_rider_memory = []() {};
+    const auto capture_optical = [&optical_packets](
+                                     const std::vector<live_bandit_signal_observation> &samples ) {
+        optical_packets.push_back( samples );
+    };
+    callbacks.deliver_hordes = capture_optical;
+    callbacks.deliver_stalkers = capture_optical;
+    callbacks.deliver_riders = capture_optical;
+    callbacks.deliver_cannibals = [&cannibal_packets](
+                                      const std::vector<live_bandit_signal_observation> &samples ) {
+        cannibal_packets.push_back( samples );
+    };
+
+    const tripoint_abs_omt smoke_source( 135, 137, 0 );
+    const auto smoke = [&smoke_source]( const std::string &id ) {
+        live_bandit_signal_observation sample;
+        sample.mark.mark_id = id;
+        sample.mark.kind = "smoke";
+        sample.mark.source_omt = smoke_source;
+        sample.source_omt = smoke_source;
+        sample.range_cap_omt = 8;
+        sample.sample_id = id + "#100";
+        sample.observed_turn = 100;
+        sample.observed_minutes = 5;
+        return sample;
+    };
+    const auto light = []() {
+        live_bandit_signal_observation sample;
+        sample.mark.mark_id = "light-mark";
+        sample.mark.kind = "light";
+        sample.sample_id = "light-mark#101";
+        sample.has_light_projection = true;
+        sample.observed_turn = 101;
+        sample.observed_minutes = 5;
+        return sample;
+    };
+    const time_point first_turn = calendar::turn_zero + 100_turns;
+    callbacks.discover = [&smoke]() {
+        return std::vector<live_bandit_signal_observation> { smoke( "smoke-first" ) };
+    };
+    live_light::run_advancing_turn( first_turn, callbacks );
+    REQUIRE( cannibal_packets.size() == 1 );
+    REQUIRE( cannibal_packets.back().size() == 1 );
+    CHECK( cannibal_packets.back().front().mark.kind == "smoke" );
+    CHECK( cannibal_packets.back().front().source_omt == smoke_source );
+    CHECK( cannibal_packets.back().front().sample_id == "smoke-first#100" );
+    CHECK( cannibal_packets.back().front().observed_turn == 100 );
+    CHECK( cannibal_packets.back().front().observed_minutes == 5 );
+    CHECK( optical_packets.empty() );
+
+    callbacks.discover = [&light]() {
+        return std::vector<live_bandit_signal_observation> { light() };
+    };
+    live_light::run_advancing_turn( first_turn + 1_turns, callbacks );
+    REQUIRE( cannibal_packets.size() == 2 );
+    REQUIRE( cannibal_packets.back().size() == 1 );
+    CHECK( cannibal_packets.back().front().mark.kind == "light" );
+    REQUIRE( optical_packets.size() == 3 );
+    CHECK( optical_packets.back().front().mark.kind == "light" );
+
+    callbacks.discover = [&smoke, &light]() {
+        return std::vector<live_bandit_signal_observation> { smoke( "mixed-smoke" ), light() };
+    };
+    live_light::run_advancing_turn( first_turn + 2_turns, callbacks );
+    REQUIRE( cannibal_packets.size() == 3 );
+    REQUIRE( cannibal_packets.back().size() == 2 );
+    CHECK( cannibal_packets.back().front().mark.kind == "smoke" );
+    CHECK( cannibal_packets.back().back().mark.kind == "light" );
+    REQUIRE( optical_packets.size() == 6 );
+    for( const std::vector<live_bandit_signal_observation> &packet : optical_packets ) {
+        REQUIRE( packet.size() == 1 );
+        CHECK( packet.front().mark.kind == "light" );
+    }
+
+    live_light::run_advancing_turn( first_turn + 2_turns, callbacks );
+    CHECK( cannibal_packets.size() == 3 );
+    CHECK( optical_packets.size() == 6 );
+}
+
+TEST_CASE( "production_smoke_signal_admits_cannibal_dispatch_once_and_keeps_failures",
+           "[physical_light][smoke_first][dispatch]" )
+{
+    restore_on_out_of_scope restore_turn( calendar::turn );
+    const bandit_live_world::world_state previous_world =
+        overmap_buffer.global_state.bandit_live_world;
+    std::vector<character_id> transient_npcs;
+    on_out_of_scope restore_world( [&previous_world, &transient_npcs]() {
+        for( const character_id id : transient_npcs ) {
+            overmap_buffer.remove_npc( id );
+        }
+        overmap_buffer.global_state.bandit_live_world = previous_world;
+        reset_live_light_sample_cache();
+        clear_creatures();
+    } );
+    setup_dark_native_lightmap();
+    calendar::turn = calendar::turn_zero + 100_turns;
+    reset_live_light_sample_cache();
+    overmap_buffer.global_state.bandit_live_world.clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms origin = get_avatar().pos_bub();
+    // The carrier tile is always rechecked by the production sampler, so this
+    // smoke is guaranteed to be the first discovered source on the turn.
+    const tripoint_bub_ms smoke_pos = origin;
+    const tripoint_abs_ms smoke_abs = here.get_abs( smoke_pos );
+    const tripoint_abs_omt camp_omt = coords::project_to<coords::omt>( smoke_abs );
+    const field_type_id smoke_type( "fd_smoke" );
+    here.add_field( smoke_pos, smoke_type, 2 );
+    on_out_of_scope cleanup_smoke( [&here, smoke_pos, smoke_type]() {
+        here.remove_field( smoke_pos, smoke_type );
+    } );
+
+    const auto make_site = []( const std::string &id,
+    const tripoint_abs_omt &anchor ) {
+        bandit_live_world::site_record site;
+        site.site_id = id;
+        site.source_kind = bandit_live_world::anchor_source_kind::overmap_special;
+        site.site_kind = bandit_live_world::owned_site_kind::cannibal_camp;
+        site.profile = bandit_live_world::hostile_site_profile::cannibal_camp;
+        site.source_id = "cannibal_camp";
+        site.anchor = anchor;
+        site.footprint.push_back( anchor );
+        site.living_total = 2;
+        site.supply_accounted_living_total = 2;
+        return site;
+    };
+
+    const tripoint_bub_ms member_pos_a = origin + tripoint::north;
+    const tripoint_bub_ms member_pos_b = origin + tripoint::south;
+    npc &member_a = spawn_npc( member_pos_a.xy(), "cannibal_hunter" );
+    npc &member_b = spawn_npc( member_pos_b.xy(), "cannibal_hunter" );
+    clear_character( member_a, true );
+    clear_character( member_b, true );
+    member_a.setpos( here, member_pos_a );
+    member_b.setpos( here, member_pos_b );
+
+    bandit_live_world::site_record &dispatchable =
+        overmap_buffer.global_state.bandit_live_world.sites.emplace_back(
+            make_site( "test:smoke_dispatchable", camp_omt ) );
+    for( const npc *member : { &member_a, &member_b } ) {
+        const tripoint_abs_ms position = member->pos_abs();
+        dispatchable.members.push_back( { member->getID(), "cannibal_hunter", position,
+                                          bandit_live_world::member_state::at_home, false, "" } );
+        dispatchable.spawn_tiles.push_back( { position, 1 } );
+    }
+
+    const tripoint_abs_omt failed_route_anchor( camp_omt.x(), camp_omt.y() + 1,
+                                                 camp_omt.z() );
+    bandit_live_world::site_record &failed_route =
+        overmap_buffer.global_state.bandit_live_world.sites.emplace_back(
+            make_site( "test:smoke_failed_route", failed_route_anchor ) );
+    failed_route.members.push_back( { character_id( 970001 ), "cannibal_hunter",
+                                      project_to<coords::ms>( failed_route_anchor ),
+                                      bandit_live_world::member_state::at_home, false, "" } );
+    failed_route.members.push_back( { character_id( 970002 ), "cannibal_hunter",
+                                      project_to<coords::ms>( failed_route_anchor ),
+                                      bandit_live_world::member_state::at_home, false, "" } );
+
+    const auto camp_special_at = [&camp_omt]( const tripoint_abs_omt &candidate ) ->
+    std::optional<std::string> {
+        if( candidate == camp_omt ) {
+            return "cannibal_camp";
+        }
+        return std::nullopt;
+    };
+    REQUIRE( bandit_live_world::register_abstract_site(
+                 overmap_buffer.global_state.bandit_live_world,
+                 bandit_live_world::anchor_source_kind::overmap_special, "cannibal_camp",
+                 camp_omt, camp_special_at, 3 ) );
+    const std::string abstract_site_id =
+        overmap_buffer.global_state.bandit_live_world.sites.back().site_id;
+
+    const tripoint_abs_omt out_of_range_anchor( camp_omt.x() + 40, camp_omt.y(),
+                                                 camp_omt.z() );
+    overmap_buffer.global_state.bandit_live_world.sites.push_back(
+        make_site( "test:smoke_out_of_range", out_of_range_anchor ) );
+
+    const std::filesystem::path event_path = std::filesystem::absolute(
+                "build_logs/first-smoke-001/adapter-events.jsonl" );
+    std::filesystem::remove( event_path );
+    const char *const previous_event_path = std::getenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH" );
+    const char *const previous_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const std::optional<std::string> saved_event_path = previous_event_path == nullptr ?
+            std::nullopt : std::optional<std::string>( previous_event_path );
+    const std::optional<std::string> saved_run_id = previous_run_id == nullptr ?
+            std::nullopt : std::optional<std::string>( previous_run_id );
+    on_out_of_scope restore_transition_stream( [saved_event_path, saved_run_id]() {
+        if( saved_event_path ) {
+            setenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", saved_event_path->c_str(), 1 );
+        } else {
+            unsetenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH" );
+        }
+        if( saved_run_id ) {
+            setenv( "OPENCLAW_HARNESS_RUN_ID", saved_run_id->c_str(), 1 );
+        } else {
+            unsetenv( "OPENCLAW_HARNESS_RUN_ID" );
+        }
+    } );
+    setenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", event_path.c_str(), 1 );
+    setenv( "OPENCLAW_HARNESS_RUN_ID", "smoke-adapter-test", 1 );
+    const auto read_transition_stream = [&event_path]() {
+        std::ifstream input( event_path );
+        return std::string( std::istreambuf_iterator<char>( input ),
+                            std::istreambuf_iterator<char>() );
+    };
+
+    run_live_light_delivery_for_test();
+    const std::vector<live_bandit_signal_observation> &samples =
+        live_light::samples_for_turn( calendar::turn );
+    const auto smoke = std::find_if( samples.begin(), samples.end(),
+    []( const live_bandit_signal_observation &sample ) {
+        return sample.mark.kind == "smoke";
+    } );
+    REQUIRE( smoke != samples.end() );
+    CHECK_FALSE( smoke->has_light_projection );
+    CHECK_FALSE( std::any_of( samples.begin(), samples.end(),
+    []( const live_bandit_signal_observation &sample ) {
+        return sample.mark.kind == "light" || sample.mark.kind == "searchlight";
+    } ) );
+    CHECK( smoke->source_ms == smoke_abs );
+    CHECK( smoke->observed_turn == 100 );
+    CHECK( smoke->sample_id == smoke->mark.mark_id + "#100" );
+
+    const auto find_site = []( const std::string &id ) -> const bandit_live_world::site_record * {
+        return overmap_buffer.global_state.bandit_live_world.find_site( id );
+    };
+    const bandit_live_world::site_record *dispatched_site = find_site( "test:smoke_dispatchable" );
+    REQUIRE( dispatched_site != nullptr );
+    CHECK( dispatched_site->active_outing.is_active() );
+    REQUIRE( dispatched_site->active_outing.member_ids.size() == 2 );
+    const std::string first_activity = dispatched_site->active_outing.activity_id;
+    const int first_generation = dispatched_site->active_outing.generation;
+    const bandit_live_world::site_record *abstract_site = find_site( abstract_site_id );
+    REQUIRE( abstract_site != nullptr );
+    CHECK( abstract_site->members.size() == 3 );
+    CHECK( abstract_site->active_outing.is_active() );
+    REQUIRE( abstract_site->active_outing.member_ids.size() == 2 );
+    for( const bandit_live_world::member_record &member : abstract_site->members ) {
+        transient_npcs.push_back( member.npc_id );
+    }
+
+    std::string transition_stream = read_transition_stream();
+    CAPTURE( transition_stream );
+    CHECK( transition_stream.find( "production_signal_admitted" ) != std::string::npos );
+    CHECK( transition_stream.find( "unavailable_members=2" ) != std::string::npos );
+    CHECK( transition_stream.find( "no_in_range_production_signal" ) != std::string::npos );
+    CHECK( transition_stream.find( std::string( "\"site_id\":\"" ) + abstract_site_id + "\"" ) !=
+           std::string::npos );
+    CHECK( transition_stream.find( "production_lazy_materialization=3" ) != std::string::npos );
+    CHECK( transition_stream.find( "concrete_roster_ready" ) != std::string::npos );
+    CHECK( transition_stream.find( "routed_members=2 unavailable_members=0" ) !=
+           std::string::npos );
+
+    // Same-turn replay cannot re-run the producer or allocate another party.
+    run_live_light_delivery_for_test();
+    dispatched_site = find_site( "test:smoke_dispatchable" );
+    REQUIRE( dispatched_site != nullptr );
+    CHECK( dispatched_site->active_outing.activity_id == first_activity );
+    CHECK( dispatched_site->active_outing.generation == first_generation );
+    CHECK( read_transition_stream() == transition_stream );
+
+    // A later observation sees active pressure and preserves the first sortie.
+    calendar::turn += 1_turns;
+    run_live_light_delivery_for_test();
+    dispatched_site = find_site( "test:smoke_dispatchable" );
+    REQUIRE( dispatched_site != nullptr );
+    CHECK( dispatched_site->active_outing.activity_id == first_activity );
+    CHECK( dispatched_site->active_outing.generation == first_generation );
+    transition_stream = read_transition_stream();
+    CHECK( transition_stream.find( "active_outside_pressure" ) != std::string::npos );
 }
 
 TEST_CASE( "physical_light_respects_depletion_and_movement", "[physical_light]" )

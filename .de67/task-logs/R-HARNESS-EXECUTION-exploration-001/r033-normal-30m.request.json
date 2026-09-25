@@ -1,0 +1,15 @@
+{
+  "action": "game.raw_wait",
+  "raw_wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 30,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "fresh native World minute 9241; a 30-minute operation remains before the staged source's minute 10081 and is used only for shared lifecycle observation",
+      "unit": "game_minutes",
+      "maximum": 30,
+      "progress_required": true
+    },
+    "recipe": ["world.wait", "wait.30m"]
+  }
+}

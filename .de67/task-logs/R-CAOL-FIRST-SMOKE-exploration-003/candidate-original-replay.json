@@ -1,0 +1,17 @@
+{
+  "schema": "de67.native-return-candidate-replay.v1",
+  "source_audit": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-CAOL-FIRST-SMOKE-exploration-003/native-source-audit.json",
+  "thread_checks": [
+    {
+      "thread_id": "01a0d507-1891-7f30-9cb7-af8e7fe1c658",
+      "completed_latest_turn": true
+    },
+    {
+      "thread_id": "01a0d507-ef3e-7742-935b-d4bd66ef0bc2",
+      "completed_latest_turn": false
+    }
+  ],
+  "owning_transport_quiet": false,
+  "current_task_returned": false,
+  "interpretation": "original worker latest turn completed at physical line 9729; child latest turn aborted at physical line 5125. Historical CLI transport receipts lack PID/birth and the task was later restart-normalized. Candidate correctly leaves this historical snapshot outside automatic quiescence."
+}

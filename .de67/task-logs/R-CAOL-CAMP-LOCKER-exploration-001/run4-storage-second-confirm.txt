@@ -1,0 +1,4 @@
+Run Smart Zone Manager v1 for this Basecamp inventory zone now?
+ALLOWED HERE ONLY
+YES → play yes
+NO → play no

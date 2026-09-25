@@ -1,0 +1,17 @@
+23:54:37.868 INFO : Cataclysm DDA version 4e3b63650d-dirty
+23:54:37.869 INFO : SDL version used during compile is 2.32.10
+23:54:37.869 INFO : SDL version used during linking and in runtime is 2.32.10
+00:06:55.111 INFO : Cataclysm DDA version 4e3b63650d-dirty
+00:06:55.112 INFO : SDL version used during compile is 2.32.10
+00:06:55.112 INFO : SDL version used during linking and in runtime is 2.32.10
+00:27:37.036 INFO : Cataclysm DDA version 4e3b63650d-dirty
+00:27:37.036 INFO : SDL version used during compile is 2.32.10
+00:27:37.036 INFO : SDL version used during linking and in runtime is 2.32.10
+00:31:29.248 INFO : Cataclysm DDA version 4e3b63650d-dirty
+00:31:29.249 INFO : SDL version used during compile is 2.32.10
+00:31:29.249 INFO : SDL version used during linking and in runtime is 2.32.10
+ M src/bandit_live_world.cpp
+ M src/character_inventory.cpp
+ M src/do_turn.cpp
+ M src/item.cpp
+

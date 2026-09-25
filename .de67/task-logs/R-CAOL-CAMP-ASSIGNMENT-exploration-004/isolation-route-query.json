@@ -1,0 +1,36 @@
+{
+  "requirements": [
+    {
+      "key": "runtime.fixture",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "r032_fresh_camp_establishment_follower_v1"
+    },
+    {
+      "key": "runtime.world",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "McWilliams"
+    },
+    {
+      "key": "capabilities.r032.establishment",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "native_semantic_dialogue_and_menu_to_new_camp_identity"
+    },
+    {
+      "key": "capabilities.r032.native_assignment_continuity",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "native_assignment_at_camp_omt_then_save_quit_reload"
+    }
+  ],
+  "preferences": [
+    {
+      "key": "runtime.entry_mode",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "cockpit_live_session"
+    }
+  ]
+}

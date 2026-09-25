@@ -1,0 +1,6 @@
+ACTIVITY WAIT
+Elapsed: 0.0 game minutes.
+Activity: wait
+ALLOWED HERE ONLY
+Pause activity → play stop
+Check progress → play look (collect repeats this recorded result).

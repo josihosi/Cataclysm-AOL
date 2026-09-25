@@ -1,0 +1,56 @@
+{
+  "invocation": "mutation-1bd9283b6edc4a4a8a1de949e28d7376",
+  "gate": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "resolved": true,
+  "accepted_records_preserved": 75,
+  "retained_tasks_claims_checkpoints_gaps": true,
+  "owner_pending_entries": 0,
+  "restart": {
+    "lineage_id": "semantic-surface-cockpit",
+    "generation": 86,
+    "requested_at": 1790320203.070872,
+    "reason": "deadline mutation resolved for R-CAOL-FIRST-SMOKE; successor must set a fresh clock without inheritance",
+    "claimed_at": null,
+    "expected_run_id": null,
+    "acknowledged_at": null,
+    "run_id": null
+  },
+  "next_distinct_gate": "R-CAOL-CAMP-WAIT-COST-exploration-002",
+  "coordinator_launched": false,
+  "lifecycle": {
+    "incident": {
+      "lineage_id": "semantic-surface-cockpit",
+      "claim_id": "R-CAOL-FIRST-SMOKE",
+      "generation": 1,
+      "source_task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+      "recorded_at": 1790294794.684639,
+      "short_verdict": "Smoke fire proved; incomplete light/continuation proof, log flood and setup detours; native returned-turn routing gap held review.",
+      "long_detail": ".de67/task-logs/review-first-smoke-20260925/report.md; exact checkpoints, native return at physical line9729, quiescence counterexample and rendered successor briefs retained. No new acceptance. Ordinary ladder route and saved minute7994 continuation retained; Astra log repair first for closed-run replay. Existing roster/reminder fix reused; native return method candidate commissioned for Sol.",
+      "reviewed_at": 1790320203.0687659,
+      "restart_generation": 86
+    },
+    "components": [
+      {
+        "lineage_id": "semantic-surface-cockpit",
+        "claim_id": "R-CAOL-FIRST-SMOKE",
+        "generation": 1,
+        "component": "micro",
+        "resolved_at": 1790320203.069659,
+        "evidence": "Validated concrete recovery handoff and ledger ownership projection: same saved-world continuation and ordinary ladder route instead of failed teleports; named Luna returned-turn route while Sol stages native-turn reconciliation. Preserve partial proof and all accepted work. .de67/task-logs/review-first-smoke-20260925/report.md; exact checkpoints, native return at physical line9729, quiescence counterexample and rendered successor briefs retained. No new acceptance. Ordinary ladder route and saved minute7994 continuation retained; Astra log repair first for closed-run replay. Existing roster/reminder fix reused; native return method candidate commissioned for Sol.",
+        "receipt_id": null,
+        "no_change_required": 0
+      },
+      {
+        "lineage_id": "semantic-surface-cockpit",
+        "claim_id": "R-CAOL-FIRST-SMOKE",
+        "generation": 1,
+        "component": "macro",
+        "resolved_at": 1790320203.070872,
+        "evidence": "No additional installed method change required in this review: reuse validated Astra roster/setup and supervisor/Q1 reminder correction from astra-winddown-20260925. Do not attribute Q1 to historical released rows; verified native-return gap needs the commissioned authenticated transport candidate, not speculative state clearing. .de67/task-logs/review-first-smoke-20260925/report.md; exact checkpoints, native return at physical line9729, quiescence counterexample and rendered successor briefs retained. No new acceptance. Ordinary ladder route and saved minute7994 continuation retained; Astra log repair first for closed-run replay. Existing roster/reminder fix reused; native return method candidate commissioned for Sol.",
+        "receipt_id": null,
+        "no_change_required": 1
+      }
+    ]
+  },
+  "closeout_note": "Initial postcondition incorrectly expected no other gate; exact reread proves requested gate resolved and a distinct pre-existing performance incident remains. No duplicate lifecycle writes or restart request."
+}

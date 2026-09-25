@@ -1,0 +1,57 @@
+{
+  "schema": "caol.bulk-item-cost-profile-route.v1",
+  "task": "R-CAOL-BULK-ITEM-COST-exploration-001",
+  "status": "native_sandbox_saved; workload_setup_and_runs_in_progress",
+  "launch_gate": "Satisfied: Smartzone returned native ownership, and its v4 game PID 27686/broker 27687 and reload PID 28630 were verified exited by exact birth before launch. This task owns only its disposable profile/game process.",
+  "isolation": {
+    "profile": "caol-bulk-item-cost-exploration-001",
+    "requested_world_label": "BulkItemCostSandbox",
+    "world": "Westcreek",
+    "source": "A task-owned native ordinary survivor was created through the play-now default route because the requested world label did not exist. Its saved game world is Westcreek; independent workload starts are cloned from that exact native save.",
+    "reference_saves": "Do not read, install, or modify .userdata/reference-saves for this route.",
+    "other_worlds": "Do not reuse dev-harness or another worker's profile/world; the profile and world names above are task-owned.",
+    "build": "Use the existing current-source Mac Tiles executable and record its path, SHA-256, source revision and dirty state. No build is needed unless runtime-status shows a stale/incompatible executable or a repair changes code."
+  },
+  "setup": {
+    "scenario_registry": "Stage the scenario and disposable setup manifests in this task directory first. Register/copy them into the shared harness scenario/fixture directories only when ready to launch and after checking that the unique IDs do not exist.",
+    "world": "Create an ordinary native survivor with the source build in the task-owned profile. Use an empty outdoor map area with passable adjacent tiles, no vehicle, no nearby active creatures, and no nearby unrelated actors. Save and quit natively before cloning the baseline and after copies.",
+    "plank_owner": "Populate by native item drop or a verified fixture transform that assigns the current player's faction. Confirm the normal advanced-inventory route can move one control plank before preparing the bulk start.",
+    "workload_sizes": {
+      "owner_observed_plank_items": null,
+      "owner_observed_unsorted_items": null,
+      "initial_diagnostic_default_if_owner_counts_unavailable": 256,
+      "count_policy": "The default is a measured workload choice, not a pass threshold. Prefer exact owner-reported counts and record all item types, charges and locations. If the default is used, report it as representative rather than an exact reproduction."
+    },
+    "workload_a_advanced_inventory": {
+      "source": "One ground tile",
+      "destination": "Adjacent empty ground tile",
+      "input": "Recorded number of physical plank items owned by the player",
+      "action": "Open advanced inventory, select those source and destination panes, invoke the native bulk-move action, and let move_items_activity_actor complete."
+    },
+    "workload_b_zone_sort": {
+      "source_zone": "One LOOT_UNSORTED tile containing the recorded unsorted population",
+      "destination_zones": "Adjacent destinations for each included item class, with sufficient recorded capacity",
+      "input": "Recorded heterogeneous item types; begin with planks (wood) and apples (food) unless the owner workload indicates different types/classes",
+      "action": "Invoke native zone sorting and let the zone_sort_activity_actor complete. Record source tile count, destination zone identities/types and capacities."
+    }
+  },
+  "measurement": {
+    "source_binding": ["source revision/dirty state", "executable path/SHA-256", "scenario and fixture hashes", "platform/architecture/renderer"],
+    "start_binding": ["profile/world/player", "starting save tree hash", "game turn and player position", "local creature/NPC/vehicle counts", "source/destination map coordinates", "item type/count/charges/owner/content census", "zone identity/type/area/capacity"],
+    "ui_input": "Record each native key or action timestamp and next stable screen/frame timestamp. Read run-bound turn_phase input wall time as end-to-end menu/input time, including key waits; do not label it pure UI computation. Sample stacks separately while the menu is open.",
+    "activity": "Use native activity-driver enter/exit records, run-bound process CPU/RSS/action intervals, game::do_turn simulation_seconds and game-turn deltas. Collect /usr/bin/sample stacks in separate task-owned runs for the bulk activity and zone-sort activity; run unprofiled timing copies separately from profiled copies.",
+    "profiler": "/usr/bin/sample is available; xctrace is not installed. Save each sample output with run ID, process instance/PID birth identity, workload and phase.",
+    "replication": "Repeat the same baseline and repaired operations from equivalent saved starting states. Report every observed value and work count; no fixed percentage/time pass threshold."
+  },
+  "conservation": {
+    "checkpoints": ["saved start", "completed operation", "interrupted operation", "reloaded and resumed operation"],
+    "locations": ["source ground", "destination ground/vehicle if used", "player inventory", "worn", "wielded", "nested contents", "physical activity carrier"],
+    "fields": ["type ID", "physical instance count", "charges/count-by-charges total", "owner", "damage/active state", "recursive contents", "location totals"],
+    "reference_rule": "item_location targets in an activity are references, not extra physical items. Count carried items once at the actual carrier; do not treat target references as inventory. Confirm all expected source-to-destination movement and zero unexplained loss or duplication."
+  },
+  "controls": {
+    "blocked_or_full": "Use a separate saved control start with a blocked/full destination on the affected native path; confirm items remain accounted for and the activity terminates or reports the native refusal.",
+    "interruption": "On a separate copy, interrupt after partial progress, save/quit natively, verify the owned game process exits, relaunch the same saved world, resume and complete; census all physical locations at every checkpoint.",
+    "cleanup": "Use the native save/quit route; reconcile every owned game and bridge PID/birth identity to OS exit. A hidden window or run.finish receipt alone is insufficient."
+  }
+}

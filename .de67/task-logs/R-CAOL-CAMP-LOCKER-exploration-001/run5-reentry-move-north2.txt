@@ -1,0 +1,9 @@
+World.
+moved
+avatar.absolute ms: 3900, 876, 0
+maple tree: NW, NE
+forest floor: N, W, here, SE
+blackjack oak: E
+moss: SW
+underbrush: S
+6:05:11 AM: Moving off of this underbrush is slow!

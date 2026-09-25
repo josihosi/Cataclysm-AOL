@@ -1,0 +1,492 @@
+CAOL dev — full-stack playtest harness ergonomics investigation
+
+GOAL
+
+Investigate why CAOL playtesting consumes excessive tokens and requires so many administrative commands for relatively few gameplay decisions.
+
+Keep the LLM in control of gameplay. The objective is fewer harness chores per gameplay decision, NOT fewer gameplay decisions, scripted solutions, or a controller that keeps trying a known recipe until something passes.
+
+Cover the complete workflow:
+scenario discovery and selection → preparation → launch → gameplay →
+interruptions and asynchronous work → evidence inspection →
+witness submission → closeout → continuation across scenarios.
+
+This is an investigation plus hands-on playtesting, not a production-code implementation task. Produce evidence-backed findings and concrete improvement recommendations. Do not silently turn it into a broad rewrite.
+
+The earlier review concerned dev snapshot fe8c418. Treat its findings below as leads to verify against the current branch, not unquestionable facts. Some were checked with synthetic inputs; the reviewer did not run native playtests or independently reconstruct the reported “10 waits required almost 50 commands” session.
+
+
+NON-NEGOTIABLE PRINCIPLES
+
+- Preserve the LLM’s ability to choose movements, interactions, waits, dialogue, and responses to interruptions.
+- Automate transport, bookkeeping, result collection, evidence addressing, and other mechanical chores—not the decisions under test.
+- Preserve native game authority, session/process ownership checks, immutable evidence, and claim-specific verification.
+- Starting an action is not completing it. Real-time sleeping is not proof that game time advanced. A timeout is not success.
+- Do not manufacture the NPC behavior or other game behavior that a test is supposed to observe.
+- Do not weaken acceptance criteria, bypass relevant native interactions, hide failures, or repeat variations until one happens to pass.
+- Large retained logs are not inherently a problem. Irrelevant log content repeatedly entering model context is a problem.
+- Cache knowledge of the interface, not a predetermined recipe for passing a scenario.
+
+
+COORDINATOR AND WORKER: ACTUALLY TRY TO MAKE PLAYTESTING WORK
+
+Both the coordinator and the worker must actively try to complete real playtesting runs through the supported workflow. A static source review alone is insufficient.
+
+The worker should attempt the playtest, inspect what actually happens, adapt to unexpected native behavior, and use available controls and evidence creatively.
+
+The coordinator must do more than assign a scenario and receive a failure report. Help diagnose blockers, distinguish a bad test setup from a harness problem or genuine game failure, and identify a justified next experiment.
+
+Be creative in solving difficult playtests. For example:
+- Find another legitimate way to reach the required situation.
+- Break a difficult observation into smaller, independently useful checks.
+- Improve the timing or positioning of observations.
+- Use a different supported interaction to investigate the same claim.
+- Cross-check native state, visible behavior, and relevant event evidence.
+
+Keep those choices consistent with the scenario’s requirements. Setup changes must be documented. Changes that alter the tested claim must become a separate experiment, not a silent adjustment.
+
+“Make the run work” means reach a defensible result: pass, genuine failure, inconclusive, or a clearly demonstrated infrastructure blocker. It does not mean force a pass.
+
+Avoid both premature abandonment and endless improvisation. When an attempt stalls, state the blocker, current hypothesis, and what a further attempt would establish. Do not repeat an unchanged no-progress loop.
+
+Respect single-player/session ownership. Coordinator assistance must not introduce competing inputs into the worker’s live session.
+
+Record the awkward steps encountered during real use. Those steps are audit evidence, not something to smooth over in the final report.
+
+
+1. EVIDENCE QUERIES MAY RETURN UNRELATED HISTORY
+
+Inspect evidence_events.py::query() and _request_result_links().
+
+Previous finding:
+- Events were added to an all-events collection before applying query filters.
+- Matching rows were filtered correctly.
+- Request/result links were then constructed using:
+    links = _request_result_links(events)
+- The response limited its rows but returned links from the broader scanned history.
+- The player client supplied both session responses and shared logs.
+
+Verify whether a narrow query for one actor, request, or event therefore returns unrelated request-link information. Check how output grows with session length and shared-log history.
+
+Also inspect link completeness semantics. A previous synthetic check showed an accepted, completed action labelled:
+    status: partial
+    missing: rejection
+
+Acceptance and rejection should normally be alternative outcomes, not two required stages of successful completion.
+
+Recommended direction:
+Return requested evidence plus genuinely related request stages. Make incomplete-status reporting reflect the actual request lifecycle.
+
+Do not make the agent investigate a “missing rejection” for an accepted, completed action.
+
+
+2. ORDINARY REPLIES MAY CARRY STARTUP AND TRANSPORT BAGGAGE
+
+Inspect:
+- cockpit_file_bridge.py::response_status()
+- PlayerClient.collect()
+- PlayerClient.controls()
+- PlayerClient response serialization
+
+Previous finding:
+response_status() attached startup_diagnostics whenever an available response was retrieved, including startup progress/failure information, process identity, and recovery-artifact paths.
+
+collect() removed a general retrieval field but retained startup diagnostics.
+
+The presentation envelope also added a digest, byte count, and generic retrieval guidance. Controls combined a sizeable manual with log-discovery entries repeating paths, scope, run/binding identity, and query instructions.
+
+Measure what appears repeatedly during ordinary successful actions. Separate:
+- Information needed for the next gameplay decision.
+- Information needed only for a diagnostic.
+- Information already known and unchanged.
+- Information useful for archived evidence but not live context.
+
+Recommended direction:
+Keep validation internal and full receipts retrievable. Show startup/recovery diagnostics when relevant, not on every routine response.
+
+An ordinary decision view should prioritize:
+- What action happened.
+- Whether it completed, was interrupted, failed, or remains pending.
+- Relevant game-time advancement.
+- What changed.
+- Who currently owns input.
+- Available native responses.
+- A compact evidence reference.
+
+Do not bury this information beneath process and transport metadata.
+
+
+3. RENDERER, DOCUMENTATION, AND RETRIEVAL CONTRACT MAY DISAGREE
+
+Inspect:
+- gameplay_display.display()
+- cockpit_evidence.action_catalog()
+- Player-facing search and live-operation guides
+- Examples and tests for response selectors
+
+Previous findings:
+- Documentation told players to copy:
+    current_input.source_selector
+    current_input.actions_selector
+- It also described .response.result.
+- The gameplay renderer did not emit those selector fields and replaced the original result structure with a delta presentation.
+- Documentation promised five distinct targets plus controls for large action catalogs.
+- That formatting existed in cockpit_evidence.action_catalog(), but the gameplay renderer built action lists directly.
+- On input-owner transitions, it could supply the whole action list to the outer presentation layer.
+
+Verify the current behavior for:
+- Full observations.
+- Delta observations.
+- Input-owner changes.
+- Large menus/action catalogs.
+- Omitted data and follow-up retrieval.
+
+Recommended direction:
+One player-facing response contract shared by implementation, documentation, examples, and tests.
+
+Full observations and deltas should use consistent locations for corresponding fields. Every advertised selector and retrieval operation must actually work against the response the player receives.
+
+The player should not have to reverse-engineer JSON structure after following the documentation.
+
+
+4. OUTPUT LIMITS MAY REMOVE THE WRONG INFORMATION
+
+Inspect evidence_display.bounded(), gameplay projections, and retrieval paging.
+
+Previous finding:
+The 8,192-byte presentation cap reduced the largest fields rather than protecting the information necessary for the next decision. Retrieving an oversized page could itself create further omission handles.
+
+Investigate whether this causes:
+- Important prompts or choices to be omitted.
+- Multiple retrievals to understand a single action result.
+- Diagnostic metadata surviving while gameplay information disappears.
+- Retrieval chains whose combined cost exceeds showing the useful information initially.
+
+Also verify these projection behaviors:
+- Nearby entities/zones previewed as the first five entries rather than prioritizing changed entities.
+- Messages grouped over the supplied message history and reduced to five recent distinct-text groups rather than explicitly representing messages since the previous observation.
+- Changed lists re-projected as whole lists rather than compared by stable item identity.
+- Retained fixture messages appearing alongside new runtime messages.
+
+Check whether a newly changed NPC can be outside the preview while unchanged NPCs remain visible.
+
+Recommended direction:
+Protect a mandatory decision view first, then reduce optional details.
+
+Show entity changes by stable identity and messages by an event cursor. Distinguish pre-existing/fixture history from events generated during the current run.
+
+Do not judge efficiency by response size alone. Count the follow-up commands needed to recover omitted information.
+
+
+5. CONTROLS AND COLLECTION MAY CREATE AVOIDABLE ROUND TRIPS
+
+Inspect play_cli.py, PlayerClient, locking, pending-request handling, and the current S-HARNESS requirements.
+
+A. One-second collection default
+
+Previous finding:
+    parser.add_argument("--wait-seconds", type=float, default=1, ...)
+
+An internal collection loop already handled waiting and failure/cancellation, but the default returned after one second unless the caller supplied a larger budget.
+
+Measure how often ordinary operations therefore produce pending responses and additional collect calls.
+
+B. Collection is not idempotent at the player interface
+
+Previous finding:
+After a response was collected, another collect returned no_pending_request and pointed toward look rather than returning the already-completed operation.
+
+Test recovery after lost output, a tool timeout, duplicate collection, and context handoff.
+
+A repeated collection must not resubmit the action or accidentally collect a different action. Investigate stable operation identity and replaying the completed result.
+
+C. Recovery look creates extra context
+
+Previous finding:
+An explicit observation reset the delta baseline and produced a full projected refresh.
+
+Check whether missing results or ambiguous collection state force unnecessary look calls and large refreshed observations.
+
+D. Read-only inspection competes with collection
+
+Previous finding:
+controls, messages, and inspect used the same exclusive session lock as blocking collection. Cancellation and performance queries already had a separate route.
+
+Verify whether the player can inspect relevant read-only state while an operation is pending. Separate genuine consistency requirements from avoidable lock contention.
+
+E. Structured actions require filesystem chores
+
+Previous finding:
+call --request required a JSON file, including recipe and bound details. Wait instructions required native menu navigation and knowledge of different recipe formats for interruption policies.
+
+Trace the exact work needed to issue and complete one wait:
+- Gameplay choices.
+- Menu interactions relevant to the test.
+- JSON/file construction.
+- Transport submission.
+- Pending/result collection.
+- Selector lookup or repair.
+- Redundant observation.
+- Evidence retrieval.
+
+For the reported “10 waits / almost 50 commands,” reconstruct the original run if accessible. Otherwise perform a clearly labelled reproduction; do not claim it is the original.
+
+Recommended direction:
+Make administrative action handling reliable and inexpensive while preserving real gameplay choices and native interruption behavior.
+
+The existing S-HARNESS specification reportedly already includes direct wait/session operations, idempotent collection, and shared native completion. Determine what is implemented, incomplete, or contradicted elsewhere rather than proposing duplicate mechanisms.
+
+
+6. SCENARIO DISCOVERY AND REPORTING MAY CONTAIN SCENARIO-SPECIFIC ASSUMPTIONS
+
+Inspect:
+- registry_query_output.py::_run_observation()
+- Generic run-evidence projection
+- registry-query-page --scenario-id ...
+- Registry CLI serialization and saved candidate evidence
+
+Previous finding:
+The generic run-observation summary interpreted evidence through bandit-payment-specific checks:
+
+    "proof_depth": "interaction" if pay_receipts
+                   else "startup/load-or-inconclusive"
+
+Missing-field checks included trade UI, payment completion, and paid departure, without restricting the projection to payment scenarios.
+
+A synthetic movement report retained verdict: proved but was also summarized as:
+    proof_depth: startup/load-or-inconclusive
+    missing_fields:
+      trade_owner
+      trade_ui_open
+      payment_completed
+      paid_departure
+
+Verify this against current code and non-payment scenarios.
+
+Distinguish misleading summaries from actual underlying verdict changes. Do not overstate the defect.
+
+Also inspect exact scenario-detail queries. Previously, an exact scenario query attached the entire saved candidate snapshot as evidence, and registry output did not use the player’s byte-bounded serializer.
+
+Recommended direction:
+Generic summaries should describe actual actions, observations, and the selected claim’s requirements. Payment-specific checks belong only to payment scenarios.
+
+Scenario discovery should return enough to select and launch. Declaration details and historical evidence should be separately retrievable.
+
+A small default candidate count is not sufficient if opening one candidate dumps a large historical snapshot.
+
+
+7. INSTRUCTIONS AND CONTEXT HANDOFF MAY GENERATE RECOVERY WORK
+
+Inspect current skills, lookup documents, examples, context provider, and current-results exporter.
+
+Verify these reported contradictions:
+
+A. Tab guidance
+
+A control lookup warned that Tab opens the main menu and sabotages live probes, but later recommended Tab for passing turns.
+
+Check for similar mixtures of current controls and outdated empirical recipes.
+
+B. Argument ordering
+
+One guide recommended:
+    collect --wait-seconds REMAINING_SECONDS
+
+But --wait-seconds was a parent-parser argument, requiring:
+    ... --wait-seconds REMAINING_SECONDS collect
+
+Other examples reportedly used the correct order.
+
+Check documented commands against the actual parser.
+
+C. Wrong continuation command during pending work
+
+The context provider reportedly read pending-request information but still generated look as refresh_argv.
+
+The player client rejected new submissions while a request was pending and required collect.
+
+A handoff should recommend the valid next operation for the actual session state.
+
+D. Large handoffs despite selected receipts
+
+The current-results exporter selected receipts but copied them verbatim as formatted JSON. Selecting few receipts does not guarantee a compact handoff.
+
+Measure what actually enters coordinator and worker contexts. Do not assume archived/exported bytes equal model input.
+
+Recommended direction:
+Generate or validate command examples against the implemented interface. Make continuation guidance state-dependent.
+
+Use existing continuation/current-results mechanisms, but foreground conclusions, unresolved questions, and exact evidence references rather than full receipt bodies.
+
+Preserve the main skill’s existing situation-specific reading approach. Do not “fix” confusing guidance by requiring every player to read every document before starting.
+
+
+8. SPEECH AND WITNESS PREPARATION MAY REQUIRE MANUAL LOG ANALYSIS
+
+A. Speech lifecycle
+
+Inspect the work needed to correlate:
+- Utterance.
+- Hearer.
+- Request identity.
+- Runner start/completion.
+- Prewarming versus the actual request.
+- Request IDs that reset across processes.
+- Completion of model work versus application in the native game.
+
+These distinctions matter, but much of their correlation is mechanical.
+
+Recommended direction:
+Expose the relevant request’s lifecycle directly, for example:
+queued / running / completed / applied / failed / unknown.
+
+Preserve uncertainty when a state cannot be established.
+
+Do not equate model completion with game application. Do not automatically advance gameplay merely to hide the distinction; the player must retain that choice.
+
+B. Witness construction
+
+Inspect how much work is required to:
+- Navigate archived journal structures.
+- Find citation IDs.
+- Copy exact typed values.
+- Distinguish selector roots.
+- Establish chronology.
+- Assemble and submit a witness.
+
+Recommended direction:
+Provide a usable evidence index with exact citations, values, and chronology. The LLM should choose evidence, identify contradictions, and interpret the result—not manually construct the addressing machinery.
+
+The earlier qualification document reportedly recorded fire and NPC witnesses missing later native successes even though underlying World facts contained them.
+
+Verify those cases if available. This does not by itself establish which component caused the omission. It does demonstrate why retaining evidence and making evidence usable are different requirements.
+
+
+9. INVESTIGATE THE WHOLE CAMPAIGN, NOT ONE FAVORABLE SCENARIO
+
+Inventory the scenario registry and relevant scenario families. Trace how a coordinator selects, assigns, resumes, and closes work across them.
+
+Exercise a varied set of real playtests, including difficult ones. Where available, cover:
+- Waiting and time-dependent behavior.
+- Movement and navigation.
+- Menus and input-owner changes.
+- NPC interactions and asynchronous speech.
+- Interruptions.
+- Multi-feature interactions.
+- Launch/recovery and continuation.
+- Evidence retrieval and witness closeout.
+
+Do not substitute repeatedly completing an easy scenario for broad investigation.
+
+Clearly distinguish:
+- Scenarios inspected statically.
+- Scenarios attempted.
+- Scenarios completed.
+- Scenarios blocked.
+- Scenarios not tested.
+
+Do not claim all-scenario validation unless it actually happened.
+
+Investigate whether each worker receives an appropriately small experiment brief containing:
+- The claim and acceptance criteria.
+- Relevant setup constraints.
+- Current source/session identity.
+- Current state.
+- The unresolved question.
+- Relevant evidence references.
+
+Workers should not repeatedly reconstruct the entire registry history or harness architecture.
+
+Preserve negative and inconclusive attempts. A rerun should explain what changed or what new evidence it seeks. Do not erase a failure by finding a different route that happens to pass.
+
+
+10. MEASURE REAL COST, NOT MISLEADING PROXIES
+
+The existing “model round-trip” metric reportedly counts cockpit transcript entries rather than actual model requests. The qualification handoff reportedly stated that player-model token consumption was unavailable.
+
+Verify what the current instrumentation actually measures.
+
+Where accessible, capture:
+- Actual model requests.
+- Uncached input tokens.
+- Cached input tokens.
+- Output tokens.
+- Coordinator versus worker usage.
+- Gameplay decisions.
+- Transport-only commands.
+- Collection/polling commands.
+- Evidence retrieval commands.
+- Forced full observations.
+- File/schema construction or repair commands.
+- Displayed bytes by response section.
+- Useful test progress and completed objectives.
+
+Do not invent token counts when provider usage is unavailable. Label command counts, character counts, and byte counts as proxies.
+
+Separate costs for:
+playing → polling → retrieving evidence → investigating failure →
+repairing interface misunderstandings → reporting/closeout.
+
+Look for context duplication and unnecessary decision frequency, not just large individual messages.
+
+A compact response requiring five follow-up calls may be worse than one slightly larger, complete decision response.
+
+
+11. PRIORITIZATION AND VALIDATION
+
+Initial priorities from the earlier audit:
+
+1. Evidence-query leakage and misleading request/scenario summaries.
+2. Renderer/documentation/retrieval-contract mismatches.
+3. Repeated startup, transport, and other non-decision metadata.
+4. The already-specified operation/session consolidation:
+   appropriate internal waiting, idempotent collection, direct operations,
+   valid continuation commands, and usable concurrent inspection.
+5. Decision-focused deltas, evidence indexing, and campaign handoffs.
+
+Reorder these based on observed impact. Distinguish confirmed high-cost causes from plausible contributors.
+
+For each proposed improvement, explain:
+- What unnecessary work it removes.
+- Which gameplay choices remain with the LLM.
+- Which native checks and evidence remain intact.
+- Whether existing code already partly solves it.
+- The smallest appropriate change.
+- A concrete regression/usability test.
+
+Do not add another executor, summarizer, telescope, or coordinator layer merely because one is available. First determine whether correcting an existing contract, default, formatter, or state transition solves the problem.
+
+The ergonomic acceptance test should involve a fresh agent using the documented interface:
+encounter an unfamiliar situation → choose a native action →
+receive completion or interruption → inspect relevant evidence →
+continue or close the run.
+
+It should not require helper scripts, undocumented selectors, repetitive polling, or reverse-engineering response shapes.
+
+
+DELIVERABLE
+
+Produce an evidence-backed audit with:
+
+1. A concise diagnosis of the largest verified sources of wasted work.
+2. The branch/commit actually investigated.
+3. Findings with file/symbol references, concrete reproductions, and
+   observed versus inferred impact.
+4. An end-to-end command trace for the wait problem or a clearly labelled
+   reproduction, separating gameplay decisions from harness chores.
+5. Actual coordinator/worker playtest attempts, including difficult cases,
+   creative approaches tried, outcomes, and unresolved blockers.
+6. A coverage record across the scenario families investigated.
+7. Representative bloated or confusing responses and proposed compact,
+   decision-complete alternatives.
+8. A prioritized list of minimal improvements and their acceptance tests.
+9. Measurement limitations and findings from the earlier review that are
+   now fixed, obsolete, incorrect, or not reproducible.
+
+Do not modify production code or claim unperformed tests. Diagnostic and
+audit artifacts are in scope.
+
+The central question:
+Why does controlling the game repeatedly turn into debugging and
+operating the harness, and which concrete changes would stop that
+without taking gameplay control away from the LLM?

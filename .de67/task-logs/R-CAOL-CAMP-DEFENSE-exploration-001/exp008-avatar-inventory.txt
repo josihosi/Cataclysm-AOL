@@ -1,0 +1,26 @@
+Inventory
+Highlighted: smartphone (UPS) (unbrowsed) [47892]
+ALLOWED HERE ONLY
+select: confirm the supplied target; details: inspect it.
+Confirm highlighted item: Select → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter (unavailable)
+Cancel → play act inventory.cancel
+play act inventory.<action> --target <target> (copy the target exactly)
+Actions for every target below: details/select
+  47892 — smartphone (UPS) (unbrowsed)
+  47893 — twenty-dollar bill
+  47894 — fifty-dollar bill
+  47896 — cash card
+  47897 — wallet > 3 currency — also contents
+  47898 — ++ ballistic glasses
+  47899 — ++ ballistic glasses
+  47900 — ++ ballistic glasses
+  47901 — ++ ballistic glasses
+  47902 — ++ ballistic glasses
+  9026 — ++ bra
+  9028 — ++ panties
+  9030 — ++ long-sleeved shirt
+  9032 — ++ socks (pair)
+  9034 — ++ jeans > 5 ++ ballistic glasses / 7 items — also contents
+  9082 — ++ sneakers (pair)

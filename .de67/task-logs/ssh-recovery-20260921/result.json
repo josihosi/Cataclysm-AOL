@@ -1,0 +1,9 @@
+{
+  "time": "2026-09-21T13:13:24.964855+00:00",
+  "updated": "App Store Tailscale 1.96.2 to 1.98.5",
+  "before": "Discovery pong succeeded; TSMP and SSH timed out",
+  "after": "TSMP 6ms; Mac-to-Windows hostname Josi_Hosi; Windows-to-Mac via configured macmini-codex port22 hostname Josefs-Mac-mini.local",
+  "temporary_port22_forward": "removed; bidirectional SSH verified afterward",
+  "cause": "Update restored encrypted peer traffic; exact internal defect not proven",
+  "phase3": "remains stopped"
+}

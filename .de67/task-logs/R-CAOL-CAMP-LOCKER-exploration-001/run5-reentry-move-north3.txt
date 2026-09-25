@@ -1,0 +1,10 @@
+World.
+moved
+avatar.absolute ms: 3900, 875, 0
+hickory tree: NW
+pine tree: N
+oak tree: NE
+maple tree: W, E
+forest floor: here, SW, S
+blackjack oak: SE
+6:05:15 AM: You see here 1 ++ soccer fan cap, 1 sharpened rebar and 2 more items.

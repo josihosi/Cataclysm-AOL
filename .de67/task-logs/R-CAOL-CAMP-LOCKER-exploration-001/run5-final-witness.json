@@ -1,0 +1,77 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "In isolated R032 Locker run c844ce63f33522f02770d171c8845552a6ea73321af8fa7a4a779955f733ecc8, native downtime equipped assigned CAMP_RESIDENT character:25 with the staged army helmet and Glock. After native save, clean exit and the declared replacement process, the same character and camp retained the helmet, wielded Glock, 15 JHP rounds in its loaded magazine and 15 in a spare compatible magazine; the displaced rebar/wearables remained on the Locker tile, one source magazine remained there, Storage contents persisted and the camp board remained usable.",
+  "causal_account": "The source fixture manifest declares map-only stock of one helmet, one Glock, three Glock 15-round magazines and one 9mm stack of 30 charges. Before service the native pickup menu identified the map items and the resident was observed with CAMP_RESIDENT assigned to [162,36,0]. Through native Zone Manager and Base Missions, this run created CAMP_LOCKER and separate CAMP_STORAGE, observed 16 enabled policy slots including helmet and ranged weapon, and advanced five ordinary game minutes using the advertised wait menu/action. No staged item was manually picked up or equipped. Post-service diagnostics show the same resident wearing the army helmet and wielding the Glock with a loaded 15-round 9x19mm JHP magazine and a second 15-round JHP magazine in the jacket. A native Locker-tile pickup view shows the sharpened rebar, soccer cap, bra and wrist watch; another shows the remaining Glock magazine. The Storage-tile pickup view shows 18 listed loose/container contents, and no items were selected. The source map UI did not print the pre-service ammo stack charge count; the count of 30 comes from the bound fixture manifest, while the native after-state shows all 30 rounds in the two magazines and no loose JHP stack. The first segment native save completion was matched by the bridge, it copied the saved McWilliams world, and the second game generation independently observed the same assignment/loadout/contents without restaging. Base Missions remained available after reload. Both native game generations exited with code 0; old PID 90668 remained separate and untouched.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Reentry segment identity binds the run to the selected scenario, source and exact current executable.",
+      "checks": {
+        "scenario_id": "r032.assigned_camp_locker_transfer_char25_v001_mcw",
+        "source_identity": "a85dc40886d1573ba299523df373798f1a017d11d0575001369e4e6a3a766ef1",
+        "executable_identity": "8d5f5dc9935f1aad0cd7cdd23454fd7e9ee9495abaaed9d4d856c388b49d89e1",
+        "run_id": "c844ce63f33522f02770d171c8845552a6ea73321af8fa7a4a779955f733ecc8"
+      }
+    },
+    {
+      "citation_id": "J0003",
+      "meaning": "Independent post-reload native inspection of the same character:25, CAMP_RESIDENT mission, assigned camp [162,36,0], worn helmet, wielded Glock, compatible loaded magazine and 15+15 JHP charges.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:25",
+        "value.surface.facts.actor_name": "R032 Establishment Ally 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"CAMP_RESIDENT\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3897,873,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":[162,36,0],\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}",
+        "value.surface.facts.diagnostic_items": "{\"28450\":{\"item_uid\":\"28450\",\"parent_uid\":\"\",\"slot\":\"wielded\",\"name\":\"Glock carry pistol\",\"type_id\":\"glock_19\",\"charges\":0},\"29897\":{\"item_uid\":\"29897\",\"parent_uid\":\"28450\",\"slot\":\"MAGAZINE_WELL\",\"name\":\"Glock 9x19mm 15-round magazine\",\"type_id\":\"glockmag\",\"charges\":0},\"29896\":{\"item_uid\":\"29896\",\"parent_uid\":\"29897\",\"slot\":\"MAGAZINE\",\"name\":\"9x19mm JHP\",\"type_id\":\"9mm\",\"charges\":15},\"4\":{\"item_uid\":\"4\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> boy shorts\",\"type_id\":\"boy_shorts\",\"charges\":0},\"6\":{\"item_uid\":\"6\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> socks (pair)\",\"type_id\":\"socks\",\"charges\":0},\"8\":{\"item_uid\":\"8\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_yellow>|\\\\</color> round bifocal glasses\",\"type_id\":\"glasses_bifocal\",\"charges\":0},\"12\":{\"item_uid\":\"12\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> jeans > <color_c_light_gray>smartphone (UPS)<color_c_dark_gray> (unbrowsed)</color></color>\",\"type_id\":\"jeans\",\"charges\":0},\"29878\":{\"item_uid\":\"29878\",\"parent_uid\":\"12\",\"slot\":\"CONTAINER\",\"name\":\"smartphone (UPS)<color_c_dark_gray> (unbrowsed)</color>\",\"type_id\":\"smart_phone\",\"charges\":0},\"29877\":{\"item_uid\":\"29877\",\"parent_uid\":\"29878\",\"slot\":\"MAGAZINE\",\"name\":\"battery\",\"type_id\":\"battery\",\"charges\":56},\"25\":{\"item_uid\":\"25\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> sneakers (pair)\",\"type_id\":\"sneakers\",\"charges\":0},\"27\":{\"item_uid\":\"27\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> t-shirt\",\"type_id\":\"tshirt\",\"charges\":0},\"29\":{\"item_uid\":\"29\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> work gloves (pair)\",\"type_id\":\"gloves_work\",\"charges\":0},\"31\":{\"item_uid\":\"31\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_yellow>|\\\\</color> barrette\",\"type_id\":\"barrette\",\"charges\":0},\"28446\":{\"item_uid\":\"28446\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> army helmet (poor fit)\",\"type_id\":\"helmet_army\",\"charges\":0},\"33\":{\"item_uid\":\"33\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> light jacket > <color_c_light_gray>Glock 9x19mm 15-round magazine</color>\",\"type_id\":\"jacket_light\",\"charges\":0},\"29889\":{\"item_uid\":\"29889\",\"parent_uid\":\"33\",\"slot\":\"CONTAINER\",\"name\":\"Glock 9x19mm 15-round magazine\",\"type_id\":\"glockmag\",\"charges\":0},\"29888\":{\"item_uid\":\"29888\",\"parent_uid\":\"29889\",\"slot\":\"MAGAZINE\",\"name\":\"9x19mm JHP\",\"type_id\":\"9mm\",\"charges\":15},\"89\":{\"item_uid\":\"89\",\"parent_uid\":\"\",\"slot\":\"worn\",\"name\":\"<color_c_green>++</color> messenger bag\",\"type_id\":\"mbag\",\"charges\":0}}"
+      }
+    },
+    {
+      "citation_id": "J0014",
+      "meaning": "Post-reload native pickup surface on the configured Storage tile lists the transferred loose/container contents; nothing was picked up.",
+      "checks": {
+        "value.surface.facts.title": "Pickup"
+      }
+    },
+    {
+      "citation_id": "J0049",
+      "meaning": "Post-reload native pickup surface on the Locker tile lists the displaced sharpened rebar and wearables; nothing was picked up.",
+      "checks": {
+        "value.surface.facts.title": "Pickup"
+      }
+    },
+    {
+      "citation_id": "J0067",
+      "meaning": "Native item detail identifies the remaining Locker magazine as a compatible Glock 9x19mm 15-round magazine with capacity for 15 rounds.",
+      "checks": {
+        "value.surface.facts.item_name": "Glock 9x19mm 15-round magazine"
+      }
+    },
+    {
+      "citation_id": "J0073",
+      "meaning": "The post-reload native Base Missions selector retained R032 Assignment Camp, 16 enabled Locker slots and a defined Locker zone.",
+      "checks": {
+        "value.surface.facts.camp_id": "(162,36,0)",
+        "value.surface.facts.camp_name": "R032 Assignment Camp",
+        "value.surface.facts.locker_policy_enabled_slots": "16",
+        "value.surface.facts.locker_zone_defined": "true"
+      }
+    },
+    {
+      "citation_id": "J0078",
+      "meaning": "The second generation followed the native world.save_quit route before exiting.",
+      "checks": {
+        "action_id": "world.save_quit"
+      }
+    },
+    {
+      "citation_id": "J0083",
+      "meaning": "The second generation game process exited with code 0.",
+      "checks": {
+        "value.surface.facts.pid": 50750,
+        "value.surface.facts.alive": false,
+        "value.surface.facts.exit_code": 0
+      }
+    }
+  ],
+  "checks": {},
+  "recommended_disposition": "accept",
+  "contradictions": []
+}

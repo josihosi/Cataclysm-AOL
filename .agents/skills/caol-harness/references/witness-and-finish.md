@@ -1,7 +1,18 @@
 # Package a witness and finish
 
-The journal returns citation IDs and exact witness fields. Preserve JSON types in checks:
-`false` differs from `"false"`. Inspect the cited entry to obtain its actual field paths.
+Journal pages give action citations copyable `checks` objects. Observation rows give INDEX/PATH
+for one shared inspect command; inspect only the fields needed for your conclusion. Scalar
+inspection prints an exact typed `checks` object, including quotes around native string values.
+Copy it directly. There is no need to dump an entire observation or inspect an action again
+when its displayed check already establishes the fact you need.
+
+The journal returns citation IDs and exact witness fields. Check paths start inside the cited
+entry's `value`: action entries use `action_id`; observation entries have another nested `value`
+and use `value.surface.facts.FIELD`. `checks` is an object mapping each path to its exact value,
+not a list of paths. Keep the journal's `--request-id` when inspecting after another command.
+Preserve the types printed in scalar checks: `false` differs from `"false"`.
+For compound values or an explicitly truncated preview, use the supplied full-value retrieval
+command. A mismatch reports recorded and supplied types.
 The cockpit exposes structured movement/wait macros through `call --request` and diagnostic
 retrieval through `inspect`; use those when the proof question needs them rather than reconstructing transport bookkeeping
 for ordinary native actions.

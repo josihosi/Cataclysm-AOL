@@ -1,0 +1,74 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "disposition": "completed",
+  "verdict": "closure_not_accepted_first_missing_boundary_wrong_world_or_snapshot_rejection",
+  "outcome": "The accepted focused native R-029 continuity proof remains valid at its original macOS ceiling, and eight of the nine requested frozen lifecycle boundaries have direct focused coverage. Closure cannot be accepted because a mismatched completion world or replacement snapshot has not been driven through the actual bridge/reentry path required by the frozen FS.",
+  "summary": "This is a read-and-test reconciliation, not a replay or implementation change. The parser contains an expected-world guard, but save_quit_lifecycle_test supplies only McWilliams. The bridge snapshot test proves an immutable matching snapshot and the stale-descriptor test rejects a pre-reentry descriptor; neither supplies a wrong world nor mismatched snapshot. Therefore the frozen Proof requirement to exercise wrong world/snapshot through actual bridge/reentry remains unproved.",
+  "boundary_map": [
+    {"boundary": "failed save", "status": "covered", "evidence": "SaveQuitLifecycleTest.test_failed_save_and_missing_artifact_cannot_be_promoted_by_exit"},
+    {"boundary": "save before exit", "status": "covered", "evidence": "LiveSessionTest.test_declared_reentry_needs_native_save_and_exited_process"},
+    {"boundary": "exit without save", "status": "covered", "evidence": "ProcessExitTest.test_exit_during_native_action_retains_receipt_and_distinguishes_exit_codes; CockpitFileBridgeTest.test_declared_reentry_requires_native_save_quit_marker"},
+    {"boundary": "duplicate collection", "status": "covered", "evidence": "PlayerCliTest.test_duplicate_collect_returns_the_same_result_without_another_submission"},
+    {"boundary": "wrong world/snapshot", "status": "missing", "evidence": "startup_harness._native_save_completion_from_events has the expected_world condition, but no lifecycle test exercises a mismatched completion world or replacement snapshot through bridge reentry."},
+    {"boundary": "live predecessor", "status": "covered", "evidence": "CockpitFileBridgeTest.test_live_registered_game_keeps_registry_wrapper_during_reentry"},
+    {"boundary": "failed reload", "status": "covered", "evidence": "CockpitFileBridgeTest.test_failed_reentry_preserves_finish_receipt_and_retains_replacement_until_cleanup and test_failed_reentry_after_child_exit_offline_cleanup_retains_registered_game"},
+    {"boundary": "stale frame/grant", "status": "covered", "evidence": "PlayerCliTest.test_stale_generation_and_binding_invalidate_result_frame; PlayerCliTest.test_declared_reentry_releases_old_grants_before_new_observation; LiveSessionTest.test_stale_frame_cannot_authorize_continuation_or_action"},
+    {"boundary": "native changed-state continuity", "status": "covered_at_focused_ceiling", "evidence": "native run 23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9; audit a04efdbb17b527e434a6b08be137b93bb26957572931e50dbc3713b4f5324fb9; post-reentry witness"}
+  ],
+  "material_changes": [],
+  "tests": [
+    "python3 tools/openclaw_harness/save_quit_lifecycle_test.py -v: 3 passed.",
+    "python3 -m unittest tools.openclaw_harness.play_cli_test -v: 46 passed.",
+    "Eight selected CockpitFileBridgeTest lifecycle cases: passed.",
+    "Three selected LiveSessionTest save/reentry/stale-frame cases: passed.",
+    "python3 tools/openclaw_harness/cockpit_process_exit_test.py -v: 5 passed.",
+    "git diff --check over lifecycle sources/tests: passed."
+  ],
+  "live_actions": [
+    "No native gameplay, replacement launch, save, or replay occurred during this reconciliation.",
+    "Focused tests created only their own synthetic subprocesses; final scan found no owned game, bridge, or test process."
+  ],
+  "evidence_ceiling": [
+    "The retained native evidence proves one focused macOS R-029 journey, not arbitrary worlds or platforms.",
+    "This reconciliation does not upgrade source guards into the FS-required wrong-world/snapshot production-path test."
+  ],
+  "bindings": {
+    "assigned_request_id": "3f1ca4049e864f77a9b02a482f68a5c8",
+    "historical_receipt_id": "d5750204e427c3f890fc988738bd950ab19c4b5c9d88f4a0e28f2ec5309140ca",
+    "native_run_id": "23d00c0069129184159d810f2e6e3e4fcc8d744b2ea5d98ed5e58d3337ceffe9",
+    "persisted_audit_sha256": "a04efdbb17b527e434a6b08be137b93bb26957572931e50dbc3713b4f5324fb9"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/FS.md", "role": "Frozen lifecycle mechanism and proof boundary."},
+    {"path": ".de67/work-ledger.md", "role": "Current claim assignment and accepted historical ceiling."},
+    {"path": "tools/openclaw_harness/startup_harness.py", "role": "Native completion expected-world validation."},
+    {"path": "tools/openclaw_harness/save_quit_lifecycle_test.py", "role": "Failed-save and correct-world-only test coverage."},
+    {"path": "tools/openclaw_harness/cockpit_file_bridge_test.py", "role": "Reentry snapshot, predecessor, failed-reload and stale-descriptor coverage."},
+    {"path": "tools/openclaw_harness/play_cli_test.py", "role": "Idempotent collection and stale-grant coverage."},
+    {"path": "tools/openclaw_harness/cockpit_live_session_test.py", "role": "Save-before-exit and stale-frame coverage."},
+    {"path": "tools/openclaw_harness/cockpit_process_exit_test.py", "role": "Exit-without-save and wrong-run process coverage."},
+    {"path": ".userdata/r029-natural-route-repair-001/harness_runs/20260921_033747_af21c7388b674864a5cb70a0f934d9ec/audit_persisted_r029_player_fire.metadata.json", "role": "Historical changed-state continuity audit."}
+  ],
+  "first_divergence": {
+    "class": "wrong_world_or_snapshot_not_exercised_through_reentry",
+    "summary": "The exact expected-world parser guard is present, but no focused lifecycle test causes a mismatched native completion world or replacement snapshot to reach bridge reentry and prove admission remains closed."
+  },
+  "accepted_no_replay": [
+    "Receipt d5750204e427c3f890fc988738bd950ab19c4b5c9d88f4a0e28f2ec5309140ca and its focused native proof are preserved without replay.",
+    "The public archived journal/finish correction remains accepted at its separate public-client scope."
+  ],
+  "active_work": [],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/save_quit_lifecycle_test.py"
+  ],
+  "first_open_boundary": "Wrong-world/snapshot rejection through FileBackedCockpitBridge reentry.",
+  "inconclusive_requires_changed_step": "Repeating the accepted R-029 matching-world journey cannot answer this boundary. Add a focused bridge/reentry test that supplies either a mismatched native completion world_name or a replacement snapshot whose expected world/digest does not match, then assert admission stays closed, the original receipt is immutable, and no replacement authority is granted.",
+  "narrow_queries": [
+    "_native_save_completion_from_events expected_world and native_save_quit_completion",
+    "FileBackedCockpitBridge._freeze_saved_world_for_reentry and replacement admission",
+    "SaveQuitLifecycleTest.test_failed_save_and_missing_artifact_cannot_be_promoted_by_exit"
+  ]
+}

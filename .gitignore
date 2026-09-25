@@ -70,6 +70,10 @@ zzip
 
 # DE67 runtime and reproducible playtest/build artifacts
 /.de67/state/
+
+# Local review checkout and oversized raw event log; the latter is archived beside it.
+/.de67/task-logs/review-owner-1e8c79b5fdf2/root-candidate/
+/.de67/task-logs/R-CAOL-CAMP-DEFENSE-exploration-001/exp008-incomplete-profile-copy/harness_runs/20260924_081748_c57b740e63204f64b4320a579704c347/semantic.native.events.jsonl
 /.de67/no-go-zone/
 /build_logs/
 /tools/openclaw_harness/scenario_registry.sqlite3

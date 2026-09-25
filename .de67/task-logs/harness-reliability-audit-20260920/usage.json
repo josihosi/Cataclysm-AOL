@@ -1,0 +1,147 @@
+{
+  "window_start": "2026-09-20T11:06:03.093043+00:00",
+  "snapshot": "2026-09-20T21:06:03.093043+00:00",
+  "campaign_full_tree": {
+    "fresh": 6013624,
+    "cached": 279595648,
+    "output": 623588,
+    "responses": 2287
+  },
+  "campaign_threads": [
+    {
+      "id": "01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-13-40-01a0bf2a-61a2-78d2-bcbe-2d9727cb80bc.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 340853,
+      "cached": 15053568,
+      "output": 62817,
+      "responses": 126
+    },
+    {
+      "id": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "parent": null,
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T22-02-27-01a0c069-b1b6-7740-b0e5-934599578ee3.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 159936,
+      "cached": 9779456,
+      "output": 22606,
+      "responses": 110
+    },
+    {
+      "id": "01a0bf4d-df10-7371-903c-767ecf1901e5",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-52-26-01a0bf4d-df10-7371-903c-767ecf1901e5.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 62240,
+      "cached": 464128,
+      "output": 2211,
+      "responses": 11
+    },
+    {
+      "id": "01a0bfbb-c2dd-7860-a762-96218ce29a60",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T18-52-28-01a0bfbb-c2dd-7860-a762-96218ce29a60.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 1020314,
+      "cached": 41771776,
+      "output": 71277,
+      "responses": 310
+    },
+    {
+      "id": "01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T17-37-46-01a0bf77-5fb1-73b3-9d2d-ed9e56fa7716.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 1070096,
+      "cached": 57257728,
+      "output": 133501,
+      "responses": 429
+    },
+    {
+      "id": "01a0c057-825b-7773-8a2a-a939712a57ae",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T21-42-35-01a0c057-825b-7773-8a2a-a939712a57ae.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 164200,
+      "cached": 5332992,
+      "output": 10625,
+      "responses": 61
+    },
+    {
+      "id": "01a0c0a1-18e7-7c23-9966-80fa989a9363",
+      "parent": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T23-02-58-01a0c0a1-18e7-7c23-9966-80fa989a9363.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 106322,
+      "cached": 630016,
+      "output": 3827,
+      "responses": 12
+    },
+    {
+      "id": "01a0bfe0-e862-75c2-b4f8-7644d31d6e35",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T19-33-02-01a0bfe0-e862-75c2-b4f8-7644d31d6e35.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 1673782,
+      "cached": 60382976,
+      "output": 137878,
+      "responses": 507
+    },
+    {
+      "id": "01a0bf5a-8349-7411-856e-30193f428c40",
+      "parent": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T17-06-15-01a0bf5a-8349-7411-856e-30193f428c40.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 506339,
+      "cached": 24603648,
+      "output": 50741,
+      "responses": 188
+    },
+    {
+      "id": "01a0bf28-8257-7191-8506-f66994d2fda2",
+      "parent": null,
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T16-11-38-01a0bf28-8257-7191-8506-f66994d2fda2.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 390084,
+      "cached": 36703616,
+      "output": 67839,
+      "responses": 318
+    },
+    {
+      "id": "01a0c06a-ecd4-7f73-a01a-e65302af798e",
+      "parent": "01a0c069-b1b6-7740-b0e5-934599578ee3",
+      "path": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T22-03-48-01a0c06a-ecd4-7f73-a01a-e65302af798e.jsonl",
+      "cwd": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL",
+      "fresh": 519458,
+      "cached": 27615744,
+      "output": 60266,
+      "responses": 215
+    }
+  ],
+  "current_audit_including_two_helpers": {
+    "fresh": 429229,
+    "cached": 6712448,
+    "output": 27163,
+    "responses": 68
+  },
+  "weekly_first": {
+    "timestamp": "2026-09-20T11:06:09.023Z",
+    "used_percent": 40.0,
+    "window_minutes": 10080,
+    "resets_at": 1790412534
+  },
+  "weekly_latest": {
+    "timestamp": "2026-09-20T21:05:54.356Z",
+    "used_percent": 55.0,
+    "window_minutes": 10080,
+    "resets_at": 1790412534
+  },
+  "limitations": [
+    "Local Sept20-created sessions only; earlier-created active and remote sessions may be missing.",
+    "Full-tree attribution follows session parent IDs; external status agents are not attributed.",
+    "Audit ongoing: excludes subsequent answer and tool/helper responses.",
+    "Fresh plus cached is input; cached is not fresh work or equivalent billed cost.",
+    "Weekly allowance is account-wide; campaign figures are token counts, not share of allowance."
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "diagnosis": {
+    "recorded": true,
+    "incident": {
+      "lineage_id": "semantic-surface-cockpit",
+      "task_id": "R-CAOL-SIGNAL-PROOF-exploration-006",
+      "kind": "deadline_miss",
+      "recorded": false,
+      "recorded_at": 1789980592.671456,
+      "short_verdict": "Native journey exposed real integration defects and returned a focused success late; broader signal proof remains open and repeated unchanged-status waits added avoidable orchestration cost.",
+      "reviewed_at": 1789988799.0540118,
+      "reason": null,
+      "long_detail": ".de67/task-logs/review-signal-proof-006/report.md; Generation 3 had a three-hour whole-claim window. Preserve the returned local-watch/return witness, repairs and all 69 acceptances. Current context now separates focused result from remaining memory/provenance/performance proof. Owner DELIVERY-EFFORT suggestion dispositioned; 115 identical status records reproduce wait overhead. Corrected named-worker accounting replaces parent-only prior totals. No installed method promotion or native replay.",
+      "units": 1,
+      "cumulative_before": 28,
+      "cumulative_after": 29,
+      "independent_review_required": false,
+      "cadence_crossed": false,
+      "cadence_threshold": null
+    },
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "pending_components": [
+      "micro",
+      "macro"
+    ]
+  },
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "deadline_generation": 3,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-CAOL-SIGNAL-PROOF",
+    "deadline_generation": 3,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 81,
+      "pending": true,
+      "requested_at": 1789988799.056093,
+      "reason": "deadline mutation resolved for R-CAOL-SIGNAL-PROOF; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "acceptance_before": {
+    "count": 69,
+    "sha256": "7d0ef230bf5a3eb6a22712bcbd79c76383edb84d3e54972a02935e5222e30ead"
+  },
+  "acceptance_after": {
+    "count": 69,
+    "sha256": "7d0ef230bf5a3eb6a22712bcbd79c76383edb84d3e54972a02935e5222e30ead"
+  },
+  "components": [
+    {
+      "component": "macro",
+      "no_change_required": 1,
+      "receipt_id": null
+    },
+    {
+      "component": "micro",
+      "no_change_required": 0,
+      "receipt_id": null
+    }
+  ],
+  "restart_requests_added": 1
+}

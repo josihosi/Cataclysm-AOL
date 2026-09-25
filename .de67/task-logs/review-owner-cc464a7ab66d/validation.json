@@ -1,0 +1,11 @@
+{
+  "fs_exact_baseline_prefix": true,
+  "all_prior_claims_unchanged": true,
+  "new_red_claim": "R-CAOL-WINDOWS-DISPATCH-CRASH",
+  "ledger_guard_pass": true,
+  "old_ledger_exactly_preserved": true,
+  "owner_entry_dispositioned": 1,
+  "real_context_prepare_render_pass": true,
+  "future_worker_delivery_or_use_proven": false,
+  "standard_owner_fs_guard": "pre-existing missing legacy Functional contract heading; explicit owner-authorized append validated by exact byte-prefix and stable-claim preservation, no installed guard modified"
+}

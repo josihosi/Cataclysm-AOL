@@ -105,6 +105,24 @@ ACTION_SUCCESSOR_OBSERVATION_CHILD = (
 
 
 class CockpitFileBridgeTest(unittest.TestCase):
+    def test_partial_startup_record_can_timeout_then_resume_without_losing_next_record(self):
+        child = (
+            "import sys; sys.stdout.write('{\\n'); sys.stdout.flush(); "
+            "sys.stdin.readline(); "
+            "sys.stdout.write('\"ready\": true}\\n{\"next\": 2}\\n'); sys.stdout.flush()"
+        )
+        with tempfile.TemporaryDirectory() as temp, subprocess.Popen(
+                [sys.executable, "-u", "-c", child], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, text=True) as process:
+            bridge = FileBackedCockpitBridge(Path(temp) / "session", [sys.executable], binding_id="a")
+            bridge._child = process
+            self.assertIsNone(bridge._read_complete_response(timeout=0.2))
+            process.stdin.write("continue\n")
+            process.stdin.flush()
+            self.assertEqual(json.loads(bridge._read_complete_response(timeout=2)), {"ready": True})
+            self.assertEqual(json.loads(bridge._read_complete_response(timeout=2)), {"next": 2})
+            self.assertEqual(bridge._read_complete_response(timeout=2), "")
+
     def test_startup_failure_exposes_preflight_cause_without_dumping_fixture(self):
         failure = {"ok": False, "reason": "startup_failed", "startup": {
             "reason": "contract_preflight_rejected", "contract_preflight": {
@@ -206,7 +224,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
             from evidence_display import recover, DEFAULT_BYTES
             self.assertLessEqual(len(rejected_output.getvalue().encode()), DEFAULT_BYTES)
             shown_error = json.loads(rejected_output.getvalue())
-            self.assertEqual(recover(shown_error["presentation"]["full_evidence"]["sha256"]), {
+            self.assertEqual(recover(shown_error["presentation"]["full_evidence"]["sha256"]) if "presentation" in shown_error else shown_error, {
                 "ok": False, "error": "response_artifact_digest_mismatch",
             })
             (responses / "witness-1.receipt.json").write_text(json.dumps({

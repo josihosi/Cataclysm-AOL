@@ -1,0 +1,65 @@
+{
+  "schema": "de67-activity-pause-repair-rerun-v1",
+  "source_repair": {
+    "path": "src/do_turn.cpp",
+    "lines": "10121-10130",
+    "behavior": "activity.pause is accepted with an immediate native receipt; the cancellation prompt is not used as a deferred successor surface",
+    "product_source_sha256": "a76a113102a5ec7e9b23a420d5cfecb7bb2f1d1d5c70cf18a3ac0ee034933b58",
+    "runtime_source_sha256": "8f77ba026cfc83533a76a188de1df6792a6f68d9a3ca965401cc1386f1b14a7f",
+    "executable_sha256": "e86ec67a5435570e6152060f59b37b19e55e783eb0eb54a7341e922ffae2a5bb",
+    "build_log": "repair-build.log"
+  },
+  "focused_tests": {
+    "command": "PYTHONPATH=tools/openclaw_harness python3.14 -m unittest activity_resume_owner_test cockpit_cancellation_test cockpit_process_exit_test",
+    "result": "10 tests passed",
+    "log": "repair-focused-tests-3.log"
+  },
+  "changed_input_native_rerun": {
+    "session": ".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921",
+    "run_id": "bf8382ce6ec1e1713a8e5e6c88e6d8a79e3c9248f5dcb3a6edf2878597bf4970",
+    "binding_id": "316a3303ed7062db97a84e66d56fb2908789d48b5a10f42cc9f82c6360927c2a",
+    "game_pid": 31777,
+    "game_birth": "posix-lstart:Mon Sep 21 13:49:29 2026",
+    "wait_request": "play-1896caa20a92442aacc112b1ef7a2563",
+    "cancel_id": "cancel-9b747f985c1d9b49929a21491f0c740404c6ab387b0e081a45f54d5578f60d54",
+    "wait_response_sha256": "68617228101681548cecbf84e893b2264e9aecce6616b97ccace236e933433a9",
+    "progress": {"game_minutes_before": 8219, "game_minutes_after": 8579},
+    "native_trace": ".userdata/harness-cannibal-freeplay/harness_runs/20260921_134929_63dea63f39354e878bc486120dc9359a/semantic.native.events.jsonl",
+    "activity_surface": {
+      "observed": true,
+      "frames": "52-130",
+      "advertised_action": "activity.pause",
+      "receipt": "not observed",
+      "reason": "collection completed after the short native activity window and the refreshed owner was World"
+    },
+    "terminal_state": "safe_to_cleanup"
+  },
+  "additional_source_bound_reruns": [
+    {
+      "session": ".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921-c",
+      "run_id": "7b64d473dbb3b7354a1f6638974105466dcb093129bbf9455b84fc5ebbf7d6c5",
+      "binding_id": "57a60251ef6c1a6d1eed62b9e7b176c2a421c740df2aab3fde6fe9fab28cde0e",
+      "game_pid": 36926,
+      "outcome": "469 activity_wait descriptors advertised activity.pause across game minutes 8220-9300; the live client reached only stale_observation because the native owner republished faster than observation/act dispatch; no pause receipt timeout occurred",
+      "quit_request": "play-20c11725af8240e8a695c99242783072",
+      "terminal_state": "safe_to_cleanup"
+    },
+    {
+      "session": ".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921-fast",
+      "run_id": "de5b445d0b7b45ff014cdc21eeb2a1367423479609a0de651692899ab382e743",
+      "outcome": "activity surfaces observed in native trace; coarse waits returned World before a legal pause dispatch"
+    },
+    {
+      "session": ".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921-minute",
+      "run_id": "50ebcf0009fc1232bc1cc1e96589f43118737885f67ca4bce73e7187812c1b8e",
+      "outcome": "one-minute waits were source-bound and cleanly terminalized; activity window was crossed before client observation"
+    },
+    {
+      "session": ".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921-final",
+      "run_id": "1a29c62ea8270b0a0c2be9f828955dc0d839ae0708d1cda39438c52f9124fb20",
+      "outcome": "one-minute wait and immediate look remained World; clean closeout"
+    }
+  ],
+  "verdict": "focused source/test repair is verified; live accepted activity.pause receipt remains unproven because the native activity owner was not current at dispatch time",
+  "replay_policy": "the original timed-out play-c42f0da70c9d42dc942aecbc7ea36b4a request was not replayed"
+}

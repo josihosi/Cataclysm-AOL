@@ -1,0 +1,42 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-001",
+  "scenario": "cannibal.r_caol_first_smoke_roof_first_light_v2",
+  "objective": "Test ordinary lighter ignition of the prepared roof brazier and source-specific nighttime light/smoke signals in a separate task-owned saved-world copy. Signal-only; no camp claim.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_roof_first_light_v1-witness.json",
+  "outcome": "On a separate task-owned saved-world copy, ordinary lighter ignition of the prepared roof brazier produces a source-identified nighttime physical-light observation.",
+  "constraints": [
+    "Do not alter owner/reference saves.",
+    "Setup-only debug teleport to the adjacent safe roof tile; no natural-play credit for teleport.",
+    "Verify safe mode off before movement/wait.",
+    "Use ordinary lighter activation and direction selection; no injected source or packet.",
+    "Stay off the fire tile and make no camp claim.",
+    "Quicksave and close gracefully; reconcile process identities and exits."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": [
+          "first-light",
+          "physical_light_signal"
+        ],
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.roof_first_light",
+        "op": "eq",
+        "value": "ordinary_lighter_ignition_on_prepared_roof_brazier_correct_om_coords",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

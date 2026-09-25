@@ -1,0 +1,72 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-CAOL-SIGNAL-PROOF-exploration-001",
+  "claim_id": "R-CAOL-SIGNAL-PROOF",
+  "worker_id": "01a0bfbb-c2dd-7860-a762-96218ce29a60",
+  "disposition": "finding",
+  "finding_kind": "unexpected",
+  "verdict": "stable_omt_smoke_dedup_proved_remaining_native_signal_routes_open",
+  "outcome": "A source-bound native run first exposed two smoke leads at adjacent OMTs; a centered falsifying control proved one stable-OMT source creates one lead and retains it unchanged. Source and run evidence explain the original result as natural smoke spread across an OMT boundary, so no production repair is warranted. Recipient action, native sound delivery, and scout-return provenance remain unproved.",
+  "summary": "The first run crossed from smoke OMT (140,41,0) to (140,40,0), so it could not prove unchanged-source deduplication. The current-source control kept moving smoke samples within OMT (140,40,0), created one lead at minute 8225, and emitted an unchanged transition for the identical lead at minute 8230. All owned processes exited. Performance evidence is descriptive only because the run lacked a comparable baseline/alarm configuration.",
+  "material_changes": [
+    "Added a zero-credit stable-OMT smoke fixture, scenario, brief, and witness charter for the falsifying native control.",
+    "No production source was changed because the control and source path disproved the suspected identity/dedup defect."
+  ],
+  "tests": [
+    "Native control run b3d99c2d513b0f78678c559b783b717db5c2d03c6536a1f80878b2ebc6e4652f created one smoke lead at minute 8225 and retained one identical lead with an unchanged transition at minute 8230.",
+    "git diff --check passed.",
+    "Owned game PIDs 28330, 30275, 32186, and 32146 and their bridges were verified absent after cleanup."
+  ],
+  "live_actions": [
+    "Preserved inconclusive first run 72113513ce55463467273281d3fa68e157014636bda18080bf17897bc87a8344 as the cross-OMT divergence anchor.",
+    "Ran centered stable-OMT control b3d99c2d513b0f78678c559b783b717db5c2d03c6536a1f80878b2ebc6e4652f through two native cadence boundaries and cleanup."
+  ],
+  "evidence_ceiling": [
+    "This proves only smoke discovery and unchanged deduplication for a stable source OMT plus the natural cross-OMT explanation for the first run.",
+    "It does not prove eligible recipient investigation, source-off/move/bubble/save-reload behavior, native sound delivery and later decision, scout physical return, report provenance, or a populated performance verdict.",
+    "Fixture registration and source placement are zero-credit setup facts."
+  ],
+  "bindings": {
+    "dispatch_digest": "66160bcc8181c61daa8406e735a8046f439082d950f6c00752debeeea57a4162",
+    "worker_id": "01a0bfbb-c2dd-7860-a762-96218ce29a60",
+    "first_run_id": "72113513ce55463467273281d3fa68e157014636bda18080bf17897bc87a8344",
+    "control_run_id": "b3d99c2d513b0f78678c559b783b717db5c2d03c6536a1f80878b2ebc6e4652f"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-CAOL-SIGNAL-PROOF-exploration-001-witness.json",
+      "sha256": "0f871b5e37400d68fc9851388487aeab771fa16cc627803aeef6bb99d51180c0",
+      "role": "first cross-OMT divergence witness"
+    },
+    {
+      "path": ".de67/task-logs/R033-stable-omt-control-witness.json",
+      "sha256": "4e3ee5f40f3f53b9a175f1a09e156d3f6e1e6d852c6df09f4bdf8426c20a7526",
+      "role": "stable-OMT falsifying control witness"
+    }
+  ],
+  "first_divergence": {
+    "class": "source_crossed_overmap_tile_boundary",
+    "summary": "The original smoke field moved across the y=984 OMT boundary, legitimately producing a second source-OMT lead rather than exercising unchanged-source deduplication."
+  },
+  "accepted_no_replay": [
+    "Preserve the first cross-OMT run as an inconclusive divergence and the centered stable-OMT run as focused deduplication proof; do not replay either merely to reaccept those facts."
+  ],
+  "active_work": [
+    "Prove stationary signal discovery through eligible recipient notice/investigation and finite-memory source-off/move/bubble/save-reload controls with comparable performance configuration.",
+    "Prove one native significant sound drains once into a durable coarse observation and later ordinary AI decision with original age/class/OMT plus negative controls.",
+    "Prove matching camp/structural clue support through ordinary scout observation, physical return, and separate report-origin provenance."
+  ],
+  "first_open_boundary": "Run a source-bound stationary-signal journey from discovery through eligible recipient notice/investigation with finite-memory and source-removal or save/reload controls, carrying a comparable baseline and explicit alarm configuration.",
+  "narrow_queries": [
+    "R033-stable-omt-control-witness",
+    "72113513ce55463467273281d3fa68e157014636bda18080bf17897bc87a8344",
+    "b3d99c2d513b0f78678c559b783b717db5c2d03c6536a1f80878b2ebc6e4652f"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/scenarios/bandit.r033_registered_smoke_samelevel_dedup_control_mcw.json",
+    "tools/openclaw_harness/fixtures/saves/live-debug/r033_bandit_registered_smoke_samelevel_control_v1/"
+  ],
+  "context_metrics": {}
+}

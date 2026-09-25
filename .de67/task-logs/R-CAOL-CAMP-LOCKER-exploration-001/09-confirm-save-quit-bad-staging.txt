@@ -1,0 +1,3 @@
+MAIN MENU
+ALLOWED HERE ONLY
+Quit → play act main_menu.quit

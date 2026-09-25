@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 15,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "After the first bounded native activity ended at minute 9255, this fresh 15-minute request reaches the next 30-minute structural cadence at minute 9270 using only newly advertised World controls.",
+      "unit": "game_minutes",
+      "maximum": 15,
+      "progress_required": true
+    }
+  }
+}

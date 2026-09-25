@@ -153,6 +153,20 @@ TEST_CASE( "zone_data_serialization_round_trips_identity_and_revision", "[zones]
     CHECK( loaded.get_semantic_revision() == std::optional<int64_t>( 1 ) );
 }
 
+TEST_CASE( "zone_data_serialization_preserves_owner_authored_basecamp_name", "[zones][identity]" )
+{
+    zone_data original( "Basecamp owner label", zone_type_LOOT_DEFAULT, faction_your_followers,
+                        false, true, tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    std::ostringstream stream;
+    JsonOut json( stream );
+    original.serialize( json );
+
+    zone_data loaded;
+    loaded.deserialize( json_loader::from_string( stream.str() ).get_object() );
+
+    CHECK( loaded.get_name() == "Basecamp owner label" );
+}
+
 TEST_CASE( "zone_data_legacy_deserialization_assigns_identity_and_unknown_revision", "[zones][identity]" )
 {
     zone_data loaded;
@@ -3849,11 +3863,17 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
         const zone_data &zone = zone_ref.get();
         if( zone.get_type() == zone_type_LOOT_MAGAZINES ) {
-            CHECK( zone.get_name() == "Basecamp weapon magazines" );
+            CHECK( zone.get_name() == "Smartzone weapon magazines" );
             weapon_magazines = &zone;
         }
     }
     REQUIRE( weapon_magazines != nullptr );
+
+    const std::vector<std::string> generated_layout = snapshot_zone_layout();
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        CHECK( zone.get_name().compare( 0, 10, "Smartzone " ) == 0 );
+    }
 
     const zone_data *auto_eat = find_single_zone( zone_type_AUTO_EAT );
     REQUIRE( auto_eat != nullptr );
@@ -3884,8 +3904,14 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     JsonValue jsin = json_loader::from_string( serialized_zones.str() );
     zone_manager::get_manager().deserialize( jsin );
 
+    CHECK( snapshot_zone_layout() == generated_layout );
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        CHECK( zone_ref.get().get_name().compare( 0, 10, "Smartzone " ) == 0 );
+    }
+
     const zone_data *reloaded_books = find_single_zone( zone_type_LOOT_BOOKS );
     REQUIRE( reloaded_books != nullptr );
+    CHECK( reloaded_books->get_name() == "Smartzone books" );
     CHECK( find_zone_at( zone_type_LOOT_MANUALS, reloaded_books->get_center_point() ) != nullptr );
     const zone_data *reloaded_auto_eat = find_single_zone( zone_type_AUTO_EAT );
     REQUIRE( reloaded_auto_eat != nullptr );

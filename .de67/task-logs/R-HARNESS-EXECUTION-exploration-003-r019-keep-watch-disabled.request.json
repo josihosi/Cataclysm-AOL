@@ -1,0 +1,16 @@
+{
+  "action": "game.keep_watch",
+  "keep_watch": {
+    "master_enabled": false,
+    "enabled": true,
+    "target_game_minutes": 8048,
+    "bound": {
+      "basis": "game_mechanic",
+      "source": "one native game minute from the observed 8047-minute frame",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    },
+    "recipe": ["world.wait", "wait.duration_menu", "wait.1m"]
+  }
+}

@@ -1,0 +1,49 @@
+Pickup
+Game time: 7565 minutes.
+Marked: none
+ALLOWED HERE ONLY
+toggle: mark/unmark an item; commit: perform the labelled action on marked items. select confirms; it does not mark items.
+Confirm marked items: Pick up selected items → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter (unavailable)
+Cancel → play act inventory.cancel
+play act inventory.<action> --target <target> (copy the target exactly)
+Actions for every target below: details
+  28480 — coming of age novel — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a coming of age novel would be tricky.
+  28482 — one-dollar currency strap — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a one-dollar currency strap would be tricky.
+  28498 — wallet > 6 currency — also contents/select/toggle/wield
+    Unavailable: wear: Wear — Putting on a wallet > 6 currency would be tricky.
+  28500 — saline eye drops (cold) — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a saline eye drops (cold) would be tricky.
+  28504 — plastic bag⁺ > corn tortilla (fresh) — also contents/select/toggle/wield
+    Unavailable: wear: Wear — Putting on a plastic bag⁺ > corn tortilla (fresh) would be tricky.
+  28508 — small aluminum can⁺ (sealed) > diet cola — also contents/select/toggle/wield
+    Unavailable: wear: Wear — Putting on a small aluminum can⁺ (sealed) > diet cola would be tricky.
+  28518 — small cardboard box⁺ > 4 slices of meat pizza — Does not fit in any pocket! — also wield
+    Unavailable: contents: Contents; select: small cardboard box⁺ > 4 slices of meat pizza — Does not fit in any pocket!; toggle: Toggle selection; wear: Wear — Putting on a small cardboard box⁺ > 4 slices of meat pizza would be tricky.
+  29938 — cash card — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a cash card would be tricky.
+  29939 — dime — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a dime would be tricky.
+  29940 — penny — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a penny would be tricky.
+  29941 — penny — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a penny would be tricky.
+  29942 — quarter — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a quarter would be tricky.
+  29943 — penny — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a penny would be tricky.
+  29947 — corn tortilla (fresh) — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a corn tortilla (fresh) would be tricky.
+  29950 — diet cola — Can't pick up liquids.
+    Unavailable: select: diet cola — Can't pick up liquids.; toggle: Toggle selection; wear: Wear — Putting on a diet cola would be tricky.; wield: Wield — You can't wield spilt liquids.
+  29956 — slice of meat pizza — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a slice of meat pizza would be tricky.
+  29957 — slice of meat pizza — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a slice of meat pizza would be tricky.
+  29958 — slice of meat pizza — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a slice of meat pizza would be tricky.
+  29959 — slice of meat pizza — also select/toggle/wield
+    Unavailable: wear: Wear — Putting on a slice of meat pizza would be tricky.

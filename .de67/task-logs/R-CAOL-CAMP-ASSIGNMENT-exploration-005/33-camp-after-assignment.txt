@@ -1,0 +1,30 @@
+DIALOGUE
+history: R032 Establishment Ally 1
+"I'm working at the camp."
+
+You
+Let's talk.
+
+R032 Establishment Ally 1
+"What is it, friend?"
+
+You
+There's something I want you to do.
+
+R032 Establishment Ally 1
+"You gonna give me orders?"
+
+You
+Let's talk about the camp.
+
+R032 Establishment Ally 1
+"What about the camp?"
+prompt: "What about the camp?"
+Allowed actions replaced — use only these:
+play act dialogue.<action> --target <target> (copy the target exactly)
+Actions for every target below: choose
+  dialogue-response-78 — I want to assign you to work at this camp.
+  dialogue-response-79 — I want you to build a camp here.
+  dialogue-response-80 — We need to abandon this camp.
+  dialogue-response-81 — Show me what needs to be done at the camp.
+  dialogue-response-82 — Actually, forget it.

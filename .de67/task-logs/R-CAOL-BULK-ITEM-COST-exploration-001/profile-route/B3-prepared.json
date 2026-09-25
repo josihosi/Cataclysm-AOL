@@ -1,0 +1,222 @@
+{
+  "world": "BulkB3",
+  "source_tree": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/La Mirada",
+  "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+  "items": {
+    "kind": "map_items_near_player",
+    "world": "BulkB3",
+    "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+    "player_location": [
+      3539,
+      3780,
+      0
+    ],
+    "placed_items": [
+      {
+        "typeid": "2x4",
+        "count": 128,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      },
+      {
+        "typeid": "hammer",
+        "count": 128,
+        "charges": null,
+        "owner": "your_followers",
+        "active": false,
+        "countdown_offset_turns": null,
+        "countdown_point": null,
+        "offset_ms": [
+          0,
+          0,
+          0
+        ],
+        "target_location_ms": [
+          3539,
+          3780,
+          0
+        ],
+        "target_abs_omt": [
+          147,
+          157,
+          0
+        ],
+        "target_abs_sm": [
+          294,
+          315,
+          0
+        ],
+        "local_ms": [
+          11,
+          0,
+          0
+        ],
+        "map_pack": "4.4.0",
+        "map_file": "147.157.0.map"
+      }
+    ],
+    "extracted_map_packs": [
+      "4.4.0"
+    ],
+    "recompressed_maps": [
+      "maps/4.4.0/147.157.0.map"
+    ],
+    "removed_extracted_map_dirs": [
+      "maps/4.4.0"
+    ],
+    "plain_map_dirs_left_for_game_load": false
+  },
+  "zones": [
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB3",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostUnsortedSource",
+        "type": "LOOT_UNSORTED",
+        "faction": "your_followers",
+        "identity": "zone-fixture-ce12173229b1832def629686",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3539,
+          3780,
+          0
+        ],
+        "end": [
+          3539,
+          3780,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB3",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostWoodDestination",
+        "type": "LOOT_WOOD",
+        "faction": "your_followers",
+        "identity": "zone-fixture-6a2e0f8daaa0afe2a6be0c6b",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3539,
+          3781,
+          0
+        ],
+        "end": [
+          3539,
+          3781,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "world": "BulkB3",
+      "player_save": "#SGFycmlzIFNwaXZleQ==.sav.zzip",
+      "player_location": [
+        3539,
+        3780,
+        0
+      ],
+      "zone": {
+        "name": "BulkCostToolsDestination",
+        "type": "LOOT_TOOLS",
+        "faction": "your_followers",
+        "identity": "zone-fixture-e84aea14ff761898c563bd7b",
+        "invert": false,
+        "enabled": true,
+        "temporarily_disabled": false,
+        "is_vehicle": false,
+        "is_personal": false,
+        "cached_shift": [
+          0,
+          0,
+          0
+        ],
+        "start": [
+          3540,
+          3780,
+          0
+        ],
+        "end": [
+          3540,
+          3780,
+          0
+        ],
+        "is_displayed": false
+      },
+      "updated_zone_files": [
+        "#SGFycmlzIFNwaXZleQ==.zones.json"
+      ]
+    }
+  ],
+  "valid_npc_premise": "living neutral Genevieve Floyd preserved from clean La Mirada at avatar north tile; verify again in native frame"
+}

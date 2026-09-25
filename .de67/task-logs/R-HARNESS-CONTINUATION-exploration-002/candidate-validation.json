@@ -1,0 +1,26 @@
+{
+  "candidate_root": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/method-candidate",
+  "baseline_root": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-HARNESS-CONTINUATION-exploration-002/method-baseline",
+  "installed_guard_sha256": "a2512b9fa1c961611949c8cd3860a6d8527685ac1815e3bb6b506aa56a8cb4b7",
+  "candidate_guard_sha256": "fbd57ee8904ca3009ddf03cc82db0b5ad28e181e027d7c46bfb4ac131802287a",
+  "staged_changed_paths": [
+    "scripts/mutation_guard.py",
+    "tests/test_mutation_guard.py"
+  ],
+  "installed_method_modified": false,
+  "clock_policy_lifecycle_paths_unchanged": true,
+  "current_format_universal_owner_scoped_change": "passed",
+  "current_format_random_review_change": [
+    "DFS.md"
+  ],
+  "counterexamples_rejected": {
+    "accepted-proof-loss": "Universal FS candidate cannot change ## Retained accepted gameplay contract",
+    "slice-deletion": "FS slice END has no matching BEGIN: R-HARNESS-CONTINUATION-S001",
+    "slice-rebinding": "Universal FS candidate cannot remove or rebind durable slice R-HARNESS-CONTINUATION-S001",
+    "unrelated-domain-rewrite": "Universal FS candidate cannot change ## Language, coordinates and truth",
+    "unauthorized-scope-change": "Universal FS candidate cannot change ## Authority and outcome"
+  },
+  "active_ledger_items_bound": 10,
+  "accepted_rows_observed_read_only": 68,
+  "evidence_ceiling": "Candidate-only guard/unit and current canonical-FS validation; no due cycle was resolved, no receipt persisted, no coordinator/game/lifecycle action was started."
+}

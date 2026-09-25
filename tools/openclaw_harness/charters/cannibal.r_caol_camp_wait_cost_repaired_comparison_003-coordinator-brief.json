@@ -1,0 +1,50 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-CAMP-WAIT-COST-exploration-003",
+  "scenario": "cannibal.r_caol_camp_wait_cost_repaired_comparison_003",
+  "objective": "Compare the repaired current-source binary against the preserved native five-minute wait baseline using an equivalent 300-turn continuation and quantify event-volume and timing changes for both contact and production dispatch-admission rejects.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_camp_wait_cost_repaired_comparison_003-witness.json",
+  "outcome": "The repaired current-source binary completes an equivalent 300-turn five-minute wait from the preserved minute-7994 camp/fire continuation while reducing duplicate contact and unchanged admission diagnostic writes and keeping native stream validation incremental.",
+  "constraints": [
+    "Use a separate disposable profile copied from preserved minute-7994 source; keep the active smoke profile and original save untouched.",
+    "Apply only the documented Tilda destination_activity.actor migration cancellation.",
+    "Verify safe mode OFF before movement and wait.",
+    "Take one ordinary east step and quicksave to reproduce baseline turn 5231695 and location [3158,3449,0].",
+    "Measure one five-minute native wait (300 turns) before any longer interval.",
+    "Count both active_sortie_local_contact and production_signal_dispatch_admission transitions, grouped by outcome/reason, and retain transition-file offsets/bytes.",
+    "Keep ordinary-fire smoke watch and contact observations at original scope; do not add fuel or inject events.",
+    "Own any launched process through verified graceful exit or explicit handoff."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.camp_wait_cost_comparison",
+        "op": "eq",
+        "value": {
+          "turns": 300,
+          "source": "repaired current-worktree binary",
+          "events": [
+            "active_sortie_local_contact",
+            "production_signal_dispatch_admission"
+          ],
+          "profile": "preserved minute-7994 saved continuation with documented migration cancellation"
+        },
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.saved_world_continuation",
+        "op": "eq",
+        "value": "continue_disposable_copy_of_preserved_minute7994_without_fixture_install_or_replacement",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

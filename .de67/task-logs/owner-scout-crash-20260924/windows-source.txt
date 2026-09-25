@@ -1,0 +1,190 @@
+[
+    {
+        "Name":  "cataclysm-tiles.exe",
+        "Length":  61148602
+    },
+    {
+        "Name":  "zstd.a",
+        "Length":  13330
+    }
+]
+import json
+import shutil
+import sys
+import types
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.modules.setdefault("resource", types.ModuleType("resource"))
+sys.path.insert(0, str(ROOT / "tools" / "openclaw_harness"))
+import startup_harness as h
+import bandit_live_world_audit as audit
+
+world = ROOT / ".userdata" / "windows-camp-20260924" / "save" / "TestSetup00"
+source_world = ROOT / "tools" / "openclaw_harness" / "fixtures" / "saves" / "live-debug" / "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24" / "save" / "McWilliams"
+source_world = source_world.resolve()
+player_save = "#VGVzdDAw.sav.zzip"
+target_ov = world / "overmaps" / "o.0.0.zzip"
+source_ov = source_world / "overmaps" / "o.0.0.zzip"
+audit_dir = ROOT / ".userdata" / "windows-camp-20260924" / "audit"
+audit_dir.mkdir(parents=True, exist_ok=True)
+backup = audit_dir / "o.0.0-original.zzip"
+if not backup.exists():
+    shutil.copy2(target_ov, backup)
+# Prior read-only inspection may have left zzip's extracted plain file beside
+# the save. Remove only that known duplicate before switching map payloads.
+plain = world / "o.0.0"
+if plain.exists():
+    plain.unlink()
+source_plain = source_world / "o.0.0"
+if source_plain.exists():
+    source_plain.unlink()
+
+placements = audit.load_special_placements(ROOT, source_world, {"bandit_camp"})
+source = [p for p in placements if p.site_index == 2]
+if len(source) != 1 or source[0].overmap_file != "o.0.0.zzip":
+    raise SystemExit("Expected canonical second bandit_camp footprint in the source fixture")
+source = source[0]
+source_plain_path, _, source_payload = h.extract_overmap_payload(source_ov)
+source_layers = source_payload["layers"]
+source_terrain = {}
+for point in source.points:
+    layer = h.decode_overmap_layer(source_layers[h.overmap_layer_index(point[2])], context="fixture camp source")
+    source_terrain[point] = layer[h.overmap_flat_index(point)]
+h.cleanup_extracted_overmap(source_plain_path, keep=False)
+
+# Confirm requested sites land on unbuilt forest/trail terrain in the archived map.
+base_plain, _, base_payload = h.extract_overmap_payload(target_ov)
+base_layers = base_payload["layers"]
+player_omt, _ = h.load_player_abs_omt(world, player_save)
+transforms = [
+    {"kind": "seed_overmap_special_near_player", "player_save": player_save,
+     "special_id": "bandit_camp", "source_special_id": "bandit_camp", "site_index": 2,
+     "offset_omt": [-4, -6, 0]},
+    {"kind": "seed_overmap_special_near_player", "player_save": player_save,
+     "special_id": "cannibal_camp", "source_special_id": "bandit_camp", "site_index": 2,
+     "offset_omt": [4, -6, 0]},
+]
+allowed = {"forest", "forest_thick"}
+for t in transforms:
+    target = (player_omt[0] + t["offset_omt"][0], player_omt[1] + t["offset_omt"][1], 0)
+    for dx in range(2):
+        for dy in range(2):
+            point = (target[0] + dx, target[1] + dy, 0)
+            loc = h.overmap_file_coords_from_abs_omt(point)[2]
+            tid = h.decode_overmap_layer(base_layers[h.overmap_layer_index(0)], context="archived map check")[h.overmap_flat_index(loc)]
+            if tid not in allowed and not tid.startswith("forest_trail_"):
+                raise SystemExit(f"Refusing camp footprint on non-forest terrain {point}: {tid}")
+
+h.cleanup_extracted_overmap(base_plain, keep=False)
+
+# Reuse the normal fixture transform against the canonical saved mapgen camp
+# without allowing its source overmap to replace the player's saved region.
+shutil.copy2(source_ov, target_ov)
+try:
+    transform_reports = [h.apply_seed_overmap_special_near_player_transform(world, t) for t in transforms]
+    generated_plain, _, generated = h.extract_overmap_payload(target_ov)
+    generated_layers = generated["layers"]
+    final_sites = []
+    for report in transform_reports:
+        points = [tuple(p) for p in report["copied_points"]]
+        tile_values = {}
+        for point in points:
+            tile_values[point] = h.decode_overmap_layer(
+                generated_layers[h.overmap_layer_index(point[2])], context="generated camp footprint"
+            )[h.overmap_flat_index(point)]
+        final_sites.append((report, points, tile_values))
+    h.cleanup_extracted_overmap(generated_plain, keep=False)
+finally:
+    shutil.copy2(backup, target_ov)
+
+# Merge only the two camp footprints and their genuine special placement records
+# into the real archive overmap, preserving every other archived tile and record.
+if plain.exists():
+    plain.unlink()
+merged_plain, version, merged = h.extract_overmap_payload(target_ov)
+try:
+    layer_cache = {}
+    old_terrain = {}
+    for report, points, values in final_sites:
+        for point in points:
+            li = h.overmap_layer_index(point[2])
+            if li not in layer_cache:
+                layer_cache[li] = h.decode_overmap_layer(merged["layers"][li], context="merged archive map")
+            local = h.overmap_file_coords_from_abs_omt(point)[2]
+            index = h.overmap_flat_index(local)
+            old_terrain[point] = layer_cache[li][index]
+            layer_cache[li][index] = values[point]
+        anchor = tuple(report["target_abs_omt"])
+        local_anchor = h.overmap_file_coords_from_abs_omt(anchor)[2]
+        h.upsert_special_placement(merged, special_id=report["special_id"],
+                                   placement_origin=local_anchor, placement_points=points)
+    for li, layer in layer_cache.items():
+        merged["layers"][li] = h.encode_overmap_layer(layer)
+    h.write_overmap_payload(merged_plain, version, merged)
+finally:
+    h.cleanup_extracted_overmap(merged_plain, keep=False)
+
+result = {
+    "profile": "windows-camp-20260924",
+    "world": "TestSetup00",
+    "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24 / bandit_camp site 2",
+    "player_omt": list(player_omt),
+    "transform_reports": transform_reports,
+    "previous_target_terrain": {str(list(k)): v for k, v in old_terrain.items()},
+    "placement_strategy": "canonical saved camp footprint transplanted via existing seed_overmap_special_near_player transform; gameplay initialization remains native",
+    "gameplay_credit": False,
+    "original_archive_preserved": True,
+    "original_world_map_backup": str(backup.relative_to(ROOT)),
+    "npc_state_changed": False,
+}
+(audit_dir / "camp-scenario-setup.json").write_text(json.dumps(result, indent=2) + chr(10), encoding="utf-8")
+print(json.dumps({"player_omt": result["player_omt"], "sites": [
+    {"special_id": r["special_id"], "target_abs_omt": r["target_abs_omt"], "offset_omt": r["offset_omt"], "copied_points": len(r["copied_points"])}
+    for r in transform_reports], "archive_preserved": True, "npc_state_changed": False}, indent=2))
+
+
+
+
+
+
+import os
+import subprocess
+import sys
+import types
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_DIR = ROOT / "tools" / "openclaw_harness"
+sys.path.insert(0, str(SCRIPT_DIR))
+# Windows lacks the Unix-only resource module imported by a diagnostics helper.
+sys.modules.setdefault("resource", types.ModuleType("resource"))
+import startup_harness as harness
+
+PROFILE = "windows-camp-20260924"
+WORLD = "TestSetup00"
+EXE = ROOT / "build" / "windows-camp-20260924" / "cataclysm-tiles.exe"
+if not EXE.is_file():
+    raise SystemExit(f"Build executable not ready: {EXE}")
+options = harness.load_game_options(PROFILE)
+provision, overlay = harness.provision_llm_api_key_environment(options)
+if provision["status"] in {"missing", "missing_env_name"}:
+    raise SystemExit(f"Harness API credential unavailable ({provision['status']}); secret omitted")
+env = os.environ.copy()
+env.update(overlay)
+# The Windows distribution DLLs live at the repository root beside gfx/data.
+env["PATH"] = str(ROOT) + os.pathsep + env.get("PATH", "")
+command = harness.build_game_command(EXE, PROFILE, WORLD)
+child = subprocess.Popen(command, cwd=ROOT, env=env, close_fds=True)
+print(f"Started Windows camp playtest PID {child.pid}")
+print(f"Executable: {EXE}")
+print(f"Userdir: .userdata/{PROFILE}/   World: {WORLD}")
+print("Credential provisioning: ready (secret omitted)")
+16:23:40.291 INFO : bandit_live_world perf: sites=3 active_sites=1 active_job_mix=camp_style:scout=1 signals=0 significant_sounds=0 retired_reports=0 travelling_npcs=0 npcs_need_reload=no dematerialized_handoffs=no signal_cadence_due=yes dispatch_cadence_due=no aftermath_us=1 retirement_us=3 signal_us=520 dispatch_us=12788 travel_us=9 total_us=13323
+16:23:41.075 INFO : bandit_live_world perf: sites=3 active_sites=1 active_job_mix=camp_style:scout=1 signals=0 significant_sounds=0 retired_reports=0 travelling_npcs=0 npcs_need_reload=no dematerialized_handoffs=no signal_cadence_due=yes dispatch_cadence_due=no aftermath_us=2 retirement_us=2 signal_us=457 dispatch_us=12046 travel_us=9 total_us=12518
+16:23:41.870 INFO : bandit_live_world perf: sites=3 active_sites=1 active_job_mix=camp_style:scout=1 signals=0 significant_sounds=0 retired_reports=0 travelling_npcs=0 npcs_need_reload=no dematerialized_handoffs=no signal_cadence_due=yes dispatch_cadence_due=no aftermath_us=2 retirement_us=3 signal_us=426 dispatch_us=11962 travel_us=8 total_us=12402
+{
+    "Name":  "python.exe",
+    "Source":  "C:\\Python313\\python.exe"
+}
+

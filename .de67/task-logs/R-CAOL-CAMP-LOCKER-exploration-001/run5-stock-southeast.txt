@@ -1,0 +1,12 @@
+Pickup
+Marked: none
+ALLOWED HERE ONLY
+toggle: mark/unmark an item; commit: perform the labelled action on marked items. select confirms; it does not mark items.
+Confirm marked items: Pick up selected items → play act inventory.commit (no --target)
+Filter → play act inventory.filter --param "text=TEXT"
+Reset filter (unavailable)
+Cancel → play act inventory.cancel
+play act inventory.<action> --target <target> (copy the target exactly)
+Actions for every target below: details/wield
+  13528 — Glock carry pistol — Does not fit in any pocket!
+    Unavailable: select: Glock carry pistol — Does not fit in any pocket!; toggle: Toggle selection; wear: Wear — Putting on a Glock carry pistol would be tricky.

@@ -1,8 +1,7 @@
-"""Verified lazy views of unchanged full cockpit report artifacts.
+"""Report retrieval from the retained archive without copying its full history.
 
-The sidecar is an index, never independent proof. Its fully reconstructed JSON
-must have the exact byte hash and size of the original report before any caller
-receives the view. Reports without a sidecar retain the legacy JSON path.
+Support both legacy full exports and compact reports using existing archive
+references. Both verify the stored report and the referenced records on read.
 """
 from __future__ import annotations
 
@@ -14,12 +13,11 @@ from collections.abc import Mapping
 from cockpit_archive import Archive, find_archive, resolve_wire, write_json_stream, file_identity, value_digest
 
 
-def write_report_reference(path, value):
+def write_report_reference(path, value, *, compact=False):
     archive = find_archive(value)
     if archive is None:
         return
-    identity = file_identity(path)
-    wire = archive.wire(value, exported=identity)
+    wire = archive.wire(value, export_path=path) if compact else archive.wire(value, exported=file_identity(path))
     write_json_stream(Path(path).with_suffix(".ref.json"), wire, exclusive=False)
 
 
@@ -96,8 +94,7 @@ def store_journal_reference(journal):
             for entry in journal["entries"]:
                 entries.append(entry)
             retained = storage.decode(storage.encode({**journal, "entries": entries}))
-            write_json_stream(path, retained)
-            write_report_reference(path, retained)
+            write_report_reference(path, retained, compact=True)
         finally:
             storage.close()
     _, _, existing = load_report(path)

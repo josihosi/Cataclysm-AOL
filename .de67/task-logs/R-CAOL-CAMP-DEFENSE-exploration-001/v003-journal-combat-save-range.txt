@@ -1,0 +1,72 @@
+Read a field → play inspect result.evidence_journal.entries.INDEX.value.PATH --request-id play-e28dbad7e0624562875912c8dc3b9287
+INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.
+J0101: observation — look_cursor
+  INDEX 100; PATH value.surface.facts.FIELD; FIELD: cursor, first_point, mode, movement_step, relative_to_avatar, selection_stage
+J0102: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0103: observation — look_cursor
+  INDEX 102; same PATH/FIELD as J0101.
+J0104: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0105: observation — look_cursor
+  INDEX 104; same PATH/FIELD as J0101.
+J0106: action — cursor.south
+  checks: {"action_id": "cursor.south"}
+J0107: observation — menu
+  INDEX 106; PATH value.surface.facts.FIELD; FIELD: filter, filter_required, filtered_entry_count, selected_stable_id, text, title
+J0108: action — cursor.confirm
+  checks: {"action_id": "cursor.confirm"}
+J0109: observation — world
+  INDEX 108; PATH value.surface.facts.FIELD; FIELD: avatar, avatar_effects, avatar_status, current_site_camp, current_site_camp_storage, diagnostic_active_monsters, diagnostic_zombie_rider_bands, diagnostic_zombie_rider_light_memory, hostile_contact_members, last_debug_intervention, last_save_result, messages, minimap, overmap, staffed_camp_signal_leads, structural_outing_owner, structural_signal_dispatch, visible_entities, visible_local, visible_zones, world_mode
+J0110: action — menu.cancel
+  checks: {"action_id": "menu.cancel"}
+J0111: observation — world
+  INDEX 110; same PATH/FIELD as J0109.
+J0112: observation — menu
+  INDEX 111; same PATH/FIELD as J0107.
+J0113: action — world.wait
+  checks: {"action_id": "world.wait"}
+J0114: observation — menu
+  No value fields.
+J0115: action — menu.choose
+  checks: {"action_id": "menu.choose"}
+J0116: observation — menu
+  No value fields.
+J0117: observation — prompt
+  INDEX 116; PATH value.surface.facts.FIELD; FIELD: text, title
+J0118: action — wait.1m
+  checks: {"action_id": "wait.1m"}
+J0119: observation — activity_wait
+  INDEX 118; PATH value.surface.facts.FIELD; FIELD: activity_generation, activity_type, native_action, native_owner
+J0120: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0121: observation — world
+  INDEX 120; same PATH/FIELD as J0109.
+J0122: keep watch
+  INDEX 121; PATH FIELD; FIELD: kind, result
+J0123: observation — npc_inspection
+  INDEX 122; PATH value.surface.facts.FIELD; FIELD: actor_id, actor_name, calendar_turn, diagnostic_camp_patrol, diagnostic_health, diagnostic_item_count, diagnostic_items, diagnostic_llm_intent, diagnostic_orders, diagnostic_rules, item_details_parameters, provenance, visible
+J0124: action — world.inspect_camp_npc
+  checks: {"action_id": "world.inspect_camp_npc"}
+J0125: observation — world
+  INDEX 124; same PATH/FIELD as J0109.
+J0126: action — npc_inspection.close
+  checks: {"action_id": "npc_inspection.close"}
+J0127: observation — prompt
+  INDEX 126; same PATH/FIELD as J0117.
+J0128: action — world.save_quit
+  checks: {"action_id": "world.save_quit"}
+J0129: observation — main_menu
+  No value fields.
+J0130: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0131: observation — prompt
+  INDEX 130; same PATH/FIELD as J0117.
+J0132: action — main_menu.quit
+  checks: {"action_id": "main_menu.quit"}
+J0133: observation — process_exited
+  INDEX 132; PATH value.surface.facts.FIELD; FIELD: pid, alive, exit_code, exit_observed_at, evidence_ref, gameplay_credit, save_outcome
+J0134: action — prompt.choose
+  checks: {"action_id": "prompt.choose"}
+J0135: terminal — Native segment: exact R032 camp/character identity and Locker gear retained; CAMP_PATROL route and active guard position moved; disclosed debug zombie spawned visibly; only eligible roster actor engaged and killed it with native combat; native save completed and owned game PID exited. Continue to the declared same-world post-reload step for persistence proof.
+  INDEX 134; PATH FIELD; FIELD: stop_reason, unused_authority, cleanup

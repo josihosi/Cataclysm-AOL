@@ -1,0 +1,1181 @@
+{
+  "ok": true,
+  "reason": "",
+  "pid": 2415,
+  "profile": "caol-bulk-item-cost-exploration-001",
+  "config_profile": "caol-bulk-item-cost-exploration-001",
+  "ok_with_debug_popups": false,
+  "ok_with_debug_errors": false,
+  "debug_popups_recorded": 0,
+  "debug_errors_recorded": 0,
+  "debug_popup_dismissals": 0,
+  "debug_log_deltas_recorded": 1,
+  "debug_log_classified_size": 132215,
+  "debug_log_raw_size": 132215,
+  "debug_log_identity": {
+    "device": 16777244,
+    "inode": 4694495
+  },
+  "semantic_step_trace_start_offset": 1229762,
+  "final_startup_evidence": {
+    "debug_capture": {
+      "previous_size": 0,
+      "current_size": 132215,
+      "raw_current_size": 132215,
+      "unclassified_trailing_bytes": 244,
+      "unclassified_trailing_text": "20:16:09.513 INFO : openclaw_harness_ui_trace: component=gameplay_hud event=rendered run_id=\"9cc178db9dbe4b379890da5026a96c6c\" move_widget=move_count_mode_desc wield_widget=wielding_desc avatar_live=yes modal_owner=none world_wait_available=yes",
+      "tail_classification": "benign_info_or_warning",
+      "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/debug.final.log",
+      "error_evidence_lines": [],
+      "expected_identity": {
+        "device": 16777244,
+        "inode": 4693657
+      },
+      "current_identity": {
+        "device": 16777244,
+        "inode": 4694495
+      },
+      "identity_changed": true,
+      "truncated": false,
+      "stable_tail_attempts": 1,
+      "tail_classified": true
+    },
+    "screen_probe": {
+      "classification": "green_gameplay_hud_present",
+      "gameplay_hud_present": true,
+      "visible_error_popup": false,
+      "startup_error_logged": false,
+      "blocking_overlay_present": false,
+      "blocking_overlay_markers": [],
+      "error_screen_markers": [],
+      "hud_body_markers": [],
+      "hud_body_marker_types": [
+        "native_rendered_hud_fallback"
+      ],
+      "hud_status_markers": [],
+      "hud_status_marker_types": [
+        "native_rendered_hud_fallback"
+      ],
+      "debug_error_lines": [],
+      "capture_warnings": [],
+      "raw_black_capture_warning": false,
+      "captured_hud_evidenced": false,
+      "black_capture_warning": false,
+      "ocr_ok": false,
+      "ocr_line_count": 0,
+      "rule": "A clean startup needs at least one body label and one map-sidebar-only status label, with no blocking modal overlay; visible debug/error UI is red.",
+      "source_png": ".",
+      "ocr_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_ocr.json",
+      "debug_delta_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/debug.final.log",
+      "native_run_id": "9cc178db9dbe4b379890da5026a96c6c",
+      "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_probe.json"
+    },
+    "debug_delta_recorded": true,
+    "debug_error_recorded": false,
+    "visible_error_popup_recorded": false,
+    "process_alive": true,
+    "debug_tail_classified": true,
+    "safe_for_startup": true,
+    "classified_size": 132215,
+    "raw_current_size": 132215,
+    "debug_log_identity": {
+      "device": 16777244,
+      "inode": 4694495
+    },
+    "rule": "Final startup evidence is classified on success, process exit, and timeout; classification never dismisses dialogs or sends keys."
+  },
+  "strategy": "autoload_world",
+  "profile_snapshot": {},
+  "saved_world_snapshot": {},
+  "profile_option_overrides": {
+    "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/config/options.json",
+    "applied": {}
+  },
+  "fixture_install": {},
+  "flexbuffer_cache_purge": {
+    "profile": "caol-bulk-item-cost-exploration-001",
+    "cache_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/cache",
+    "deleted_count": 7,
+    "deleted": [
+      "cache/config/base_colors.json.1790253552946.fb",
+      "cache/config/fonts.json.1790272923721.fb",
+      "cache/config/imgui_style.json.1790253553049.fb",
+      "cache/config/keybindings.json.1790253551952.fb",
+      "cache/config/lastworld.json.1790273183217.fb",
+      "cache/config/lastworld.json.1790273550198.fb",
+      "cache/config/options.json.1790272924978.fb"
+    ],
+    "truncated": false
+  },
+  "peekaboo_permissions": {
+    "input": {
+      "channel": "input",
+      "command": [
+        "/opt/homebrew/bin/peekaboo",
+        "permissions",
+        "status",
+        "--json",
+        "--bridge-socket",
+        "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+      ],
+      "required_capabilities": [
+        "Accessibility"
+      ],
+      "payload": {
+        "success": true,
+        "data": {
+          "permissions": [
+            {
+              "isGranted": true,
+              "grantInstructions": "System Settings > Privacy & Security > Screen Recording",
+              "isRequired": true,
+              "name": "Screen Recording"
+            },
+            {
+              "isGranted": true,
+              "grantInstructions": "System Settings > Privacy & Security > Accessibility",
+              "isRequired": true,
+              "name": "Accessibility"
+            },
+            {
+              "isGranted": true,
+              "grantInstructions": "System Settings > Privacy & Security > Accessibility",
+              "isRequired": false,
+              "name": "Event Synthesizing"
+            }
+          ],
+          "source": "bridge"
+        },
+        "debug_logs": [
+          "[2026-09-24T18:15:56.238Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))"
+        ]
+      },
+      "error": "",
+      "status": "green",
+      "missing_capabilities": []
+    },
+    "capture": {
+      "channel": "capture",
+      "command": [
+        "/opt/homebrew/bin/peekaboo",
+        "permissions",
+        "status",
+        "--json",
+        "--bridge-socket",
+        "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+      ],
+      "required_capabilities": [
+        "Screen Recording"
+      ],
+      "payload": {
+        "data": {
+          "source": "bridge",
+          "permissions": [
+            {
+              "grantInstructions": "System Settings > Privacy & Security > Screen Recording",
+              "isGranted": true,
+              "name": "Screen Recording",
+              "isRequired": true
+            },
+            {
+              "grantInstructions": "System Settings > Privacy & Security > Accessibility",
+              "isGranted": true,
+              "name": "Accessibility",
+              "isRequired": true
+            },
+            {
+              "grantInstructions": "System Settings > Privacy & Security > Accessibility",
+              "isGranted": true,
+              "name": "Event Synthesizing",
+              "isRequired": false
+            }
+          ]
+        },
+        "debug_logs": [
+          "[2026-09-24T18:15:56.317Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))"
+        ],
+        "success": true
+      },
+      "error": "",
+      "status": "green",
+      "missing_capabilities": []
+    }
+  },
+  "focus": {
+    "command": [
+      "/opt/homebrew/bin/peekaboo",
+      "window",
+      "focus",
+      "--pid",
+      "2415",
+      "--verify",
+      "--bridge-socket",
+      "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+    ],
+    "returncode": 124,
+    "ok": false,
+    "stdout": "",
+    "stderr": "peekaboo focus timed out",
+    "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+    "attempt_count": 2,
+    "attempts": [
+      {
+        "command": [
+          "/opt/homebrew/bin/peekaboo",
+          "window",
+          "focus",
+          "--pid",
+          "2415",
+          "--verify",
+          "--bridge-socket",
+          "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+        ],
+        "returncode": 124,
+        "ok": false,
+        "stdout": "",
+        "stderr": "peekaboo focus timed out",
+        "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+      },
+      {
+        "command": [
+          "/opt/homebrew/bin/peekaboo",
+          "window",
+          "focus",
+          "--pid",
+          "2415",
+          "--verify",
+          "--bridge-socket",
+          "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+        ],
+        "returncode": 124,
+        "ok": false,
+        "stdout": "",
+        "stderr": "peekaboo focus timed out",
+        "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+      }
+    ],
+    "remote_reacquisition": {
+      "pid": 2415,
+      "remote_discovery": {
+        "window_id": 45466,
+        "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+      },
+      "focus": {
+        "command": [
+          "/opt/homebrew/bin/peekaboo",
+          "window",
+          "focus",
+          "--pid",
+          "2415",
+          "--verify",
+          "--bridge-socket",
+          "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+        ],
+        "returncode": 124,
+        "ok": false,
+        "stdout": "",
+        "stderr": "peekaboo focus timed out",
+        "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+        "attempt_count": 2,
+        "attempts": [
+          {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+          },
+          {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+          }
+        ]
+      },
+      "reacquired_screen": {},
+      "ok": false,
+      "error": "local_focus_after_remote_discovery_failed"
+    },
+    "remote_discovery": {
+      "ok": true,
+      "screen": {
+        "label": "success.remote_discovery.2",
+        "command": [
+          "/opt/homebrew/bin/peekaboo",
+          "image",
+          "--json",
+          "--path",
+          "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+          "--window-id",
+          "45466",
+          "--bridge-socket",
+          "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+        ],
+        "capture_target": {
+          "spaceID": 3805,
+          "layer": 0,
+          "alpha": 1,
+          "spaceName": "F009735E-3096-4298-9684-40AC1082E6C3",
+          "isExcludedFromWindowsMenu": false,
+          "window_id": 45466,
+          "windowLevel": 0,
+          "index": 4,
+          "isMainWindow": false,
+          "title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+          "isMinimized": false,
+          "screenIndex": 0,
+          "isOnScreen": true,
+          "bounds": [
+            [
+              0,
+              0
+            ],
+            [
+              2560,
+              2880
+            ]
+          ],
+          "screenName": "2560×2880 Display",
+          "sharingState": 1,
+          "isOffScreen": false
+        },
+        "returncode": 0,
+        "stdout": "{\n  \"data\" : {\n    \"files\" : [\n      {\n        \"window_index\" : 0,\n        \"window_title\" : \"Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3\",\n        \"item_label\" : \"Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3\",\n        \"mime_type\" : \"image\\/png\",\n        \"window_id\" : 45466,\n        \"path\" : \"\\/Volumes\\/CodexBulk\\/Schanigarten\\/workspaces\\/Cataclysm-AOL\\/.userdata\\/caol-bulk-item-cost-exploration-001\\/harness_runs\\/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f\\/success.remote_discovery.2.png\"\n      }\n    ],\n    \"observations\" : [\n      {\n        \"state_snapshot\" : {\n          \"running_application_count\" : 0,\n          \"window_count\" : 0,\n          \"display_count\" : 0\n        },\n        \"target\" : {\n          \"resolved_kind\" : \"window-id\",\n          \"source\" : \"window-id\",\n          \"bounds\" : [\n            [\n              0,\n              0\n            ],\n            [\n              2560,\n              2880\n            ]\n          ],\n          \"requested_kind\" : \"window-id\",\n          \"open_if_needed\" : false,\n          \"window_id\" : 45466,\n          \"hints\" : [\n\n          ]\n        },\n        \"spans\" : [\n          {\n            \"name\" : \"state.snapshot\",\n            \"duration_ms\" : 0.002041,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"target.resolve\",\n            \"duration_ms\" : 0.588042,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"capture.window\",\n            \"duration_ms\" : 267.529792,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"output.write\",\n            \"duration_ms\" : 7.545125,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"output.raw.write\",\n            \"duration_ms\" : 7.480834,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"desktop.observe\",\n            \"duration_ms\" : 383.644542,\n            \"metadata\" : {\n\n            }\n          }\n        ],\n        \"warnings\" : [\n          \"Captured window image appears solid black; target may be occluded, transparent, or non-renderable.\"\n        ],\n        \"coordinates\" : {\n          \"coordinate_space\" : \"global_display_points\",\n          \"screen_index\" : 0,\n          \"logical_bounds\" : [\n            [\n              0,\n              0\n            ],\n            [\n              2560,\n              2880\n            ]\n          ],\n          \"image_size_pixels\" : {\n            \"width\" : 2560,\n            \"height\" : 2880\n          },\n          \"scale_factor\" : 1\n        }\n      }\n    ]\n  },\n  \"debug_logs\" : [\n    \"[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via \\/Users\\/josefhorvath\\/Library\\/Application Support\\/Peekaboo\\/bridge.sock (build 3.9.1 (3090199))\",\n    \"[2026-09-24T18:17:14.518Z] VERBOSE [Operation]: Starting operation {operation=image_command, app=none, mode=auto, hasAnalyzePrompt=false, pid=0}\",\n    \"[2026-09-24T18:17:14.518Z] VERBOSE [Performance]: Starting timer 'image_command'\"\n  ],\n  \"success\" : true\n}\n",
+        "stderr": "",
+        "fallback": null,
+        "crop": null,
+        "screen_summary": {
+          "png_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+          "peekaboo_json": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.peekaboo.json",
+          "repo_head": "224d7dc977",
+          "peekaboo_success": true,
+          "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+          "window_id": 45466,
+          "window_index": 0,
+          "captured_head": "224d7dc977",
+          "captured_dirty": true,
+          "version_matches_repo_head": true,
+          "version_matches_runtime_paths": true,
+          "runtime_relevant_paths": [
+            "src",
+            "data",
+            "lang",
+            "gfx",
+            "lua",
+            "mods",
+            "build-data",
+            "cmake",
+            "CMakeLists.txt",
+            "Makefile",
+            "make.sh",
+            "tools/llm_runner",
+            "tools/openclaw_harness/startup_harness.py",
+            "tools/openclaw_harness/semantic_broker.py",
+            "tools/openclaw_harness/semantic_state.py",
+            "tools/openclaw_harness/cockpit.py",
+            "tools/openclaw_harness/cockpit_file_bridge.py",
+            "tools/openclaw_harness/r009_technical_witness.py",
+            "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
+            "tools/openclaw_harness/r021_direct_hp_transaction.py",
+            "tools/openclaw_harness/r022_item_spawn_adapter.py",
+            "tools/openclaw_harness/r027_camp_signal_receipt.py",
+            "tools/openclaw_harness/scenario_registry_cli.py",
+            "tools/openclaw_harness/scenario_registry_store.py"
+          ],
+          "runtime_relevant_diff_since_capture": [],
+          "runtime_relevant_worktree_diff": [
+            "data/mods/caol_creature_sprites_tileset/mod_tileset.json",
+            "src/activity_actor.cpp",
+            "src/bandit_live_world.cpp",
+            "src/bandit_live_world.h",
+            "src/basecamp.cpp",
+            "src/clzones.cpp",
+            "src/do_turn.cpp",
+            "src/inventory_ui.cpp",
+            "src/player_display.cpp",
+            "src/zone_manager_ui.cpp",
+            "tools/openclaw_harness/cockpit.py",
+            "tools/openclaw_harness/cockpit_file_bridge.py",
+            "tools/openclaw_harness/scenario_registry_cli.py",
+            "tools/openclaw_harness/scenario_registry_store.py",
+            "tools/openclaw_harness/startup_harness.py"
+          ],
+          "runtime_compare_error": "",
+          "runtime_worktree_compare_error": "",
+          "parse_error": "",
+          "peekaboo_command": [
+            "/opt/homebrew/bin/peekaboo",
+            "image",
+            "--json",
+            "--path",
+            "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+            "--window-id",
+            "45466",
+            "--bridge-socket",
+            "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+          ],
+          "peekaboo_returncode": 0,
+          "peekaboo_stderr": "",
+          "capture_warnings": [
+            "Captured window image appears solid black; target may be occluded, transparent, or non-renderable."
+          ],
+          "peekaboo_debug_logs": [
+            "[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))",
+            "[2026-09-24T18:17:14.518Z] VERBOSE [Operation]: Starting operation {operation=image_command, app=none, mode=auto, hasAnalyzePrompt=false, pid=0}",
+            "[2026-09-24T18:17:14.518Z] VERBOSE [Performance]: Starting timer 'image_command'"
+          ],
+          "peekaboo_runtime_host": "[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))",
+          "runtime_binding_status": "matched",
+          "runtime_binding_error": "",
+          "capture_success": true,
+          "capture_backend": "peekaboo",
+          "runtime_binding_observed": {
+            "status": "matched",
+            "error": "",
+            "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+            "executable_sha256": "bb294fb7d8925a6a438bcf5e49ec91763871768a8240937f94b8b29620f70a80",
+            "runtime_source_sha256": "226033eb229031817c2f4b353309e107747d72a9399850266faa9322d3678f95",
+            "runtime_relevant_worktree_diff": [
+              "data/mods/caol_creature_sprites_tileset/mod_tileset.json",
+              "src/activity_actor.cpp",
+              "src/bandit_live_world.cpp",
+              "src/bandit_live_world.h",
+              "src/basecamp.cpp",
+              "src/clzones.cpp",
+              "src/do_turn.cpp",
+              "src/inventory_ui.cpp",
+              "src/player_display.cpp",
+              "src/zone_manager_ui.cpp",
+              "tools/openclaw_harness/cockpit.py",
+              "tools/openclaw_harness/cockpit_file_bridge.py",
+              "tools/openclaw_harness/scenario_registry_cli.py",
+              "tools/openclaw_harness/scenario_registry_store.py",
+              "tools/openclaw_harness/startup_harness.py"
+            ]
+          },
+          "source_executable_readiness": {
+            "status": "build_required",
+            "reason": "product_binary_source_is_stale_or_unproved",
+            "next_action": "build or select a source-matching executable, then repeat the same registry query",
+            "evidence_ceiling": "none until source-matching executable revalidation",
+            "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+            "captured_head": "224d7dc977",
+            "repository_head": "224d7dc977",
+            "executable_sha256": "bb294fb7d8925a6a438bcf5e49ec91763871768a8240937f94b8b29620f70a80",
+            "product_source_sha256": "3bcbc8527d28c662e930bc0d66e7e436de90d52555dce052af2900fc2e7bef43",
+            "binary_relevant_committed_changes": [],
+            "binary_relevant_worktree_changes": [
+              "src/activity_actor.cpp",
+              "src/bandit_live_world.cpp",
+              "src/bandit_live_world.h",
+              "src/basecamp.cpp",
+              "src/clzones.cpp",
+              "src/do_turn.cpp",
+              "src/inventory_ui.cpp",
+              "src/player_display.cpp",
+              "src/zone_manager_ui.cpp"
+            ],
+            "comparison_error": "",
+            "product_build_receipt": {
+              "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/source_bindings/cataclysm-tiles-a0f057203d703846.json",
+              "status": "unmatched",
+              "error": "product build receipt is malformed or has an unsupported schema"
+            }
+          },
+          "capture_process_pid": 2415
+        }
+      },
+      "identity": {
+        "window_id": 45466,
+        "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+      },
+      "attempts": [
+        {
+          "label": "success.remote_discovery.1",
+          "identity": {},
+          "local_focus": {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+            "attempt_count": 2,
+            "attempts": [
+              {
+                "command": [
+                  "/opt/homebrew/bin/peekaboo",
+                  "window",
+                  "focus",
+                  "--pid",
+                  "2415",
+                  "--verify",
+                  "--bridge-socket",
+                  "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                ],
+                "returncode": 124,
+                "ok": false,
+                "stdout": "",
+                "stderr": "peekaboo focus timed out",
+                "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+              },
+              {
+                "command": [
+                  "/opt/homebrew/bin/peekaboo",
+                  "window",
+                  "focus",
+                  "--pid",
+                  "2415",
+                  "--verify",
+                  "--bridge-socket",
+                  "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                ],
+                "returncode": 124,
+                "ok": false,
+                "stdout": "",
+                "stderr": "peekaboo focus timed out",
+                "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+              }
+            ]
+          }
+        },
+        {
+          "label": "success.remote_discovery.2",
+          "identity": {
+            "window_id": 45466,
+            "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+          }
+        }
+      ]
+    }
+  },
+  "terminal_input_endpoint": "",
+  "post_lastworld_wait_seconds": 8.0,
+  "startup_overlay_recovery": {
+    "requested": false,
+    "status": "not_requested"
+  },
+  "lastworld": {
+    "world_name": "BulkB8",
+    "character_name": "Harris Spivey"
+  },
+  "readiness": {
+    "kind": "lastworld",
+    "reason": "lastworld_updated",
+    "marker": {},
+    "baseline_save_marker": {
+      "world_name": "BulkB8",
+      "marker": "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB8/#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+      "mtime": 1790256003.9479382,
+      "reason": "world_save_marker"
+    },
+    "pid": 2415
+  },
+  "run_dir": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f",
+  "screen": {
+    "capture_success": false,
+    "capture_process_pid": 2415,
+    "surface_identity_status": "no_renderable_window_for_bound_pid",
+    "expected_surface_title": "",
+    "startup_screen_probe": {
+      "classification": "green_gameplay_hud_present",
+      "gameplay_hud_present": true,
+      "visible_error_popup": false,
+      "startup_error_logged": false,
+      "blocking_overlay_present": false,
+      "blocking_overlay_markers": [],
+      "error_screen_markers": [],
+      "hud_body_markers": [],
+      "hud_body_marker_types": [
+        "native_rendered_hud_fallback"
+      ],
+      "hud_status_markers": [],
+      "hud_status_marker_types": [
+        "native_rendered_hud_fallback"
+      ],
+      "debug_error_lines": [],
+      "capture_warnings": [],
+      "raw_black_capture_warning": false,
+      "captured_hud_evidenced": false,
+      "black_capture_warning": false,
+      "ocr_ok": false,
+      "ocr_line_count": 0,
+      "rule": "A clean startup needs at least one body label and one map-sidebar-only status label, with no blocking modal overlay; visible debug/error UI is red.",
+      "source_png": ".",
+      "ocr_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_ocr.json",
+      "debug_delta_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/debug.final.log",
+      "native_run_id": "9cc178db9dbe4b379890da5026a96c6c",
+      "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_probe.json"
+    }
+  },
+  "startup_step_ledger": [
+    {
+      "primitive_or_step": "dry plan / runtime resolution",
+      "preconditions": "repo checkout and requested profile/world/fixture are known",
+      "action": "build_plan(profile, world, fixture)",
+      "expected_immediate_state": "profile, userdir, executable, strategy, target world, existing worlds, and run dir are resolved without launching",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/plan.json",
+      "failure_rule": "missing executable/profile/run_dir or contradictory target world is red; valid metadata is plan-only proof",
+      "next_step_gate": "launch may run only after plan metadata resolves",
+      "verdict": "green_plan_resolved",
+      "metadata": {
+        "profile": "caol-bulk-item-cost-exploration-001",
+        "target_world": "BulkB8",
+        "strategy": "autoload_world",
+        "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+        "fixture": "",
+        "harness_new_world": "",
+        "harness_raw_seed": ""
+      }
+    },
+    {
+      "primitive_or_step": "profile snapshot install metadata",
+      "preconditions": "optional disposable profile snapshot requested before launch",
+      "action": "install_profile_snapshot(...) if --profile-snapshot is present",
+      "expected_immediate_state": "requested snapshot entries are copied into the harness profile userdir, or explicitly not requested",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/startup.result.json",
+      "failure_rule": "requested snapshot with no copied entries is red; not requested is not feature evidence",
+      "next_step_gate": "fixture install/launch may continue when snapshot is installed or explicitly not requested",
+      "verdict": "green_not_requested",
+      "metadata": {
+        "profile_snapshot": "",
+        "result": {}
+      }
+    },
+    {
+      "primitive_or_step": "fixture install metadata",
+      "preconditions": "optional disposable save fixture requested before launch",
+      "action": "install_fixture(...) if --fixture is present",
+      "expected_immediate_state": "requested fixture world(s) copied into target profile save dir, including manifest/save-transform metadata when present",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/startup.result.json",
+      "failure_rule": "requested fixture with no installed worlds is red; manifest metadata remains fixture/setup proof only",
+      "next_step_gate": "launch may continue when fixture is installed or explicitly not requested",
+      "verdict": "green_not_requested",
+      "metadata": {
+        "fixture": "",
+        "result": {}
+      }
+    },
+    {
+      "primitive_or_step": "launch process",
+      "preconditions": "plan resolved and previous game processes have been killed",
+      "action": "launch_game(profile, target_world, run_dir)",
+      "expected_immediate_state": "cataclysm process starts with the requested userdir/world arguments",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/process.json",
+      "failure_rule": "missing pid or early process exit is red",
+      "next_step_gate": "focus/load polling may continue only with a live pid",
+      "verdict": "green_process_started",
+      "metadata": {
+        "pid": 2415,
+        "harness_new_world": "",
+        "harness_raw_seed": ""
+      }
+    },
+    {
+      "primitive_or_step": "window focus",
+      "preconditions": "cataclysm process is running",
+      "action": "peekaboo window focus --pid <pid>",
+      "expected_immediate_state": "the game window is selected before any title/load keystrokes or screenshots",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/startup.result.json",
+      "failure_rule": "non-zero focus returncode is yellow for startup and red for any keystroke-dependent feature proof",
+      "next_step_gate": "startup polling may continue, but feature proof needs a green focus row before key delivery is trusted",
+      "verdict": "yellow_focus_unproven",
+      "metadata": {
+        "command": [
+          "/opt/homebrew/bin/peekaboo",
+          "window",
+          "focus",
+          "--pid",
+          "2415",
+          "--verify",
+          "--bridge-socket",
+          "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+        ],
+        "returncode": 124,
+        "ok": false,
+        "stdout": "",
+        "stderr": "peekaboo focus timed out",
+        "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+        "attempt_count": 2,
+        "attempts": [
+          {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+          },
+          {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+          }
+        ],
+        "remote_reacquisition": {
+          "pid": 2415,
+          "remote_discovery": {
+            "window_id": 45466,
+            "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+          },
+          "focus": {
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "window",
+              "focus",
+              "--pid",
+              "2415",
+              "--verify",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "returncode": 124,
+            "ok": false,
+            "stdout": "",
+            "stderr": "peekaboo focus timed out",
+            "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+            "attempt_count": 2,
+            "attempts": [
+              {
+                "command": [
+                  "/opt/homebrew/bin/peekaboo",
+                  "window",
+                  "focus",
+                  "--pid",
+                  "2415",
+                  "--verify",
+                  "--bridge-socket",
+                  "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                ],
+                "returncode": 124,
+                "ok": false,
+                "stdout": "",
+                "stderr": "peekaboo focus timed out",
+                "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+              },
+              {
+                "command": [
+                  "/opt/homebrew/bin/peekaboo",
+                  "window",
+                  "focus",
+                  "--pid",
+                  "2415",
+                  "--verify",
+                  "--bridge-socket",
+                  "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                ],
+                "returncode": 124,
+                "ok": false,
+                "stdout": "",
+                "stderr": "peekaboo focus timed out",
+                "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+              }
+            ]
+          },
+          "reacquired_screen": {},
+          "ok": false,
+          "error": "local_focus_after_remote_discovery_failed"
+        },
+        "remote_discovery": {
+          "ok": true,
+          "screen": {
+            "label": "success.remote_discovery.2",
+            "command": [
+              "/opt/homebrew/bin/peekaboo",
+              "image",
+              "--json",
+              "--path",
+              "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+              "--window-id",
+              "45466",
+              "--bridge-socket",
+              "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+            ],
+            "capture_target": {
+              "spaceID": 3805,
+              "layer": 0,
+              "alpha": 1,
+              "spaceName": "F009735E-3096-4298-9684-40AC1082E6C3",
+              "isExcludedFromWindowsMenu": false,
+              "window_id": 45466,
+              "windowLevel": 0,
+              "index": 4,
+              "isMainWindow": false,
+              "title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+              "isMinimized": false,
+              "screenIndex": 0,
+              "isOnScreen": true,
+              "bounds": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  2560,
+                  2880
+                ]
+              ],
+              "screenName": "2560×2880 Display",
+              "sharingState": 1,
+              "isOffScreen": false
+            },
+            "returncode": 0,
+            "stdout": "{\n  \"data\" : {\n    \"files\" : [\n      {\n        \"window_index\" : 0,\n        \"window_title\" : \"Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3\",\n        \"item_label\" : \"Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3\",\n        \"mime_type\" : \"image\\/png\",\n        \"window_id\" : 45466,\n        \"path\" : \"\\/Volumes\\/CodexBulk\\/Schanigarten\\/workspaces\\/Cataclysm-AOL\\/.userdata\\/caol-bulk-item-cost-exploration-001\\/harness_runs\\/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f\\/success.remote_discovery.2.png\"\n      }\n    ],\n    \"observations\" : [\n      {\n        \"state_snapshot\" : {\n          \"running_application_count\" : 0,\n          \"window_count\" : 0,\n          \"display_count\" : 0\n        },\n        \"target\" : {\n          \"resolved_kind\" : \"window-id\",\n          \"source\" : \"window-id\",\n          \"bounds\" : [\n            [\n              0,\n              0\n            ],\n            [\n              2560,\n              2880\n            ]\n          ],\n          \"requested_kind\" : \"window-id\",\n          \"open_if_needed\" : false,\n          \"window_id\" : 45466,\n          \"hints\" : [\n\n          ]\n        },\n        \"spans\" : [\n          {\n            \"name\" : \"state.snapshot\",\n            \"duration_ms\" : 0.002041,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"target.resolve\",\n            \"duration_ms\" : 0.588042,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"capture.window\",\n            \"duration_ms\" : 267.529792,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"output.write\",\n            \"duration_ms\" : 7.545125,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"output.raw.write\",\n            \"duration_ms\" : 7.480834,\n            \"metadata\" : {\n\n            }\n          },\n          {\n            \"name\" : \"desktop.observe\",\n            \"duration_ms\" : 383.644542,\n            \"metadata\" : {\n\n            }\n          }\n        ],\n        \"warnings\" : [\n          \"Captured window image appears solid black; target may be occluded, transparent, or non-renderable.\"\n        ],\n        \"coordinates\" : {\n          \"coordinate_space\" : \"global_display_points\",\n          \"screen_index\" : 0,\n          \"logical_bounds\" : [\n            [\n              0,\n              0\n            ],\n            [\n              2560,\n              2880\n            ]\n          ],\n          \"image_size_pixels\" : {\n            \"width\" : 2560,\n            \"height\" : 2880\n          },\n          \"scale_factor\" : 1\n        }\n      }\n    ]\n  },\n  \"debug_logs\" : [\n    \"[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via \\/Users\\/josefhorvath\\/Library\\/Application Support\\/Peekaboo\\/bridge.sock (build 3.9.1 (3090199))\",\n    \"[2026-09-24T18:17:14.518Z] VERBOSE [Operation]: Starting operation {operation=image_command, app=none, mode=auto, hasAnalyzePrompt=false, pid=0}\",\n    \"[2026-09-24T18:17:14.518Z] VERBOSE [Performance]: Starting timer 'image_command'\"\n  ],\n  \"success\" : true\n}\n",
+            "stderr": "",
+            "fallback": null,
+            "crop": null,
+            "screen_summary": {
+              "png_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+              "peekaboo_json": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.peekaboo.json",
+              "repo_head": "224d7dc977",
+              "peekaboo_success": true,
+              "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3",
+              "window_id": 45466,
+              "window_index": 0,
+              "captured_head": "224d7dc977",
+              "captured_dirty": true,
+              "version_matches_repo_head": true,
+              "version_matches_runtime_paths": true,
+              "runtime_relevant_paths": [
+                "src",
+                "data",
+                "lang",
+                "gfx",
+                "lua",
+                "mods",
+                "build-data",
+                "cmake",
+                "CMakeLists.txt",
+                "Makefile",
+                "make.sh",
+                "tools/llm_runner",
+                "tools/openclaw_harness/startup_harness.py",
+                "tools/openclaw_harness/semantic_broker.py",
+                "tools/openclaw_harness/semantic_state.py",
+                "tools/openclaw_harness/cockpit.py",
+                "tools/openclaw_harness/cockpit_file_bridge.py",
+                "tools/openclaw_harness/r009_technical_witness.py",
+                "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
+                "tools/openclaw_harness/r021_direct_hp_transaction.py",
+                "tools/openclaw_harness/r022_item_spawn_adapter.py",
+                "tools/openclaw_harness/r027_camp_signal_receipt.py",
+                "tools/openclaw_harness/scenario_registry_cli.py",
+                "tools/openclaw_harness/scenario_registry_store.py"
+              ],
+              "runtime_relevant_diff_since_capture": [],
+              "runtime_relevant_worktree_diff": [
+                "data/mods/caol_creature_sprites_tileset/mod_tileset.json",
+                "src/activity_actor.cpp",
+                "src/bandit_live_world.cpp",
+                "src/bandit_live_world.h",
+                "src/basecamp.cpp",
+                "src/clzones.cpp",
+                "src/do_turn.cpp",
+                "src/inventory_ui.cpp",
+                "src/player_display.cpp",
+                "src/zone_manager_ui.cpp",
+                "tools/openclaw_harness/cockpit.py",
+                "tools/openclaw_harness/cockpit_file_bridge.py",
+                "tools/openclaw_harness/scenario_registry_cli.py",
+                "tools/openclaw_harness/scenario_registry_store.py",
+                "tools/openclaw_harness/startup_harness.py"
+              ],
+              "runtime_compare_error": "",
+              "runtime_worktree_compare_error": "",
+              "parse_error": "",
+              "peekaboo_command": [
+                "/opt/homebrew/bin/peekaboo",
+                "image",
+                "--json",
+                "--path",
+                "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.remote_discovery.2.png",
+                "--window-id",
+                "45466",
+                "--bridge-socket",
+                "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+              ],
+              "peekaboo_returncode": 0,
+              "peekaboo_stderr": "",
+              "capture_warnings": [
+                "Captured window image appears solid black; target may be occluded, transparent, or non-renderable."
+              ],
+              "peekaboo_debug_logs": [
+                "[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))",
+                "[2026-09-24T18:17:14.518Z] VERBOSE [Operation]: Starting operation {operation=image_command, app=none, mode=auto, hasAnalyzePrompt=false, pid=0}",
+                "[2026-09-24T18:17:14.518Z] VERBOSE [Performance]: Starting timer 'image_command'"
+              ],
+              "peekaboo_runtime_host": "[2026-09-24T18:17:14.518Z] DEBUG: Runtime host: remote gui via /Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock (build 3.9.1 (3090199))",
+              "runtime_binding_status": "matched",
+              "runtime_binding_error": "",
+              "capture_success": true,
+              "capture_backend": "peekaboo",
+              "runtime_binding_observed": {
+                "status": "matched",
+                "error": "",
+                "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+                "executable_sha256": "bb294fb7d8925a6a438bcf5e49ec91763871768a8240937f94b8b29620f70a80",
+                "runtime_source_sha256": "226033eb229031817c2f4b353309e107747d72a9399850266faa9322d3678f95",
+                "runtime_relevant_worktree_diff": [
+                  "data/mods/caol_creature_sprites_tileset/mod_tileset.json",
+                  "src/activity_actor.cpp",
+                  "src/bandit_live_world.cpp",
+                  "src/bandit_live_world.h",
+                  "src/basecamp.cpp",
+                  "src/clzones.cpp",
+                  "src/do_turn.cpp",
+                  "src/inventory_ui.cpp",
+                  "src/player_display.cpp",
+                  "src/zone_manager_ui.cpp",
+                  "tools/openclaw_harness/cockpit.py",
+                  "tools/openclaw_harness/cockpit_file_bridge.py",
+                  "tools/openclaw_harness/scenario_registry_cli.py",
+                  "tools/openclaw_harness/scenario_registry_store.py",
+                  "tools/openclaw_harness/startup_harness.py"
+                ]
+              },
+              "source_executable_readiness": {
+                "status": "build_required",
+                "reason": "product_binary_source_is_stale_or_unproved",
+                "next_action": "build or select a source-matching executable, then repeat the same registry query",
+                "evidence_ceiling": "none until source-matching executable revalidation",
+                "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/cataclysm-tiles",
+                "captured_head": "224d7dc977",
+                "repository_head": "224d7dc977",
+                "executable_sha256": "bb294fb7d8925a6a438bcf5e49ec91763871768a8240937f94b8b29620f70a80",
+                "product_source_sha256": "3bcbc8527d28c662e930bc0d66e7e436de90d52555dce052af2900fc2e7bef43",
+                "binary_relevant_committed_changes": [],
+                "binary_relevant_worktree_changes": [
+                  "src/activity_actor.cpp",
+                  "src/bandit_live_world.cpp",
+                  "src/bandit_live_world.h",
+                  "src/basecamp.cpp",
+                  "src/clzones.cpp",
+                  "src/do_turn.cpp",
+                  "src/inventory_ui.cpp",
+                  "src/player_display.cpp",
+                  "src/zone_manager_ui.cpp"
+                ],
+                "comparison_error": "",
+                "product_build_receipt": {
+                  "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/openclaw_harness/source_bindings/cataclysm-tiles-a0f057203d703846.json",
+                  "status": "unmatched",
+                  "error": "product build receipt is malformed or has an unsupported schema"
+                }
+              },
+              "capture_process_pid": 2415
+            }
+          },
+          "identity": {
+            "window_id": 45466,
+            "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+          },
+          "attempts": [
+            {
+              "label": "success.remote_discovery.1",
+              "identity": {},
+              "local_focus": {
+                "command": [
+                  "/opt/homebrew/bin/peekaboo",
+                  "window",
+                  "focus",
+                  "--pid",
+                  "2415",
+                  "--verify",
+                  "--bridge-socket",
+                  "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                ],
+                "returncode": 124,
+                "ok": false,
+                "stdout": "",
+                "stderr": "peekaboo focus timed out",
+                "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden",
+                "attempt_count": 2,
+                "attempts": [
+                  {
+                    "command": [
+                      "/opt/homebrew/bin/peekaboo",
+                      "window",
+                      "focus",
+                      "--pid",
+                      "2415",
+                      "--verify",
+                      "--bridge-socket",
+                      "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                    ],
+                    "returncode": 124,
+                    "ok": false,
+                    "stdout": "",
+                    "stderr": "peekaboo focus timed out",
+                    "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+                  },
+                  {
+                    "command": [
+                      "/opt/homebrew/bin/peekaboo",
+                      "window",
+                      "focus",
+                      "--pid",
+                      "2415",
+                      "--verify",
+                      "--bridge-socket",
+                      "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
+                    ],
+                    "returncode": 124,
+                    "ok": false,
+                    "stdout": "",
+                    "stderr": "peekaboo focus timed out",
+                    "error": "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "success.remote_discovery.2",
+              "identity": {
+                "window_id": 45466,
+                "window_title": "Cataclysm: Dark Days Ahead - 224d7dc977-dirty+SDL3"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "primitive_or_step": "load/readiness gate",
+      "preconditions": "game process is running after focus and optional default-flow keystrokes",
+      "action": "poll lastworld.json and world save markers until expected world readiness changes",
+      "expected_immediate_state": "lastworld metadata or a save marker changes for the requested world",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/lastworld.after.json",
+      "failure_rule": "timeout, wrong world, missing character/save metadata, or process exit is red",
+      "next_step_gate": "success screenshot may be captured only after readiness metadata changes",
+      "verdict": "green_load_ready",
+      "metadata": {
+        "kind": "lastworld",
+        "reason": "lastworld_updated",
+        "marker": {},
+        "baseline_save_marker": {
+          "world_name": "BulkB8",
+          "marker": "#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/save/BulkB8/#SGFycmlzIFNwaXZleQ==.mm1/#SGFycmlzIFNwaXZleQ==.mm1.hot.zzip",
+          "mtime": 1790256003.9479382,
+          "reason": "world_save_marker"
+        },
+        "pid": 2415
+      }
+    },
+    {
+      "primitive_or_step": "success/failure screenshot capture",
+      "preconditions": "readiness gate reached or failure state needs artifact capture",
+      "action": "peekaboo image capture label=success",
+      "expected_immediate_state": "named PNG/Peekaboo JSON records the actual window selected for the startup result",
+      "evidence_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.png",
+      "failure_rule": "capture failure is red; stale runtime metadata is yellow; screenshot alone remains startup/load proof only",
+      "next_step_gate": "startup command may report success, but no feature step may close from this ledger alone",
+      "verdict": "green_bound_native_rendered_hud",
+      "metadata": {
+        "capture_success": false,
+        "capture_process_pid": 2415,
+        "surface_identity_status": "no_renderable_window_for_bound_pid",
+        "expected_surface_title": "",
+        "startup_screen_probe": {
+          "classification": "green_gameplay_hud_present",
+          "gameplay_hud_present": true,
+          "visible_error_popup": false,
+          "startup_error_logged": false,
+          "blocking_overlay_present": false,
+          "blocking_overlay_markers": [],
+          "error_screen_markers": [],
+          "hud_body_markers": [],
+          "hud_body_marker_types": [
+            "native_rendered_hud_fallback"
+          ],
+          "hud_status_markers": [],
+          "hud_status_marker_types": [
+            "native_rendered_hud_fallback"
+          ],
+          "debug_error_lines": [],
+          "capture_warnings": [],
+          "raw_black_capture_warning": false,
+          "captured_hud_evidenced": false,
+          "black_capture_warning": false,
+          "ocr_ok": false,
+          "ocr_line_count": 0,
+          "rule": "A clean startup needs at least one body label and one map-sidebar-only status label, with no blocking modal overlay; visible debug/error UI is red.",
+          "source_png": ".",
+          "ocr_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_ocr.json",
+          "debug_delta_artifact": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/debug.final.log",
+          "native_run_id": "9cc178db9dbe4b379890da5026a96c6c",
+          "artifact_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/caol-bulk-item-cost-exploration-001/harness_runs/20260924_201555_7a00f7af458842438c7d913dfa3a3f4f/success.startup_screen_probe.json"
+        }
+      }
+    }
+  ],
+  "proof_classification": {
+    "evidence_class": "startup/load",
+    "status": "green",
+    "verdict": "startup_load_only",
+    "feature_proof": false,
+    "startup_clean_for_feature_steps": true,
+    "feature_gate": "startup_clean",
+    "focus_proven": false,
+    "input_owner_proven": true,
+    "screen_gate": "green_gameplay_hud_present",
+    "debug_popups_recorded": 0,
+    "debug_errors_recorded": 0,
+    "rule": "Load/readiness plus screenshot prove only startup/load; feature steps require verified focus, a real gameplay HUD, no visible error popup or new ERROR/DEBUG log, and later step-local proof."
+  },
+  "evidence_class": "startup/load",
+  "feature_proof": false
+}

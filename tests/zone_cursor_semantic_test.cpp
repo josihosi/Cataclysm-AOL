@@ -8,6 +8,7 @@
 #include "cata_scope_helpers.h"
 #include "debug.h"
 #include "clzones.h"
+#include "faction.h"
 #include "game.h"
 #include "imgui/imgui.h"
 #include "json.h"
@@ -238,6 +239,102 @@ TEST_CASE( "native zone creation and editing use menus names and both corners",
     CHECK( corner_moves == 2 );
     CHECK_FALSE( zone_id.empty() );
     CHECK( zones.get_zones().empty() );
+    zones.clear();
+}
+
+TEST_CASE( "adding a camp storage zone redraws safely with existing zones",
+           "[semantic_surface][zone_cursor]" )
+{
+    zone_test_imgui imgui;
+    clear_avatar();
+    clear_map();
+    zone_manager &zones = zone_manager::get_manager();
+    zones.clear();
+    const faction_id faction = get_player_character().get_faction()->id;
+    const tripoint_abs_ms locker_pos = get_avatar().pos_abs();
+    zones.add( "Existing camp locker", zone_type_id( "CAMP_LOCKER" ), faction, false, true,
+               locker_pos, locker_pos );
+
+    semantic_surface_manager manager( "existing-zone-storage-run" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope parent( manager, "world", "World" );
+    enum class stage { create, naming, corners, prompt, created, closing };
+    stage current = stage::create;
+    int sequence = 0;
+    int cursor_moves = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        const auto submit = [&]( const std::string &action,
+                                 const std::optional<std::string> &id = std::nullopt,
+        const std::map<std::string, std::string> &parameters = {} ) {
+            REQUIRE( manager.submit_request( { "existing-zone-storage-run", descriptor.surface_id,
+                                               descriptor.frame_id, std::to_string( ++sequence ), action, id, parameters } ) );
+        };
+        if( descriptor.kind == "zone_manager" ) {
+            if( current == stage::create ) {
+                const JsonArray rows = json_loader::from_string( descriptor.payload.at( "zones" ) ).get_array();
+                REQUIRE( rows.size() == 1 );
+                current = stage::naming;
+                submit( "zone.create" );
+            } else {
+                REQUIRE( current == stage::created );
+                const JsonArray rows = json_loader::from_string( descriptor.payload.at( "zones" ) ).get_array();
+                REQUIRE( rows.size() == 2 );
+                const JsonObject existing = rows.get_object( 0 );
+                existing.allow_omitted_members();
+                CHECK( existing.get_string( "type" ) == "CAMP_LOCKER" );
+                const JsonObject storage = rows.get_object( 1 );
+                storage.allow_omitted_members();
+                CHECK( storage.get_string( "type" ) == "CAMP_STORAGE" );
+                current = stage::closing;
+                submit( "zone.close" );
+            }
+        } else if( descriptor.kind == "menu" ) {
+            REQUIRE( current == stage::naming );
+            const std::string desired = zones.get_name_from_type( zone_type_id( "CAMP_STORAGE" ) );
+            auto selected = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            [&]( const semantic_action_descriptor &action ) {
+                return action.id == "menu.choose" && action.label == desired && action.enabled;
+            } );
+            if( selected == descriptor.valid_actions.end() ) {
+                selected = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+                [&]( const semantic_action_descriptor &action ) {
+                    return action.id == "menu.select" && action.label == desired && action.enabled;
+                } );
+            }
+            REQUIRE( selected != descriptor.valid_actions.end() );
+            submit( selected->id, selected->stable_id );
+        } else if( descriptor.kind == "string_prompt" ) {
+            REQUIRE( current == stage::naming );
+            current = stage::corners;
+            submit( "prompt.submit", std::nullopt, { { "text", "New camp storage" } } );
+        } else if( descriptor.kind == "look_cursor" ) {
+            REQUIRE( current == stage::corners );
+            if( descriptor.payload.at( "selection_stage" ) == "first_point" ) {
+                submit( "cursor.confirm" );
+            } else if( cursor_moves++ == 0 ) {
+                submit( "cursor.east" );
+            } else {
+                CHECK( descriptor.payload.at( "relative_to_avatar" ) == "[1,0,0]" );
+                submit( "cursor.confirm" );
+            }
+        } else if( descriptor.kind == "prompt" ) {
+            // The parent zone manager can publish its refreshed frame while
+            // the nested Smart Zone prompt is still unwinding.
+            CHECK(( current == stage::corners || current == stage::closing ));
+            const auto decline = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &action ) {
+                return action.id == "prompt.choose" && action.label == "NO";
+            } );
+            REQUIRE( decline != descriptor.valid_actions.end() );
+            if( current == stage::corners ) {
+                current = stage::created;
+            }
+            submit( decline->id, decline->stable_id );
+        }
+    } );
+
+    zone_manager_ui::display_zone_manager();
+    CHECK( current == stage::closing );
     zones.clear();
 }
 

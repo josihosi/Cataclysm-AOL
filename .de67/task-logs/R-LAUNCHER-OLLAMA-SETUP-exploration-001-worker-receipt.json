@@ -1,0 +1,62 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-LAUNCHER-OLLAMA-SETUP-exploration-001",
+  "claim_id": "R-LAUNCHER-OLLAMA-SETUP",
+  "worker_id": "01a0d030-5a10-7b62-8c1f-67fbf00ea4bc",
+  "disposition": "completed",
+  "verdict": "launcher_setup_implementation_and_focused_smoke_proved",
+  "outcome": "The launcher now plans and executes confirmed Ollama installation, CLI re-detection, server startup, selected endpoint recheck, and exact model pull. Its focused Godot workflow smoke and backend contract proof pass.",
+  "summary": "A five-file launcher diff adds official platform installer routes and truthful partial-state reporting. Coordinator review found and the worker repaired positive process IDs treated as failures, permissive loopback checks, Linux service selection, and an installer-success false claim. Fresh native installation on Mac, Windows and WSL Linux remains open under R-LAUNCHER-CLEAN-INSTALL.",
+  "material_changes": [
+    "BackendConfigManager executes installation, startup and pull in sequence, checks the selected endpoint, and returns separate runtime, server and model readiness flags.",
+    "Mac, Windows and Linux installer steps use platform routes; Linux checks whether ollama.service is loaded before selecting systemd or a user-session serve process.",
+    "BackendSetupUI explains confirmation and reports success, already-ready and partial failure without silently claiming an install.",
+    "The focused Godot smoke uses isolated fixtures and an injected command executor for process-spawn semantics; backend contract fixtures cover exact model selection."
+  ],
+  "tests": [
+    "Portable Godot 3.6.3 focused workflow smoke passed; build_logs/phase3-launcher-ollama-setup-20260924/godot-smoke.log contains the success marker.",
+    "Python backend contract proof, py_compile and git diff --check passed in the worker return.",
+    "Read-only native Ollama check returned already_ready for existing mistral:v0.3 with zero installer, startup or pull steps; build_logs/phase3-launcher-ollama-setup-20260924/native-ollama-recheck.log.",
+    "Coordinator inspected the revised setup/state/startup/endpoint code, UI caller and focused smoke; no further material issue found for the assigned implementation outcome."
+  ],
+  "live_actions": [
+    "No real Ollama installer, model pull or inference ran in this task.",
+    "Installed Godot PID 5649, birth 2026-09-23 23:41:17.874 +0200, remains alive at _dyld_start after an earlier graceful quit reported success; no OS exit was verified."
+  ],
+  "evidence_ceiling": [
+    "Fixtures and a command executor seam prove sequence and branch behavior, not a native fresh install on any OS.",
+    "The existing Mistral check proves an already-ready host only. Neither exact Gemma model was freshly downloaded or used for inference.",
+    "Linux systemd and WSL fallback have not run on a Linux host. GUI interaction via Peekaboo remains unverified, and PID 5649 cleanup remains open."
+  ],
+  "bindings": {
+    "launcher_repo": "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu",
+    "launcher_head": "366aee6bd675be9b45afbd2ab222808faceedd9d",
+    "worker_result": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/worker-library/results/5442646c7b03437fa3b8393becbfb98a/db1bc31e9691130e2bcefdadf371be8e8a2fd30af5e8e4e965cd56b43e98a438.md",
+    "worker_assignment_id": "5442646c7b03437fa3b8393becbfb98a",
+    "retained_pid": "5649",
+    "retained_birth": "2026-09-23 23:41:17.874 +0200"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": "build_logs/phase3-launcher-ollama-setup-20260924/godot-smoke.log", "sha256": "f21ec974900eabd57b49dff4ee4b4d6de25698e0e5d33cdb84ec34d1010bbe4d", "role": "Current focused Godot setup workflow smoke."},
+    {"path": "build_logs/phase3-launcher-ollama-setup-20260924/native-ollama-recheck.log", "sha256": "c5a3a8b1e8e09f93bf097a88e9e39b7347d0980b5d41f1494b5875f448b80bfb", "role": "Read-only native already-ready Mistral check."}
+  ],
+  "first_divergence": {"class": "manual_only_absent_runtime_setup", "summary": "The baseline launcher could not install Ollama from an absent runtime on every target OS and could report install success without executing commands."},
+  "accepted_no_replay": [
+    "Retain accepted Gemma catalogue and focused UI proof at its original scope.",
+    "Retain accepted game and harness evidence; this task launched no game session."
+  ],
+  "active_work": ["PID 5649 remains an exact-identity cleanup blocker; the existing Ollama service is a user resource and was only read."],
+  "first_open_boundary": "Run the downloaded launcher package through absent-runtime installation, model downloads, real responses and game relaunch separately on Mac, Windows and WSL Linux under R-LAUNCHER-CLEAN-INSTALL; reconcile PID 5649 through supported graceful lifecycle.",
+  "narrow_queries": [
+    "Inspect scripts/BackendConfigManager.gd setup methods and scripts/BackendSetupUI.gd confirmed action in the launcher checkout.",
+    "Read the two retained logs for the exact focused result and native no-op ceiling.",
+    "Before any cleanup, verify ps -p 5649 birth and command; require OS exit, not app-quit return."
+  ],
+  "entrypoints": [
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/scripts/BackendConfigManager.gd",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Catapult Dabubu/scripts/BackendSetupUI.gd"
+  ],
+  "context_metrics": {"modified_files": 5, "focused_smoke_passed": 1, "native_fresh_installs": 0}
+}

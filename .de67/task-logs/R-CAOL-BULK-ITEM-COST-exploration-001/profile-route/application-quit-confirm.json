@@ -1,0 +1,36 @@
+{
+  "accepted": false,
+  "reason": "native_surface_successor_timeout",
+  "surface_request": {
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:11",
+    "frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:11",
+    "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:11:prompt.choose:f6a3874792189056",
+    "action_id": "prompt.choose",
+    "stable_id": "prompt-option:3"
+  },
+  "native_receipt": {
+    "event": "surface_receipt",
+    "run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "process_instance": "1790253553065007",
+    "sequence": 52,
+    "game_minutes": 7680,
+    "game_turn": 5212801,
+    "wall_time": 1790254042267,
+    "request_id": "cockpit:bulk-item-cost-native-session-v1:dce811fbe921412a8dcf04555e27bfc6:frame:11:prompt.choose:f6a3874792189056",
+    "requested_run_id": "dce811fbe921412a8dcf04555e27bfc6",
+    "requested_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:11",
+    "requested_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:11",
+    "consuming_surface_id": "dce811fbe921412a8dcf04555e27bfc6:surface:11",
+    "consuming_frame_id": "dce811fbe921412a8dcf04555e27bfc6:frame:11",
+    "action_id": "prompt.choose",
+    "accepted": true,
+    "rejection_reason": "",
+    "resulting_frame_id": "",
+    "outcome": "",
+    "_source_offset": 453809,
+    "_source_end": 454585,
+    "_event_offset": 453809
+  },
+  "next_frame": null
+}

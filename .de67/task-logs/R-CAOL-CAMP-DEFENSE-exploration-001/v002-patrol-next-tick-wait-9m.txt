@@ -1,0 +1,26 @@
+MENU
+ok: no
+state: rejected
+ok: no
+Waiting paused: choose an action from the current menu.
+next action: Choose from terminal_observation actions, or observe again; the macro has stopped.
+Waited 0 game minutes.
+chain.state: interrupted
+chain.advertised actions: wait.1h, wait.1m, wait.20s, wait.2h, wait.30m, wait.3h, wait.5m, wait.6h, wait.catch_breath, wait.daylight, wait.midnight, wait.night, wait.noon, wait.weather_change
+chain.recipe cursor: 1
+chain.last observed game minutes: 7571.0
+ALLOWED HERE ONLY
+wait.20s → play act wait.20s
+wait.1m → play act wait.1m
+wait.5m → play act wait.5m
+wait.30m → play act wait.30m
+wait.1h → play act wait.1h
+wait.2h → play act wait.2h
+wait.3h → play act wait.3h
+wait.6h → play act wait.6h
+wait.daylight → play act wait.daylight
+wait.noon → play act wait.noon
+wait.night → play act wait.night
+wait.midnight → play act wait.midnight
+wait.weather_change → play act wait.weather_change
+wait.catch_breath → play act wait.catch_breath

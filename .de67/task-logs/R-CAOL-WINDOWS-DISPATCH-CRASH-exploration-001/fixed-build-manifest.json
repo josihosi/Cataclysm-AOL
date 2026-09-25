@@ -1,0 +1,21 @@
+{
+  "original_executable": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-camp-20260924\\cataclysm-tiles.exe",
+  "original_executable_sha256": "4346cfefe14faab798f607130b2e4bfe233261c31bdcfdca7c904befb963f365",
+  "fixed_executable": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-20260924\\cataclysm-tiles.exe",
+  "fixed_executable_sha256": "6bb5cdb8ea1262fd7f97079f471432609ed4577b096482e3acff6e85e067b9e3",
+  "source_sha256": {
+    "do_turn.cpp": "6ba9977b0da0903ea52f5f5ccf53fd0a2d5df1de2a8c3944e22930c620a94940",
+    "bandit_live_world.patch-reference.h": "2dcfd2a916aef43a0c94a19fea3a15f9d8bd25fd76f711fff4d197e76351f306"
+  },
+  "mac_do_turn_source_sha256": "39b2c4b295e1d7324571b295c327c170efdc11bf15f15d455d54450abe2c2848",
+  "source_difference_from_mac": "one forward declaration for the isolated Windows object build; original Windows header is used by the preexisting include graph",
+  "original_source_sha256": {
+    "do_turn.cpp": "28e0a92d59e6c93469a588d9643684d1b3e12a56d9a244a9610fa91c1ca0934b",
+    "bandit_live_world.h": "25a97f9b74efa0944cb73ca6a7848e232f9e0b0052855c1816bbdda10d5263c3"
+  },
+  "original_link_command": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-20260924\\original-build-link.log",
+  "original_compile_command": "C:\\Users\\josef\\dev\\Cataclysm-AOL\\build\\windows-dispatch-crash-20260924\\original-do-turn-compile.txt",
+  "replaced_object": "build/windows-camp-20260924/objwin/tiles/do_turn.o",
+  "replacement_object": "build/windows-dispatch-crash-20260924/do_turn.o",
+  "original_executable_preserved": true
+}

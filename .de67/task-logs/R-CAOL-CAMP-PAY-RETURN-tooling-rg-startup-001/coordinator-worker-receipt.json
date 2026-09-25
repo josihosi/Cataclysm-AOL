@@ -1,0 +1,73 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-CAOL-CAMP-PAY-RETURN",
+  "task_id": "R-CAOL-CAMP-PAY-RETURN-tooling-rg-startup-001",
+  "worker_id": "01a0d19a-6a4e-7852-959f-c835fe1cdfdf",
+  "disposition": "completed",
+  "verdict": "task_local_ripgrep_route_verified",
+  "outcome": "The repeated Mac source-search stall has a verified task-local bypass using the installed absolute Homebrew ripgrep binary.",
+  "summary": "The PATH ripgrep bundled with Codex stalled in dyld before reading files, including for --version. A one-second sample of the payment worker child placed all 875 frames at _dyld_start. The installed Homebrew ripgrep 15.2.0 immediately printed its version and completed a targeted known-symbol search with expected lines and exit code 0. No system or repository configuration changed. Task-owned diagnostic processes exited. The lower-level bundled-binary dyld cause remains unknown; the absolute route removes the demonstrated repeated obstruction.",
+  "bindings": {
+    "worker_assignment_id": "ad88d5f6fbdf48fabfe03806d799aa0f",
+    "worker_result": ".de67/state/worker-library/results/ad88d5f6fbdf48fabfe03806d799aa0f/b34a143bf0c9369fdc1d1569e2f409d6b7ed056c6817673d9afcafce4b2943d1.md",
+    "stalled_pid": "53584 born Thu Sep 24 05:44:32 2026",
+    "bundled_binary": "/opt/homebrew/Caskroom/codex/0.156.1/codex-path/rg",
+    "working_binary": "/opt/homebrew/Cellar/ripgrep/15.2.0/bin/rg",
+    "working_binary_sha256": "bd9f4c328a191f387c84f5d867a0a3e539560002489a0a97d3fc16de8190bd67"
+  },
+  "first_divergence": {
+    "class": "bundled_ripgrep_dyld_start_stall",
+    "summary": "PATH selected Codex-bundled rg; even rg --version did not complete and the exact worker child sample remained at _dyld_start for every frame."
+  },
+  "material_changes": [
+    "No repository, system binary, owner setting, game or GUI change.",
+    "Shared the absolute working Homebrew ripgrep route with payment and defense workers."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "Bundled rg --version stalled and was interrupted; exact sample showed 875/875 frames at _dyld_start.",
+    "Homebrew ripgrep 15.2.0 printed version and targeted search for openclaw_harness_semantic_step exited 0 with expected lines 2\u20133.",
+    "Exact diagnostic rg/shell PIDs 53583/53584/56401/56402 were absent after bounded SIGINT; worker diagnostic probes also exited."
+  ],
+  "live_actions": [
+    "Coordinator interrupted only exact stalled task-owned rg children 53584 and 56401 with SIGINT and verified shell/children exit.",
+    "Tooling worker ran bounded read-only probes and left no diagnostic process.",
+    "No game, GUI, owner Ollama or retained old PID 90668 was operated."
+  ],
+  "evidence_ceiling": [
+    "The lower-level dyld defect in the bundled binary was not repaired; absolute Homebrew path is the verified task-local route.",
+    "This support task gives no native payment, departure or return gameplay proof."
+  ],
+  "accepted_no_replay": [
+    "Use absolute Homebrew rg path for future targeted searches; do not repeat a PATH rg startup probe without a changed binary or environment."
+  ],
+  "active_work": [
+    "Payment worker continues its separate source-bound fixture task; defense worker retains Mac game GUI input."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/worker-library/results/ad88d5f6fbdf48fabfe03806d799aa0f/b34a143bf0c9369fdc1d1569e2f409d6b7ed056c6817673d9afcafce4b2943d1.md",
+      "role": "Tooling worker result.",
+      "sha256": "5797eafc675c1d4dacc541bd63e3237f32c61fe06243f886b9f926919253fc4c"
+    },
+    {
+      "path": ".de67/task-logs/R-CAOL-CAMP-PAY-RETURN-tooling-rg-startup-001/rg-53584-sample.txt",
+      "role": "Original dyld startup sample.",
+      "sha256": "89690683df435e3478746d08bf0bdb385870c44c335c456542474e08627c438a"
+    }
+  ],
+  "entrypoints": [
+    "/opt/homebrew/Caskroom/codex/0.156.1/codex-path/rg",
+    "/opt/homebrew/Cellar/ripgrep/15.2.0/bin/rg"
+  ],
+  "first_open_boundary": "Payment task still needs native camp-zone payment, departure, replenishment and return after defense hands over a peaceful branch.",
+  "narrow_queries": [
+    "Run the absolute Homebrew rg binary against one known source symbol if the bypass is disputed.",
+    "Read the retained sample .de67/task-logs/R-CAOL-CAMP-PAY-RETURN-tooling-rg-startup-001/rg-53584-sample.txt only if the bundled startup diagnosis is disputed."
+  ],
+  "context_metrics": {
+    "sample_frames_at_dyld_start": 875,
+    "verified_homebrew_search_exit_code": 0
+  }
+}

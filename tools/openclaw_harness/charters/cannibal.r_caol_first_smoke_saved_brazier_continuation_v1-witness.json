@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A normal player-lit brazier fire in the closed room generates physical smoke that reaches the task-added cannibal camp and produces the native admission/materialization/dispatch/progression sequence before any valid light.",
+  "material_proof": "This run resumes the exact saved task-owned TestSetup00 profile without fixture reinstall or world replacement. The setup already contains the closed-room brazier, wood, lighter, SOURCE_FIREWOOD zone and controlled cannibal camp. Prove the native lighter selection, actual burning fire, closed-room condition, source-identified physical smoke reaching cannibal camp OMT [135,137,0], and ordered native actor/admission/dispatch/progression evidence across a patient in-game observation window.",
+  "current_uncertainty": "Whether the ordinary closed-room brazier fire produces smoke that reaches the nearby cannibal camp and drives the observed native response before valid light.",
+  "material_contradiction": [
+    "the saved v2 world or player position changes before ignition",
+    "the brazier is not actually burning after native lighter use",
+    "windows or curtains are open during the smoke-first interval",
+    "smoke is authored or injected, or an inactive/staged smokebomb is used as the source",
+    "the source smoke does not reach cannibal camp OMT [135,137,0]",
+    "admission or dispatch is attributed to the player's basecamp at [131,143,0] instead of the cannibal camp",
+    "a valid light precedes the smoke-first observation",
+    "the observation window is too short to resolve distant cadence"
+  ],
+  "forbidden_shortcuts": [
+    "fixture reinstall or saved-world replacement",
+    "smokebomb activation",
+    "debug signal/smoke/fire/light injection",
+    "direct state mutation after install",
+    "walking onto the brazier/fire"
+  ],
+  "honest_stop_conditions": [
+    "native actual fire plus physical smoke reaching the cannibal camp with ordered native response",
+    "first source, closed-room, camp identity or session contradiction",
+    "first required native evidence boundary unavailable after the patient observation window"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

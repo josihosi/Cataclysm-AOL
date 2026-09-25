@@ -1,0 +1,8 @@
+{
+  "before": "Work item mentions a task owned by another FS claim: R-CAOL-CAMP-WAIT-COST \u2014 Profile and repair the actual two-NPC wait/sleep cost without disabling camp behavior; separate from bulk-item timing/loss.",
+  "after": "Work item mentions a task owned by another FS claim: R-CAOL-CAMP-WAIT-COST \u2014 Profile and repair the actual two-NPC wait/sleep cost without disabling camp behavior; separate from bulk-item timing/loss.",
+  "instruction_persisted": true,
+  "current_owner_contract_rendered": true,
+  "live_fire_verified": false,
+  "crash_scope": "Current FS already permits Mac proof, Windows replay explicitly not required."
+}

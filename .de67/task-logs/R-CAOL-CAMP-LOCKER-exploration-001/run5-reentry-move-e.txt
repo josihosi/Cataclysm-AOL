@@ -1,0 +1,10 @@
+World.
+moved
+avatar.absolute ms: 3902, 877, 0
+R032 Establishment Ally 1 · friendly · offset -6, -4
+blackjack oak: NW
+forest floor: N, NE, W, E, SW
+moss: here
+underbrush: S
+beech tree: SE
+Game time: 7565 minutes.

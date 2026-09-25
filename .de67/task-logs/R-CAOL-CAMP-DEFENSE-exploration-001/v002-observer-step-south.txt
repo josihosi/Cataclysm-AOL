@@ -1,0 +1,19 @@
+World.
+moved
+avatar.absolute ms: 3901, 878, 0
+HP: l. foot 86/86 · r. foot 86/86 · l. hand 86/86 · r. hand 86/86 · head 80/86 · mouth 86/86 · l. arm 86/86 · r. arm 86/86 · eyes 86/86 · l. leg 86/86 · r. leg 86/86 · torso 83/86
+Minimal pain
+Effects: Grabbed [20] (torso)
+the zombie · hostile · offset 1, -1
+R032 Establishment Ally 1 · friendly · offset -1, -2
+underbrush: NW, E
+forest floor: N, here, SE
+moss: NE, W
+dead hickory tree: SW
+long grass: S
+6:21:22 AM: Your stamina is too low to attempt to dodge.
+6:21:22 AM: The zombie grabs your torso!
+6:21:22 AM: Your stamina is too low to attempt to dodge.
+6:21:22 AM: The zombie hits your torso.
+6:21:23 AM: Your stamina is too low to attempt to dodge.
+6:21:23 AM: The zombie hits your head.

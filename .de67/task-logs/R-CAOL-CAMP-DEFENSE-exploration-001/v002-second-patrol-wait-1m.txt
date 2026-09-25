@@ -1,0 +1,4 @@
+World.
+Waited 1 game minutes. target reached.
+6:11:21 AM: You finish waiting.
+Game time: 7571 minutes.

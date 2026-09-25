@@ -290,6 +290,8 @@ class game
         bool save();
         /** Returns the outcome of the most recent ordinary save attempt. */
         const std::string &last_save_result() const;
+        /** Turn confirmed by a completed save or by loading a character save. */
+        const std::optional<int> &last_confirmed_save_turn() const;
 
         /** Returns a list of currently active character saves. */
         std::vector<std::string> list_active_saves();
@@ -1309,6 +1311,8 @@ class game
         // Runtime-only receipt for native semantic callers.  It intentionally
         // distinguishes an untouched world from a failed persistence attempt.
         std::string last_save_result_ = "unattempted"; // NOLINT(cata-serialize)
+        // A failed multi-file write can leave the prior disk state uncertain.
+        std::optional<int> last_confirmed_save_turn_; // NOLINT(cata-serialize)
 
         mutable std::array<float, OVERMAP_LAYERS> latest_lightlevels; // NOLINT(cata-serialize)
         // remoteveh() cache

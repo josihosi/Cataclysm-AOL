@@ -1,0 +1,62 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001",
+  "claim_id": "R-HARNESS-CONTINUATION",
+  "worker_id": "01a0c0dd-3472-79c0-9605-8ae07e5f6552",
+  "disposition": "completed",
+  "verdict": "whole_item_continuation_binding_reconciled_current_suite_passes",
+  "outcome": "Every R-HARNESS-CONTINUATION-S001 clause is supported at its recorded scope by the repair receipt, current 18-test suite, staged guard validation and separate fresh-worker ended-session adoption receipt. The ended-session no-input route is useful adoption because it verifies the exact binding and retrieves retained J0094 without inventing a new gameplay action.",
+  "summary": "The continuation repair is independently reconciled against the canonical FS slice. Compact state-dependent guidance, exact parser-compatible operations, build/configuration reuse, selected evidence handles, and fresh-worker adoption are all retained. The isolated method candidate passed its preservation/counterexample validation but was not promoted; that exclusive boundary remains explicit.",
+  "material_changes": [],
+  "tests": [
+    "Current checkout: PYTHONPATH=tools/openclaw_harness python3 -m unittest tools/openclaw_harness/work_context_test.py tools/openclaw_harness/continuation_guidance_test.py tools/openclaw_harness/build_source_bound_macos_test.py -v: 18 passed.",
+    "Staged method candidate validation: 68 tests passed; installed method state unchanged.",
+    "Fresh worker acknowledged the projection, verified the ended source-bound session, and retrieved retained witness J0094 with no look or game input."
+  ],
+  "live_actions": [
+    "Only read-only reconciliation, current synthetic/unit tests and artifact hashing were performed.",
+    "No native replay, relaunch, save/reload, source edit or method promotion was performed."
+  ],
+  "evidence_ceiling": [
+    "This closes the continuation contract and its ended-session adoption proof, not a new native gameplay result.",
+    "The staged guard candidate is evidence for exclusive review, not an installed-method change."
+  ],
+  "accepted_no_replay": [
+    "Accepted the repair and fresh-worker adoption receipts at their recorded scopes; no native journey was replayed.",
+    "Preserved the ended-session no-input route as deliberate adoption rather than relabeling it as gameplay."
+  ],
+  "active_work": [],
+  "bindings": {
+    "fs_slice": "R-HARNESS-CONTINUATION-S001",
+    "source_receipt": "257fafc70e632942cb8b8686cf9b48e769e3255d5adae2a64aaf8248e5007e59",
+    "fresh_worker_receipt": "9c8c63c6ca1b84f7ef491af530a1395b25752fe9d5fb965654bf85923a3eb9d3",
+    "candidate_receipt": "0ec33a9696b3da2ff155a4669461f86c7618038e2f98d758bbddde58757066f7",
+    "current_focused_tests": "18",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "artifacts": [
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001/continuation-reconciliation.json", "sha256": "e90c8c36b5c369f171f8dad9249769fb4af0ff2c28990ba9e2fa5c71d7157782", "role": "whole-item clause matrix and limits"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-closure-whole-item-continuation-binding-001-current-focused-test-result.log", "sha256": "9a2979756db6f534a5b827644e801b19be29852a4e333088e554d2c6846149f6", "role": "current focused verification"},
+    {"path": ".de67/task-logs/R-HARNESS-CONTINUATION-exploration-003/worker-receipt-prepared.json", "sha256": "c337e040d0a7f4e70b7396adf1c4578d631352b7e0a98540716ad046fc7dfe3e", "role": "fresh-worker ended-session adoption"}
+  ],
+  "journal_entries": [],
+  "first_divergence": null,
+  "narrow_queries": [
+    "Use continuation-reconciliation.json for the clause matrix and promotion boundary.",
+    "Use exploration-003/worker-receipt-prepared.json for exact ended-session binding and J0094 retrieval."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/work_context_provider.py",
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/play_cli.py",
+    ".agents/skills/caol-harness/references/live-operation.md"
+  ],
+  "context_metrics": {
+    "current_focused_tests_passed": 18,
+    "candidate_validation_tests_passed": 68,
+    "fresh_worker_look_or_game_input_count": 0,
+    "native_runs_launched_in_closure": 0
+  },
+  "first_open_boundary": "Exclusive mutator review and promotion of the isolated method guard candidate; native gameplay/autonomous sound-return behavior is outside this claim."
+}

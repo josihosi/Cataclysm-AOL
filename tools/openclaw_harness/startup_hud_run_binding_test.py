@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression checks for startup's bound native HUD fallback."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -80,6 +81,25 @@ class StartupHudRunBindingTest( unittest.TestCase ):
             self.assertEqual(child_environment["OPENCLAW_HARNESS_RUN_ID"], "current-run")
             self.assertEqual(child_environment["OPENCLAW_HARNESS_SEMANTIC_RUN_ID"], "current-run")
             self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_tiles_launch_without_posix_wake_fd_uses_windows_jsonl_poll( self ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            with mock.patch.object(startup_harness, "detect_executable", return_value=Path("game")), \
+                    mock.patch.object(startup_harness, "build_game_command", return_value=["game"]), \
+                    mock.patch.object(startup_harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(startup_harness, "open_semantic_wake_pipe", return_value=(-1, -1, {})), \
+                    mock.patch.object(startup_harness.subprocess, "Popen") as popen:
+                startup_harness.launch_game(
+                    "profile", "world", run_dir,
+                    child_environment={"TEST_RUN": "1"},
+                    transition_event_run_id="windows-poll-run",
+                )
+
+            self.assertNotIn("pass_fds", popen.call_args.kwargs)
+            self.assertTrue(popen.call_args.kwargs["start_new_session"])
+            observation = json.loads((run_dir / "semantic.wake.observation.jsonl").read_text().splitlines()[-1])
+            self.assertEqual(observation["transport"], "jsonl_poll")
 
     def test_prepared_certification_context_survives_to_the_run_bound_native_writer( self ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

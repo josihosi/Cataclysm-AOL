@@ -2517,70 +2517,70 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     }
 
     smart_zone_plan_single( ctx, zone_type_SOURCE_FIREWOOD, *fire_anchor,
-                            _( "Basecamp fire source" ) );
+                            _( "Smartzone fire source" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *splintered_tile,
-                            _( "Basecamp splintered wood" ), "splintered" );
+                            _( "Smartzone splintered wood" ), "splintered" );
     smart_zone_plan_single( ctx, zone_type_SOURCE_FIREWOOD, *splintered_tile,
-                            _( "Basecamp kindling" ) );
+                            _( "Smartzone kindling" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_WOOD, *wood_tile,
-                            _( "Basecamp wood" ) );
+                            _( "Smartzone wood" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_TOOLS, *tools_tile,
-                            _( "Basecamp tools" ) );
+                            _( "Smartzone tools" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_SPARE_PARTS, *parts_tile,
-                            _( "Basecamp spare parts" ) );
+                            _( "Smartzone spare parts" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_BOOKS, *books_tile,
-                            _( "Basecamp books" ) );
+                            _( "Smartzone books" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_MANUALS, *books_tile,
-                            _( "Basecamp manuals" ) );
+                            _( "Smartzone manuals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CONTAINERS, *containers_tile,
-                            _( "Basecamp containers" ) );
+                            _( "Smartzone containers" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *magazines_tile,
-                            _( "Basecamp weapon magazines" ) );
+                            _( "Smartzone weapon magazines" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CHEMICAL, *chemical_tile,
-                            _( "Basecamp chemicals" ) );
+                            _( "Smartzone chemicals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_DRUGS, *drugs_tile,
-                            _( "Basecamp drugs" ) );
+                            _( "Smartzone drugs" ) );
 
     smart_zone_plan_single( ctx, zone_type_LOOT_FOOD, *food_anchor,
-                            _( "Basecamp food" ) );
+                            _( "Smartzone food" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_DRINK, *drink_tile,
-                            _( "Basecamp drinks" ) );
+                            _( "Smartzone drinks" ) );
 
     smart_zone_plan_single( ctx, zone_type_LOOT_GUNS, *equipment_anchor,
-                            _( "Basecamp guns" ) );
+                            _( "Smartzone guns" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_AMMO, *ammo_tile,
-                            _( "Basecamp ammo" ) );
+                            _( "Smartzone ammo" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *ammo_tile,
-                            _( "Basecamp weapon magazines" ) );
+                            _( "Smartzone weapon magazines" ) );
 
     smart_zone_plan_single( ctx, zone_type_LOOT_CLOTHING, *clothing_anchor,
-                            _( "Basecamp clothing" ) );
+                            _( "Smartzone clothing" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *dirty_tile,
-                            _( "Basecamp dirty clothing" ), "dirty" );
+                            _( "Smartzone dirty clothing" ), "dirty" );
     smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *rotten_tile,
-                            _( "Basecamp rotten dump" ), "rotten" );
+                            _( "Smartzone rotten dump" ), "rotten" );
     smart_zone_plan_rect( ctx, zone_type_LOOT_UNSORTED,
                           unsorted_rect->first, unsorted_rect->second,
-                          _( "Basecamp unsorted" ) );
+                          _( "Smartzone unsorted" ) );
     smart_zone_plan_rect( ctx, zone_type_AUTO_EAT,
                           ctx.start, ctx.end,
-                          _( "Basecamp auto eat" ) );
+                          _( "Smartzone auto eat" ) );
     smart_zone_plan_rect( ctx, zone_type_AUTO_DRINK,
                           ctx.start, ctx.end,
-                          _( "Basecamp auto drink" ) );
+                          _( "Smartzone auto drink" ) );
 
     for( const tripoint_abs_ms &bed : beds ) {
         smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,
-                                _( "Basecamp blankets" ), "blanket" );
+                                _( "Smartzone blankets" ), "blanket" );
         smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,
-                                _( "Basecamp quilts" ), "quilt" );
+                                _( "Smartzone quilts" ), "quilt" );
     }
 
     for( const smart_zone_plan_entry &entry : ctx.planned ) {
         mapgen_place_zone( entry.start, entry.end, entry.type, ctx.fac,
                            entry.name, entry.filter, &ctx.here );
     }
-    return { true, _( "Smart Zone Manager v1 placed the Basecamp helper layout." ),
+    return { true, _( "Smart Zone Manager v1 placed the Smartzone helper layout." ),
              static_cast<int>( ctx.planned.size() ) };
 }
 

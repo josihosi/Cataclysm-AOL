@@ -1,0 +1,18 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The fresh current-source persistence run reached the native World owner, accepted world.save_quit, displayed the native YESNO prompt, accepted YES, and reached the main menu. This proves the documented save-and-quit interaction boundary, not serializer completion, process replacement, restored-world continuity, or camp gameplay.",
+  "causal_account": "The run was source-bound to the current worktree and executable. Native observation request play-1f02fc7132ed4cea93032f5880317f80 established World ownership at game minute 8159. Native request play-e4a36facfd0a4a6882ec5a58b42569a2 accepted world.save_quit and exposed prompt-option:1 YES. Native request play-317e5310f16d4c679d0037bdeed7c3d9 accepted prompt.choose YES and returned Main menu. The required saved-world continuation was not reached, so no persistence result is claimed.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Exact source-bound run and binding identity.","checks":{"run_id":"d66fa399a37ddbdf7618c0bea2e4a3b15e4d18c3113643b3bf243f45893cb989","binding_id":"69e5a7c43a1b52540a5b5a93cc9c68cf5421595aeffe17e6293e240bd94cd355","scenario_id":"harness.living_persistence_freeplay_mcw"}},
+    {"citation_id":"J0002","meaning":"Initial native World owner and game time.","checks":{"value.observation_id":"d66fa399a37ddbdf7618c0bea2e4a3b15e4d18c3113643b3bf243f45893cb989:frame:1","value.game_minutes":8159}},
+    {"citation_id":"J0004","meaning":"Native save-and-quit action was accepted.","checks":{"native_receipt.action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0005","meaning":"The accepted YES choice returned the Main menu, with persistence still unavailable.","checks":{"value.surface.family":"Menu/Prompt","value.surface.kind":"main_menu","value.persistence":"unavailable"}},
+    {"citation_id":"J0007","meaning":"Terminal witness records the deliberate stop before reload continuation.","checks":{"stop_reason":"Native save-and-quit reached the main menu through world.save_quit and YES; save/reload continuation was not completed in this segment."}}
+  ],
+  "material_deviations": ["The scenario's save/reload continuation was not completed in this segment."],
+  "contradictions": [],
+  "remaining_unknowns": ["Native serializer completion, process replacement, restored-world identity continuity, and post-reload continuation remain unproved."],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "zero-credit"
+}

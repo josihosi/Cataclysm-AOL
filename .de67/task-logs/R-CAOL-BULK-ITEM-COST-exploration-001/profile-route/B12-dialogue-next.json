@@ -1,0 +1,77 @@
+{
+  "event": "surface_descriptor",
+  "schema_version": 1,
+  "process_instance": "1790276309340552",
+  "sequence": 43,
+  "game_minutes": 7680,
+  "game_turn": 5212800,
+  "wall_time": 1790276864691,
+  "is_night": false,
+  "run_id": "86d2cc675ed540b0a37e7572e47ffb66",
+  "surface_id": "86d2cc675ed540b0a37e7572e47ffb66:surface:8",
+  "frame_id": "86d2cc675ed540b0a37e7572e47ffb66:frame:8",
+  "kind": "dialogue",
+  "breadcrumbs": [
+    "World",
+    "Genevieve Floyd"
+  ],
+  "payload": {
+    "history": "Genevieve Floyd\n\"I'm… short… of breath…\"\n\nYou\nWhat's the matter?\n\nGenevieve Floyd\n\"I'm asthmatic.  I need you to get an inhaler for me…\"\n\nYou\nNot interested.\n\nGenevieve Floyd\n\"What?!  Please, I'll be dead soon without your help!\"\n\nYou\nI'm sorry.\n\nGenevieve Floyd\n\"Well, I guess it's just us.\"",
+    "prompt": "\"Well, I guess it's just us.\"",
+    "speaker_id": "2",
+    "speaker_name": "Genevieve Floyd"
+  },
+  "live_hostile_operation": null,
+  "valid_actions": [
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-9",
+      "label": "What should we do now?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-10",
+      "label": "Any tips?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-11",
+      "label": "Can I do anything for you?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-12",
+      "label": "Want to travel with me?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-13",
+      "label": "Let's trade items.",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-14",
+      "label": "Want to share some useful items with me?",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.choose",
+      "stable_id": "dialogue-response-15",
+      "label": "Goodbye.",
+      "enabled": true
+    },
+    {
+      "id": "dialogue.cancel",
+      "stable_id": "",
+      "label": "Goodbye",
+      "enabled": true
+    }
+  ],
+  "native_receipt": null,
+  "provenance": "native_semantic_step_trace"
+}

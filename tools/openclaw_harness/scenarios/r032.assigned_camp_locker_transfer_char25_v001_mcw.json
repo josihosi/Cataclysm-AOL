@@ -1,0 +1,135 @@
+{
+  "manifest_version": 1,
+  "name": "r032.assigned_camp_locker_transfer_char25_v001_mcw",
+  "description": "R-032 native transfer trial from the accepted saved R032 Assignment Camp. The copied world retains character:25 and the matching assigned camp; fixture stock is placed on the map only. Native UI zones, camp policy, worker downtime, exact transfer/accounting and save/reload are observed separately.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_assigned_camp_locker_transfer_char25_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_assigned_camp_locker_transfer_char25_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_locker": "native_equipment_transfer_compatible_firearm_ammunition_and_reload"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "ocr-control", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r032_assigned_camp_locker_transfer_char25_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r032_locker_repair_20260924/cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_assigned_camp_locker_transfer_char25_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_assigned_camp_locker_transfer_char25_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_assigned_camp_and_locker_stock",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.basecamp_missions"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_native_locker_transfer",
+      "cleanup_on_finish": true,
+      "objective": "Use only currently advertised native semantic actions. First identify camp R032 Assignment Camp at OMT [162,36,0], assigned worker character:25, the worker's exact starting wearable and wielded gear, and the setup-only items on their map tile. Through native Zone Manager UI, define a one-tile CAMP_LOCKER covering the staged candidates and a separate nearby CAMP_STORAGE for displaced items. Confirm the native camp board sees both zones and the exact policy slots for helmet and ranged weapon are enabled. Then advance only ordinary native World time until character:25's CAMP_RESIDENT downtime processes the Locker. Independently inspect the same actor, exact Locker and Storage locations, worn/wielded inventory, current gun magazine, carried compatible magazines/ammo, and remaining tile stock. Preserve total magazine count and 9mm charge accounting; do not pick up or directly equip staged goods.",
+      "proof_targets": [
+        "same-run native camp identity, OMT [162,36,0], assigned character:25 with CAMP_RESIDENT and matching assigned_camp",
+        "native pre-service board observation of exact Locker and Storage zones and current enabled helmet/ranged Locker policy slots",
+        "native map observation of setup-only helmet_army x1, glock_19 x1, glockmag x3 and 9mm x30 charges on the same identified Locker tile",
+        "native ordinary elapsed-time receipt and worker downtime service opportunity",
+        "independent post-service observation of same actor wearing the selected helmet upgrade, wielding a usable compatible firearm, the loaded magazine and compatible reserve ammunition, with replaced gear accounted in Storage",
+        "item identity/count/charge conservation across NPC, Locker and Storage; failed or ineligible candidates remain attributable rather than disappearing",
+        "accepted native save, application exit and same-world reentry, followed by same actor/camp/loadout/ammunition/Storage observation without a second pickup or charge",
+        "accepted cleanup for every game generation and bridge"
+      ],
+      "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+      "invariants": [
+        "fixture copy preserves the previously accepted camp and actor only as setup footing; it does not grant camp, assignment, zone, Locker, gear-transfer or reload credit",
+        "map fixture stock is not placed directly into character:25 inventory; no manual pickup, direct equip, debug state mutation, direct save editing, OCR, physical keys, coordinates, callback or synthetic receipt",
+        "native Zone Manager changes and current board/policy observations must precede any service conclusion",
+        "Locker credit requires an accepted native downtime opportunity and exact same-actor pre/post item locations plus camp identity",
+        "an equipped firearm without its compatible loaded magazine and usable rounds is not ranged readiness; a policy toggle or elapsed wait alone is not service proof",
+        "track every item across Locker, Storage and worker inventory; a vanished or mismatched item remains an unresolved contradiction",
+        "save/reload evidence requires native save completion and process replacement; do not restage the fixture on reentry",
+        "keep camp assignment, Food, Patrol and defense conclusions separately bounded",
+        "stop the affected outcome at missing native receipt, unavailable zone or service route, source-binding drift, stale owner or cleanup failure while preserving independent evidence"
+      ],
+      "live_operations": ["game.act"],
+      "transition_timeout_seconds": 25.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_r032_native_locker_transfer",
+    "terminal_exit_timeout_seconds": 35.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_r032_locker_after_reload",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r032_locker_transfer_after_reload",
+        "cleanup_on_finish": true,
+        "objective": "After the native save, main-menu quit and process replacement, inspect character:25 and camp [162,36,0] again through current native owners. Verify the same equipped gear and usable firearm/ammunition remain, replaced items remain accounted in camp Storage, no duplicate stock pickup or ammunition charge occurred, and ordinary camp controls remain usable without restaging or reassigning.",
+        "proof_targets": [
+          "first generation native save completion and process exit",
+          "new process generation and independent post-reload inspection of character:25 and the same assigned camp OMT",
+          "post-reload wearable, wielded firearm, compatible loaded/reserve ammunition and Storage contents conserved without a second pickup or charge",
+          "ordinary camp controls remain usable and assignment remains CAMP_RESIDENT",
+          "accepted cleanup"
+        ],
+        "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+        "invariants": [
+          "the fixture is not reinstalled during continuation",
+          "native save and process replacement, not a saved-file inspection, carry persistence evidence",
+          "do not mutate NPC, camp, Locker, Storage or save state directly",
+          "retain missing item, duplicated ammunition, assignment drift, stale owner or cleanup failure as its own boundary"
+        ],
+        "live_operations": ["game.act"],
+        "transition_timeout_seconds": 25.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {
+    "precondition": ["bind_r032_assigned_camp_and_locker_stock"],
+    "production_behavior": ["operate_r032_native_locker_transfer"],
+    "terminal_persistence": ["operate_r032_native_locker_transfer", "bind_r032_locker_after_reload", "verify_r032_locker_transfer_after_reload"],
+    "artifact_verdict": ["operate_r032_native_locker_transfer", "verify_r032_locker_transfer_after_reload"],
+    "disallowed_shortcuts": ["bind_r032_assigned_camp_and_locker_stock"]
+  }
+}

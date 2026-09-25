@@ -1,0 +1,17 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.r_caol.first_smoke",
+      "op": "eq",
+      "value": [
+        "smoke-first",
+        "native_cannibal_admission",
+        "member_materialization",
+        "dispatch",
+        "progression"
+      ],
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": []
+}

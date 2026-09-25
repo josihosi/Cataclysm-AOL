@@ -1,0 +1,46 @@
+{
+  "gate": "1e8c79b5fdf2",
+  "invocation": "mutation-5bf04ec679c9488fa85a372cfe56cce0",
+  "resolved": true,
+  "owner_entries_consumed": 1,
+  "accepted_records": 73,
+  "tasks_and_claims_preserved": true,
+  "published_sha256": {
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/assets/environment/mutation-suggestions.md": "f06113a0d7fe99615752e9213f860eb8ea8fd6364c93e0aa3e2a6d81e36e4cf4",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py": "9f3859f33336268ff58b9c7c9a973b2b805d11fbe86affb83f597a364c9bfd80",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/policy_kernel.py": "36d69fe36947e624adfd04400ae6a54e4125e206ad3cd3ed20e6799e25707e76",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/worker_library.py": "2d45af8e4e0f8a9c336b0ba540e6740acadf39573da0837e12403e83313fca56",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_codex_app_server_runner.py": "35e9673f7f7aa6ac2fe2b396ed78cc1a3619f717c8e05d252cd73c467a21be3b",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_codex_runner.py": "c0060d90954ee7196e521b449e728dabac626ad4dcd3e7ae5ef975a7a5d9432c",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_coordinator_supervisor.py": "402822a2fe91cefd299c57b6e65bb64afff28cc9727bd9959662b5ad4c828c54",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_policy_kernel.py": "a2327ddb1f1ea4508f9ede17a6417c5974de0f6d97180abfd340701c284a0599",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_worker_library.py": "08cb6f0ee1f8ef07f77b0cca8cb5d33429ebab1932a8e14208821048674adcd9",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/coordinator_supervisor.py": "c07c76bc8ddb49881e7b606342df633914fb7fa78b443b979b09360d7394bd6f",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/policy_kernel.py": "6d290342a68a166bca99de9d6de4744b1c6204d79c4a658be2050aee560eae96",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/scripts/worker_library.py": "afd5dff771634dc803313991dfe1d4a9bd53833ec8a3aa364577a8fafde10f9f",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/assets/environment/mutation-suggestions.md": "f06113a0d7fe99615752e9213f860eb8ea8fd6364c93e0aa3e2a6d81e36e4cf4",
+    "/Users/josefhorvath/.codex/skills/de67/scripts/workspace_setup.py": "e257e96659f328dc504b609a5801821e9530f850db812650826beedfa129d166",
+    "/Users/josefhorvath/.codex/skills/de67/docs/how-de67-works.md": "6baa8311ad3e31f612b7320aef07243f7a4931542a93e925735f7b816eac3d25",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/dashboard/README.md": "cb9b2787e6f9e698163d909acaf40fae8f5d225fecddb1950e2315a4ddc04bee",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/scripts/workspace_setup.py": "e257e96659f328dc504b609a5801821e9530f850db812650826beedfa129d166",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/docs/how-de67-works.md": "6baa8311ad3e31f612b7320aef07243f7a4931542a93e925735f7b816eac3d25",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/integrations/dashboard/README.md": "bebdfddcf218bd3eb09da2ab33abf8e17226c65d4315dc7ca3bb4fe56c61bf9b",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab/de-67-3/tests/test_policy_kernel.py": "3e784bb4d41ed732061dc7ebfb7e371f232e99452ae47e794a34161d96120ab5",
+    "/Users/josefhorvath/.codex/skills/de67/tests/test_workspace_setup.py": "b84f3ddc9a42b4058d04b20e414a23bd3291e9dcb336fcee3dea085172b2b199",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/state/workspace.json": "8b1f736a18f252ba74d3b2bd29c605c7dd7da4ec4a2e005528a69beb1fed1391"
+  },
+  "restart": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 84,
+      "pending": true,
+      "requested_at": 1790249439.4686,
+      "reason": "Owner-suggestion 1e8c79b5fdf2 resolved: GPT-6-only model guidance, capability roster and dispatch validation promoted; evidence .de67/task-logs/review-owner-1e8c79b5fdf2/report.md. Preserve live ownership and accepted proof; restored model/effort preferences are not quotas. One fresh coordinator; external supervisor owns launch.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "coordinator_launched": false
+}

@@ -1,0 +1,21 @@
+{
+  "name": "first_smoke_first-light_testsetup00_migration_cancel_v1",
+  "description": "Task-local disposable copy of owner closed-window TestSetup00; only controlled camp footprint at OMT [135,137,0] and arm-specific setup supplies are authored. No fire, smoke, light, signal, or cannibal actors are seeded. Owner source and play behavior remain native. Zero-credit recovery setup: on this disposable copy only, removed only Tilda Wray (NPC id 2) activity.actor for saved ACT_MOVE_LOOT so current deserializer uses its documented ACT_MIGRATION_CANCEL path. Carried items, activity type, camp, player, and owner/reference save are unchanged.",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "brazier",
+          "count": 1
+        },
+        {
+          "typeid": "log",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -18,6 +18,19 @@ CLI = Path(__file__).with_name("play_cli.py")
 
 
 class PlayCliEvidenceTest(unittest.TestCase):
+    def test_plain_evidence_accepts_query_status_without_bridge_status_shape(self):
+        process = subprocess.run(
+            [sys.executable, str(CLI), "--session", str(self.session), "evidence", "--limit", "20",
+             "--run-id", self.run_id, "--select", "event,payload.payload.rejection_reason"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr + process.stdout)
+        self.assertNotIn("Traceback", process.stderr)
+        self.assertIn("request_accepted", process.stdout)
+        self.assertIn("frame_mismatch", process.stdout)
+        self.assertNotIn("event ids", process.stdout)
+        self.assertTrue((self.session / "playtest.txt").is_file())
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -66,7 +79,7 @@ class PlayCliEvidenceTest(unittest.TestCase):
         }))
 
     def cli(self, *arguments):
-        command = [sys.executable, str(CLI), "--session", str(self.session), *map(str, arguments)]
+        command = [sys.executable, str(CLI), "--diagnostics", "--session", str(self.session), *map(str, arguments)]
         invocation_bytes = len(" ".join(command).encode())
         process = subprocess.run(command, capture_output=True, text=True)
         self.assertEqual(process.returncode, 0, process.stderr + process.stdout)
@@ -76,7 +89,7 @@ class PlayCliEvidenceTest(unittest.TestCase):
                                       "invocation_bytes": invocation_bytes,
                                       "output_bytes": output_bytes})
         shown = json.loads(process.stdout)
-        return recover(shown["presentation"]["full_evidence"]["sha256"])
+        return recover(shown["presentation"]["full_evidence"]["sha256"]) if "presentation" in shown else shown
 
     def test_published_exact_query_proves_projection_parity_identity_unknowns_and_bytes(self):
         identity = ("--run-id", self.run_id, "--process-instance", self.process,

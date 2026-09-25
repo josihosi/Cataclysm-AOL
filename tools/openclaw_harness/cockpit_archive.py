@@ -1,7 +1,7 @@
-"""Exact disk-backed cockpit evidence; native authority stays in the channel.
+"""Indexed cockpit records, stored once; native authority stays in the channel.
 
-Sequences stream without an event cache. Exported JSON and witness canonical
-hashes retain their existing values; only live transport uses references.
+Sequences stream one record at a time. Transport and reports reference the same
+records; explicit export can still reconstruct the complete logical JSON.
 """
 from __future__ import annotations
 
@@ -126,12 +126,8 @@ class Archive:
         stream = uuid.uuid4().hex
         with self.connection:
             self.connection.execute("INSERT INTO streams VALUES (?,0)", (stream,))
-        # Keep two append-only, index-addressed serializations beside the
-        # database rows.  They let final export and canonical reference
-        # hashing stream the original records without decoding every archived
-        # observation at terminalization time.  The SQLite records remain the
-        # authoritative indexed retrieval store.
-        ArchiveSequence(self, stream)._ensure_sidecars()
+        # SQLite is the retained record. Serialize one row at a time on demand,
+        # rather than permanently mirroring every stream in two JSON files.
         return ArchiveSequence(self, stream)
 
     def derived(self, purpose):
@@ -179,7 +175,7 @@ class Archive:
     def decode(self, value):
         return self.unpack(json.loads(value))
 
-    def wire(self, response, *, exported=None):
+    def wire(self, response, *, exported=None, export_path=None):
         references = []
         def project(value, path):
             if isinstance(value, ArchiveSequence):
@@ -203,8 +199,8 @@ class Archive:
             wire_schema = "caol-live-artifact-reference-v1"
             if exported is None:
                 exported = write_json_stream(
-                    self.path.parent / ("response-export-" + uuid.uuid4().hex + ".json"),
-                    result,
+                    export_path or self.path.parent / ("response-export-" + uuid.uuid4().hex + ".json"),
+                    result, exclusive=export_path is None,
                 )
                 wire_schema = "caol-live-artifact-reference-v2"
             result["artifact_reference_envelope"] = {
@@ -231,16 +227,12 @@ class ArchiveSequence(Sequence):
             self.archive.path.stem + ".stream-" + self.stream + "." + flavor + ".jsonl"
         )
 
-    def _ensure_sidecars(self) -> None:
-        if self.archive.readonly:
-            return
-        for sort_keys in (False, True):
-            self._sidecar_path(sort_keys=sort_keys).touch(exist_ok=True)
-
     def _append_sidecars(self, value, sequence: int) -> None:
-        """Append one record in both exact JSON orders without a history scan."""
+        """Maintain sidecars only for legacy archives that already have them."""
         for sort_keys in (False, True):
             path = self._sidecar_path(sort_keys=sort_keys)
+            if not path.exists():
+                continue
             with path.open("a", encoding="utf-8") as stream:
                 if sequence:
                     stream.write(",")
@@ -252,6 +244,8 @@ class ArchiveSequence(Sequence):
             return
         for sort_keys in (False, True):
             path = self._sidecar_path(sort_keys=sort_keys)
+            if not path.exists():
+                continue
             temporary = path.with_suffix(path.suffix + ".tmp")
             with temporary.open("w", encoding="utf-8") as stream:
                 for index, item in enumerate(self):
@@ -340,10 +334,8 @@ class ArchiveSequence(Sequence):
         key = value.get("citation_id") if isinstance(value, Mapping) else None
         kind = value.get("kind") if isinstance(value, Mapping) else None
         sequence = len(self)
-        # Serialize the current record once, at append time.  The result is
-        # bounded by one action/observation rather than every record in the
-        # terminal transcript; SQLite remains committed before it becomes
-        # visible through the stream count.
+        # Older archives retain their existing optional serialization caches.
+        # New archives write the record only to SQLite.
         self._append_sidecars(value, sequence)
         with self.archive.connection:
             self.archive.connection.execute(

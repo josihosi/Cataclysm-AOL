@@ -1,0 +1,24 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "danger_handling": "handle_classified_non_dangerous",
+    "target_delta_game_minutes": 1,
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "Observed native structural watch is present at minute 10080; the preflight C-4 countdown is 5356860, minute 10081, exactly one game minute later.",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    },
+    "recipe": [
+      "world.wait",
+      {
+        "action_id": "menu.choose",
+        "stable_id": "wait-mode:wait-a-while",
+        "label": "Wait a while"
+      },
+      "wait.1m"
+    ]
+  }
+}

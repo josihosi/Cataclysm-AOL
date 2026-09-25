@@ -1,0 +1,3 @@
+error: native_surface_successor_timeout
+next action: Observe the current game before choosing another action, or use run.quit to end the session. Do not replay the failed operation automatically.
+Next: play look

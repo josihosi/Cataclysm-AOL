@@ -1,0 +1,95 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In this source-matched native run, the player established R032 Assignment Camp at absolute OMT [162,36,0], then used its native assignment UI to assign the same nearby follower character:25. Native NPC inspection afterward showed CAMP_RESIDENT and assigned_camp [162,36,0], and ordinary camp work/job-priority controls remained accessible. Native save/quit and OS process exit completed; persistence and post-reload work remain pending.",
+  "causal_account": "The disposable fixture supplied one unassigned follower only as setup. Native World/chat and dialogue owners offered the camp route; the native camp-type menu offered the bare-bones recipe. After the resulting camp appeared in the authoritative current-site camp observation, the native TALK_CAMP assignment route opened the camp assignment UI, where character:25 was the listed worker. The same live character ID then inspected as CAMP_RESIDENT with assigned_camp matching the camp OMT. A normal camp mission-selector route reopened job priorities and exposed sorting out the loot at priority 1. The process then followed native Save and Quit and main-menu quit confirmations and exited with code 0. This segment does not yet prove the persisted state or ordinary work controls after process replacement.",
+  "citations": [
+    {
+      "citation_id": "J0008",
+      "meaning": "Initial native inspection identifies the setup follower and confirms no prior assigned camp.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:25",
+        "value.surface.facts.actor_name": "R032 Establishment Ally 1",
+        "value.surface.facts.diagnostic_orders.mission": "GUARD_ALLY",
+        "value.surface.facts.diagnostic_orders.assigned_camp": null
+      }
+    },
+    {
+      "citation_id": "J0026",
+      "meaning": "After native camp creation, the current-site basecamp record identifies the new camp, owner, and OMT.",
+      "checks": {
+        "value.surface.facts.current_site_camp.found": true,
+        "value.surface.facts.current_site_camp.camp_name": "R032 Assignment Camp",
+        "value.surface.facts.current_site_camp.owner_faction": "your_followers",
+        "value.surface.facts.current_site_camp.site": [162, 36, 0]
+      }
+    },
+    {
+      "citation_id": "J0039",
+      "meaning": "The native assignment UI lists one worker for the new camp at the matching OMT and faction.",
+      "checks": {
+        "value.surface.facts.assigned_worker_count": "1",
+        "value.surface.facts.camp_name": "R032 Assignment Camp",
+        "value.surface.facts.camp_site": "(162,36,0)",
+        "value.surface.facts.owner_faction": "your_followers"
+      }
+    },
+    {
+      "citation_id": "J0053",
+      "meaning": "Independent native inspection confirms the same follower became a resident assigned to the camp OMT.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:25",
+        "value.surface.facts.actor_name": "R032 Establishment Ally 1",
+        "value.surface.facts.diagnostic_orders.mission": "CAMP_RESIDENT",
+        "value.surface.facts.diagnostic_orders.assigned_camp": [162, 36, 0]
+      }
+    },
+    {
+      "citation_id": "J0045",
+      "meaning": "The native worker priority menu accepted and displayed an ordinary job priority of 1.",
+      "checks": {
+        "value.surface.actions.24.label": "sorting out the loot : 1",
+        "value.surface.actions.24.enabled": true
+      }
+    },
+    {
+      "citation_id": "J0067",
+      "meaning": "The normal camp mission selector exposed job assignment and ordinary looting/sorting controls.",
+      "checks": {
+        "value.surface.facts.camp_id": "(162,36,0)",
+        "value.surface.facts.camp_name": "R032 Assignment Camp",
+        "value.surface.facts.job_assignment_available": "true",
+        "value.surface.facts.looting_sorting_available": "true"
+      }
+    },
+    {
+      "citation_id": "J0069",
+      "meaning": "Opening job priorities from the normal camp board retains the same single worker and camp.",
+      "checks": {
+        "value.surface.facts.assigned_worker_count": "1",
+        "value.surface.facts.camp_name": "R032 Assignment Camp",
+        "value.surface.facts.camp_site": "(162,36,0)",
+        "value.surface.facts.owner_faction": "your_followers"
+      }
+    },
+    {
+      "citation_id": "J0075",
+      "meaning": "The player invoked the currently advertised native world Save and Quit action.",
+      "checks": { "action_id": "world.save_quit" }
+    },
+    {
+      "citation_id": "J0079",
+      "meaning": "The player invoked the main-menu Quit action after returning from Save and Quit.",
+      "checks": { "action_id": "main_menu.quit" }
+    },
+    {
+      "citation_id": "J0080",
+      "meaning": "The owned game process exited through its native quit route.",
+      "checks": {
+        "value.surface.facts.pid": 23949,
+        "value.surface.facts.exit_code": 0
+      }
+    }
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": []
+}

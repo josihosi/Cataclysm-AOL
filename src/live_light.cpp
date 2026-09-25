@@ -49,9 +49,17 @@ void run_advancing_turn( const time_point turn, const callbacks &callbacks )
         return;
     }
     std::vector<live_bandit_signal_observation> light_samples;
+    std::vector<live_bandit_signal_observation> cannibal_samples;
     for( const live_bandit_signal_observation &sample : sample_cache ) {
         if( sample.has_light_projection && !sample.sample_id.empty() ) {
             light_samples.push_back( sample );
+        }
+        // Cannibal contact can be initiated by physical smoke as well as
+        // light.  Keep the discovered packet intact so downstream range and
+        // geometry admission sees its original source, mark and sample age.
+        if( !sample.sample_id.empty() &&
+            ( sample.mark.kind == "smoke" || sample.has_light_projection ) ) {
+            cannibal_samples.push_back( sample );
         }
     }
     note( live_light_delivery_stage::horde_delivery );
@@ -67,8 +75,8 @@ void run_advancing_turn( const time_point turn, const callbacks &callbacks )
         callbacks.deliver_riders( light_samples );
     }
     note( live_light_delivery_stage::cannibal_delivery );
-    if( !light_samples.empty() ) {
-        callbacks.deliver_cannibals( light_samples );
+    if( !cannibal_samples.empty() ) {
+        callbacks.deliver_cannibals( cannibal_samples );
     }
 }
 

@@ -1,0 +1,25 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "This fresh source-bound drive-at-least-500 run reached its native timed C-4 significant sound while the original pair was locally observing, but the fixture source was not on the local observer's permitted forward watch OMT, so no structural sound fact or returned-report lead was recorded.",
+  "causal_account": "The run-bound production channel recorded the real source at minute 10081, and the native HUD reported ringing ears and Deaf.  The active structural outing remained local at (139,51,0), but its selected forward watch OMT was (138,52,0); diagnostic logging recorded the staged source at (138,51,0) as permitted=no.  The source was therefore correctly rejected by the route constraint.  This is a zero-credit fixture placement contradiction, not a valid source-to-return proof.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the fresh selected scenario, source-matched executable, native run, and bridge binding.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0072",
+      "meaning": "Terminal retained observation used for the limited contradiction.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [
+    "The native production channel observed the C-4 sound at (138,51,0), but the active local observer permitted only (138,52,0), so the run cannot establish local signal delivery or return provenance."
+  ],
+  "remaining_unknowns": [
+    "Whether a fresh run with the same source moved to the selected forward watch OMT records the local sound and allows the ordinary return path."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

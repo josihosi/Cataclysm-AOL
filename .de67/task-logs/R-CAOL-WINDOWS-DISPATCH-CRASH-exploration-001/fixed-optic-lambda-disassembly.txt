@@ -1,0 +1,176 @@
+
+.de67/task-logs/R-CAOL-WINDOWS-DISPATCH-CRASH-exploration-001/windows-evidence/cataclysm-tiles-fixed-copy.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+00000001407edf80 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_>:
+1407edf80: 55                          	pushq	%rbp
+1407edf81: 57                          	pushq	%rdi
+1407edf82: 56                          	pushq	%rsi
+1407edf83: 53                          	pushq	%rbx
+1407edf84: 48 83 ec 48                 	subq	$0x48, %rsp
+1407edf88: 48 8d 4c 24 20              	leaq	0x20(%rsp), %rcx
+1407edf8d: e8 2e 38 5f 00              	callq	0x140de17c0 <_ZNK4item7gunmodsEv>
+1407edf92: 48 8b 7c 24 28              	movq	0x28(%rsp), %rdi
+1407edf97: 48 8b 5c 24 20              	movq	0x20(%rsp), %rbx
+1407edf9c: 48 39 df                    	cmpq	%rbx, %rdi
+1407edf9f: 0f 84 49 01 00 00           	je	0x1407ee0ee <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x16e>
+1407edfa5: 48 89 f8                    	movq	%rdi, %rax
+1407edfa8: 48 8b 2d e1 be 86 02        	movq	0x286bee1(%rip), %rbp   # 0x143059e90 <.refptr.flag_ZOOM>
+1407edfaf: 48 29 d8                    	subq	%rbx, %rax
+1407edfb2: 48 83 e8 08                 	subq	$0x8, %rax
+1407edfb6: 48 c1 e8 03                 	shrq	$0x3, %rax
+1407edfba: 48 83 c0 01                 	addq	$0x1, %rax
+1407edfbe: 83 e0 03                    	andl	$0x3, %eax
+1407edfc1: 0f 84 a4 00 00 00           	je	0x1407ee06b <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xeb>
+1407edfc7: 48 83 f8 01                 	cmpq	$0x1, %rax
+1407edfcb: 0f 84 f7 00 00 00           	je	0x1407ee0c8 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x148>
+1407edfd1: 48 83 f8 02                 	cmpq	$0x2, %rax
+1407edfd5: 0f 84 d1 00 00 00           	je	0x1407ee0ac <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x12c>
+1407edfdb: 48 8b 0b                    	movq	(%rbx), %rcx
+1407edfde: 48 85 c9                    	testq	%rcx, %rcx
+1407edfe1: 0f 84 c1 00 00 00           	je	0x1407ee0a8 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x128>
+1407edfe7: 48 89 ea                    	movq	%rbp, %rdx
+1407edfea: e8 11 ec 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407edfef: 84 c0                       	testb	%al, %al
+1407edff1: 0f 84 b1 00 00 00           	je	0x1407ee0a8 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x128>
+1407edff7: 66 0f 1f 84 00 00 00 00 00  	nopw	(%rax,%rax)
+1407ee000: 48 8b 4c 24 20              	movq	0x20(%rsp), %rcx
+1407ee005: 48 39 df                    	cmpq	%rbx, %rdi
+1407ee008: 0f 95 c3                    	setne	%bl
+1407ee00b: 48 85 c9                    	testq	%rcx, %rcx
+1407ee00e: 74 0d                       	je	0x1407ee01d <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x9d>
+1407ee010: 48 8b 54 24 30              	movq	0x30(%rsp), %rdx
+1407ee015: 48 29 ca                    	subq	%rcx, %rdx
+1407ee018: e8 c3 a6 ba ff              	callq	0x1403986e0 <_ZdlPvy>
+1407ee01d: 89 d8                       	movl	%ebx, %eax
+1407ee01f: 48 83 c4 48                 	addq	$0x48, %rsp
+1407ee023: 5b                          	popq	%rbx
+1407ee024: 5e                          	popq	%rsi
+1407ee025: 5f                          	popq	%rdi
+1407ee026: 5d                          	popq	%rbp
+1407ee027: c3                          	retq
+1407ee028: 0f 1f 84 00 00 00 00 00     	nopl	(%rax,%rax)
+1407ee030: 48 8b 4e 08                 	movq	0x8(%rsi), %rcx
+1407ee034: 48 8d 5e 08                 	leaq	0x8(%rsi), %rbx
+1407ee038: 48 85 c9                    	testq	%rcx, %rcx
+1407ee03b: 74 0c                       	je	0x1407ee049 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xc9>
+1407ee03d: 48 89 ea                    	movq	%rbp, %rdx
+1407ee040: e8 bb eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee045: 84 c0                       	testb	%al, %al
+1407ee047: 75 b7                       	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee049: 48 8b 4e 10                 	movq	0x10(%rsi), %rcx
+1407ee04d: 48 8d 5e 10                 	leaq	0x10(%rsi), %rbx
+1407ee051: 48 85 c9                    	testq	%rcx, %rcx
+1407ee054: 74 0c                       	je	0x1407ee062 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xe2>
+1407ee056: 48 89 ea                    	movq	%rbp, %rdx
+1407ee059: e8 a2 eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee05e: 84 c0                       	testb	%al, %al
+1407ee060: 75 9e                       	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee062: 48 8d 5e 18                 	leaq	0x18(%rsi), %rbx
+1407ee066: 48 39 df                    	cmpq	%rbx, %rdi
+1407ee069: 74 95                       	je	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee06b: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee06e: 48 85 c9                    	testq	%rcx, %rcx
+1407ee071: 74 0c                       	je	0x1407ee07f <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xff>
+1407ee073: 48 89 ea                    	movq	%rbp, %rdx
+1407ee076: e8 85 eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee07b: 84 c0                       	testb	%al, %al
+1407ee07d: 75 81                       	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee07f: 48 8b 4b 08                 	movq	0x8(%rbx), %rcx
+1407ee083: 48 8d 73 08                 	leaq	0x8(%rbx), %rsi
+1407ee087: 48 89 f3                    	movq	%rsi, %rbx
+1407ee08a: 48 85 c9                    	testq	%rcx, %rcx
+1407ee08d: 74 a1                       	je	0x1407ee030 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xb0>
+1407ee08f: 48 89 ea                    	movq	%rbp, %rdx
+1407ee092: e8 69 eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee097: 84 c0                       	testb	%al, %al
+1407ee099: 0f 85 61 ff ff ff           	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee09f: eb 8f                       	jmp	0x1407ee030 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xb0>
+1407ee0a1: 0f 1f 80 00 00 00 00        	nopl	(%rax)
+1407ee0a8: 48 83 c3 08                 	addq	$0x8, %rbx
+1407ee0ac: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee0af: 48 85 c9                    	testq	%rcx, %rcx
+1407ee0b2: 74 10                       	je	0x1407ee0c4 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x144>
+1407ee0b4: 48 89 ea                    	movq	%rbp, %rdx
+1407ee0b7: e8 44 eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee0bc: 84 c0                       	testb	%al, %al
+1407ee0be: 0f 85 3c ff ff ff           	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee0c4: 48 83 c3 08                 	addq	$0x8, %rbx
+1407ee0c8: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee0cb: 48 85 c9                    	testq	%rcx, %rcx
+1407ee0ce: 74 10                       	je	0x1407ee0e0 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x160>
+1407ee0d0: 48 89 ea                    	movq	%rbp, %rdx
+1407ee0d3: e8 28 eb 50 00              	callq	0x140cfcc00 <_ZNK4item8has_flagERK9string_idI9json_flagE>
+1407ee0d8: 84 c0                       	testb	%al, %al
+1407ee0da: 0f 85 20 ff ff ff           	jne	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee0e0: 48 83 c3 08                 	addq	$0x8, %rbx
+1407ee0e4: 48 39 df                    	cmpq	%rbx, %rdi
+1407ee0e7: 75 82                       	jne	0x1407ee06b <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0xeb>
+1407ee0e9: e9 12 ff ff ff              	jmp	0x1407ee000 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x80>
+1407ee0ee: 48 89 f9                    	movq	%rdi, %rcx
+1407ee0f1: e9 0f ff ff ff              	jmp	0x1407ee005 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x85>
+1407ee0f6: 48 8b 4c 24 20              	movq	0x20(%rsp), %rcx
+1407ee0fb: 48 89 c3                    	movq	%rax, %rbx
+1407ee0fe: 48 85 c9                    	testq	%rcx, %rcx
+1407ee101: 74 0d                       	je	0x1407ee110 <_ZNSt17_Function_handlerIFbRK4itemEZN17bandit_live_world34live_structural_observer_has_opticERK3npcEUlS2_E_E9_M_invokeERKSt9_Any_dataS2_+0x190>
+1407ee103: 48 8b 54 24 30              	movq	0x30(%rsp), %rdx
+1407ee108: 48 29 ca                    	subq	%rcx, %rdx
+1407ee10b: e8 d0 a5 ba ff              	callq	0x1403986e0 <_ZdlPvy>
+1407ee110: 48 89 d9                    	movq	%rbx, %rcx
+1407ee113: e8 28 7a 8b 01              	callq	0x1420a5b40 <_Unwind_Resume>
+1407ee118: 90                          	nop
+1407ee119: 0f 1f 80 00 00 00 00        	nopl	(%rax)
+
+00000001407ee120 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_>:
+1407ee120: 41 55                       	pushq	%r13
+1407ee122: 41 54                       	pushq	%r12
+1407ee124: 55                          	pushq	%rbp
+1407ee125: 57                          	pushq	%rdi
+1407ee126: 56                          	pushq	%rsi
+1407ee127: 53                          	pushq	%rbx
+1407ee128: 48 83 ec 38                 	subq	$0x38, %rsp
+1407ee12c: 4c 8b 29                    	movq	(%rcx), %r13
+1407ee12f: 49 8b 45 00                 	movq	(%r13), %rax
+1407ee133: 48 8b 00                    	movq	(%rax), %rax
+1407ee136: 48 89 d5                    	movq	%rdx, %rbp
+1407ee139: 4c 8b 60 08                 	movq	0x8(%rax), %r12
+1407ee13d: 48 8b 18                    	movq	(%rax), %rbx
+1407ee140: 49 39 dc                    	cmpq	%rbx, %r12
+1407ee143: 0f 84 d7 00 00 00           	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee149: 4c 89 e0                    	movq	%r12, %rax
+1407ee14c: 8b 3a                       	movl	(%rdx), %edi
+1407ee14e: 48 ba df 7b ef bd f7 de 7b 0f       	movabsq	$0xf7bdef7bdef7bdf, %rdx # imm = 0xF7BDEF7BDEF7BDF
+1407ee158: 48 29 d8                    	subq	%rbx, %rax
+1407ee15b: 48 2d f8 00 00 00           	subq	$0xf8, %rax
+1407ee161: 48 c1 e8 03                 	shrq	$0x3, %rax
+1407ee165: 48 0f af c2                 	imulq	%rdx, %rax
+1407ee169: 48 83 c0 01                 	addq	$0x1, %rax
+1407ee16d: 83 e0 03                    	andl	$0x3, %eax
+1407ee170: 74 4e                       	je	0x1407ee1c0 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0xa0>
+1407ee172: 48 83 f8 01                 	cmpq	$0x1, %rax
+1407ee176: 74 30                       	je	0x1407ee1a8 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x88>
+1407ee178: 48 83 f8 02                 	cmpq	$0x2, %rax
+1407ee17c: 74 17                       	je	0x1407ee195 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x75>
+1407ee17e: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee181: e8 fa 6f c0 ff              	callq	0x1403f5180 <_ZNK9Character5getIDEv>
+1407ee186: 39 f8                       	cmpl	%edi, %eax
+1407ee188: 0f 84 92 00 00 00           	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee18e: 48 81 c3 f8 00 00 00        	addq	$0xf8, %rbx
+1407ee195: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee198: e8 e3 6f c0 ff              	callq	0x1403f5180 <_ZNK9Character5getIDEv>
+1407ee19d: 39 f8                       	cmpl	%edi, %eax
+1407ee19f: 74 7f                       	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee1a1: 48 81 c3 f8 00 00 00        	addq	$0xf8, %rbx
+1407ee1a8: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee1ab: e8 d0 6f c0 ff              	callq	0x1403f5180 <_ZNK9Character5getIDEv>
+1407ee1b0: 39 f8                       	cmpl	%edi, %eax
+1407ee1b2: 74 6c                       	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee1b4: 48 81 c3 f8 00 00 00        	addq	$0xf8, %rbx
+1407ee1bb: 49 39 dc                    	cmpq	%rbx, %r12
+1407ee1be: 74 60                       	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee1c0: 48 8b 0b                    	movq	(%rbx), %rcx
+1407ee1c3: e8 b8 6f c0 ff              	callq	0x1403f5180 <_ZNK9Character5getIDEv>
+1407ee1c8: 39 f8                       	cmpl	%edi, %eax
+1407ee1ca: 74 54                       	je	0x1407ee220 <_ZNSt17_Function_handlerIFvRKN17bandit_live_world29local_handoff_member_snapshotEEZN12_GLOBAL__N_1L43materialize_live_bandit_structural_handoffsEvEUlS3_E0_E9_M_invokeERKSt9_Any_dataS3_+0x100>
+1407ee1cc: 48 8b 8b f8 00 00 00        	movq	0xf8(%rbx), %rcx

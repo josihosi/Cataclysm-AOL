@@ -1,0 +1,130 @@
+{
+  "manifest_version": 1,
+  "profile": "smartzone-names-disposable-20260924",
+  "world": "SmartzoneNamesDisposable",
+  "artifact_source": "debug.log",
+  "capabilities": {
+    "runtime.entry_mode": "startup_harness_probe",
+    "runtime.world": "SmartzoneNamesDisposable",
+    "capabilities.smart_zone.generated_labels": "Generated helper zone names are Smartzone-prefixed and survive native save/reload"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "press",
+      "type",
+      "native:semantic_terminal_action_chain"
+    ],
+    "forbidden_input": [
+      "tiles-gui",
+      "screen-coordinate",
+      "direct-state-mutation",
+      "direct-save-edit"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "terminal_transport": "pty",
+    "helpers": [
+      "CursesTerminalTransport"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "smartzone-names-disposable-20260924",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "./smartzone-names-20260924-cataclysm",
+      "profile": "smartzone-names-disposable-20260924",
+      "fixture": "",
+      "helper": "CursesTerminalTransport",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "terminal-native keys",
+        "native semantic save and quit"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "name": "smart_zone.assignment_owned_pty_reload_v1_20260924",
+  "description": "Assignment-owned source-bound PTY reload pass: reopen the native Zone Manager on the generated disposable world, capture persisted names, save and native-exit.",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "reloaded_world_gameplay_ready",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the disposable world saved by the generation run is active in this replacement process"
+    },
+    {
+      "kind": "press",
+      "label": "open_zone_manager_after_reload",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the Zone Manager opens on the saved world"
+    },
+    {
+      "kind": "wait",
+      "label": "inspect_persisted_zone_names",
+      "seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "the persisted generated Smartzone labels and Basecamp storage label are visible in the manager"
+    },
+    {
+      "kind": "press",
+      "label": "close_reloaded_zone_manager",
+      "keys": [
+        "escape"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "the manager closes after reloaded-name inspection"
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "native_save_and_exit_after_reload",
+      "objective": "Use the native save and quit owner, native confirmation, native main-menu quit, and its confirmation after reload inspection.",
+      "observation_timeout_seconds": 30,
+      "observation_interval_seconds": 0.2,
+      "required_action_chain": [
+        "world.save_quit",
+        "prompt.yes",
+        "main_menu.quit",
+        "prompt.yes"
+      ],
+      "expected_visible_fact": "the source-bound replacement process saved and exited natively"
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "reloaded_world_gameplay_ready"
+    ],
+    "production_behavior": [
+      "open_zone_manager_after_reload",
+      "inspect_persisted_zone_names"
+    ],
+    "terminal_persistence": [
+      "native_save_and_exit_after_reload"
+    ],
+    "artifact_verdict": [
+      "inspect_persisted_zone_names"
+    ],
+    "disallowed_shortcuts": [
+      "reloaded_world_gameplay_ready"
+    ]
+  }
+}

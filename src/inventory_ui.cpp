@@ -3764,7 +3764,9 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     std::vector<std::pair<std::string, std::string>> selectable_items;
     std::vector<std::pair<item_location, std::string>> all_items;
     for( inventory_column *column : get_all_columns() ) {
-        for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
+        // A filter must describe the same matching rows as the native selector.
+        // Without a filter retain access to collapsed container contents.
+        for( inventory_entry *entry : column->get_entries( return_item, get_filter().empty() ) ) {
             if( entry == nullptr || !entry->is_item() ) {
                 continue;
             }
@@ -3853,6 +3855,9 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
             return { false, "missing_filter_text", "" };
         }
         set_filter( filter->second );
+        if( const shared_ptr_fast<ui_adaptor> current_ui = ui.lock() ) {
+            current_ui->mark_resize();
+        }
         return { true, "", "" };
     }
     if( request.action_id == "inventory.reset_filter" ) {
@@ -3860,6 +3865,9 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
             return { false, "disabled_action", "" };
         }
         set_filter( "" );
+        if( const shared_ptr_fast<ui_adaptor> current_ui = ui.lock() ) {
+            current_ui->mark_resize();
+        }
         return { true, "", "" };
     }
     if( request.action_id == "inventory.commit" ) {

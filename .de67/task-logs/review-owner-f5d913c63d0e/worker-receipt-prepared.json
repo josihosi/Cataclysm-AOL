@@ -1,0 +1,124 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-HARNESS-EVIDENCE-exploration-001",
+  "claim_id": "R-HARNESS-EVIDENCE",
+  "worker_id": "01a0c101-a0b9-72f2-b509-7302b2bb7102",
+  "disposition": "completed",
+  "verdict": "exact evidence scope and claim-aware lifecycle projection repaired",
+  "outcome": "Exact request links now stay within filtered identities, lifecycle outcomes distinguish accepted/rejected/unknown/contradictory from observed evidence, generic summaries no longer inherit payment fields, and exact candidate detail retains compact output plus immutable full retrieval.",
+  "summary": "The owned evidence and registry projection surfaces now preserve exact tuple authority and related lifecycle stages without unrelated-history leakage. Accepted plus completed is accepted/complete without a missing rejection; explicit acceptance plus rejection is contradictory; absent lifecycle evidence is unknown. Generic accepted runs retain their verdict and interaction depth without payment-specific missing fields. Exact scenario detail omits the whole candidate snapshot while retaining the query artifact hash/command handle.",
+  "material_changes": [
+    "Scoped evidence request links to exact filtered (run_id, process_instance, request_id) identities while retaining all explicitly related stages.",
+    "Added observed lifecycle outcome classification and scanned-versus-displayed record/byte measurements.",
+    "Made registry run summaries claim-aware and exact candidate detail compact with immutable full_snapshot retrieval identity.",
+    "Added focused lifecycle growth, generic/payment, contradiction, and candidate-detail retrieval tests."
+  ],
+  "tests": [
+    "python3 -m unittest tools.openclaw_harness.evidence_events_lifecycle_test tools.openclaw_harness.evidence_display_test tools.openclaw_harness.cockpit_evidence_test tools.openclaw_harness.play_cli_evidence_test tools.openclaw_harness.registry_query_output_test.RegistryQueryOutputTest.test_run_bound_compact_projection_keeps_missing_trade_and_declarations_explicit tools.openclaw_harness.registry_query_output_test.RegistryQueryOutputTest.test_generic_claim_does_not_inherit_payment_missing_fields_or_depth tools.openclaw_harness.registry_query_output_test.RegistryQueryOutputTest.test_exact_candidate_detail_is_compact_and_recovers_full_snapshot (26 tests, OK).",
+    "python3 -m py_compile tools/openclaw_harness/evidence_events.py tools/openclaw_harness/registry_query_output.py tools/openclaw_harness/evidence_events_lifecycle_test.py passed.",
+    "python3 .de67/task-logs/review-owner-f5d913c63d0e/reproduce_current.py exited 0; repaired reproduction records exact scope and growth controls.",
+    "git diff --check passed for owned source and tests.",
+    "The broader registry projection command remains separately bounded by pre-existing Scenario-not-found generated fixture failures; exact command/output is retained in scenario-not-found-boundary.txt."
+  ],
+  "live_actions": [
+    "No provider, native game, bridge, helper, or gameplay session was launched; this assignment was source/synthetic evidence repair only."
+  ],
+  "evidence_ceiling": [
+    "Synthetic retained records and focused harness tests establish exact tuple scoping, lifecycle semantics, and history-growth behavior; no live speech or witness usability is claimed.",
+    "Registry projection tests establish generic/payment summary and compact detail behavior; native gameplay feature proof remains outside this task."
+  ],
+  "bindings": {
+    "displayed_link_bytes": "592",
+    "displayed_records": "1",
+    "native_speech_witness": "not exercised",
+    "reproduction": ".de67/task-logs/review-owner-f5d913c63d0e/repaired-reproductions.json",
+    "scanned_growth": "12 to 102 records",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL"
+  },
+  "journal_entries": [
+    {
+      "id": "evidence-scope-repair",
+      "sequence": "focused",
+      "event_type": "projection_repair",
+      "evidence_class": "test",
+      "summary": "Exact query and unrelated-history growth retain one wanted link, stable displayed link bytes, and measured scanned/displayed counts.",
+      "artifact_ref": ".de67/task-logs/review-owner-f5d913c63d0e/repaired-reproductions.json"
+    },
+    {
+      "id": "lifecycle-counterevidence",
+      "sequence": "focused",
+      "event_type": "lifecycle_classification",
+      "evidence_class": "test",
+      "summary": "Accepted+completed is accepted, rejection-only is rejected, no lifecycle is unknown, and observed acceptance+rejection is contradictory.",
+      "artifact_ref": "tools/openclaw_harness/evidence_events_lifecycle_test.py"
+    },
+    {
+      "id": "compact-candidate-detail",
+      "sequence": "focused",
+      "event_type": "exact_projection",
+      "evidence_class": "test",
+      "summary": "Candidate detail projects states only and recovers the full snapshot by immutable digest identity.",
+      "artifact_ref": "tools/openclaw_harness/registry_query_output_test.py"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/evidence_events.py",
+      "sha256": "45c1321ea33457122131faa1cce0cb94e4b48f4dda8738528548ac6687d1cc53",
+      "role": "exact evidence query and lifecycle projection repair"
+    },
+    {
+      "path": "tools/openclaw_harness/registry_query_output.py",
+      "sha256": "6e9e4c05bdcfc7313760c1d67b284171d3cba6ebb67c5e7a34baa44d87428998",
+      "role": "claim-aware run and compact candidate projection repair"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_events_lifecycle_test.py",
+      "sha256": "97e5afeec0bb2d898a151f77f27cd8805f9da870012a6b6eb096289458931b13",
+      "role": "focused exact-scope growth and lifecycle tests"
+    },
+    {
+      "path": "tools/openclaw_harness/play_cli_evidence_test.py",
+      "sha256": "c046e2f03225c35178d6820eb0404e25dbcc5e727f9379f73bf978cd38844104",
+      "role": "contradiction and exact published evidence route regression"
+    },
+    {
+      "path": "tools/openclaw_harness/registry_query_output_test.py",
+      "sha256": "ede2c23ff9c78fc03405d32a46a141a684b5355eda7fbfae42b02ebb50e7525d",
+      "role": "generic/payment and exact candidate detail regression"
+    },
+    {
+      "path": ".de67/task-logs/review-owner-f5d913c63d0e/repaired-reproductions.json",
+      "sha256": "9654161cd18beefa12fc128e6c52f7bff04e3ce1f1a8b20a43a9bf07cfbbbd22",
+      "role": "repaired synthetic reproduction and growth measurements"
+    },
+    {
+      "path": ".de67/task-logs/review-owner-f5d913c63d0e/scenario-not-found-boundary.txt",
+      "sha256": "af3d4eba38f5d83dd5c8f1696e5f7d114b37256f262deb26184268b56acf12d2",
+      "role": "separate broader Scenario-not-found command/output boundary"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserved the original reproduction and counterevidence scope; no native run or provider call was replayed because it could not change this source-level decision."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Native speech and witness usability remains untested and belongs to the campaign/native continuation owner.",
+  "narrow_queries": [
+    "If the coordinator needs broader registry paging evidence, repair the independent generated Scenario-not-found fixture boundary before rerunning those tests.",
+    "Use the exact candidate full_snapshot command/hash to recover omitted snapshot fields; do not treat compact omission as absence."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_events.py::_request_result_links",
+    "tools/openclaw_harness/evidence_events.py::query",
+    "tools/openclaw_harness/registry_query_output.py::_run_observation",
+    "tools/openclaw_harness/registry_query_output.py::query_page"
+  ],
+  "context_metrics": {
+    "displayed_link_bytes": 592,
+    "displayed_records": 1,
+    "focused_tests": 26,
+    "query_growth_records": "12->102"
+  }
+}

@@ -1,0 +1,20 @@
+MENU
+filtered entry count: 11
+Spawning…
+Allowed actions replaced — use only these:
+select: highlight; choose: activate the option.
+Filter → play act menu.filter --param "text=TEXT"
+Cancel → play act menu.cancel
+play act menu.<action> --target uilist-entry:<target> (copy the target exactly)
+Actions for every target below: select/choose
+  169 — Spawn an item
+  170 — Spawn an item group
+  171 — Spawn NPC
+  172 — Spawn NPC follower
+  173 — Spawn named NPC
+  174 — Spawn random NPC on overmap
+  175 — Spawn monster
+  176 — Spawn a vehicle
+  177 — Spawn artifact
+  178 — Spawn clairvoyance artifact
+  179 — Spawn overmap horde/stalker/rider threat…

@@ -3518,6 +3518,22 @@ Creature::Attitude npc::attitude_to( const Creature &other ) const
         }
     }
 
+    const auto camp_profile = bandit_live_world::active_local_camp_member_profile(
+                                  overmap_buffer.global_state.bandit_live_world, getID() );
+    if( camp_profile == bandit_live_world::hostile_site_profile::cannibal_camp ) {
+        if( other.is_npc() || other.is_avatar() ) {
+            const Character &human = dynamic_cast<const Character &>( other );
+            if( ( other.is_npc() && other.as_npc()->get_fac_id() == get_fac_id() ) ||
+                has_faction_relationship( human, npc_factions::relationship::watch_your_back ) ) {
+                return Attitude::FRIENDLY;
+            }
+            return Attitude::HOSTILE;
+        }
+        if( other.is_monster() && other.as_monster()->type->in_species( species_id( "ZOMBIE" ) ) ) {
+            return Attitude::HOSTILE;
+        }
+    }
+
     const auto same_as = []( const Creature * lhs, const Creature * rhs ) {
         return &lhs == &rhs;
     };

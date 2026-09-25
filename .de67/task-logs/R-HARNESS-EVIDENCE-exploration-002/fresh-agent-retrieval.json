@@ -1,0 +1,147 @@
+{
+  "schema": "de67-speech-evidence-retrieval-v1",
+  "task": "R-HARNESS-EVIDENCE-exploration-002",
+  "purpose": "A fresh agent can recover one needed async-speech fact, one contrary/irrelevant fact, and an exact typed witness citation without replaying gameplay.",
+  "identity": {
+    "scenario_id": "r026.speech_turn_diagnostic_mcw",
+    "source_identity": "dd6fffb9cad67438376b256461dcf546771d05711c0d37fc630256901d3c39be",
+    "executable_identity": "e9b1f39adda6e711bacf74ee7cf2abaa311c9173eb54f89fcaf54add2da1f811",
+    "run_id": "c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec",
+    "binding_id": "ad61386776b3984974277ce7b23506a117e54c196c54c21dcd23bd9959d68224",
+    "semantic_process_instance": "1789959634416807",
+    "runner_process_instance": "520999d79e9c4bd99bd6a88d1e51e6ff",
+    "runner_pid": 54101,
+    "game_pid": 53620,
+    "game_birth_identity": "posix-lstart:Mon Sep 21 05:00:15 2026"
+  },
+  "chronology": [
+    {
+      "order": 1,
+      "fact": "Native free-text input was accepted.",
+      "request_id": "play-b386f813d5374bd4b4112942c70be092",
+      "native_request_id": "cockpit:harness-558db2cffcd34389a4b0f35e477ccf58:c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:12:prompt.submit:375a8d3df0c6b4d9",
+      "frame": 12,
+      "game_turn": 5241596,
+      "utterance": "Katharina, please keep an eye on the camp.",
+      "native_record": {
+        "path": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl",
+        "offset": 549562,
+        "length": 1081,
+        "sha256": "ab29ec8420e01dabe42342e23d3bd0a6cc66c8535644314d012b1b6cf9b34301"
+      }
+    },
+    {
+      "order": 2,
+      "fact": "The bound runner began the qualified LLM request.",
+      "request_id": "req_0",
+      "event": "llm_request_started",
+      "timestamp": 1789959800.664345,
+      "prompt_sha256": "3fd341f872eb63200af639b525ee2cf9db2d2cd490142b4f60e9239dfdf8b6bc",
+      "query": "cockpit_file_bridge.py log-query --path config/llm_intent_runner.log --run-id c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec --process-instance 520999d79e9c4bd99bd6a88d1e51e6ff --event llm_request_started",
+      "record": {
+        "offset": 56593,
+        "length": 11130,
+        "sha256": "6cdaa1d02bb0a084c3402a7a5d98360413b485436a2b19a2904386dab3367cc6"
+      }
+    },
+    {
+      "order": 3,
+      "fact": "The same bound runner emitted a model response.",
+      "request_id": "req_0",
+      "event": "llm_response_emitted",
+      "timestamp": 1789959803.9417548,
+      "response_sha256": "c0d7f58b285fb705969fb0958016a16e078c494646821d45b50865554497863f",
+      "response_text": "You got it, Zoraida—I’ll watch the camp from here.|hold_position|equip_gun",
+      "generation_ms": 3276.9905420718715,
+      "record": {
+        "offset": 67723,
+        "length": 568,
+        "sha256": "716853efa2f4bc40320be3f5c80fa1a423a1f8bca80b91d6be645a159ec1bf84"
+      }
+    },
+    {
+      "order": 4,
+      "fact": "The accepted native pause exposed the applied NPC reply.",
+      "request_id": "play-19ccd481854a44499625b77c73b204cc",
+      "native_request_id": "cockpit:harness-558db2cffcd34389a4b0f35e477ccf58:c39d09b378d2e0af0eddbfe7aaf0cf2bfe99ff8bda863fa61ebbe033080878ec:frame:13:world.pause:59525e1979fb95ac",
+      "frame": 14,
+      "game_turn": 5241597,
+      "message": "Katharina Leach says: \"You got it, Zoraida—I’ll watch the camp from here.\"",
+      "native_record": {
+        "path": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl",
+        "offset": 679080,
+        "length": 1077,
+        "sha256": "46f58a122c5723e14b0fb3a4f16886fe87e6f5512098e8bd00f1b0a5e4f7fb2a"
+      }
+    }
+  ],
+  "retrieval_operations": [
+    {
+      "need": "Exact native prompt acceptance and typed witness root",
+      "operation": "play_cli.py --session SESSION journal --reason ...; inspect J0028/J0030; finish --witness speech-witness.json",
+      "result": "J0028 checks action_id=prompt.submit, native_receipt.accepted=true, and frame-12 observation_id; J0030 checks accepted world.pause and frame-13 observation_id. Witness validation passed.",
+      "artifact": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/speech-witness.json",
+      "sha256": "96512760896c31249a7b21a74faa3dc2b780ce584945d627ef8f5da4813b47a2"
+    },
+    {
+      "need": "Async request-to-application chronology",
+      "operation": "Exact run_id + runner process_instance log-query for llm_request_started and llm_response_emitted, then exact semantic-native log-query for the two surface_receipt records.",
+      "result": "Started and emitted rows matched; model completion is not inferred from transport acceptance. Native surface receipts were accepted and the response appeared in the retained native message page.",
+      "artifacts": [
+        "config/llm_intent_runner.log",
+        ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.native.events.jsonl",
+        ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/semantic.requests.jsonl",
+        ".userdata/openclaw_harness/bridge-sessions/selected-d8e69d7227d94e23953bed9f9fa2d427/witness-journal-18a7a90d8e745ec323f01a2a58e056992ffd69c6489c778de578c77ba75ee9ba.json"
+      ]
+    },
+    {
+      "need": "Contrary/irrelevant fact",
+      "operation": "Read-only play_cli.py evidence query with cockpit-local request id play-b386f813d5374bd4b4112942c70be092 and no exact cross-source process identity; rerun after cleanup and bind the result to a durable artifact.",
+      "result": "no_match with log_identity_status=unavailable; this demonstrates that a cockpit request ID alone does not establish a runner/native correlation and is not evidence that no runner event exists. Separately, the earlier retained `You hear Katharina Leach saying \"Take it easy.\"` at 3:59:55 PM precedes the new utterance and was not attributed to it.",
+      "artifact": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/contrary-query-no-match.json",
+      "sha256": "6945f30fb09ae3e6cbca8001c4b6d2c513f8959dc466f6e9bda8c33c7a755c29"
+    }
+  ],
+  "unavailable_or_unattempted": [
+    "No original native fire case was attempted in this speech-focused run; no cause is guessed.",
+    "No separate NPC inspect/command-matrix case was required after the exact speech reply; durable follow-up behavior remains outside this witness.",
+    "The prior payment/non-payment registry projection evidence is preserved by exploration-001 receipt 56e13b1b918feb3ef2fc6531e621a4016fa96a0f25cea24a75f62ff29f9b6635 and was not replayed."
+  ],
+  "closeout": {
+    "journal_witness_request_id": "play-0b77f0ee278346b997717d27e2277675",
+    "finish_request_id": "play-3b5f4ba0f34a4feca889346bcab3df1c",
+    "finish_response_sha256": "9726bd140601333ecd318e3eed2f1bb83509d521bdc567a14ccd0319249ed6ea",
+    "terminal_report": ".userdata/mutation-speech-048bd73865c9/harness_runs/20260921_050014_0315aa36ba124eb19d6cc4f62d033f57/probe.report.json",
+    "terminal_report_sha256": "9bd13eb91affa3ff273a4d66a33cea99233fb4a258d1350926e01920fd4e839c",
+    "cleanup_status": "already_exited",
+    "game_pid": 53620,
+    "game_pid_observed_alive": false,
+    "bridge_cleanup_status": "accepted",
+    "native_exit_credit": false
+  },
+  "effort": {
+    "targeted_queries": 6,
+    "lifecycle_actions_after_speech": 4,
+    "retrieval_stdout_bytes_before_closeout": 33349,
+    "note": "Counts are operational effort for this fresh retrieval slice, not gameplay credit; unchanged lifecycle and payment projection tests were not replayed."
+  },
+  "source_hashes": {
+    "semantic_native_events": "073046475482a79c197f014c956d2045a4963c9daff62d04baa17939ce51a0ce",
+    "semantic_requests": "8eb781dfe581151b31316c7a9011e3b265b227e9e47c8c95a6e9f84f7cb58004",
+    "llm_intent_runner_current": "66e04586c6a3c12ecbe8d23d0473b68bc7d0aa83f17dba2984586c5901fd8ff6"
+  },
+  "independent_fresh_agent": {
+    "route": "multi_agent_v1 native fresh-worker",
+    "model": "gpt-5.6-luna",
+    "fork_context": false,
+    "agent_id": "01a0c1f6-433c-7561-a108-08b620c9d5a4",
+    "report": ".de67/task-logs/R-HARNESS-EVIDENCE-exploration-002/luna-fresh-agent-report.json",
+    "report_sha256": "994f30d7119d9ee3f12ff9e9dd11834e44494683e5e4b4d10ecbb0345e2dd356",
+    "returned_operations": 12,
+    "returned_stdout_bytes": 22484,
+    "needed_fact": "Exact runner start/response correlation and response text recovered.",
+    "contrary_fact": "Accepted world.pause is a separate native transition; earlier Take it easy is pre-utterance context.",
+    "typed_witness": "semantic.native.events.jsonl offset 549562 length 1081 SHA ab29ec8420e01dabe42342e23d3bd0a6cc66c8535644314d012b1b6cf9b34301; selector root record; sequence 73 prompt.submit accepted=true.",
+    "usability_defects": ["messages route returned no_displayed_observation after cleanup", "session-directory native queries had no matches while durable artifact-path queries succeeded"]
+  }
+}

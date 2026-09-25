@@ -1,0 +1,3 @@
+Game exited.
+error: witness_citation_path_missing:J0001:value.executable_identity; inspect this citation and use a path inside entry.value
+next: finish --witness FILE

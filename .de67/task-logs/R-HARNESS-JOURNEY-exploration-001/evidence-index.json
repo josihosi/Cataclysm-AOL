@@ -1,0 +1,22 @@
+{
+  "schema": "de67-h-journey-evidence-index-v1",
+  "build": {"receipt":".userdata/openclaw_harness/source_bindings/cataclysm-tiles-a0f057203d703846-e86ec67a5435570e6152060f59b37b19e55e783eb0eb54a7341e922ffae2a5bb-a76a113102a5ec7e9b23a420d5cfecb7bb2f1d1d5c70cf18a3ac0ee034933b58-a0423d295495848eeeb6f18a60ae47e6d6d9d30b8c3db9a9286c8fcf243a3815.json","source_sha256":"a76a113102a5ec7e9b23a420d5cfecb7bb2f1d1d5c70cf18a3ac0ee034933b58","runtime_source_sha256":"8f77ba026cfc83533a76a188de1df6792a6f68d9a3ca965401cc1386f1b14a7f","executable_sha256":"e86ec67a5435570e6152060f59b37b19e55e783eb0eb54a7341e922ffae2a5bb","build_log":"repair-dispatch-test-build.log"},
+  "runs": {
+    "cannibal_freeplay": {"run_id":"038c914a8bcc526e6160c630e19043be6a7e504d3cebb306c6dee0c48295dd0c","session":".userdata/openclaw_harness/bridge-sessions/selected-5d59e0ce9b3a41e19b5d39f29963d5f4","world":"McWilliams","semantic_trace":".userdata/harness-cannibal-freeplay/harness_runs/20260921_132735_a8640ba22b504af0869d9e9a1a14f0ac/semantic.native.events.jsonl"},
+    "persistence": {"run_id":"d66fa399a37ddbdf7618c0bea2e4a3b15e4d18c3113643b3bf243f45893cb989","binding_id":"69e5a7c43a1b52540a5b5a93cc9c68cf5421595aeffe17e6293e240bd94cd355","session":".userdata/openclaw_harness/bridge-sessions/selected-cbe9ac60845e4546841f1acaabb232d1","semantic_trace":".userdata/harness-living-persistence/harness_runs/20260921_133351_d0a920ba34b243c2a579a56c3cbfc585/semantic.native.events.jsonl","journal":"persistence-journal.json","witness":"persistence-witness-inconclusive.json"},
+    "activity_pause_repair_rerun": {"run_id":"7b64d473dbb3b7354a1f6638974105466dcb093129bbf9455b84fc5ebbf7d6c5","binding_id":"57a60251ef6c1a6d1eed62b9e7b176c2a421c740df2aab3fde6fe9fab28cde0e","game_pid":36926,"session":".userdata/openclaw_harness/bridge-sessions/repair-cancellation-20260921-c","semantic_trace":".userdata/harness-cannibal-freeplay/harness_runs/20260921_141851_6cfc83d74f3c4591b4f8294dd7308f2b/semantic.native.events.jsonl","activity_wait_descriptors":469,"activity_wait_frame_range":"7-481","activity_wait_game_minutes":"8220-9300","activity_pause_receipts":0,"pause_attempt_outcome":"stale_observation","quit_request":"play-20c11725af8240e8a695c99242783072","terminalization_state":"safe_to_cleanup"}
+  },
+  "key_receipts": [
+    {"request_id":"play-054e6e552ac9463bbc4d547bf3bff450","meaning":"World to Inventory"},
+    {"request_id":"play-25179c27669148b5ab46fb5b72c3aa34","meaning":"Inventory item details stable UID 3033"},
+    {"request_id":"play-861840b4ecef4321a4b515b5eb4a1464","meaning":"5-minute wait completion"},
+    {"request_id":"play-e7f0223030d14b3dad93705a14ef5383","meaning":"6-hour pending wait"},
+    {"request_id":"cancel-7cef2f06e12ff70ee84fa838b7e3bc85c483b1ff57626a9685d964da69a29edd","meaning":"cooperative cancellation"},
+    {"request_id":"play-c42f0da70c9d42dc942aecbc7ea36b4a","meaning":"post-cancel pause attempt; receipt timeout"},
+    {"request_id":"play-a58a68dc892746e581a441c1f9e0e01b","meaning":"changed-input wait.6h; accepted receipt exposed activity_wait owner"},
+    {"request_id":"play-6f4ab05268fa47f4bccd0cd584624b47","meaning":"activity.pause against stale frame; rejected stale_observation"}
+  ],
+  "tests": {"path":"focused-tests.log","result":"68 tests passed; repair-focused-tests-3.log adds 10 repair/cancellation/process-exit tests; exact C++ activity pause receipt case passes 11 assertions; Python owner/cancellation contract passes 5 tests","new_cpp_case":"tests/semantic_surface_test.cpp:155-197","new_python_contract":"tools/openclaw_harness/activity_resume_owner_test.py:26-29","broad_tag_note":"[semantic_surface] also reports two unrelated existing failures; exact new case is green"},
+  "repair_rerun": {"summary":"repair-rerun-summary.json","source":"src/do_turn.cpp:10121-10130","live_receipt":"unproven","changed_input_run":"bf8382ce6ec1e1713a8e5e6c88e6d8a79e3c9248f5dcb3a6edf2878597bf4970"},
+  "audit": {"report":"journey-audit.md","cost":"h-cost-comparison.json"}
+}

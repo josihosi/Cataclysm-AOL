@@ -1,0 +1,44 @@
+{
+  "as_of": "2026-09-20T19:59:43.655225+00:00",
+  "rows": [
+    {
+      "id": "01a0c060-a6f4-7ae2-ae1b-db23fb312be4",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T21-52-34-01a0c060-a6f4-7ae2-ae1b-db23fb312be4.jsonl",
+      "responses": 35,
+      "last_record": {
+        "line": 264,
+        "timestamp": "2026-09-20T19:59:11.464Z"
+      },
+      "input_tokens": 2677501,
+      "cached_input_tokens": 2558720,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10537,
+      "reasoning_output_tokens": 1799,
+      "total_tokens": 2688038,
+      "fresh_input_tokens": 118781
+    },
+    {
+      "id": "01a0c061-9f08-7ee2-b6a3-7edbd8864a73",
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/20/rollout-2026-09-20T21-53-38-01a0c061-9f08-7ee2-b6a3-7edbd8864a73.jsonl",
+      "responses": 17,
+      "last_record": {
+        "line": 142,
+        "timestamp": "2026-09-20T19:57:21.648Z"
+      },
+      "input_tokens": 1116896,
+      "cached_input_tokens": 1028864,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5313,
+      "reasoning_output_tokens": 1789,
+      "total_tokens": 1122209,
+      "fresh_input_tokens": 88032
+    }
+  ],
+  "totals": {
+    "fresh_input_tokens": 206813,
+    "cached_input_tokens": 3587584,
+    "output_tokens": 15850,
+    "total_tokens": 3810247
+  },
+  "limit": "Current review own-record prefix plus completed Luna helper. Final synthesis and closeout calls after this snapshot are uncounted; no billing estimate."
+}
