@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R043 quiet_repeat source-bound native control path preserves exact requests and receipts on a disposable save.",
+  "material_proof": "R043 immutable executable/source and frozen Python hashes; byte-exact R012-derived disposable save; same-run World; native advertised pause/autoattack, exact action request/response identities, turn/moves, owner, health and independent graceful process exit.",
+  "current_uncertainty": "Whether the new count repeat can advance exact native actions without duplicate input, false same-minute stall or uncontrolled continuation in a live game.",
+  "material_contradiction": [
+    "source or profile binding differs",
+    "world.pause or world.autoattack not advertised",
+    "receipt/request identity mismatch or duplicate request",
+    "unresolved pending reply followed by another press",
+    "rejection, menu/owner change, harm or no progress followed by another press",
+    "game or bridge process remains live after intended cleanup"
+  ],
+  "forbidden_shortcuts": [
+    "using repeat or autoattack in passive roof raid",
+    "synthetic frames as native gameplay proof",
+    "invented NPC damage or target",
+    "raw save rewrite after launch"
+  ],
+  "honest_stop_conditions": [
+    "focused native control result with exact receipts and graceful exit",
+    "first concrete control lifecycle gap retained with exact request and process identity"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -17,6 +17,37 @@ CLI = Path(__file__).with_name("play_cli.py")
 
 
 class PlayerCliTest(unittest.TestCase):
+    def test_optional_look_map_survives_pending_collect_without_extra_native_request(self):
+        pending = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                  "--wait-seconds", "0", "look", "--map"],
+                                 capture_output=True, text=True)
+        self.assertEqual(pending.returncode, 0, pending.stderr + pending.stdout)
+        self.assertIn("play collect --map", pending.stdout)
+        requests = self.requests()
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0]["request"], {"action": "game.observe"})
+        request_id = requests[0]["request_id"]
+        facts = {"avatar": json.dumps({"name": "Test00", "absolute_ms": [3158, 3449, 0]}),
+                 "minimap": json.dumps({"schema": "caol-native-minimap-v1", "radius": 12,
+                                        "cells": [{"dx": -3, "dy": -9, "visibility": "clear",
+                                                   "terrain": "closed wood door", "passable": False}]}),
+                 "visible_local": json.dumps([{"dx": 1, "dy": 0, "visibility": "clear", "terrain": "floor",
+                                                "furniture": "f_brazier", "fields": ["fd_smoke"]}]),
+                 "visible_entities": "[]"}
+        self.reply(request_id, {"ok": True, "result": {"observation_id": "run-a:frame:1",
+            "run_id": "run-a", "surface": {"kind": "world", "facts": facts, "actions": []}}})
+        collected = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                    "collect", "--map"], capture_output=True, text=True)
+        self.assertEqual(collected.returncode, 0, collected.stderr + collected.stdout)
+        self.assertIn("LOCAL MAP z=0", collected.stdout)
+        self.assertIn("D closed door", collected.stdout)
+        self.assertIn("S brazier with smoke", collected.stdout)
+        ordinary = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                   "collect"], capture_output=True, text=True)
+        self.assertEqual(ordinary.returncode, 0, ordinary.stderr + ordinary.stdout)
+        self.assertNotIn("LOCAL MAP", ordinary.stdout)
+        self.assertEqual(len(self.requests()), 1)
+
     def test_repeated_world_controls_refresh_on_changed_actions_and_generation(self):
         for generation, action, unchanged in ((0, "world.wait", False), (0, "world.wait", True),
                                               (0, "world.fire", False), (1, "world.fire", False)):
@@ -109,6 +140,40 @@ class PlayerCliTest(unittest.TestCase):
             "state": "starting", "bridge_pid": 123, "session_generation": 0}}),
             "Loading → play look")
 
+    def test_plain_startup_dialog_shows_exact_message_and_decision_boundary(self):
+        from gameplay_display import plain_player_output
+        dialog = {"state": "confirmed_debug_dialog", "pid": 61861,
+                  "birth_identity": "posix-lstart:Sat Sep 26 20:33:17 2026",
+                  "message": "parent location doesn't exist. Item_location has lost its target over a save/load cycle.",
+                  "source_file": "src/item_location.cpp", "source_line": 1012,
+                  "log_path": "/profile/config/debug.log", "log_byte_offset": 1234,
+                  "image_path": "/session/startup-dialog-captures/abc.png",
+                  "image_sha256": "a" * 64, "session": "/session", "run_id": "run-r014"}
+        text = plain_player_output({"ok": False, "status": {
+            "state": "process_dead", "reason": "startup_proof_red"},
+            "startup_dialog": dialog})
+        self.assertIn("parent location doesn't exist", text)
+        self.assertIn("src/item_location.cpp:1012", text)
+        self.assertIn("PID 61861", text)
+        self.assertIn("20:33:17", text)
+        self.assertIn("notify the coordinator asynchronously", text)
+        self.assertIn("debug-ignore --capture " + "a" * 64, text)
+        self.assertIn(".agents/skills/caol-harness/references/debug-errors.md", text)
+        self.assertNotIn("owner approval", text)
+        self.assertIn("No input sent", text)
+
+    def test_plain_loading_without_confirmed_dialog_does_not_offer_recovery_input(self):
+        from gameplay_display import plain_player_output
+        text = plain_player_output({"ok": False, "status": {"state": "starting"},
+            "startup_dialog": {"state": "loading_unknown", "pid": 42,
+                               "reason": "no_debug_dialog_confirmed"}})
+        self.assertIn("Loading", text)
+        self.assertIn("PID 42", text)
+        self.assertNotIn("one I/i", text)
+        preparing = plain_player_output({"ok": False, "status": {"state": "preparing"},
+            "startup_dialog": {"state": "loading_unknown", "pid": 43}})
+        self.assertIn("PID 43", preparing)
+
     def test_target_menu_prints_exact_action_and_target_together(self):
         from gameplay_display import _plain_controls
         text = _plain_controls([
@@ -157,6 +222,107 @@ class PlayerCliTest(unittest.TestCase):
             "target_delta_game_minutes": 5.0, "danger_handling": "ignore_danger_and_interruptions",
             "bound": {"basis": "game_mechanic", "source": "Player requested 5m",
                       "unit": "game_minutes", "maximum": 5.0, "progress_required": True}}})
+
+    def test_wait_guidance_names_each_observation_policy(self):
+        help_result = subprocess.run(
+            [sys.executable, str(CLI), "--session", str(self.session), "wait", "--help"],
+            capture_output=True, text=True, check=True,
+        ).stdout
+        guidance = " ".join(help_result.split())
+        self.assertIn("safe returns to inspect danger/damage", guidance)
+        self.assertIn("ignore continues through combat", guidance)
+        self.assertIn("stop: deliberately stops at each interruption", guidance)
+        self.assertIn("automatically ignores recognized typed activity distractions", guidance)
+        self.assertIn("thirst and weather changes", guidance)
+        self.assertIn("untyped or unknown distractions", guidance)
+        self.assertIn("independently known to be harmless", guidance)
+        self.assertIn("short command: ignore", help_result)
+        for spelling, expected in (
+            ("safe", "handle_classified_non_dangerous"),
+            ("ignore", "ignore_danger_and_interruptions"),
+            ("stop", "stop_on_interruption"),
+        ):
+            with self.subTest(spelling=spelling):
+                pending = self.cli("wait", "5m", spelling)
+                sent = next(row for row in self.requests() if row["request_id"] == pending["request_id"])
+                self.assertEqual(sent["request"]["wait"]["danger_handling"], expected)
+                self.reply(pending["request_id"], {"ok": True, "result": {"stop_reason": "target_reached"}})
+                self.cli("collect")
+
+    def test_prompt_ignore_uses_current_advertised_choice(self):
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "chatter-frame", "run_id": "run-a", "surface": {
+                "kind": "prompt", "facts": {"text": "In the way here mate! Stop waiting?"},
+                "actions": [{"id": "prompt.choose", "stable_id": "prompt-option:6",
+                             "label": "IGNORE", "enabled": True}]}}})
+        self.cli("collect")
+        chosen = self.cli("ignore")
+        sent = next(row for row in self.requests() if row["request_id"] == chosen["request_id"])
+        self.assertEqual(sent["request"]["action_id"], "prompt.choose")
+        self.assertEqual(sent["request"]["stable_id"], "prompt-option:6")
+
+    def test_retained_interrupt_prompt_cli_explains_and_uses_current_ignore_target(self):
+        fixture = json.loads((CLI.with_name("fixtures") / "r014_cli_native_responses.json")
+                             .read_text(encoding="utf-8"))["cases"]["interruption"]["response"]
+        current = fixture["current_input"]
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "retained-interruption", "run_id": "run-a", "surface": {
+                "kind": "prompt", "facts": current["facts_changed"], "actions": current["actions"]}}})
+        shown = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                "--wait-seconds", "0", "collect"], capture_output=True, text=True)
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertIn("NO → play no — continue this time", shown.stdout)
+        self.assertIn("IGNORE → play ignore — continue; ignore this distraction type", shown.stdout)
+        manager_target = next(action["stable_id"] for action in current["actions"]
+                              if action["label"] == "MANAGER")
+        self.assertIn("MANAGER → play act prompt.choose --target " + manager_target, shown.stdout)
+        chosen = self.cli("ignore")
+        sent = next(row for row in self.requests() if row["request_id"] == chosen["request_id"])
+        native_ignore = next(action["stable_id"] for action in current["actions"]
+                             if action["label"] == "IGNORE" and action["enabled"])
+        self.assertEqual(sent["request"]["stable_id"], native_ignore)
+
+    def test_diagnostics_before_or_after_subcommand_keeps_the_same_read_only_result(self):
+        base = [sys.executable, str(CLI), "--session", str(self.session), "--wait-seconds", "0"]
+        before = subprocess.run([*base, "--diagnostics", "controls"], capture_output=True, text=True)
+        after = subprocess.run([*base, "controls", "--diagnostics"], capture_output=True, text=True)
+        self.assertEqual(before.returncode, 0, before.stderr)
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertEqual(json.loads(before.stdout), json.loads(after.stdout))
+        observed_placement = subprocess.run([*base, "look", "--diagnostics"],
+                                            capture_output=True, text=True)
+        self.assertEqual(observed_placement.returncode, 0, observed_placement.stderr)
+        self.assertIn("state", json.loads(observed_placement.stdout))
+
+    def test_advertised_examine_opens_existing_native_menu_with_current_targets(self):
+        fixture = json.loads((CLI.with_name("fixtures") / "r014_cli_native_responses.json")
+                             .read_text(encoding="utf-8"))["cases"]["examine_menu"]["response"]
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "examine-world", "run_id": "run-a", "surface": {
+                "kind": "world", "facts": {}, "actions": [
+                    {"id": "world.look", "enabled": True},
+                    {"id": "world.examine", "enabled": True}]}}})
+        self.cli("collect")
+        opened = self.cli("act", "world.examine")
+        sent = next(row for row in self.requests() if row["request_id"] == opened["request_id"])
+        self.assertEqual(sent["request"]["action_id"], "world.examine")
+        menu = fixture["current_input"]
+        self.reply(opened["request_id"], {"ok": True, "result": {
+            "observation_id": "examine-menu", "run_id": "run-a", "surface": {
+                "kind": "menu", "facts": menu["facts_changed"], "actions": menu["actions"]}}})
+        shown = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                "--wait-seconds", "0", "collect"], capture_output=True, text=True)
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        current_target = next(action["stable_id"] for action in menu["actions"]
+                              if action["id"] == "menu.choose" and action["label"] == "Extinguish fire")
+        self.assertIn("Extinguish fire", shown.stdout)
+        self.assertIn(current_target.removeprefix("uilist-entry:"), shown.stdout)
+        chosen = self.cli("act", "menu.choose", "--target", current_target)
+        choice = next(row for row in self.requests() if row["request_id"] == chosen["request_id"])
+        self.assertEqual(choice["request"]["stable_id"], current_target)
 
     def test_plain_observation_preserves_facts_and_action(self):
         from gameplay_display import plain_player_output
@@ -1111,6 +1277,152 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("act", "world.wait", ok=False)
         self.cli("look")
         self.assertEqual(len(self.requests()), 3)
+
+    @staticmethod
+    def repeat_surface(action, *, owner="world", moves=1000, hp=100):
+        return {"kind": owner, "facts": {
+            "avatar_moves": moves,
+            "avatar_status": {"health": {"body_parts": {"torso": {"current": hp}}}},
+        }, "actions": [{"id": action, "stable_id": "", "enabled": True}] if owner == "world" else []}
+
+    def repeat_look(self, action="world.autoattack"):
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "observation_id": "repeat-frame-0", "run_id": "repeat-run", "game_turn": 100,
+            "game_minutes": 10, "avatar_moves": 1000,
+            "surface": self.repeat_surface(action)}})
+        self.cli("collect")
+
+    def repeat_reply(self, request_id, action="world.autoattack", *, step=1,
+                     owner="world", turn=None, moves=None, hp=100, accepted=True):
+        self.reply(request_id, {"ok": accepted,
+            "receipt": {"native_receipt": {"action_id": action, "accepted": accepted}},
+            "observation": {"observation_id": f"repeat-frame-{step}",
+                "run_id": "repeat-run", "game_turn": 100 + step if turn is None else turn,
+                "game_minutes": 10, "avatar_moves": 1000 if moves is None else moves,
+                "surface": self.repeat_surface(action, owner=owner,
+                                               moves=1000 if moves is None else moves, hp=hp)}})
+
+    def test_repeat_validates_action_and_count_before_any_request(self):
+        for args in (("world.wait", "--count", "10"), ("world.pause", "--count", "0"),
+                     ("world.autoattack", "--count", "-1"), ("world.pause",)):
+            self.assertEqual(self.cli("repeat", *args, ok=False)["error"],
+                             "repeat_requires_pause_or_autoattack_and_positive_count")
+        self.assertEqual(self.requests(), [])
+
+    def test_repeat_ten_ordered_autoattacks_collects_each_exact_receipt(self):
+        self.repeat_look()
+        result = self.cli("repeat", "world.autoattack", "--count", "10")
+        ids = []
+        for step in range(1, 11):
+            self.assertEqual(result["state"], "pending")
+            request_id = result["outstanding_request_id"]
+            ids.append(request_id)
+            requests = [item for item in self.requests() if item["request"].get("action") == "game.act"]
+            self.assertEqual(len(requests), step)
+            sent = next(item for item in requests if item["request_id"] == request_id)
+            self.assertEqual(sent["request"]["action_id"], "world.autoattack")
+            self.assertEqual(sent["request"]["observation_id"], f"repeat-frame-{step-1}")
+            self.repeat_reply(request_id, step=step)
+            result = self.cli("repeat", "--resume")
+        self.assertEqual(result["state"], "completed")
+        self.assertEqual(result["completed_count"], 10)
+        self.assertEqual(result["unused_count"], 0)
+        self.assertEqual(result["first_native_turn"], 100)
+        self.assertEqual(result["last_native_turn"], 110)
+        self.assertEqual([item["request_id"] for item in result["receipt_handles"]], ids)
+        self.assertEqual(len(set(ids)), 10)
+
+    def test_repeat_short_action_progresses_on_moves_without_a_new_minute_or_turn(self):
+        self.repeat_look("world.pause")
+        pending = self.cli("repeat", "world.pause", "--count", "2")
+        self.repeat_reply(pending["outstanding_request_id"], "world.pause", step=1,
+                          turn=100, moves=900)
+        next_step = self.cli("repeat", "--resume")
+        self.assertEqual(next_step["completed_count"], 1)
+        self.assertEqual(next_step["state"], "pending")
+        self.repeat_reply(next_step["outstanding_request_id"], "world.pause", step=2,
+                          turn=100, moves=800)
+        complete = self.cli("repeat", "--resume")
+        self.assertEqual(complete["completed_count"], 2)
+        self.assertEqual(complete["state"], "completed")
+
+    def test_repeat_stops_on_menu_change_harm_and_no_effect(self):
+        for owner, hp, turn, moves, state, reason in (
+                ("menu", 100, 101, 1000, "interrupted", "owner_changed"),
+                ("world", 90, 101, 1000, "interrupted", "avatar_harm"),
+                ("world", 100, 100, 1000, "failed", "native_action_progress_unproved")):
+            with self.subTest(reason=reason):
+                self.repeat_look()
+                pending = self.cli("repeat", "world.autoattack", "--count", "10")
+                before_count = len(self.requests())
+                self.repeat_reply(pending["outstanding_request_id"], owner=owner, hp=hp,
+                                  turn=turn, moves=moves)
+                stopped = self.cli("repeat", "--resume", ok=state != "failed")
+                self.assertEqual(stopped["state"], state)
+                self.assertEqual(stopped["stop_reason"], reason)
+                self.assertEqual(len(self.requests()), before_count)
+                # Clear this test's retained operation before the next subcase.
+                self.state_path = self.session / "play-client.json"
+                self.state_path.unlink()
+
+    def test_repeat_pending_collect_and_process_restart_do_not_duplicate_input(self):
+        self.repeat_look()
+        pending = self.cli("repeat", "world.autoattack", "--count", "2")
+        request_id = pending["outstanding_request_id"]
+        durable = json.loads((self.session / "play-client.json").read_text())
+        self.assertEqual(durable["repeat"]["requested_count"], 2)
+        self.assertEqual(durable["repeat"]["completed_count"], 0)
+        self.assertEqual(durable["repeat"]["outstanding"]["request_id"], request_id)
+        self.assertEqual(self.cli("repeat", "world.autoattack", "--count", "2", ok=False)["error"],
+                         "repeat_in_progress_use_repeat_resume_or_abort")
+        still_pending = self.cli("repeat", "--resume")
+        self.assertEqual(still_pending["outstanding_request_id"], request_id)
+        self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 1)
+        self.repeat_reply(request_id, step=1)
+        self.cli("collect", "--request-id", request_id)
+        restarted = self.cli("repeat", "--resume")
+        self.assertEqual(restarted["completed_count"], 1)
+        self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 2)
+        self.repeat_reply(restarted["outstanding_request_id"], step=2)
+        complete = self.cli("repeat", "--resume")
+        self.assertEqual(complete["state"], "completed")
+        self.assertEqual(complete["completed_count"], 2)
+
+    def test_repeat_cancelled_request_stops_without_another_press(self):
+        self.repeat_look()
+        pending = self.cli("repeat", "world.autoattack", "--count", "10")
+        request_id = pending["outstanding_request_id"]
+        (self.session / "controls").mkdir()
+        self.write("status.json", {"binding_id": "bound-a", "state": "awaiting_response",
+                                   "inflight_request_id": request_id, "session_generation": 0,
+                                   "session_descriptor": {"run_id": "repeat-run"}})
+        self.write("active-request.json", {"request_id": request_id, "binding_id": "bound-a",
+                                            "run_id": "repeat-run", "session_generation": 0})
+        self.cli("cancel")
+        self.reply(request_id, {"ok": False, "error": "player_cancelled",
+            "failure": {"unused_authority": "revoked"},
+            "receipt": {"native_receipt": {"action_id": "world.autoattack", "accepted": False}}})
+        stopped = self.cli("repeat", "--resume")
+        self.assertEqual(stopped["state"], "interrupted")
+        self.assertEqual(stopped["completed_count"], 0)
+        self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 1)
+
+    def test_repeat_rejection_and_stale_binding_cannot_issue_successor(self):
+        self.repeat_look()
+        pending = self.cli("repeat", "world.autoattack", "--count", "3")
+        request_id = pending["outstanding_request_id"]
+        self.repeat_reply(request_id, accepted=False)
+        stopped = self.cli("repeat", "--resume")
+        self.assertEqual(stopped["state"], "interrupted")
+        self.assertEqual(stopped["completed_count"], 0)
+        self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 1)
+        (self.session / "play-client.json").unlink()
+        self.repeat_look()
+        self.write("status.json", {"binding_id": "other", "state": "ready"})
+        stale = self.cli("repeat", "world.autoattack", "--count", "3", ok=False)
+        self.assertEqual(stale["stop_reason"], "stale_world_authority")
+        self.assertEqual(len([item for item in self.requests() if item["request"].get("action") == "game.act"]), 1)
 
 
 if __name__ == "__main__":

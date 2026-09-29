@@ -1,0 +1,177 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r041_roof_response_checkpoint_20260929",
+  "description": "R041 stage 1 native continuation from exact min9065 roof report: identify the newly reserved hostile response party and preserve a pre-sleep/pre-harm checkpoint.",
+  "profile": "first-smoke-041-r041-roof-response-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r037_r035_roof_watch": "r035_min8720_both_typed_roof_signals_native_safe_wait_assessment_report_response",
+    "capabilities.r_caol.first_smoke_011_r041_roof_response": "r041_min9065_roof_report_actual_response_reservation_pre_harm_checkpoint"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-041-r041-roof-response-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-041/immutable-executable/51db3b207c1ab26d71accebd4d90699bf0ab19e707755cb4d881cd5be24773b4/cataclysm-tiles",
+      "profile": "first-smoke-041-r041-roof-response-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_min9065_roof_report_into_fresh_r041_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the fresh byte-exact 61-file copy of R037 turn5295904/min9065; verify R041 immutable executable and frozen R043 Python runtime, effective relative userdir, same-run World, Safe Off, no clairvoyance or pending input, current weather/fire and the generation1 report revision1 with scout IDs4/5. Do not assume new response IDs."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_min9065_native_world_r041",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r041_stage1_native_roof_response_reservation_checkpoint",
+      "objective": "Advance only with individual native controls until the existing roof report yields a new response reservation. Record actual operation/member IDs, actor capability/ownership/route, player/fire state and saved turn. Quicksave and make a full byte-exact save copy plus manifest immediately after the actual response pair is known and before either sleeps or takes harm; then finish and close this stage.",
+      "proof_targets": [
+        "61/61 disposable save files match the original R037 manifest and use the fresh R041 profile; same-run World at turn5295904/min9065 and R041 executable identity",
+        "Safe Off, no clairvoyance, current weather/fire, stationary player, report revision1 target/source [131,143,1] and camp anchor [135,137,0]",
+        "actual newly reserved response actor IDs, operation ID/source, phase/owner/route/route cursor, and native actor position/goals before sleep or harm",
+        "confirmed quicksave turn and a second full save-directory copy whose manifest verifies all files byte-for-byte before first sleep/harm",
+        "graceful game/bridge/launcher close with PID/birth and OS exit evidence"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the fresh disposable exact min9065 copy; never mutate original R037 save or R040 evidence",
+        "Do not relight, repeat scouting, redeliver/seed report, change roster/power/HP/map, use clairvoyance, or manufacture outcomes/prompts",
+        "Keep report roof target/source [131,143,1] distinct from physical route endpoint; camp anchor [135,137,0]",
+        "Use individual native controls; no raw TAB or autoattack; collect pending requests before new input",
+        "Stop and make the checkpoint immediately when the actual response pair appears, before sleep or harm; do not infer new IDs from R040"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_min9065_roof_report_into_fresh_r041_profile",
+      "bind_same_run_min9065_native_world_r041"
+    ],
+    "production_behavior": [
+      "r041_stage1_native_roof_response_reservation_checkpoint"
+    ],
+    "terminal_persistence": [
+      "r041_stage1_native_roof_response_reservation_checkpoint"
+    ],
+    "artifact_verdict": [
+      "r041_stage1_native_roof_response_reservation_checkpoint"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_min9065_roof_report_into_fresh_r041_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R041 stage 1: continue the exact saved roof report until its new hostile response pair is reserved, then preserve a full byte-exact checkpoint before sleep or harm.",
+    "failure_rule": "Do not reuse historical R040 IDs or treat a phase/route projection as actor movement. A checkpoint after sleep/harm does not meet the stage boundary."
+  },
+  "raid_actor_trace": false
+}

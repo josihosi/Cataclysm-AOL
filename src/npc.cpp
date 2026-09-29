@@ -2220,6 +2220,29 @@ void npc::clear_bandit_live_world_projection_lease()
     bandit_live_world_projection_lease.clear();
 }
 
+void sync_bandit_live_world_projection_lease_copies(
+    npc &member, const bandit_live_world_projection_lease &lease )
+{
+    const auto apply = [&lease]( npc &target ) {
+        if( lease.present ) {
+            target.set_bandit_live_world_projection_lease( lease );
+        } else {
+            target.clear_bandit_live_world_projection_lease();
+        }
+    };
+    apply( member );
+    const shared_ptr_fast<npc> persistent = overmap_buffer.find_npc( member.getID() );
+    if( persistent && persistent.get() != &member ) {
+        apply( *persistent );
+    }
+    if( g ) {
+        npc *active = g->find_npc( member.getID() );
+        if( active != nullptr && active != &member && active != persistent.get() ) {
+            apply( *active );
+        }
+    }
+}
+
 void npc::mutiny()
 {
     const map &here = get_map();

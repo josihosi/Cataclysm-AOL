@@ -1,0 +1,176 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r021_viewer_min8406_raid_continuation_20260928",
+  "description": "Separate R021 viewer run from a byte-exact disposable copy of the saved min8406/turn5256372 state; both clairvoyance mutations and maintained fire are checkpoint context. Native night eligibility already occurred; observe remaining raid actors/defenders and continue to actual combat or first persistent divergence.",
+  "profile": "first-smoke-021-clean-closed-viewer-min8406-continuation-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r021_viewer_min8406_continuation": "dual_clair_viewer_saved_turn5256372_minute8406_new_run_continuation"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-021-clean-closed-viewer-min8406-continuation-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-021/immutable-executable/8179a770d8f3fa976d1d72025624ad266104bcaf38c8e613cb658b3ecd7e1819/cataclysm-tiles",
+      "profile": "first-smoke-021-clean-closed-viewer-min8406-continuation-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_disposable_saved_min8406_viewer_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable full-profile copy in build_logs/first-smoke-021/r021-viewer-min8406-continuation-copy-manifest.json; verify same-run World at native turn5256372/minute8406, Safe Off, both saved DEBUG_CLAIRVOYANCE IDs, active brazier fire, and hostile operation/actors as checkpoint context. The source run ended at 20:06 after the native night gate."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms_or_debug_changes",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No fixture transforms, debug grants, signal/fire edits, or mutation changes. Resume only the byte-exact saved viewer state."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r021_saved_viewer_min8406_raid_continuation",
+      "objective": "Continue the saved dual-clair viewer state from turn5256372/minute8406 on a byte-exact disposable profile using the exact R021 build. This is a new run from a saved checkpoint. Night already passed in the source run; first inspect current calendar, fire, active mutations, hostile operation and physical actors. Follow same saved IDs8/9 and defenders2/3 through useful longer native safe intervals and any actual local combat/damage/outcome.",
+      "proof_targets": [
+        "71/71 full userdir and 55/55 saved-world files byte-identical to the source profile; exact save payload SHA and turn5256372; effective userdir and R021 executable/source binding",
+        "same-run World at loaded turn5256372/minute8406; Safe Off; both DEBUG_CLAIRVOYANCE IDs active; persisted brazier/fire and hostile operation state confirmed after load",
+        "prior smoke/lead/reservation is checkpoint provenance only; no replay or transfer of the ordinary-view branch",
+        "same saved IDs8/9 and defenders2/3 physical positions, goal/path/mission, action/target/HP; detect actual action/damage or persistent contradiction with the abstract operation",
+        "longer safe native waits from the already-past-night-gate state, meaningful saves on movement/action/health/operation changes, exact lifecycle and cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Do not relaunch a clean smoke start or replay smoke/scout/report setup; continue only the exact saved min8406 checkpoint",
+        "Keep both clairvoyance mutations and maintained fire as saved; no new mutation or debug setup",
+        "No signal/contact/report/dispatch/fire/light injection, hostile teleport, cloak, invulnerability, or debug hostile kill",
+        "Track native actor IDs and saved roster/positions; phase labels and visibility are not contact or attack proof",
+        "Use longer safe waits when the saved state is safe; stop/inspect at actual danger, harm, actor action, or material operation transition",
+        "Do not claim uninterrupted session continuity; this is a new run using a byte-exact saved checkpoint"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_disposable_saved_min8406_viewer_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r021_saved_viewer_min8406_raid_continuation"
+    ],
+    "terminal_persistence": [
+      "r021_saved_viewer_min8406_raid_continuation"
+    ],
+    "artifact_verdict": [
+      "r021_saved_viewer_min8406_raid_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms_or_debug_changes"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue R021 dual-clair viewer state from exact saved turn5256372/minute8406 in a new run and establish same-ID remaining actor/defender interactions, actual harm/action or first persistent divergence. Night gate already passed in source run.",
+    "failure_rule": "Current-run credit requires same-run loaded state, active saved mutation/fire status, exact actor metadata and actual native actions/damage; do not claim daytime remained or that this is uninterrupted reentry."
+  }
+}

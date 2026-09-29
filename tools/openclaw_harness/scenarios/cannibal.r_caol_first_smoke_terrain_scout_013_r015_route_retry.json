@@ -1,0 +1,140 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_terrain_scout_013_r015_route_retry",
+  "description": "Continue the byte-exact minute8760/turn5277658 source-off forest-v2 copy on reviewed R015 routing. Observe the first eligible scheduler pass at/after9540, then follow the selected same-ID outing through physical endpoint, return/report and actual cargo.",
+  "profile": "first-smoke-015-forest-v2-native-handoff-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r015_route_retry": "minute8760_forest_v2_bounded_sector_and_intermediate_retry"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-015-forest-v2-native-handoff-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-015/immutable-executable/bbd28f5d93f1a53c62dcb671920af074f345660584fa13c1e73bd7923b99a44a/cataclysm-tiles",
+      "profile": "first-smoke-015-forest-v2-native-handoff-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_forest_v2_minute8760_source_off_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load relative profile first-smoke-015-forest-v2-native-handoff-20260927 from the 55-file byte-exact disposable copy. Verify effective userdir, the native World/current saved turn 5277658 (minute8760), schema migration, safe mode Off, DEBUG_LS, no pending input and no active fire/smoke. Start from camp@130,138 with actors4/5 eligible, 6 reserve, no active outing, supply32, need band333, route budget24, frontier cursor0, next eligible scheduler minute9540. Preserve the source profile and earlier road/no-fire runs."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_route_retry_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "first_eligible_bounded_route_retry_and_actor_outcome",
+      "cleanup_on_finish": true,
+      "objective": "Continue the source-off minute8760/turn5277658 copy without replaying signal admission. After verifying effective userdir, World/turn, schema migration, Safe mode Off, DEBUG_LS, no pending request and fire/smoke absent, advance with saved checkpoints to the first eligible scheduler pass at or after minute9540. Resolve the first question from bound harness-only candidate/route diagnostics: after sector0 cost50 rejection, does the bounded search reach another sector, an intermediate route, or a known lead? Preserve every candidate, attempted route solve, normalized cost and rejection reason. If actors4/5 dispatch (track reserve6 too), follow selected IDs through actual physical target or legitimate watch endpoint, home return/report, and only real inventory/cargo/supply credit. Do not count a watch as scavenge or inject any lead, knowledge, route, outing, report, target or dispatch.",
+      "proof_targets": [
+        "verify relative effective profile, exact save identity/hash, same-run World/turn, schema migration, Safe mode Off, DEBUG_LS, no pending input and current fire/smoke absence",
+        "at first eligible pass >=9540 bind actual supply/need-age/route budget and candidate ranking; answer whether bounded search moves beyond sector0 cost50 to an alternate sector/intermediate/known lead",
+        "capture harness-only route search index, each sector/radius/target, normalized route cost, solve-budget use and precise rejection/acceptance reason",
+        "follow actual selected actor IDs4/5 and reserve6, mission/path, endpoint tile, physical observations, position/action and actual cargo/inventory/supply delta",
+        "save fresh native turns at dispatch, meaningful travel/endpoint, return and report; separate watch from scavenging",
+        "monitor native turn timing and gracefully close every owned PID/birth"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "only the disposable minute8760 forest-v2 copy is live; preserve the source profile, R012 unlit control and prior R013 road returns",
+        "fire/smoke remains absent and DEBUG_LS remains unchanged; do not replay the signal bootstrap",
+        "no clairvoyance, inserted knowledge/leads/actors/outings/reports/routes/targets/dispatches, forced movement, or raw save rewriting",
+        "planned routes and watch endpoints do not count as physical visits; a watch is not a scavenge and cargo credit requires actual inventory/haul evidence",
+        "use immutable R015 executable only with the matching source-binding receipt; preserve any load/migration fault and stop if it recurs"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_forest_v2_minute8760_source_off_copy",
+      "bind_same_run_route_retry_world"
+    ],
+    "production_behavior": [
+      "first_eligible_bounded_route_retry_and_actor_outcome"
+    ],
+    "terminal_persistence": [
+      "first_eligible_bounded_route_retry_and_actor_outcome"
+    ],
+    "artifact_verdict": [
+      "first_eligible_bounded_route_retry_and_actor_outcome"
+    ],
+    "disallowed_shortcuts": [
+      "load_forest_v2_minute8760_source_off_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On the byte-exact minute8760/turn5277658 source-off forest-v2 copy and reviewed R015 build, observe the first eligible >=9540 scheduler pass after sector0 route rejection. Determine whether bounded search reaches an alternate sector, intermediate route or known lead, then follow any natural same-ID outing through physical endpoint, return/report and actual cargo/supply accounting.",
+    "failure_rule": "Confirm relative userdir, native World and turn, save identity/migration, Safe mode Off, DEBUG_LS, no pending input and signal-off state before elapsed time. Preserve candidate ranking, search cursor, route costs and rejection reasons at the first eligible pass. Require actor IDs and physical route/endpoint evidence; a watch is not scavenge. Credit cargo only from native item/haul/supply changes. Stop at the first causal route, load or actor divergence; never inject or force state."
+  }
+}

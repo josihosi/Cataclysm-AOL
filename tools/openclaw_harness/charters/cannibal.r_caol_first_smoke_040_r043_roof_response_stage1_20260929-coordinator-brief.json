@@ -1,0 +1,32 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-040",
+  "scenario": "cannibal.r_caol_first_smoke_040_r043_roof_response_stage1_20260929",
+  "objective": "Continue the exact R037 minute9065 roof report on a disposable R041 61-file copy using the R043 immutable source-bound executable. Identify the response party’s actual reserved actor IDs, operation and route, then retain a genuine pre-sleep/pre-harm quicksave for a second selected-raider replay. Keep the passive raid free of autoattack and repeat.",
+  "outcome": "The source-bound R043 roof continuation from the exact R037 minute9065 save exposes its actual response member IDs before harm and retains a genuine checkpoint for selected R041 trace replay.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_040_r043_roof_response_stage1_20260929-witness.json",
+  "constraints": [
+    "Use only relative profile first-smoke-041-r041-roof-response-20260929; its unmodified 61-file save has dimension_data.gsav SHA0555a767615282d8c079165da468e1bb745854805c4b9be5b8ce4606a3cf502e at minute9065/turn5295904.",
+    "Use executable build_logs/first-smoke-043/immutable-executable/5dfe58757ac4ae09b428af3854917ac565009075c1a348693ff2bb7b00c99fd2/cataclysm-tiles and inspect build_logs/first-smoke-043/source-binding.json before launch.",
+    "R041 selected trace hooks and interval reader are byte unchanged; stage one must discover actual response IDs before selecting them in a separate checkpoint replay.",
+    "No concurrent game input owner, no injected signal/report/actor/route, no clairvoyance, no autoattack or count repeat in this passive arm.",
+    "Save genuine native turn and profile bytes before first sleep/harm if possible; gracefully close and verify game, bridge and launcher PID/birth/exit."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r040_r043_roof_response",
+        "op": "eq",
+        "value": "min9065_actual_response_ids_pre_harm_checkpoint",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,279 @@
+{
+  "schema": "caol-r014-retained-native-cli-response-fixture-v1",
+  "source_transcript": "/Users/josefhorvath/.codex/sessions/2026/09/26/rollout-2026-09-26T20-03-58-01a0dee3-6056-7183-b8c0-98f14f2091ff.jsonl",
+  "cases": {
+    "examine_menu": {
+      "source_jsonl_line": 2612,
+      "source_stdout_sha256": "d91f1cfb3f08d89aca2774a81dd382b5e896b52d118a88b38d59bf3cc96c2868",
+      "response": {
+        "current_input": {
+          "owner": "menu",
+          "source_selector": "result",
+          "actions_selector": "result.surface.actions",
+          "view": "full",
+          "breadcrumbs": [
+            "World",
+            "Select an action"
+          ],
+          "actions": [
+            {
+              "id": "menu.select",
+              "stable_id": "uilist-entry:66",
+              "label": "Extinguish fire",
+              "enabled": true
+            },
+            {
+              "id": "menu.choose",
+              "stable_id": "uilist-entry:66",
+              "label": "Extinguish fire",
+              "enabled": true
+            },
+            {
+              "id": "menu.select",
+              "stable_id": "uilist-entry:67",
+              "label": "Take down the brazier",
+              "enabled": true
+            },
+            {
+              "id": "menu.choose",
+              "stable_id": "uilist-entry:67",
+              "label": "Take down the brazier",
+              "enabled": true
+            },
+            {
+              "id": "menu.filter",
+              "label": "Filter",
+              "enabled": true
+            },
+            {
+              "id": "menu.cancel",
+              "label": "Cancel",
+              "enabled": true
+            }
+          ],
+          "navigation": [
+            {
+              "id": "menu.cancel",
+              "label": "Cancel",
+              "enabled": true
+            }
+          ],
+          "facts_changed": {
+            "filter": "",
+            "filter_required": "false",
+            "filtered_entry_count": "2",
+            "selected_stable_id": "uilist-entry:66",
+            "text": "Select an action",
+            "title": ""
+          },
+          "facts_removed": []
+        },
+        "outcome": {
+          "ok": true
+        },
+        "authority": {
+          "run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+          "observation_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:64"
+        },
+        "game_minutes": {
+          "before": 7741,
+          "after": 7741
+        },
+        "game_turn": {
+          "before": 5216491,
+          "after": 5216491
+        }
+      }
+    },
+    "interruption": {
+      "source_jsonl_line": 3430,
+      "source_stdout_sha256": "89157375ec0958651e775bffad8d65aa6582e2c9d6846f66e41c37cd4bfdabb7",
+      "response": {
+        "current_input": {
+          "owner": "prompt",
+          "source_selector": "result",
+          "actions_selector": "result.surface.actions",
+          "view": "full",
+          "breadcrumbs": [
+            "Activity distraction",
+            "CANCEL_ACTIVITY_OR_IGNORE_QUERY"
+          ],
+          "actions": [
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:27",
+              "label": "YES",
+              "enabled": true
+            },
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:28",
+              "label": "NO",
+              "enabled": true
+            },
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:29",
+              "label": "MANAGER",
+              "enabled": true
+            },
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:30",
+              "label": "IGNORE",
+              "enabled": true
+            }
+          ],
+          "navigation": [],
+          "facts_changed": {
+            "text": "<color_light_red>Heard Casey Bolton saying \"Out of the way, my brother-in-arms! Stop waiting? (Case Sensitive)</color>",
+            "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY"
+          },
+          "facts_removed": []
+        },
+        "outcome": {
+          "ok": true
+        },
+        "authority": {
+          "run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+          "observation_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:133"
+        },
+        "game_minutes": {
+          "before": 7753,
+          "after": 7753
+        },
+        "game_turn": {
+          "before": 5217222,
+          "after": 5217222
+        }
+      }
+    },
+    "save_quit": {
+      "source_jsonl_line": 3675,
+      "source_stdout_sha256": "58f41cf3ba0f31dc068566ea078f70b74aa476bca99d1eea7864e98c98e508dd",
+      "response": {
+        "current_input": {
+          "owner": "prompt",
+          "source_selector": "observation",
+          "actions_selector": "observation.surface.actions",
+          "view": "full",
+          "breadcrumbs": [
+            "World",
+            "YESNO"
+          ],
+          "actions": [
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:31",
+              "label": "YES",
+              "enabled": true
+            },
+            {
+              "id": "prompt.choose",
+              "stable_id": "prompt-option:32",
+              "label": "NO",
+              "enabled": true
+            }
+          ],
+          "navigation": [],
+          "facts_changed": {
+            "text": "Save and quit? (Case Sensitive)",
+            "title": "YESNO"
+          },
+          "facts_removed": [
+            "avatar",
+            "avatar_effects",
+            "avatar_status",
+            "current_site_camp",
+            "current_site_camp_storage",
+            "diagnostic_active_monsters",
+            "diagnostic_zombie_rider_bands",
+            "diagnostic_zombie_rider_light_memory",
+            "hostile_contact_members",
+            "last_debug_intervention",
+            "last_save_checkpoint",
+            "last_save_result",
+            "messages",
+            "minimap",
+            "overmap",
+            "staffed_camp_signal_leads",
+            "structural_outing_owner",
+            "structural_signal_dispatch",
+            "visible_entities",
+            "visible_local",
+            "visible_zones",
+            "world_mode"
+          ]
+        },
+        "outcome": {
+          "ok": true,
+          "expected_postcondition": "matching_native_receipt_and_fresh_observation",
+          "evidence_effect": "native_transition_receipt_persisted",
+          "operation": {
+            "schema": "caol-native-operation-v1",
+            "kind": "wait",
+            "state": "completed",
+            "run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+            "binding_id": "ffd12aad1109ee7b5bd3f9f9f02f86283c92e877461c4f6f1ff41a62c4ced057",
+            "request_identity": {
+              "request_id": "cockpit:harness-d20331963c104ffb905171e0786c7c59:ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106:wait.30m:59525e1979fb95ac",
+              "observation_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106",
+              "action_id": "wait.30m"
+            },
+            "accepted_receipt": {
+              "event": "surface_receipt",
+              "run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+              "process_instance": "1790449637756325",
+              "sequence": 589,
+              "game_minutes": 7750,
+              "game_turn": 5217034,
+              "wall_time": 1790452420257,
+              "request_id": "cockpit:harness-d20331963c104ffb905171e0786c7c59:ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106:wait.30m:59525e1979fb95ac",
+              "requested_run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+              "requested_surface_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:surface:106",
+              "requested_frame_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106",
+              "consuming_surface_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:surface:106",
+              "consuming_frame_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106",
+              "action_id": "wait.30m",
+              "accepted": true,
+              "rejection_reason": "",
+              "resulting_frame_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:107",
+              "outcome": "",
+              "frame_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:106"
+            },
+            "start_game_minutes": 7750.0,
+            "requested_duration_game_minutes": 30.0,
+            "requested_target_game_minutes": null,
+            "completed_progress_game_minutes": 30.0,
+            "interruption_policy": "native_authority_required",
+            "outcome_unknown_on_reconnect": true,
+            "evidence_handles": [
+              "semantic.steps.jsonl#receipt=91",
+              "transition.events.jsonl#sequence=93"
+            ],
+            "performance": {
+              "status": "retained_by_public_collect"
+            },
+            "current_input_owner": "prompt",
+            "current_input_actions": [
+              "prompt.choose",
+              "prompt.choose"
+            ],
+            "blocker": "native_authority_required"
+          },
+          "native_receipt": {
+            "request_id": "cockpit:harness-d20331963c104ffb905171e0786c7c59:ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:137:world.save_quit:59525e1979fb95ac",
+            "action_id": "world.save_quit",
+            "accepted": true,
+            "rejection_reason": "",
+            "outcome": ""
+          }
+        },
+        "authority": {
+          "run_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59",
+          "observation_id": "ff3987fb4ce93f4fbb5b823816321349e24dbb3a3aa1fdde5a2c9daa7f806b59:frame:138"
+        }
+      }
+    }
+  }
+}

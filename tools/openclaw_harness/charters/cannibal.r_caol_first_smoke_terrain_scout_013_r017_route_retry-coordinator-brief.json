@@ -1,0 +1,39 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-013",
+  "scenario": "cannibal.r_caol_first_smoke_terrain_scout_013_r017_route_retry",
+  "objective": "Continue only the byte-exact source-off minute8760/turn5277658 R013 profile using reviewed R017. First eligible scheduler pass is due at/after9540. Determine from bound harness-only route diagnostics whether sector0 rejection reaches an alternate sector, intermediate route, or known lead within the bounded solve budget. Follow selected IDs4/5/6 through actual physical endpoint/watch, same-ID home return/report and honest cargo/supply; watch is not scavenge. Preserve R012 no-fire and prior road proof.",
+  "outcome": "On the byte-exact R013 forest-v2 signal-off save and reviewed R017 executable, the first eligible scheduler pass explores a bounded alternate sector/intermediate/known route after sector0 rejection. Follow any natural same-ID outing through physical endpoint, return/report, and actual cargo or supply accounting.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_terrain_scout_013_r017_route_retry-witness.json",
+  "constraints": [
+    "Use only relative profile first-smoke-015-forest-v2-native-handoff-20260927 and verify its exact effective userdir/save identity/turn before input.",
+    "Use only immutable R017 executable SHA 4e801d7856c219dd7212cbc9c48f88080999921851e2f36e97bbae317bcc2a43 with matched receipt SHA 8e83caf24aef27848bb31602759f9e93bc78104e0e7163b5a088fa353d547083 and source SHA 525e7cb95328ec19149dfe250367456dc7e70354f638810790fe524f294a40fb.",
+    "Preserve R011, R012, source forest-v2 profile and previous road returns; do not replay signal admission.",
+    "Before gameplay verify same-run World and saved turn/schema migration, Safe mode Off, DEBUG_LS, no pending control, fire/smoke absent, and actual roster IDs4/5/6.",
+    "No forced outing, route, target, knowledge, report or dispatch; do not count a watch as scavenge.",
+    "Use fresh saved turns and actual same-ID metadata for route, visit, return/report and inventory/haul/supply deltas; close exact owned process identities."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.r017_route_retry",
+        "op": "eq",
+        "value": "minute8760_forest_v2_bounded_sector_and_intermediate_retry",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

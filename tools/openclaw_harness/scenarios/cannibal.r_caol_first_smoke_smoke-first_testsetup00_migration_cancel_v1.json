@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "cannibal.r_caol_first_smoke_smoke-first_testsetup00_migration_cancel_v1",
-  "description": "Task-scoped smoke-first versus first-light native cannibal behavior on a copied closed-window TestSetup00 with a zero-credit transplanted camp footprint. Disposable-copy only: Tilda id=2 pending ACT_MOVE_LOOT actor removed to use the current save loader’s documented ACT_MIGRATION_CANCEL compatibility path; setup earns no behavior credit.",
+  "description": "Smoke-first native cannibal behavior on a copied closed-window TestSetup00 with a zero-credit transplanted camp footprint. The ground-floor z=0 indoor source exposes smoke, not exterior light; rooftop or open-window light needs a separate verified route. Disposable-copy only: Tilda id=2 pending ACT_MOVE_LOOT actor removed to use the current save loader’s documented ACT_MIGRATION_CANCEL compatibility path; setup earns no behavior credit.",
   "profile": "first-smoke-r-caol-001-smoke-migration-v2",
   "world": "TestSetup00",
   "fixture": "first_smoke_smoke-first_testsetup00_migration_cancel_v1",

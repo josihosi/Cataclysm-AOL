@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from cockpit_archive import ArchiveSequence, is_sequence, json_chunks, resolve_wire
 from cockpit_memory_profile import snapshot as memory_snapshot, released as memory_released
+from harness_log_window import roll_bound_session_logs
 
 import argparse
 import hashlib
@@ -22,6 +23,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from typing import Any, Mapping, Sequence
@@ -34,6 +36,10 @@ except ImportError:
 
 SCHEMA = "caol-cockpit-file-bridge-v1"
 TERMINALIZATION_SIGNAL = "cockpit.bridge.safe_to_cleanup.json"
+
+
+class _ExplicitPreDescriptorCleanup(Exception):
+    """The bound owner requested controller cleanup before public admission."""
 
 
 def _digest(value: bytes) -> str:
@@ -58,9 +64,14 @@ def _tree_digest(root: Path) -> str:
 
 
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, path)
+    fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _json_request_shape(value: Any) -> Any:
@@ -190,6 +201,16 @@ class FileBackedCockpitBridge:
         # segment.  Keep its launch boundary so durable-descriptor recovery
         # cannot reopen admission from an earlier segment's artifact.
         self._child_started_ns = 0
+
+    def _startup_cleanup_requested(self) -> bool:
+        """Read only an explicit bound cleanup while no public owner exists."""
+        marker = self.controls_dir / "pre-descriptor-cleanup.json"
+        try:
+            request = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError):
+            return False
+        return (isinstance(request, Mapping) and request.get("control") == "cleanup"
+                and request.get("binding_id") == self.binding_id)
 
     def _start_child(self, command: Sequence[str], *, append_stderr: bool) -> None:
         """Start the declared initial or saved-world continuation owner."""
@@ -658,6 +679,8 @@ class FileBackedCockpitBridge:
         """Run only the declared zero-credit prefix before admitting public input."""
         prefix_index = 0
         while True:
+            if not self._active_session_descriptor and self._startup_cleanup_requested():
+                raise _ExplicitPreDescriptorCleanup()
             assert self._child is not None and self._child.stdout is not None
             # The child may have already persisted the exact bound descriptor
             # while stdout still contains a partial startup record.  Prefer
@@ -815,6 +838,13 @@ class FileBackedCockpitBridge:
             memory_snapshot("file_bridge", "after_response_persist",
                             response_bytes=len(response_line.encode("utf-8")))
             self.active_request_path.unlink(missing_ok=True)
+            # Native input is paused at a completed response.  Keep only the
+            # recent debug/semantic producer window before the next request.
+            # Immutable receipts and transition evidence remain untouched.
+            roll_bound_session_logs(
+                self.session_dir,
+                str(self._active_session_descriptor.get("run_id", "")),
+            )
             terminal = response.get("result") if isinstance(response, Mapping) else None
             # Only a successful explicit player finish/quit can terminalize
             # the controller. An error response cannot authorize game cleanup.
@@ -968,6 +998,14 @@ class FileBackedCockpitBridge:
                                 phase="awaiting_startup_hud_or_session_descriptor" )
             try:
                 descriptor = self._await_session_descriptor()
+                if self._startup_cleanup_requested():
+                    raise _ExplicitPreDescriptorCleanup()
+            except _ExplicitPreDescriptorCleanup:
+                cleanup = self._emergency_cleanup()
+                self._write_status("cleaned", reason="explicit_pre_descriptor_cleanup",
+                                   child_exit_code=self._child.returncode,
+                                   cleanup={"status": "accepted", **cleanup})
+                return 0
             except ValueError as exc:
                 self._write_status("process_dead", child_pid=self._child.pid,
                                    reason=str(exc),
@@ -1005,6 +1043,10 @@ class FileBackedCockpitBridge:
         pending = b""
         try:
             while True:
+                if self._startup_cleanup_requested():
+                    if self._handle_request(json.dumps({"control": "cleanup",
+                                                        "binding_id": self.binding_id})):
+                        return 0
                 # A request is first persisted by the public client.  The
                 # spool is the authoritative handoff: a FIFO wake-up may be
                 # missed on macOS, but a retained envelope cannot vanish
@@ -1337,6 +1379,12 @@ class FileBackedCockpitBridge:
             return {"ok": False, "error": "request_binding_drift"}
         if status.get("state") == "safe_to_cleanup":
             return {"ok": True, "cleanup": "already_accepted"}
+        if status.get("state") == "cleaned" and status.get("cleanup", {}).get("status") == "accepted":
+            return {"ok": True, "cleanup": "already_accepted"}
+        if status.get("state") in {"starting", "preparing"}:
+            _atomic_json(Path(session_dir) / "controls" / "pre-descriptor-cleanup.json",
+                         {"control": "cleanup", "binding_id": binding_id})
+            return {"ok": True, "cleanup": "requested"}
         if status.get("state") == "terminalizing":
             return {"ok": False, "error": "cleanup_requires_scenario_terminalization", "status": status}
         if status.get("state") == "reentry_failed":
@@ -1608,6 +1656,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     logs.add_argument("--snapshot", help="Freeze paging to the source ranges and filters of this snapshot digest")
     logs.add_argument("--offset", type=int, default=0)
     logs.add_argument("--limit", type=int, default=20, help="Rows per page; all matches are counted and pageable")
+    logs.add_argument("--decisions", action="store_true", help="Compact, source-handled NPC decision and group-search rows")
+    logs.add_argument("--operation-id", help="Exact hostile operation for --decisions")
+    logs.add_argument("--group-id", help="Exact scenario trace group for --decisions")
+    logs.add_argument("--actor", action="append", type=int, default=[], help="Selected actor ID; repeat for --decisions")
+    logs.add_argument("--from-turn", type=int, help="First included turn or overlapping repeat span")
+    logs.add_argument("--to-turn", type=int, help="Last included turn or overlapping repeat span")
     record = commands.add_parser("record-artifact", help="Verify and retrieve an exact retained log record or selected fields")
     record.add_argument("--path", required=True)
     record.add_argument("--offset", type=int, required=True)
@@ -1621,6 +1675,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "log-query":
         if args.offset < 0 or args.limit <= 0:
             parser.error("offset must be nonnegative and limit positive")
+        if args.decisions:
+            if (not args.run_id or bool(args.operation_id) == bool(args.group_id) or args.event or args.actor_id or args.actor_name or
+                    args.process_instance or args.request_id or args.frame_id or args.where or args.contains):
+                parser.error("--decisions requires --run-id and exactly one --operation-id or --group-id")
+        elif args.operation_id or args.group_id or args.actor or args.from_turn is not None or args.to_turn is not None:
+            parser.error("decision scope options require --decisions")
         filters = {k: getattr(args, k) for k in ("run_id", "process_instance", "request_id", "actor_id", "actor_name", "frame_id", "event")
                    if getattr(args, k) is not None}
         try:
@@ -1637,7 +1697,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             paths = sorted(p for p in responses_dir.glob("*.json") if not p.name.endswith(".receipt.json"))
         else:
             paths = [Path(p) for p in args.path]
-        result = cockpit_evidence.query(paths, filters, args.select, args.offset, args.limit, args.contains, args.snapshot)
+        decision = ({"operation_id": args.operation_id, "group_id": args.group_id,
+                     "actor_ids": sorted(set(args.actor)),
+                     "from_turn": args.from_turn, "to_turn": args.to_turn} if args.decisions else None)
+        result = cockpit_evidence.query(paths, filters, args.select, args.offset, args.limit,
+                                        args.contains, args.snapshot, decision)
         emit(result)
         return 0 if result["ok"] else 1
     if args.command == "record-artifact":

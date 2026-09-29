@@ -20,6 +20,9 @@ struct live_bandit_signal_observation {
     int range_cap_omt = 0;
     int horde_signal_power = 0;
     std::string weather_summary;
+    // A smoke source may be seen across levels only after local geometry
+    // established that its plume escaped into open air.
+    bool smoke_source_exposed_to_sky = false;
     bool has_light_projection = false;
     bandit_mark_generation::light_projection light_projection;
     std::string sample_id;

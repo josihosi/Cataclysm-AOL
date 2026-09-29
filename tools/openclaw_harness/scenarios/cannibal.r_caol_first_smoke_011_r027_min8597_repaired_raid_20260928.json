@@ -1,0 +1,161 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r027_min8597_repaired_raid_20260928",
+  "description": "Native R027 assault continuation from a byte-exact R024 min8597 committed-contact checkpoint; trace exact actor/group decisions and continue into real combat outcome.",
+  "profile": "first-smoke-027-r027-min8597-raid-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "raid_actor_trace": true,
+  "capabilities": {
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r027_min8597_repaired_raid": "min8597_r027_actor4_5_7_assault_outcome"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.quicksave",
+      "semantic:world.look",
+      "semantic:world.inspect_npc",
+      "semantic:world.wait",
+      "semantic:prompt.choose"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-027-r027-min8597-raid-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-027/immutable-executable/1f5c45b71cf91a530ae5cb6c6e2e427a9fe536541c5379287c050cd3f1f1416b/cataclysm-tiles",
+      "profile": "first-smoke-027-r027-min8597-raid-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_byte_exact_min8597_committed_contact_save",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Effective userdir must load the fresh 55-file copy at turn5267860/minute8597; ordinary view, Safe Off, both clairvoyance mutations absent, operation overmap_special:cannibal_camp@135,137,0#hostile:2 and members4/5/7, defenders2/3, avatar1. Verify no pending request before input."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_world_and_r027_trace",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look",
+          "world.inspect_npc"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_setup_or_ai_mutation",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No setup or AI/roster/signal/contact mutation. Preserve ordinary view and current committed raid."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r027_committed_raid_actor_to_outcome",
+      "objective": "Enable the run-bound raid decision recorder. At the first search/action cadence capture group raid_site_search and same-operation actors4/5/7; inspect waypoints, recipients, actor target/sight/action/goto/path/sleep and defenders2/3 plus avatar1 from metadata. Continue this same native run through physical pursuit and actual combat/outcome. Use safe/stop mode to inspect first harm, then deliberate ignore/continue only when observing active combat through outcome; do not stop at dispatch, a phase label, or the first wound. Track source-attributed damage and casualties. Do not replay smoke/scouting, move the avatar for setup, inject contact/knowledge, change roster/AI/sleep/fear/target/route, or enable clairvoyance. Quicksave alone at useful transitions and verify saved turn; no movement preamble. After a concrete divergence inspect its cause and change the next action rather than repeating an unchanged wait.",
+      "proof_targets": [
+        "same-run R027 executable/source binding and byte-exact min8597 start",
+        "group search trigger plus exact local decisions for operation overmap_special:cannibal_camp@135,137,0#hostile:2 and IDs4/5/7",
+        "physical actor movement and eligible target/action rather than phase-only credit",
+        "attacker/target/damage source and defender/avatar health, casualties, and terminal outcome",
+        "fresh saved turn at meaningful transitions",
+        "graceful game/bridge/launcher cleanup with exact PID/birth identity"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Fresh disposable copy only; original checkpoint, earlier R026 copy, and owner PID45379 remain untouched",
+        "No clairvoyance mutations; preserve ordinary player visibility",
+        "No setup, signal, roster, contact, target, sleep, fear, route or AI mutation",
+        "No debug kill or forced contact",
+        "Use actor/health metadata, not screen visibility alone",
+        "Do not infer why target selection failed from avatar_visible alone",
+        "No repeated unchanged waits after a material contradiction"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_byte_exact_min8597_committed_contact_save",
+      "bind_same_run_world_and_r027_trace"
+    ],
+    "production_behavior": [
+      "r027_committed_raid_actor_to_outcome"
+    ],
+    "terminal_persistence": [
+      "r027_committed_raid_actor_to_outcome"
+    ],
+    "artifact_verdict": [
+      "r027_committed_raid_actor_to_outcome"
+    ],
+    "disallowed_shortcuts": [
+      "no_setup_or_ai_mutation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R027 source-bound native continuation of the already committed min8597 cannibal raid through physical actor combat and actual outcome; no new smoke/scouting claim.",
+    "failure_rule": "Capture the first contradiction with exact actor and source handles; no phase-only raid credit and no unsupported inference about an absent target/sleep/action field."
+  }
+}

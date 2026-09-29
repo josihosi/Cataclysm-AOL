@@ -1,0 +1,31 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A clean, initially unaware cannibal camp with no physical fire/smoke source produces no signal-caused discovery or raid during 24 native in-game hours.",
+  "material_proof": "Exact task012 profile/save and source/executable binding; same-run native World and starting turn; native proof of camp footprint, unlit braziers/no fire or smoke, no prior cannibal site knowledge and no active outing/raid; then actual 24-hour time advancement with native metadata and a fresh saved turn at meaningful intervals covering camp memory, scouts, reports, dispatch, outings and relevant NPC IDs/actions; exact source attribution for any discovery, raid or unrelated natural contact; graceful process cleanup by PID/birth.",
+  "current_uncertainty": "Whether the prepared clean no-fire state remains undiscovered and raid-free across one full native day, and whether all required native metadata and fresh saves are available at intervals.",
+  "material_contradiction": [
+    "resolved userdir or saved World differs from the prepared isolated profile",
+    "camp footprint is absent or materially different in native World",
+    "fire or smoke is already active, or a physical source appears during the control",
+    "cannibal site knowledge, scout report, outing or raid is already active at the starting boundary",
+    "elapsed time is less than 24 native game hours",
+    "camp discovery or raid occurs without a physical signal source or prior knowledge",
+    "unrelated natural contact is attributed to the no-fire signal control",
+    "native identity, action, saved turn or source attribution is unavailable",
+    "source/executable/process binding changes"
+  ],
+  "forbidden_shortcuts": [
+    "fire, smoke, light, signal, discovery, report, dispatch, actor or contact injection",
+    "hostile teleport",
+    "debug mutations that change simulation or observation",
+    "raw save rewriting after launch",
+    "synthetic elapsed time or treating wall time as native game time",
+    "assuming absent facts from a compact output instead of retrieving its source"
+  ],
+  "honest_stop_conditions": [
+    "24 in-game hours completed with clean premises, native checkpoints and graceful cleanup",
+    "first unsupported signal-caused discovery or raid fully preserved with source, actor and action evidence",
+    "first precise clean-start, timing, save, metadata or process blocker preserved with a changed continuation route"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

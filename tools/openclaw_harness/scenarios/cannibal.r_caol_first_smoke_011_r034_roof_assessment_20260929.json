@@ -1,0 +1,185 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r034_roof_assessment_20260929",
+  "description": "Fresh byte-exact R031 min8720 continuation on immutable R034; recalculate roof watch assessment with existing scouts4/5 already at watch, then follow return/report and response.",
+  "profile": "first-smoke-034-r011-roof-assessment-luna",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r034_roof_assessment": "r034_min8720_saved_watch_roof_assessment_recompute_ids4_5_report_response"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-034-r011-roof-assessment-luna",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-034/immutable-executable/33ea832b2ab6aadd9ff7692775bba5251ad0b7958af37ad2754cc32a6426fc26/cataclysm-tiles",
+      "profile": "first-smoke-034-r011-roof-assessment-luna",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_min8720_roof_watch_into_fresh_r034_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the fresh 61-file exact copy of R031 turn5275255/min8720; verify immutable R034 runtime/source and effective userdir. Verify same-run World, stationary player at [3155,3448,1], Safe Off, no clair/pending input, roof fire, observing generation1 outing, IDs4/5 already at [134,141,0], assessment clock not started. No relight or outbound scout replay."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_min8720_native_world_r034",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r034_native_roof_assessment_return_report_response",
+      "objective": "Continue from the saved min8720 observing outing on a fresh disposable profile and immutable R034 build. Keep the player fixed and existing roof fire; do not replay scout travel. Allow ordinary game time to calculate a fresh assessment from actual source/revision/shared observations and follow same IDs4/5 through a persisted report and actual response authorization. Record certainty/danger and actor/roster inputs; if response remains denied by the known five-hunter margin, preserve that valid boundary without mutation.",
+      "proof_targets": [
+        "all 61 save files match the min8720 source manifest; effective relative userdir; same-run native World and exact R034 binding",
+        "saved turn5275255/min8720, stationary player1 [3155,3448,1], roof fire/source [131,143,1], Safe Off, no clair or pending input",
+        "persisted outing owner: generation1 observing, existing IDs4/5 physically at OMT [134,141,0], assessment clock uninitialized before native time",
+        "fresh native R034 assessment and persisted same-ID report; actual source, revision, shared observations, weather, certainty and danger fields",
+        "response authorization diagnostic distinct from routine dispatch cooldown; bounded party IDs, saved power/reserve and operation counters",
+        "native quicksave turn/hash at changed assessment/report/response boundary; real actor movement/action/contact/damage only if an operation is applied",
+        "graceful native close, run witness/finish/collect, exact PID/birth and OS exits"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the new disposable exact copy; never alter the R031 source profile or accepted R032/R033 saves",
+        "Do not relight, move/recenter the avatar, replay outbound scout travel, inject observations/knowledge/report/contact, alter roster/power, use clairvoyance or debug survival edits",
+        "Verify Safe Mode Off after World/reload; preserve owner save bytes and actual pending controls",
+        "Count only time advanced from the actual saved assessment state; an already completed physical approach is not repeated",
+        "Quicksave only via advertised world.quicksave without movement and only at a meaningful changed state",
+        "Keep the accepted five-hunter power denial separate; do not turn a repeat denial into a new bug or mutate this natural continuation to add a hunter"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_min8720_roof_watch_into_fresh_r034_profile",
+      "bind_same_run_min8720_native_world_r034"
+    ],
+    "production_behavior": [
+      "r034_native_roof_assessment_return_report_response"
+    ],
+    "terminal_persistence": [
+      "r034_native_roof_assessment_return_report_response"
+    ],
+    "artifact_verdict": [
+      "r034_native_roof_assessment_return_report_response"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_min8720_roof_watch_into_fresh_r034_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh R034 continuation from exact min8720 saved observing state; recompute roof signal assessment from actual native source and same scouts4/5, persist a new report, inspect actual response authorization and any natural follow-through.",
+    "failure_rule": "Preserve the first changed source-bound assessment/report/authorization divergence. Phase labels alone do not establish signal admission, report application or assault."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5275255,
+  "decision_trace_to_turn": 5296000
+}

@@ -11,8 +11,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import Any, Callable, Dict, List, Mapping
 
 
 MANIFEST_VERSION = 1
@@ -70,6 +71,44 @@ _RELATION_PROOF_DEPTHS = {
     "terminal_persistence": 3,
     "disallowed_shortcuts": 4,
 }
+
+_GAMEPLAY_PROOF_ALLOWED_V1 = frozenset({
+    "cannibal.night_raid_natural_transition_validation_mcw",
+    "horde.predator_lifecycle_abstract_to_physical_mcw",
+    "r018.raw_wait_acceptance_mcw",
+    "r019.keep_watch_acceptance_mcw",
+    "r019.primitive_safe_popup_comparison_mcw",
+    "r026.living_npc_package_v001_mcw",
+    "r031.ambient_neutral_npc_authority_v002_mcw",
+    "r032.fresh_camp_establishment_v001_mcw",
+    "r037.npc_llm_command_api_control_v001_mcw",
+    "r037.npc_llm_command_combat_v001_mcw",
+    "r037.npc_llm_command_coverage_v001_mcw",
+    "r037.npc_llm_command_forbidden_pickup_v001_mcw",
+    "r037.npc_llm_command_stale_target_v001_mcw",
+    "r_zl_stalker_follow_city_debug_setup_mcw",
+    "writhing_stalker.live_campfire_counterplay_mcw",
+    "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
+    "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
+    "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
+    "writhing_stalker.live_hit_fade_retreat_mcw",
+    "writhing_stalker.live_no_omniscient_beeline_mcw",
+    "writhing_stalker.live_wounded_predator_mcw",
+    "writhing_stalker.live_zombie_distraction_mcw",
+    "zombie_rider.live_native_band_continuity_mcw",
+    "zombie_rider.live_native_band_sight_pressure_mcw",
+    "zombie_rider.live_native_hunt_continuity_mcw",
+})
+_GAMEPLAY_PROOF_ALLOWED_V2 = _GAMEPLAY_PROOF_ALLOWED_V1 | {
+    "bandit.r029_natural_sound_route_mcw",
+    "cannibal.r029_ground_positive_route_mcw",
+    "cannibal.r029_natural_route_roof_mcw",
+}
+
+
+def _allows_gameplay_proof(manifest: Mapping[str, Any], names: frozenset[str]) -> bool:
+    name = manifest.get("name")
+    return isinstance(name, str) and name in names
 
 
 class ManifestValidationError(ValueError):
@@ -206,7 +245,9 @@ def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path
     # Rider light-memory continuity is a save/reload claim, not a single-run
     # observation.  Make the replacement phase part of static authority so a
     # missing post-relaunch contract cannot be ingested as complete.
-    if any("rider_memory" in str(key) for key in (manifest.get("capabilities") or {})):
+    capability_declarations = manifest.get("capabilities")
+    if isinstance(capability_declarations, dict) and any(
+            "rider_memory" in str(key) for key in capability_declarations):
         post_relaunch = manifest.get("post_relaunch")
         if not isinstance(post_relaunch, dict):
             raise _error(path, "rider_memory continuity requires a post_relaunch contract")
@@ -256,7 +297,8 @@ def _validate_source_binding_validation(value: Any, manifest: Mapping[str, Any],
         raise _error(path, "source_binding_validation must be an object")
     if set(value) - {"validator", "bootstrap_artifact", "capabilities", "exclusive_review_required"}:
         raise _error(path, "source_binding_validation contains an unsupported field")
-    if value.get("validator") not in {
+    validator = value.get("validator")
+    if not isinstance(validator, str) or validator not in {
             "r008_closure_046_source_binding",
             "r008_natural_wait_progress_source_binding",
     }:
@@ -282,7 +324,8 @@ def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str
             raise _error(path, f"{field}[{index}] must be an object")
         if set(expectation) != {"kind", "predicate"}:
             raise _error(path, f"{field}[{index}] must contain exactly kind and predicate")
-        if expectation.get("kind") not in {
+        kind = expectation.get("kind")
+        if not isinstance(kind, str) or kind not in {
                 "structured_event", "structural_member_return_pair", "semantic_state",
                 "saved_artifact",
         }:
@@ -373,37 +416,9 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
     _validate_capabilities(manifest["capabilities"], path=path)
     _validate_runtime_contract(
         manifest["runtime_contract"], path=path,
-        allow_gameplay_proof=manifest.get("name") in {
-            "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
-            "r019.primitive_safe_popup_comparison_mcw",
-            "r026.living_npc_package_v001_mcw",
-            "r032.fresh_camp_establishment_v001_mcw",
-            "writhing_stalker.live_hit_fade_retreat_mcw",
-            "writhing_stalker.live_campfire_counterplay_mcw",
-            "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
-            "writhing_stalker.live_wounded_predator_mcw",
-            "writhing_stalker.live_zombie_distraction_mcw",
-            "writhing_stalker.live_no_omniscient_beeline_mcw",
-            "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
-            "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
-            "horde.predator_lifecycle_abstract_to_physical_mcw",
-            "zombie_rider.live_native_hunt_continuity_mcw",
-            "zombie_rider.live_native_band_continuity_mcw",
-            "zombie_rider.live_native_band_sight_pressure_mcw",
-            "cannibal.night_raid_natural_transition_validation_mcw",
-            "cannibal.r029_natural_route_roof_mcw",
-            "cannibal.r029_ground_positive_route_mcw",
-            "bandit.r029_natural_sound_route_mcw",
-            "r031.ambient_neutral_npc_authority_v002_mcw",
-            "r037.npc_llm_command_coverage_v001_mcw",
-            "r037.npc_llm_command_combat_v001_mcw",
-            "r037.npc_llm_command_api_control_v001_mcw",
-            "r037.npc_llm_command_forbidden_pickup_v001_mcw",
-            "r037.npc_llm_command_stale_target_v001_mcw",
-            "r_zl_stalker_follow_city_debug_setup_mcw",
-        },
+        allow_gameplay_proof=_allows_gameplay_proof(manifest, _GAMEPLAY_PROOF_ALLOWED_V2),
     )
-    if manifest["run_class"] not in {"combat", "non_combat"}:
+    if not isinstance(manifest["run_class"], str) or manifest["run_class"] not in {"combat", "non_combat"}:
         raise _error(path, "run_class must be combat or non_combat")
     if type(manifest["observer_character"]) is not bool:
         raise _error(path, "observer_character must be boolean")
@@ -482,32 +497,7 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
     _validate_capabilities(manifest["capabilities"], path=path)
     _validate_runtime_contract(
         manifest["runtime_contract"], path=path,
-        allow_gameplay_proof=manifest.get("name") in {
-            "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
-            "r019.primitive_safe_popup_comparison_mcw",
-            "r026.living_npc_package_v001_mcw",
-            "r032.fresh_camp_establishment_v001_mcw",
-            "writhing_stalker.live_hit_fade_retreat_mcw",
-            "writhing_stalker.live_campfire_counterplay_mcw",
-            "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
-            "writhing_stalker.live_wounded_predator_mcw",
-            "writhing_stalker.live_zombie_distraction_mcw",
-            "writhing_stalker.live_no_omniscient_beeline_mcw",
-            "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
-            "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
-            "horde.predator_lifecycle_abstract_to_physical_mcw",
-            "zombie_rider.live_native_hunt_continuity_mcw",
-            "zombie_rider.live_native_band_continuity_mcw",
-            "zombie_rider.live_native_band_sight_pressure_mcw",
-            "cannibal.night_raid_natural_transition_validation_mcw",
-            "r031.ambient_neutral_npc_authority_v002_mcw",
-            "r037.npc_llm_command_coverage_v001_mcw",
-            "r037.npc_llm_command_combat_v001_mcw",
-            "r037.npc_llm_command_api_control_v001_mcw",
-            "r037.npc_llm_command_forbidden_pickup_v001_mcw",
-            "r037.npc_llm_command_stale_target_v001_mcw",
-            "r_zl_stalker_follow_city_debug_setup_mcw",
-        },
+        allow_gameplay_proof=_allows_gameplay_proof(manifest, _GAMEPLAY_PROOF_ALLOWED_V1),
     )
     _validate_proof_route(manifest["proof_route"], manifest, path=path)
     if "source_binding_validation" in manifest:
@@ -530,6 +520,17 @@ def _normalized_field(manifest: Mapping[str, Any], field: str, *, legacy: bool) 
         "review_required": legacy,
         "value": copy.deepcopy(manifest[field]),
     }
+
+
+def _validate_isolated_launch(value: Any, *, path: Path) -> None:
+    required = {"name", "path", "sha256", "profile", "world", "fixture", "run_identity",
+                "control_endpoint", "receipt_sidecar", "cleanup_token", "build_receipt"}
+    if not isinstance(value, dict) or set(value) != required or any(
+            not isinstance(item, str) or not item.strip() for item in value.values()):
+        raise _error(path, "r027_isolated_launch must be a complete named runtime declaration")
+    digest = value["sha256"].lower()
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise _error(path, "r027_isolated_launch.sha256 must be a SHA-256 hex digest")
 
 
 def _relation_json(value: Any) -> Any:
@@ -715,14 +716,7 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
 
     isolated = manifest.get("r027_isolated_launch")
     if isolated is not None:
-        required = {"name", "path", "sha256", "profile", "world", "fixture", "run_identity",
-                    "control_endpoint", "receipt_sidecar", "cleanup_token", "build_receipt"}
-        if not isinstance(isolated, dict) or set(isolated) != required or any(
-                not isinstance(value, str) or not value.strip() for value in isolated.values()):
-            raise _error(path, "r027_isolated_launch must be a complete named runtime declaration")
-        digest = isolated["sha256"].lower()
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
-            raise _error(path, "r027_isolated_launch.sha256 must be a SHA-256 hex digest")
+        _validate_isolated_launch(isolated, path=path)
 
     versioned = "manifest_version" in manifest
     if versioned:
@@ -769,3 +763,169 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
             "manifest_version": manifest.get("manifest_version") if versioned else None,
         },
     }
+
+
+def lint_manifest(path: Path) -> Dict[str, Any]:
+    """Diagnose independent declaration groups without projecting a registry.
+
+    ``validate_manifest`` remains the authority for the final status. Its
+    fail-fast checks are also called separately where their inputs are
+    independent, so a worker can correct several fields in one edit.
+    """
+    path = path.resolve()
+    diagnostics: List[Dict[str, Any]] = []
+    source_sha256: str | None = None
+    source_text = ""
+
+    def add(field: str, rule: str, message: str, *, severity: str = "error",
+            line: int | None = None) -> None:
+        if field != "$":
+            specific = re.match(re.escape(field) + r"(?:\.[A-Za-z_][A-Za-z_0-9]*|\[[^]]+\])*", message)
+            if specific:
+                field = specific.group(0)
+        if line is None and source_text:
+            root = field.split(".", 1)[0].split("[", 1)[0]
+            if root and root != "$":
+                matches = list(re.finditer(
+                    r"(?m)^\s*" + re.escape(json.dumps(root)) + r"\s*:", source_text,
+                ))
+                if len(matches) == 1:
+                    line = source_text.count("\n", 0, matches[0].start()) + 1
+        diagnostics.append({
+            "file": str(path), "line": line, "field": field, "rule": rule,
+            "severity": severity, "message": message,
+        })
+
+    def outcome(status: str) -> Dict[str, Any]:
+        return {
+            "path": str(path), "source_sha256": source_sha256,
+            "status": status, "diagnostics": diagnostics,
+        }
+
+    def collect(field: str, rule: str, check: Callable[[], None]) -> bool:
+        try:
+            check()
+            return True
+        except ManifestValidationError as exc:
+            prefix = f"Invalid scenario manifest {path}: "
+            message = str(exc).removeprefix(prefix)
+            add(field, rule, message)
+            return False
+
+    try:
+        source_bytes = path.read_bytes()
+    except OSError as exc:
+        add("$", "source_read", f"could not read source bytes: {exc}")
+        return outcome("invalid")
+    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    try:
+        source_text = source_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        add("$", "utf8", f"source is not valid UTF-8: {exc}")
+        return outcome("invalid")
+    try:
+        manifest = json.loads(source_text)
+    except json.JSONDecodeError as exc:
+        add("$", "json_syntax", exc.msg, line=exc.lineno)
+        return outcome("invalid")
+    if not isinstance(manifest, dict):
+        add("$", "top_level_object", "top level must be an object")
+        return outcome("invalid")
+
+    if manifest.get("r027_isolated_launch") is not None:
+        collect("r027_isolated_launch", "isolated_launch", lambda: _validate_isolated_launch(
+            manifest["r027_isolated_launch"], path=path,
+        ))
+
+    version = manifest.get("manifest_version")
+    versioned = "manifest_version" in manifest
+    valid_version = type(version) is int and version in {
+        MANIFEST_VERSION, CHECKPOINT_CHAIN_MANIFEST_VERSION,
+    }
+    if versioned and not valid_version:
+        add("manifest_version", "manifest_version",
+            f"manifest_version must be integer {MANIFEST_VERSION} or {CHECKPOINT_CHAIN_MANIFEST_VERSION}")
+    if versioned and valid_version:
+        required = ("capabilities", "runtime_contract", "proof_route") if version == MANIFEST_VERSION else (
+            "capabilities", "runtime_contract", "run_class", "observer_character",
+            "installed_save_player", "proof_gates", "proof_route",
+        )
+        for field in required:
+            if field not in manifest:
+                add(field, "required_field", f"{field} is required by manifest_version {version}")
+
+    if "capabilities" in manifest:
+        capabilities_valid = collect("capabilities", "capability_declaration", lambda: _validate_capabilities(
+            manifest["capabilities"], path=path,
+        ))
+    else:
+        capabilities_valid = False
+    if "runtime_contract" in manifest:
+        allowed = (_GAMEPLAY_PROOF_ALLOWED_V2 if version == CHECKPOINT_CHAIN_MANIFEST_VERSION
+                   else _GAMEPLAY_PROOF_ALLOWED_V1) if valid_version else frozenset()
+        runtime_valid = collect("runtime_contract", "runtime_contract", lambda: _validate_runtime_contract(
+            manifest["runtime_contract"], path=path,
+            allow_gameplay_proof=_allows_gameplay_proof(manifest, allowed),
+        ))
+    else:
+        runtime_valid = False
+    if (not versioned or (valid_version and version == MANIFEST_VERSION)) and "proof_route" in manifest:
+        collect("proof_route", "proof_route", lambda: _validate_proof_route(
+            manifest["proof_route"], manifest, path=path,
+        ))
+    if valid_version and version == MANIFEST_VERSION and "source_binding_validation" in manifest:
+        collect("source_binding_validation", "source_binding_validation",
+                lambda: _validate_source_binding_validation(
+                    manifest["source_binding_validation"], manifest, path=path,
+                ))
+    checkpoint_fields_valid = True
+    if version == CHECKPOINT_CHAIN_MANIFEST_VERSION:
+        if "run_class" in manifest and (
+                not isinstance(manifest["run_class"], str) or
+                manifest["run_class"] not in {"combat", "non_combat"}):
+            add("run_class", "checkpoint_run_class", "run_class must be combat or non_combat")
+            checkpoint_fields_valid = False
+        if "observer_character" in manifest and type(manifest["observer_character"]) is not bool:
+            add("observer_character", "checkpoint_observer", "observer_character must be boolean")
+            checkpoint_fields_valid = False
+        if "observer_safety_mode" in manifest and manifest["observer_safety_mode"] is not None and \
+                manifest["observer_safety_mode"] != "invisible":
+            add("observer_safety_mode", "checkpoint_observer", "observer_safety_mode must be invisible when declared")
+            checkpoint_fields_valid = False
+        if "installed_save_player" in manifest and (
+                not isinstance(manifest["installed_save_player"], str) or
+                not manifest["installed_save_player"].strip()):
+            add("installed_save_player", "checkpoint_save_player",
+                "installed_save_player must be a non-empty string")
+            checkpoint_fields_valid = False
+        if "proof_gates" in manifest and (
+                not isinstance(manifest["proof_gates"], list) or not manifest["proof_gates"]):
+            add("proof_gates", "checkpoint_gates", "proof_gates must be a non-empty ordered list")
+            checkpoint_fields_valid = False
+        if "proof_route" in manifest and not isinstance(manifest["proof_route"], dict):
+            add("proof_route", "checkpoint_proof_route", "proof_route must be an object")
+            checkpoint_fields_valid = False
+    if version == CHECKPOINT_CHAIN_MANIFEST_VERSION and checkpoint_fields_valid and \
+            capabilities_valid and runtime_valid and all(
+            field in manifest for field in (
+                "run_class", "observer_character", "installed_save_player", "proof_gates", "proof_route",
+            )):
+        collect("proof_gates", "checkpoint_chain", lambda: _validate_checkpoint_chain_fields(
+            manifest, path=path,
+        ))
+
+    try:
+        validation = validate_manifest(manifest, path=path)["validation"]
+    except ManifestValidationError as exc:
+        message = str(exc).removeprefix(f"Invalid scenario manifest {path}: ")
+        if not any(item["message"] == message for item in diagnostics):
+            add("$", "manifest_validation", message)
+        return outcome("invalid")
+    if any(item["severity"] == "error" for item in diagnostics):
+        return outcome("invalid")
+    status = validation["status"]
+    if status == "review_required":
+        add("manifest_version", "legacy_review_required",
+            "Legacy declaration lacks manifest_version; missing versioned fields require review.",
+            severity="warning")
+    return outcome(status)

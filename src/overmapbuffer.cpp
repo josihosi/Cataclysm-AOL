@@ -58,6 +58,8 @@
 
 static const oter_type_str_id oter_type_bridgehead_ground( "bridgehead_ground" );
 static const oter_type_str_id oter_type_bridgehead_ramp( "bridgehead_ramp" );
+static const oter_type_str_id oter_type_sub_ramp_above( "sub_ramp_above" );
+static const oter_type_str_id oter_type_sub_ramp_below( "sub_ramp_below" );
 
 static const int default_search_range = OMAPX * 5;
 
@@ -1323,7 +1325,50 @@ static bool is_ramp( const tripoint_abs_omt &omt_pos )
 {
     const oter_id &oter = overmap_buffer.ter_existing( omt_pos );
     return ( oter->get_type_id() == oter_type_bridgehead_ground ) ||
-           ( oter->get_type_id() == oter_type_bridgehead_ramp );
+           ( oter->get_type_id() == oter_type_bridgehead_ramp ) ||
+           ( oter->get_type_id() == oter_type_sub_ramp_above ) ||
+           ( oter->get_type_id() == oter_type_sub_ramp_below ) ||
+           oter->has_flag( oter_flags::known_up ) ||
+           oter->has_flag( oter_flags::known_down );
+}
+
+bool overmap_travel_step_valid( const tripoint_abs_omt &from,
+                                const tripoint_abs_omt &to, const overmap_path_params &params )
+{
+    if( from.is_invalid() || to.is_invalid() || get_terrain_cost( to, params ) < 0 ) {
+        return false;
+    }
+    const tripoint delta = ( to - from ).raw();
+    if( delta.z == 0 ) {
+        return ( delta.x != 0 || delta.y != 0 ) &&
+               std::abs( delta.x ) <= 1 && std::abs( delta.y ) <= 1 &&
+               ( params.allow_diagonal || delta.x == 0 || delta.y == 0 );
+    }
+    if( delta.x != 0 || delta.y != 0 || std::abs( delta.z ) != 1 ) {
+        return false;
+    }
+    const oter_id &origin = overmap_buffer.ter_existing( from );
+    const oter_id &landing = overmap_buffer.ter_existing( to );
+    const oter_type_id origin_type = origin->get_type_id();
+    const oter_type_id landing_type = landing->get_type_id();
+    const bool bridge_pair =
+        ( origin_type == oter_type_bridgehead_ground &&
+          landing_type == oter_type_bridgehead_ramp ) ||
+        ( origin_type == oter_type_bridgehead_ramp &&
+          landing_type == oter_type_bridgehead_ground );
+    const bool subway_pair =
+        ( delta.z < 0 && origin_type == oter_type_sub_ramp_above &&
+          landing_type == oter_type_sub_ramp_below ) ||
+        ( delta.z > 0 && origin_type == oter_type_sub_ramp_below &&
+          landing_type == oter_type_sub_ramp_above );
+    const bool flagged_pair = delta.z > 0 ?
+                              origin->has_flag( oter_flags::known_up ) &&
+                              landing->has_flag( oter_flags::known_down ) :
+                              origin->has_flag( oter_flags::known_down ) &&
+                              landing->has_flag( oter_flags::known_up );
+    const bool matched_ramp_facing = oter_get_rotation( origin ) ==
+                                     oter_get_rotation( landing );
+    return ( ( bridge_pair || subway_pair ) && matched_ramp_facing ) || flagged_pair;
 }
 
 pf::simple_path<tripoint_abs_omt> overmapbuffer::get_travel_path(
@@ -1352,7 +1397,10 @@ pf::simple_path<tripoint_abs_omt> overmapbuffer::get_travel_path(
 
     constexpr int radius = 4 * OMAPX; // radius of search in OMTs = 4 overmaps
     const pf::simple_path<tripoint_abs_omt> &path = pf::find_overmap_path( src, dest, radius, estimate,
-            game::display_om_pathfinding_progress, std::nullopt, params.allow_diagonal );
+            game::display_om_pathfinding_progress, std::nullopt, params.allow_diagonal,
+    [&params]( const tripoint_abs_omt & from, const tripoint_abs_omt & to ) {
+        return overmap_travel_step_valid( from, to, params );
+    } );
     return path;
 }
 

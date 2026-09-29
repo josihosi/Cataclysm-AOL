@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <cfloat>
 #include <climits>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <deque>
+#include <fstream>
 #include <functional>
 #include <iterator>
 #include <list>
@@ -15,6 +17,7 @@
 #include <numeric>
 #include <optional>
 #include <ostream>
+#include <sstream>
 #include <set>
 #include <string>
 #include <string_view>
@@ -99,6 +102,7 @@
 #include "point.h"
 #include "projectile.h"
 #include "ranged.h"
+#include "raid_decision_trace.h"
 #include "ret_val.h"
 #include "rng.h"
 #include "simple_pathfinding.h"
@@ -119,6 +123,498 @@
 #include "visitable.h"
 #include "vpart_position.h"
 #include "vpart_range.h"
+
+namespace raid_decision_trace
+{
+
+namespace
+{
+thread_local const Creature *damage_victim = nullptr;
+thread_local std::string_view damage_kind;
+}
+
+damage_kind_scope::damage_kind_scope( const Creature &victim, const std::string_view kind ) :
+    previous_victim( damage_victim ), previous_kind( damage_kind )
+{
+    damage_victim = &victim;
+    damage_kind = kind;
+}
+
+damage_kind_scope::~damage_kind_scope()
+{
+    damage_victim = previous_victim;
+    damage_kind = previous_kind;
+}
+
+bool binding::valid() const
+{
+    return !opt_in_run_id.empty() && opt_in_run_id == run_id && run_id == semantic_run_id &&
+           !path.empty();
+}
+
+bool binding::operator==( const binding &other ) const
+{
+    return opt_in_run_id == other.opt_in_run_id && run_id == other.run_id &&
+           semantic_run_id == other.semantic_run_id && path == other.path;
+}
+
+bool selected_npc_scope::valid() const
+{
+    return !group_id.empty() && !actor_ids.empty();
+}
+
+bool selected_npc_scope::includes( const int numeric_npc_id ) const
+{
+    return valid() && std::binary_search( actor_ids.begin(), actor_ids.end(), numeric_npc_id );
+}
+
+bool selected_npc_scope::includes_turn( const int turn ) const
+{
+    return valid() && ( !from_turn || turn >= *from_turn ) &&
+           ( !to_turn || turn <= *to_turn );
+}
+
+std::string quote( const std::string_view value )
+{
+    std::string result = "\"";
+    for( const char c : value ) {
+        switch( c ) {
+            case '\\': result += "\\\\"; break;
+            case '"': result += "\\\""; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default:
+                if( static_cast<unsigned char>( c ) < 0x20 ) {
+                    result += string_format( "\\u%04x", static_cast<unsigned char>( c ) );
+                } else {
+                    result += c;
+                }
+        }
+    }
+    return result + '"';
+}
+
+bool reserved_local_actor( const bandit_live_world::site_record &site,
+                           const int numeric_npc_id )
+{
+    const bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    const bandit_live_world::active_outing_state &reservation = operation.reservation;
+    if( !operation.is_active() ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        reservation.owner != bandit_live_world::simulation_owner::local ||
+        ( operation.operation_kind != bandit_live_world::hostile_operation_kind::raid &&
+          !( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown &&
+             site.last_shakedown_outcome == "fight_unresolved" ) ) ) {
+        return false;
+    }
+    for( const character_id id : reservation.member_ids ) {
+        if( id.get_value() == numeric_npc_id && !reservation.member_is_resolved( id ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+binding environment_binding()
+{
+    const auto value = []( const char *name ) {
+        const char *const found = std::getenv( name );
+        return found == nullptr ? std::string() : std::string( found );
+    };
+    return { value( "OPENCLAW_HARNESS_RAID_ACTOR_TRACE" ),
+             value( "OPENCLAW_HARNESS_RUN_ID" ),
+             value( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" ),
+             value( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" ) };
+}
+
+selected_npc_scope environment_selected_npcs()
+{
+    const char *const group = std::getenv( "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID" );
+    const char *const ids = std::getenv( "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS" );
+    if( group == nullptr || *group == '\0' || ids == nullptr || *ids == '\0' ) {
+        return {};
+    }
+    selected_npc_scope result;
+    result.group_id = group;
+    const std::string_view input( ids );
+    std::size_t start = 0;
+    while( start < input.size() ) {
+        const std::size_t end = input.find( ',', start );
+        const std::string_view part = input.substr( start, end == std::string_view::npos ?
+                                      input.size() - start : end - start );
+        int id = 0;
+        const auto parsed = std::from_chars( part.data(), part.data() + part.size(), id );
+        if( part.empty() || parsed.ec != std::errc() || parsed.ptr != part.data() + part.size() ||
+            id <= 0 ) {
+            return {};
+        }
+        result.actor_ids.push_back( id );
+        if( end == std::string_view::npos ) {
+            break;
+        }
+        start = end + 1;
+    }
+    if( input.back() == ',' ) {
+        return {};
+    }
+    std::sort( result.actor_ids.begin(), result.actor_ids.end() );
+    result.actor_ids.erase( std::unique( result.actor_ids.begin(), result.actor_ids.end() ),
+                            result.actor_ids.end() );
+    const auto parse_bound = []( const char *name, std::optional<int> &value ) {
+        const char *const raw = std::getenv( name );
+        if( raw == nullptr || *raw == '\0' ) {
+            return true;
+        }
+        const std::string_view input( raw );
+        int parsed_turn = 0;
+        const auto parsed = std::from_chars( input.data(), input.data() + input.size(), parsed_turn );
+        if( parsed.ec != std::errc() || parsed.ptr != input.data() + input.size() ||
+            parsed_turn < 0 ) {
+            return false;
+        }
+        value = parsed_turn;
+        return true;
+    };
+    if( !parse_bound( "OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN", result.from_turn ) ||
+        !parse_bound( "OPENCLAW_HARNESS_DECISION_TRACE_TO_TURN", result.to_turn ) ||
+        ( result.from_turn && result.to_turn && *result.from_turn > *result.to_turn ) ) {
+        return {};
+    }
+    return result;
+}
+
+recorder::recorder( binding source, const std::size_t row_budget ) :
+    source( std::move( source ) ), row_budget( row_budget ) {}
+
+recorder::~recorder()
+{
+    closeout();
+}
+
+bool recorder::enabled() const
+{
+    return source.valid() && !closed && !critical_truncated;
+}
+
+counts recorder::totals() const
+{
+    return tally;
+}
+
+void recorder::write( const std::string &row, const bool critical )
+{
+    if( critical ? critical_truncated : normal_truncated ) {
+        return;
+    }
+    const std::size_t reserved = row_budget >= 16 ? std::min<std::size_t>( 256, row_budget / 4 ) : 0;
+    const bool exhausted = critical ? tally.written_rows >= row_budget :
+                           normal_rows >= row_budget - reserved;
+    if( exhausted ) {
+        std::ofstream out( source.path, std::ios::app | std::ios::binary );
+        if( out ) {
+            out << "{\"event\":\"raid_trace_truncated\",\"run_id\":" << quote( source.run_id )
+                << ",\"row_budget\":" << row_budget << ",\"decisions\":" << tally.decisions
+                << ",\"written_rows\":" << tally.written_rows << ",\"scope\":"
+                << quote( critical ? "critical" : "action" ) << "}\n";
+            ++tally.written_rows;
+        }
+        tally.truncated = true;
+        if( critical ) {
+            critical_truncated = true;
+        } else {
+            normal_truncated = true;
+        }
+        return;
+    }
+    std::ofstream out( source.path, std::ios::app | std::ios::binary );
+    if( out ) {
+        out << row << '\n';
+        ++tally.written_rows;
+        if( !critical ) {
+            ++normal_rows;
+        }
+    }
+}
+
+void recorder::flush_repeats( const std::string &key, last_decision &entry )
+{
+    if( entry.repeats == 0 ) {
+        return;
+    }
+    std::ostringstream row;
+    row << "{\"event\":\"raid_trace_repeat\",\"run_id\":" << quote( source.run_id )
+        << ",\"key\":" << quote( key ) << ",\"of_event\":" << quote( entry.event )
+        << ",\"base_turn\":" << entry.base_turn
+        << ",\"count\":" << entry.repeats << ",\"first_turn\":" << entry.first_repeat_turn
+        << ",\"last_turn\":" << entry.last_repeat_turn << '}';
+    write( row.str(), normal_truncated );
+    entry.repeats = 0;
+    entry.first_repeat_turn = -1;
+    entry.last_repeat_turn = -1;
+}
+
+void recorder::record( const std::string &key, const std::string &event, const int turn,
+                       const std::string &payload, const std::string_view change_signature )
+{
+    if( !enabled() || normal_truncated ) {
+        return;
+    }
+    ++tally.decisions;
+    last_decision &entry = last[key];
+    const std::string signature = change_signature.empty() ? payload : std::string( change_signature );
+    if( entry.event == event && entry.signature == signature ) {
+        ++entry.repeats;
+        ++tally.suppressed_repeats;
+        if( entry.first_repeat_turn < 0 ) {
+            entry.first_repeat_turn = turn;
+        }
+        entry.last_repeat_turn = turn;
+        if( entry.repeats >= 128 ) {
+            flush_repeats( key, entry );
+        }
+        return;
+    }
+    flush_repeats( key, entry );
+    if( normal_truncated ) {
+        return;
+    }
+    entry = { event, payload, signature, turn, -1, -1, 0 };
+    std::ostringstream row;
+    row << "{\"event\":" << quote( event ) << ",\"run_id\":" << quote( source.run_id )
+        << ",\"game_turn\":" << turn << "," << payload << '}';
+    write( row.str() );
+}
+
+void recorder::record_edge( const std::string &event, const int turn,
+                            const std::string &payload )
+{
+    if( !enabled() ) {
+        return;
+    }
+    ++tally.decisions;
+    std::ostringstream row;
+    row << "{\"event\":" << quote( event ) << ",\"run_id\":" << quote( source.run_id )
+        << ",\"game_turn\":" << turn << ',' << payload << '}';
+    write( row.str(), true );
+}
+
+void recorder::closeout()
+{
+    if( closed || !source.valid() ) {
+        return;
+    }
+    for( auto &[key, entry] : last ) {
+        flush_repeats( key, entry );
+    }
+    closed = true;
+}
+
+recorder &native_recorder()
+{
+    static recorder disabled( {} );
+    if( std::getenv( "OPENCLAW_HARNESS_RAID_ACTOR_TRACE" ) == nullptr ) {
+        return disabled;
+    }
+    static std::unique_ptr<recorder> active;
+    static binding bound;
+    binding current = environment_binding();
+    if( !current.valid() ) {
+        return disabled;
+    }
+    if( !active || !( current == bound ) ) {
+        active = std::make_unique<recorder>( current );
+        bound = std::move( current );
+        const selected_npc_scope scope = environment_selected_npcs();
+        if( scope.valid() ) {
+            std::ostringstream payload;
+            payload << "\"trace_group_id\":" << quote( scope.group_id )
+                    << ",\"actor_type\":\"npc\",\"selected_npc_ids\":[";
+            for( std::size_t index = 0; index < scope.actor_ids.size(); ++index ) {
+                if( index > 0 ) {
+                    payload << ',';
+                }
+                payload << scope.actor_ids[index];
+            }
+            payload << "],\"selection\":\"scenario_numeric_ids\",\"capture_from_turn\":";
+            if( scope.from_turn ) {
+                payload << *scope.from_turn;
+            } else {
+                payload << "null";
+            }
+            payload << ",\"capture_to_turn\":";
+            if( scope.to_turn ) {
+                payload << *scope.to_turn;
+            } else {
+                payload << "null";
+            }
+            active->record( "scenario@" + scope.group_id + ":scope", "raid_trace_scope",
+                            to_turns<int>( calendar::turn - calendar::turn_zero ), payload.str() );
+        }
+    }
+    return *active;
+}
+
+namespace
+{
+int selected_npc_id( const Creature *creature, const selected_npc_scope &scope )
+{
+    const npc *person = dynamic_cast<const npc *>( creature );
+    const int id = person == nullptr ? 0 : person->getID().get_value();
+    return scope.includes( id ) ? id : 0;
+}
+
+void append_identity( std::ostringstream &out, const Creature *creature )
+{
+    if( creature == nullptr ) {
+        out << "null";
+        return;
+    }
+    const tripoint_abs_ms pos = creature->pos_abs();
+    out << "{\"type\":" << quote( creature->is_avatar() ? "avatar" :
+            creature->is_npc() ? "npc" : creature->is_monster() ? "monster" : "other" )
+        << ",\"position_abs\":[" << pos.x() << ',' << pos.y() << ',' << pos.z() << ']'
+        << ",\"id\":";
+    if( const Character *person = creature->as_character() ) {
+        out << person->getID().get_value();
+    } else {
+        out << "null";
+    }
+    out << ",\"monster_type\":";
+    if( const monster *mon = creature->as_monster() ) {
+        out << quote( mon->type->id.str() );
+    } else {
+        out << "null";
+    }
+    out << '}';
+}
+
+void append_selected_operation( std::ostringstream &out, const int selected_id )
+{
+    for( const bandit_live_world::site_record &site :
+         overmap_buffer.global_state.bandit_live_world.sites ) {
+        const bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+        const auto &ids = operation.reservation.member_ids;
+        if( !operation.is_active() || std::none_of( ids.begin(), ids.end(),
+        [selected_id]( const character_id id ) { return id.get_value() == selected_id; } ) ) {
+            continue;
+        }
+        out << ",\"site_id\":" << quote( site.site_id )
+            << ",\"operation_id\":" << quote( operation.reservation.activity_id )
+            << ",\"generation\":" << operation.reservation.generation
+            << ",\"operation_phase\":" << quote( bandit_live_world::to_string( operation.phase ) )
+            << ",\"operation_owner\":" << quote( bandit_live_world::to_string( operation.reservation.owner ) )
+            << ",\"route_waypoint_index\":" << operation.reservation.waypoint_index
+            << ",\"actor_route_waypoint\":" << operation.reservation.actor_route_waypoint
+            << ",\"site_search_waypoint\":" << operation.site_search_waypoint;
+        return;
+    }
+    out << ",\"site_id\":null,\"operation_id\":null,\"generation\":null"
+        << ",\"operation_phase\":null,\"operation_owner\":null"
+        << ",\"route_waypoint_index\":null,\"actor_route_waypoint\":null"
+        << ",\"site_search_waypoint\":null";
+}
+
+bool selected_edge( const Creature *source, const Creature &victim,
+                    selected_npc_scope &scope, int &source_id, int &victim_id )
+{
+    scope = environment_selected_npcs();
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    if( !scope.includes_turn( turn ) ) {
+        return false;
+    }
+    source_id = selected_npc_id( source, scope );
+    victim_id = selected_npc_id( &victim, scope );
+    return source_id != 0 || victim_id != 0;
+}
+} // namespace
+
+void record_applied_damage( const Creature *source, const Creature &victim,
+                            const std::string_view body_part, const int hp_before, const int hp_after )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() || hp_after >= hp_before ) {
+        return;
+    }
+    selected_npc_scope scope;
+    int source_id = 0;
+    int victim_id = 0;
+    if( !selected_edge( source, victim, scope, source_id, victim_id ) ) {
+        return;
+    }
+    std::ostringstream payload;
+    payload << "\"trace_group_id\":" << quote( scope.group_id )
+            << ",\"selected_source_npc_id\":" << ( source_id ? std::to_string( source_id ) : "null" )
+            << ",\"selected_victim_npc_id\":" << ( victim_id ? std::to_string( victim_id ) : "null" )
+            << ",\"source\":";
+    append_identity( payload, source );
+    payload << ",\"victim\":";
+    append_identity( payload, &victim );
+    payload << ",\"body_part\":" << ( body_part.empty() ? "null" : quote( body_part ) )
+            << ",\"hp_before\":" << hp_before << ",\"hp_after\":" << hp_after
+            << ",\"applied_damage\":" << hp_before - hp_after
+            << ",\"damage_kind\":" << quote( damage_victim == &victim && !damage_kind.empty() ?
+                    damage_kind : "unspecified_direct" );
+    append_selected_operation( payload, source_id ? source_id : victim_id );
+    trace.record_edge( "raid_actor_damage", to_turns<int>( calendar::turn - calendar::turn_zero ),
+                       payload.str() );
+}
+
+void record_confirmed_death( const Creature &victim, const Creature *killer )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return;
+    }
+    selected_npc_scope scope;
+    int killer_id = 0;
+    int victim_id = 0;
+    if( !selected_edge( killer, victim, scope, killer_id, victim_id ) ) {
+        return;
+    }
+    std::ostringstream payload;
+    payload << "\"trace_group_id\":" << quote( scope.group_id )
+            << ",\"selected_killer_npc_id\":" << ( killer_id ? std::to_string( killer_id ) : "null" )
+            << ",\"selected_victim_npc_id\":" << ( victim_id ? std::to_string( victim_id ) : "null" )
+            << ",\"killer\":";
+    append_identity( payload, killer );
+    payload << ",\"victim\":";
+    append_identity( payload, &victim );
+    payload << ",\"confirmed\":true";
+    append_selected_operation( payload, killer_id ? killer_id : victim_id );
+    trace.record_edge( "raid_actor_death", to_turns<int>( calendar::turn - calendar::turn_zero ),
+                       payload.str() );
+}
+
+void record_sleep_edge( const Character &actor, const std::string_view edge,
+                        const std::string_view available_reason )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return;
+    }
+    const selected_npc_scope scope = environment_selected_npcs();
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    const int id = selected_npc_id( &actor, scope );
+    if( !id || !scope.includes_turn( turn ) ) {
+        return;
+    }
+    std::ostringstream payload;
+    payload << "\"trace_group_id\":" << quote( scope.group_id )
+            << ",\"npc_id\":" << id << ",\"actor\":";
+    append_identity( payload, &actor );
+    payload << ",\"edge\":" << quote( edge )
+            << ",\"available_reason\":" << quote( available_reason )
+            << ",\"cause\":null,\"narcosis\":"
+            << ( actor.has_effect( efftype_id( "narcosis" ) ) ? "true" : "false" )
+            << ",\"sleep_effect\":"
+            << ( actor.has_effect( efftype_id( "sleep" ) ) ? "true" : "false" )
+            << ",\"sleepiness\":" << actor.get_sleepiness();
+    append_selected_operation( payload, id );
+    trace.record_edge( "raid_actor_sleep", turn, payload.str() );
+}
+
+} // namespace raid_decision_trace
 
 enum class side : int;
 
@@ -141,6 +637,7 @@ static const activity_id ACT_MULTIPLE_STUDY("ACT_MULTIPLE_STUDY");
 static const activity_id ACT_OPERATION("ACT_OPERATION");
 static const activity_id ACT_SPELLCASTING("ACT_SPELLCASTING");
 static const activity_id ACT_START_FIRE( "ACT_START_FIRE" );
+static const activity_id ACT_TRY_SLEEP( "ACT_TRY_SLEEP" );
 static const activity_id
     ACT_VEHICLE_DECONSTRUCTION("ACT_VEHICLE_DECONSTRUCTION");
 static const activity_id ACT_VEHICLE_REPAIR("ACT_VEHICLE_REPAIR");
@@ -176,17 +673,20 @@ static const efftype_id effect_bleed( "bleed" );
 static const efftype_id effect_bouldering( "bouldering" );
 static const efftype_id effect_catch_up( "catch_up" );
 static const efftype_id effect_cramped_space( "cramped_space" );
+static const efftype_id effect_downed( "downed" );
 static const efftype_id effect_disinfected( "disinfected" );
 static const efftype_id effect_hit_by_player( "hit_by_player" );
 static const efftype_id effect_hypovolemia( "hypovolemia" );
 static const efftype_id effect_infected( "infected" );
 static const efftype_id effect_lying_down( "lying_down" );
+static const efftype_id effect_narcosis( "narcosis" );
 static const efftype_id effect_no_sight("no_sight");
 static const efftype_id effect_npc_fire_bad("npc_fire_bad");
 static const efftype_id effect_npc_flee_player("npc_flee_player");
 static const efftype_id
     effect_npc_player_still_looking("npc_player_still_looking");
 static const efftype_id effect_npc_run_away("npc_run_away");
+static const efftype_id effect_npc_suspend( "npc_suspend" );
 static const efftype_id effect_psi_stunned("psi_stunned");
 static const efftype_id effect_sleep( "sleep" );
 static const efftype_id
@@ -1100,8 +1600,10 @@ void npc::assess_danger() {
   const bool no_fighting =
       !llm_attack_override && !camp_patrol_response &&
       rules.has_flag(ally_rule::forbid_engage);
+  const bool active_assault = bandit_live_world::active_local_assault_site_for(
+                                  overmap_buffer.global_state.bandit_live_world, getID() ) != nullptr;
   const bool must_retreat =
-      !llm_attack_override && !camp_patrol_response &&
+      !active_assault && !llm_attack_override && !camp_patrol_response &&
       rules.has_flag(ally_rule::follow_close) &&
       !too_close(pos_bub(), player_character.pos_bub(), follow_distance()) &&
       !is_guarding();
@@ -2259,6 +2761,19 @@ bool npc::apply_llm_intent_item_targets() {
 void npc::move() {
   const map &here = get_map();
 
+  const bandit_live_world::site_record *assault_site =
+      bandit_live_world::active_local_assault_site_for(
+          overmap_buffer.global_state.bandit_live_world, getID() );
+  const bandit_live_world::site_record *withdrawal_site =
+      bandit_live_world::active_hostile_withdrawal_site_for(
+          overmap_buffer.global_state.bandit_live_world, getID() );
+  if( assault_site != nullptr ) {
+      const auto &reservation = assault_site->active_hostile_operation.reservation;
+      reconcile_active_assault_routine( assault_site->site_id + ":" +
+                                        reservation.activity_id + "#" +
+                                        std::to_string( reservation.generation ) );
+  }
+
   // A worker can still be executing an issued patrol guard order after its
   // priority was disabled.  Reconcile that stale order before guard behavior
   // can select another turn, rather than waiting for worker_downtime (which a
@@ -2324,6 +2839,10 @@ void npc::move() {
   const item_location weapon = get_wielded_item();
   static const std::string no_target_str = "none";
   const Creature *target = current_target();
+  const bool assault_search = assault_site != nullptr && attitude != NPCATT_FLEE &&
+                              attitude != NPCATT_FLEE_TEMP &&
+                              !has_effect( effect_npc_run_away ) &&
+                              !has_effect( effect_npc_flee_player );
   const std::string &target_name =
       target != nullptr ? target->disp_name() : no_target_str;
   if (!confident_range_cache) {
@@ -2508,11 +3027,13 @@ void npc::move() {
                 state.active = llm_intent_action::none;
                 state.active_turn = calendar::before_time_starts;
                 state.last_applied_turn = calendar::turn;
+                trace_hostile_decision_for_harness( "llm_intent", "direct_llm_action" );
                 return;
             }
         }
     }
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) && attempt_llm_forced_attack() ) {
+    trace_hostile_decision_for_harness( "llm_forced_attack", "direct_llm_attack" );
     return;
   }
   Character &player_character = get_player_character();
@@ -2554,6 +3075,7 @@ void npc::move() {
     const tripoint_bub_ms escape_dir =
         good_escape_direction(sees_dangerous_field(pos_bub()));
     if (escape_dir != pos_bub()) {
+      trace_hostile_decision_for_harness( "move_to", "fire_escape" );
       move_to(escape_dir);
       return;
         }
@@ -2568,6 +3090,15 @@ void npc::move() {
   if (!ai_cache.dangerous_explosives.empty() &&
       !has_flag(json_flag_CANNOT_MOVE)) {
     action = npc_escape_explosion;
+  } else if( withdrawal_site != nullptr && goto_to_this_pos &&
+             !has_flag( json_flag_CANNOT_MOVE ) ) {
+    // The owned raid withdrawal has a real local path to a lower-floor exit.
+    // Preserve native explosion/fire escapes above, then take that path even
+    // while the ordinary flee attitude would otherwise circle locally.
+    action = npc_goto_to_this_pos;
+  } else if( withdrawal_site != nullptr && has_omt_destination() &&
+             !has_flag( json_flag_CANNOT_MOVE ) ) {
+    action = npc_goto_destination;
   } else if (is_enemy() && vehicle_danger(avoidance_vehicles_radius) >= 0 &&
              !has_flag(json_flag_CANNOT_MOVE)) {
     // TODO: Think about how this actually needs to work, for now assume flee
@@ -2591,6 +3122,16 @@ void npc::move() {
   } else if (target != nullptr && ai_cache.danger > 0 &&
              !has_flag(json_flag_CANNOT_ATTACK)) {
     action = method_of_attack();
+  } else if( assault_search ) {
+    // With no visible combat target, a committed assault's physical search
+    // order owns this turn.  The danger-gated need path retains urgent healing,
+    // warmth and nearby food/water, but excludes voluntary sleep and routine
+    // guard/need travel.  Native target, fear and hazard branches above win.
+    action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );
+    if( action == npc_undecided ) {
+      action = goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ?
+               npc_goto_to_this_pos : npc_pause;
+    }
   } else if (!ai_cache.sound_alerts.empty() && !is_walking_with() &&
              !has_flag(json_flag_CANNOT_MOVE)) {
         tripoint_abs_ms cur_s_abs_pos = ai_cache.s_abs_pos;
@@ -2750,6 +3291,7 @@ void npc::move() {
                 // may have been loaded in.
                 set_moves( 0 );
             }
+            trace_hostile_decision_for_harness( "activity", "stashed_activity" );
             return;
         }
         std::vector<tripoint_bub_ms> activity_route = get_auto_move_route();
@@ -2762,6 +3304,7 @@ void npc::move() {
             }
             update_path( final_destination );
             if( !path.empty() ) {
+                trace_hostile_decision_for_harness( "move_to_next", "activity_route" );
                 move_to_next();
                 return;
             }
@@ -2824,6 +3367,7 @@ void npc::move() {
                 action = goal == pos_abs_omt() ?  npc_pause : npc_goto_destination;
             }
         } else if( has_new_items && scan_new_items() ) {
+            trace_hostile_decision_for_harness( "scan_new_items", "item_scan" );
             return;
         } else if( !fetching_item ) {
             if( !apply_llm_intent_item_targets() ) {
@@ -2881,7 +3425,220 @@ void npc::move() {
   execute_action(action);
 }
 
+void npc::trace_hostile_decision_for_harness( const std::string &action,
+        const std::string &reason )
+{
+    raid_decision_trace::recorder &trace = raid_decision_trace::native_recorder();
+    if( !trace.enabled() || is_dead() ) {
+        return;
+    }
+    const int numeric_id = getID().get_value();
+    const raid_decision_trace::selected_npc_scope selected =
+        raid_decision_trace::environment_selected_npcs();
+    const bool scenario_selected = selected.includes( numeric_id ) &&
+                                   selected.includes_turn(
+                                       to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    if( selected.valid() && !scenario_selected ) {
+        return;
+    }
+    const bandit_live_world::site_record *hostile_site = nullptr;
+    const bandit_live_world::site_record *member_site = nullptr;
+    for( const bandit_live_world::site_record &candidate :
+         overmap_buffer.global_state.bandit_live_world.sites ) {
+        if( raid_decision_trace::reserved_local_actor( candidate, numeric_id ) ) {
+            hostile_site = &candidate;
+            break;
+        }
+        if( scenario_selected && member_site == nullptr &&
+            candidate.find_member( getID() ) != nullptr ) {
+            member_site = &candidate;
+        }
+    }
+    if( hostile_site == nullptr && !scenario_selected ) {
+        return;
+    }
+    const bandit_live_world::site_record *site = hostile_site != nullptr ? hostile_site : member_site;
+    const bandit_live_world::hostile_operation_state *operation_for_actor = nullptr;
+    if( site != nullptr && site->active_hostile_operation.is_active() ) {
+        const auto &members = site->active_hostile_operation.reservation.member_ids;
+        if( std::find( members.begin(), members.end(), getID() ) != members.end() ) {
+            operation_for_actor = &site->active_hostile_operation;
+        }
+    }
+    const bandit_live_world::active_outing_state *outing = nullptr;
+    bool outing_member = false;
+    if( site != nullptr && site->active_outing.is_active() ) {
+        const auto &members = site->active_outing.member_ids;
+        outing_member = std::find( members.begin(), members.end(), getID() ) != members.end() &&
+                        !site->active_outing.member_is_resolved( getID() );
+        if( outing_member ) {
+            outing = &site->active_outing;
+        }
+    }
+    const char *role = assigned_camp ? "camp_resident" : "selected_npc";
+    if( site != nullptr ) {
+        if( site->site_kind == bandit_live_world::owned_site_kind::cannibal_camp ) {
+            role = outing_member ? "cannibal_scout" : "cannibal_member";
+        } else if( site->site_kind == bandit_live_world::owned_site_kind::bandit_camp ||
+                   site->site_kind == bandit_live_world::owned_site_kind::bandit_work_camp ||
+                   site->site_kind == bandit_live_world::owned_site_kind::bandit_cabin ||
+                   site->site_kind == bandit_live_world::owned_site_kind::bandits_block ) {
+            role = "bandit_member";
+        }
+    }
+    if( hostile_site != nullptr ) {
+        role = "hostile_operation_member";
+    }
+    const auto q = raid_decision_trace::quote;
+    const map &here = get_map();
+    const tripoint_abs_ms position = pos_abs();
+    const Creature *target = current_target();
+    std::ostringstream payload;
+    if( hostile_site != nullptr ) {
+        const bandit_live_world::hostile_operation_state &operation =
+            hostile_site->active_hostile_operation;
+        payload << "\"operation_id\":" << q( operation.reservation.activity_id )
+                << ",\"generation\":" << operation.reservation.generation
+                << ",\"operation_kind\":" << q( bandit_live_world::to_string( operation.operation_kind ) )
+                << ',';
+    }
+    if( scenario_selected ) {
+        payload << "\"trace_group_id\":" << q( selected.group_id ) << ',';
+    }
+    payload << "\"capture_scope\":" << q( hostile_site != nullptr ?
+            "hostile_reservation" : "scenario_selected" )
+            << ",\"actor_type\":\"npc\",\"actor_role\":" << q( role )
+            << ",\"site_id\":" << ( site != nullptr ? q( site->site_id ) : "null" )
+            << ",\"site_kind\":" << ( site != nullptr ?
+                    q( bandit_live_world::to_string( site->site_kind ) ) : "null" )
+            << ",\"npc_id\":" << numeric_id
+            << ",\"npc_name\":" << q( disp_name() )
+            << ",\"position_abs\":[" << position.x() << ',' << position.y() << ',' << position.z()
+            << "],\"attitude\":" << static_cast<int>( get_attitude() )
+            << ",\"mission\":" << static_cast<int>( mission )
+            << ",\"action\":" << q( action ) << ",\"reason\":" << q( reason )
+            << ",\"target\":";
+    if( target == nullptr ) {
+        payload << "null,\"target_visible\":null";
+    } else {
+        payload << "{\"type\":" << q( target->is_avatar() ? "avatar" :
+                    dynamic_cast<const npc *>( target ) != nullptr ? "npc" : "monster" )
+                << ",\"position_abs\":[" << target->pos_abs().x() << ',' << target->pos_abs().y()
+                << ',' << target->pos_abs().z() << "],\"id\":";
+        if( const Character *person = dynamic_cast<const Character *>( target ) ) {
+            payload << person->getID().get_value();
+        } else {
+            payload << "null";
+        }
+        payload << ",\"monster_type\":";
+        if( const monster *mon = target->as_monster() ) {
+            payload << q( mon->type->id.str() );
+        } else {
+            payload << "null";
+        }
+        payload << "},\"target_visible\":" << ( sees( here, *target ) ? "true" : "false" );
+    }
+    payload << ",\"avatar_visible\":" << ( sees( here, get_avatar() ) ? "true" : "false" )
+            << ",\"goto_abs\":";
+    if( goto_to_this_pos ) {
+        payload << '[' << goto_to_this_pos->x() << ',' << goto_to_this_pos->y() << ','
+                << goto_to_this_pos->z() << ']';
+    } else {
+        payload << "null";
+    }
+    payload << ",\"path_length\":" << path.size() << ",\"path_next_local\":";
+    if( path.empty() ) {
+        payload << "null,\"path_next_passable\":null";
+    } else {
+        const tripoint_bub_ms next = path.front();
+        payload << '[' << next.x() << ',' << next.y() << ',' << next.z() << ']'
+                << ",\"path_next_passable\":" << ( here.passable( next ) ? "true" : "false" );
+    }
+    payload << ",\"bravery\":" << static_cast<int>( personality.bravery )
+            << ",\"panic\":" << mem_combat.panic
+            << ",\"assess_ally\":";
+    if( std::isfinite( mem_combat.assess_ally ) ) {
+        payload << mem_combat.assess_ally;
+    } else {
+        payload << "null";
+    }
+    payload << ",\"assess_enemy\":";
+    if( std::isfinite( mem_combat.assess_enemy ) ) {
+        payload << mem_combat.assess_enemy;
+    } else {
+        payload << "null";
+    }
+    payload << ",\"flee\":" << ( has_effect( effect_npc_run_away ) ? "true" : "false" )
+            << ",\"fire_danger\":" << ( has_effect( effect_npc_fire_bad ) ||
+                 sees_dangerous_field( pos_bub() ) ? "true" : "false" );
+    payload << ",\"danger\":";
+    if( std::isfinite( ai_cache.danger ) ) {
+        payload << ai_cache.danger;
+    } else {
+        payload << "null";
+    }
+    payload << ",\"sound_alerts\":" << ai_cache.sound_alerts.size()
+            << ",\"assigned_camp\":" << ( assigned_camp ? "true" : "false" )
+            << ",\"has_job\":" << ( has_job() ? "true" : "false" )
+            << ",\"patrol_priority\":" << job.get_priority_of_job( ACT_CAMP_PATROL )
+            << ",\"patrol_order\":" << ( has_camp_patrol_order() ? "true" : "false" )
+            << ",\"guard_pos_abs\":";
+    if( const std::optional<tripoint_abs_ms> guard = get_effective_guard_pos() ) {
+        payload << '[' << guard->x() << ',' << guard->y() << ',' << guard->z() << ']';
+    } else {
+        payload << "null";
+    }
+    payload << ",\"operation_phase\":" << ( operation_for_actor != nullptr ?
+            q( bandit_live_world::to_string( operation_for_actor->phase ) ) : "null" )
+            << ",\"operation_owner\":" << ( operation_for_actor != nullptr ?
+                    q( bandit_live_world::to_string( operation_for_actor->reservation.owner ) ) : "null" )
+            << ",\"route_waypoint_index\":" << ( operation_for_actor != nullptr ?
+                    operation_for_actor->reservation.waypoint_index : -1 )
+            << ",\"actor_route_waypoint\":" << ( operation_for_actor != nullptr ?
+                    operation_for_actor->reservation.actor_route_waypoint : -1 )
+            << ",\"site_search_waypoint\":" << ( operation_for_actor != nullptr ?
+                    operation_for_actor->site_search_waypoint : -1 )
+            << ",\"outing_member\":" << ( outing_member ? "true" : "false" )
+            << ",\"outing_id\":" << ( outing != nullptr ? q( outing->activity_id ) : "null" )
+            << ",\"outing_kind\":" << ( outing != nullptr ?
+                    q( bandit_live_world::to_string( outing->kind ) ) : "null" )
+            << ",\"outing_phase\":" << ( outing != nullptr ?
+                    q( bandit_live_world::to_string( outing->phase ) ) : "null" )
+            << ",\"outing_owner\":" << ( outing != nullptr ?
+                    q( bandit_live_world::to_string( outing->owner ) ) : "null" )
+            << ",\"outing_waypoint_index\":" << ( outing != nullptr ?
+                    outing->waypoint_index : -1 );
+    const std::string key = hostile_site != nullptr ?
+                            hostile_site->active_hostile_operation.reservation.activity_id + '#' +
+                            std::to_string( hostile_site->active_hostile_operation.reservation.generation ) +
+                            ':' + std::to_string( numeric_id ) :
+                            "scenario@" + selected.group_id + ':' + std::to_string( numeric_id );
+    std::ostringstream change;
+    change << action << '|' << reason << '|' << position.z() << '|';
+    if( target != nullptr ) {
+        if( const Character *person = target->as_character() ) {
+            change << "character:" << person->getID().get_value();
+        } else if( const monster *mon = target->as_monster() ) {
+            change << "monster:" << mon->type->id.str() << ':' << mon->pos_abs().to_string();
+        }
+    }
+    change << '|';
+    if( goto_to_this_pos ) {
+        change << goto_to_this_pos->to_string();
+    }
+    if( operation_for_actor != nullptr ) {
+        change << '|' << bandit_live_world::to_string( operation_for_actor->phase )
+               << '|' << bandit_live_world::to_string( operation_for_actor->reservation.owner )
+               << '|' << operation_for_actor->reservation.waypoint_index
+               << '|' << operation_for_actor->reservation.actor_route_waypoint
+               << '|' << operation_for_actor->site_search_waypoint;
+    }
+    trace.record( key, "raid_actor_action",
+                  to_turns<int>( calendar::turn - calendar::turn_zero ), payload.str(), change.str() );
+}
+
 void npc::execute_action(npc_action action) {
+  trace_hostile_decision_for_harness( npc_action_name( action ), "execute_action" );
   int oldmoves = moves;
   tripoint_bub_ms tar = pos_bub();
   Creature *cur = current_target();
@@ -8459,6 +9216,41 @@ void npc::clear_committed_goal()
         }
     }
     ai_cache.committed_goal.clear();
+}
+
+void npc::reconcile_active_assault_routine( const std::string &operation_key )
+{
+    static const std::string marker = "active_assault_routine_reconciled";
+    if( operation_key.empty() || get_value( marker ).str() == operation_key ) {
+        return;
+    }
+
+    // A contact order replaces an ordinary guard or self-care commitment.  Do
+    // this once per persisted operation identity, so a later forced collapse
+    // is never cleared by the next strategic cadence.
+    clear_committed_goal();
+    guard_pos.reset();
+    ai_cache.guard_pos.reset();
+    set_mission( NPC_MISSION_NULL );
+    if( activity.id() == ACT_TRY_SLEEP ) {
+        activity.set_to_null();
+    }
+    const bool incapacitated = has_effect( effect_narcosis ) ||
+                               has_effect( effect_npc_suspend ) ||
+                               has_effect( effect_downed ) ||
+                               has_effect( effect_stunned ) ||
+                               has_effect( effect_psi_stunned ) ||
+                               get_sleepiness() >= sleepiness_levels::MASSIVE_SLEEPINESS;
+    if( !incapacitated && has_effect( effect_sleep ) ) {
+        wake_up();
+        // This lifecycle boundary runs outside effect iteration.  Remove the
+        // expired effect now so the saved sleeper can take its next NPC turn.
+        remove_effect( effect_sleep );
+    }
+    if( !incapacitated ) {
+        remove_effect( effect_lying_down );
+    }
+    set_value( marker, operation_key );
 }
 
 float npc::current_need_urgency( need_goal_id id ) const

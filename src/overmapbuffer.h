@@ -75,6 +75,11 @@ struct overmap_path_params {
     static overmap_path_params flatten_pathfinding_costs( overmap_path_params orig );
 };
 
+// The same directional terrain edge contract used by the overmap pathfinder.
+// In particular, a passable roof above a field is not a vertical connection.
+bool overmap_travel_step_valid( const tripoint_abs_omt &from,
+                                const tripoint_abs_omt &to, const overmap_path_params &params );
+
 struct radio_tower_reference {
     /** The radio tower itself, points into @ref overmap::radios */
     radio_tower *tower;

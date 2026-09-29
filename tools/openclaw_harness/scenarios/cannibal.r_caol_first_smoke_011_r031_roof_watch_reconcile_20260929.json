@@ -1,0 +1,187 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r031_roof_watch_reconcile_20260929",
+  "description": "R031 same-save roof watch continuation from native turn5274040/min8700; recover only the attested old pair leases for IDs4/5, then time a new 120-minute assessment from its observed start.",
+  "profile": "first-smoke-011-r031-roof-watch-reconcile-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r020_roof_distance7_combined_control": "ordinary_roof_fire_light_smoke_distance7_control_after_r020",
+    "capabilities.r_caol.first_smoke_011_r027_roof_combined": "r027_roof_fire_combined_signal_and_natural_camp_outcome",
+    "capabilities.r_caol.first_smoke_011_r028_roof_watch_continuation": "r028_min8529_admitted_roof_smoke_watch_return_report_and_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r030_roof_watch_continuation": "r030_turn5264260_selected_scout4_5_roof_watch_return_report_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r031_roof_watch_reconcile": "r031_saved_min8700_reconcile_exact_pair_leases_then_native_watch_return_report"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r031-roof-watch-reconcile-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-031/immutable-executable/26dd66282637dd5eb36a941f27b842f16e50cf51e0c8a04034679b8435ebc6f5/cataclysm-tiles",
+      "profile": "first-smoke-011-r031-roof-watch-reconcile-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_turn5274040_r030_min8700_into_fresh_r031_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the new disposable R031 profile copied byte-for-byte from R030 min8700 (61-file world manifest); verify same-run World at turn5274040/min8700, Safe Off, no clairvoyance/pending input, fixed roof/source; inspect reconciliation rejection, abstract owner epoch2/cursor and both IDs4/5 stale local epoch1 leases immediately."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r031_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r031_min8700_pair_lease_reconcile_watch_return_report",
+      "objective": "Continue exact saved R030 roof outing with immutable R031. Immediately verify R031 retires only the attested stale local epoch1 leases on IDs4/5 and clears the persisted rejection while preserving abstract owner epoch2 and valid cursor. Stop before any meaningful wait if exact recovery fails. If valid, start a new assessment at its observed start time with no prior credit, then allow 120 measured minutes; follow same IDs through actual return/report and any later assault only if gates progress.",
+      "proof_targets": [
+        "new profile effective userdir and all 61 copied save hashes; exact R031 executable/source/runtime binding",
+        "same-run World at turn5274040/min8700; Safe Off; no clairvoyance or pending request; avatar/source/roster unchanged",
+        "loaded owner reconciliation: abstract owner epoch2, rejection cleared, cursor valid; IDs4/5 leases retired and saved actors alive/unloaded at original watch OMT",
+        "assessment start recorded after load with zero back credit; exact 120 measured minutes from that start, same outing generation",
+        "same IDs through phase transition, physical homeward positions, return receipts, report source activity/generation, and later assault only if the native gates progress",
+        "confirmed quicksave turn and exact process cleanup; selected numeric trace scope for IDs4/5 with abstract-action evidence limit explicit"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Disposable copy only; preserve source profile and owner save",
+        "Keep avatar fixed at [3155,3448,1], preserve source [3156,3447,1], no relight/clair/debug injection/teleport/forced report",
+        "Only exact same outing generation and IDs4/5; no elapsed-time credit before observed assessment start",
+        "Quicksave only through advertised World action and verify native saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_turn5274040_r030_min8700_into_fresh_r031_profile",
+      "bind_same_run_r031_native_world"
+    ],
+    "production_behavior": [
+      "r031_min8700_pair_lease_reconcile_watch_return_report"
+    ],
+    "terminal_persistence": [
+      "r031_min8700_pair_lease_reconcile_watch_return_report"
+    ],
+    "artifact_verdict": [
+      "r031_min8700_pair_lease_reconcile_watch_return_report"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_turn5274040_r030_min8700_into_fresh_r031_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the same admitted roof-smoke outing from the verified min8550 R030 save; capture exact bounded selected-NPC decisions and establish finite assessment, same-ID return/report and any later actual assault.",
+    "failure_rule": "Record the first changed divergence. Do not credit assessment before physical arrival or infer assault/combat success from labels/proximity."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5274040,
+  "decision_trace_to_turn": 5281240
+}

@@ -1,0 +1,142 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_terrain_scout_018_scout_travel",
+  "description": "Same-save native replay of the naturally selected cannibal scout pair after the reviewed two-OMT travel coherence repair; signal remains off.",
+  "profile": "first-smoke-018-route-coherence-replay-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r018_scout_travel": "same_save_route_coherence_native_replay"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-018-route-coherence-replay-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-018/launch-artifact/f08ddc78c655b004466da394c946f25504f8adc644c4f92b48da0ee11e99a8ed/cataclysm-tiles",
+      "profile": "first-smoke-018-route-coherence-replay-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_byte_exact_minute9846_signal_off_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only relative disposable profile first-smoke-018-route-coherence-replay-20260927 copied byte-for-byte from the 61-file save subtree and 8-file config subtree of .userdata/first-smoke-013-min9840-travel-trace-20260927. Source diagnostic event was at minute9845; saved turn5342818 and game minute after diagnostic were 5342818/9846. Verify effective userdir, actual native World and saved/current minute, migration, Safe mode Off, DEBUG_LS unchanged, no pending input, signal off, and same camp/actors/outing premise from this saved copy before gameplay. Preserve the source profile and all prior R012/R013 runs."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_world_and_fresh_save",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "same_id_route_watch_return_report",
+      "cleanup_on_finish": true,
+      "objective": "On the repaired current-source build and disposable copy of the saved minute9846/turn5342818 signal-off state, observe the next native travel decision for naturally dispatched cannibal scouts 4 and 5. Follow each same saved actor ID through actual NPC positions/actions, a physically valid travel route that may pass at two OMT from target, the selected watch which remains three OMT away or an applicable physical terrain visit, actual homeward travel, physical return receipt, report and honest cargo/supply change if any. Do not infer movement from an abstract phase or grant cargo to an empty exploration.",
+      "proof_targets": [
+        "current source/executable binding and immutable exact profile copy; effective userdir, same-run World/turn, saved turn and migration state",
+        "Safe mode Off, DEBUG_LS unchanged, no pending request, fire/smoke absent and original actors/outing premise intact",
+        "same actor IDs 4/5 receive native mission, actual goal and persisted route at the next decision; record route nodes and exact target distance for each",
+        "two-OMT travel is permitted, selected watch remains exactly three OMT away; capture actual same-ID positions/actions at the route and watch/visit endpoint",
+        "fresh native saves at dispatch, meaningful movement, endpoint, home return and report with confirmed saved turns",
+        "actual report, knowledge and supply/cargo fields; any cargo requires native item/haul evidence; empty scout return is recorded as empty",
+        "simulation turn timing and exact owned PID/birth closure"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "only the disposable minute9846 profile copy is operated; never change the source save or owner archive",
+        "no signal ignition, no injected lead/knowledge/outing/report/route/target/dispatch, no forced movement or teleport",
+        "actor IDs and physical route/action are required; phase labels and abstract routes do not prove travel",
+        "two OMT is allowed for travel only; watch remains three OMT away",
+        "cargo and supply credit must match actual native inventory/haul/report fields; preserve empty outcomes honestly",
+        "if the old refusal recurs, capture exact route path/reason and stop unchanged waits; do not repair product here"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_byte_exact_minute9846_signal_off_copy",
+      "bind_same_run_world_and_fresh_save"
+    ],
+    "production_behavior": [
+      "same_id_route_watch_return_report"
+    ],
+    "terminal_persistence": [
+      "same_id_route_watch_return_report"
+    ],
+    "artifact_verdict": [
+      "same_id_route_watch_return_report"
+    ],
+    "disallowed_shortcuts": [
+      "load_byte_exact_minute9846_signal_off_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "The repaired source allows the same naturally selected cannibal pair to travel through the two-OMT approach ring while preserving a three-OMT watch; native gameplay confirms their actual departure, endpoint, return/report and honest cargo result from the minute9846/turn5342818 signal-off save.",
+    "failure_rule": "Require byte-exact saved premise, current source-bound executable, effective userdir, same-run World/turn and mutable state before actions. Require same-ID native mission/path/position/action and fresh saved turns. A plan or phase alone is not a physical visit. A watch is not scavenging; cargo needs actual native inventory/haul evidence. Stop at the first causal divergence and preserve the save."
+  }
+}

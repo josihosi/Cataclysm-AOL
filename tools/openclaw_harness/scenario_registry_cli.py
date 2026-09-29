@@ -16,7 +16,7 @@ import traceback
 import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from scenario_registry import ManifestValidationError, validate_manifest
+from scenario_registry import ManifestValidationError, lint_manifest, validate_manifest
 from scenario_registry_store import (
     BindingAdapters,
     RegistryBootstrapToken,
@@ -1336,6 +1336,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", help="Return machine-readable receipts instead of plain selection output")
     parser.add_argument("--registry", help="SQLite registry path; defaults to the shared harness registry")
     commands = parser.add_subparsers(dest="command", required=True, parser_class=_ArgumentParser)
+    lint = commands.add_parser(
+        "lint-declarations",
+        help="read-only diagnostics for scenario JSON declarations; does not open the registry",
+        description=("Check scenario JSON without opening the registry. Invalid declarations exit 1; "
+                     "legacy review_required declarations exit 0. Use global --json before this "
+                     "command for complete structured diagnostics."),
+    )
+    lint.add_argument("paths", nargs="+", type=Path, help="scenario JSON files to check")
     rebuild = commands.add_parser("rebuild", help="project scenario declarations into the registry")
     rebuild.add_argument(
         "--scenarios-root",
@@ -2329,6 +2337,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     global _JSON_OUTPUT
     _JSON_OUTPUT = "--json" in (sys.argv[1:] if argv is None else argv)
     args = build_parser().parse_args(argv)
+    if args.command == "lint-declarations":
+        results = [lint_manifest(path) for path in args.paths]
+        counts = {status: sum(item["status"] == status for item in results)
+                  for status in ("valid", "review_required", "invalid")}
+        if _JSON_OUTPUT:
+            _write_result({"ok": counts["invalid"] == 0, "command": args.command,
+                           "results": results, "counts": counts})
+        else:
+            for item in results:
+                print(f'{item["path"]}: {item["status"]}')
+                for diagnostic in item["diagnostics"]:
+                    location = diagnostic["file"]
+                    if diagnostic["line"] is not None:
+                        location += f':{diagnostic["line"]}'
+                    print(f'{location}: {diagnostic["severity"]} '
+                          f'[{diagnostic["rule"]}] {diagnostic["field"]}: '
+                          f'{diagnostic["message"]}')
+            print(" ".join(f"{status}={count}" for status, count in counts.items()))
+        return 1 if counts["invalid"] else 0
     if args.command == "production-observe":
         # This deliberately bypasses registry open/query/token paths.  The
         # resulting report carries explicit zero-credit evidence; an operator

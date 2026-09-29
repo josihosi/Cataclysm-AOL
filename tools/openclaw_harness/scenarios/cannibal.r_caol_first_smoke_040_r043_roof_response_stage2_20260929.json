@@ -1,0 +1,169 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_040_r043_roof_response_stage2_20260929",
+  "description": "R040 stage-two selected-ID continuation from the verified R043 minute9120 dispatch checkpoint: trace actual raiders10/11 from first resumed turn through physical approach and any combat/house/stairs outcome.",
+  "profile": "first-smoke-041-r043-stage2-selected-10-11-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r040_r043_roof_response": "min9120_selected_ids10_11_trace_physical_assault"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.toggle_safemode",
+      "semantic:prompt.choose",
+      "semantic:menu.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-041-r043-stage2-selected-10-11-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-043/immutable-executable/5dfe58757ac4ae09b428af3854917ac565009075c1a348693ff2bb7b00c99fd2/cataclysm-tiles",
+      "profile": "first-smoke-041-r043-stage2-selected-10-11-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "bind_exact_r037_min9065_save_on_r043",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Check the fresh 61-file disposable roof save, dimension_data.gsav SHA 0555a767615282d8c079165da468e1bb745854805c4b9be5b8ce4606a3cf502e, minute9065/turn5295904, effective relative userdir, R043 immutable executable/source, same-run World, Safe Off and no pending input."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r040_trace_selected_response_actors_10_11_from_preencounter_dispatch",
+      "objective": "Continue the already authorized hostile operation from the preserved minute9120 checkpoint. Follow actual selected actor IDs10/11 from their current state through movement, approach, any city combat and incoming damage. If they survive the city, continue toward a real house doorway and actual stairs/upstairs action. Distinguish attributed events from inference; no autoattack.",
+      "proof_targets": [
+        "R043 immutable executable/source and frozen Python runtime binding; exact 61-file checkpoint copy, effective profile, same-run World turn/minute and Safe Off",
+        "run-bound raid trace scope confirms operation/group and selected IDs10/11 from first resumed turn through the declared trace end; preserve raw event handles and completeness/truncation markers",
+        "per-ID native position/z, goal/path, action/target/visibility, attack, applied damage, HP/status, sleep/wake/death with exact event/actor source handles",
+        "physical city/ground route and any real house doorway; actual stair tile and upstairs arrival/search only if reached",
+        "attribute incoming hit/death only when native evidence identifies attacker; do not infer killer from nearby zombies or sequence",
+        "first complete fight/outcome or concrete divergence; preserve full save copies at meaningful changed boundaries",
+        "graceful owned game/bridge/launcher exit with exact PID/birth/OS-exit evidence"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the distinct disposable profile copied from the exact saved turn5299201/minute9120 dispatch checkpoint; preserve stage-one checkpoint and original R037 data unchanged",
+        "Follow IDs10/11 because the saved active operation names them; do not substitute historical scouts or infer membership",
+        "No signal/report/roster/route/HP/actor injection, clairvoyance, hostile teleport, autoattack or count repeat",
+        "Use individual currently advertised native controls and collect pending requests; verify Safe Off before movement/waits",
+        "Distinguish operation phase/route intent from physical movement, house entry, upstairs search and landed damage",
+        "Report unknown attacker if no native field/event names it; a pre-house death after active fighting is a city/zombie-attraction outcome, not by itself a product defect"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_exact_r037_min9065_save_on_r043",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r040_trace_selected_response_actors_10_11_from_preencounter_dispatch"
+    ],
+    "terminal_persistence": [
+      "r040_trace_selected_response_actors_10_11_from_preencounter_dispatch"
+    ],
+    "artifact_verdict": [
+      "r040_trace_selected_response_actors_10_11_from_preencounter_dispatch"
+    ],
+    "disallowed_shortcuts": [
+      "bind_exact_r037_min9065_save_on_r043"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R040 selected-ID native continuation follows the actual reserved response actors10/11 from the saved R043 dispatch through their real movement and combat/outcome, reaching a real doorway/stairs/upstairs only if those steps occur.",
+    "failure_rule": "Preserve the first source-bound divergence. Trace scope and selected IDs must be confirmed; decision intent is not physical movement, combat selection is not a landed attack, and ground entry is not upstairs search."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    10,
+    11
+  ],
+  "decision_trace_from_turn": 5299201,
+  "decision_trace_to_turn": 5350000
+}

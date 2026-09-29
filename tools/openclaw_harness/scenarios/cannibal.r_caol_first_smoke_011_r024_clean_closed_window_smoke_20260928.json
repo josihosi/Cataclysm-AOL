@@ -1,0 +1,174 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r024_clean_closed_window_smoke_20260928",
+  "description": "Fresh ordinary-view closed-window smoke-only arm from byte-verified prepared save; real lighter fire through same-ID scout/watch/return/report and cannibal assault. R023 decision trace is run-bound diagnostic only.",
+  "profile": "first-smoke-024-ordinary-closed-window-smoke-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "raid_actor_trace": true,
+  "capabilities": {
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r024_clean_closed_smoke": "fresh_unlit_closed_window_fire_smoke_through_cannibal_raid"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.inventory",
+      "semantic:world.pickup",
+      "semantic:world.item_use",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.quicksave",
+      "semantic:world.look",
+      "semantic:world.inspect_npc"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-024-ordinary-closed-window-smoke-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-023/immutable-executable/c9c1b0269d20e1678382b3763a6ff394b521ed2a360ecb99d1cfe08555b57db9/cataclysm-tiles",
+      "profile": "first-smoke-024-ordinary-closed-window-smoke-20260928",
+      "fixture": "manifest-disclosed camp placement only; no signal/contact/knowledge bootstrap",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_byte_verified_clean_closed_window_start",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Effective relative profile selects the new disposable copy. Same-run World must show the prepared initially unlit closed-window state, player at the saved start, safe mode checked before action, no clairvoyance mutations, and no prior fire/smoke contact; use the 45-file manifest and native current frame, not stale IDs."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_world_and_ordinary_controls",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_signal_or_ai_changes",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No signal/setup, visibility, actor bravery/panic, target, route, or AI changes during this diagnostic.",
+      "objective": "Use only the camp footprint already disclosed by the prepared-save manifest. Do not inject signal, contact, report, roster, knowledge, teleport, mutation, or AI changes."
+    },
+    {
+      "kind": "wait",
+      "label": "never_touch_owner_or_other_session",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Do not send any input to owner-controlled game PID45379/window52278, bridge45353, launcher45354, or its profile.",
+      "objective": "This run owns only its newly selected disposable profile and process group; do not operate retained PID45379 or any foreign session."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r024_clean_closed_window_smoke_raid",
+      "objective": "From the verified unlit clean closed-window start, walk to the brazier and light its existing fuel through ordinary lighter controls. Verify fire, physical smoke, no light packet from the contained room, and smoke admission before judging camp response. Follow the same NPC IDs through three-OMT watch, physical return/report, night departure, actual pursuit/attack/damage/outcome. Preserve fire; no clairvoyance or combat injection.",
+      "proof_targets": [
+        "45/45 saved files match build_logs/first-smoke-024/clean-closed-window-copy-manifest.json; effective relative userdir; immutable R023 binary/source runtime binding",
+        "same-run World, correct start turn/player/fire/window state, Safe Off before action, no clairvoyance IDs, no prior signal lead/contact",
+        "native ordinary lighter action and fd_fire/fd_smoke; source-bound light/smoke packets with actual camp range/LOS; smoke-only admission if present",
+        "same actor IDs and actual positions/actions through three-OMT watch, physical return/report and hostile departure",
+        "actor decisions where R023 trace supports them (raid IDs and bounded turn coverage), all relevant defenders, source-attributed damage and actual terminal outcome",
+        "native saves/journal and exact process/birth cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "New disposable profile only; owner archive and prior R023 continuation untouched",
+        "No clairvoyance/cloak/invulnerability; verify absence in saved player state",
+        "Ordinary lighter and existing brazier fuel only; no smokebomb, injected fire/signal/contact/report/dispatch, debug kill, or AI change",
+        "No movement preamble before quicksave; verify the saved turn",
+        "Use safe waits while observing and intentional ignore combat wait only when ready to allow outcome",
+        "Keep disclosed camp placement setup-only; do not count it as signal discovery or knowledge"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_byte_verified_clean_closed_window_start",
+      "bind_same_run_world_and_ordinary_controls"
+    ],
+    "production_behavior": [
+      "r024_clean_closed_window_smoke_raid"
+    ],
+    "terminal_persistence": [
+      "r024_clean_closed_window_smoke_raid"
+    ],
+    "artifact_verdict": [
+      "r024_clean_closed_window_smoke_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_signal_or_ai_changes",
+      "never_touch_owner_or_other_session"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh ordinary-view closed-window physical smoke signal causes native camp discovery/scouting/report/raid and actual cannibal assault under the source-bound R023 executable.",
+    "failure_rule": "Do not infer admission from fire, phase labels, or a shared group row. Preserve actual channel, actor IDs, physical movement, report, action, damage-source and terminal evidence; stop at a material source-bound divergence."
+  }
+}

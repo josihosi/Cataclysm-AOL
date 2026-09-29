@@ -1,0 +1,186 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r035_roof_both_senses_20260929",
+  "description": "Fresh R035 native continuation from exact min8720 roof watch; observe real typed light and smoke, same-ID assessment/report and any natural response without relighting or replaying scout travel.",
+  "profile": "first-smoke-037-r035-roof-watch-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r037_r035_roof_watch": "r035_min8720_both_typed_roof_signals_native_safe_wait_assessment_report_response"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-037-r035-roof-watch-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-035/immutable-executable/2f06113727a9dc230f9a51bc3fa58c12f5d043e6ac7c00badcf8b486163a2099/cataclysm-tiles",
+      "profile": "first-smoke-037-r035-roof-watch-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_min8720_roof_watch_into_fresh_r035_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the fresh byte-exact 61-file copy of R031 turn5275255/min8720; verify R035 immutable executable/source and effective relative userdir. Verify same-run World, stationary player [3155,3448,1], Safe Off, no clair/pending input, current roof fire/smoke/weather, observing generation1 outing and IDs4/5 at [134,141,0]. No relight or outward scout replay."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_min8720_native_world_r035",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r035_native_roof_typed_signal_assessment_return_report_response",
+      "objective": "Continue from the exact saved roof watch on R035. Without moving the player or relighting, observe real typed roof light and smoke samples and their persisted credit for current revision and same IDs4/5. Continue through physical return/report and actual response authorization; record native actor actions/damage only if a raid is applied. Exercise the repaired safe-wait behavior only on naturally occurring ordinary chatter and real danger/damage prompts; do not synthesize interruptions.",
+      "proof_targets": [
+        "all 61 disposable save files match the original source manifest; profile name resolves to the intended relative .userdata userdir; same-run World and exact R035 runtime binding",
+        "saved turn5275255/min8720, stationary player1 [3155,3448,1], existing roof source [131,143,1], Safe Off, no clair or pending input",
+        "same generation1 observing outing and native actor IDs4/5 at physical watch [134,141,0]; no replay of setup/outward travel",
+        "actual roof fd_fire/fd_smoke, weather and live light/smoke packets; separate typed light and smoke observations bound to observer, source, target revision, route/share, time and saved turn",
+        "same-ID physical return and delivered report carrying both actual signal senses, with native certainty/danger inputs",
+        "actual response authorization, roster and bounded party capability, distinct from routine dispatch cooldown; follow native actors/actions/damage only if response is applied",
+        "for any naturally occurring ordinary typed chatter: exact safe-wait prompt class and accepted Ignore/continue receipt; for any real near-hostile or pain/damage prompt: exact stop/response receipt and actor/health state; if neither prompt occurs, mark that wait path unvalidated",
+        "meaningful native quicksave turn/hash and graceful save/quit, run finish/collect, exact game/bridge/launcher PID births and OS exits"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the fresh disposable copy; never modify the original R031 source or previous accepted evidence",
+        "Do not relight, move/recenter the avatar, replay outbound scout travel, inject observations/knowledge/report/contact, alter roster/power, use clairvoyance, or synthesize prompts",
+        "Verify Safe Mode Off and no clairvoyance after World/load; player remains at [3155,3448,1]",
+        "Credit only new R035 time and observations; require typed light and smoke records rather than physical LOS alone or a generic signal phase",
+        "Quicksave only via advertised world.quicksave without movement at meaningful changed state",
+        "Distinguish the old danger12/power15<18 denial from this R035 report/capability, and never assume production power15>=14 means native authorization"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_min8720_roof_watch_into_fresh_r035_profile",
+      "bind_same_run_min8720_native_world_r035"
+    ],
+    "production_behavior": [
+      "r035_native_roof_typed_signal_assessment_return_report_response"
+    ],
+    "terminal_persistence": [
+      "r035_native_roof_typed_signal_assessment_return_report_response"
+    ],
+    "artifact_verdict": [
+      "r035_native_roof_typed_signal_assessment_return_report_response"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_min8720_roof_watch_into_fresh_r035_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh R035 continuation from the exact minute8720/turn5275255 roof watch: typed light and smoke observations, same-ID return and report, actual response capability and any ensuing actor-level combat, plus native safe-wait handling only for real prompts.",
+    "failure_rule": "Preserve first source-bound divergence. Physical light LOS is not a typed observation; response calculation is not native authorization; operation phase/proximity is not actor action or combat."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5275255,
+  "decision_trace_to_turn": 5300000
+}

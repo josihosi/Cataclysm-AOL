@@ -1,0 +1,24 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Source-bound same-save native proof of repaired scout travel, physical endpoint, return/report and honest cargo result, or exact first causal divergence.",
+  "material_proof": "The byte-identical save/config copy is recorded in build_logs/first-smoke-018/disposable-profile-copy.json. Source closeout build_logs/first-smoke-013/scout-travel-trace-minute9845-closeout.json binds run bacbf34be0066818e0966fabe50262d5f15bd0b44f758055d63419082d100b39, saved turn5342818 and minute9846 after the minute9845 diagnostic; baseline camp, actor IDs, target, watch and route are in that closeout. The live run must bind immutable executable SHA f08ddc78c655b004466da394c946f25504f8adc644c4f92b48da0ee11e99a8ed, product source c2fd5f356097a9344ba4beabf1da3c03850d7ec5b27bdb0ad06d9a97acffeb79 and exact launch receipt in build_logs/first-smoke-018/immutable-executable-handoff.json.",
+  "current_uncertainty": "Whether the repaired production route is assigned to same IDs4/5 and yields physical travel to the selected three-OMT watch/visit, then same-ID return/report and any genuine cargo change.",
+  "material_contradiction": [
+    "effective profile/save/current turn differs from the verified copy",
+    "same actor IDs remain held or use a route rejected by the stated two-OMT rule",
+    "phase or abstract route is credited as physical travel or endpoint",
+    "cargo/supply credit lacks a native item/haul/report change"
+  ],
+  "forbidden_shortcuts": [
+    "replay smoke admission",
+    "inject or alter signal, knowledge, lead, actor, route, target, outing, report or dispatch",
+    "force/teleport actors or infer visit from phase",
+    "credit cargo without native inventory/haul evidence"
+  ],
+  "honest_stop_conditions": [
+    "preserve exact first route refusal or startup fault and stop unchanged waits",
+    "follow same IDs through physical home return and report if naturally achieved",
+    "confirm fresh native saved turns and exact process closeout by PID/birth"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

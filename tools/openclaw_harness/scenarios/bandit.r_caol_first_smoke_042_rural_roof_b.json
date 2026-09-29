@@ -1,0 +1,194 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r_caol_first_smoke_042_rural_roof_b",
+  "description": "R042 countryside B: A plus one normal unseeded southern bandit camp; assess factions separately.",
+  "profile": "first-smoke-042-rural-b-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp+inherited_distant_bandit_cabin+added_bandit_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r042_rural_roof": "B_A_plus_bandit_camp"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-042-rural-b-20260929",
+    "fixture": "r042_rural_roof_dual_faction_b_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-047/immutable-executable/20588e4d3c13ac4f1c23252f85c6936027ea0fe9ef3d51c6b8c7e8aefaa0a4ee/cataclysm-tiles",
+      "profile": "first-smoke-042-rural-b-20260929",
+      "fixture": "r042_rural_roof_dual_faction_b_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions; ordinary roof ignition and save"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r042_rural_baseline_b",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load exact R042 B 45-file fresh start from profile first-smoke-042-rural-b-20260929; player save SHA256 037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247; turn 5216234, unlit prepared house/roof, current weather, house and cannibal camp preserved. Check effective userdir, source-bound executable, World, safe mode, mutations and pending input. The inherited distant bandit_cabin [103,167,0] and its old lead remain parent state; B's newly added bandit_camp [129,149,0] has no seeded roster or knowledge."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r042_world_b",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "native_r042_rural_journey_b",
+      "objective": "From this independent unlit pre-signal rural roof save, follow the shared roof start and normal lighter route. Verify native physical light and smoke before each faction's admission; track real scout IDs, watch, return/report and selected response IDs. For A, follow the cannibal approach through entry, stairs and combat. For B, also follow the distinct southern bandit camp through discovery and a saved prechoice Pay/Fight branch with actual payment or combat. Keep nearest useful native response/prechoice saves for scoped continuations.",
+      "proof_targets": [
+        "byte-exact fixture/profile identity and same-run native World/action/save/reload",
+        "current fire/fuel/weather and source-bound light plus smoke packets",
+        "same-ID per-site admission, physical watch, return/report and response selection",
+        "selected raider actor IDs, route, local action, damage/death and exact source handles",
+        "separate building entry/stairs proof and bandit payment/fight branches where applicable",
+        "graceful game/bridge/launcher lifecycle and saved turns"
+      ],
+      "invariants": [
+        "fixture edits have zero gameplay credit; no injected signal, knowledge, report, raid or payment",
+        "A and B use separate disposable starts, never a progressed copy as fresh baseline",
+        "the inherited distant bandit_cabin is parent state, not B's added bandit_camp",
+        "native actor IDs must be resolved after response selection, not reused from scout IDs"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r042_rural_baseline_b",
+      "bind_same_run_r042_world_b"
+    ],
+    "production_behavior": [
+      "native_r042_rural_journey_b"
+    ],
+    "terminal_persistence": [
+      "native_r042_rural_journey_b"
+    ],
+    "artifact_verdict": [
+      "native_r042_rural_journey_b"
+    ],
+    "disallowed_shortcuts": [
+      "native_r042_rural_journey_b"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R042 countryside B: A plus one normal unseeded southern bandit camp; assess factions separately. Native faction behavior requires fresh gameplay receipts.",
+    "failure_rule": "Offline fixture and binding checks grant no signal, roster, raid, building, payment or combat proof."
+  },
+  "fixture": "r042_rural_roof_dual_faction_b_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "post_relaunch": {
+    "terminal_save_step_label": "native_r042_rural_journey_b",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "r044_rural_b_reloaded_world",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "The same saved TestSetup00 reloads under the R047 executable with the native quicksaved turn and World owner."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r044_rural_b_saved_reentry",
+        "objective": "Read the reloaded native World, effective userdir, saved turn, safe mode and DEBUG_LS state; compare with the initial segment and close the disposable process gracefully. No roof ignition or faction waiting is needed for this bootstrap.",
+        "proof_targets": [
+          "same saved world and confirmed quicksaved turn after process replacement",
+          "source-bound R047 executable and exact B profile",
+          "game, bridge and launcher OS exit after the reentry check"
+        ],
+        "invariants": [
+          "the initial native quicksave is the only persisted progression",
+          "no fixture reinstall on saved-process reentry",
+          "no faction behavior credited by the bootstrap"
+        ],
+        "live_operations": ["game.act"],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

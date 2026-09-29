@@ -1,0 +1,182 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_z0_staged_firewood_packet_assay_20260928",
+  "description": "Bounded source-bound feasibility assay: stage exactly one splintered-wood unit as recorded setup in a disposable copy, place it on a verified safe exposed z0 tile, ignite through ordinary lighter gameplay, then measure fire/smoke and live-light/live-smoke caps before any camp response.",
+  "profile": "first-smoke-011-z0-firewood-staged-assay-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "test",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_z0_staged_firewood_packet_assay": "one_setup_only_splintered_wood_unit_then_ordinary_z0_fire_packet_measurement"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.raw_wait",
+      "cockpit:game.wait",
+      "cockpit:run.finish",
+      "cockpit:run.witness",
+      "debug:spawn",
+      "semantic:direction.cancel",
+      "semantic:direction.choose",
+      "semantic:inventory.cancel",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.select",
+      "semantic:main_menu.quit",
+      "semantic:menu.choose",
+      "semantic:prompt.choose",
+      "semantic:world.debug_menu",
+      "semantic:world.drop",
+      "semantic:world.fire",
+      "semantic:world.inventory",
+      "semantic:world.move.*",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.toggle_safemode"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "debug:kill",
+      "smokebomb",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-z0-firewood-staged-assay-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-011/z0-assay-build-prefixcataclysm-tiles",
+      "profile": "first-smoke-011-z0-firewood-staged-assay-20260928",
+      "fixture": "none",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": [
+        "one setup-only debug_spawn_item of splintered wood, ordinary native drop at verified safe exterior z0 tile, normal lighter activation, packet/cap observation, save/exit"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_disclosed_disposable_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the byte-exact copy of the disclosed owner-open-reference controlled-camp setup; confirm effective userdir, World/current turn, Safe Off, no clairvoyance/cloak/invulnerability, no fire on chosen exterior test tile and no pending request."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "stage_one_wood_setup_then_measure_ordinary_z0_fire",
+      "objective": "As explicitly recorded setup only, use the existing supported debug_spawn_item control to add exactly one splintered wood unit to the carried inventory in this disposable copy. Then use ordinary gameplay to place it on a verified safe exposed z0 tile and ignite it with the normal lighter. Verify fd_fire/fd_smoke plus same-run live_light/live_smoke packet fields and measured caps. Stop before camp behavior if light cap cannot exceed endpoint see_cost 5 plus measured OMT distance or smoke geometry fails.",
+      "proof_targets": [
+        "profile/save hashes and effective userdir; exact source/executable build/runtime binding",
+        "native player, map tile, safe-mode Off and mutation absence before input",
+        "actual safe exterior z0 source tile, terrain and distance; exact one-unit setup spawn, ordinary native drop and lighter route",
+        "native fire plus same-run live_light/live_smoke packet fields including exposure, source z, range cap, channel and saved turn",
+        "actual camp endpoint/distance/see_cost and source-bound LOS/range determination",
+        "stop before camp gameplay if light cap < endpoint cost + distance or smoke geometry fails; otherwise preserve initial no-knowledge baseline before continuing"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No owner archive changes",
+        "No camp/overmap/map terrain mutation during this assay",
+        "No smokebomb or injected fire/signal/light/smoke/contact/knowledge",
+        "No camp-response gameplay before a measured viable source/camp geometry is established",
+        "Only the selected disposable profile may be written",
+        "Exactly one debug-spawned splintered wood unit is setup only, recorded with source and action; it is not natural item availability or signal causation.",
+        "No other item, map, camp, roster, knowledge, dispatch, signal or contact setup mutation."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_disclosed_disposable_copy",
+      "bind_native_world"
+    ],
+    "production_behavior": [
+      "stage_one_wood_setup_then_measure_ordinary_z0_fire"
+    ],
+    "terminal_persistence": [
+      "stage_one_wood_setup_then_measure_ordinary_z0_fire"
+    ],
+    "artifact_verdict": [
+      "stage_one_wood_setup_then_measure_ordinary_z0_fire"
+    ],
+    "disallowed_shortcuts": [
+      "bind_native_world"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Bounded source-bound measurement of native physical light and smoke packets from one ordinary exposed z0 fire source. This does not claim camp response unless both measured channels can meet the actual camp geometry.",
+    "failure_rule": "Keep setup, native fire, packet projection, range/LOS feasibility and any camp response distinct; stop at the first measured infeasible boundary."
+  },
+  "setup_declaration": {
+    "classification": "recorded setup only; zero gameplay/signal/ecology credit",
+    "control": "existing startup_harness.debug_spawn_item exact-PID Peekaboo control",
+    "item_query": "splintered wood",
+    "count": 1,
+    "destination": "Test00 inventory, then ordinary native drop onto the verified safe exposed z0 tile",
+    "owner_archive": "untouched",
+    "fixture_or_product_code_change": false
+  }
+}

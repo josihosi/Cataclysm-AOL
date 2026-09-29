@@ -1,0 +1,164 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_ordinary_assault_5257260_combat_continue_20260928",
+  "description": "Disposable exact continuation from saved turn5257260 after hostile ID4 adjacency and Casey injury; observe genuine combat outcome.",
+  "profile": "first-smoke-020-turn5257260-combat-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_5257260_combat_continue": "ordinary_view_combat_outcome_saved_turn_5257260_same_position"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-turn5257260-combat-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-turn5257260-combat-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_saved_turn5257260_combat_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Verify byte-exact 55-save/8-config disposable copy and player payload SHA ed82b08e804e86cc5029dc807d9940742434610e2fde99e49f95115c213fbe33; effective userdir, same-run World, turn5257260, player [3157,3444,0], no clair mutations; inspect and verify Safe Off (toggle only if On)."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No save or world fixture transforms beyond the exact disposable copy are declared."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "continue_hostile_combat_through_outcome",
+      "expected_visible_fact": "No save or world fixture transforms beyond the exact disposable copy are declared.",
+      "objective": "From verified turn5257260, use advertised short safe/stop observation first to capture any immediate harm and actor/source metadata; once on the existing hostile-survivor prompt, do not quit solely because it is present. Choose the advertised ignore/continue control to observe the intended combat through its outcome, checkpointing at short meaningful intervals. Track raid IDs4/7, Casey3, player health and damage source; distinguish ferals. Raid-attributed death may satisfy.",
+      "proof_targets": [
+        "exact current/saved turn and source/build/run/profile",
+        "Safe Off and both clair mutations absent",
+        "native metadata for IDs4/7, Casey3, player and ferals: positions/actions/health",
+        "source-attributed damage/attack or actual terminal outcome",
+        "verified durable save and lifecycle",
+        "actual simulation timing with modal/prompt phases distinguished"
+      ],
+      "invariants": [
+        "No debug contact/kill, teleport, injected signal, cloak or invulnerability",
+        "Preserve tactical position unless consequential threat requires otherwise",
+        "Do not replay prior smoke/scout/watch/return/report stages",
+        "Use ignore/continue intentionally through combat once at hostile prompt; capture short checkpoints and damage source",
+        "Track unseen actors by native metadata, not sight",
+        "Do not quit solely on hostile-survivor prompt"
+      ],
+      "evidence_contract": {
+        "claim": "Continuation-only evidence from exact disposable copy of saved player turn5257260; prior smoke/scout/report evidence remains bound to earlier run.",
+        "failure_rule": "Continue through intended combat after verifying real hostile prompt; credit only same-run actor actions, damage attribution or terminal combat outcome. Keep feral source separate."
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_saved_turn5257260_combat_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "continue_hostile_combat_through_outcome"
+    ],
+    "terminal_persistence": [
+      "continue_hostile_combat_through_outcome"
+    ],
+    "artifact_verdict": [
+      "continue_hostile_combat_through_outcome"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Observe combat outcome from exact disposable turn5257260 continuation without replaying prior signal stages.",
+    "failure_rule": "Do not terminate merely on hostile-survivor prompt. Capture actor/health/source around harm and continue via advertised ignore/continue control through combat outcome."
+  }
+}

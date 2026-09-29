@@ -88,6 +88,7 @@
 #include "profession.h"
 #include "proficiency.h"
 #include "recipe_dictionary.h"
+#include "raid_decision_trace.h"
 #include "requirements.h"
 #include "ret_val.h"
 #include "rng.h"
@@ -5419,6 +5420,7 @@ void Character::fall_asleep( const time_duration &duration )
         }
     }
     add_effect( effect_sleep, duration );
+    raid_decision_trace::record_sleep_edge( *this, "fall_asleep", "fall_asleep" );
     get_event_bus().send<event_type::character_falls_asleep>( getID(), to_seconds<int>( duration ) );
 }
 

@@ -1,0 +1,24 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.r_caol.first_smoke",
+      "op": "eq",
+      "value": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.entry_mode",
+      "op": "eq",
+      "value": "cockpit_live_session",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": [
+    {
+      "key": "world.hostile_policy",
+      "op": "eq",
+      "value": "cannibal_camp",
+      "minimum_evidence": "declared"
+    }
+  ]
+}

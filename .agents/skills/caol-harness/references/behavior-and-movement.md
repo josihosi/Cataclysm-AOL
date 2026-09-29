@@ -44,14 +44,15 @@ game minutes; a dispatch or return may need a full day or more. A short clean ca
 tool responses does not settle the player's observed journey. The native wait menu may offer
 five minutes, one hour or multi-hour choices; inspect its current advertised controls instead of
 assuming a maximum or repeatedly choosing short waits. With a verified fire and active test,
-several long waits can be the useful action. Use the owner's clairvoyance
-mutation as a viewing aid when requested, and record whether it was already present or added to a
-disposable save. It changes what the player can see, not the physical source or camp cause.
+several long waits can be the useful action. The [game manual](../GAME-MANUAL.md#wait-and-observe)
+covers interrupted waits and [viewing setup](../GAME-MANUAL.md#viewing-setup), including the two
+debug clairvoyance mutations and their local AI exposure caveat.
 
-At a useful checkpoint, quicksave without closing the live session. Inspect the saved camp roster,
+At a useful checkpoint, [save without closing the live session](live-operation.md#save-a-checkpoint). Inspect the saved camp roster,
 signal/source lead, dispatch members, owner, phase, route cursor and positions, together with
 exact native logs. A save can establish that smoke created a dispatch while leaving later movement
-unproved. If the state is conclusive, report the outcome; if it raises a concrete question, keep
-the game running, wait longer and check that question again. Do not close an inconclusive run just
-because a short scripted interval ended. Preserve the same actor and dispatch identities across
+unproved. If the state answers the assignment, report the outcome. If it is still developing,
+continue and check the next expected change. If actors are stalled or a known gate rejects them,
+inspect that cause instead of repeating unchanged waits. Preserve the first meaningful divergence
+without automatically ending the run. A short scripted interval ending is not a gameplay verdict. Preserve the same actor and dispatch identities across
 checkpoints, and distinguish the player's basecamp from the hostile camp being tested.

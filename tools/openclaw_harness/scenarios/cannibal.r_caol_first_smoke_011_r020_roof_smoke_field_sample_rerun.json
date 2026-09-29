@@ -1,0 +1,198 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r020_roof_smoke_field_sample_rerun",
+  "description": "R011 fresh original-geometry roof smoke field sampling rerun; separately records live fire and upper smoke fields before any camp geometry change.",
+  "profile": "first-smoke-011-r020-roof-smoke-field-rerun-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r020_roof_distance7_combined_control": "ordinary_roof_fire_light_smoke_distance7_control_after_r020",
+    "capabilities.r_caol.first_smoke_011_r020_roof_smoke_field_sample_rerun": "ordinary_roof_fire_physical_smoke_field_samples_at_brazier_upper_and_adjacent_tiles"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r020-roof-smoke-field-rerun-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/immutable-executable/3a31e719e1d300cea19477cf2b19f4b088c4b902b068ef0efee38f7ec1e8a45a/cataclysm-tiles",
+      "profile": "first-smoke-011-r020-roof-smoke-field-rerun-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_closed_window_pre_signal_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable profile whose 45 TestSetup00 save files match build_logs/first-smoke-011/ordinary-closed-smoke-start-manifest.json. Verify effective userdir, same-run World/current turn, Safe mode Off, no clairvoyance/cloak/invulnerability, no pending input, unlit brazier and no prior site knowledge/signal/outing; saved baseline turn 5216234."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No additional fixture transform is declared; camp geometry is the already-recorded controlled setup in the byte-exact manifest."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "roof_smoke_field_sample_rerun_original_geometry",
+      "objective": "On a byte-exact fresh owner save copy and immutable R020 executable, walk by the ordinary ladder route, light the prepared roof brazier with the normal lighter, and keep it burning. At saved native checkpoints capture exact fd_fire and fd_smoke per-tile fields at the brazier, directly above (z2), and adjacent roof/z tiles alongside actual weather, production smoke/light packet and staffed camp read. Continue protocol-length safe waits toward scouting/raid or the first material divergence. r008 live_smoke alone is not fd_smoke proof. Do not change camp geometry.",
+      "proof_targets": [
+        "45/45 byte-exact clean start save, effective userdir, same-run World/turn, immutable executable/path receipt, Safe Off and mutations absent",
+        "original roof anchor [3156,3447,1]/OMT[131,143,1], original camp [135,137,0], distance7; no camp relocation",
+        "ordinary native ladder/level transition and lighter ignition; actual fd_fire before channel sampling",
+        "actual weather at sampled intervals and independent physical smoke/light packets with source, exposure and native intensity",
+        "channel-specific cap, weather, vertical path and LOS, range, destination see_cost, reason and native admission; smoke reach is separate from combined admission",
+        "same-ID scouting/watch/return/report/raid/combat only if native actor admission occurred",
+        "quicksaves and saved turns at ignition, packet, admission/divergence and actor transitions; simulation performance and process cleanup",
+        "native quicksave at ignition and meaningful short/30-minute observation checkpoints; verify saved turns",
+        "read-only saved-map field audit of fd_fire/fd_smoke at source, z2 and adjacent roof tiles at each selected checkpoint",
+        "same-interval weather, smoke/light production packet IDs/source coordinates and camp staffed-read range/LOS/admission",
+        "continue same-ID actor/watch/report/raid only after actual eligible signal admission"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal/contact/report/dispatch/fire/light injection, hostile teleport, clairvoyance, cloak, invulnerability or debug raider kill",
+        "Keep the combined light-plus-smoke arm separate from the ordinary closed-room smoke-only arm",
+        "Controlled camp-site geometry is setup only, not natural generation or initial knowledge",
+        "Use only the ordinary route and advertised action targets; verify each menu result and never batch unobserved movement",
+        "Track all relevant actors by metadata and saved roster, including outside player sight; phase labels alone do not establish an assault",
+        "Maintain roof brazier fire through observation unless a concrete safety blocker requires stopping",
+        "Do not assume cross-z smoke LOS repair resolves cap6 vs distance7 or light cap4 vs endpoint see_cost5.",
+        "If smoke admits but light does not, report smoke admission separately; combined-channel admission remains unproved.",
+        "A later controlled camp placement requires another scenario/profile, ordinary eligible camp terrain and measured viable cap/LOS; never overwrite this control.",
+        "Do not treat r008 live_smoke as physical fd_smoke. Do not alter camp geometry until roof source/z2 fields and packet source are checked at saved intermediate turns."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish",
+        "semantic:world.quicksave"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_closed_window_pre_signal_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "roof_smoke_field_sample_rerun_original_geometry"
+    ],
+    "terminal_persistence": [
+      "roof_smoke_field_sample_rerun_original_geometry"
+    ],
+    "artifact_verdict": [
+      "roof_smoke_field_sample_rerun_original_geometry"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh ordinary roof fire emits physical smoke and light, while its original distance-7 camp response is measured independently per channel under actual weather/LOS/caps.",
+    "failure_rule": "Emission does not prove packet admission; smoke admission does not prove light admission or combined response. Preserve the original geometry and stop at a measured out-of-range gate."
+  }
+}

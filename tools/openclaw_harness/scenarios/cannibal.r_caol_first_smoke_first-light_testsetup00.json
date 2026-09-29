@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "cannibal.r_caol_first_smoke_first-light_testsetup00",
-  "description": "Task-scoped smoke-first versus first-light native cannibal behavior on a copied closed-window TestSetup00 with a zero-credit transplanted camp footprint.",
+  "description": "First-light native cannibal behavior on a copied closed-window TestSetup00 with a zero-credit transplanted camp footprint. Ground-floor z=0 indoor fire is smoke-only for outside discovery; valid exterior light requires verified roof or open-window geometry.",
   "profile": "first-smoke-r-caol-001-light",
   "world": "TestSetup00",
   "fixture": "first_smoke_first-light_testsetup00_v1",
@@ -94,7 +94,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "observe_first-light_native_cannibal_route",
-      "objective": "On a separate identical dark copy, create the first valid light through ordinary player use of the supplied brazier, log, and existing lighter; record that native light event before any smoke and then compare native cannibal admission/materialization/dispatch/progression after smoke.",
+      "objective": "On a separate dark copy, use ordinary player controls to create and verify a first exterior light packet through a reachable rooftop or open-window source. The closed-window ground-floor z=0 brazier cannot supply exterior light and is smoke-only. Record source geometry and native light reach before any smoke, then compare cannibal admission/materialization/dispatch/progression after smoke.",
       "proof_targets": [
         "copy and camp binding",
         "first valid event identity/time/source",

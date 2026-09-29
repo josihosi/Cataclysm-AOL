@@ -1,0 +1,176 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_damage_attribution_r017_first_hit_probe",
+  "description": "R017 harness-opt-in attribution probe and ordinary-view raid continuation from the exact sealed R011 first-hit checkpoint.",
+  "profile": "first-smoke-017-r011-first-hit-probe-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.dispatch_visit_smoke_first": "full_lifecycle_initially_unaware",
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_identity_005": "initially_unaware_identity_return",
+    "capabilities.r_caol.first_smoke_011_ordinary_assault": "ordinary_view_closed_window_smoke_through_cannibal_assault_r016_clean_recovery",
+    "capabilities.r_caol.first_smoke_011_homeward_r001_continuation": "ordinary_view_closed_window_smoke_homeward_same_arm_r001",
+    "capabilities.r_caol.first_smoke_011_damage_attribution_r017": "ordinary_view_postload_damage_source_attribution_from_turn5255776"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-017-r011-first-hit-probe-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-017/immutable-executable/4e801d7856c219dd7212cbc9c48f88080999921851e2f36e97bbae317bcc2a43/cataclysm-tiles",
+      "profile": "first-smoke-017-r011-first-hit-probe-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "bind_exact_turn5255776_first_hit_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load exact 45-file disposable first-hit copy; bind World, saved turn, avatar damage/effects, ordinary view, safe mode and reserved actor state without changing gameplay."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r017_trace_probe_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "verify_no_setup_transform",
+      "seconds": 0.2,
+      "capture_after": true,
+      "expected_visible_fact": "Observe already progressed saved state without replaying ignition, contact or scouting."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "probe_postload_damage_source_then_continue_raid_outcome",
+      "objective": "From exact saved turn5255776, capture each new post-load avatar HP loss with the R017 numeric damage-source trace, then continue the same ordinary-view raid using current native controls through attributed assault/death or the first material divergence. The saved 52-point hit predates tracing and remains unattributed absent a direct record.",
+      "proof_targets": [
+        "each post-load HP loss paired by game turn to the R017 component=avatar_damage_source trace and source actor ID",
+        "same-run native attacker/target/action/health and assault/death outcome",
+        "actual quicksave turn and exact graceful process cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No actor/player/signal/contact injection or debug raider kill",
+        "No clairvoyance, cloak or invulnerability",
+        "Inspect first harm with a stopping observation before any deliberate ignore-mode combat wait",
+        "Track all relevant NPCs by native IDs and saved metadata, including outside sight",
+        "Do not mutate sealed source; all gameplay occurs in disposable profile"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_exact_turn5255776_first_hit_checkpoint",
+      "bind_r017_trace_probe_world"
+    ],
+    "production_behavior": [
+      "probe_postload_damage_source_then_continue_raid_outcome"
+    ],
+    "terminal_persistence": [
+      "probe_postload_damage_source_then_continue_raid_outcome"
+    ],
+    "artifact_verdict": [
+      "probe_postload_damage_source_then_continue_raid_outcome"
+    ],
+    "disallowed_shortcuts": [
+      "verify_no_setup_transform"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the already observed ordinary-view smoke journey from its exact turn5234627/min8043 persisted homeward-report boundary, prove physical same-ID return/report after the R001 repair, then observe the same fire-to-cannibal-raid outcome and actor-attributed native combat.",
+    "failure_rule": "Credit only native same-ID position/action and return receipts plus actual attack/damage/outcome. Preserve first divergence and do not repeat accepted smoke/scout/watch evidence."
+  }
+}

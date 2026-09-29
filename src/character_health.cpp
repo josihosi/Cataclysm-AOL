@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
+#include <iomanip>
 #include <limits>
 #include <list>
 #include <map>
@@ -69,6 +70,7 @@
 #include "player_activity.h"
 #include "point.h"
 #include "ret_val.h"
+#include "raid_decision_trace.h"
 #include "rng.h"
 #include "skill.h"
 #include "sleep.h"
@@ -479,6 +481,7 @@ void Character::die( map *, Creature *nkiller )
     set_all_parts_hp_cur( 0 );
     set_killer( nkiller );
     set_time_died( calendar::turn );
+    raid_decision_trace::record_confirmed_death( *this, get_killer() );
 
     if( has_effect( effect_heavysnare ) ) {
         inv->add_item( item( itype_rope_6, calendar::turn_zero ) );
@@ -2471,6 +2474,7 @@ void Character::wake_up()
     if( has_effect( effect_sleep ) ) {
         get_effect( effect_sleep ).set_duration( 0_turns );
         get_event_bus().send<event_type::character_wakes_up>( getID() );
+        raid_decision_trace::record_sleep_edge( *this, "wake", "wake_up" );
     }
     remove_effect( effect_slept_through_alarm );
     remove_effect( effect_lying_down );
@@ -2559,6 +2563,40 @@ void Character::update_wounds( time_duration time_passed )
     morale->on_stat_change( "perceived_pain", get_perceived_pain() );
 }
 
+namespace
+{
+void record_openclaw_harness_avatar_damage_source( const Character &target,
+        const Creature *source, const bodypart_id &body_part, const int damage,
+        const int hp_before, const int hp_after )
+{
+    const char *const enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( !target.is_avatar() || damage <= 0 || enabled == nullptr || enabled[0] == '\0' ||
+        enabled[0] == '0' || run_id == nullptr || run_id[0] == '\0' ) {
+        return;
+    }
+
+    const Character *const source_character = source == nullptr ? nullptr : source->as_character();
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=avatar_damage_source"
+                               << " run_id=" << run_id
+                               << " game_turn=" << to_turns<int>( calendar::turn - calendar::turn_zero )
+                               << " target_character_id=" << target.getID().get_value()
+                               << " target_pos=" << target.pos_abs().to_string()
+                               << " source_kind=" << ( source == nullptr ? "none" :
+                                       source_character == nullptr ? "other" : "character" )
+                               << " source_character_id=" << ( source_character == nullptr ? -1 :
+                                       source_character->getID().get_value() )
+                               << " source_pos=" << ( source == nullptr ? "none" :
+                                       source->pos_abs().to_string() )
+                               << " body_part=" << body_part.id().str()
+                               << " damage=" << damage
+                               << " hp_before=" << hp_before
+                               << " hp_after=" << hp_after
+                               << " source_name=" << std::quoted( source == nullptr ? "none" :
+                                       source->disp_name() ) << '\n';
+}
+} // namespace
+
 /*
     Where damage to character is actually applied to hit body parts
     Might be where to put bleed stuff rather than in player::deal_damage()
@@ -2585,7 +2623,12 @@ void Character::apply_damage( Creature *source, bodypart_id hurt, int dam,
 
     const int dam_to_bodypart = std::min( dam, get_part_hp_cur( part_to_damage ) );
 
+    const int hp_before = get_part_hp_cur( part_to_damage );
     mod_part_hp_cur( part_to_damage, - dam_to_bodypart );
+    raid_decision_trace::record_applied_damage( source, *this, part_to_damage.id().str(),
+            hp_before, get_part_hp_cur( part_to_damage ) );
+    record_openclaw_harness_avatar_damage_source( *this, source, part_to_damage,
+            dam_to_bodypart, hp_before, get_part_hp_cur( part_to_damage ) );
     if( source ) {
         cata::event e = cata::event::make<event_type::character_takes_damage>( getID(), dam_to_bodypart,
                         part_to_damage.id(), pain );

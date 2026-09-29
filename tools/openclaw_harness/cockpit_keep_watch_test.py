@@ -42,6 +42,30 @@ def bound() -> dict[str, object]:
     }
 
 
+def distraction_surface(sequence: int, kind: str, distraction_type: str | None,
+                        *, text: str = "Somebody said something!") -> dict[str, object]:
+    payload = {} if distraction_type is None else {"distraction_type": distraction_type}
+    if kind == "prompt":
+        payload.update({"title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY", "text": text})
+        return {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
+            "frame_id": f"keep-watch-proof:{sequence}", "surface_id": f"surface:{sequence}",
+            "kind": "prompt", "breadcrumbs": ["Activity distraction", "CANCEL_ACTIVITY_OR_IGNORE_QUERY"],
+            "payload": payload, "valid_actions": [
+                {"id": "prompt.choose", "stable_id": f"prompt-option:{sequence}",
+                 "label": "IGNORE", "enabled": True},
+            ],
+        }
+    return {
+        "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
+        "frame_id": f"keep-watch-proof:{sequence}", "surface_id": f"surface:{sequence}",
+        "kind": "activity_distraction", "breadcrumbs": ["Activity distraction"],
+        "payload": payload, "valid_actions": [
+            {"id": "activity.ignore", "stable_id": "", "label": "activity.ignore", "enabled": True},
+        ],
+    }
+
+
 class KeepWatchTest(unittest.TestCase):
     def service(self, frames: list[dict[str, object]], *,
                 omit_activity_successor: bool = False) -> tuple[cockpit.CockpitService, list[str]]:
@@ -253,6 +277,7 @@ class KeepWatchTest(unittest.TestCase):
             "payload": {
                 "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY",
                 "text": "Ouch, something hurts! Stop waiting? (Case Sensitive)",
+                "distraction_type": "pain",
             },
             "valid_actions": [
                 {"id": "prompt.choose", "stable_id": "prompt-option:1", "label": "YES", "enabled": True},
@@ -279,7 +304,8 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
         self.assertEqual(result["result"]["handled_interruptions"], [{
             "classification": "damage_detected",
-            "decision": "ignore_explicit_damage_prompt",
+            "distraction_type": "pain",
+            "decision": "ignore_explicit_activity_distraction",
             "observation_id": "keep-watch-proof:2",
             "action_id": "prompt.choose",
             "stable_id": "prompt-option:4",
@@ -295,6 +321,7 @@ class KeepWatchTest(unittest.TestCase):
             "payload": {
                 "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY",
                 "text": "The writhing stalker is dangerously close! Stop waiting? (Case Sensitive)",
+                "distraction_type": "hostile_spotted_near",
             },
             "valid_actions": [
                 {"id": "prompt.choose", "stable_id": "prompt-option:1", "label": "YES", "enabled": True},
@@ -323,7 +350,8 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
         self.assertEqual(result["result"]["handled_interruptions"], [{
             "classification": "hostile_proximity",
-            "decision": "ignore_explicit_damage_prompt",
+            "distraction_type": "hostile_spotted_near",
+            "decision": "ignore_explicit_activity_distraction",
             "observation_id": "keep-watch-proof:2",
             "action_id": "prompt.choose",
             "stable_id": "prompt-option:4",
@@ -1332,7 +1360,7 @@ class KeepWatchTest(unittest.TestCase):
             "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
             "frame_id": "keep-watch-proof:2", "surface_id": "surface:2",
             "kind": "activity_distraction", "breadcrumbs": ["Activity distraction"],
-            "payload": {},
+            "payload": {"distraction_type": "noise"},
             "valid_actions": [
                 {"id": "activity.stop", "stable_id": "", "label": "activity.stop", "enabled": True},
                 {"id": "activity.continue", "stable_id": "", "label": "activity.continue", "enabled": True},
@@ -1362,6 +1390,7 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait", "activity.ignore"])
         self.assertEqual(result["result"]["handled_interruptions"], [{
             "classification": "clear",
+            "distraction_type": "noise",
             "decision": "ignore_clear_activity_distraction",
             "observation_id": "keep-watch-proof:2",
             "action_id": "activity.ignore",
@@ -1537,6 +1566,251 @@ class KeepWatchTest(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         self.assertEqual(dispatched, ["wait.1m"])
         self.assertEqual(result["result"]["terminal_game_minutes"], 101)
+
+    def test_typed_ordinary_prompt_ignores_then_finishes_remaining_wait(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        for native_type in ("talked_to", "thirst", "weather_change"):
+            with self.subTest(native_type=native_type):
+                start = frame(1, 100, clear)
+                prompt = distraction_surface(2, "prompt", native_type)
+                prompt["keep_watch_safety"] = {
+                    "classification": "hostile_proximity", "monster": True,
+                    "danger": True, "damage": False,
+                }
+                resumed = frame(3, 100, clear)
+                target = frame(4, 101, clear)
+                for sequence, world in ((3, resumed), (4, target)):
+                    world.update({"schema_version": 1, "event": "surface_descriptor",
+                                  "surface_id": f"surface:{sequence}", "kind": "world",
+                                  "breadcrumbs": ["World"], "payload": {},
+                                  "valid_actions": [{"id": "world.wait", "stable_id": "",
+                                                     "label": "Wait", "enabled": True}]})
+                service, dispatched = self.service([start, prompt, resumed, target])
+                result = service.call({"action": "game.keep_watch", "keep_watch": {
+                    "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                    "recipe": ["world.wait"],
+                }})
+
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(result["result"]["stop_reason"], "target_reached")
+                self.assertEqual(dispatched, ["world.wait", "prompt.choose", "world.wait"])
+                self.assertEqual(result["result"]["handled_interruptions"][0]["distraction_type"],
+                                 native_type)
+                self.assertEqual(result["result"]["handled_interruptions"][0]["stable_id"],
+                                 "prompt-option:2")
+
+    def test_typed_activity_owner_ignores_noise_but_successor_prompt_uses_its_own_type(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        noise = distraction_surface(2, "activity_distraction", "noise")
+        danger = distraction_surface(3, "prompt", "hostile_spotted_near",
+                                     text="Somebody said something!")
+        service, dispatched = self.service([start, noise, danger])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+        }})
+
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["result"]["stop_reason"], "keep_watch_unsafe_condition")
+        self.assertEqual(result["result"]["classification"], "hostile_proximity")
+        self.assertEqual(result["result"]["distraction_type"], "hostile_spotted_near")
+        self.assertEqual(dispatched, ["world.wait", "activity.ignore"])
+
+    def test_safe_wait_stops_typed_native_danger_and_untyped_older_owners(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        for kind in ("prompt", "activity_distraction"):
+            for native_type in ("hostile_spotted_near", "pain", "attacked", None,
+                                "future_category"):
+                with self.subTest(kind=kind, native_type=native_type):
+                    start = frame(1, 100, clear)
+                    distraction = distraction_surface(2, kind, native_type,
+                                                       text="Somebody said something!")
+                    service, dispatched = self.service([start, distraction])
+                    result = service.call({"action": "game.keep_watch", "keep_watch": {
+                        "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                        "recipe": ["world.wait"],
+                    }})
+                    self.assertFalse(result["ok"], result)
+                    self.assertEqual(result["result"]["stop_reason"], "keep_watch_unsafe_condition")
+                    self.assertEqual(dispatched, ["world.wait"])
+
+    def test_new_prompt_does_not_inherit_prior_harmless_type_or_override_real_damage(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        harmless = distraction_surface(2, "prompt", "talked_to")
+        untyped_successor = distraction_surface(3, "prompt", None,
+                                                 text="Somebody said something!")
+        service, dispatched = self.service([start, harmless, untyped_successor])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+        }})
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["result"]["classification"], "unknown_activity_distraction")
+        self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
+
+        for kind in ("prompt", "activity_distraction"):
+            with self.subTest(kind=kind):
+                start = frame(1, 100, clear)
+                deceptive = distraction_surface(2, kind, "noise")
+                deceptive["keep_watch_safety"] = {
+                    "classification": "clear", "monster": False,
+                    "danger": False, "damage": True,
+                }
+                service, dispatched = self.service([start, deceptive])
+                result = service.call({"action": "game.keep_watch", "keep_watch": {
+                    "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                    "recipe": ["world.wait"],
+                }})
+                self.assertFalse(result["ok"], result)
+                self.assertEqual(result["result"]["classification"], "damage_detected")
+                self.assertEqual(dispatched, ["world.wait"])
+
+    def test_typed_legacy_thirst_and_weather_ignore_misleading_safety(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        for native_type in ("thirst", "weather_change"):
+            with self.subTest(native_type=native_type):
+                start = frame(1, 100, clear)
+                distraction = frame(2, 100, {
+                    "classification": "hostile_proximity", "monster": True,
+                    "danger": True, "damage": False,
+                })
+                distraction.update({
+                    "state": "activity_distraction", "producer": "activity_distraction_query",
+                    "activity_type": native_type, "valid_actions": ["activity.ignore"],
+                    "action_inputs": {"activity.ignore": "I"},
+                })
+                resumed = frame(3, 100, clear)
+                target = frame(4, 101, clear)
+                service, dispatched = self.service([start, distraction, resumed, target])
+                result = service.call({"action": "game.keep_watch", "keep_watch": {
+                    "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                    "recipe": ["world.wait"],
+                }})
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(result["result"]["stop_reason"], "target_reached")
+                self.assertEqual(dispatched, ["world.wait", "activity.ignore", "world.wait"])
+
+    def test_legacy_chatter_with_visible_hostile_stops_at_native_near_successor(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        chatter = frame(2, 100, {
+            "classification": "monster_spotted", "monster": True, "danger": True, "damage": False,
+        })
+        chatter.update({
+            "state": "activity_distraction", "producer": "activity_distraction_query",
+            "activity_type": "talked_to", "valid_actions": ["activity.ignore"],
+            "action_inputs": {"activity.ignore": "I"},
+        })
+        chatter["observation"]["visible_entities"] = [{
+            "identity": {"kind": "monster", "id": "near-hostile"},
+            "kind": "monster", "name": "hostile", "attitude": "hostile", "dx": 2, "dy": 0,
+        }]
+        native_near = distraction_surface(3, "prompt", "hostile_spotted_near")
+        service, dispatched = self.service([start, chatter, native_near])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+        }})
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["result"]["stop_reason"], "keep_watch_unsafe_condition")
+        self.assertEqual(result["result"]["classification"], "hostile_proximity")
+        self.assertEqual(result["result"]["distraction_type"], "hostile_spotted_near")
+        self.assertEqual(result["result"]["last_observed_game_minutes"], 100)
+        self.assertEqual(dispatched, ["world.wait", "activity.ignore"])
+
+    def test_legacy_chatter_with_same_frame_hp_loss_stops_without_ignore(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        chatter = frame(2, 100, {
+            "classification": "monster_spotted", "monster": True, "danger": True, "damage": True,
+        })
+        chatter.update({
+            "state": "activity_distraction", "producer": "activity_distraction_query",
+            "activity_type": "talked_to", "valid_actions": ["activity.ignore"],
+            "action_inputs": {"activity.ignore": "I"},
+        })
+        service, dispatched = self.service([start, chatter])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+        }})
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["result"]["stop_reason"], "keep_watch_unsafe_condition")
+        self.assertEqual(result["result"]["classification"], "damage_detected")
+        self.assertEqual(dispatched, ["world.wait"])
+
+    def test_explicit_ignore_mode_keeps_advertised_choice_for_untyped_old_prompt(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        prompt = distraction_surface(2, "prompt", None)
+        target = frame(3, 101, clear)
+        target.update({"schema_version": 1, "event": "surface_descriptor",
+                       "surface_id": "surface:3", "kind": "world", "breadcrumbs": ["World"],
+                       "payload": {}, "valid_actions": []})
+        service, dispatched = self.service([start, prompt, target])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+            "danger_handling": "ignore_danger_and_interruptions",
+        }})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
+
+    def test_untyped_legacy_activity_query_does_not_auto_ignore(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        older = frame(2, 100, clear)
+        older.update({"state": "activity_distraction", "producer": "activity_distraction_query",
+                      "provenance": "native_activity_distraction_query",
+                      "valid_actions": ["activity.ignore"],
+                      "action_inputs": {"activity.ignore": "I"}})
+        service, dispatched = self.service([start, older])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+        }})
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["result"]["classification"], "unknown_activity_distraction")
+        self.assertEqual(dispatched, ["world.wait"])
+
+    def test_typed_routine_activity_allowlist_and_explicit_stop_mode(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        for native_type in ("noise", "talked_to", "hostile_spotted_far", "asthma",
+                            "motion_alarm", "weather_change", "portal_storm_popup",
+                            "eoc", "dangerous_field", "hunger", "thirst", "temperature",
+                            "mutation", "oxygen", "withdrawal", "craft_step_complete"):
+            with self.subTest(native_type=native_type):
+                start = frame(1, 100, clear)
+                owner = distraction_surface(2, "activity_distraction", native_type)
+                target = frame(3, 101, clear)
+                target.update({"schema_version": 1, "event": "surface_descriptor",
+                               "surface_id": "surface:3", "kind": "world",
+                               "breadcrumbs": ["World"], "payload": {},
+                               "valid_actions": [{"id": "world.wait", "stable_id": "",
+                                                  "label": "Wait", "enabled": True}]})
+                service, dispatched = self.service([start, owner, target])
+                result = service.call({"action": "game.keep_watch", "keep_watch": {
+                    "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                    "recipe": ["world.wait"],
+                }})
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(dispatched, ["world.wait", "activity.ignore"])
+        start = self.menu_frame(1)
+        start["game_minutes"] = 100
+        start["valid_actions"] = [{"id": "wait.1m", "stable_id": "",
+                                   "label": "1 minute", "enabled": True}]
+        owner = distraction_surface(2, "activity_distraction", "talked_to")
+        owner["game_minutes"] = 100
+        service, dispatched = self.service([start, owner])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["wait.1m"], "danger_handling": "stop_on_interruption",
+        }})
+        self.assertEqual(result["error"], "native_wait_interrupted")
+        self.assertEqual(dispatched, ["wait.1m"])
 
     def test_duration_owner_prefers_longest_declared_advertisement_inside_boundary(self) -> None:
         start = frame(1, 100, {

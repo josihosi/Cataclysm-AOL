@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "cannibal.r_caol_first_smoke_saved_brazier_continuation_v1",
-  "description": "Task-owned continuation from the already saved v2 smoke-first TestSetup00 profile. Fixture installation and world replacement are intentionally omitted so the exact saved player position, canceled Tilda activity, closed-room geometry and cannibal camp are resumed without reseeding.",
+  "description": "Task-owned continuation from the already saved v2 smoke-first TestSetup00 profile. Ground-floor z=0 fire in this closed-room geometry is smoke-only for outside discovery, not an exterior light signal. Fixture installation and world replacement are omitted so the exact saved player position, canceled Tilda activity and cannibal camp are resumed without reseeding.",
   "profile": "first-smoke-r-caol-001-smoke-migration-v2",
   "world": "TestSetup00",
   "observer_character": true,

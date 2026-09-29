@@ -166,6 +166,12 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/semantic_state.py",
     "tools/openclaw_harness/cockpit.py",
     "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/cockpit_evidence.py",
+    "tools/openclaw_harness/harness_log_window.py",
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/gameplay_display.py",
+    "tools/openclaw_harness/startup_dialog.py",
+    "tools/openclaw_harness/ocr_image.swift",
     "tools/openclaw_harness/r009_technical_witness.py",
     "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
     "tools/openclaw_harness/r021_direct_hp_transaction.py",
@@ -18464,7 +18470,7 @@ def startup_screen_probe_classification(
     if visible_error_popup:
         classification = "red_visible_error_popup"
     elif startup_error_logged:
-        classification = "red_startup_error_logged"
+        classification = "yellow_startup_diagnostics_recorded"
     elif blocking_overlay_present:
         classification = "yellow_blocking_overlay_present"
     elif gameplay_hud_present:
@@ -18592,7 +18598,7 @@ def capture_final_startup_evidence(
         screen_probe["debug_error_lines"] = error_lines
         screen_probe["debug_delta_artifact"] = str(debug_artifact)
         if not screen_probe.get("visible_error_popup"):
-            screen_probe["classification"] = "red_startup_error_logged"
+            screen_probe["classification"] = "yellow_startup_diagnostics_recorded"
         probe_artifact_value = str(screen_probe.get("artifact_path", "")).strip()
         if probe_artifact_value:
             write_json(Path(probe_artifact_value), screen_probe)
@@ -19745,6 +19751,12 @@ def r014_native_semantic_bootstrap_metadata(
             str(action.get("id", "")) for action in actions
             if isinstance(action, Mapping) and action.get("enabled") is True
         ]
+    same_turn_surface = frame.get("_same_turn_surface_descriptor", {})
+    same_turn_surface = same_turn_surface if isinstance(same_turn_surface, Mapping) else {}
+    same_turn_surface_actions = same_turn_surface.get("valid_actions", [])
+    same_turn_surface_actions = [str(action) for action in same_turn_surface_actions
+                                  if isinstance(action, str)] \
+                                if isinstance(same_turn_surface_actions, list) else []
     frame_state = str(frame.get("kind" if is_surface_descriptor else "state", ""))
     frame_producer = str(frame.get("producer", ""))
     metadata.update({
@@ -19756,6 +19768,11 @@ def r014_native_semantic_bootstrap_metadata(
         "advertised_actions": list(actions),
         "frame_producer": frame_producer,
         "initial_world_ready": frame.get("initial_world_ready"),
+        "same_turn_surface_descriptor": {
+            key: same_turn_surface.get(key)
+            for key in ("frame_id", "surface_id", "sequence", "game_turn", "kind")
+        } if same_turn_surface else {},
+        "same_turn_surface_actions": same_turn_surface_actions,
     })
     if not frame_id or metadata["frame_run_id"] != str(run_id):
         return {**metadata, "status": "scanned", "reason": "wrong_run_or_missing_frame"}
@@ -19771,7 +19788,8 @@ def r014_native_semantic_bootstrap_metadata(
     if not is_surface_descriptor and (metadata["frame_producer"] != "hud_world_ready" or \
                                       metadata["initial_world_ready"] is not True):
         return {**metadata, "status": "scanned", "reason": "not_initial_hud_world_ready_frame"}
-    missing_actions = [action for action in required_actions if action not in actions]
+    available_actions = set(str(action) for action in actions) | set(same_turn_surface_actions)
+    missing_actions = [action for action in required_actions if action not in available_actions]
     if missing_actions:
         return {**metadata, "status": "scanned", "reason": "incomplete_actions", "missing_actions": missing_actions}
     return {**metadata, "status": "required_state_present"}
@@ -19845,6 +19863,8 @@ def first_initial_hud_world_frame_after_boundary(
     mismatched_producer = 0
     event_count = 0
     cursor = 0
+    semantic_events: List[Mapping[str, Any]] = []
+    candidate_event_index: Optional[int] = None
     for raw_line in body.splitlines(keepends=True):
         marker = raw_line.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
         if marker >= 0:
@@ -19857,6 +19877,8 @@ def first_initial_hud_world_frame_after_boundary(
                 event = decode_semantic_step_event(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 raise ValueError("initial HUD frame trace is malformed") from exc
+            if isinstance(event, Mapping):
+                semantic_events.append(event)
             if isinstance(event, Mapping) and event.get("event") == "frame" and \
                     event.get("initial_world_ready") is True:
                 if str(event.get("run_id", "")) != str(run_id):
@@ -19868,6 +19890,7 @@ def first_initial_hud_world_frame_after_boundary(
                     if candidate is None:
                         candidate = dict(event)
                         candidate["_event_offset"] = effective_offset + cursor + marker
+                        candidate_event_index = len(semantic_events) - 1
         cursor += len(raw_line)
 
     if foreign:
@@ -19879,7 +19902,42 @@ def first_initial_hud_world_frame_after_boundary(
     if candidate.get("state") != required_state:
         raise ValueError("initial HUD frame state is mismatched")
     actions = candidate.get("valid_actions")
-    if not isinstance(actions, list) or any(action not in actions for action in required_actions):
+    frame_actions = [str(action) for action in actions if isinstance(action, str)] \
+                    if isinstance(actions, list) else []
+
+    # The one-shot HUD frame deliberately contains only actions owned by the
+    # world input context.  Some target-specific actions (for example
+    # inspect_npc) are published on the immediately following full surface
+    # descriptor instead.  Admit those only when that descriptor is the next
+    # same-run World surface at the exact turn of this initial frame; never
+    # borrow dynamic actions from a later or foreign surface.
+    surface_actions: List[str] = []
+    if candidate_event_index is not None and candidate_event_index + 1 < len(semantic_events):
+        surface = semantic_events[candidate_event_index + 1]
+        candidate_turn = candidate.get("observed_turn")
+        if surface.get("event") == "surface_descriptor" and \
+                str(surface.get("run_id", "")) == str(run_id) and \
+                surface.get("kind") == required_state and \
+                isinstance(candidate_turn, int) and not isinstance(candidate_turn, bool) and \
+                surface.get("game_turn") == candidate_turn:
+            raw_surface_actions = surface.get("valid_actions", [])
+            if isinstance(raw_surface_actions, list):
+                surface_actions = [
+                    str(action.get("id", "")) for action in raw_surface_actions
+                    if isinstance(action, Mapping) and action.get("enabled") is True
+                    and str(action.get("id", "")).strip()
+                ]
+            candidate["_same_turn_surface_descriptor"] = {
+                "frame_id": str(surface.get("frame_id", "")),
+                "surface_id": str(surface.get("surface_id", "")),
+                "sequence": surface.get("sequence"),
+                "game_turn": surface.get("game_turn"),
+                "kind": str(surface.get("kind", "")),
+                "valid_actions": surface_actions,
+            }
+    available_actions = set(frame_actions) | set(surface_actions)
+    missing_actions = [action for action in required_actions if action not in available_actions]
+    if missing_actions:
         raise ValueError("initial HUD frame actions are incomplete")
     return candidate
 
@@ -22453,6 +22511,45 @@ def wait_input_trace_child_environment(enabled: bool, run_id: str) -> Dict[str, 
     return {"OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID": selected_run_id}
 
 
+def raid_actor_trace_child_environment(enabled: bool, run_id: str) -> Dict[str, str]:
+    """Opt in the native NPC decision trace for this exact harness run."""
+    if not enabled:
+        return {}
+    selected_run_id = str(run_id).strip()
+    if not selected_run_id:
+        raise ValueError("raid-actor tracing requires a bound harness run ID")
+    return {"OPENCLAW_HARNESS_RAID_ACTOR_TRACE": selected_run_id}
+
+
+def decision_trace_actor_ids(value: object) -> list[int]:
+    """Validate explicit numeric NPC selectors without broadening an invalid scope."""
+    if value in (None, []):
+        return []
+    if not isinstance(value, list) or any(type(actor) is not int or actor <= 0 for actor in value):
+        raise ValueError("decision trace actor IDs must be a list of positive NPC IDs")
+    return sorted(set(value))
+
+
+def selected_npc_trace_child_environment(group_id: str, actor_ids: list[int],
+                                         from_turn: Optional[int] = None,
+                                         to_turn: Optional[int] = None) -> Dict[str, str]:
+    if not actor_ids:
+        return {}
+    group = str(group_id).strip()
+    if not group:
+        raise ValueError("selected NPC decision tracing requires a scenario identity")
+    if (any(type(turn) is not int or turn < 0 for turn in (from_turn, to_turn) if turn is not None)
+            or (from_turn is not None and to_turn is not None and from_turn > to_turn)):
+        raise ValueError("selected NPC decision trace has an invalid game-turn capture window")
+    result = {"OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID": group,
+              "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS": ",".join(map(str, actor_ids))}
+    if from_turn is not None:
+        result["OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN"] = str(from_turn)
+    if to_turn is not None:
+        result["OPENCLAW_HARNESS_DECISION_TRACE_TO_TURN"] = str(to_turn)
+    return result
+
+
 def semantic_run_binding_child_environment(run_id: str) -> Dict[str, str]:
     """Bind native semantic producers to this exact launch before they can emit."""
     bound_run_id = str(run_id).strip()
@@ -22897,6 +22994,7 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
     value = {"binding_id": bridge, "pid": process.pid,
              "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
              "command": generation["command"], "process_generation": generation,
+             "launch_cwd": str(repo_root().resolve()),
              "log_paths": log_paths}
     try:
         if not value["command"]:
@@ -31382,6 +31480,10 @@ def run_probe_post_relaunch(
     terminal_exit_timeout_seconds: float,
     startup_dismiss_blocking_overlay: bool = False,
     wait_input_trace: bool = False,
+    raid_actor_trace: bool = False,
+    decision_trace_actor_ids: Optional[list[int]] = None,
+    decision_trace_from_turn: Optional[int] = None,
+    decision_trace_to_turn: Optional[int] = None,
     semantic_only_startup: bool = False,
     suppress_profile_startup_input: bool = False,
     terminal_transport: str = "auto",
@@ -31518,6 +31620,15 @@ def run_probe_post_relaunch(
         start_cmd.append("--startup-dismiss-blocking-overlay")
     if wait_input_trace:
         start_cmd.append("--wait-input-trace")
+    if raid_actor_trace:
+        start_cmd.append("--raid-actor-trace")
+    for actor_id in decision_trace_actor_ids or []:
+        start_cmd.extend(["--decision-trace-actor", str(actor_id)])
+    if decision_trace_actor_ids:
+        if decision_trace_from_turn is not None:
+            start_cmd.extend(["--decision-trace-from-turn", str(decision_trace_from_turn)])
+        if decision_trace_to_turn is not None:
+            start_cmd.extend(["--decision-trace-to-turn", str(decision_trace_to_turn)])
     if semantic_only_startup:
         start_cmd.append("--semantic-only-startup")
     if suppress_profile_startup_input:
@@ -31602,10 +31713,13 @@ def run_probe_post_relaunch(
         result["status"] = "replacement_identity_unavailable"
     else:
         startup_classification = start_result.get("proof_classification", {})
-        if not isinstance(startup_classification, dict) or not startup_classification.get(
-                "startup_clean_for_feature_steps", False):
-            result["status"] = "relaunch_startup_gate_not_clean"
+        if not isinstance(startup_classification, dict) or not startup_actions_ready(
+                startup_classification):
+            result["status"] = "relaunch_startup_not_ready"
         else:
+            result["clean_load_proof"] = bool(
+                startup_classification.get("startup_clean_for_feature_steps", False)
+            )
             focus = start_result.get("focus", {})
             result["status"] = "ready" if isinstance(focus, dict) and focus.get("ok") \
                 else "relaunch_focus_unproven"
@@ -37335,7 +37449,7 @@ def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
     if screen_probe.get("visible_error_popup"):
         return "red_visible_error_popup"
     if screen_probe.get("startup_error_logged"):
-        return "red_startup_error_logged"
+        return "yellow_startup_diagnostics_recorded"
     if not screen_probe.get("gameplay_hud_present"):
         return "yellow_gameplay_hud_unproven"
     return "green_gameplay_hud_captured"
@@ -37522,7 +37636,7 @@ def build_feature_debug_guard(
         issues.append("feature_phase_visible_error_popup")
     if process_alive is False and not expected_clean_terminal_exit:
         issues.append("feature_phase_process_exited")
-    elif process_alive is not True:
+    elif process_alive is not True and not expected_clean_terminal_exit:
         issues.append("feature_phase_process_liveness_unproven")
     if require_screen_observability and not capture_observable:
         issues.append("feature_phase_screen_capture_failed")
@@ -37666,126 +37780,129 @@ def startup_proof_classification(
     debug_errors_recorded: int = 0,
     failure_reason: str = "",
     native_semantic_startup_ready: bool = False,
+    expected_run_id: str = "",
+    expected_pid: int = 0,
 ) -> Dict[str, Any]:
+    """Keep action readiness separate from evidence of a clean startup."""
     popup_count = max(0, int(debug_popups_recorded or 0))
     error_count = max(0, int(debug_errors_recorded or 0))
-    if not ok:
-        return {
-            "evidence_class": "startup/load",
-            "status": "red",
-            "verdict": failure_reason or "startup_failed",
-            "feature_proof": False,
-            "startup_clean_for_feature_steps": False,
-            "feature_gate": failure_reason or "startup_failed",
-            "debug_popups_recorded": popup_count,
-            "debug_errors_recorded": error_count,
-            "rule": "A failed startup cannot support feature proof.",
-        }
-    if native_semantic_startup_ready:
-        # The validated live native World descriptor supplies input ownership
-        # and process/run identity without a screenshot, OCR, or OS focus.
-        # Preserve log failures even when that descriptor is available.
-        screen_probe = screen_summary.get("startup_screen_probe", {})
-        screen_probe = screen_probe if isinstance(screen_probe, dict) else {}
-        gate = "startup_clean"
-        if popup_count or screen_probe.get("visible_error_popup"):
-            gate = "debug_popups_recorded"
-        elif error_count or screen_probe.get("startup_error_logged"):
-            gate = "startup_error_logged"
-        return {
-            "evidence_class": "startup/load",
-            "status": "green" if gate == "startup_clean" else "red",
-            "verdict": "startup_load_only" if gate == "startup_clean" else "startup_load_only_" + gate,
-            "feature_proof": False,
-            "startup_clean_for_feature_steps": gate == "startup_clean",
-            "feature_gate": gate,
-            "focus_proven": False,
-            "native_semantic_startup_ready": True,
-            "screen_gate": str(screen_probe.get("classification", "not_requested_native_semantic")),
-            "debug_popups_recorded": popup_count,
-            "debug_errors_recorded": error_count,
-            "rule": "A validated live native World descriptor and classified clean log prove startup/load only; later actions require fresh native ownership and step-local evidence.",
-        }
-    status = "green"
-    verdict = "startup_load_only"
-    clean_for_feature_steps = True
-    feature_gate = "startup_clean"
+    screen_probe = screen_summary.get("startup_screen_probe", {})
+    screen_probe = screen_probe if isinstance(screen_probe, dict) else {}
+    diagnostic_lines = screen_probe.get("debug_error_lines", [])
+    diagnostic_lines = [str(line) for line in diagnostic_lines] if isinstance(diagnostic_lines, list) else []
+    diagnostics_recorded = bool(
+        popup_count or error_count or screen_probe.get("startup_error_logged") or diagnostic_lines
+    )
+    diagnostic_evidence = {
+        "status": ("recorded" if diagnostic_lines else "count_without_lines")
+                  if diagnostics_recorded else "none_recorded",
+        "lines": diagnostic_lines,
+        "artifact_path": str(screen_probe.get("debug_delta_artifact", "")),
+        "popup_count": popup_count,
+        "error_delta_count": error_count,
+    }
     focus_payload = focus_result or {}
     focus_proven = bool(focus_payload.get("ok")) and \
-                   focus_payload.get("focus_verification") != "unavailable"
+                   focus_payload.get("focus_verification") != "unavailable" and \
+                   focus_payload.get("status") != "not_required_native_semantic" and \
+                   focus_payload.get("transport") != "terminal_native"
     input_owner_proven = bool(focus_payload.get("ok")) and (
         focus_payload.get("fallback") in {
             "pid_bound_window_id", "pid_bound_window_inventory"
-        }
+        } or focus_payload.get("transport") == "terminal_native"
     )
-    screen_probe = screen_summary.get("startup_screen_probe", {})
-    if not isinstance(screen_probe, dict):
-        screen_probe = {}
     native_hud_fallback = screen_capture_has_bound_native_hud_fallback(screen_summary)
     if native_hud_fallback:
-        # The run-bound native HUD trace includes the advertised action
-        # surface, which is the input boundary for cockpit live sessions.
         input_owner_proven = True
-    if not screen_capture_succeeded(screen_summary) and not \
-            screen_capture_has_bound_native_hud_fallback(screen_summary):
-        status = "red"
-        verdict = "startup_load_only_screen_capture_failed"
-        clean_for_feature_steps = False
-        feature_gate = "screen_capture_failed"
-    elif screen_probe.get("visible_error_popup"):
-        status = "red"
-        verdict = "startup_load_only_visible_error_popup"
-        clean_for_feature_steps = False
-        feature_gate = "visible_error_popup"
-    elif popup_count > 0:
-        status = "red"
-        verdict = "startup_load_only_debug_popups_recorded"
-        clean_for_feature_steps = False
-        feature_gate = "debug_popups_recorded"
-    elif screen_probe.get("startup_error_logged") or error_count > 0:
-        status = "red"
-        verdict = "startup_load_only_startup_error_logged"
-        clean_for_feature_steps = False
-        feature_gate = "startup_error_logged"
-    elif screen_probe.get("blocking_overlay_present"):
-        status = "yellow"
-        verdict = "startup_load_only_blocking_overlay_present"
-        clean_for_feature_steps = False
-        feature_gate = "blocking_overlay_present"
-    elif screen_summary.get("version_matches_runtime_paths") is False:
-        status = "yellow"
-        verdict = "startup_load_only_runtime_version_mismatch"
-        clean_for_feature_steps = False
-        feature_gate = "runtime_version_mismatch"
-    elif screen_summary.get("version_matches_runtime_paths") is not True and \
-            screen_summary.get("surface_identity_status") != "matched" and not native_hud_fallback:
-        status = "yellow"
-        verdict = "startup_load_only_runtime_version_unproven"
-        clean_for_feature_steps = False
-        feature_gate = "runtime_version_unproven"
-    elif not focus_proven and not input_owner_proven:
-        status = "yellow"
-        verdict = "startup_load_only_focus_unproven"
-        clean_for_feature_steps = False
-        feature_gate = "focus_unproven"
-    elif not screen_probe.get("gameplay_hud_present") and not native_semantic_startup_ready:
-        status = "yellow"
-        verdict = "startup_load_only_gameplay_hud_absent"
-        clean_for_feature_steps = False
-        feature_gate = "gameplay_hud_absent"
+
+    status = "red"
+    gate = failure_reason or "startup_failed"
+    native_metadata = screen_summary.get("native_semantic_startup", {})
+    native_metadata = native_metadata if isinstance(native_metadata, Mapping) else {}
+    if ok:
+        gate = "startup_clean"
+        if native_semantic_startup_ready:
+            # The semantic bootstrap validates trace freshness and the run ID.
+            # Recheck the exact bound World when diagnostics are being recovered:
+            # a prompt owner can be usable but cannot prove that an error modal
+            # has been cleared back to World.
+            if expected_run_id and (
+                native_metadata.get("status") != "required_state_present"
+                or native_metadata.get("run_id") != expected_run_id
+                or native_metadata.get("frame_run_id") != expected_run_id
+            ):
+                gate = "native_run_identity_mismatch"
+            elif focus_payload.get("transport") == "terminal_native" and (
+                not focus_payload.get("ok")
+                or (expected_pid > 0 and focus_payload.get("pid") != expected_pid)
+            ):
+                gate = "native_process_identity_mismatch"
+            elif screen_summary.get("surface_identity_status") == "mismatch":
+                gate = "runtime_identity_mismatch"
+            elif screen_probe.get("visible_error_popup"):
+                gate = "visible_error_popup"
+            elif screen_probe.get("blocking_overlay_present"):
+                gate = "blocking_overlay_present"
+            elif diagnostics_recorded and (
+                native_metadata.get("frame_event") != "surface_descriptor"
+                or native_metadata.get("frame_state") != "world"
+                or "world.wait" not in native_metadata.get("advertised_actions", [])
+            ):
+                gate = "native_world_after_diagnostics_unproven"
+        else:
+            if screen_probe.get("visible_error_popup"):
+                gate = "visible_error_popup"
+            elif not screen_capture_succeeded(screen_summary) and not native_hud_fallback:
+                gate = "screen_capture_failed"
+            elif screen_probe.get("blocking_overlay_present"):
+                gate = "blocking_overlay_present"
+            elif screen_summary.get("version_matches_runtime_paths") is False:
+                gate = "runtime_version_mismatch"
+            elif screen_summary.get("version_matches_runtime_paths") is not True and \
+                    screen_summary.get("surface_identity_status") != "matched" and not native_hud_fallback:
+                gate = "runtime_version_unproven"
+            elif diagnostics_recorded and expected_pid > 0 and screen_summary.get("capture_process_pid") != expected_pid:
+                gate = "captured_process_identity_mismatch"
+            elif not focus_proven and not input_owner_proven:
+                gate = "focus_unproven"
+            elif not screen_probe.get("gameplay_hud_present"):
+                gate = "gameplay_hud_absent"
+        if gate == "startup_clean" and diagnostics_recorded:
+            gate = "startup_diagnostics_recorded"
+        if gate in {"startup_clean", "startup_diagnostics_recorded"}:
+            status = "green" if gate == "startup_clean" else "yellow"
+        elif gate in {
+            "visible_error_popup", "native_run_identity_mismatch", "native_process_identity_mismatch",
+            "runtime_identity_mismatch", "captured_process_identity_mismatch",
+            "screen_capture_failed",
+        }:
+            status = "red"
+        else:
+            status = "yellow"
+
+    ready_for_actions = bool(ok and gate in {"startup_clean", "startup_diagnostics_recorded"})
+    clean_load = bool(ready_for_actions and not diagnostics_recorded)
     return {
         "evidence_class": "startup/load",
         "status": status,
-        "verdict": verdict,
+        "verdict": (failure_reason or "startup_failed") if not ok else (
+            "startup_load_only" if clean_load else "startup_load_only_" + gate
+        ),
         "feature_proof": False,
-        "startup_clean_for_feature_steps": clean_for_feature_steps,
-        "feature_gate": feature_gate,
+        "startup_ready_for_actions": ready_for_actions,
+        "startup_clean_for_feature_steps": clean_load,
+        "diagnostic_cleanliness": "clean" if clean_load else (
+            "degraded" if ready_for_actions else "unproven"
+        ),
+        "diagnostic_evidence": diagnostic_evidence,
+        "feature_gate": gate,
         "focus_proven": focus_proven,
-        "input_owner_proven": input_owner_proven,
+        "input_owner_proven": ready_for_actions and (input_owner_proven or native_semantic_startup_ready),
+        "native_semantic_startup_ready": native_semantic_startup_ready,
         "screen_gate": str(screen_probe.get("classification", "startup_screen_probe_missing")),
         "debug_popups_recorded": popup_count,
         "debug_errors_recorded": error_count,
-        "rule": "Load/readiness plus screenshot prove only startup/load; feature steps require verified focus, a real gameplay HUD, no visible error popup or new ERROR/DEBUG log, and later step-local proof.",
+        "rule": "A current bound input owner permits actions after recoverable diagnostics; the raw log remains degraded startup evidence. Clean load and feature claims require their own proof.",
     }
 
 
@@ -37795,14 +37912,26 @@ def startup_result_status(
     proof_classification: Dict[str, Any],
     failure_reason: str = "",
 ) -> Tuple[bool, str]:
-    """Make the command result fail closed when startup proof is not green."""
+    """Return command success for verified action readiness, including degraded readiness."""
     proof_status = str(proof_classification.get("status", "")).strip()
-    result_ok = bool(base_ok and proof_status == "green")
+    ready = proof_classification.get("startup_ready_for_actions")
+    if ready is None:
+        ready = proof_status == "green"  # Historical callers without the new field.
+    result_ok = bool(base_ok and ready is True and proof_status in {"green", "yellow"})
     reason = str(failure_reason or "").strip()
     if not result_ok and not reason:
         reason = f"startup_proof_{proof_status or 'unclassified'}"
     return result_ok, reason
 
+
+def startup_actions_ready(classification: Mapping[str, Any]) -> bool:
+    """Read the new readiness field while accepting older clean startup records."""
+    ready = classification.get("startup_ready_for_actions")
+    if ready is not None:
+        return ready is True
+    return classification.get("status", "green") == "green" and bool(
+        classification.get("startup_clean_for_feature_steps", False)
+    )
 
 def probe_proof_classification(
     *,
@@ -37822,6 +37951,7 @@ def probe_proof_classification(
     startup_verdict = str(startup_classification.get("verdict", "unclassified"))
     startup_feature_gate = str(startup_classification.get("feature_gate", startup_verdict))
     startup_clean_for_feature_steps = bool(startup_classification.get("startup_clean_for_feature_steps", False))
+    startup_ready_for_actions = startup_actions_ready(startup_classification)
     startup_feature_proof = bool(startup_classification.get("feature_proof", False))
     wait_status = str((wait_step_summary or {}).get("status", "")).strip()
     step_ledger_status = str((step_ledger_summary or {}).get("status", "")).strip()
@@ -37852,10 +37982,10 @@ def probe_proof_classification(
         status = "yellow"
         feature_proof = False
         verdict = "startup_load_only_no_feature_steps"
-    elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts and not startup_clean_for_feature_steps:
+    elif not startup_ready_for_actions:
         status = "yellow" if startup_status != "red" else "red"
         feature_proof = False
-        verdict = "startup_gate_not_clean_artifact_match_inconclusive"
+        verdict = "startup_not_ready_feature_proof_inconclusive"
     elif (verdict == "artifacts_matched" or structured_gate_green) and step_count > 0 and (matched_artifacts or structured_gate_green):
         if step_ledger_status == "green_step_local_proof":
             status = "green"
@@ -37877,6 +38007,7 @@ def probe_proof_classification(
         "feature_proof": feature_proof,
         "startup_feature_proof": startup_feature_proof,
         "startup_clean_for_feature_steps": startup_clean_for_feature_steps,
+        "startup_ready_for_actions": startup_ready_for_actions,
         "startup_status": startup_status,
         "startup_verdict": startup_verdict,
         "startup_feature_gate": startup_feature_gate,
@@ -37887,7 +38018,7 @@ def probe_proof_classification(
         "step_ledger_status": step_ledger_status,
         "structured_gate_status": structured_gate_status,
         "structured_gate_evidence": structured_gate_evidence or {},
-        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate, green step-local ledger rows, matched positive artifacts or explicit negative artifact guards, and no blocked/yellow wait ledger.",
+        "rule": "Startup/load evidence is never feature proof; feature classification requires action readiness, green step-local ledger rows, matched positive artifacts or explicit negative artifact guards, and no blocked/yellow wait ledger. Clean-load claims retain the separate startup cleanliness field.",
     }
 
 
@@ -38421,6 +38552,11 @@ def run_startup(args: argparse.Namespace) -> int:
     child_environment.pop("OPENCLAW_HARNESS_SCHEDULER_TRACE_EOC", None)
     child_environment.pop("OPENCLAW_HARNESS_R021_FIXTURE_ACTOR_ID", None)
     child_environment.pop("OPENCLAW_HARNESS_R022_TRANSACTION_ID", None)
+    child_environment.pop("OPENCLAW_HARNESS_RAID_ACTOR_TRACE", None)
+    child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", None)
+    child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS", None)
+    child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN", None)
+    child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_TO_TURN", None)
     child_environment.pop("OPENCLAW_HARNESS_NATIVE_PREVIEW_SEGMENT_REQUESTS", None)
     native_preview_requests = str(
         getattr(args, "native_preview_segment_requests", "") or ""
@@ -38454,8 +38590,20 @@ def run_startup(args: argparse.Namespace) -> int:
     if scheduler_trace_eoc:
         child_environment["OPENCLAW_HARNESS_SCHEDULER_TRACE_EOC"] = scheduler_trace_eoc
     try:
+        selected_npc_ids = decision_trace_actor_ids(
+            getattr(args, "decision_trace_actor", [])
+        )
         child_environment.update(wait_input_trace_child_environment(
             bool(getattr(args, "wait_input_trace", False)), transition_binding["run_id"]
+        ))
+        child_environment.update(raid_actor_trace_child_environment(
+            bool(getattr(args, "raid_actor_trace", False)) or bool(selected_npc_ids),
+            transition_binding["run_id"]
+        ))
+        child_environment.update(selected_npc_trace_child_environment(
+            getattr(args, "scenario_identity", ""), selected_npc_ids,
+            getattr(args, "decision_trace_from_turn", None),
+            getattr(args, "decision_trace_to_turn", None),
         ))
     except ValueError as error:
         raise SystemExit(str(error)) from error
@@ -39032,6 +39180,8 @@ def run_startup(args: argparse.Namespace) -> int:
             )
             if final_evidence["process_alive"] is not True:
                 startup_failure_reason = "process_exited_after_readiness"
+            elif terminal_identity is not None and terminal_identity.get("ok") is not True:
+                startup_failure_reason = "terminal_native_identity_unproven"
             elif not final_evidence["debug_tail_classified"]:
                 startup_failure_reason = "debug_log_tail_unclassified"
             else:
@@ -39047,12 +39197,17 @@ def run_startup(args: argparse.Namespace) -> int:
                 native_semantic_startup_ready=(
                     native_semantic_startup.get("status") == "required_state_present"
                 ),
+                expected_run_id=transition_binding["run_id"],
+                expected_pid=proc.pid,
             )
             startup_ok, startup_failure_reason = startup_result_status(
                 base_ok=base_startup_ok,
                 proof_classification=proof_classification,
                 failure_reason=startup_failure_reason,
             )
+            diagnostic_capture = final_evidence.get("debug_capture", {})
+            diagnostic_lines = diagnostic_capture.get("error_evidence_lines", [])
+            diagnostic_lines = diagnostic_lines if isinstance(diagnostic_lines, list) else []
             result = {
                 "ok": startup_ok,
                 "reason": startup_failure_reason,
@@ -39068,6 +39223,19 @@ def run_startup(args: argparse.Namespace) -> int:
                 "debug_log_classified_size": final_evidence["classified_size"],
                 "debug_log_raw_size": final_evidence["raw_current_size"],
                 "debug_log_identity": final_evidence["debug_log_identity"],
+                "startup_diagnostics": {
+                    "status": proof_classification["diagnostic_cleanliness"],
+                    "run_id": transition_binding["run_id"],
+                    "pid": proc.pid,
+                    "source_log": diagnostic_capture.get("artifact_path", ""),
+                    "error_evidence_lines": diagnostic_lines,
+                    "diagnostic_dialog_action": (
+                        "not_applicable" if proof_classification["diagnostic_cleanliness"] == "clean"
+                        else "not_recorded_by_harness"
+                    ),
+                    "overlay_recovery": startup_overlay_recovery,
+                    "post_recovery_native_owner": native_semantic_startup,
+                },
                 "semantic_step_trace_start_offset": debug_size,
                 "final_startup_evidence": final_evidence,
                 "strategy": plan.strategy,
@@ -39341,6 +39509,282 @@ def snapshot_world_state(profile: str, world_name: str, run_dir: Path, label: st
     return snapshot
 
 
+def probe_verdict_from_evidence(
+    *, post_relaunch: Any, relaunch: Mapping[str, Any], abort_report: Any,
+    version_matches_runtime: Any, feature_debug_guard: Mapping[str, Any],
+    wait_step_summary: Mapping[str, Any], step_ledger_summary: Mapping[str, Any],
+    structured_gate_evidence: Mapping[str, Any],
+    matches_by_pattern: Sequence[Mapping[str, Any]],
+    effective_matches_by_pattern: Sequence[Mapping[str, Any]],
+    artifact_patterns: Sequence[str], artifact_text_present: bool,
+) -> str:
+    """Select the probe verdict from the same evidence before and after cleanup."""
+    if post_relaunch is not None and relaunch.get("status") not in {
+            "ready", "skipped_explicit_player_quit"}:
+        return "blocked_" + str(relaunch.get("status", "relaunch_failed"))
+    if abort_report is not None:
+        return str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
+    if version_matches_runtime is False:
+        return "inconclusive_version_mismatch"
+    if feature_debug_guard.get("status") == "red":
+        return "blocked_" + str(feature_debug_guard.get("verdict", "red_feature_phase_error_logged")).removeprefix("red_")
+    if feature_debug_guard.get("status") == "yellow":
+        return "yellow_feature_phase_observability_unproven"
+    if wait_step_summary.get("status") == "blocked_wait_step":
+        return "blocked_wait_step_ledger"
+    if wait_step_summary.get("status") == "yellow_wait_step_unverified":
+        return "yellow_wait_step_unverified"
+    if step_ledger_summary.get("status") == "red_step_local_proof_failed":
+        return "blocked_step_local_proof"
+    if step_ledger_summary.get("status") == "yellow_step_local_proof_incomplete":
+        return "yellow_step_local_proof_incomplete"
+    if structured_gate_evidence.get("status") == "red":
+        return "blocked_structured_proof_gate"
+    if post_relaunch is not None and relaunch.get("status") == "ready" and \
+            relaunch.get("clean_load_proof") is False:
+        return "inconclusive_relaunch_diagnostics_recorded"
+    if structured_gate_evidence.get("status") == "green":
+        return "structured_gates_matched"
+    if matches_by_pattern and all(entry.get("lines") for entry in matches_by_pattern):
+        return "artifacts_matched"
+    if any(entry.get("lines") for entry in matches_by_pattern):
+        return "inconclusive_partial_artifact_match"
+    if not artifact_patterns and effective_matches_by_pattern and \
+            all(entry.get("lines") for entry in effective_matches_by_pattern):
+        return "artifacts_matched"
+    if not artifact_text_present:
+        return "inconclusive_no_new_artifacts"
+    return "inconclusive_no_artifact_match"
+
+
+def cockpit_terminal_step_receipts(run_dir: Path) -> List[Dict[str, Any]]:
+    """Read only the final two semantic action receipts, without retaining frames."""
+    recent: deque[Dict[str, Any]] = deque(maxlen=2)
+    with (run_dir / "semantic.steps.jsonl").open(encoding="utf-8") as source:
+        for line in source:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            receipt = row.get("native_receipt")
+            current_frame = row.get("current_frame")
+            payload = current_frame.get("payload") if isinstance(current_frame, Mapping) else None
+            recent.append({
+                "action_id": row.get("action_id"),
+                "accepted": row.get("accepted"),
+                "run_id": row.get("run_id"),
+                "reason": row.get("reason"),
+                "next_frame_absent": row.get("next_frame") is None,
+                "native_action_id": receipt.get("action_id") if isinstance(receipt, Mapping) else None,
+                "native_accepted": receipt.get("accepted") if isinstance(receipt, Mapping) else None,
+                "native_run_id": receipt.get("run_id") if isinstance(receipt, Mapping) else None,
+                "native_process_instance": receipt.get("process_instance") if isinstance(receipt, Mapping) else None,
+                "frame_kind": current_frame.get("kind") if isinstance(current_frame, Mapping) else None,
+                "prompt_text": payload.get("text") if isinstance(payload, Mapping) else None,
+            })
+    return list(recent)
+
+
+def assess_completed_cockpit_exit(
+    report: Mapping[str, Any], *, quit_request: Mapping[str, Any],
+    bridge_process: Mapping[str, Any], bridge_exit: Mapping[str, Any],
+    terminal_steps: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Authenticate a requested native exit against this run and final cleanup."""
+    issues: List[str] = []
+    run_id = str(report.get("run_id", ""))
+    steps = report.get("steps")
+    candidates = [step for step in steps if isinstance(step, Mapping) and
+                  step.get("kind") == "cockpit_live_session" and
+                  isinstance(step.get("cockpit_live_session"), Mapping) and
+                  isinstance(step["cockpit_live_session"].get("final"), Mapping) and
+                  step["cockpit_live_session"]["final"].get("termination_requested") is True] \
+        if isinstance(steps, list) else []
+    if len(candidates) != 1:
+        issues.append("exact_requested_cockpit_step_missing")
+    step = candidates[0] if len(candidates) == 1 else {}
+    final = step.get("cockpit_live_session", {}).get("final", {})
+    binding_id = str(final.get("binding_id", ""))
+    stop_reason = str(final.get("stop_reason", ""))
+    def record(value: Any) -> Mapping[str, Any]:
+        return value if isinstance(value, Mapping) else {}
+
+    cleanup = record(report.get("cleanup"))
+    generation = record(cleanup.get("process_generation"))
+    expected = record(generation.get("expected"))
+    pid = expected.get("pid")
+    if not run_id or step.get("run_id") != run_id or final.get("run_id") != run_id:
+        issues.append("run_identity_mismatch")
+    if not binding_id or not stop_reason or final.get("state") != "finished":
+        issues.append("finished_cockpit_identity_missing")
+    if cleanup.get("status") != "already_exited" or generation.get("status") != "exited" or \
+            record(generation.get("observed")).get("alive") is not False:
+        issues.append("final_cleanup_incomplete")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0 or \
+            cleanup.get("pid") != pid or generation.get("pid") != pid or \
+            not expected.get("birth_identity") or not expected.get("command"):
+        issues.append("owned_process_generation_missing")
+    final_cleanup = final.get("cleanup") if isinstance(final.get("cleanup"), Mapping) else {}
+    if final_cleanup.get("status") not in {
+            "deferred_to_scenario_terminalization", "already_exited"} or \
+            final_cleanup.get("pid") != pid or \
+            record(final_cleanup.get("process_generation")).get("expected") != expected:
+        issues.append("cockpit_cleanup_identity_mismatch")
+    if quit_request.get("schema") != "caol-cockpit-player-quit-v1" or \
+            quit_request.get("run_id") != run_id or quit_request.get("binding_id") != binding_id or \
+            quit_request.get("stop_reason") != stop_reason or quit_request.get("pid") != pid or \
+            quit_request.get("command") != expected.get("command") or \
+            record(quit_request.get("process_generation")).get("expected") != expected:
+        issues.append("quit_request_identity_mismatch")
+    if bridge_process.get("run_id") != run_id or bridge_process.get("binding_id") != binding_id or \
+            bridge_process.get("pid") != pid or bridge_process.get("command") != expected.get("command") or \
+            bridge_process.get("process_generation") != expected:
+        issues.append("bridge_process_identity_mismatch")
+    if bridge_exit.get("run_id") != run_id or bridge_exit.get("binding_id") != binding_id or \
+            bridge_exit.get("pid") != pid:
+        issues.append("bridge_exit_identity_mismatch")
+    if type(bridge_exit.get("exit_code")) is not int or bridge_exit.get("exit_code") != 0:
+        issues.append("native_exit_nonzero_or_unproved")
+    if len(terminal_steps) != 2:
+        issues.append("native_quit_chain_missing")
+    else:
+        menu, confirm = terminal_steps
+        if not (menu.get("action_id") == menu.get("native_action_id") == "main_menu.quit" and
+                menu.get("accepted") is True and menu.get("native_accepted") is True and
+                menu.get("run_id") == menu.get("native_run_id") == run_id):
+            issues.append("native_quit_menu_unaccepted")
+        if not (confirm.get("action_id") == confirm.get("native_action_id") == "prompt.choose" and
+                confirm.get("accepted") is True and confirm.get("native_accepted") is True and
+                confirm.get("run_id") == confirm.get("native_run_id") == run_id and
+                confirm.get("reason") == "native_surface_terminal_transition_accepted" and
+                confirm.get("next_frame_absent") is True and
+                confirm.get("frame_kind") == "prompt"):
+            issues.append("native_quit_confirmation_unaccepted")
+        native_save = record(final.get("native_save_completion"))
+        final_action = record(native_save.get("terminal_action_receipt"))
+        if not menu.get("native_process_instance") or \
+                menu.get("native_process_instance") != confirm.get("native_process_instance") or \
+                (final_action and final_action.get("process_instance") !=
+                 confirm.get("native_process_instance")):
+            issues.append("native_quit_process_instance_mismatch")
+    return {
+        "status": "accepted" if not issues else "rejected",
+        "issues": issues, "run_id": run_id, "binding_id": binding_id, "pid": pid,
+        "exit_code": bridge_exit.get("exit_code"),
+        "rule": "A clean terminal exit needs the same requested cockpit step, native quit/confirmation, exact owned process generation, code-zero exit and completed final cleanup.",
+    }
+
+
+def completed_cockpit_exit_evidence(
+    report: Mapping[str, Any], *, run_dir: Path,
+    bridge_session_dir: Optional[Path],
+) -> Dict[str, Any]:
+    """Load the bounded native and process facts required by the shared predicate."""
+    if bridge_session_dir is None:
+        return {"status": "rejected", "issues": ["bridge_session_evidence_unavailable"]}
+    paths = {
+        "quit_request": run_dir / "cockpit.player_quit.json",
+        "bridge_process": bridge_session_dir / "game-process.json",
+        "bridge_exit": bridge_session_dir / "game-process-exit.json",
+        "terminal_steps": run_dir / "semantic.steps.jsonl",
+    }
+    try:
+        payloads = {key: json.loads(path.read_text(encoding="utf-8"))
+                    for key, path in paths.items() if key != "terminal_steps"}
+        if not all(isinstance(payload, Mapping) for payload in payloads.values()):
+            raise ValueError("terminal evidence must contain objects")
+        terminal_steps = cockpit_terminal_step_receipts(run_dir)
+    except (OSError, ValueError, TypeError) as exc:
+        return {"status": "rejected", "issues": ["terminal_evidence_unavailable"],
+                "error": type(exc).__name__}
+    result = assess_completed_cockpit_exit(report, terminal_steps=terminal_steps, **payloads)
+    result["sources"] = {key: str(path) for key, path in paths.items()}
+    return result
+
+
+def reconcile_completed_cockpit_exit(
+    report: Dict[str, Any], *, run_dir: Path,
+    bridge_session_dir: Optional[Path], write_sidecar: bool = False,
+) -> Dict[str, Any]:
+    """Recompute the feature verdict only after this run's cleanup completes."""
+    guard = report.get("feature_debug_guard")
+    if report.get("mode") != "probe" or not isinstance(guard, Mapping) or \
+            guard.get("process_alive") is not False or \
+            report.get("certification_capture") or report.get("certification_round"):
+        return {"status": "not_applicable"}
+    exit_evidence = completed_cockpit_exit_evidence(
+        report, run_dir=run_dir, bridge_session_dir=bridge_session_dir)
+    report["clean_terminal_exit_reconciliation"] = exit_evidence
+    if exit_evidence.get("status") != "accepted":
+        return exit_evidence
+    screen = report.get("screen") if isinstance(report.get("screen"), Mapping) else {}
+    new_guard = build_feature_debug_guard(
+        debug_capture=guard.get("debug_capture", {}),
+        screen_probe=guard.get("screen_probe", {}),
+        screen_summary=screen.get("after", {}),
+        process_alive=False,
+        expected_debug_log_messages=guard.get("expected_debug_log_messages", []),
+        require_screen_observability=bool(guard.get("require_screen_observability", True)),
+        expected_clean_terminal_exit=True,
+    )
+    report["feature_debug_guard"] = new_guard
+    ledger = report.get("step_ledger")
+    if not isinstance(ledger, list) or \
+            sum(row.get("kind") == "debug_log_guard" and row.get("index") == "feature_debug_guard"
+                for row in ledger if isinstance(row, Mapping)) != 1:
+        exit_evidence["status"] = "rejected"
+        exit_evidence["issues"] = ["feature_guard_ledger_row_missing"]
+        report["feature_debug_guard"] = guard
+        return exit_evidence
+    report["step_ledger"] = [new_guard["ledger_row"] if isinstance(row, Mapping) and
+                             row.get("kind") == "debug_log_guard" and
+                             row.get("index") == "feature_debug_guard" else row for row in ledger]
+    report["step_ledger_summary"] = summarize_probe_step_ledger(report["step_ledger"])
+    artifacts = report.get("artifacts") if isinstance(report.get("artifacts"), Mapping) else {}
+    contract = report.get("contract") if isinstance(report.get("contract"), Mapping) else {}
+    raw_patterns = contract.get("artifact_patterns", [])
+    effective_matches = artifacts.get("matches_by_pattern", [])
+    raw_matches = artifacts.get("raw_matches_by_pattern")
+    if not isinstance(raw_matches, list):
+        raw_matches = [entry for entry in effective_matches if entry.get("pattern") in raw_patterns]
+    startup = report.get("startup") if isinstance(report.get("startup"), Mapping) else {}
+    startup_screen = startup.get("screen") if isinstance(startup.get("screen"), Mapping) else {}
+    report["verdict"] = probe_verdict_from_evidence(
+        post_relaunch=contract.get("post_relaunch"),
+        relaunch=report.get("relaunch", {}), abort_report=report.get("abort"),
+        version_matches_runtime=startup_screen.get("version_matches_runtime_paths"),
+        feature_debug_guard=new_guard,
+        wait_step_summary=report.get("wait_step_summary", {}),
+        step_ledger_summary=report["step_ledger_summary"],
+        structured_gate_evidence=report.get("structured_gate_evidence", {}),
+        matches_by_pattern=raw_matches, effective_matches_by_pattern=effective_matches,
+        artifact_patterns=raw_patterns,
+        artifact_text_present=artifacts.get("status") == "captured",
+    )
+    proof = probe_proof_classification(
+        verdict=report["verdict"],
+        startup_classification=startup.get("proof_classification", {}),
+        step_reports=report.get("steps", []),
+        artifact_patterns=artifacts.get("match_patterns", []),
+        matches_by_pattern=effective_matches,
+        wait_step_summary=report.get("wait_step_summary"),
+        abort_report=report.get("abort"),
+        step_ledger_summary=report["step_ledger_summary"],
+        structured_gate_evidence=report.get("structured_gate_evidence"),
+    )
+    report["proof_classification"] = proof
+    report["feature_proof"] = proof["feature_proof"]
+    report["evidence_class"] = proof["evidence_class"]
+    if write_sidecar:
+        write_json(run_dir / f"{report['mode']}.step_ledger.json", {
+            "mode": report["mode"], "scenario": report.get("scenario"),
+            "portal_storm_warning": report.get("portal_storm_warning"),
+            "feature_debug_guard": new_guard,
+            "step_ledger_summary": report["step_ledger_summary"],
+            "step_ledger": report["step_ledger"],
+        })
+    return exit_evidence
+
+
 def finalize_probe_report(
     run_dir: Optional[Path],
     report: Dict[str, Any],
@@ -39439,6 +39883,13 @@ def finalize_probe_report(
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
             run_dir, report["cleanup"]
+        )
+    if run_dir is not None:
+        bridge_dir_text = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "").strip()
+        reconcile_completed_cockpit_exit(
+            report, run_dir=Path(run_dir),
+            bridge_session_dir=Path(bridge_dir_text) if bridge_dir_text else None,
+            write_sidecar=True,
         )
     report_path: Optional[Path] = None
     if run_dir is not None:
@@ -39643,6 +40094,9 @@ def compact_probe_report_for_stdout(
             "status": str(startup_classification.get("status", "")),
             "feature_gate": str(startup_classification.get("feature_gate", "")),
             "startup_clean_for_feature_steps": bool(startup_classification.get("startup_clean_for_feature_steps", False)),
+            "startup_ready_for_actions": startup_actions_ready(startup_classification),
+            "diagnostic_cleanliness": str(startup_classification.get("diagnostic_cleanliness", "unproven")),
+            "diagnostic_evidence_artifact": str((startup_classification.get("diagnostic_evidence") or {}).get("artifact_path", "")),
             "focus_proven": bool(startup_classification.get("focus_proven", False)),
             "input_owner_proven": bool(startup_classification.get("input_owner_proven", False)),
             "debug_popups_recorded": int(startup_classification.get("debug_popups_recorded", 0) or 0),
@@ -40824,6 +41278,25 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.append("--r027-onfire-cleanup-bootstrap")
     if bool(scenario.get("wait_input_trace", False)):
         start_cmd.append("--wait-input-trace")
+    try:
+        selected_npc_ids = decision_trace_actor_ids(scenario.get("decision_trace_actor_ids"))
+        capture_from_turn = scenario.get("decision_trace_from_turn")
+        capture_to_turn = scenario.get("decision_trace_to_turn")
+        if not selected_npc_ids and (capture_from_turn is not None or capture_to_turn is not None):
+            raise ValueError("decision trace capture window requires selected NPC IDs")
+        selected_npc_trace_child_environment(scenario_name, selected_npc_ids,
+                                             capture_from_turn, capture_to_turn)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    if bool(scenario.get("raid_actor_trace", False)) or selected_npc_ids:
+        start_cmd.append("--raid-actor-trace")
+    for actor_id in selected_npc_ids:
+        start_cmd.extend(["--decision-trace-actor", str(actor_id)])
+    if selected_npc_ids:
+        for field in ("from", "to"):
+            value = scenario.get(f"decision_trace_{field}_turn")
+            if value is not None:
+                start_cmd.extend([f"--decision-trace-{field}-turn", str(value)])
     if bool(scenario.get("r028_render_trace", False)):
         start_cmd.append("--r028-render-trace")
     if native_preview_requests:
@@ -41073,11 +41546,11 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             write_json(report_path, report)
 
     startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
-    if not startup_classification.get("startup_clean_for_feature_steps", False):
+    if not startup_actions_ready(startup_classification):
         abort_report = {
             "guard": "startup",
             "status": "blocked_startup_gate",
-            "reason": str(startup_classification.get("feature_gate", "startup_not_clean")),
+            "reason": str(startup_classification.get("feature_gate", "startup_not_ready")),
         }
         proof_classification = probe_proof_classification(
             verdict="blocked_startup_gate",
@@ -41095,7 +41568,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "config_profile": config_profile,
             "world": world,
             "fixture": fixture,
-            "reason": "startup_gate_not_clean",
+            "reason": "startup_not_ready",
             "startup": start_result,
             "steps": [
                 {
@@ -41462,6 +41935,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
                 startup_dismiss_blocking_overlay=post_relaunch_dismisses_first_step,
                 wait_input_trace=bool(scenario.get("wait_input_trace", False)),
+                raid_actor_trace=bool(scenario.get("raid_actor_trace", False)),
+                decision_trace_actor_ids=selected_npc_ids,
+                decision_trace_from_turn=scenario.get("decision_trace_from_turn"),
+                decision_trace_to_turn=scenario.get("decision_trace_to_turn"),
                 semantic_only_startup=("--semantic-only-startup" in start_cmd),
                 suppress_profile_startup_input=("--suppress-profile-startup-input" in start_cmd),
                 terminal_transport=scenario_terminal_transport(scenario),
@@ -41597,15 +42074,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         if isinstance(screen_after.get("screen_summary"), dict)
         else {}
     )
-    expected_clean_terminal_exit = any(
-        isinstance(step.get("cockpit_live_session"), Mapping) and
-        isinstance(step["cockpit_live_session"].get("final"), Mapping) and
-        step["cockpit_live_session"]["final"].get("state") == "finished" and
-        isinstance(step["cockpit_live_session"]["final"].get("cleanup"), Mapping) and
-        step["cockpit_live_session"]["final"]["cleanup"].get("status") in
-        CLEANUP_ACCEPTED_STATUSES
-        for step in step_reports if isinstance(step, Mapping)
-    )
+    # The cockpit can defer cleanup.  No intermediate status grants clean-exit
+    # credit; finalization authenticates the requested native quit and exit.
+    expected_clean_terminal_exit = False
     feature_debug_guard = capture_feature_phase_guard(
         profile=profile,
         debug_start_size=feature_debug_start,
@@ -41796,41 +42267,17 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if scenario.get("proof_gates"):
         write_json(run_dir / "proof.gates.json", structured_gate_evidence)
 
-    verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
-    version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
-    if post_relaunch is not None and relaunch.get("status") not in {
-            "ready", "skipped_explicit_player_quit"}:
-        verdict = "blocked_" + str(relaunch.get("status", "relaunch_failed"))
-    elif abort_report is not None:
-        verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
-    elif version_matches_runtime is False:
-        verdict = "inconclusive_version_mismatch"
-    elif feature_debug_guard["status"] == "red":
-        verdict = "blocked_" + str(feature_debug_guard["verdict"]).removeprefix("red_")
-    elif feature_debug_guard["status"] == "yellow":
-        verdict = "yellow_feature_phase_observability_unproven"
-    elif wait_step_summary["status"] == "blocked_wait_step":
-        verdict = "blocked_wait_step_ledger"
-    elif wait_step_summary["status"] == "yellow_wait_step_unverified":
-        verdict = "yellow_wait_step_unverified"
-    elif step_ledger_summary["status"] == "red_step_local_proof_failed":
-        verdict = "blocked_step_local_proof"
-    elif step_ledger_summary["status"] == "yellow_step_local_proof_incomplete":
-        verdict = "yellow_step_local_proof_incomplete"
-    elif structured_gate_evidence.get("status") == "red":
-        verdict = "blocked_structured_proof_gate"
-    elif structured_gate_evidence.get("status") == "green":
-        verdict = "structured_gates_matched"
-    elif matches_by_pattern and all(entry["lines"] for entry in matches_by_pattern):
-        verdict = "artifacts_matched"
-    elif any(entry["lines"] for entry in matches_by_pattern):
-        verdict = "inconclusive_partial_artifact_match"
-    elif (not artifact_patterns and effective_matches_by_pattern and
-          all(entry.get("lines") for entry in effective_matches_by_pattern)):
-        verdict = "artifacts_matched"
-    elif not artifact_text.strip():
-        verdict = "inconclusive_no_new_artifacts"
+    verdict = probe_verdict_from_evidence(
+        post_relaunch=post_relaunch, relaunch=relaunch, abort_report=abort_report,
+        version_matches_runtime=screen_summary.get("version_matches_runtime_paths"),
+        feature_debug_guard=feature_debug_guard,
+        wait_step_summary=wait_step_summary, step_ledger_summary=step_ledger_summary,
+        structured_gate_evidence=structured_gate_evidence,
+        matches_by_pattern=matches_by_pattern,
+        effective_matches_by_pattern=effective_matches_by_pattern,
+        artifact_patterns=artifact_patterns, artifact_text_present=bool(artifact_text.strip()),
+    )
 
     startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
     proof_classification = probe_proof_classification(
@@ -41937,6 +42384,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "source_log": str(artifact_log),
             "match_patterns": effective_artifact_patterns,
             "matches_by_pattern": effective_matches_by_pattern,
+            "raw_matches_by_pattern": matches_by_pattern,
             "step_artifact_matches": step_artifact_matches,
             "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
@@ -42203,6 +42651,11 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--r027-onfire-cleanup-bootstrap", action="store_true",
                          help=argparse.SUPPRESS)
     start_p.add_argument("--wait-input-trace", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--raid-actor-trace", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--decision-trace-actor", action="append", type=int,
+                         default=[], help=argparse.SUPPRESS)
+    start_p.add_argument("--decision-trace-from-turn", type=int, help=argparse.SUPPRESS)
+    start_p.add_argument("--decision-trace-to-turn", type=int, help=argparse.SUPPRESS)
     start_p.add_argument("--r028-render-trace", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--native-preview-segment-requests", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--r019-lifecycle-actor-id", default="", help=argparse.SUPPRESS)

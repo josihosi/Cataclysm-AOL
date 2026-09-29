@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Continue the natural generation-1 cannibal outing from the source-off minute9720 R017 save. At minute9780, establish whether same-ID actors advance through a real saved route/position, physical observation, return/report or actual cargo/supply change.",
+  "material_proof": "Disposable copied profile .userdata/first-smoke-013-r017-minute9720-continuation-20260927; copy receipt build_logs/first-smoke-013/r017-minute9720-continuation-copy-receipt.json, 76 regular files verified equal, with source save hashes carried forward from turn5335258/minute9720. Immutable executable SHA-256 4e801d7856c219dd7212cbc9c48f88080999921851e2f36e97bbae317bcc2a43, receipt SHA-256 8e83caf24aef27848bb31602759f9e93bc78104e0e7163b5a088fa353d547083, source SHA-256 525e7cb95328ec19149dfe250367456dc7e70354f638810790fe524f294a40fb.",
+  "current_uncertainty": "Whether the generation-1 outing for cannibal IDs4/5 advances from waypoint0 after minute9720, and whether native actor positions/actions establish a physical visit/observation, home return/report or cargo change.",
+  "material_contradiction": [
+    "effective userdir, save/turn/migration, executable or source binding differs",
+    "the cannibal site-specific route cursor remains unchanged beyond its next meaningful hourly scheduler boundary under valid conditions",
+    "physical visit/scavenge/return/report/cargo is claimed without same-ID native saved evidence",
+    "fire/smoke or inserted world knowledge/lead/outing/report/route appears without native cause"
+  ],
+  "forbidden_shortcuts": [
+    "replay smoke/light admission",
+    "insert knowledge, leads, actors, outing, report, route, target, dispatch or cargo",
+    "force movement or count a planned route/watch as physical visit/scavenge",
+    "treat the global first-active outing descriptor for the bandit site as cannibal evidence"
+  ],
+  "honest_stop_conditions": [
+    "preserve the first minute9780 site-specific route/cursor result and exact saved turn",
+    "follow actual same IDs only if their native positions/actions establish route progress",
+    "save and gracefully close every owned process by exact PID/birth",
+    "if unchanged, report the first causal route/cursor boundary and a changed informative continuation"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

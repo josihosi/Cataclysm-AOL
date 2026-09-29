@@ -1,0 +1,27 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "After the smoke-admitted cannibal roster naturally completes its generation-2 road outing, preserve the empty report and observe natural report expiry/rescout. Any claimed terrain cycle must show the same actors physically visit a lead, acquire/haul items if scavenge occurs, return, and deliver an identity-bound report without injected state.",
+  "material_proof": "Exact post-quit continuation copy first-smoke-013-road-report-expiry-20260927 at minute13560/turn5565634. Copy receipt build_logs/first-smoke-013/minute13560-report-expiry-copy.json records 130 matching paths/hashes between source and copy; player save file hash e6ebefe9d43d51f041433cc34f3f9c27bf2a6e1a70694b9f24ef84abe4314a9f decodes to turn/player.last_updated 5565634; dimension_data.gsav hash af09189fde8a55aa3f4fd4fed633c109c14239dd147b29e303b2c6e1ed3cb21a. A successful pre-quit native quicksave at the same turn is separately bound in save-reconcile-checkpoints.json. Source/executable SHA-256 1f830d8ab519d3a15985bf998424a4174550659e0db6dff91a65d1c61335ee1f / c556ab8a9fdd015024de4116bfc69dd6a40ec10a783ab8f57aee9b6457378a8e. Generation-2 report delivered12240 remains report_awaiting_assessment with empty observations.",
+  "current_uncertainty": "Whether expiry at15120 releases the camp for a natural candidate/outing and whether a later same-ID route physically visits/scavenges, returns and reports.",
+  "material_contradiction": [
+    "effective profile, save turn, or source/executable differs from the preserved copy",
+    "outing, knowledge, report, lead, route, target, or dispatch is inserted or changed outside native simulation",
+    "scheduler has an eligible reachable candidate but contradictory rejection under source-defined rules",
+    "physical visit/scavenge claimed without same-ID position/action or actual item/haul evidence",
+    "fire/smoke reappears without recorded cause, setup premises differ, save identity stale, or owned process cannot be reconciled"
+  ],
+  "forbidden_shortcuts": [
+    "raw save edits or debug insertion of knowledge, leads, actors, outing, report, dispatch, route, target or raid",
+    "debug/synthetic fire, smoke or signal packet",
+    "forcing movement/cycles, teleporting scouts, or treating planned route as physical visit",
+    "treating signal admission as untouched no-fire discovery; preserve R012 independently",
+    "synthetic elapsed time or unsaved/no-op actions as fresh state"
+  ],
+  "honest_stop_conditions": [
+    "at15120 capture exact expired-report/camp-decision transition and saved turn",
+    "at first eligible scheduler pass capture exact candidate ranking, selected mission/target/IDs, or native rejection",
+    "if an outing begins, follow until physical visit/scavenge and report boundary or first causal blocker",
+    "preserve first informative boundary and gracefully close all owned processes"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

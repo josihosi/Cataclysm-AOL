@@ -1,0 +1,176 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r022_min8406_leader_casualty_continuation_20260928",
+  "description": "R022 source-bound disposable continuation from exact min8406 dual-clair viewer save; test leader4 casualty reconciliation and surviving raid IDs8/9 physical movement/contact/combat.",
+  "profile": "first-smoke-022-min8406-leader-casualty-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r022_min8406_leader_casualty": "r022_same_save_leader4_dead_survivors8_9_continue"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-022-min8406-leader-casualty-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-022/immutable-executable/374f745880686cdd01d3c2e1b85b224ebadc058c64cd42a2c0e9861662f3523e/cataclysm-tiles",
+      "profile": "first-smoke-022-min8406-leader-casualty-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_disposable_saved_min8406_viewer_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable full-profile copy in build_logs/first-smoke-021/r021-viewer-min8406-continuation-copy-manifest.json; verify same-run World at native turn5256372/minute8406, Safe Off, both saved DEBUG_CLAIRVOYANCE IDs, active brazier fire, and hostile operation/actors as checkpoint context. The source run ended at 20:06 after the native night gate."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms_or_debug_changes",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No fixture transforms, debug grants, signal/fire edits, or mutation changes. Resume only the byte-exact saved viewer state."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r022_saved_min8406_leader_casualty_survivor_assault",
+      "objective": "Continue the exact saved min8406 dual-clair viewer state using R022, without replaying signal setup. Confirm numeric death of raid leader4 reconciles, then follow surviving raid IDs8/9 physically from saved coordinates through movement/contact and each actual attack decision/target/damage/outcome. Track defenders2/3 and player1 at meaningful intervals; use safe waits until first harm, then deliberate combat continuation.",
+      "proof_targets": [
+        "71/71 manifest-listed profile files, 55/55 TestSetup00 files, exact save payload SHA and turn5256372; effective userdir and R022 executable/source binding",
+        "same-run World turn5256372/minute8406; safe mode Off; both saved clairvoyance IDs; actual brazier/fire and hostile operation",
+        "confirmed ID4 death record and operation casualty/successor state after R022 load/first cadence",
+        "IDs8/9 physical positions, goals/path/actions/health and individual actual attack/target/damage; defenders2/3 and player1 compared before and after first harm",
+        "native actual outcome and exact source-bound save/process cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Do not repeat smoke/scout/report setup; this is the existing saved min8406 raid continuation",
+        "Do not change either clairvoyance mutation or signal/fire state",
+        "No injected contact, report, dispatch, fire, hostile teleport, cloak, invulnerability, or debug kill",
+        "Track native IDs and actual positions/actions/targets/health, not visibility or phase labels",
+        "Use safe waits for observation and intentional combat continuation after first harm; first harm is not a finish line",
+        "Save meaningful transitions through native action and verify saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_disposable_saved_min8406_viewer_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r022_saved_min8406_leader_casualty_survivor_assault"
+    ],
+    "terminal_persistence": [
+      "r022_saved_min8406_leader_casualty_survivor_assault"
+    ],
+    "artifact_verdict": [
+      "r022_saved_min8406_leader_casualty_survivor_assault"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms_or_debug_changes"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On R022, reconcile the already-confirmed raid leader4 death from the exact saved min8406 dual-clair state; establish physical movement/contact and individual combat by surviving IDs8/9, including actual attack target and native outcome.",
+    "failure_rule": "Do not count absent lookup as death or abstract phase as physical attack. Require same-run saved actor records and source-attributed native actions/damage; preserve first failing gate."
+  }
+}

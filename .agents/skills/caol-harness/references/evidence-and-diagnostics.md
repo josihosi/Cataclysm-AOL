@@ -39,6 +39,50 @@ and transition logs, profile diagnostics, and shared NPC logs with exact paths, 
 scope and copyable query arguments. Missing files or metadata mean unavailable evidence, not
 absence of ecological activity. Shared logs need exact event and identity correlation.
 
+For an apparent NPC action such as door entry, bashing or retreat, follow the [game manual's
+assessment method](../GAME-MANUAL.md#assess-an-observed-action). A screenshot or OCR is only a
+navigation clue; cite native events, terrain and saved actor/operation state for the conclusion.
+
+## NPC decisions during playtests
+
+For NPC behavior tests, enable the existing run-bound decision trace at scenario launch and name
+the actors/behavior being examined in the brief. Use it for cannibal and bandit journeys and, as
+coverage is implemented, camp duties/defense and stalker pursuit. This is harness instrumentation,
+never normal-game logging. Do not infer support merely because an actor appears on screen.
+
+**Available in builds containing R025/R041:** `raid_actor_trace: true` enables the run-bound
+recorder; explicit `decision_trace_actor_ids` select local NPCs, including scouts, defenders and
+peaceful bandits, with an optional turn window. Without explicit selection, automatic coverage is
+limited to supported hostile local members. Select the actual current party, not historical IDs.
+R041 adds applied damage, confirmed death and sleep/wake edges. Exact sleep cause may remain null.
+Abstract travel and monster decision-making are not covered by the local NPC hook; combine existing
+transition records and actor saves. A monster appearing as a damage endpoint is not a monster AI
+trace. Check the bound build and emitted scope before relying on any of these capabilities.
+
+Use the [suite evidence map](playtest-evidence-map.md) for each arm's proof and the remaining
+implementation gaps. Existing `play evidence --decisions` provides compact interval retrieval;
+R041's handoff supplies the tested syntax and completeness fields.
+
+Read decisions at a meaningful phase change, unexpected behavior or outcome; no extra stop after
+every turn. Ask: which actor chose what, against whom, what could it see, where was it going, and
+was fear/danger or a group gate involved? Correlate numeric actor IDs and turns with actual movement,
+damage and saved state. Group intent is not an individual action. Trace visibility is diagnostic
+knowledge and must not be fed back into an actor's gameplay knowledge.
+
+Use the existing `log-query` on the bound `semantic.native.events.jsonl`, filtering
+`event="raid_actor_action"` and `npc_id=ID`, then selecting `game_turn`, `action`, `target`,
+`target_visible`, `position_abs`, `goto_abs`, `path_length`, `path_next_passable`, `panic` and
+`flee` as relevant. Query `raid_site_search` for the same operation/time when group behavior matters.
+Check `raid_trace_repeat` and `raid_trace_truncated`: absent rows are not proof of inactivity;
+unchanged spans may be compacted and a retained live game may not have flushed its final summary.
+Keep exact source handles rather than copying whole logs into the worker context. A view limit is
+separate from native capture truncation. Use the existing normal-CLI decision view before writing a task-local query script.
+
+R023's retained native example is documented in
+[the ergonomics audit](../../../../.de67/task-logs/decision-trace-ergonomics-20260928/report.md):
+Lloyd moved and attacked with panic0 despite earlier uncertainty from the screen. Use that as a
+query/schema example, not an assumption that every future actor behaves correctly.
+
 ## Performance comparisons
 
 `performance` reads retained CPU/RSS and action intervals; `performance --sample-seconds 1`

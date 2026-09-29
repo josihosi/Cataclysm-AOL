@@ -14,27 +14,21 @@ before confirming: an accepted filter request alone is not proof that the visibl
 
 ## GUI setup on this Mac
 
-The installed `/opt/homebrew/bin/peekaboo` uses its default app bridge. Its `permissions status
---json` must report the capability actually being used. Read `SESSION/game-process.json` for the
-bound PID and confirm that process is still the session's game. Replace PID below with that value;
-never copy a historical process ID. Prefer native semantic actions where they expose the operation.
+Use the verified Mac bridge socket on every Peekaboo call. Its `permissions status --json` must
+report the capability actually being used. Read `SESSION/game-process.json` for the bound PID
+and confirm that process is still the session's game. Replace PID below with that value; never
+copy a historical process ID. Prefer native semantic actions where they expose the operation.
 
 ```sh
-/opt/homebrew/bin/peekaboo see --pid PID --path /tmp/setup.png --json
-/opt/homebrew/bin/peekaboo type "brazier" --pid PID --json
-/opt/homebrew/bin/peekaboo hotkey arrow_down --pid PID --json
-/opt/homebrew/bin/peekaboo hotkey return --pid PID --json
-/opt/homebrew/bin/peekaboo hotkey escape --pid PID --json
-/opt/homebrew/bin/peekaboo click --on ELEMENT_ID --snapshot SNAPSHOT_ID --pid PID --json
-/opt/homebrew/bin/peekaboo click --coords X,Y --pid PID --json
+/opt/homebrew/bin/peekaboo --bridge-socket "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock" --json see --pid PID --path .openclaw/tmp/setup.png
+/opt/homebrew/bin/peekaboo --bridge-socket "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock" --json type "brazier" --pid PID
+/opt/homebrew/bin/peekaboo --bridge-socket "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock" --json press return --pid PID
 ```
 
-`type` sends text: `{down}{return}` is literal text, not two key presses. `hotkey` sends special
-keys; separate calls express a sequence, whereas comma-separated keys are simultaneous. `click`
-takes `--coords X,Y`, not separate x/y flags. With PID/app/window targeting, coordinates are relative
-to that target window; without targeting they are global. `--global-coords` explicitly chooses
-screen coordinates with a target. Derive coordinates from the current capture/window geometry,
-not arbitrary Retina scaling. Prefer a current element/snapshot when available. A successful tool
+`type` sends text: `{down}{return}` is literal text, not two key presses. Use separate `press`
+calls for special keys. For clicking, use the current element/snapshot or a freshly observed
+window ID with window-relative `--coords X,Y`; always target the verified PID. Derive coordinates
+from the current capture/window geometry, not arbitrary Retina scaling. A successful tool
 transport does not prove selection, deployment or ignition; observe the native result.
 
 ## Verify the destination

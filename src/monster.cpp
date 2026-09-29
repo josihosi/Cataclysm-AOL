@@ -77,6 +77,7 @@
 #include "pocket_type.h"
 #include "point.h"
 #include "projectile.h"
+#include "raid_decision_trace.h"
 #include "ret_val.h"
 #include "rng.h"
 #include "shearing.h"
@@ -2607,7 +2608,7 @@ void monster::set_hp( const int hp )
     this->hp = hp;
 }
 
-void monster::apply_damage( Creature *source, bodypart_id /*bp*/, int dam,
+void monster::apply_damage( Creature *source, bodypart_id bp, int dam,
                             const bool /*bypass_med*/ )
 {
     if( is_dead_state() || has_flag( json_flag_CANNOT_TAKE_DAMAGE ) ) {
@@ -2616,7 +2617,9 @@ void monster::apply_damage( Creature *source, bodypart_id /*bp*/, int dam,
     bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "damage_before", "local" );
     // Ensure we can try to get at what hit us.
     reset_pathfinding_cd();
+    const int hp_before = hp;
     hp -= dam;
+    raid_decision_trace::record_applied_damage( source, *this, bp.id().str(), hp_before, hp );
 
     cata::event e = cata::event::make<event_type::monster_takes_damage>( dam, hp < 1 );
     if( source ) {
@@ -3230,6 +3233,7 @@ void monster::die( map *here, Creature *nkiller )
     }
     bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "death", "local" );
     set_killer( nkiller );
+    raid_decision_trace::record_confirmed_death( *this, get_killer() );
     if( get_killer() != nullptr ) {
         Character *ch = get_killer()->as_character();
         if( ch == nullptr && get_killer()->get_summoner() != nullptr ) {

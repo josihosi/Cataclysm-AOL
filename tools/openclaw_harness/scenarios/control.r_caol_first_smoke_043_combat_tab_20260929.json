@@ -1,0 +1,128 @@
+{
+  "manifest_version": 1,
+  "name": "control.r_caol_first_smoke_043_combat_tab_20260929",
+  "description": "In a separate disposable copy, record any native debug setup needed for one reachable hostile zombie, then use one ordinary advertised world.autoattack Tab. Verify target, attack receipt and applied damage if any; no faction or passive raid credit.",
+  "profile": "first-smoke-043-combat-tab-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r043_controls": "combat_tab_native_action"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-043-combat-tab-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-043/immutable-executable/5dfe58757ac4ae09b428af3854917ac565009075c1a348693ff2bb7b00c99fd2/cataclysm-tiles",
+      "profile": "first-smoke-043-combat-tab-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r012_byte_exact_disposable_control",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load a 61-file copy of R012 no-fire minute9178/turn5302738 with dimension_data.gsav SHA c93ea8b65062affc3ebdeec87acc72b1ab2171e015ed65300163dffd9aaac546; verify R043 executable/source and effective userdir."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r043_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.pause",
+          "world.autoattack",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r043_combat_tab_native_controls",
+      "objective": "In a separate disposable copy, record any native debug setup needed for one reachable hostile zombie, then use one ordinary advertised world.autoattack Tab. Verify target, attack receipt and applied damage if any; no faction or passive raid credit.",
+      "proof_targets": [
+        "exact R043 source/executable and frozen Python runtime, effective disposable profile, same-run World",
+        "native world.pause and world.autoattack advertisement and accepted/rejected receipts",
+        "exact request order/count, native turn/moves, owner/health and stop reason",
+        "graceful owned game/bridge/launcher PID/birth/exit"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Keep this arm separate from R040 passive roof raid and all faction proof",
+        "Collect the exact pending request before any further action; do not replay after transport loss",
+        "Stop at native rejection, menu/owner change, harm or unresolvable progress",
+        "Use no artificial signal, route, report or faction actor changes"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r012_byte_exact_disposable_control",
+      "bind_r043_native_world"
+    ],
+    "production_behavior": [
+      "r043_combat_tab_native_controls"
+    ],
+    "terminal_persistence": [
+      "r043_combat_tab_native_controls"
+    ],
+    "artifact_verdict": [
+      "r043_combat_tab_native_controls"
+    ],
+    "disallowed_shortcuts": [
+      "load_r012_byte_exact_disposable_control"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R043 combat_tab source-bound native control path preserves exact requests and receipts on a disposable save.",
+    "failure_rule": "Preserve the first exact request, receipt, owner, native progress or cleanup divergence; synthetic public-path tests are separate evidence."
+  }
+}

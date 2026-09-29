@@ -231,6 +231,91 @@ class R019ValidationStartupTest(unittest.TestCase):
         self.assertEqual(selected["frame_id"], "run-1:initial")
         self.assertEqual(selected["_event_offset"], len(prefix))
 
+    def test_initial_hud_gate_uses_adjacent_same_turn_surface_for_dynamic_actions(self) -> None:
+        """The HUD frame and its bound surface descriptor advertise different action sets."""
+        run_id = "r026-run"
+        hud = {
+            "event": "frame", "run_id": run_id, "frame_id": f"{run_id}:5267860:1",
+            "state": "world", "observed_turn": 5267860, "game_minutes": 8597,
+            "valid_actions": [
+                "world.wait", "world.quicksave", "world.look",
+            ],
+            "producer": "hud_world_ready", "initial_world_ready": True,
+        }
+        surface = {
+            "event": "surface_descriptor", "schema_version": 1,
+            "run_id": run_id, "surface_id": f"{run_id}:surface:1",
+            "frame_id": f"{run_id}:frame:1", "kind": "world",
+            "sequence": 1, "game_turn": 5267860, "game_minutes": 8597,
+            "valid_actions": [
+                {"id": "world.wait", "enabled": True},
+                {"id": "world.quicksave", "enabled": True},
+                {"id": "world.look", "enabled": True},
+                {"id": "world.inspect_npc", "enabled": True},
+            ],
+        }
+        scenario_name = (
+            "cannibal.r_caol_first_smoke_011_r026_min8597_selected_actor_trace_20260928.json"
+        )
+        scenario_path = HARNESS_DIR / "scenarios" / scenario_name
+        r026_scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+        checkpoint = r026_scenario["steps"][1]["native_semantic_checkpoint"]
+        required_actions = checkpoint["required_actions"]
+        self.assertEqual(required_actions, [
+            "world.wait", "world.quicksave", "world.look", "world.inspect_npc",
+        ])
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            trace = run_dir / "semantic.native.events.jsonl"
+            marker = b"openclaw_harness_semantic_step: "
+            trace.write_bytes(b"".join(
+                marker + json.dumps(event, separators=(",", ":")).encode() + b"\n"
+                for event in (hud, surface)
+            ))
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                selected = first_initial_hud_world_frame_after_boundary(
+                    profile="test", trace_offset=0, run_id=run_id, required_state="world",
+                    required_actions=required_actions, run_dir=run_dir,
+                )
+                metadata = startup_harness.r014_native_semantic_bootstrap_metadata(
+                    profile="test", run_dir=run_dir, run_id=run_id, start_offset=0,
+                    press_trace_offset=0, required_state="world",
+                    required_actions=required_actions, frame=selected,
+                )
+
+        self.assertEqual(selected["frame_id"], hud["frame_id"])
+        self.assertNotIn("world.inspect_npc", selected["valid_actions"])
+        self.assertEqual(metadata["status"], "required_state_present")
+        self.assertEqual(metadata["same_turn_surface_actions"], [
+            "world.wait", "world.quicksave", "world.look", "world.inspect_npc",
+        ])
+
+    def test_initial_hud_gate_does_not_borrow_actions_from_a_different_turn(self) -> None:
+        hud = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial",
+            "state": "world", "observed_turn": 10,
+            "valid_actions": ["world.wait"], "producer": "hud_world_ready",
+            "initial_world_ready": True,
+        }
+        surface = {
+            "event": "surface_descriptor", "run_id": "run-1",
+            "frame_id": "run-1:later-surface", "surface_id": "run-1:surface:later",
+            "kind": "world", "game_turn": 11,
+            "valid_actions": [{"id": "world.inspect_npc", "enabled": True}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "semantic.log"
+            marker = b"openclaw_harness_semantic_step: "
+            trace.write_bytes(b"".join(
+                marker + json.dumps(event).encode() + b"\n" for event in (hud, surface)
+            ))
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                with self.assertRaisesRegex(ValueError, "initial HUD frame actions are incomplete"):
+                    first_initial_hud_world_frame_after_boundary(
+                        profile="test", trace_offset=0, run_id="run-1", required_state="world",
+                        required_actions=["world.wait", "world.inspect_npc"],
+                    )
+
     def test_initial_frame_selector_accepts_multiple_bounded_events_over_256kib(self) -> None:
         eligible = {
             "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",

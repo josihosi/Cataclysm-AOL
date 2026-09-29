@@ -1,0 +1,187 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r030_finite_roof_watch_20260929",
+  "description": "R030 finite roof watch continuation from the native quicksave at turn5265040/min8550; exact same IDs4/5; decision trace through turn5272240/min8700.",
+  "profile": "first-smoke-011-r030-finite-roof-watch-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r020_roof_distance7_combined_control": "ordinary_roof_fire_light_smoke_distance7_control_after_r020",
+    "capabilities.r_caol.first_smoke_011_r027_roof_combined": "r027_roof_fire_combined_signal_and_natural_camp_outcome",
+    "capabilities.r_caol.first_smoke_011_r028_roof_watch_continuation": "r028_min8529_admitted_roof_smoke_watch_return_report_and_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r030_roof_watch_continuation": "r030_turn5264260_selected_scout4_5_roof_watch_return_report_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r030_finite_roof_watch": "r030_saved_min8550_continue_abstract_watch_to_min8700_assessment_and_report"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r030-finite-roof-watch-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-030/immutable-executable/890d483874139265229c377ecaca28cc485f97ed6e4bdfa0dec32e5d86b84f7f/cataclysm-tiles",
+      "profile": "first-smoke-011-r030-finite-roof-watch-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_turn5265040_r030_min8550_finite_watch_disposable_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the new disposable R030 profile copied byte-for-byte from the native min8550 quicksave (61-file world manifest); verify same-run World at turn5265040/min8550, Safe Off, both clairvoyance mutations absent, roof source/avatar, and same outing/IDs4/5."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r030_min8550_finite_roof_watch_assessment_return_report",
+      "objective": "Continue the same abstract outing from the verified min8550 checkpoint. Keep avatar fixed at [3155,3448,1], preserve signal source [3156,3447,1], and do not relight. Before conclusions require exact trace scope and base decision rows for IDs4/5 within turns5265040..5272240. Advance to the next 60-minute structural assessment cadence at min8580, inspect owner/actor/counter changes, then use bounded safe intervals through the 120-minute assessment horizon around min8700. Follow the same IDs through physical arrival, finite watch assessment, return/report, and any later actual assault only while gates progress.",
+      "proof_targets": [
+        "new profile effective userdir and exact saved-world copy manifest; immutable R030 executable/source/runtime binding",
+        "same-run World at turn5265040/min8550; Safe Off; no clairvoyance; avatar/source/admitted outing and actor identity",
+        "exact scenario-group selected-NPC scope and base decision rows for IDs4/5 within inclusive window 5265040..5272240",
+        "same-ID actor actions, target/position/mission/health and outing owner/cursor through min8580 structural cadence",
+        "finite watch start/assessment samples and state changes through the expected 120-minute horizon; no time credited before both IDs physically reach watch OMT [134,141,0]",
+        "same-ID return/report and any subsequent actual assault/outcome, verified quicksave turn, and owner-controlled process cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Disposable copy only; do not mutate the preserved min8550 source profile or owner save",
+        "Keep avatar fixed at [3155,3448,1]; no relight, debug injection, clairvoyance, teleport, forced contact or forced report",
+        "Continue only same outing generation and actor IDs4/5",
+        "Quicksave only through advertised World action and verify native saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_turn5265040_r030_min8550_finite_watch_disposable_copy",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r030_min8550_finite_roof_watch_assessment_return_report"
+    ],
+    "terminal_persistence": [
+      "r030_min8550_finite_roof_watch_assessment_return_report"
+    ],
+    "artifact_verdict": [
+      "r030_min8550_finite_roof_watch_assessment_return_report"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_turn5265040_r030_min8550_finite_watch_disposable_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the same admitted roof-smoke outing from the verified min8550 R030 save; capture exact bounded selected-NPC decisions and establish finite assessment, same-ID return/report and any later actual assault.",
+    "failure_rule": "Record the first changed divergence. Do not credit assessment before physical arrival or infer assault/combat success from labels/proximity."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5265040,
+  "decision_trace_to_turn": 5272240
+}

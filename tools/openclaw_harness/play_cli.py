@@ -26,6 +26,7 @@ from evidence_display import emit, recover
 from gameplay_display import display, bounded_player_output, plain_player_output, world_look
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
+from startup_dialog import observe_startup_dialog, recover_startup_debug_dialog
 
 
 def _persistent_result_cache(value: Any) -> Any:
@@ -234,11 +235,35 @@ class PlayerClient:
                     "logs_selector": "evidence_logs",
                     "log_scope": logs["scope_note"],
                     "query": logs["log_query"],
+                    "decisions": "evidence --decisions (--operation-id OP | --group-id SCENARIO) [--actor ID ...] [--from-turn TURN --to-turn TURN] [--limit N --offset N --snapshot HASH]; exact source handles and raw --select fields remain available.",
                 }}
 
     def evidence(self, args):
         from evidence_events import query
         logs = self._evidence_logs()
+        if args.decisions:
+            from cockpit_evidence import query as log_query
+            if args.limit < 1 or args.offset < 0:
+                raise ValueError("invalid_decision_page")
+            if logs["identity_status"] != "bound":
+                raise ValueError("decision_trace_requires_bound_run")
+            if args.run_id is not None and args.run_id != logs["run_id"]:
+                raise ValueError("decision_trace_run_mismatch")
+            if (bool(args.operation_id) == bool(args.group_id) or args.actor_id or args.actor_name or args.request_id or
+                    args.event or args.process_instance or args.where or args.contains):
+                raise ValueError("decision_trace_requires_operation_id_or_group_id_and_uses_actor_turn_scope")
+            native = next((entry for entry in logs["entries"]
+                           if entry["name"] == "native_semantic_events"), None)
+            if native is None or native["status"] != "available":
+                raise ValueError("decision_trace_native_log_unavailable")
+            selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
+            decision = {"operation_id": args.operation_id, "group_id": args.group_id,
+                        "actor_ids": sorted(set(args.actor)),
+                        "from_turn": args.from_turn, "to_turn": args.to_turn}
+            return log_query([Path(native["path"])], {"run_id": logs["run_id"]}, selectors,
+                             args.offset, args.limit, snapshot=args.snapshot, decision=decision)
+        if args.operation_id or args.group_id or args.actor or args.from_turn is not None or args.to_turn is not None or args.offset or args.snapshot:
+            raise ValueError("decision_scope_options_require_decisions")
         sources = [{"path": entry["path"], "producer": entry["name"]}
                    for entry in logs["entries"] if entry.get("path") and logs["identity_status"] == "bound"]
         sources.extend({"path": str(path), "producer": "cockpit", "response": True}
@@ -649,13 +674,22 @@ class PlayerClient:
         self.save()
         return output
 
-    def submit(self, request: dict[str, Any], wait_seconds: float) -> dict[str, Any]:
+    def submit(self, request: dict[str, Any], wait_seconds: float, *, repeat_internal: bool = False) -> dict[str, Any]:
+        repeat = self.state.get("repeat")
+        if (isinstance(repeat, dict) and repeat.get("status") in {"running", "pending"}
+                and not repeat_internal and request.get("action") != "run.quit"):
+            return {"ok": False, "error": "repeat_in_progress_use_repeat_resume_or_abort"}
         if self.state.get("pending"):
             return {"ok": False, "error": "request_in_flight", "next": "collect",
                     "request_id": self.state["pending"]["request_id"]}
         if self.state.get("finished"):
             return {"ok": False, "error": "session_already_finished"}
         request_id = "play-" + uuid.uuid4().hex
+        if repeat_internal and request.get("action") == "game.act":
+            outstanding = repeat.get("outstanding") if isinstance(repeat, dict) else None
+            if not isinstance(outstanding, dict) or outstanding.get("request_id"):
+                raise ValueError("repeat_outstanding_request_invalid")
+            outstanding["request_id"] = request_id
         self.state["pending"] = {"request_id": request_id, "request": request,
                                  "submitted_unix_seconds": time.time()}
         # Persist ownership before submission: even a crash cannot cause replay.
@@ -676,6 +710,8 @@ class PlayerClient:
                                      binding_id=self.binding, request=request)
         if not result.get("ok"):
             self.state.pop("pending", None)
+            if repeat_internal and isinstance(repeat, dict) and request.get("action") == "game.act":
+                repeat["outstanding"] = None
             if previous_frame:
                 self.state["observation_id"] = previous_frame
                 self.state.update({key: value for key, value in previous_frame_metadata.items()
@@ -718,7 +754,8 @@ class PlayerClient:
             return ""
         return str(status.get("binding_id", "")).strip()
 
-    def act(self, action: str, target: str | None, parameters: dict[str, str], wait_seconds: float):
+    def act(self, action: str, target: str | None, parameters: dict[str, str], wait_seconds: float,
+            *, repeat_internal: bool = False):
         if self.state.get("process_exited"):
             return {"ok": False, "error": "game_process_exited", "next": "journal --reason REASON"}
         request: dict[str, Any] = {"action": "game.act", "action_id": action,
@@ -727,7 +764,179 @@ class PlayerClient:
             request["stable_id"] = target
         if parameters:
             request["parameters"] = parameters
-        return self.submit(request, wait_seconds)
+        return self.submit(request, wait_seconds, repeat_internal=repeat_internal)
+
+    @staticmethod
+    def _repeat_native_state(snapshot: dict[str, Any] | None) -> dict[str, Any]:
+        snapshot = snapshot if isinstance(snapshot, dict) else {}
+        facts = snapshot.get("current", {}).get("facts", {})
+        status = facts.get("avatar_status", {}) if isinstance(facts, dict) else {}
+        parts = status.get("health", {}).get("body_parts", {}) if isinstance(status, dict) else {}
+        health = {key: value.get("current") for key, value in parts.items()
+                  if isinstance(value, dict) and type(value.get("current")) is int} if isinstance(parts, dict) else {}
+        moves = snapshot.get("avatar_moves", facts.get("avatar_moves") if isinstance(facts, dict) else None)
+        return {"owner": snapshot.get("owner"), "turn": snapshot.get("game_turn"),
+                "moves": moves if type(moves) is int else None, "health": health}
+
+    def _repeat_result(self) -> dict[str, Any]:
+        repeat = self.state["repeat"]
+        outstanding = repeat.get("outstanding")
+        result = {"schema": "caol-play-count-repeat-v1",
+                  "ok": repeat["status"] != "failed", "state": repeat["status"],
+                  "action_id": repeat["action_id"], "requested_count": repeat["requested_count"],
+                  "completed_count": repeat["completed_count"],
+                  "unused_count": repeat["requested_count"] - repeat["completed_count"],
+                  "stop_reason": repeat.get("stop_reason"),
+                  "first_native_turn": repeat.get("first_native_turn"),
+                  "last_native_turn": repeat.get("last_native_turn"),
+                  "current_owner": repeat.get("current_owner"),
+                  "receipt_handles": list(repeat.get("receipt_handles", [])),
+                  "outstanding_request_id": outstanding.get("request_id") if isinstance(outstanding, dict) else None}
+        if repeat["status"] == "pending":
+            result["next"] = "collect, then repeat --resume; never press the action again"
+        elif repeat["status"] == "running":
+            result["next"] = "repeat --resume"
+        return result
+
+    def _repeat_finish(self, status: str, reason: str) -> dict[str, Any]:
+        repeat = self.state["repeat"]
+        repeat.update(status=status, stop_reason=reason)
+        self.save()
+        return self._repeat_result()
+
+    def repeat(self, action: str | None, count: int | None, wait_seconds: float,
+               *, resume: bool = False, abort: bool = False) -> dict[str, Any]:
+        allowed = {"world.pause", "world.autoattack"}
+        if not resume and not abort and (action not in allowed or type(count) is not int or count <= 0):
+            return {"ok": False, "error": "repeat_requires_pause_or_autoattack_and_positive_count"}
+        repeat = self.state.get("repeat")
+        if abort:
+            if not isinstance(repeat, dict) or repeat.get("status") not in {"running", "pending"}:
+                return {"ok": False, "error": "no_active_repeat"}
+            if self.state.get("pending") or repeat.get("outstanding"):
+                return {"ok": False, "error": "repeat_request_outstanding_collect_or_cancel_first",
+                        "request_id": (repeat.get("outstanding") or {}).get("request_id")}
+            return self._repeat_finish("interrupted", "user_aborted")
+        if resume:
+            if action is not None or count is not None or not isinstance(repeat, dict):
+                return {"ok": False, "error": "repeat_resume_requires_existing_operation"}
+            if repeat.get("status") not in {"running", "pending"}:
+                return self._repeat_result()
+        else:
+            if isinstance(repeat, dict) and repeat.get("status") in {"running", "pending"}:
+                return {"ok": False, "error": "repeat_in_progress_use_repeat_resume_or_abort",
+                        "repeat": self._repeat_result()}
+            repeat = {"schema": "caol-play-count-repeat-state-v1", "action_id": action,
+                      "requested_count": count, "completed_count": 0, "status": "running",
+                      "stop_reason": None, "first_native_turn": None, "last_native_turn": None,
+                      "current_owner": None, "receipt_handles": [], "outstanding": None}
+            self.state["repeat"] = repeat
+            self.save()
+        if self.state.get("finished") or self.state.get("process_exited"):
+            return self._repeat_finish("interrupted", "terminal_session")
+        while repeat["completed_count"] < repeat["requested_count"]:
+            outstanding = repeat.get("outstanding")
+            if isinstance(outstanding, dict):
+                request_id = outstanding.get("request_id")
+                if not isinstance(request_id, str) or not request_id:
+                    return self._repeat_finish("failed", "outstanding_request_identity_missing")
+                cached = self.state.get("last_collected_result")
+                if isinstance(cached, dict) and cached.get("request_id") == request_id:
+                    result = cached
+                elif (self.state.get("pending") or {}).get("request_id") == request_id:
+                    result = self.collect(wait_seconds, request_id)
+                else:
+                    return self._repeat_finish("failed", "exact_response_unavailable")
+                if result.get("state") in {"pending", "cancellation_requested"}:
+                    repeat["status"] = "pending"
+                    self.save()
+                    return self._repeat_result()
+                repeat["status"] = "running"
+                bridge_receipt = result.get("receipt", {})
+                native = (result.get("response", {}).get("outcome", {}).get("native_receipt", {})
+                          if isinstance(result.get("response"), dict) else {})
+                repeat["receipt_handles"].append({
+                    "request_id": request_id,
+                    "response_sha256": bridge_receipt.get("response_sha256"),
+                    "native_action_id": native.get("action_id"),
+                    "native_accepted": native.get("accepted"),
+                })
+                repeat["outstanding"] = None
+                after = self._repeat_native_state(self.display_snapshot())
+                repeat["current_owner"] = after["owner"]
+                if type(after["turn"]) is int:
+                    repeat["last_native_turn"] = after["turn"]
+                before = outstanding["before"]
+                if not result.get("ok") or result.get("state") not in {"collected", "process_exited"}:
+                    return self._repeat_finish("interrupted", "native_rejected_or_cancelled")
+                if native.get("accepted") is not True or native.get("action_id") != repeat["action_id"]:
+                    return self._repeat_finish("failed", "native_receipt_rejected_or_mismatched")
+                progressed = ((type(before.get("turn")) is int and type(after["turn"]) is int and
+                               after["turn"] > before["turn"]) or
+                              (type(before.get("moves")) is int and type(after["moves"]) is int and
+                               after["moves"] < before["moves"]))
+                if not progressed:
+                    return self._repeat_finish("failed", "native_action_progress_unproved")
+                repeat["completed_count"] += 1
+                self.save()
+                if after["owner"] != "world":
+                    return self._repeat_finish("interrupted", "owner_changed")
+                if not before.get("health") or not after["health"] or before["health"].keys() != after["health"].keys():
+                    return self._repeat_finish("interrupted", "avatar_health_unavailable")
+                if any(after["health"][part] < hp for part, hp in before["health"].items()):
+                    return self._repeat_finish("interrupted", "avatar_harm")
+                if result.get("state") == "process_exited":
+                    return self._repeat_finish("interrupted", "terminal_session")
+                if repeat["completed_count"] == repeat["requested_count"]:
+                    return self._repeat_finish("completed", "count_reached")
+                continue
+            pending = self.state.get("pending")
+            if isinstance(pending, dict):
+                if pending.get("request", {}).get("action") != "game.observe":
+                    return self._repeat_finish("failed", "unrelated_request_pending")
+                observed = self.collect(wait_seconds, pending.get("request_id"))
+                if observed.get("state") in {"pending", "cancellation_requested"}:
+                    repeat["status"] = "pending"
+                    self.save()
+                    return self._repeat_result()
+                if not observed.get("ok"):
+                    return self._repeat_finish("failed", "world_observation_failed")
+            if not self.state.get("observation_id"):
+                observed = self.submit({"action": "game.observe"}, wait_seconds, repeat_internal=True)
+                if observed.get("state") in {"pending", "cancellation_requested"}:
+                    repeat["status"] = "pending"
+                    self.save()
+                    return self._repeat_result()
+                if not observed.get("ok"):
+                    return self._repeat_finish("failed", "world_observation_failed")
+            try:
+                self.frame()
+            except ValueError:
+                return self._repeat_finish("failed", "stale_world_authority")
+            snapshot = self.display_snapshot()
+            before = self._repeat_native_state(snapshot)
+            repeat["current_owner"] = before["owner"]
+            if before["owner"] != "world":
+                return self._repeat_finish("interrupted", "owner_changed")
+            offered = [item for item in snapshot.get("current", {}).get("actions", [])
+                       if item.get("id") == repeat["action_id"] and item.get("enabled") is True
+                       and not item.get("stable_id")]
+            if len(offered) != 1:
+                return self._repeat_finish("interrupted", "action_not_advertised")
+            if repeat["first_native_turn"] is None and type(before["turn"]) is int:
+                repeat["first_native_turn"] = before["turn"]
+            repeat["outstanding"] = {"request_id": None, "before": before}
+            self.save()
+            sent = self.act(repeat["action_id"], None, {}, wait_seconds, repeat_internal=True)
+            if not isinstance(repeat.get("outstanding"), dict):
+                return self._repeat_finish("failed", "request_submission_failed")
+            if sent.get("state") in {"pending", "cancellation_requested"}:
+                repeat["status"] = "pending"
+                self.save()
+                return self._repeat_result()
+            # The collected reply is cached before the next press. Process it
+            # through the exact outstanding request on the next loop iteration.
+        return self._repeat_finish("completed", "count_reached")
 
     def call(self, request: dict[str, Any], wait_seconds: float):
         if isinstance(request, dict) and request.get("action") == "run.quit":
@@ -860,19 +1069,25 @@ def main(argv=None):
                  "stop": "stop_on_interruption"}[mode]]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--diagnostics", action="store_true",
-                        help="Show retained transport and performance diagnostics")
+                        help="Full transport JSON; use ordinary output or targeted inspect/evidence for routine decisions")
     parser.add_argument("--session", type=Path, default=os.environ.get("CAOL_PLAY_SESSION"),
                         required=not os.environ.get("CAOL_PLAY_SESSION"),
                         help="Existing registry-launched session directory; defaults to CAOL_PLAY_SESSION")
     parser.add_argument("--wait-seconds", type=float, default=1,
                         help="Wait for this response, then return pending; never resubmit")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("look", help="Observe the current input owner and its legal actions")
+    look = commands.add_parser("look", help="Observe the current input owner and its legal actions")
+    look.add_argument("--map", action="store_true", help="Add a compact current avatar-visible local text map")
+    debug_ignore = commands.add_parser("debug-ignore", help="Send one Ignore to a currently captured native debug dialog")
+    debug_ignore.add_argument("--capture", required=True, help="SHA-256 from the current play look UI capture")
+    debug_ignore.add_argument("--note", default="",
+                              help="Optional consequence note; known warning handling is in debug-errors.md")
     for answer in ("yes", "no", "ignore"):
         commands.add_parser(answer, help="Choose the matching advertised prompt option")
     commands.add_parser("stop", help="Use the existing activity.pause action")
     collect = commands.add_parser("collect", help="Collect an outstanding or already-collected response without replaying input")
     collect.add_argument("--request-id", help="Exact latest retained request; older results stay read-only")
+    collect.add_argument("--map", action="store_true", help="Show the local map when the collected owner is World")
     resume = commands.add_parser("resume", help="Rebuild one genuinely outstanding request; never resubmits")
     resume.add_argument("--request-id", help="Required when no active/last request identity is retained")
     cancel = commands.add_parser("cancel", help="Request cooperative cancellation of the outstanding request")
@@ -887,7 +1102,26 @@ def main(argv=None):
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
     act.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
-    wait = commands.add_parser("wait", help="Submit a bounded player-chosen native wait without a JSON request file")
+    repeat = commands.add_parser("repeat", help="Repeat native pause or autoattack by exact receipt count")
+    repeat.add_argument("action", nargs="?", help="world.pause or world.autoattack")
+    repeat.add_argument("--count", type=int, help="Positive native action budget")
+    repeat_mode = repeat.add_mutually_exclusive_group()
+    repeat_mode.add_argument("--resume", action="store_true", help="Collect the exact pending step and continue")
+    repeat_mode.add_argument("--abort", action="store_true", help="Stop a repeat with no outstanding request")
+    wait = commands.add_parser(
+        "wait", help="Wait in game (bare duration uses ignore mode)",
+        description="Short form: wait 5m [ignore|safe|stop]. Choose the mode by what the test must observe.",
+        epilog=("If a stopped prompt is independently known to be harmless, use its currently "
+                "advertised IGNORE choice (short command: ignore). The game remembers that "
+                "distraction type for the "
+                "current activity and its backlog. Reobserve before waiting again. "
+                "ignore wait mode: deliberately continues through supported danger and damage prompts. "
+                "safe: automatically ignores recognized typed activity distractions, including "
+                "conversation, thirst and weather changes, then finishes the remaining wait. "
+                "It stops for near hostiles, pain, attacks, actual damage, and untyped or "
+                "unknown distractions. "
+                "stop: deliberately stops at each interruption."),
+    )
     target = wait.add_mutually_exclusive_group(required=True)
     target.add_argument("--target-game-minutes", type=float)
     target.add_argument("--target-delta-game-minutes", type=float)
@@ -900,6 +1134,7 @@ def main(argv=None):
     wait.add_argument("--bound-source", required=True,
                       help="Why this bound is appropriate for this chosen wait")
     wait.add_argument("--danger-handling", default="stop_on_interruption",
+                      help="safe returns to inspect danger/damage; ignore continues through combat; stop checks each interruption",
                       choices=("stop_on_interruption", "handle_classified_non_dangerous",
                                "ignore_danger_and_interruptions"))
     move = commands.add_parser("move", help="Submit bounded relative movement without a JSON request file")
@@ -928,6 +1163,14 @@ def main(argv=None):
     evidence.add_argument("--select", action="append", default=[], help="Exact envelope field path; repeat or separate fields with commas")
     evidence.add_argument("--contains")
     evidence.add_argument("--limit", type=int, default=20)
+    evidence.add_argument("--decisions", action="store_true", help="Compact source-handled NPC and group decision rows")
+    evidence.add_argument("--operation-id", help="Exact hostile operation for --decisions")
+    evidence.add_argument("--group-id", help="Exact scenario trace group for --decisions")
+    evidence.add_argument("--actor", action="append", type=int, default=[], help="Selected actor ID; repeat for --decisions")
+    evidence.add_argument("--from-turn", type=int)
+    evidence.add_argument("--to-turn", type=int)
+    evidence.add_argument("--offset", type=int, default=0, help="Decision row offset; pair with --snapshot for stable paging")
+    evidence.add_argument("--snapshot", help="Snapshot digest from an earlier decision page")
     compare = commands.add_parser("compare", aliases=["response-compare"], help="Compare selected fields from two retained responses")
     compare.add_argument("--before-request-id", "--before", dest="before_request_id", required=True)
     compare.add_argument("--after-request-id", "--after", dest="after_request_id", required=True)
@@ -950,6 +1193,13 @@ def main(argv=None):
     journal.add_argument("--unused-authority", default="released")
     finish = commands.add_parser("finish", help="Submit your witness against the sealed journal")
     finish.add_argument("--witness", type=Path, required=True)
+    # argparse accepts global options before a subcommand only.  Keep the
+    # same destination and default when a caller places this display choice
+    # after any subcommand; absent subparser options must not reset a true
+    # global --diagnostics parsed earlier.
+    for subparser in dict.fromkeys(commands.choices.values()):
+        subparser.add_argument("--diagnostics", action="store_true", default=argparse.SUPPRESS,
+                               help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
         if not math.isfinite(args.wait_seconds) or args.wait_seconds < 0:
@@ -987,6 +1237,9 @@ def main(argv=None):
                     if client.state.get("sealed_terminal"):
                         raise ValueError("journal_is_sealed: submit finish --witness FILE")
                     result = client.submit({"action": "game.observe"}, args.wait_seconds)
+                elif args.command == "debug-ignore":
+                    result = recover_startup_debug_dialog(args.session, client.binding,
+                                                          args.capture, args.note)
                 elif args.command == "collect":
                     result = client.collect(args.wait_seconds, args.request_id)
                 elif args.command == "resume":
@@ -999,6 +1252,9 @@ def main(argv=None):
                             raise ValueError("parameters_need_unique_KEY=VALUE")
                         params[key] = value
                     result = client.act(args.action, args.target, params, args.wait_seconds)
+                elif args.command == "repeat":
+                    result = client.repeat(args.action, args.count, args.wait_seconds,
+                                           resume=args.resume, abort=args.abort)
                 elif args.command == "stop":
                     result = client.act("activity.pause", None, {}, args.wait_seconds)
                 elif args.command in {"yes", "no", "ignore"}:
@@ -1036,6 +1292,13 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
+    if args.command == "look" and "client" in locals() and isinstance(result.get("status"), dict):
+        status = result["status"]
+        if status.get("state") in {"starting", "preparing", "process_dead", "bridge_failed"}:
+            # The bridge cannot publish a native input owner before World.
+            # This read-only UI/log view neither submits a game action nor
+            # grants recovery input authority.
+            result["startup_dialog"] = observe_startup_dialog(args.session, client.binding, status)
     if not args.diagnostics:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
@@ -1065,9 +1328,14 @@ def main(argv=None):
                         break
             except OSError:
                 pass
-        text = plain_player_output(result, snapshot=snapshot, full_look=args.command == "look" or result.get("world_observation", False),
+        show_local_map = getattr(args, "map", False)
+        text = plain_player_output(result, snapshot=snapshot,
+                                   full_look=args.command == "look" or result.get("world_observation", False) or show_local_map,
                                    startup_error=startup_error, operation_availability=operation_availability,
-                                   inspection_request_id=getattr(args, "request_id", None) if args.command == "inspect" else None)
+                                   inspection_request_id=getattr(args, "request_id", None) if args.command == "inspect" else None,
+                                   show_local_map=show_local_map)
+        if args.command == "look" and show_local_map and result.get("state") == "pending":
+            text += "\nLocal map when ready → play collect --map"
         if args.command == "controls":
             try:
                 retained = client.display_snapshot()

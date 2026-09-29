@@ -55,6 +55,17 @@ _BOUND_BASES = {
 
 _KEEP_WATCH_SAFE_CLASSIFICATIONS = {"safe_flavour", "safe_prompt"}
 
+# Native distraction_type names from enums.h/activity_type.cpp. Unknown future
+# types remain untrusted; only the three native stop types and actual damage
+# interrupt a typed activity distraction in safe wait mode.
+_RECOGNIZED_ACTIVITY_DISTRACTIONS = {
+    "noise", "pain", "attacked", "hostile_spotted_far", "hostile_spotted_near",
+    "talked_to", "asthma", "motion_alarm",
+    "weather_change", "portal_storm_popup", "dangerous_field", "hunger",
+    "thirst", "temperature", "mutation", "oxygen", "withdrawal", "eoc",
+    "craft_step_complete",
+}
+
 
 class CockpitRunChannel:
     """Read avatar-visible facts from the current native semantic frame only."""
@@ -363,7 +374,9 @@ class CockpitRunChannel:
             # A World surface may inherit the run-bound native frame clock.
             # Keep that authoritative value when replacing the public view.
             "game_minutes": issuing_raw.get("game_minutes"),
-            **{key: issuing_raw[key] for key in ("game_turn", "wall_time", "process_instance", "sequence") if key in issuing_raw},
+            "game_turn": issuing_raw.get("game_turn", issuing_raw.get("observed_turn")),
+            "avatar_moves": issuing_raw.get("avatar_moves"),
+            **{key: issuing_raw[key] for key in ("wall_time", "process_instance", "sequence") if key in issuing_raw},
             "surface": {
                 "family": descriptor["family"], "kind": descriptor["kind"],
                 "facts": descriptor["facts"], "breadcrumbs": descriptor["breadcrumbs"],
@@ -471,14 +484,14 @@ class CockpitRunChannel:
     def _semantic_damage_ignore_choice(
         frame: Mapping[str, Any],
     ) -> Optional[tuple[str, str]]:
-        """Return the exact advertised ignore choice for native wait interruptions.
+        """Return the exact advertised ignore choice for a native activity prompt.
 
         The native activity-distraction owner normally advertises
         ``activity.ignore``.  The semantic bridge can instead expose the
         same ordinary player prompt as a ``prompt`` surface.  It may only be
-        continued when the caller explicitly selected the permissive danger
-        mode and this exact activity prompt advertises its named ``IGNORE``
-        choice; arbitrary prompts never inherit that authority.
+        continued after its current native distraction type is classified
+        for safe mode, or in explicit ignore mode. Arbitrary prompts never
+        inherit that authority.
         """
         descriptor = CockpitRunChannel._surface_descriptor(frame)
         if descriptor is None or descriptor["kind"] != "prompt":
@@ -496,6 +509,30 @@ class CockpitRunChannel:
         if len(matches) != 1:
             return None
         return "prompt.choose", matches[0]["stable_id"]
+
+    @staticmethod
+    def _activity_distraction_condition(distraction_type: str) -> tuple[str, bool]:
+        """Classify only a type bound to the current native input owner."""
+        if distraction_type in {"pain", "attacked"}:
+            return "damage_detected", False
+        if distraction_type == "hostile_spotted_near":
+            return "hostile_proximity", False
+        if distraction_type in _RECOGNIZED_ACTIVITY_DISTRACTIONS:
+            return "clear", True
+        return "unknown_activity_distraction", False
+
+    @staticmethod
+    def _semantic_distraction_condition(frame: Mapping[str, Any]) -> tuple[str, bool, str]:
+        descriptor = CockpitRunChannel._surface_descriptor(frame)
+        distraction_type = (descriptor["facts"].get("distraction_type", "")
+                            if descriptor is not None else "")
+        classification, ordinary = CockpitRunChannel._activity_distraction_condition(
+            distraction_type
+        )
+        safety = frame.get("keep_watch_safety")
+        if isinstance(safety, Mapping) and safety.get("damage") is True:
+            return "damage_detected", False, distraction_type
+        return classification, ordinary, distraction_type
 
     @staticmethod
     def _semantic_activity_ignore_choice(
@@ -1071,7 +1108,9 @@ class CockpitRunChannel:
             # without it, and it is not an input binding or renderer detail.
             "surface_id": str(issuing_raw.get("surface_id", "")),
             "observed_turn": turn,
+            "game_turn": turn,
             "game_minutes": issuing_raw.get("game_minutes"),
+            "avatar_moves": issuing_raw.get("avatar_moves"),
             # Keep the owner kind visible for legacy frames that carry a
             # surface id but predate a full top-owner descriptor.  The native
             # receipt remains the authority for their successor; this is only
@@ -1520,21 +1559,18 @@ class CockpitRunChannel:
             recipe_entry = normalized_recipe[recipe_index % len(normalized_recipe)]
             surface_actions = raw.get("valid_actions") if isinstance(raw, Mapping) else None
             if isinstance(surface_actions, list) and any(isinstance(item, Mapping) for item in surface_actions):
-                semantic_damage_ignore = self._semantic_damage_ignore_choice(raw)
-                if semantic_damage_ignore is not None:
-                    prompt_text = str(
-                        (self._surface_descriptor(raw) or {}).get("facts", {}).get("text", "")
-                    ).lower()
-                    interruption_classification = "damage_detected" if any(
-                        marker in prompt_text for marker in ("something hurts", "attacked")
-                    ) else "hostile_proximity"
-                    if danger_handling != "ignore_danger_and_interruptions":
+                semantic_prompt_ignore = self._semantic_damage_ignore_choice(raw)
+                if semantic_prompt_ignore is not None:
+                    interruption_classification, ordinary, distraction_type = \
+                        self._semantic_distraction_condition(raw)
+                    if not ordinary and danger_handling != "ignore_danger_and_interruptions":
                         return interrupt("keep_watch_unsafe_condition", {
                             "classification": interruption_classification,
+                            "distraction_type": distraction_type,
                             "observation_id": observed.get("observation_id", ""),
                             "unused_authority": "revoked",
                         })
-                    action_id, stable_id = semantic_damage_ignore
+                    action_id, stable_id = semantic_prompt_ignore
                     outcome = self.act(
                         observation_id=str(observed["observation_id"]), action_id=action_id,
                         stable_id=stable_id,
@@ -1544,7 +1580,9 @@ class CockpitRunChannel:
                         return outcome
                     handled_interruptions.append({
                         "classification": interruption_classification,
-                        "decision": "ignore_explicit_damage_prompt",
+                        "distraction_type": distraction_type,
+                        "decision": "ignore_clear_activity_distraction" if ordinary else
+                                    "ignore_explicit_activity_distraction",
                         "observation_id": observed.get("observation_id", ""),
                         "action_id": action_id,
                         "stable_id": stable_id,
@@ -1556,9 +1594,12 @@ class CockpitRunChannel:
                     continue
                 semantic_activity_ignore = self._semantic_activity_ignore_choice(raw)
                 if semantic_activity_ignore is not None:
-                    if danger_handling != "ignore_danger_and_interruptions":
+                    interruption_classification, ordinary, distraction_type = \
+                        self._semantic_distraction_condition(raw)
+                    if not ordinary and danger_handling != "ignore_danger_and_interruptions":
                         return interrupt("keep_watch_unsafe_condition", {
-                            "classification": "activity_distraction",
+                            "classification": interruption_classification,
+                            "distraction_type": distraction_type,
                             "observation_id": observed.get("observation_id", ""),
                             "unused_authority": "revoked",
                         })
@@ -1571,8 +1612,10 @@ class CockpitRunChannel:
                     if outcome.get("ok") is not True:
                         return outcome
                     handled_interruptions.append({
-                        "classification": "clear",
-                        "decision": "ignore_clear_activity_distraction",
+                        "classification": interruption_classification,
+                        "distraction_type": distraction_type,
+                        "decision": "ignore_clear_activity_distraction" if ordinary else
+                                    "ignore_explicit_activity_distraction",
                         "observation_id": observed.get("observation_id", ""),
                         "action_id": action_id,
                     })
@@ -1717,19 +1760,23 @@ class CockpitRunChannel:
                         if outcome.get("ok") is not True:
                             return outcome
                         recipe_index += 1
-                        if primitive == "world.pause":
-                            # ACTION_PAUSE toggles the native pause state; it
-                            # is not a time-advancing wait primitive.  Stop
-                            # before consuming a second semantic frame rather
-                            # than presenting an unbounded wait recipe.
-                            return self._fail_operation("keep_watch_no_native_time_progress", {
-                                "action_id": primitive,
-                                "observed_game_minutes": current,
-                                "prior_game_minutes": current,
-                                "native_action_count": tool_round_trips,
-                                "unused_authority": "revoked",
-                            })
                         next_observation = outcome.get("observation")
+                        if primitive == "world.pause" and isinstance(next_observation, Mapping):
+                            before_turn = self._native_turn(observed)
+                            after_turn = self._native_turn(next_observation)
+                            before_moves = observed.get("avatar_moves")
+                            after_moves = next_observation.get("avatar_moves")
+                            progressed = ((before_turn is not None and after_turn is not None and
+                                           after_turn > before_turn) or
+                                          (type(before_moves) is int and type(after_moves) is int and
+                                           after_moves < before_moves))
+                            if not progressed:
+                                return self._fail_operation("keep_watch_pause_progress_unproved", {
+                                    "action_id": primitive, "before_turn": before_turn,
+                                    "after_turn": after_turn, "before_moves": before_moves,
+                                    "after_moves": after_moves, "native_action_count": tool_round_trips,
+                                    "unused_authority": "revoked",
+                                })
                         observed = dict(next_observation) if isinstance(next_observation, Mapping) else self.observe()
                         continue
                     # A descriptor is an immutable action owner.  Without an
@@ -1780,11 +1827,34 @@ class CockpitRunChannel:
                     "observation_id": observed.get("observation_id", ""),
                     "unused_authority": "revoked",
                 })
+            typed_ordinary_distraction = False
+            if isinstance(raw, Mapping) and raw.get("state") == "activity_distraction" and \
+                    raw.get("producer") == "activity_distraction_query":
+                native_type = str(raw.get("activity_type", ""))
+                native_classification, ordinary = self._activity_distraction_condition(native_type)
+                if not ordinary and danger_handling != "ignore_danger_and_interruptions":
+                    return interrupt("keep_watch_unsafe_condition", {
+                        "classification": native_classification,
+                        "distraction_type": native_type,
+                        "observation_id": observed.get("observation_id", ""),
+                        "unused_authority": "revoked",
+                    })
+                # The native safety monster/danger flags cover any visible
+                # creature/hostile within SEEX, not the activity's near-hostile
+                # distraction gate. A current typed query owns that decision;
+                # its next native successor is classified afresh. Preserve a
+                # popup bridge's exact recovery, and never mask HP loss.
+                typed_ordinary_distraction = (ordinary and safety.get("damage") is not True and
+                                              safety.get("classification") not in
+                                              _KEEP_WATCH_SAFE_CLASSIFICATIONS)
             recipe_index_before_action = recipe_index
             handled_interruptions_before_action = len(handled_interruptions)
-            classification = str(safety.get("classification", ""))
-            if safety.get("monster") is True or safety.get("danger") is True or \
-                    safety.get("damage") is True:
+            classification = ("damage_detected" if safety.get("damage") is True else
+                              "clear" if typed_ordinary_distraction else
+                              str(safety.get("classification", "")))
+            if safety.get("damage") is True or (
+                    not typed_ordinary_distraction and
+                    (safety.get("monster") is True or safety.get("danger") is True)):
                 if danger_handling != "ignore_danger_and_interruptions":
                     return interrupt("keep_watch_unsafe_condition", {
                         "classification": classification,
@@ -3830,7 +3900,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
                 "choose its exact stable ID", "inspect the duration menu", "act its advertised duration",
             ],
             "target": "All danger modes accept either a positive target_delta_game_minutes or an absolute target_game_minutes greater than the starting observed game_minutes. Choose exactly one; changing danger mode does not change the target shape.",
-            "recipe": "Do not use world.pause in a time-bound macro: it is a native pause toggle, not a turn. Start with world.wait, then inspect and choose each native menu owner manually; never guess menu choices.",
+            "recipe": "world.pause passes one native turn; it is not a minute duration. For longer waits, start with world.wait, then inspect and choose each native menu owner manually; never guess menu choices.",
             "menu_entry": {"action_id": "menu.choose", "stable_id": "COPY_CURRENT_CHOICE_ID", "label": "COPY_EXACT_CURRENT_LABEL"},
             "menu_entry_note": "The two non-default danger modes also accept this exact object in recipe. Both ID and label must match the current native menu. stop_on_interruption accepts only action ID strings.",
             "bound": "maximum is a positive game-minute allowance covering the chosen target. basis is game_mechanic, scheduler_boundary, path_progress, or measured_rate; source explains the real derivation; unit is game_minutes; progress_required is boolean. Missing progress, overshoot, or a mismatching owner is not success.",

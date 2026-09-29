@@ -1,0 +1,141 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_terrain_scout_013_r017_min9720_continuation",
+  "description": "Continue the natural source-off cannibal outing from the saved minute9720 checkpoint; observe the next hourly scheduler boundary and same-ID route progress without replaying signal admission.",
+  "profile": "first-smoke-013-r017-minute9720-continuation-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r017_route_retry": "minute8760_forest_v2_bounded_sector_and_intermediate_retry",
+    "capabilities.r_caol.r017_min9720_continuation": "minute9720_active_natural_outing_next_scheduler_boundary_same_ids"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-013-r017-minute9720-continuation-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-017/immutable-executable/4e801d7856c219dd7212cbc9c48f88080999921851e2f36e97bbae317bcc2a43/cataclysm-tiles",
+      "profile": "first-smoke-013-r017-minute9720-continuation-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_minute9720_signal_off_continuation_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load relative profile first-smoke-013-r017-minute9720-continuation-20260927 copied from the minute9720 R017 userdir with all 76 regular profile files hash-verified; harness_runs/** was intentionally excluded and retained in the source profile. Verify effective userdir, native World/current saved turn 5335258 (minute9720), schema migration, Safe mode Off, DEBUG_LS, no pending input, and no active fire/smoke. Confirm the saved cannibal camp outing generation1 IDs4/5 remains outbound at waypoint0 and ID6 home; supply29. Preserve the original minute9720 profile and prior no-fire/road runs."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_minute9720_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "next_hourly_scheduler_and_actor_route_progress",
+      "cleanup_on_finish": true,
+      "objective": "Continue the exact saved minute9720 source-off outing without replaying signal admission. After verifying effective userdir, World/turn, schema migration, Safe mode Off, DEBUG_LS, no pending request and fire/smoke absent, use one bounded safe native wait toward minute9780, the next hourly scheduler boundary. Quicksave at that boundary and inspect the cannibal camp-specific saved outing plus actor IDs4/5/6, positions/actions/path cursor and any actual endpoint observation, return/report or inventory/supply change. Do not confuse the optional global outing descriptor for a different bandit site with the cannibal outing. If route state is unchanged, stop at the first causal route/cursor divergence rather than repeating the same long wait.",
+      "proof_targets": [
+        "verify exact copied profile save identity, same-run World/turn, Safe mode Off, DEBUG_LS, no pending input and fire/smoke absent",
+        "advance a bounded native interval to minute9780, the next hourly scheduler boundary, with explicit safe mode and a fresh quicksave",
+        "inspect the cannibal camp-specific outing for IDs4/5 and reserve6, not the optional global descriptor for the bandit site",
+        "compare actual actor positions/actions, outing phase and waypoint cursor, observation/return/report receipts, cargo and supply",
+        "capture the first actual route progress or precise unchanged/blocked causal boundary; do not count planned route/watch as physical visit or scavenge",
+        "retain source-bound turn-timing evidence and gracefully close exact process identities"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "continue from the exact saved minute9720 profile copy; do not replay signal admission or mutate the source profile",
+        "no inserted knowledge, leads, actors, outing, report, route, target, dispatch, forced movement, clairvoyance or raw save edits",
+        "keep fire/smoke absent and DEBUG_LS unchanged",
+        "planned routes and watch endpoints do not count as physical visits; cargo credit requires native inventory/haul/supply evidence",
+        "use the immutable R017 executable only with its exact source-binding receipt; preserve any load/migration fault"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_minute9720_signal_off_continuation_copy",
+      "bind_same_run_minute9720_world"
+    ],
+    "production_behavior": [
+      "next_hourly_scheduler_and_actor_route_progress"
+    ],
+    "terminal_persistence": [
+      "next_hourly_scheduler_and_actor_route_progress"
+    ],
+    "artifact_verdict": [
+      "next_hourly_scheduler_and_actor_route_progress"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_minute9720_signal_off_continuation_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On a verified continuation copy of the minute9720 R017 signal-off save, inspect same-ID cannibal outing progress at the next hourly scheduler boundary and determine whether actual route movement, observation, return/report or cargo is recorded.",
+    "failure_rule": "Verify effective userdir, native World/save turn, Safe mode Off, DEBUG_LS, no pending input and fire/smoke absent before elapsed time. At minute9780, quicksave and inspect the cannibal camp-specific saved record plus actual IDs4/5/6. Preserve the first route/cursor divergence. Do not infer a cannibal outing from the global first-active-site descriptor; do not credit a planned route/watch as a physical visit or scavenge."
+  }
+}

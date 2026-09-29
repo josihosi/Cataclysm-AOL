@@ -1,0 +1,150 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_identity_005_approach_continuation_007_no_clairvoyance",
+  "description": "Continuation-only native proof from the exact disposable minute-8734 checkpoint with the smoke-founded gen2 cannibal raid already approaching; no clairvoyance mutation setup, no replay of accepted smoke/scout/report/dispatch.",
+  "profile": "first-smoke-009-repaired-no-clairvoyance-20260926",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_approach_continuation_007": "same_reserved_npc5_npc7_physical_approach_contact_night_assault",
+    "runtime.entry_mode": "cockpit_live_session",
+    "world.hostile_policy": "cannibal_camp"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_contact",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-009-repaired-no-clairvoyance-20260926",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r032_camp_defense_outing_deadline_20260924/cataclysm-tiles",
+      "profile": "first-smoke-009-repaired-no-clairvoyance-20260926",
+      "fixture": "none",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "input": [
+        "advertised native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_repaired_approach_checkpoint_007",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "continue_smoke_founded_hostile_approach_007",
+      "objective": "Resume only the exact disposable minute-8734 checkpoint with the source-bound repaired executable and ordinary unmutated player view. Do not add either clairvoyance mutation. Verify mutation absence natively after World and record current_exposure at the local gate; do not assume player concealment from indoors or from the absence of mutation alone. Continue the same reserved NPC5/NPC7 physical approach, contact only after arrival, and observe native nighttime cannibal assault if valid under native exposure.",
+      "proof_targets": [
+        "exact source profile, complete-copy receipt, minute-8734 saved turn, source hashes, executable and product source binding",
+        "Safe Off after World and after reload or blocked action",
+        "same gen2 hostile operation and reserved NPC identities 5 and 7",
+        "five-minute cadence progression and physical NPC5/NPC7 OMT movement with mission, guard, path, route cursor and source-bound traces",
+        "both surviving reserved members physically at the target before committed contact or local hostile ownership",
+        "native materialized cannibal assault and actual attack resolution at night",
+        "fresh native quicksave payload and saved turn at meaningful movement/contact transitions",
+        "actual simulation-turn timing, exact turns above 100ms, and available process/resource measurements",
+        "owned process and bridge PID/birth identities with graceful cleanup or explicit retained checkpoint",
+        "no DEBUG_CLAIRVOYANCE_PLUS or DEBUG_CLAIRVOYANCE mutations present; native current_exposure gate measured directly, no concealment assumed"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "the copied checkpoint is a continuation of an already smoke-founded approach; do not claim an initially unaware or pre-signal start",
+        "no re-ignition or replay of accepted smoke, scout, watch, return, report or dispatch stages",
+        "no synthetic signal, actor, route, contact, dispatch, report or combat outcome",
+        "do not count proximity or a target OMT summary as physical arrival or contact",
+        "contact is credited only after all required surviving reserved members physically arrive at the target",
+        "do not alter the original profile, save, run, or process",
+        "verify Safe Off; toggle only when currently On",
+        "capture and interpret each startup diagnostic separately; authorized I/i dismissal is recovery, not clean-load proof",
+        "no clairvoyance mutation setup; verify absence natively; clairvoyance viewing run remains a separate saved record"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_repaired_approach_checkpoint_007"
+    ],
+    "production_behavior": [
+      "continue_smoke_founded_hostile_approach_007"
+    ],
+    "terminal_persistence": [
+      "continue_smoke_founded_hostile_approach_007"
+    ],
+    "artifact_verdict": [
+      "continue_smoke_founded_hostile_approach_007"
+    ],
+    "disallowed_shortcuts": [
+      "continue_smoke_founded_hostile_approach_007"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From the exact disposable minute-8734 checkpoint under the repaired source-bound Mac Tiles executable and without clairvoyance mutation setup, the same reserved cannibal NPC5/NPC7 approach physically, commits contact only after arrival, and is observed for native nighttime assault under the actual player-view exposure state.",
+    "failure_rule": "Credit only same-run native movement, physical arrival, contact ownership and actual assault resolution under the exact repaired binary. Absence of clairvoyance does not itself prove concealment; source-bound current_exposure must be observed. Prior accepted signal and dispatch stages retain their original source/run identity."
+  }
+}

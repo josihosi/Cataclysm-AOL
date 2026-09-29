@@ -1,8 +1,8 @@
 {
   "scenario_id": "cannibal.r_caol_first_smoke_first-light_testsetup00_migration_cancel_v1",
-  "objective": "On a separate identical dark copy, create the first valid light through ordinary player use of the supplied brazier, log, and existing lighter; record that native light event before any smoke and then compare native cannibal admission/materialization/dispatch/progression after smoke.",
+  "objective": "On a separate dark copy, create and verify a first exterior light packet through ordinary use of a reachable rooftop or open-window source; the closed-window ground-floor z=0 brazier is smoke-only outside. Record actual light reach before any smoke, then compare cannibal admission, materialization, dispatch and progression after smoke.",
   "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_first-light_testsetup00_migration_cancel_v1-witness.json",
-  "outcome": "On a separate identical dark copy, create the first valid light through ordinary player use of the supplied brazier, log, and existing lighter; record that native light event before any smoke and then compare native cannibal admission/materialization/dispatch/progression after smoke.",
+  "outcome": "On a separate dark copy, create and verify a first exterior light packet through ordinary use of a reachable rooftop or open-window source; the closed-window ground-floor z=0 brazier is smoke-only outside. Record actual light reach before any smoke, then compare cannibal admission, materialization, dispatch and progression after smoke.",
   "constraints": [
     "Only disposable source copies",
     "Camp footprint and added supplies are zero-credit",

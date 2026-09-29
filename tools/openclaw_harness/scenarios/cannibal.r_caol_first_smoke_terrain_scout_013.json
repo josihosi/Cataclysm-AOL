@@ -1,0 +1,144 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_terrain_scout_013",
+  "description": "Continue the exact source-off minute13560 report-awaiting-assessment camp copy to natural report expiry at15120 and the next eligible scheduler pass; preserve prior run and do not replay signal/admission.",
+  "profile": "first-smoke-013-road-report-expiry-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r013_scout_travel_trace_diagnostic": "minute9840_per_id_scout_travel_prepare_branch"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-013-road-report-expiry-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-013/immutable-executable/0e696fc41a68907668d176cd4be4a9f985399c8757de356e960b7ac354142c36/cataclysm-tiles",
+      "profile": "first-smoke-013-road-report-expiry-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_source_off_minute13560_report_expiry_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load relative profile first-smoke-013-road-report-expiry-20260927 from the preserved native post-quit copy at minute13560/turn5565634. Verify effective userdir, same-run World/current turn, safe mode Off, DEBUG_LS, no pending input and no fire/smoke. Player save SHA-256 e6ebefe9d43d51f041433cc34f3f9c27bf2a6e1a70694b9f24ef84abe4314a9f decodes to turn and player.last_updated 5565634; dimension_data.gsav SHA-256 af09189fde8a55aa3f4fd4fed633c109c14239dd147b29e303b2c6e1ed3cb21a. Preserve prior run and do not replay smoke admission."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_terrain_scout_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "natural_report_expiry_and_ranked_dispatch",
+      "cleanup_on_finish": true,
+      "objective": "Continue the exact saved minute13560/turn5565634 source-off state. The delivered generation-2 report is awaiting assessment with observations=[]; do not rewrite or replay it. Verify only mutable current state before advancing: effective userdir/save identity, same-run World/turn, safe mode Off, DEBUG_LS, no pending input, and fire/smoke absent. Source expiry is delivered_minutes12240 + 48 hours = minute15120. Continue with existing wait modes and saved checkpoints through that expiry and the first eligible scheduler pass. Track IDs4/5/6 and actual position, outing/report/candidate fields, route feasibility and physical lead visits. If a natural forest scavenge outing is selected, follow same IDs through real tile visit, item acquisition/haul, home return and report. If another natural candidate wins, follow to the first informative return/report or next scheduler boundary; if no dispatch, capture exact eligibility reason and stop. Never inject leads, knowledge, outing, report, route, target or dispatch.",
+      "proof_targets": [
+        "verify relative effective profile, decoded player turn5565634 and exact save hashes, current-source executable, safe mode Off, DEBUG_LS, no pending input, and no fire/smoke",
+        "preserve generation-2 empty report delivered12240 and report_awaiting_assessment without changing prior state",
+        "advance through expiry15120 and first eligible natural scheduler pass with actual saved checkpoints and actor IDs4/5/6",
+        "capture report release, candidate ranking, route preflight/rejection, selected job/target/IDs or exact eligibility reason",
+        "if forest structural-bounty scavenge is naturally selected, follow same IDs through physical tile visit, actual item/haul change, return and identity-bound report",
+        "if another natural target wins, follow its real route to the first useful report or next scheduler boundary without forced selection",
+        "keep fire/smoke absent and DEBUG_LS unchanged; record turn timing and save transitions",
+        "gracefully close and verify every owned PID/birth identity"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "the minute11940 continuation copy is the only live profile; preserve parent profile first-smoke-013-expiry-rescout-20260927 and all historical evidence",
+        "preserve the already-active generation-2 road outing; do not relight, seed, or replay signal admission",
+        "no clairvoyance or inserted knowledge, leads, actors, outings, reports, dispatches, or routes",
+        "a selected destination or abstract report is not a physical visit; require same-ID native position/action and actual item/haul evidence for scavenge credit",
+        "safe mode remains Off and existing DEBUG_LS remains the recorded life-support setup; do not add DEBUG_CLOAK or visibility changes",
+        "save at actual return/report, first next scheduler, and any actor/route/haul transition; do not infer from operation summaries",
+        "inspect unexpected signal, actor loss, route stall, report mismatch, save failure or simulation interval above100ms before further waits"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_source_off_minute13560_report_expiry_copy",
+      "bind_native_terrain_scout_world"
+    ],
+    "production_behavior": [
+      "natural_report_expiry_and_ranked_dispatch"
+    ],
+    "terminal_persistence": [
+      "natural_report_expiry_and_ranked_dispatch"
+    ],
+    "artifact_verdict": [
+      "natural_report_expiry_and_ranked_dispatch"
+    ],
+    "disallowed_shortcuts": [
+      "load_source_off_minute13560_report_expiry_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From the exact minute13560 source-off copy with generation-2 empty report awaiting assessment, observe its natural 48-hour expiry at15120 and the next eligible scheduler pass. Follow any naturally selected terrain outing through same-ID physical visit, actual scavenge/haul if applicable, return, and report without inserted state.",
+    "failure_rule": "Continue the exact saved minute13560/turn5565634 source-off state. The delivered generation-2 report is awaiting assessment with observations=[]; do not rewrite or replay it. Verify only mutable current state before advancing: effective userdir/save identity, same-run World/turn, safe mode Off, DEBUG_LS, no pending input, and fire/smoke absent. Source expiry is delivered_minutes12240 + 48 hours = minute15120. Continue with existing wait modes and saved checkpoints through that expiry and the first eligible scheduler pass. Track IDs4/5/6 and actual position, outing/report/candidate fields, route feasibility and physical lead visits. If a natural forest scavenge outing is selected, follow same IDs through real tile visit, item acquisition/haul, home return and report. If another natural candidate wins, follow to the first informative return/report or next scheduler boundary; if no dispatch, capture exact eligibility reason and stop. Never inject leads, knowledge, outing, report, route, target or dispatch."
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-018",
+  "scenario": "cannibal.r_caol_first_smoke_terrain_scout_018_scout_travel",
+  "objective": "Use the source-bound repaired executable on a disposable exact copy of the minute9846/turn5342818 R013 saved signal-off state. Follow naturally selected cannibal scouts4/5 through actual two-OMT travel, three-OMT watch or physical visit, home return/report, and honest cargo/supply evidence.",
+  "outcome": "Source-bound same-save native proof of repaired scout travel, physical endpoint, return/report and honest cargo result, or exact first causal divergence.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_terrain_scout_018_scout_travel-witness.json",
+  "constraints": [
+    "Only relative profile first-smoke-018-route-coherence-replay-20260927 and executable build_logs/first-smoke-018/launch-artifact/f08ddc78c655b004466da394c946f25504f8adc644c4f92b48da0ee11e99a8ed/cataclysm-tiles.",
+    "Diagnostic event minute9845; post-diagnostic save is turn5342818 at minute9846; check native state after loading.",
+    "Signal remains off. No signal setup, forced route, outing, report, knowledge, dispatch or actor.",
+    "Same actor IDs4/5; travel may approach to two OMT; selected watch stays three OMT away.",
+    "Save meaningful native turns and close exact owned processes gracefully."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r_caol.r018_scout_travel",
+        "op": "eq",
+        "value": "same_save_route_coherence_native_replay",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

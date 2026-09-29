@@ -1,0 +1,44 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-007",
+  "scenario": "cannibal.r_caol_first_smoke_identity_005_approach_continuation_007_no_clairvoyance",
+  "authority": "Josef direct owner instruction in the current R-CAOL-FIRST-SMOKE-exploration-007 continuation",
+  "objective": "Continue the exact disposable minute-8734 checkpoint with repaired source-bound code and no clairvoyance mutation setup; measure actual player-view exposure while observing same-NPC assault.",
+  "outcome": "From the exact disposable minute-8734 checkpoint under the repaired source-bound Mac Tiles executable and without either clairvoyance mutation, the smoke-founded gen2 raid advances the same reserved NPC5/NPC7 to target, commits contact only after arrival, and is observed for a native nighttime assault under actual player-view exposure.",
+  "constraints": [
+    "Use only the complete disposable profile copy with required save hashes matching the original checkpoint; never use input on or alter the original run/profile/save.",
+    "Preserve previously accepted smoke, scout, report, and gen2 dispatch evidence at its original run and source binding; do not replay those stages or assert their equivalence to the repaired binary.",
+    "Use the exact repaired source-bound Mac Tiles executable and record its source, executable, scenario, profile, and run identities.",
+    "Resume at minute 8734 and check the next valid five-minute approach cadence; inspect exact NPC5/NPC7 identity, physical OMT, mission, guard/path, operation phase and route cursor.",
+    "Credit committed contact only after required surviving reserved actors physically arrive; no injected actors, movement, contact, dispatch, report, target knowledge or combat.",
+    "Verify safe mode Off before waiting and after reload or blocked movement; quicksave and verify actual saved turn at meaningful transitions.",
+    "Record actual simulation-turn timing and exact turns above 100ms; preserve process PID/birth and graceful cleanup or explicit retained-session handoff.",
+    "Owner authority source: current direct Josef instruction; this brief is task-local and does not change the DE67 ledger or shared harness method.",
+    "Do not use clairvoyance in this separate ordinary-view run; verify actual exposure from native gate evidence, and keep the existing clairvoyance-enabled viewing run separate."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke_approach_continuation_007",
+        "op": "eq",
+        "value": "same_reserved_npc5_npc7_physical_approach_contact_night_assault",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "world.hostile_policy",
+        "op": "eq",
+        "value": "cannibal_camp",
+        "minimum_evidence": "declared"
+      }
+    ]
+  },
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_identity_005_approach_continuation_007_no_clairvoyance-witness.json"
+}

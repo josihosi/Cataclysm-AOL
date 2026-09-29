@@ -1,0 +1,189 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_combined_owner_openref_near_camp_dual_brazier",
+  "description": "R011 disposable two-source combined fire signal arm from owner open-reference save; a controlled cannibal camp footprint is one OMT from the house. Downstairs fire supplies same-level smoke and roof fire supplies exposed light; setup is not natural generation.",
+  "profile": "first-smoke-011-combined-openref-dual-brazier-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_combined_openref_near_camp": "owner_open_reference_controlled_camp_one_omt_two_brazier_combined_signals"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-combined-openref-dual-brazier-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-011-combined-openref-dual-brazier-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_staged_owner_open_reference_pre_signal_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only this disposable profile. Confirm 45/45 source save files except overmaps/o.0.0.zzip remain byte-identical; that file contains only the controlled cannibal camp footprint at OMT [132,143,0]. Verify same-run World/current turn, Safe Off, no clairvoyance/cloak/invulnerability, no pending input, both prepared braziers unlit and no prior site knowledge/signal/outing."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "controlled_camp_fixture_recorded",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Fixture setup only: one cannibal_camp special footprint at [132,143,0], copied from existing controlled-site template. No player, dimension-data, roster, site knowledge, report, action or contact fields were changed."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "ordinary_two_brazier_combined_smoke_light_to_cannibal_assault",
+      "objective": "From the staged clean pre-signal copy, verify both ordinary braziers and fuel, then ignite the downstairs and roof brazier through ordinary lighter actions. No clairvoyance, cloak, invulnerability, teleport or debug signal/contact/report injection. Keep both fires burning. The downstairs same-level source is the smoke arm; the exposed roof source is the light arm. Verify each physical packet and camp range/LOS before observing response, then track same-ID actors through scouting/watch/return/report and any natural night raid/combat. Keep this labeled as two-source combined signals, not one fire emitting both signals.",
+      "proof_targets": [
+        "exact disposable 45-file clean save copy, current effective userdir and same-run World/turn; source/executable/session binding",
+        "unlit pre-signal camp baseline, Safe mode Off, no prior smoke/light/contact/knowledge/outing and no clairvoyance/cloak/invulnerability; controlled camp geometry setup only",
+        "ordinary ladder route and native level transition to roof; actual brazier tile and ordinary lighter ignition with fresh advertised IDs",
+        "run-bound physical fd_fire and actual physical light and smoke channels from the real fire before response",
+        "actual same-ID camp admission, physical scout/watch/return/report and any natural night assault/combat with actor action/target/health/damage source",
+        "native quicksave turns and payloads at signal/admission/dispatch/return/combat; simulation timings",
+        "exact game/bridge/launcher PID and birth lifecycle, supported close and verified OS exit"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal/contact/report/dispatch/fire/light injection, hostile teleport, clairvoyance, cloak, invulnerability or debug raider kill",
+        "Keep the combined light-plus-smoke arm separate from the ordinary closed-room smoke-only arm",
+        "Controlled camp-site geometry is setup only, not natural generation or initial knowledge",
+        "Use only the ordinary route and advertised action targets; verify each menu result and never batch unobserved movement",
+        "Track all relevant actors by metadata and saved roster, including outside player sight; phase labels alone do not establish an assault",
+        "Maintain roof brazier fire through observation unless a concrete safety blocker requires stopping"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_staged_owner_open_reference_pre_signal_copy",
+      "bind_same_run_native_world",
+      "controlled_camp_fixture_recorded"
+    ],
+    "production_behavior": [
+      "ordinary_two_brazier_combined_smoke_light_to_cannibal_assault"
+    ],
+    "terminal_persistence": [
+      "ordinary_two_brazier_combined_smoke_light_to_cannibal_assault"
+    ],
+    "artifact_verdict": [
+      "ordinary_two_brazier_combined_smoke_light_to_cannibal_assault"
+    ],
+    "disallowed_shortcuts": [
+      "controlled_camp_fixture_recorded"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "In a disposable owner-reference copy with only the controlled cannibal camp footprint changed, two existing ordinary braziers produce separate physical smoke and exposed-light sources that both reach the eligible camp; assess resulting native same-ID scout/report/raid behavior.",
+    "failure_rule": "Credit combined behavior only if this run shows both physical packets, both channel admission reads with actual range/LOS, and later same-ID actor state; do not infer from setup, phase labels, or another arm."
+  }
+}

@@ -856,6 +856,13 @@ struct bandit_live_world_projection_lease {
     }
 };
 
+class npc;
+// Apply one authoritative outing projection update to the actor being transferred
+// and any distinct active/overmap save copies of that same NPC.  Callers still
+// preflight the outing and actor identities before committing a transfer.
+void sync_bandit_live_world_projection_lease_copies(
+    npc &member, const bandit_live_world_projection_lease &lease );
+
 enum class llm_intent_action : int {
     none = 0,
     follow_close,
@@ -1310,6 +1317,8 @@ class npc : public Character
         // Movement; the following are defined in npcmove.cpp
         void move(); // Picks an action & a target and calls execute_action
         void execute_action( npc_action action ); // Performs action
+        void trace_hostile_decision_for_harness( const std::string &action,
+                const std::string &reason );
         // Returns true if p is in an NPC_NO_GO zone for this NPC's faction.
         bool is_no_go_position( const tripoint_abs_ms &p ) const;
         // Returns true if p is a valid sleep target: not in NPC_NO_GO and
@@ -1687,6 +1696,9 @@ class npc : public Character
         // bypass BT re-evaluation in move().  Use this instead of
         // set_committed_goal("") to avoid stale state across transitions.
         void clear_committed_goal();
+        // Called once for each locally committed assault identity, including
+        // after loading a save whose member was already in ordinary sleep.
+        void reconcile_active_assault_routine( const std::string &operation_key );
         using need_result = npc_short_term_cache::need_result;
         using need_plan = npc_short_term_cache::need_plan;
         using need_source = npc_short_term_cache::need_source;

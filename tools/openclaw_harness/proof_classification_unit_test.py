@@ -932,7 +932,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
             self.assertIn("ordinary startup banner", artifact_path.read_text(encoding="utf-8"))
             self.assertEqual(report["error_evidence_lines"], [])
 
-    def test_classed_cata_error_log_is_archived_and_release_blocking(self) -> None:
+    def test_classed_cata_error_log_is_archived_and_degraded(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir) / "config"
             config_dir.mkdir()
@@ -965,7 +965,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
             focus_result={"ok": True},
             debug_errors_recorded=1,
         )
-        self.assertEqual(result["feature_gate"], "startup_error_logged")
+        self.assertEqual(result["feature_gate"], "startup_diagnostics_recorded")
 
     def test_split_unit_buffered_error_line_is_reassembled_before_offset_advances(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1244,7 +1244,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
                 )
 
         self.assertTrue(report["debug_error_recorded"])
-        self.assertEqual(report["screen_probe"]["classification"], "red_startup_error_logged")
+        self.assertEqual(report["screen_probe"]["classification"], "yellow_startup_diagnostics_recorded")
 
     def test_feature_scan_captures_error_emitted_during_ocr(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -2337,7 +2337,7 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result["feature_gate"], "visible_error_popup")
         self.assertFalse(result["startup_clean_for_feature_steps"])
 
-    def test_debug_error_remains_red_when_gameplay_hud_is_visible(self) -> None:
+    def test_debug_error_remains_degraded_when_gameplay_hud_is_visible(self) -> None:
         probe = startup_screen_probe_classification(
             ocr_payload={
                 "ok": True,
@@ -2355,11 +2355,12 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertTrue(probe["gameplay_hud_present"])
         self.assertFalse(probe["visible_error_popup"])
         self.assertTrue(probe["startup_error_logged"])
-        self.assertEqual(probe["classification"], "red_startup_error_logged")
-        self.assertEqual(result["status"], "red")
-        self.assertEqual(result["feature_gate"], "startup_error_logged")
+        self.assertEqual(probe["classification"], "yellow_startup_diagnostics_recorded")
+        self.assertEqual(result["status"], "yellow")
+        self.assertEqual(result["feature_gate"], "startup_diagnostics_recorded")
+        self.assertTrue(result["startup_ready_for_actions"])
 
-    def test_polled_log_only_error_stays_red_without_popup_evidence(self) -> None:
+    def test_polled_log_only_error_stays_degraded_without_popup_evidence(self) -> None:
         result = startup_proof_classification(
             ok=True,
             screen_summary=self.screen_summary(self.gameplay_probe()),
@@ -2368,8 +2369,9 @@ class StartupScreenGateTest(unittest.TestCase):
             debug_popups_recorded=0,
         )
 
-        self.assertEqual(result["status"], "red")
-        self.assertEqual(result["feature_gate"], "startup_error_logged")
+        self.assertEqual(result["status"], "yellow")
+        self.assertEqual(result["feature_gate"], "startup_diagnostics_recorded")
+        self.assertTrue(result["startup_ready_for_actions"])
         self.assertEqual(result["debug_errors_recorded"], 1)
         self.assertEqual(result["debug_popups_recorded"], 0)
         self.assertFalse(result["startup_clean_for_feature_steps"])
@@ -2611,7 +2613,7 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(identity["transport"], "terminal_native")
         self.assertEqual(result["feature_gate"], "startup_clean")
 
-    def test_dismissed_debug_popup_still_blocks_real_gameplay_hud(self) -> None:
+    def test_dismissed_debug_popup_keeps_startup_degraded_after_real_hud(self) -> None:
         result = startup_proof_classification(
             ok=True,
             screen_summary=self.screen_summary(self.gameplay_probe()),
@@ -2619,8 +2621,9 @@ class StartupScreenGateTest(unittest.TestCase):
             debug_popups_recorded=1,
         )
 
-        self.assertEqual(result["status"], "red")
-        self.assertEqual(result["feature_gate"], "debug_popups_recorded")
+        self.assertEqual(result["status"], "yellow")
+        self.assertEqual(result["feature_gate"], "startup_diagnostics_recorded")
+        self.assertTrue(result["startup_ready_for_actions"])
         self.assertEqual(result["debug_popups_recorded"], 1)
         self.assertFalse(result["startup_clean_for_feature_steps"])
 
@@ -3129,7 +3132,7 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(result["evidence_class"], "startup/load-or-inconclusive")
         self.assertFalse(result["feature_proof"])
 
-    def test_artifact_match_is_inconclusive_when_startup_gate_is_not_clean(self) -> None:
+    def test_artifact_match_is_inconclusive_when_startup_is_not_ready(self) -> None:
         result = probe_proof_classification(
             verdict="artifacts_matched",
             startup_classification=startup(clean=False, status="yellow"),
@@ -3140,7 +3143,7 @@ class ProbeProofClassificationTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "yellow")
-        self.assertEqual(result["verdict"], "startup_gate_not_clean_artifact_match_inconclusive")
+        self.assertEqual(result["verdict"], "startup_not_ready_feature_proof_inconclusive")
         self.assertFalse(result["feature_proof"])
 
     def test_non_green_step_ledger_overrides_artifact_match(self) -> None:
@@ -3189,7 +3192,7 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(result["status"], "yellow")
         self.assertFalse(result["feature_proof"])
 
-    def test_feature_proof_requires_clean_startup_green_steps_and_matched_artifact(self) -> None:
+    def test_feature_proof_requires_ready_startup_green_steps_and_matched_artifact(self) -> None:
         green_ledger = summarize_probe_step_ledger([
             {"primitive_step": "guarded_step", "verdict": "green_step_expected_fact_present"}
         ])

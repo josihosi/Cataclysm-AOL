@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include "cached_options.h"
 #include "cata_imgui.h"
@@ -304,6 +305,12 @@ query_popup &query_popup::await_semantic_successor( const bool await_successor )
     return *this;
 }
 
+query_popup &query_popup::semantic_payload( std::map<std::string, std::string> payload )
+{
+    semantic_payload_ = std::move( payload );
+    return *this;
+}
+
 std::vector<std::vector<std::string>> query_popup_impl::fold_query(
                                        const std::string &category,
                                        const keyboard_mode pref_kbd_mode,
@@ -426,11 +433,11 @@ query_popup::result query_popup::query_once()
         if( anykey ) {
             semantic_actions.push_back( { "prompt.acknowledge", "", _( "Acknowledge" ), true } );
         }
+        std::map<std::string, std::string> prompt_payload = semantic_payload_;
+        prompt_payload["text"] = text;
+        prompt_payload["title"] = category;
         semantic_scope.emplace( *manager, "prompt", category,
-        std::map<std::string, std::string>{
-            { "text", text },
-            { "title", category }
-        }, std::move( semantic_actions ),
+        std::move( prompt_payload ), std::move( semantic_actions ),
         [this, &semantic_action, receipt_before_native_exit]( const semantic_action_request &request ) {
             if( request.action_id == "prompt.cancel" && cancel ) {
                 semantic_action = "QUIT";
@@ -553,6 +560,11 @@ query_popup::result query_popup::query_once()
         }
     }
 
+    if( !res.wait_input ) {
+        // These facts belong to this native prompt instance.  A reused popup
+        // must opt in again instead of carrying a previous distraction type.
+        semantic_payload_.clear();
+    }
     return res;
 }
 

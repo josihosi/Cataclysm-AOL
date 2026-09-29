@@ -1,5 +1,7 @@
 # Harness Control Lookup
 
+Current playtest practice starts at [the living game manual](../../.agents/skills/caol-harness/GAME-MANUAL.md). This file retains detailed control examples and historical key recipes; use current advertised controls and follow the manual’s linked selection/evidence procedures when older examples differ. Keep reusable corrections in the owning reference, not a second conflicting copy.
+
 _Practical control notes for automation. Not a full CDDA controls manual; only the stuff we actually care about for harness authoring._
 
 ## Principles
@@ -24,7 +26,7 @@ A coordinator playtest brief with its matching validated charter requests execut
 | Ignore debug popup | `i` | Popup text says `I/i` to ignore in the future. Timing/focus still matters. |
 | Pass one turn / let queued output resolve | `.` | Current `dev` keybindings map pause/pass-turn to `.` (also `5` / keypad 5). Use this for deterministic one-turn advancement in harness probes. |
 | Wait for several minutes | <kbd>&#124;</kbd> (`Shift+\`) then menu choice | Current `dev` keybindings map action id `wait` / `ACTION_WAIT` to <kbd>&#124;</kbd>. The menu currently offers `1`=20s, `2`=1m, `3`=5m, `4`=30m, and with a watch `5`=1h, `6`=2h, `7`=3h, `8`=6h, plus daylight/noon/night/midnight/weather options. Use this for long time-passage probes instead of hundreds of `.` turns, but only after proving interruption/prompt handling for the scenario. |
-| Let queued NPC answer injection resolve after `C+b` | `.` x1-2 | The current practical path is to burn one or two real turns, not `Tab`; on this branch `Tab` opens the main menu and sabotages live probes. |
+| Let queued NPC answer injection resolve after `C+b` | `.` x1-2 | Advance only when the returned state calls for it. `Tab` is native autoattack on the current build; it can attack a reachable hostile and is not a pass-turn or answer-injection control. |
 
 ## In-game interaction probes
 

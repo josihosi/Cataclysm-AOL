@@ -1,0 +1,185 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_r019_relight_natural_raid",
+  "description": "R020 post-signal, known-camp R019 checkpoint relight continuation; not fresh-discovery or clean-start proof.",
+  "profile": "first-smoke-020-r019-relight-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_r019_relight": "post_signal_known_camp_relight_natural_raid_observation",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-r019-relight-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-r019-relight-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r019_signal_off_known_camp_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load disposable byte-exact copy of R019 signal-off saved checkpoint. Preserve post-signal history: known cannibal site/camp lead, routine IDs4/5, prior scouting/contact, and dispatch cooldown. Verify effective userdir and saved turn 5404978/minute10882 before any action."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Registry continuation launches with no fixture declared; saved profile/world is already present."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "relight_and_observe_natural_raid",
+      "objective": "In a disposable copy of the saved R019 signal-off checkpoint, verify signal off and Safe mode Off, then use the ordinary lighter to relight the existing indoor brazier. Keep closed-window geometry and maintain real fire/smoke. Track the already-known cannibal camp, prior field knowledge, actors 4/5, cooldown, and any later same-ID scout/watch/return/report or naturally arising raid/combat. This arm is post-signal/history-contaminated: it cannot prove fresh site discovery or initial smoke admission. Follow actual NPC IDs, position/action/target/health/damage/source and saved roster; no fabricated contact or forced combat.",
+      "proof_targets": [
+        "exact disposable copy of the R019 saved checkpoint, source/executable/session binding, effective userdir and saved/current turns",
+        "post-signal history truthfully recorded: known camp and field lead, prior scouting/contact, IDs4/5, cooldown and no claim of fresh discovery",
+        "ordinary view, no clairvoyance/cloak/invulnerability; Safe mode Off and mutations unchanged",
+        "ordinary lighter action and verified fd_fire then fd_smoke on indoor brazier with closed windows",
+        "same-ID physical positions/actions and native outing/watch/return/report if a new cycle occurs naturally",
+        "any natural night raid/contact, actual attack/damage/source and terminal outcome; no phase-only credit",
+        "native quicksaves and saved-turn payloads at meaningful transitions; measured simulation turn timing",
+        "exact PID/birth and graceful lifecycle cleanup or explicit retained purpose"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No light/fire/smoke/contact/report/dispatch injection, hostile teleport or debug raider killing",
+        "No clairvoyance, cloak or invulnerability; ordinary-view run",
+        "Do not describe this post-signal copy as a clean discovery arm",
+        "Maintain real brazier fire through any observed natural assault unless a concrete safety/blocker requires stop",
+        "Track actors from native metadata and saves, including actors outside player sight",
+        "Stop unchanged waits at the first material divergence; choose safe/stop/ignore wait mode for the evidence goal"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r019_signal_off_known_camp_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "relight_and_observe_natural_raid"
+    ],
+    "terminal_persistence": [
+      "relight_and_observe_natural_raid"
+    ],
+    "artifact_verdict": [
+      "relight_and_observe_natural_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From an initially unaware disposable closed-room camp setup in recorded clear weather, walk to and light the prepared brazier with the supplied lighter; prove valid smoke before any valid light/contact seeds the camp, then observe natural notice, dispatch, three-OMT stalking, real homeward return and the applicable later faction attack.",
+    "failure_rule": "Credit only observed native ordered transitions under valid initial conditions. Preserve first divergence and exact continuation; setup and short noticing alone cannot settle ecology."
+  }
+}

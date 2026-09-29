@@ -1,0 +1,171 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r023_min8406_actor_trace_diagnostic_20260928",
+  "description": "Owner-authorized R023 diagnostic continuation from byte-exact min8406 dual-clair viewer snapshot; inspect per-actor 8/9 decisions and group search through real fight/outcome.",
+  "profile": "first-smoke-023-r011-raid-actor-trace-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "raid_actor_trace": true,
+  "capabilities": {
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r023_raid_actor_trace": "r023_min8406_ids8_9_individual_decision_trace"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.inventory",
+      "semantic:world.pickup",
+      "semantic:world.item_use",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.quicksave",
+      "semantic:world.look",
+      "semantic:world.inspect_npc"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-023-r011-raid-actor-trace-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-023/immutable-executable/c9c1b0269d20e1678382b3763a6ff394b521ed2a360ecb99d1cfe08555b57db9/cataclysm-tiles",
+      "profile": "first-smoke-023-r011-raid-actor-trace-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_byte_exact_min8406_pre_fight_snapshot",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Effective relative profile must select the fresh 71-file copy from R023 pre-fight snapshot; same-run World must show turn5256372/minute8406, Safe Off, both persisted clairvoyance mutation IDs, and the saved active hostile operation/actors. Do not touch retained PID45379."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_world_and_trace",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_or_ai_changes",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No signal/setup, visibility, actor bravery/panic, target, route, or AI changes during this diagnostic."
+    },
+    {
+      "kind": "wait",
+      "label": "never_touch_retained_owner_session",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "Do not send any input to owner-controlled game PID45379/window52278, bridge45353, launcher45354, or its profile."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r023_individual_raid_decision_diagnostic",
+      "objective": "Continue without changing setup, visibility mutations, fear/bravery, signals, or AI rules through actual contact/fighting/outcome. R023 trace is diagnostic only: capture IDs8 Lloyd and9 Isidro plus group raid_site_search; compare IDs2/3 and save state at pre-harm, harm, and outcome. Do not assume shared search causes either actor choice.",
+      "proof_targets": [
+        "71-file copy exact; effective profile; player payload turn5256372/min8406; R023 executable/source/runtime binding; trace flag bound to this run ID",
+        "same-run World; Safe Off; both viewer mutations; saved signal/fire/operation context",
+        "narrow trace rows for actor8/9 and group raid_site_search through first death/outcome; exact first/last covered turns; repeat/truncation limits",
+        "native actor positions, target/sight/action/goto/path/panic/bravery/HP for raiders8/9 and defenders2/3 before and during combat; actual damage/outcome",
+        "native save/journal and exact process/birth cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the byte-exact minute8406 copy; no reload or mutation changes",
+        "Do not operate PID45379/window52278, bridge45353, or launcher45354",
+        "No fixture transforms, injected signals/contact/dispatch, hostile teleport, cloak/invulnerability, or debug kill",
+        "Treat trace group gate as hypothesis, not individual actor intent",
+        "Continue through actual fight/outcome; first harm is a checkpoint",
+        "Quicksave only via advertised world.quicksave, without movement preamble; verify saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_byte_exact_min8406_pre_fight_snapshot",
+      "bind_same_run_world_and_trace"
+    ],
+    "production_behavior": [
+      "r023_individual_raid_decision_diagnostic"
+    ],
+    "terminal_persistence": [
+      "r023_individual_raid_decision_diagnostic"
+    ],
+    "artifact_verdict": [
+      "r023_individual_raid_decision_diagnostic"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_or_ai_changes",
+      "never_touch_retained_owner_session"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R023 diagnostic observation only: explain whether the two surviving reserved raid actors choose independent actions or whether a shared search gate, panic, another target or blocked path accounts for their actions.",
+    "failure_rule": "Do not infer individual intent from a group raid_site_search row; require actor-specific rows and native physical state. Compare all relevant actor/defender state through actual fight/outcome."
+  }
+}

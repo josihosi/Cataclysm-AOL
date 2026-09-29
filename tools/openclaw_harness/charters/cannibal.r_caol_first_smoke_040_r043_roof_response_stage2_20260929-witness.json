@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R040 selected-ID native continuation follows actual response actors10/11 from the verified R043 dispatch checkpoint through physical movement and their combat/outcome; house entry and upstairs claims require direct observed native evidence.",
+  "material_proof": "Exact checkpoint copy manifest and effective disposable profile; R043 immutable executable/source and frozen Python runtime hashes; same-run World at turn5299201/minute9120, active operation hostile:2 generation2 membership10/11, Safe Off; trace run/group/scope and selected IDs; exact per-actor positions/actions/targets/attacks/damage/HP/sleep/death handles; actual doorway/stair/upstairs evidence only if reached; saved bytes and graceful PID/birth/exit records.",
+  "current_uncertainty": "Whether actors10/11 physically depart, survive city combat, and reach any real house entrance/stairs/upstairs; whether incoming damage records name an attacker.",
+  "material_contradiction": [
+    "checkpoint, run binding or trace scope differs from exact selected operation/IDs",
+    "selected IDs10/11 do not match saved operation membership",
+    "trace is truncated or does not cover required interval",
+    "actor position/action/combat is inferred from operation phase or absent trace rows without checking scope",
+    "claimed damage/killer lacks direct source-bound native evidence",
+    "house/stairs/upstairs claimed without physical coordinate/z and native transition/search evidence",
+    "process exit or save artifact cannot be verified"
+  ],
+  "forbidden_shortcuts": [
+    "signal/report/roster/route/actor/HP/combat injection",
+    "autoattack, count repeat, clairvoyance or hostile teleport",
+    "raw save rewriting after launch",
+    "treating stage-one owner-supplied historical context as current-run proof"
+  ],
+  "honest_stop_conditions": [
+    "first complete actor-specific combat/outcome supported by native evidence",
+    "or first exact source-bound divergence with current checkpoint and process cleanup evidence"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

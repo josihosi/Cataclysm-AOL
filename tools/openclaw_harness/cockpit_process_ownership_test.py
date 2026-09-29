@@ -56,6 +56,7 @@ class ProcessOwnershipTest(unittest.TestCase):
                     "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH": str(run_dir / "transition.events.jsonl"),
                     "OPENCLAW_HARNESS_PROFILE": "test-profile"})
             record = json.loads((session / "game-process.json").read_text())
+            self.assertEqual(record["launch_cwd"], str(harness.repo_root().resolve()))
             self.assertEqual(record["log_paths"]["native_semantic_events"], {
                 "path": str(run_dir / "semantic.native.events.jsonl"), "scope": "run_bound"})
             self.assertEqual(record["log_paths"]["transition_events"]["path"],

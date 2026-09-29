@@ -1,0 +1,141 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_terrain_scout_013_forest_dominant",
+  "description": "Fresh closed-window forest-dominant terrain copy: admit the real cannibal roster with ordinary smoke, turn the signal fully off, then follow natural forest scouting/scavenging.",
+  "profile": "first-smoke-013-forest-dominant-v2-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.forest_dominant_layout": "natural_scan_11_forest_1_field"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-013-forest-dominant-v2-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r013_terrain_signal_20260926/cataclysm-tiles",
+      "profile": "first-smoke-013-forest-dominant-v2-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_forest_dominant_owner_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load relative profile first-smoke-013-forest-dominant-v2-20260927 from the separately staged verified closed-window owner archive copy. Check exact effective userdir, byte hashes, same-run native World and starting turn, safe mode Off, no pending input, no fire/smoke, no cannibal site knowledge or outing. Static terrain setup is camp footprint origin [130,138,0]; actual natural production scan offsets contain 11 forest candidates and one field opportunity. The first forest lead candidate is [126,138,0], geometric route cost 8 with an all-forest corridor. Do not replay any prior admission or modify saved facts."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_forest_dominant_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "natural_forest_scavenge_after_smoke_admission",
+      "cleanup_on_finish": true,
+      "objective": "From the clean closed-window forest-dominant profile, verify native World/start state and source binding. Use the accepted ordinary ground-floor brazier smoke procedure to admit/materialize the normal cannibal roster; wait in short real native intervals until actual fd_smoke and a production_signal_materialization event expose the concrete actor IDs. Extinguish with native Examine and verify fd_fire plus all intended smoke/signal sources have ended before the signal-off routine observation. Allow natural 60-minute terrain scan/candidate selection. Follow every selected same-ID actor through real route positions, physical forest tile/watch observation and actual scavenging/inventory/haul if it occurs, then return/report. No inserted leads, site knowledge, outing, target, report, route, dispatch, clairvoyance or synthetic signal. Do not repeat identical non-forest cycles; stop at the first informative non-forest trip/rejection if forest is not selected.",
+      "proof_targets": [
+        "bind effective relative profile, source/executable, World, initial turn, safe mode Off, pending input, and unlit/no-smoke/no-prior-cannibal-knowledge premises",
+        "record the ordinary brazier source, actual smoke packet/range, exact production_signal_materialization event, and concrete actor IDs",
+        "use ordinary native Examine to extinguish; verify fd_fire and all residual signal fields have ended before counting signal-off behavior",
+        "observe natural production scan over the 11 forest/1 field terrain geometry; record lead candidates/statuses and normal candidate/route ranking",
+        "if forest scavenge dispatches, prove same-ID physical position/action at the target/watch, actual item/cargo/haul delta, safe return and identity/generation-bound report",
+        "if a non-forest job wins or no dispatch occurs, capture exact eligibility/ranking/rejection and stop at that informative boundary; do not cycle identical trips",
+        "save meaningful native turns, actor metadata, simulation timing, and gracefully exit all owned processes with PID/birth checks"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "clean disposable owner-archive copy; preserve all R012/R013 prior profiles and evidence",
+        "only setup difference in save files is translated cannibal camp overmap footprint; no inserted live-world knowledge, leads, actors, outings, reports, dispatches, routes, or targets",
+        "closed-window z0 brazier is smoke-only; require actual fd_smoke sample before judging admission range",
+        "no clairvoyance, cloak, synthetic signal, teleport, forced mission, or repeated identical road/field cycles",
+        "signal-derived site knowledge is allowed in this arm; R012 remains the untouched no-signal control"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_forest_dominant_owner_copy",
+      "bind_native_forest_dominant_world"
+    ],
+    "production_behavior": [
+      "natural_forest_scavenge_after_smoke_admission"
+    ],
+    "terminal_persistence": [
+      "natural_forest_scavenge_after_smoke_admission"
+    ],
+    "artifact_verdict": [
+      "natural_forest_scavenge_after_smoke_admission"
+    ],
+    "disallowed_shortcuts": [
+      "load_clean_forest_dominant_owner_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "A smoke-admitted natural cannibal roster on a separately staged forest-dominant terrain layout can physically scout and scavenge a reachable nearby forest bounty, return its goods, and report through native source and actor identity. Signal admission and prior site knowledge remain distinct from the later signal-off terrain behavior.",
+    "failure_rule": "Verify the byte-exact archive and sole overmap footprint placement change; in World verify initial state and normal signal admission/materialization with concrete actors. Turn the source off using native interaction and verify all signals absent. Observe natural terrain scanning and one informative scheduler/cycle boundary. Physical scavenge credit requires same-ID route/action/tile evidence and an actual inventory/haul delta, followed by return/report. Preserve a non-forest winner or exact source eligibility/rejection as the first boundary, and do not force or repeat identical outings."
+  }
+}

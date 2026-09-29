@@ -8,12 +8,23 @@ struct UsageError: Error {
     let message: String
 }
 
-func parseArgs() throws -> URL {
+func parseArgs() throws -> (URL, CGRect?) {
     let args = Array(CommandLine.arguments.dropFirst())
-    guard args.count == 2, args[0] == "--image" else {
-        throw UsageError(message: "usage: ocr_image.swift --image <png-path>")
+    guard (args.count == 2 || args.count == 7), args[0] == "--image" else {
+        throw UsageError(message: "usage: ocr_image.swift --image <png-path> [--region-of-interest x y width height]")
     }
-    return URL(fileURLWithPath: args[1])
+    if args.count == 2 {
+        return (URL(fileURLWithPath: args[1]), nil)
+    }
+    guard args[2] == "--region-of-interest",
+          let x = Double(args[3]), let y = Double(args[4]),
+          let width = Double(args[5]), let height = Double(args[6]),
+          x.isFinite, y.isFinite, width.isFinite, height.isFinite,
+          x >= 0, y >= 0, width > 0, height > 0,
+          x + width <= 1, y + height <= 1 else {
+        throw UsageError(message: "region of interest must fit inside normalized image bounds")
+    }
+    return (URL(fileURLWithPath: args[1]), CGRect(x: x, y: y, width: width, height: height))
 }
 
 func cgImage(from url: URL) throws -> CGImage {
@@ -27,9 +38,12 @@ func cgImage(from url: URL) throws -> CGImage {
     return cgImage
 }
 
-func recognizeText(in cgImage: CGImage) throws -> [[String: Any]] {
+func recognizeText(in cgImage: CGImage, region: CGRect?) throws -> [[String: Any]] {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
+    if let region = region {
+        request.regionOfInterest = region
+    }
     request.usesLanguageCorrection = false
     request.recognitionLanguages = ["en_US"]
     let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
@@ -61,9 +75,9 @@ func recognizeText(in cgImage: CGImage) throws -> [[String: Any]] {
 }
 
 do {
-    let imageURL = try parseArgs()
+    let (imageURL, region) = try parseArgs()
     let cgImage = try cgImage(from: imageURL)
-    let observations = try recognizeText(in: cgImage)
+    let observations = try recognizeText(in: cgImage, region: region)
     let lines = observations.compactMap { $0["text"] as? String }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     let payload: [String: Any] = [
         "ok": true,

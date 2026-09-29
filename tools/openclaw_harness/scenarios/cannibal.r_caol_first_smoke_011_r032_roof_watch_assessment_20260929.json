@@ -1,0 +1,190 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r032_roof_watch_assessment_20260929",
+  "description": "Fresh byte-exact continuation from R031 turn5275255/min8720 on source-bound R032; establish assessment start and follow IDs4/5 through return/report/any assault.",
+  "profile": "first-smoke-011-r032-watch-assess-2-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r020_roof_distance7_combined_control": "ordinary_roof_fire_light_smoke_distance7_control_after_r020",
+    "capabilities.r_caol.first_smoke_011_r027_roof_combined": "r027_roof_fire_combined_signal_and_natural_camp_outcome",
+    "capabilities.r_caol.first_smoke_011_r028_roof_watch_continuation": "r028_min8529_admitted_roof_smoke_watch_return_report_and_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r030_roof_watch_continuation": "r030_turn5264260_selected_scout4_5_roof_watch_return_report_assault_outcome",
+    "capabilities.r_caol.first_smoke_011_r031_roof_watch_reconcile": "r031_saved_min8700_reconcile_exact_pair_leases_then_native_watch_return_report",
+    "capabilities.r_caol.first_smoke_011_r031_watch_resume": "r031_repaired_min8701_same_profile_to_fresh_assessment_return_report",
+    "capabilities.r_caol.first_smoke_011_r032_roof_watch_assessment": "r032_turn5275255_min8720_fresh_copy_assessment_120m_same_id_return_report"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r032-watch-assess-2-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-032/immutable-executable/56f30b65fbced0f86141f3098348a578775df62c100bba99ce89900c25d85564/cataclysm-tiles",
+      "profile": "first-smoke-011-r032-watch-assess-2-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_turn5275255_r031_interruption_into_fresh_r032_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the fresh 61-file byte-exact copy from R031 closeout; verify registry-selected R032 immutable executable/runtime and effective userdir. Verify same-run World at turn5275255/min8720, Safe Off, no clair/pending input, fixed roof/source and current outing/lease/cursor/assessment fields; this run starts its own assessment clock after the interruption."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r031_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r032_interrupted_roof_watch_assessment_return_report",
+      "objective": "Continue from the saved R031 glass-breaking interruption on a fresh disposable profile and the source-bound R032 executable. Verify the exact loaded outing and current assessment state; do not credit the prior 19-minute partial wait. Establish the actual assessment start in this R032 run, then measure up to 120 minutes from that start. Follow same IDs4/5 through physical return/report and any later actual assault; stop at a source-backed refusal or terminal result.",
+      "proof_targets": [
+        "effective userdir and exact 61-file disposable copy inventory; player/dimension/master save hashes; same-run World turn5275255/min8720",
+        "R032 source-bound executable hash and runtime binding; Safe Off; no clairvoyance/pending input; stationary avatar [3155,3448,1], active roof brazier/source [131,143,1]",
+        "current outing owner, epoch, crossing/cursor/reconciliation/rejected fields, assessment fields and ID4/5 leases/positions on load",
+        "fresh native assessment start timestamp; 120 measured game minutes only from that start; exact same outing generation and IDs4/5",
+        "actual same-ID movement/actions/damage/death, physical return positions/receipts, report source activity/generation/carriers and later attackers if any",
+        "confirmed saved turn only if a real change warrants quicksave; graceful native save/quit, finish/collect and exact game/bridge/launcher process births/exits"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use the fresh copy only; source profile remains intact; do not replay setup, ignite, or alter source save bytes",
+        "Keep avatar at [3155,3448,1] and roof source active; no player movement/recenter, clair/debug injection, teleport, forced report or contact",
+        "Check Safe Off and current outing/lease state before elapsed time; count no part of the old interrupted 19-minute interval",
+        "Credit only measured time from the observed assessment start; follow the same current generation and IDs4/5",
+        "Quicksave only from advertised World when it persists a real changed state"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_turn5275255_r031_interruption_into_fresh_r032_profile",
+      "bind_same_run_r031_native_world"
+    ],
+    "production_behavior": [
+      "r032_interrupted_roof_watch_assessment_return_report"
+    ],
+    "terminal_persistence": [
+      "r032_interrupted_roof_watch_assessment_return_report"
+    ],
+    "artifact_verdict": [
+      "r032_interrupted_roof_watch_assessment_return_report"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_turn5275255_r031_interruption_into_fresh_r032_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the R031 minute8720 roof interruption using a fresh exact disposable save and R032 source-bound executable; establish actual assessment start, then follow IDs4/5 through 120 measured minutes, return/report and any assault.",
+    "failure_rule": "Record the first changed divergence. Do not credit assessment before physical arrival or infer assault/combat success from labels/proximity."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5275255,
+  "decision_trace_to_turn": 5286000
+}

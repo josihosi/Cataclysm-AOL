@@ -60,6 +60,7 @@
 #include "output.h"
 #include "point.h"
 #include "projectile.h"
+#include "raid_decision_trace.h"
 #include "ret_val.h"
 #include "rng.h"
 #include "sounds.h"
@@ -1597,6 +1598,11 @@ dealt_damage_instance Creature::deal_damage( Creature *source, bodypart_id bp,
         mod_pain( total_pain, bp );
     }
 
+    const std::string_view trace_kind = attack_copy.type == weakpoint_attack::attack_type::PROJECTILE ?
+                                        "projectile_hit" :
+                                        attack_copy.type == weakpoint_attack::attack_type::NONE ?
+                                        "unspecified" : "melee_hit";
+    raid_decision_trace::damage_kind_scope trace_damage( *this, trace_kind );
     apply_damage( source, bp, total_damage );
 
     if( wkpt != nullptr ) {

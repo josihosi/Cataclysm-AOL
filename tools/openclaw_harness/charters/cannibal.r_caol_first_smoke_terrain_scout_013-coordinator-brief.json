@@ -1,0 +1,42 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-013",
+  "scenario": "cannibal.r_caol_first_smoke_terrain_scout_013",
+  "objective": "Continue the exact saved source-off camp at minute11940 / turn5468434 from the isolated byte-verified continuation copy. Preserve the already naturally dispatched generation-2 road terrain scout with actors4/5 outbound toward [141,137]. Follow that same-ID outing through actual return/report; then inspect the first subsequent eligible scheduler candidates and route results. The source applies a 150-point repeat penalty to the last routine target, changing the ranking but not guaranteeing a forest selection. Do not replay smoke admission or inject any state. If a forest structural-bounty scavenge is naturally selected, observe same-ID physical visit, item/haul, return and report; if another candidate wins, follow only to the next informative candidate boundary and capture the exact reason.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_terrain_scout_013-witness.json",
+  "outcome": "After the smoke-admitted cannibal roster naturally dispatches source-off terrain outings, the same actors can physically visit or scavenge reachable terrain leads, return, and deliver identity-bound reports; any scavenge claim requires observed item acquisition and haul, without forced knowledge or dispatch.",
+  "constraints": [
+    "Use only relative profile first-smoke-013-road-repeat-forest-20260927, copied byte-for-byte from the post-exit minute11940 save; verify effective userdir, current save identity, same-run World/turn, executable/source binding.",
+    "Preserve the parent profile, prior no-fire control, first outing, accepted minute11940 road dispatch and all earlier artifacts.",
+    "Before input check current mutable state only: safe mode Off, DEBUG_LS still present, no pending request, source-off fire/smoke, active outing and actor IDs4/5.",
+    "Do not replay signal admission or seed/alter knowledge, leads, actors, outing, report, route, target or dispatch. No clairvoyance.",
+    "Follow actor IDs4/5 through physical route, arrival, actual tile actions, return and same-ID report. A planned target/abstract return is not a visit.",
+    "Capture actual next scheduler candidates and rejections. Source repetition penalty is evidence for changed ranking, not a guarantee that forest scavenge is selected.",
+    "Only credit scavenge with native same-ID visit, inventory/haul change, return and report; preserve other natural outcomes separately.",
+    "Save meaningful turns and monitor simulation timing; gracefully close exact process identities."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.first_smoke",
+        "op": "eq",
+        "value": "terrain_lead_physical_scavenge_return_report_after_signal_admission",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "world.hostile_policy",
+        "op": "eq",
+        "value": "cannibal_camp",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

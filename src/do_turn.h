@@ -6,6 +6,7 @@
 #include "live_light.h"
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@ struct structural_route_read;
 struct structural_signal_read;
 struct structural_outing_plan;
 struct response_member_power_read;
+struct canonical_hostile_operation_route;
 } // namespace bandit_live_world
 
 void handle_key_blocking_activity();
@@ -33,6 +35,7 @@ int observe_live_hostile_signal_sources_for_test(
     const std::vector<live_bandit_signal_observation> &signals );
 void maintain_live_bandit_structural_bounty_for_test(
     const std::vector<live_bandit_signal_observation> &signals );
+void prepare_live_bandit_abstract_scout_travel_for_test();
 int observe_live_bandit_sounds_for_test();
 void run_live_light_staffed_observer_for_test();
 bool live_light_sample_is_current_for_test();
@@ -44,6 +47,12 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
     const bandit_live_world::site_record &site,
     const bandit_live_world::active_outing_state &outing,
     const bandit_live_world::structural_threat_observer_request &request );
+std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_signal_reads_for_test(
+    const std::vector<live_bandit_signal_observation> &signals,
+    const bandit_live_world::site_record &site,
+    character_id observer_id );
+bool live_bandit_overmap_los_from_for_test( const tripoint_abs_omt &origin,
+        const tripoint_abs_omt &target, int sight_points );
 bool materialize_live_bandit_structural_handoffs_for_test();
 int materialize_live_bandit_response_members_for_test( const std::string &site_id );
 std::vector<bandit_live_world::response_member_power_read>
@@ -55,6 +64,11 @@ void process_overmap_npc_move_for_test();
 bool materialize_committed_bandit_shakedown_for_test( bandit_live_world::site_record &site );
 bool complete_live_bandit_homeward_boundary_for_test();
 void note_live_bandit_aftermath_for_test();
+bool live_cannibal_raid_advance_site_search_for_test( bandit_live_world::site_record &site );
+void note_live_bandit_local_turn_sight_avoid_for_test();
+bool advance_live_bandit_hostile_approaches_for_test();
+std::optional<bandit_live_world::canonical_hostile_operation_route>
+live_bandit_hostile_operation_route_read_for_test( const bandit_live_world::site_record &site );
 void run_live_bandit_structural_route_analyzer_for_debug();
 std::string live_bandit_local_reality_safety_record_for_test( const map &here,
         const avatar &observer, monster &critter );

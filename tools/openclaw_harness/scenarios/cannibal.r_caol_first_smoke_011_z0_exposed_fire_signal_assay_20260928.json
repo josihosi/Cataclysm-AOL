@@ -1,0 +1,160 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_z0_exposed_fire_signal_assay_20260928",
+  "description": "Bounded ordinary exposed ground-level fire packet assay in a disposable copy of the disclosed open-reference controlled-camp setup; stop before camp-response behavior if the measured signal geometry cannot qualify.",
+  "profile": "first-smoke-011-z0-fire-source-assay-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "test",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_z0_source_assay": "ordinary_exposed_z0_fire_native_packet_and_cap_measurement"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.quicksave"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "debug:kill",
+      "smokebomb",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-z0-fire-source-assay-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-011/z0-assay-build-prefixcataclysm-tiles",
+      "profile": "first-smoke-011-z0-fire-source-assay-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "native ordinary movement, fuel handling, lighter ignition, packet/cap observations and save"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_disclosed_disposable_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the byte-exact copy of the disclosed owner-open-reference controlled-camp setup; confirm effective userdir, World/current turn, Safe Off, no clairvoyance/cloak/invulnerability, no fire on chosen exterior test tile and no pending request."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "assess_ordinary_exposed_z0_source",
+      "objective": "In the disposable copy, identify an accessible safe exterior z0 tile and use only prepared ordinary wood and the supplied lighter to create an exposed ground-level fire. Confirm native fd_fire and source-bound live_light/live_smoke packets and their measured caps/LOS at a fresh saved turn. Do not proceed into camp response unless measured light cap covers actual camp see_cost plus distance and both physical channels have viable same-z geometry.",
+      "proof_targets": [
+        "profile/save hashes and effective userdir; exact source/executable build/runtime binding",
+        "native player, map tile, safe-mode Off and mutation absence before input",
+        "actual safe exterior z0 source tile, terrain and distance; ordinary prepared wood/lighter route",
+        "native fire plus same-run live_light/live_smoke packet fields including exposure, source z, range cap, channel and saved turn",
+        "actual camp endpoint/distance/see_cost and source-bound LOS/range determination",
+        "stop before camp gameplay if light cap < endpoint cost + distance or smoke geometry fails; otherwise preserve initial no-knowledge baseline before continuing"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No owner archive changes",
+        "No camp/overmap/map terrain mutation during this assay",
+        "No smokebomb or injected fire/signal/light/smoke/contact/knowledge",
+        "No clairvoyance, cloak, invulnerability, teleport or debug kill",
+        "No camp-response gameplay before a measured viable source/camp geometry is established",
+        "Only the selected disposable profile may be written"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_disclosed_disposable_copy",
+      "bind_native_world"
+    ],
+    "production_behavior": [
+      "assess_ordinary_exposed_z0_source"
+    ],
+    "terminal_persistence": [
+      "assess_ordinary_exposed_z0_source"
+    ],
+    "artifact_verdict": [
+      "assess_ordinary_exposed_z0_source"
+    ],
+    "disallowed_shortcuts": [
+      "bind_native_world"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Bounded source-bound measurement of native physical light and smoke packets from one ordinary exposed z0 fire source. This does not claim camp response unless both measured channels can meet the actual camp geometry.",
+    "failure_rule": "Keep setup, native fire, packet projection, range/LOS feasibility and any camp response distinct; stop at the first measured infeasible boundary."
+  }
+}

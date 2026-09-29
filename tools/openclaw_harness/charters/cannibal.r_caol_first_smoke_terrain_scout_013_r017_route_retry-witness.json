@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the byte-exact R013 forest-v2 signal-off save and reviewed R017 executable, the first eligible scheduler pass explores a bounded alternate sector/intermediate/known route after sector0 rejection. Follow any natural same-ID outing through physical endpoint, return/report, and actual cargo or supply accounting.",
+  "material_proof": "Disposable profile .userdata/first-smoke-015-forest-v2-native-handoff-20260927; 55-file byte-equal copy receipt build_logs/first-smoke-015/disposable-copy-receipt.json, manifest SHA-256 dc2f86d4e546344cdd6852eba2d71e4fc49edd9f026e6866583711a6732daea3, player turn5277658/minute8760, dimension_data hash 5c5dcfa7dcf88f39e48646695e7dc500aa1a2dc37c967d3ccacf423d270615. IDs4/5 eligible, 6 reserve; signal off, no outing. Executable SHA-256 4e801d7856c219dd7212cbc9c48f88080999921851e2f36e97bbae317bcc2a43, bound by receipt SHA-256 8e83caf24aef27848bb31602759f9e93bc78104e0e7163b5a088fa353d547083 to source 525e7cb95328ec19149dfe250367456dc7e70354f638810790fe524f294a40fb.",
+  "current_uncertainty": "Whether the native first eligible >=9540 pass reaches a reachable alternate/intermediate/known route after sector0 cost50 rejection, and whether the selected same IDs complete physical work and return/report.",
+  "material_contradiction": [
+    "effective userdir, save/turn/migration, executable or source binding differs",
+    "the bounded scheduler rejects all alternatives despite an eligible reachable route under source rules",
+    "physical visit or scavenge is claimed without same-ID position/action at the endpoint",
+    "cargo/supply credit lacks actual native inventory/haul evidence",
+    "fire/smoke or inserted live-world knowledge/lead/outing/report/route/dispatch appears without native cause"
+  ],
+  "forbidden_shortcuts": [
+    "replay signal admission",
+    "insert knowledge, leads, actors, outing, report, route, target, or dispatch",
+    "force scout movement or count a planned route/watch as physical scavenging",
+    "credit cargo without native inventory/haul/supply change"
+  ],
+  "honest_stop_conditions": [
+    "preserve exact first eligible candidate and route search reasons",
+    "if dispatched, follow same IDs to physical endpoint and first useful return/report boundary",
+    "preserve any load/migration incompatibility at first divergence without replaying unchanged startup",
+    "save and gracefully close each owned process by exact PID/birth"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

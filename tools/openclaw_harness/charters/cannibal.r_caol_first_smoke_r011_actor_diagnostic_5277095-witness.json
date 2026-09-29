@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Identify the missing per-actor cause of stationary reserved NPC5/NPC7 after the committed cannibal raid gate releases attack intent, using the exact disposable saved turn 5277095.",
+  "material_proof": "Source/run/executable/session-bound World state from the byte-exact continuation copy; Safe Off and no clairvoyance mutations; same committed hostile operation and reserved IDs; a bounded harness-opt-in native action trace correlated by game turn with each actor position, target ID/position/hostility, danger, selected action, moves, goto/path and current operation state; interruption and save outcomes where applicable.",
+  "current_uncertainty": "Whether the actors lack an individual target, select a noncombat/goto action due to an order/path state, or fail later during an attack action. Existing R011 frames record only aggregate gate intent and static actor snapshots.",
+  "material_contradiction": [
+    "copy/effective userdir/save hash or loaded turn differs from the 5277095 receipt",
+    "operation or reserved NPC IDs differ from hostile:2 / IDs 5 and 7",
+    "actor trace is unbound, over budget, absent when enabled, or includes unrelated NPCs",
+    "clairvoyance mutation appears in the no-clair run",
+    "a long wait crosses a consequential interruption without inspection"
+  ],
+  "forbidden_shortcuts": [
+    "replay of signal discovery/scouting/report/dispatch",
+    "clairvoyance or injected target/operation/contact",
+    "claiming attack from attitude, gate posture, operation phase, screenshot, or proximity alone",
+    "attributing prior player death without an attacker/target record",
+    "product behavior modification during diagnostic capture"
+  ],
+  "honest_stop_conditions": [
+    "captured same-turn actor target/action/goto/path evidence distinguishes the first causal branch",
+    "first exact mismatch in profile, operation, trace binding, or actor observation is preserved with a changed continuation route",
+    "first consequential interruption is captured and inspected before continuing"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

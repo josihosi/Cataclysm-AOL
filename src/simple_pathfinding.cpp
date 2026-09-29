@@ -415,7 +415,8 @@ omt_score::omt_score( int node_cost, bool allow_z_change ) : node_cost( node_cos
 simple_path<tripoint_abs_omt> find_overmap_path( const tripoint_abs_omt &source,
         const tripoint_abs_omt &dest, const int radius, const omt_scoring_fn &scorer,
         const std::function<void( size_t, size_t )> &progress_fn, const std::optional<int> &max_cost,
-        bool allow_diagonal )
+        bool allow_diagonal,
+        const std::function<bool( const tripoint_abs_omt &, const tripoint_abs_omt & )> &edge_allowed )
 {
     cata_assert( progress_fn != nullptr );
     simple_path<tripoint_abs_omt> ret;
@@ -478,6 +479,10 @@ simple_path<tripoint_abs_omt> find_overmap_path( const tripoint_abs_omt &source,
             }
             const direction rev_dir = reverse_direction( dir );
             const node_address next_addr = cur_addr.displace( dir );
+            const tripoint_abs_omt next_point = next_addr.to_tripoint( source );
+            if( edge_allowed && !edge_allowed( cur_point, next_point ) ) {
+                continue;
+            }
             const int cumulative_cost = cur_node.cumulative_cost + omt_cost_to_cross( cur_node.node_cost,
                                         cur_node.get_prev_dir(), dir );
             auto iter = known_nodes.find( next_addr );
@@ -488,7 +493,6 @@ simple_path<tripoint_abs_omt> find_overmap_path( const tripoint_abs_omt &source,
                     next_node.prev_dir = static_cast<int8_t>( rev_dir );
                 }
             } else if( known_nodes.size() < max_search_count ) {
-                const tripoint_abs_omt next_point = next_addr.to_tripoint( source );
                 if( octile_dist( source_point, next_point.xy() ) > radius ) {
                     continue;
                 }

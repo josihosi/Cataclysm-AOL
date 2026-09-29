@@ -1,0 +1,34 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-040",
+  "scenario": "cannibal.r_caol_first_smoke_040_r043_roof_response_stage2_20260929",
+  "objective": "Continue the saved R043 hostile operation from the exact verified minute9120 dispatch checkpoint with run-bound actor trace selected for IDs10/11 from the first resumed turn. Follow their physical movement, combat, damage and any real house/stairs/upstairs outcome without autoattack.",
+  "outcome": "R040 selected-ID native continuation follows actual response actors10/11 from the verified R043 dispatch checkpoint through physical movement and their combat/outcome; house entry and upstairs claims require direct observed native evidence.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_040_r043_roof_response_stage2_20260929-witness.json",
+  "constraints": [
+    "Use only relative disposable profile first-smoke-041-r043-stage2-selected-10-11-20260929 cloned from the verified 61-file R043 dispatch checkpoint at turn5299201/minute9120; keep checkpoint and original save untouched.",
+    "Use immutable R043 executable SHA5dfe58757ac4ae09b428af3854917ac565009075c1a348693ff2bb7b00c99fd2/source SHA860df07f23124f690cf3ad7f98fc4b164606898236759f5e86995c90040f9f0d and verify the frozen runtime.",
+    "Operation hostile:2, generation2, selected actor IDs10/11 from saved transition sequence277; confirm same-run native state and trace scope before advancing.",
+    "Trace IDs10/11 from saved turn5299201 through turn5350000; inspect raw events and repeat/truncation markers before absence claims.",
+    "Individual native controls only; no autoattack, repeat, injection, clairvoyance or synthetic movement/combat. Preserve actor-specific actions, targets, health/damage/death and physical location.",
+    "Continue to actual house/stairs/upstairs only if actors reach them. Attribute attacker only from a native event/field.",
+    "Save full copies at meaningful boundaries; graceful close and verify all owned process PID/birth/OS exits."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r040_r043_roof_response",
+        "op": "eq",
+        "value": "min9120_selected_ids10_11_trace_physical_assault",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

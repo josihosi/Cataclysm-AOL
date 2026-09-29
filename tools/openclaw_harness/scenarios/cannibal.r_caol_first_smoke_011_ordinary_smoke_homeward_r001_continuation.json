@@ -1,0 +1,180 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_ordinary_smoke_homeward_r001_continuation",
+  "description": "R011 continuation from the exact minute8043 homeward boundary save. Preserve existing smoke/dispatch/watch state; continue paired NPC4/5 return/report and same ordinary-view journey through night raid.",
+  "profile": "first-smoke-011-homeward-r001-20260927",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.dispatch_visit_smoke_first": "full_lifecycle_initially_unaware",
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_identity_005": "initially_unaware_identity_return",
+    "capabilities.r_caol.first_smoke_011_ordinary_assault": "ordinary_view_closed_window_smoke_through_cannibal_assault_r016_clean_recovery",
+    "capabilities.r_caol.first_smoke_011_homeward_r001_continuation": "ordinary_view_closed_window_smoke_homeward_same_arm_r001"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-homeward-r001-20260927",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/homeward-continuity-001/immutable-executable/9d70c40280db535d952347349d3137c92acef1a2c7806626c2a2e006f5d9db25/cataclysm-tiles",
+      "profile": "first-smoke-011-homeward-r001-20260927",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_homeward_boundary_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load exact disposable byte-matched minute8043 TestSetup00 checkpoint; bind current turn, World, safe mode and native roster/operation state without changing game state."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_homeward_checkpoint_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_or_actor_transforms",
+      "seconds": 0.2,
+      "capture_after": true,
+      "expected_visible_fact": "No player, camp, map, roster, knowledge or signal setup changes; only the declared executable changes between source and disposable copy."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "continue_saved_smoke_dispatch_return_and_raid",
+      "objective": "From saved turn5234627/min8043 with physical smoke/contact already proved and same outing IDs4/5 in returning_report, advance a real native action, verify the exact homeward pair and progress state, follow the existing physical return/report and same ordinary-view smoke journey through night assault and actual native attacker/target/damage outcome. A raid-attributed player death can be valid. Stop at the first material divergence; do not replay earlier fire/scout/watch actions.",
+      "proof_targets": [
+        "exact disposable 45-file checkpoint copy, saved turn, immutable R001 executable/product source/runtime binding and effective userdir",
+        "ordinary view with both clairvoyance mutations absent; no cloak/invulnerability/debug raider kill",
+        "before/after native state and first real action: NPC4/NPC5 IDs, MS and OMT positions, structural owner/phase/cursor, last_progress and last_advanced, resume, receipts",
+        "same-ID physical home return/report and cargo/supply accounting",
+        "maintained existing fire/smoke signal and subsequent actual cannibal night assault, native actor action/target/damage/outcome",
+        "quicksaves with verified saved turn, NPC roster/health/action metadata, performance and graceful process cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No moving player or altering camp/map/roster/knowledge; no relight or repeated smoke/watch setup",
+        "No signal/fire/smoke/light/contact/report/dispatch injection",
+        "No clairvoyance, cloak, invulnerability or debug killing raiders",
+        "Follow all relevant actors by IDs and native metadata, not visibility alone",
+        "Use existing native fire state; do not disturb the closed-window scene",
+        "Choose safe observation windows for tracking; deliberate ignore only where combat outcome demands it and can end in player death",
+        "Quicksave meaningful transitions and verify actual saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_homeward_boundary_checkpoint",
+      "bind_homeward_checkpoint_world"
+    ],
+    "production_behavior": [
+      "continue_saved_smoke_dispatch_return_and_raid"
+    ],
+    "terminal_persistence": [
+      "continue_saved_smoke_dispatch_return_and_raid"
+    ],
+    "artifact_verdict": [
+      "continue_saved_smoke_dispatch_return_and_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_or_actor_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the already observed ordinary-view smoke journey from its exact turn5234627/min8043 persisted homeward-report boundary, prove physical same-ID return/report after the R001 repair, then observe the same fire-to-cannibal-raid outcome and actor-attributed native combat.",
+    "failure_rule": "Credit only native same-ID position/action and return receipts plus actual attack/damage/outcome. Preserve first divergence and do not repeat accepted smoke/scout/watch evidence."
+  }
+}

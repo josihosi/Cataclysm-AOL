@@ -1,0 +1,179 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r028_roof_watch_continuation_20260929",
+  "description": "R028 native continuation from byte-exact min8529 admitted roof-smoke outing through same-ID watch, return/report and any actual night assault outcome.",
+  "profile": "first-smoke-027-min8529-roof-watch-repair-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_clean_roof_combined": "ordinary_view_clean_roof_fire_combined_light_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r020_roof_distance7_combined_control": "ordinary_roof_fire_light_smoke_distance7_control_after_r020",
+    "capabilities.r_caol.first_smoke_011_r027_roof_combined": "r027_roof_fire_combined_signal_and_natural_camp_outcome",
+    "capabilities.r_caol.first_smoke_011_r028_roof_watch_continuation": "r028_min8529_admitted_roof_smoke_watch_return_report_and_assault_outcome"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-027-min8529-roof-watch-repair-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-028/immutable-executable/e08b1f97305c1da426543d027c336eb02386bf0a78cd326485743f09647423c2/cataclysm-tiles",
+      "profile": "first-smoke-027-min8529-roof-watch-repair-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_min8529_post_admission_continuation",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load disposable min8529 copy matching all 61 manifest file hashes; verify same-run World, turn5263780/min8529, Safe Off, no clairvoyance, fire/roof source, active outing gen1 and scout IDs4/5."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r028_roof_outing_watch_return_report_and_assault_continuation",
+      "objective": "Continue the existing admitted outing only. Do not relight, replay setup, move the player, or claim new smoke causation. Track IDs4/5 from OMT132,142,0 through legal two-OMT approach and actual ground-level three-OMT watch selection. Credit no watch time before physical arrival. Observe finite assessment, same-ID physical return, delivered report, then any actual night assault through actor action, damage and outcome. Quicksave at meaningful transitions with the advertised action alone and verify saved turn.",
+      "proof_targets": [
+        "effective profile and exact 61-file saved copy identity; R028 executable/source/runtime binding",
+        "same-run native World at turn5263780/min8529; Safe Off; no clairvoyance; source/camp/outing/actor identity",
+        "same-ID scouts 4/5 physically reach legal two-OMT approach and selected ground-level three-OMT watch",
+        "finite native watch assessment completion, physical return receipts and delivered report",
+        "any actual raid/assault and actor-bound action/damage/outcome; performance and cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Disposable copy only; no owner-save changes or player movement",
+        "No relight, debug injection, forced contact/report, clairvoyance, cloak or invulnerability",
+        "Physical arrival is required before assessment time counts",
+        "Preserve exact same actor IDs and operation generation",
+        "Quicksave action alone; verify native saved turn"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_min8529_post_admission_continuation",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r028_roof_outing_watch_return_report_and_assault_continuation"
+    ],
+    "terminal_persistence": [
+      "r028_roof_outing_watch_return_report_and_assault_continuation"
+    ],
+    "artifact_verdict": [
+      "r028_roof_outing_watch_return_report_and_assault_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_min8529_post_admission_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the already admitted roof-smoke outing from byte-exact min8529 under R028; establish actual same-ID watch travel and completion, physical return/report, and any resulting assault outcome.",
+    "failure_rule": "Record the first changed divergence. Do not credit assessment before physical arrival or infer assault/combat success from labels/proximity."
+  },
+  "raid_actor_trace": true
+}

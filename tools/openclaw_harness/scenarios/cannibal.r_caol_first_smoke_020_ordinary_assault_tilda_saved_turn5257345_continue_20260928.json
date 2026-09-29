@@ -1,0 +1,165 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_ordinary_assault_tilda_saved_turn5257345_continue_20260928",
+  "description": "Disposable ordinary-view continuation from saved follower Tilda at turn5257345 after a source-attributed ID4 attack; observe next combat outcome, including ID7 and unrelated ferals separately.",
+  "profile": "first-smoke-020-tilda-combat-continuation-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_5257260_combat_continue": "ordinary_view_combat_outcome_saved_turn_5257260_same_position",
+    "capabilities.r_caol.first_smoke_020_tilda_combat_continuation": "ordinary_view_post_hit_tilda_actor2_saved_turn_5257345"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-tilda-combat-continuation-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-tilda-combat-continuation-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_saved_Tilda_turn5257345",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Copy manifest build_logs/first-smoke-020/tilda-combat-continuation-copy-manifest.json; verify effective userdir, loaded World turn5257345 and Tilda ID2 [3154,3450,0], saved player payload SHA f444976a5271929c6a6a3b0cd87354963ffffa013a1dd16d8bdc580a815de01f, current Safe Off and both clairvoyance mutations absent. This is an after-signal combat continuation, not a fresh signal arm."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms_after_saved_combat_copy",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No save or world fixture transforms beyond the exact disposable copy are declared."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "continue_saved_combat_through_next_damage_or_outcome",
+      "expected_visible_fact": "No save or world fixture transforms beyond the exact disposable copy are declared.",
+      "objective": "From verified saved turn5257345 as follower Tilda ID2, preserve ordinary view, safe mode Off and both clair mutations absent. Prior run directly attributed multiple ID4 Ross hits to Tilda; at saved turn ID4 was inactive and ID7 was the remaining active hostile member at OMT [131,143,0]. Inspect current native state, then use advertised ignore/continue intentionally for a short combat interval and inspect the result. Record same-ID raid and nearby feral/zombie positions, actions, health and every source-attributed hit/death. Quicksave at the next real hit or terminal outcome; stop only at that evidence or a concrete unchanged gate.",
+      "proof_targets": [
+        "source/run/profile and exact saved input identity",
+        "same-run World, current turn and loaded Tilda actor ID2",
+        "Safe Off and both clairvoyance mutations absent",
+        "native ID7 and other nearby NPC metadata independent of sight",
+        "source-attributed next damage or terminal result",
+        "durable save turn and exact process cleanup"
+      ],
+      "invariants": [
+        "No debug contact/kill, teleport, injected signal, cloak or invulnerability",
+        "Preserve tactical position unless consequential threat requires otherwise",
+        "Do not replay prior smoke/scout/watch/return/report stages",
+        "Use ignore/continue intentionally through combat once at hostile prompt; capture short checkpoints and damage source",
+        "Track unseen actors by native metadata, not sight",
+        "Do not quit solely on hostile-survivor prompt"
+      ],
+      "evidence_contract": {
+        "claim": "Combat continuation after prior signal/contact; the copied save and earlier ID4->Tilda damage are setup/history only. This run must produce its own native action/damage/outcome evidence.",
+        "failure_rule": "Keep actor/source attribution exact, distinguish unrelated ferals/zombies from raid IDs4/7, do not inject contact or kill."
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_saved_Tilda_turn5257345",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "continue_saved_combat_through_next_damage_or_outcome"
+    ],
+    "terminal_persistence": [
+      "continue_saved_combat_through_next_damage_or_outcome"
+    ],
+    "artifact_verdict": [
+      "continue_saved_combat_through_next_damage_or_outcome"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms_after_saved_combat_copy"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Same task, ordinary-view combat continuation from exact saved Tilda state at turn5257345; not smoke/signal causation proof.",
+    "failure_rule": "Continue through a short intentional combat interval and credit only same-run source-attributed damage or an actual outcome."
+  }
+}

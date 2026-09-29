@@ -48,6 +48,8 @@ extern int savegame_loading_version;
 class input_context;
 
 input_context get_default_mode_input_context();
+std::vector<std::pair<std::string, std::string>> openclaw_harness_world_actions(
+    const input_context &context );
 
 void openclaw_harness_semantic_wait_activity_complete();
 void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,

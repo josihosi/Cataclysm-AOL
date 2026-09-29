@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the byte-exact R013 forest-v2 signal-off save with reviewed R015 routing, the first eligible scheduler pass explores an alternate sector/intermediate/known route after sector0 rejection, then any natural same-ID outing is followed through physical endpoint, return/report and actual cargo accounting.",
+  "material_proof": "Disposable profile .userdata/first-smoke-015-forest-v2-native-handoff-20260927; 55-file byte-equal copy receipt build_logs/first-smoke-015/disposable-copy-receipt.json, manifest SHA-256 dc2f86d4e546344cdd6852eba2d71e4fc49edd9f026e6866583711a6732daea3, player turn5277658/minute8760, dimension_data hash 5c5dcfa7dcf88f39e48646695e7dc500aa1a2dc37c967d3ccfdacf423d270615. IDs4/5 eligible, 6 reserve; signal off; no outing. Executable immutable bbd28f5d... bound by receipt e158c362... to source a4faf55b... .",
+  "current_uncertainty": "Whether bounded source-off search after sector0 cost50 rejection selects a reachable alternate/intermediate/known route; if an outing starts, whether same IDs reach its physical endpoint and return/report with actual cargo.",
+  "material_contradiction": [
+    "effective profile/save/turn/migration/source/executable binding differs",
+    "bounded scheduler rejects all alternatives despite a reachable eligible candidate under source-defined rules",
+    "physical visit or scavenge claimed without same-ID endpoint/action and item/cargo evidence",
+    "fire/smoke or inserted knowledge/lead/outing/report/route/dispatch appears without native cause"
+  ],
+  "forbidden_shortcuts": [
+    "replay signal admission",
+    "mutate save or inject knowledge/leads/actors/outing/report/route/target/dispatch",
+    "force movement or treat planned waypoint/watch as physical scavenge",
+    "credit cargo without actual inventory/haul/supply change"
+  ],
+  "honest_stop_conditions": [
+    "preserve exact first eligible search result and route reasons",
+    "if dispatched follow same actors to physical endpoint and first return/report boundary",
+    "stop and preserve any same load/migration fault without repeating it",
+    "gracefully save/close every owned PID/birth"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

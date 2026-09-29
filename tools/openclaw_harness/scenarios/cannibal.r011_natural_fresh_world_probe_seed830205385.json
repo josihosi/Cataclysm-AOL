@@ -1,0 +1,132 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r011_natural_fresh_world_probe_seed830205385",
+  "description": "Zero-credit R011 feasibility probe using normal harness_new_world generation for one disposable seed; inspect exact native map, overmap camps, roof/source geometry, visibility and natural roster only.",
+  "profile": "r011-fresh-world-probe-seed830205385",
+  "world": "",
+  "harness_new_world": "r011_seed830205385",
+  "harness_raw_seed": "830205385",
+  "harness_new_world_scenario": "evacuee",
+  "observer_character": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r011.natural_fresh_world_probe": "normal_harness_new_world_generation_then_exact_native_world_geometry_and_natural_roster_inspection",
+    "runtime.entry_mode": "cockpit_live_session",
+    "world.hostile_policy": "cannibal_camp"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.continue",
+      "cockpit:run.finish",
+      "semantic:world.look",
+      "semantic:world.toggle_safemode"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r011-fresh-world-probe-seed830205385",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-034/immutable-executable/33ea832b2ab6aadd9ff7692775bba5251ad0b7958af37ad2754cc32a6426fc26/cataclysm-tiles",
+      "profile": "r011-fresh-world-probe-seed830205385",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native startup and cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "generate_and_bind_one_natural_seed_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.look",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "inspect_exact_natural_world_candidate_only",
+      "objective": "Inspect the newly generated native map and overmap records, exact natural special identity/location, candidate roof/base/fire-source geometry, weather, eligibility calculations for physical smoke and light paths, and naturally materialized cannibal roster actors and power. Stop at first proven mismatch. Do not advance ordinary game time beyond the minimum needed for the first world/map/overmap/actor records; no long waits before complete feasibility is established.",
+      "proof_targets": [
+        "scenario identity, seed, generated world master digest and runtime binding match the selected normal-world route",
+        "exact current map/overmap/site/actor artifact identities and hashes",
+        "natural cannibal overmap special and OMT proven without fixture transformation",
+        "candidate roof, real source and camp geometry satisfy smoke and light path eligibility from observed or calculable native fields",
+        "naturally materialized actor IDs, party roster and bounded capable party details sufficient for response-threshold comparison"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.finish"
+      ],
+      "invariants": [
+        "zero-credit world-generation/inspection only",
+        "do not alter owner saves, camp footprint, actor power, roster or knowledge, light cap, signals or contact",
+        "do not infer cannibal feasibility from a bandit-only site or fixture-transformed special",
+        "do not perform long native waits before exact candidate geometry and natural roster feasibility are proven",
+        "stop immediately on first exact mismatch"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "generate_and_bind_one_natural_seed_world"
+    ],
+    "production_behavior": [
+      "inspect_exact_natural_world_candidate_only"
+    ],
+    "terminal_persistence": [
+      "inspect_exact_natural_world_candidate_only"
+    ],
+    "artifact_verdict": [
+      "inspect_exact_natural_world_candidate_only"
+    ],
+    "disallowed_shortcuts": [
+      "generate_and_bind_one_natural_seed_world",
+      "inspect_exact_natural_world_candidate_only"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Normal fresh-world generation for one declared raw seed followed by zero-credit exact inspection of native terrain, overmap specials and natural actors; feasibility only.",
+    "failure_rule": "Stop at first exact natural-world mismatch; do not infer cannibal feasibility from a bandit-only site or fixture-transformed special."
+  }
+}

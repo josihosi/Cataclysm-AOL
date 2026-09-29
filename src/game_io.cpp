@@ -109,8 +109,8 @@ bandit_live_world::local_projection_reconciliation_result
 reconcile_loaded_bandit_live_world_projections()
 {
     std::map<character_id, bandit_live_world::local_projection_claim> claims_by_npc;
-    bool conflicting_claim = false;
-    const auto collect_claim = [&claims_by_npc, &conflicting_claim]( const npc & member ) {
+    std::vector<bandit_live_world::local_projection_claim> conflicting_claims;
+    const auto collect_claim = [&claims_by_npc, &conflicting_claims]( const npc & member ) {
         const bandit_live_world_projection_lease &lease =
             member.get_bandit_live_world_projection_lease();
         if( !lease.present ) {
@@ -118,18 +118,23 @@ reconcile_loaded_bandit_live_world_projections()
         }
         const bandit_live_world::local_projection_claim claim = { member.getID(), lease.site_id,
             lease.activity_id, lease.owner, lease.generation, lease.handoff_epoch,
-            lease.last_advanced_minutes };
+            lease.last_advanced_minutes, member.pos_abs(), !member.is_active(), true,
+            !member.is_dead() };
         const auto inserted = claims_by_npc.emplace( claim.npc_id, claim );
         if( inserted.second ) {
             return;
         }
-        const bandit_live_world::local_projection_claim &existing = inserted.first->second;
+        bandit_live_world::local_projection_claim &existing = inserted.first->second;
         if( existing.site_id != claim.site_id || existing.activity_id != claim.activity_id ||
             existing.owner != claim.owner || existing.generation != claim.generation ||
             existing.handoff_epoch != claim.handoff_epoch ||
             existing.last_advanced_minutes != claim.last_advanced_minutes ) {
-            conflicting_claim = true;
+            conflicting_claims.push_back( existing );
+            conflicting_claims.push_back( claim );
         }
+        existing.copies_agree_on_position &= existing.physical_position == claim.physical_position;
+        existing.all_copies_unloaded &= claim.all_copies_unloaded;
+        existing.all_copies_alive &= claim.all_copies_alive;
     };
     for( const shared_ptr_fast<npc> &member : overmap_buffer.get_overmap_npcs() ) {
         if( member ) {
@@ -143,7 +148,9 @@ reconcile_loaded_bandit_live_world_projections()
     for( npc &member : g->all_npcs() ) {
         collect_claim( member );
     }
-    if( conflicting_claim ) {
+    if( !conflicting_claims.empty() ) {
+        bandit_live_world::quarantine_loaded_local_projection_claims(
+            overmap_buffer.global_state.bandit_live_world, conflicting_claims );
         return bandit_live_world::local_projection_reconciliation_result::rejected;
     }
     std::vector<bandit_live_world::local_projection_claim> claims;
@@ -152,8 +159,25 @@ reconcile_loaded_bandit_live_world_projections()
            bandit_live_world::local_projection_claim> &entry : claims_by_npc ) {
         claims.push_back( entry.second );
     }
-    return bandit_live_world::reconcile_loaded_local_projections(
-               overmap_buffer.global_state.bandit_live_world, claims );
+    std::vector<character_id> retired_old_leases;
+    const auto result = bandit_live_world::reconcile_loaded_local_projections(
+                            overmap_buffer.global_state.bandit_live_world, claims,
+                            &retired_old_leases );
+    if( result == bandit_live_world::local_projection_reconciliation_result::rejected ) {
+        return result;
+    }
+    // The acknowledged crossing owns the abstract pair now.  Retire the
+    // attested old lease from both save owners so a second load is quiet.
+    for( const character_id id : retired_old_leases ) {
+        if( const shared_ptr_fast<npc> member = overmap_buffer.find_npc( id ) ) {
+            sync_bandit_live_world_projection_lease_copies(
+                *member, bandit_live_world_projection_lease() );
+        } else if( npc *active = g->find_npc( id ) ) {
+            sync_bandit_live_world_projection_lease_copies(
+                *active, bandit_live_world_projection_lease() );
+        }
+    }
+    return result;
 }
 
 } // namespace

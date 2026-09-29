@@ -1,0 +1,191 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_ordinary_assault_8420_northeast_interior_20260928",
+  "description": "Native interior reposition from exact ordinary-view turn5257223/minute8420 committed-raid checkpoint; preserve prior smoke/report and observe same-ID raid actors.",
+  "profile": "first-smoke-020-northeast-interior-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_8420_northeast_interior": "ordinary_view_committed_raid_interior_position_from_turn_5257223_minute_8420"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-northeast-interior-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-northeast-interior-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_byte_verified_turn5257223_minute8420_copy",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the exact disposable profile first-smoke-020-northeast-interior-20260928. Verify effective userdir, same-run World/current turn5257223, player [3156,3449,0], Safe Off and both clairvoyance mutations absent. Read current native metadata for raid IDs4/7, defenders2/3 and all nearby ferals. Earlier smoke/scout/watch/return/report and ID4->Casey hit remain prior-run evidence."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_world_and_native_controls",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No save, camp, map, roster or signal transforms. Only subsequent native player actions may change position."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "ordinary_native_interior_position_then_raid_observation",
+      "objective": "From the exact turn5257223/minute8420 checkpoint, use ordinary native movement east one tile to [3157,3449,0], then north along x3157 to [3157,3443,0]. Stop on a rejected movement and inspect current map instead of improvising a route. Verify each step response and actor/health metadata. Save at the target; then use useful safe waits while tracking same-ID raid actors4/7, defenders2/3 and ferals until concrete raid action/target/harm/casualty or repeated unchanged gate. Inspect and attribute any first harm before choosing combat-through-outcome ignore mode. Keep fire and both clairvoyance mutations unchanged/off; no forced contact, debug kill, curtain, stairs or outdoor route.",
+      "proof_targets": [
+        "effective copied profile, byte-exact save/config manifest and loaded turn",
+        "Safe Off; both clairvoyance mutations absent",
+        "native metadata positions/actions/health for IDs4/7, defenders2/3 and nearby ferals",
+        "player native path and response at each step; exact tile destination",
+        "same-ID physical raid pursuit/action/target/damage/casualty or first repeated gate",
+        "actual quicksave turn, source/build/session identity, wait interruptions and timings"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.move",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No debug contact/kill, teleport, injected signal or map/camp/roster edit",
+        "Ordinary view; no clairvoyance, cloak or invulnerability",
+        "Do not repeat accepted smoke/scout/watch/return/report stages",
+        "Avoid stair block, curtain interaction, house doors and exposed outdoor tile",
+        "Track unseen actors from saved/native metadata, never screen visibility alone",
+        "A short no-harm frame or absent local tile is not a divergence"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.move",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.move",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish",
+        "harness:debug.ignore"
+      ],
+      "evidence_contract": {
+        "claim": "Continuation-only ordinary-view evidence from exact disposable turn5257223/minute8420 save with native interior player reposition. Earlier signal/discovery/report/Casey hit remain bound to source run.",
+        "failure_rule": "Credit only current-run actor/action/damage and save fields. A first changed contact/harm or rejected legal route is a diagnostic boundary; no absent result from one brief frame."
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_byte_verified_turn5257223_minute8420_copy",
+      "bind_same_run_world_and_native_controls"
+    ],
+    "production_behavior": [
+      "ordinary_native_interior_position_then_raid_observation"
+    ],
+    "terminal_persistence": [
+      "ordinary_native_interior_position_then_raid_observation"
+    ],
+    "artifact_verdict": [
+      "ordinary_native_interior_position_then_raid_observation"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From an exact disposable copy of the clean ordinary-view arm saved after committed contact, test one native local sidestep and assess actor-level outcomes. Prior signal/discovery stages remain bound to the original run.",
+    "failure_rule": "Credit only current-run physical actor and damage records. Prior run evidence may establish the saved continuation premises but cannot prove new movement or combat in this run."
+  }
+}

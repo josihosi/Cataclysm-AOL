@@ -1,0 +1,31 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-043",
+  "scenario": "control.r_caol_first_smoke_043_quiet_individual_20260929",
+  "objective": "From the byte-identical compatible start, perform the same single pause and Tab, then ten individual native Tabs. Compare exact receipt count/order and bounded native state with the repeat arm.",
+  "outcome": "R043 quiet_individual source-bound native control path preserves exact requests and receipts on a disposable save.",
+  "witness_charter": "tools/openclaw_harness/charters/control.r_caol_first_smoke_043_quiet_individual_20260929-witness.json",
+  "constraints": [
+    "Only Luna launches or operates the game after R040 exact PID/birth/exit release.",
+    "Use relative profile first-smoke-043-quiet-individual-20260929 and R043 immutable executable build_logs/first-smoke-043/immutable-executable/5dfe58757ac4ae09b428af3854917ac565009075c1a348693ff2bb7b00c99fd2/cataclysm-tiles.",
+    "Do not alter or conflate passive R040 raid, R041 artifact, R042 fixtures or original R012 save.",
+    "Retain exact receipt IDs, native turn/moves, owner and health; save and gracefully exit."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r043_controls",
+        "op": "eq",
+        "value": "quiet_individual_receipts",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

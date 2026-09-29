@@ -1,0 +1,149 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_r011_actor_diagnostic_5277095",
+  "description": "Source-bound, no-clair native diagnostic continuation from the exact 5277095 save; record only reserved NPC5/NPC7 target/action/goto/path state. No replay of scout/report stages and no gameplay outcome credit.",
+  "profile": "first-smoke-011-actor-diagnostics-5277095-20260926",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_011_actor_diagnostic": "reserved_npc5_npc7_current_target_selected_action_local_order_path",
+    "runtime.entry_mode": "cockpit_live_session",
+    "world.hostile_policy": "cannibal_camp"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_contact",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-actor-diagnostics-5277095-20260926",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r011-actor-trace-20260926/cataclysm-tiles",
+      "profile": "first-smoke-011-actor-diagnostics-5277095-20260926",
+      "fixture": "none",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "input": [
+        "advertised native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_repaired_approach_checkpoint_007",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.toggle_safemode"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r011_actor_action_trace_after_attack_now",
+      "objective": "Resume the exact disposable 5277095 committed-contact save under the isolated actor-trace build. Do not replay signal, scout, return, report or dispatch. Capture the first few native actor decisions for the same reserved NPC IDs 5 and 7, including current target, AI danger, selected execute_action, moves, goto and path. This is a diagnostic continuation only; it makes no assault or fix acceptance claim.",
+      "proof_targets": [
+        "byte-exact disposable saved turn 5277095 and effective userdir/source/executable/session binding",
+        "World readiness, Safe Off, both clairvoyance mutations absent, committed raid operation hostile:2 and members 5/7",
+        "run-bound actor action records for IDs 5 and 7 with same-turn operation context, target, danger, selected action, moves, goto and path",
+        "short native continuation with safe/stop wait mode, actual interruptions and fresh save identity/turn if state meaningfully advances",
+        "graceful process cleanup and exact PID/birth evidence"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "the copied checkpoint is a continuation of an already smoke-founded approach; do not claim an initially unaware or pre-signal start",
+        "no re-ignition or replay of accepted smoke, scout, watch, return, report or dispatch stages",
+        "no synthetic signal, actor, route, contact, dispatch, report or combat outcome",
+        "do not count proximity or a target OMT summary as physical arrival or contact",
+        "contact is credited only after all required surviving reserved members physically arrive at the target",
+        "do not alter the original profile, save, run, or process",
+        "verify Safe Off; toggle only when currently On",
+        "capture and interpret each startup diagnostic separately; authorized I/i dismissal is recovery, not clean-load proof",
+        "no clairvoyance mutation setup; verify absence natively; clairvoyance viewing run remains a separate saved record",
+        "do not replay or re-credit discovery, scout watch/return/report, dispatch, or approach stages",
+        "trace is opt-in, bounded, and limited to reserved NPC5/NPC7 during committed local raid; default-off runs emit no actor trace",
+        "never attribute the earlier R010 player death without actor-level attacker/target evidence",
+        "do not continue an extended wait after a divergent actor decision or consequential harm"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_repaired_approach_checkpoint_007"
+    ],
+    "production_behavior": [
+      "r011_actor_action_trace_after_attack_now"
+    ],
+    "terminal_persistence": [
+      "r011_actor_action_trace_after_attack_now"
+    ],
+    "artifact_verdict": [
+      "r011_actor_action_trace_after_attack_now"
+    ],
+    "disallowed_shortcuts": [
+      "r011_actor_action_trace_after_attack_now"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "One source-bound native continuation identifies the per-actor target/action/goto/path state of reserved NPCs 5 and 7 after attack_now at committed local contact; this is diagnostic evidence only.",
+    "failure_rule": "No gameplay outcome is credited from gate posture, target OMT, player sight or trace presence alone. A causal product branch requires same-turn actor action/target/path evidence; only then propose a branch-specific regression."
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r038_min9065_roof_approach_stairs_20260929",
+  "description": "Fresh R038 native continuation from exact min9065 roof report: observe selected hostile party, connected ground approach, real doorway and stairs, upstairs search and combat; safe-wait only for real prompts.",
+  "profile": "first-smoke-038-r038-roof-response-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r037_r035_roof_watch": "r035_min8720_both_typed_roof_signals_native_safe_wait_assessment_report_response",
+    "capabilities.r_caol.first_smoke_011_r038_roof_assault": "r038_min9065_roof_report_connected_approach_real_stairs_upstairs_search_combat_safe_wait"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-038-r038-roof-response-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-038/immutable-executable/fd977100cd81ef4ddbbb2e4d1418cee4aff9f52c2966a27b48c31ca3e55d4e50/cataclysm-tiles",
+      "profile": "first-smoke-038-r038-roof-response-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_min9065_roof_report_into_fresh_r038_profile",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the fresh byte-exact 61-file copy of R037 turn5295904/min9065; verify immutable R038 executable/source and effective relative userdir. Verify same-run World, saved turn, stationary player [3155,3448,1], Safe Off, no clair/pending input, current weather/roof fire, generation1 report revision1 and scout IDs4/5 with no replay."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_min9065_native_world_r038",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r038_native_roof_response_connected_approach_stairs_combat",
+      "objective": "Continue only enough native time for the existing roof response scheduler. Preserve report source/target [131,143,1] separately from physical approach and camp anchor [135,137,0]. Track the exact selected party actors from home through overmap, ground door, actual stairs, upstairs search and attack/damage. Exercise current safe-wait only if natural harmless distraction and genuine hazard prompts occur.",
+      "proof_targets": [
+        "61/61 disposable save files match the original source manifest; effective userdir is the fresh R038 profile; same-run World, exact saved turn/minute and source binding",
+        "Safe Off, no clairvoyance mutations, no pending request, current weather/fire, player position, report revision1 target/source [131,143,1], camp anchor [135,137,0]",
+        "actual response decision, selected party actor IDs, power/reserve/margin, route points with z, rally, waypoint, ownership and reason",
+        "same selected actor IDs and native position/goal/path/action/health as actors move from home to overmap, connected ground footprint, real door, stairs, upstairs, contact and combat",
+        "real terrain edge/stair paths; preserve first rejected edge or floor-access-unavailable record and stop unchanged waiting when inaccessible",
+        "attacker action/target plus attributed damage or death; a phase or approach alone is insufficient",
+        "if naturally present, exact harmless prompt id/current choice accepted by safe wait and exact genuine near/pain/attack/damage stop evidence; otherwise mark each path unvalidated",
+        "save at meaningful response, entry and combat boundaries; native save completion and graceful game/bridge/launcher process exit with PID/birth proof"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the new disposable byte-exact copy; never mutate original R037 save or previous evidence",
+        "Do not relight, repeat scouting, redeliver/seed report, alter roster/power/HP/map, use clairvoyance or manufacture faction outcomes/prompts",
+        "Keep report source/target [131,143,1] distinct from physical route endpoint; camp anchor is [135,137,0]",
+        "Keep in-game Safe Mode Off and verify after load/reload/blocked movement; do not toggle when already Off",
+        "Track the actual selected hostile actor IDs continuously; distinguish operation intent/phase from physical movement and combat",
+        "If route or floor access fails, preserve the first rejected native edge/path and stop unchanged waiting",
+        "Use current published safe-wait mode and collect any pending request before new input",
+        "Do not claim upstairs search from ground arrival, operation phase or floor_access_unavailable"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_min9065_roof_report_into_fresh_r038_profile",
+      "bind_same_run_min9065_native_world_r038"
+    ],
+    "production_behavior": [
+      "r038_native_roof_response_connected_approach_stairs_combat"
+    ],
+    "terminal_persistence": [
+      "r038_native_roof_response_connected_approach_stairs_combat"
+    ],
+    "artifact_verdict": [
+      "r038_native_roof_response_connected_approach_stairs_combat"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_min9065_roof_report_into_fresh_r038_profile"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh R038 continuation from R037 min9065 roof report: select a capable party, approach by connected terrain, enter the real ground door, climb actual stairs, search upstairs and attack with attributed damage/death; validate corrected safe-wait only when real eligible prompts occur.",
+    "failure_rule": "Preserve first source-bound divergence. Report source is not physical route endpoint; ground approach is not door entry; phase is not movement; floor_access_unavailable is not upstairs search; selected attack is not a landed hit."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    4,
+    5
+  ],
+  "decision_trace_from_turn": 5295904,
+  "decision_trace_to_turn": 5330000
+}

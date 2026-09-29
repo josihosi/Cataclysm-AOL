@@ -787,7 +787,7 @@ static std::string openclaw_harness_keep_watch_safety( const std::string &run_id
                           damage ? "true" : "false" );
 }
 
-static std::string openclaw_harness_visible_local_facts( const map &here,
+std::string openclaw_harness_visible_local_facts( const map &here,
         const tripoint_bub_ms &avatar_pos, int radius, bool include_unknown, bool include_identity )
 {
     const visibility_variables &cache = here.get_visibility_variables_cache();
@@ -816,21 +816,28 @@ static std::string openclaw_harness_visible_local_facts( const map &here,
                           << ",\"dy\":" << y << ",\"terrain\":"
                           << openclaw_harness_quote_action_value( here.ter( fact_pos ).obj().id.str() )
                           << '}';
-                    const furn_id furniture = here.furn( fact_pos );
-                    if( furniture != furn_str_id::NULL_ID() ) {
-                        facts << ",\"furniture\":" << openclaw_harness_quote_action_value(
-                                  furniture.obj().id.str() );
+                }
+                // The text map uses the same avatar-visible cells as the
+                // native minimap.  These facts describe this tile only;
+                // occupancy and character-specific movement still need the
+                // next native action/observation.
+                facts << ",\"passable\":" << ( here.move_cost( fact_pos ) > 0 ? "true" : "false" );
+                const furn_id furniture = here.furn( fact_pos );
+                if( furniture != furn_str_id::NULL_ID() ) {
+                    facts << ",\"furniture\":" << openclaw_harness_quote_action_value(
+                              furniture.obj().id.str() );
+                }
+                std::ostringstream fields;
+                bool first_field = true;
+                for( const std::pair<const field_type_id, field_entry> &field : here.field_at( fact_pos ) ) {
+                    if( !first_field ) {
+                        fields << ',';
                     }
-                    facts << ",\"fields\":[";
-                    bool first_field = true;
-                    for( const std::pair<const field_type_id, field_entry> &field : here.field_at( fact_pos ) ) {
-                        if( !first_field ) {
-                            facts << ',';
-                        }
-                        first_field = false;
-                        facts << openclaw_harness_quote_action_value( field.first.obj().id.str() );
-                    }
-                    facts << ']';
+                    first_field = false;
+                    fields << openclaw_harness_quote_action_value( field.first.obj().id.str() );
+                }
+                if( include_identity || !first_field ) {
+                    facts << ",\"fields\":[" << fields.str() << ']';
                 }
                 facts << ",\"terrain\":" << openclaw_harness_quote_action_value(
                           here.tername( fact_pos ) );
@@ -1911,6 +1918,7 @@ static std::string openclaw_harness_semantic_step_frame(
           << ",\"state\":" << openclaw_harness_quote_action_value( state )
           << ",\"observed_turn\":" << turn
           << ",\"game_minutes\":" << game_minutes
+          << ",\"avatar_moves\":" << player.get_moves()
           << ",\"producer\":" << openclaw_harness_quote_action_value( producer )
           << ",\"initial_world_ready\":" << ( producer == "hud_world_ready" ? "true" : "false" )
           << ",\"keep_watch_safety\":"
@@ -1935,11 +1943,12 @@ static std::string openclaw_harness_semantic_step_frame(
     return frame_id;
 }
 
-static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_actions(
+std::vector<std::pair<std::string, std::string>> openclaw_harness_world_actions(
     const input_context &context )
 {
     static const std::vector<std::pair<std::string, std::string>> action_ids = {
         { "world.pause", "pause" },
+        { "world.autoattack", "autoattack" },
         { "world.wait", "wait" },
         { "world.quicksave", "quicksave" },
         { "world.save_quit", "save" },
@@ -1948,6 +1957,7 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.drop", "drop" },
         { "world.zone_manager", "zones" },
         { "world.look", "look" },
+        { "world.examine", "examine" },
         { "world.overmap", "map" },
         { "world.messages", "messages" },
         { "world.chat", "chat" },
@@ -2111,6 +2121,7 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
     return {
         { "avatar", avatar_fact.str() },
         { "avatar_status", status.at( "avatar_status" ) },
+        { "avatar_moves", std::to_string( player.get_moves() ) },
         { "avatar_effects", status.at( "avatar_effects" ) },
         { "visible_local", openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true ) },
         { "minimap", minimap.str() },
@@ -2147,6 +2158,7 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
         const std::map<std::string, std::string> labels = {
             { "world.fixture_lamp_turn_off", _( "Inspect the fixture lamp (native examine)" ) },
             { "world.fixture_lamp_bash", _( "Bash the fixture lamp (native source-off)" ) },
+            { "world.examine", _( "Examine nearby terrain or furniture" ) },
             { "world.fire", _( "Fire wielded weapon" ) },
             { "world.reload", _( "Reload wielded weapon" ) },
             { "world.toggle_safemode", _( "Toggle safe mode" ) },
@@ -5709,6 +5721,10 @@ bool game::handle_action()
                         // wait menus, which lets production cadence remain
                         // bound to its actual World owner.
                         act = ACTION_PAUSE;
+                    } else if( request.action_id == "world.autoattack" ) {
+                        // Native Tab target selection and refusal remain in
+                        // avatar_action::autoattack and its ordinary dispatch.
+                        act = ACTION_AUTOATTACK;
                     } else if( request.action_id == "world.wait" ) {
                         // Keep the native action branch authoritative; this merely
                         // selects ACTION_WAIT before handle_action dispatches it.
@@ -5737,6 +5753,8 @@ bool game::handle_action()
                         act = ACTION_ZONES;
                     } else if( request.action_id == "world.look" ) {
                         act = ACTION_LOOK;
+                    } else if( request.action_id == "world.examine" ) {
+                        act = ACTION_EXAMINE;
                     } else if( request.action_id == "world.debug_kill_creature" ) {
                         const std::string result = harness_debug_kill_creature( get_avatar(),
                                                    request.stable_id.value_or( "" ), request.request_id, request.run_id );

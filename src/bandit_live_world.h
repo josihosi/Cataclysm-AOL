@@ -152,6 +152,17 @@ enum class local_projection_reconciliation_result {
 };
 
 struct local_projection_claim {
+    local_projection_claim( character_id npc, std::string site, std::string activity,
+                            std::string claimed_owner, int claimed_generation,
+                            int claimed_epoch, int claimed_minutes,
+                            std::optional<tripoint_abs_ms> position = std::nullopt,
+                            bool unloaded = false, bool positions_agree = true,
+                            bool alive = false ) :
+        npc_id( npc ), site_id( std::move( site ) ), activity_id( std::move( activity ) ),
+        owner( std::move( claimed_owner ) ), generation( claimed_generation ),
+        handoff_epoch( claimed_epoch ), last_advanced_minutes( claimed_minutes ),
+        physical_position( position ), all_copies_unloaded( unloaded ),
+        copies_agree_on_position( positions_agree ), all_copies_alive( alive ) {}
     character_id npc_id;
     std::string site_id;
     std::string activity_id;
@@ -159,6 +170,12 @@ struct local_projection_claim {
     int generation = -1;
     int handoff_epoch = -1;
     int last_advanced_minutes = -1;
+    // Load-only evidence for retiring a lease after a persisted local-to-abstract
+    // crossing.  Ordinary local lease reconciliation does not need these reads.
+    std::optional<tripoint_abs_ms> physical_position;
+    bool all_copies_unloaded = false;
+    bool copies_agree_on_position = true;
+    bool all_copies_alive = false;
 };
 
 struct simulation_advance_cursor {
@@ -338,7 +355,7 @@ struct camp_map_lead {
 };
 
 struct camp_intelligence_map {
-    int schema_version = 5;
+    int schema_version = 6;
     int last_daily_cleanup_minutes = -1;
     int next_near_tick_minutes = -1;
     int next_mid_tick_minutes = -1;
@@ -350,6 +367,7 @@ struct camp_intelligence_map {
     std::string previous_routine_target_lead_id;
     int frontier_radius_omt = 0;
     int frontier_sector_cursor = 0;
+    int frontier_search_cursor = 0;
     std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
     std::vector<camp_map_lead> leads;
 
@@ -832,7 +850,7 @@ struct active_outing_state {
 };
 
 struct hostile_operation_state {
-    int schema_version = 2;
+    int schema_version = 3;
     hostile_operation_kind operation_kind = hostile_operation_kind::none;
     hostile_operation_phase phase = hostile_operation_phase::assembling;
     active_outing_state reservation;
@@ -848,6 +866,10 @@ struct hostile_operation_state {
     int site_search_waypoint = 0;
     int site_search_initial_goods_value = -1;
     bool site_search_waypoint_attempted = false;
+    int site_search_retry_after_turn = 0;
+    // Members physically withdrawing after fear or completed search while
+    // companions can still own committed contact.
+    std::vector<character_id> withdrawing_member_ids;
     bool has_rally = false;
     tripoint_abs_omt rally_omt;
     std::string last_transition_reason;
@@ -1065,6 +1087,7 @@ struct site_record {
     int supply_last_update_minutes = -1;
     int supply_accounted_living_total = 0;
     int supply_member_minute_remainder = 0;
+    int routine_unmet_need_since_minutes = -1;
     int routine_activated_minutes = -1;
     int last_routine_resolved_minutes = -1;
     int next_routine_dispatch_eligible_minutes = -1;
@@ -1322,6 +1345,7 @@ struct structural_outing_plan {
     std::vector<character_id> member_ids;
     std::vector<tripoint_abs_omt> shared_route;
     int frontier_sector = -1;
+    int frontier_search_option_index = -1;
     int frontier_prior_resolved_minutes = -1;
     int frontier_cursor = 0;
     int effective_interest = 0;
@@ -1373,6 +1397,11 @@ struct structural_route_read {
         watch_shared_route( std::move( watch_shared_route_ ) ),
         alternate_watch_shared_route( std::move( alternate_watch_shared_route_ ) ) {}
 };
+
+// The lead and outing keep the observed source z; a watch is selected on the
+// traversable plane used by the scouts.
+std::optional<tripoint_abs_omt> structural_watch_physical_target(
+    const site_record &site, const structural_outing_plan &plan );
 
 struct routine_dispatch_evaluation {
     int need = 0;
@@ -1820,6 +1849,8 @@ int normalize_structural_live_round_trip_cost_omt( int raw_path_cost,
         int source_node_cost, bool diagonal_departure );
 routine_dispatch_evaluation evaluate_hostile_camp_routine_dispatch(
     const site_record &site, int now_minutes, int best_cheap_target );
+int hostile_camp_routine_unmet_need_days( const site_record &site, int now_minutes );
+int hostile_camp_routine_route_budget_omt( const site_record &site, int now_minutes );
 std::string make_structural_bounty_lead_id( const std::string &site_id,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 std::string make_terrain_opportunity_lead_id( const std::string &site_id,
@@ -1928,6 +1959,10 @@ bool normal_shakedown_first_sight_requires_parley( bool player_contact,
 std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
+// Route footing may enter one OMT inside an ordinary three-OMT watch ring.
+// An exposed scout still uses the full watch distance for withdrawal.
+std::optional<int> covert_scout_travel_minimum_target_distance(
+    const active_outing_state &outing );
 std::optional<tripoint_abs_omt> nearest_target_footprint_omt(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
@@ -1963,6 +1998,12 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates,
     const std::vector<tripoint_abs_omt> &alternate_watch_shared_route = {} );
+bool local_elevated_signal_watch_recovery_needed( const site_record &site );
+structural_watch_route_apply_result recover_local_elevated_signal_watch(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const structural_route_read &read,
+    const std::vector<local_route_arrival_member_read> &member_reads,
+    int current_minutes );
 int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
@@ -1977,7 +2018,12 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
         const site_record &site );
 local_projection_reconciliation_result reconcile_loaded_local_projections(
-        world_state &state, const std::vector<local_projection_claim> &claims );
+        world_state &state, const std::vector<local_projection_claim> &claims,
+        std::vector<character_id> *retired_stale_leases = nullptr );
+// A rejected saved claim blocks only operations identified by its site or actor.
+// An unattributable claim keeps the conservative whole-world quarantine.
+void quarantine_loaded_local_projection_claims( world_state &state,
+        const std::vector<local_projection_claim> &claims );
 bool note_active_sortie_started( site_record &site,
                                  const simulation_advance_cursor &expected_cursor,
                                  int current_minutes );
@@ -2032,6 +2078,9 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
         const local_dematerialization_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
         const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+bool begin_abstract_pair_homeward_resume( site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_abstract_resume_progress_read> &member_reads );
 bool record_local_pair_abstract_resume_progress( site_record &site,
         const simulation_advance_cursor &expected_cursor, int current_minutes,
         const std::vector<local_abstract_resume_progress_read> &member_reads );
@@ -2115,6 +2164,10 @@ authorized_hostile_operation_plan plan_hostile_operation_with_authorized_respons
 std::optional<canonical_hostile_operation_route> canonicalize_hostile_operation_route(
             const std::vector<tripoint_abs_omt> &target_to_origin_path,
             const tripoint_abs_omt &anchor, const tripoint_abs_omt &target_omt );
+std::optional<canonical_hostile_operation_route> canonicalize_hostile_operation_route(
+            const std::vector<tripoint_abs_omt> &approach_to_origin_path,
+            const tripoint_abs_omt &anchor, const tripoint_abs_omt &approach_omt,
+            const tripoint_abs_omt &reported_target_omt );
 bool apply_hostile_operation_plan( site_record &site, const hostile_operation_plan &plan );
 bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
         const authorized_hostile_operation_plan &authorized_plan );
@@ -2140,6 +2193,12 @@ hostile_operation_player_relationship hostile_operation_player_relationship_for(
     const world_state &state, character_id npc_id );
 bool release_shakedown_combat_on_player_attack( world_state &state, character_id npc_id );
 bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
+// A local committed raid, or a shakedown whose Fight branch has been activated,
+// owns this unresolved NPC's immediate action choices.
+bool is_active_local_assault_member( const site_record &site, character_id npc_id );
+const site_record *active_local_assault_site_for( const world_state &state, character_id npc_id );
+const site_record *active_hostile_withdrawal_site_for( const world_state &state,
+        character_id npc_id );
 struct covert_scout_relationship_read {
     scout_phase phase = scout_phase::assembling;
     std::vector<tripoint_abs_omt> target_footprint;
@@ -2335,7 +2394,8 @@ bool update_member_state( site_record &site, character_id npc_id, member_state n
 bool record_matching_external_outing_casualty( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         character_id npc_id, member_state casualty_state, int current_minutes,
-        const std::string &summary );
+        const std::string &summary,
+        std::optional<tripoint_abs_ms> observed_position = std::nullopt );
 bool reconcile_matching_hostile_operation_deaths( site_record &site,
         const simulation_advance_cursor &expected_cursor,
         const std::vector<character_id> &dead_member_ids, int current_minutes,

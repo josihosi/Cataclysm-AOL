@@ -35,3 +35,17 @@ identities and full-retrieval handles; omitted detail is not absent evidence.
 Keep current task knowledge in the existing `.de67` context/ledger surfaces. Run artifacts under
 `.userdata/*/harness_runs/` and session bindings under `.userdata/*/sessions/` or
 `.userdata/openclaw_harness/bridge-sessions/` are evidence, not current owner instructions.
+
+## Scheduled mutation review focus
+
+For exclusive mutation reviews, retain Josef's latest coordinator conversation and inspect actual
+playtest worker transcripts when diagnosing friction. Start from intended survival gameplay:
+a cannibal raid killing the player can be success; passive committed attackers are a divergence.
+Trace repeated fire/wait/movement mistakes to delivered instructions, current controls and game
+visibility. Improve the existing harness knowledge base, compact observations or native-action
+macros when evidence supports them; remove contradictory advice rather than accumulating gates.
+Use the existing in-game LLM snapshot only as a reference and leave it unchanged. Respect actual
+crashes, impassability and failed recovery; do not infer that every apparent blocker is a game bug
+or that every blocker is imaginary. Reuse prior review findings and compare subsequent actual use;
+written guidance alone is not proof of adoption. This standing focus adds no background review,
+fixed audit quota or new orchestration layer.

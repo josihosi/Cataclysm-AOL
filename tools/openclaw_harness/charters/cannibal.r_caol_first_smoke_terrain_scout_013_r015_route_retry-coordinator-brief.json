@@ -1,0 +1,7 @@
+{
+  "objective": "Continue R013 as the second native arm after R011 and reviewed R015. Use only the byte-exact minute8760/turn5277658 forest-v2 source-off disposable profile. At the first eligible pass >=9540, capture whether sector0 cost50 rejection leads to an alternate sector/intermediate/known route within the bounded search. Follow same IDs through physical endpoint, return/report and actual cargo; watch is not scavenge. Preserve prior R012 no-fire and prior road return evidence.",
+  "profile": "first-smoke-015-forest-v2-native-handoff-20260927",
+  "executable": "build_logs/first-smoke-015/immutable-executable/bbd28f5d93f1a53c62dcb671920af074f345660584fa13c1e73bd7923b99a44a/cataclysm-tiles",
+  "source_sha256": "a4faf55b4175b00a4b0182dfc74e718a0432aaa5d0c7e644576c03544ef839c5",
+  "executable_sha256": "bbd28f5d93f1a53c62dcb671920af074f345660584fa13c1e73bd7923b99a44a"
+}

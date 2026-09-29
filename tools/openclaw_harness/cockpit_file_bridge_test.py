@@ -105,6 +105,45 @@ ACTION_SUCCESSOR_OBSERVATION_CHILD = (
 
 
 class CockpitFileBridgeTest(unittest.TestCase):
+    def test_explicit_cleanup_before_first_descriptor_reaps_silent_controller(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", "import time; time.sleep(60)"],
+                binding_id="bound-a", require_session_ready=True)
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if bridge._child is not None and (directory / "status.json").is_file():
+                        status = json.loads((directory / "status.json").read_text())
+                        if status.get("phase") == "awaiting_startup_hud_or_session_descriptor":
+                            break
+                    time.sleep(0.01)
+                else:
+                    self.fail("silent child did not reach pre-descriptor wait")
+                self.assertEqual(bridge.cleanup(directory, "bound-a"),
+                                 {"ok": True, "cleanup": "requested"})
+                thread.join(4)
+                self.assertFalse(thread.is_alive(), "explicit cleanup must not wait for descriptor")
+                final = json.loads((directory / "status.json").read_text())
+                self.assertEqual(final["state"], "cleaned")
+                self.assertEqual(final["reason"], "explicit_pre_descriptor_cleanup")
+                self.assertEqual(final["cleanup"]["status"], "accepted")
+                self.assertEqual(final["cleanup"]["ownership"],
+                                 "unconfirmed_missing_process_record")
+                self.assertIsNotNone(bridge._child.poll())
+                marker = json.loads((directory / "controls" / "pre-descriptor-cleanup.json").read_text())
+                self.assertEqual(marker, {"control": "cleanup", "binding_id": "bound-a"})
+                self.assertEqual(bridge.cleanup(directory, "bound-a"),
+                                 {"ok": True, "cleanup": "already_accepted"})
+            finally:
+                if bridge._child is not None and bridge._child.poll() is None:
+                    bridge._child.terminate()
+                    bridge._child.wait(timeout=3)
+                thread.join(3)
+
     def test_partial_startup_record_can_timeout_then_resume_without_losing_next_record(self):
         child = (
             "import sys; sys.stdout.write('{\\n'); sys.stdout.flush(); "

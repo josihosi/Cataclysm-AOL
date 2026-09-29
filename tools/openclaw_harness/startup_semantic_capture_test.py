@@ -8,6 +8,41 @@ import startup_harness as harness
 
 
 class NativeOnlyStartupCaptureTest(unittest.TestCase):
+    def test_raid_actor_trace_requires_explicit_bound_run_and_is_not_inherited(self):
+        self.assertEqual(harness.raid_actor_trace_child_environment(False, "run-23"), {})
+        with self.assertRaises(ValueError):
+            harness.raid_actor_trace_child_environment(True, "  ")
+        self.assertEqual(
+            harness.raid_actor_trace_child_environment(True, " run-23 "),
+            {"OPENCLAW_HARNESS_RAID_ACTOR_TRACE": "run-23"},
+        )
+        source = Path(__file__).with_name("startup_harness.py").read_text(encoding="utf-8")
+        self.assertIn('child_environment.pop("OPENCLAW_HARNESS_RAID_ACTOR_TRACE", None)', source)
+        self.assertIn('scenario.get("raid_actor_trace", False)', source)
+
+    def test_scenario_selected_npc_trace_requires_numeric_ids_and_genuine_group(self):
+        self.assertEqual(harness.decision_trace_actor_ids([9, 2, 9]), [2, 9])
+        for invalid in ([0], [-1], [True], ["9"], "9", {"id": 9}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                harness.decision_trace_actor_ids(invalid)
+        self.assertEqual(harness.selected_npc_trace_child_environment("", []), {})
+        with self.assertRaises(ValueError):
+            harness.selected_npc_trace_child_environment("", [9])
+        self.assertEqual(harness.selected_npc_trace_child_environment("signal-off-camp", [2, 9]), {
+            "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID": "signal-off-camp",
+            "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS": "2,9",
+        })
+        self.assertEqual(harness.selected_npc_trace_child_environment(
+            "signal-off-camp", [2, 9], 100, 200)["OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN"], "100")
+        for from_turn, to_turn in ((-1, None), (20, 10), (True, 30)):
+            with self.subTest(bounds=(from_turn, to_turn)), self.assertRaises(ValueError):
+                harness.selected_npc_trace_child_environment("signal-off-camp", [2],
+                                                             from_turn, to_turn)
+        source = Path(__file__).with_name("startup_harness.py").read_text(encoding="utf-8")
+        self.assertIn('child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", None)', source)
+        self.assertIn('child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS", None)', source)
+        self.assertIn('child_environment.pop("OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN", None)', source)
+
     def test_cockpit_bootstrap_admits_an_initial_native_prompt_owner(self):
         frame = {
             "event": "surface_descriptor", "run_id": "bound-run",
@@ -89,12 +124,13 @@ class NativeOnlyStartupCaptureTest(unittest.TestCase):
             with self.subTest(errors=errors):
                 result = harness.startup_proof_classification(
                     ok=True, screen_summary=summary, native_semantic_startup_ready=True, **errors)
-                self.assertEqual(result["status"], "red")
+                self.assertEqual(result["status"], "yellow")
+                self.assertFalse(result["startup_ready_for_actions"])
                 self.assertFalse(result["startup_clean_for_feature_steps"])
         logged = dict(summary, startup_screen_probe={"startup_error_logged": True})
         result = harness.startup_proof_classification(
             ok=True, screen_summary=logged, native_semantic_startup_ready=True)
-        self.assertEqual(result["feature_gate"], "startup_error_logged")
+        self.assertEqual(result["feature_gate"], "native_world_after_diagnostics_unproven")
 
     def test_terminal_native_descriptor_makes_intentional_no_capture_green(self):
         summary = {

@@ -1,11 +1,78 @@
 """The ordinary play response must expose decisions rather than receipts."""
 import json
+from pathlib import Path
 import unittest
 
-from gameplay_display import player_output, bounded_player_output, plain_player_output, world_look
+from gameplay_display import player_output, bounded_player_output, plain_player_output, world_look, display
+
+
+def retained_r014_response(name):
+    path = Path(__file__).with_name("fixtures") / "r014_cli_native_responses.json"
+    return json.loads(path.read_text(encoding="utf-8"))["cases"][name]["response"]
 
 
 class PlayerOutputTest(unittest.TestCase):
+    def test_current_activity_prompt_explains_no_and_ignore_with_native_choices(self):
+        response = retained_r014_response("interruption")
+        current = response["current_input"]
+        snapshot = {"owner": "prompt", "current": {
+            "facts": current["facts_changed"], "actions": current["actions"]}}
+        text = plain_player_output({"ok": True, "state": "collected", "response": response},
+                                   snapshot=snapshot)
+        self.assertIn("NO → play no — continue this time", text)
+        self.assertIn("IGNORE → play ignore — continue; ignore this distraction type for the current activity and backlog", text)
+        manager_target = next(action["stable_id"] for action in current["actions"]
+                              if action["label"] == "MANAGER")
+        self.assertIn("MANAGER → play act prompt.choose --target " + manager_target, text)
+        fallback = plain_player_output({"ok": True, "state": "collected", "response": response})
+        self.assertIn("NO → play no — continue this time", fallback)
+        from gameplay_display import _plain_controls
+        other_prompt = _plain_controls(current["actions"], prompt_title="OTHER_QUERY")
+        self.assertNotIn("continue this time", other_prompt)
+        replaced = plain_player_output({"ok": True, "state": "collected", "response": {
+            "current_input": {"owner": "prompt", "view": "delta", "actions_removed": ["world.wait"],
+                              "facts_changed": current["facts_changed"]}}}, snapshot=snapshot,
+            full_look=False)
+        self.assertIn("Allowed actions replaced — use only these:", replaced)
+        self.assertIn("NO → play no — continue this time", replaced)
+        self.assertIn("IGNORE → play ignore — continue; ignore this distraction type", replaced)
+
+    def test_retained_save_prompt_ordinary_view_omits_completed_wait_operation(self):
+        response = retained_r014_response("save_quit")
+        current = response["current_input"]
+        snapshot = {"owner": "prompt", "current": {
+            "facts": current["facts_changed"], "actions": current["actions"]}}
+        text = plain_player_output({"ok": True, "state": "collected", "response": response},
+                                   snapshot=snapshot)
+        self.assertIn("Save and quit?", text)
+        self.assertIn("YES → play yes", text)
+        self.assertEqual(response["outcome"]["operation"]["state"], "completed")
+        self.assertNotIn("continue this time", text)
+        self.assertNotIn("completed", text)
+        self.assertNotIn("operation", text)
+        self.assertLess(len(text), 250)
+
+    def test_world_controls_distinguish_read_only_look_and_native_openers(self):
+        snapshot = {"current": {"facts": {}, "actions": [
+            {"id": "world.look", "enabled": True},
+            {"id": "world.examine", "enabled": True},
+        ]}}
+        text = world_look(snapshot)
+        self.assertIn("Interact: examine", text)
+        self.assertIn("play look is read-only", text)
+        self.assertIn("world.look opens the native look cursor", text)
+        self.assertIn("world.examine opens native Examine", text)
+
+    def test_world_controls_do_not_offer_disabled_native_openers(self):
+        snapshot = {"current": {"facts": {}, "actions": [
+            {"id": "world.look", "enabled": False},
+            {"id": "world.examine", "enabled": False},
+        ]}}
+        text = world_look(snapshot)
+        self.assertNotIn("world.look opens", text)
+        self.assertNotIn("world.examine opens", text)
+        self.assertNotIn("Interact: examine", text)
+
     def test_enabled_zone_facts_are_not_fabricated_actions(self):
         snapshot = {"owner": "zone_manager", "current": {
             "facts": {"zones": [{"id": "zone-6", "enabled": True,
@@ -143,7 +210,8 @@ class PlayerOutputTest(unittest.TestCase):
             if enabled is None:
                 self.assertIn("permission unknown", text)
             self.assertNotIn("example_request", text)
-            self.assertIn("play --diagnostics controls", text)
+            self.assertIn("play inspect SELECTOR", text)
+            self.assertIn("play controls --diagnostics when needed", text)
 
     def test_journal_guidance_targets_fields_instead_of_entire_observation(self):
         text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
@@ -395,6 +463,95 @@ class PlayerOutputTest(unittest.TestCase):
                 {"id": "world.inspect_npc", "stable_id": "character:2", "label": "Inspect Ada", "enabled": True},
                 {"id": "world.unfamiliar_action", "label": "Unfamiliar", "enabled": True},
                 {"id": "world.fire", "enabled": False}]}}
+
+    def test_optional_local_map_keeps_unknown_wall_door_fire_and_creature_distinct(self):
+        snapshot = self.world_snapshot()
+        facts = snapshot["current"]["facts"]
+        facts["avatar"]["absolute_ms"] = [3158, 3449, 0]
+        facts["minimap"] = {"schema": "caol-native-minimap-v1", "radius": 12, "cells": [
+            {"dx": -3, "dy": -9, "visibility": "clear", "terrain": "closed wood door", "passable": False},
+            {"dx": -2, "dy": -9, "visibility": "clear", "terrain": "open wood door", "passable": True},
+            {"dx": -4, "dy": -9, "visibility": "unknown", "terrain": "reinforced wall"},
+            {"dx": -1, "dy": 0, "visibility": "clear", "terrain": "reinforced wall", "passable": False},
+            {"dx": 1, "dy": 0, "visibility": "clear", "terrain": "floor", "passable": False},
+            {"dx": 2, "dy": 0, "visibility": "clear", "terrain": "floor", "passable": False},
+            {"dx": 3, "dy": 0, "visibility": "clear", "terrain": "floor", "passable": True},
+            {"dx": 0, "dy": 1, "visibility": "clear", "terrain": "window with closed curtains", "passable": False},
+            {"dx": 2, "dy": -1, "visibility": "clear", "terrain": "floor", "passable": True},
+        ]}
+        facts["visible_local"] = [{"dx": 1, "dy": 0, "visibility": "clear", "terrain": "floor",
+                                   "furniture": "f_brazier", "fields": ["fd_fire"]}]
+        facts["visible_entities"] = [
+            {"name": "Casey Bolton", "kind": "npc", "attitude": "friendly", "dx": 2, "dy": -1,
+             "absolute_ms": [3160, 3448, 0]},
+            {"name": "roof observer", "kind": "npc", "dx": 1, "dy": -1,
+             "absolute_ms": [3159, 3448, 1]},
+        ]
+        ordinary = world_look(snapshot)
+        self.assertIn("play look --map", ordinary)
+        self.assertNotIn("LOCAL MAP", ordinary)
+        mapped = world_look(snapshot, show_local_map=True)
+        self.assertIn("LOCAL MAP z=0 · @ [3158,3449,0] · N up, E right · radius 9", mapped)
+        rows = {line.split(" ", 1)[0]: line.split(" ", 1)[1] for line in mapped.splitlines()
+                if line.startswith(("N9 ", "N1 ", "0 ", "S1 "))}
+        self.assertEqual(rows["N9"][5:8], "?Dd")
+        self.assertEqual(rows["N1"][11], "a")
+        self.assertEqual(rows["0"][8:13], "#@FX.")
+        self.assertEqual(rows["S1"][9], "W")
+        self.assertIn("F burning brazier", mapped)
+        self.assertIn("X other blocked tile", mapped)
+        self.assertIn(". passable tile", mapped)
+        self.assertIn("a Casey Bolton (friendly) E2 N1", mapped)
+        self.assertNotIn("roof observer", mapped.split("LOCAL MAP", 1)[1].split("MOVE —", 1)[0])
+        self.assertEqual(len([line for line in mapped.splitlines() if line.startswith(("N", "S", "0 "))
+                              and len(line.split(" ", 1)[-1]) == 19]), 19)
+
+    def test_local_map_smoke_is_not_reported_as_fire_and_missing_tiles_stay_unknown(self):
+        snapshot = self.world_snapshot()
+        facts = snapshot["current"]["facts"]
+        facts["visible_local"] = [{"dx": 1, "dy": 0, "visibility": "clear", "terrain": "floor",
+                                   "furniture": "f_brazier", "fields": ["fd_smoke"]}]
+        mapped = world_look(snapshot, show_local_map=True)
+        self.assertIn("radius 1", mapped)
+        self.assertIn("S brazier with smoke", mapped)
+        self.assertNotIn("F burning brazier", mapped)
+        self.assertIn("? unobserved", mapped)
+
+    def test_native_json_string_world_observation_renders_optional_map(self):
+        facts = {"avatar": json.dumps({"name": "Test00", "absolute_ms": [3158, 3449, 0]}),
+                 "minimap": json.dumps({"schema": "caol-native-minimap-v1", "radius": 12,
+                                        "cells": [{"dx": -3, "dy": -9, "visibility": "clear",
+                                                   "terrain": "closed wood door", "passable": False}]}),
+                 "visible_local": json.dumps([{"dx": 1, "dy": 0, "visibility": "clear", "terrain": "floor",
+                                                "furniture": "f_brazier", "fields": ["fd_smoke"]}]),
+                 "visible_entities": "[]"}
+        response = {"ok": True, "result": {"observation_id": "run-a:frame:1", "run_id": "run-a",
+                  "game_turn": 5216234, "surface": {"kind": "world", "facts": facts, "actions": []}}}
+        view, snapshot = display(response, refresh=True)
+        result = {"ok": True, "state": "collected", "response": view, "world_observation": True}
+        mapped = plain_player_output(result, snapshot=snapshot, show_local_map=True)
+        self.assertIn("LOCAL MAP z=0", mapped)
+        self.assertIn("turn 5216234", mapped)
+        self.assertIn("D closed door", mapped)
+        self.assertIn("S brazier with smoke", mapped)
+        self.assertNotIn("F burning brazier", mapped)
+
+    def test_retained_native_smoke_observation_preserves_current_visibility(self):
+        fixture = json.loads((Path(__file__).with_name("fixtures") /
+                              "r014_local_map_native_response.json").read_text())
+        facts = {key: json.dumps(value) for key, value in fixture["facts"].items()}
+        response = {"ok": True, "result": {"observation_id": fixture["observation_id"],
+            "run_id": fixture["run_id"], "surface": {"kind": "world", "facts": facts, "actions": []}}}
+        view, snapshot = display(response, refresh=True)
+        mapped = plain_player_output({"ok": True, "state": "collected", "response": view,
+                                      "world_observation": True}, snapshot=snapshot, show_local_map=True)
+        self.assertIn("LOCAL MAP z=0 · @ [3158,3449,0]", mapped)
+        self.assertIn("S brazier with smoke", mapped)
+        self.assertNotIn("F burning brazier", mapped)
+        self.assertIn("Casey Bolton (friendly) W2 S1", mapped)
+        row = next(line for line in mapped.splitlines() if line.startswith("N9 "))
+        self.assertEqual(row, "N9 " + "?" * 19)  # The old save's north doors are not visible here.
+        self.assertIn("O door; passability unreported", mapped)  # A different, visible door is south.
 
     def test_sectioned_look_keeps_game_state_and_all_enabled_controls(self):
         text = world_look(self.world_snapshot())

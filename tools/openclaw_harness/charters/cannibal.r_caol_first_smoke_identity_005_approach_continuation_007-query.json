@@ -1,0 +1,24 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.r_caol.first_smoke_approach_continuation_007",
+      "op": "eq",
+      "value": "same_reserved_npc5_npc7_physical_approach_contact_night_assault",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.entry_mode",
+      "op": "eq",
+      "value": "cockpit_live_session",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": [
+    {
+      "key": "world.hostile_policy",
+      "op": "eq",
+      "value": "cannibal_camp",
+      "minimum_evidence": "declared"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A naturally sampled forest-dominant nearby terrain window produces a real forest scavenge outing after normal smoke admission, with same-ID physical visit, actual cargo/haul, return and report after source-off observation.",
+  "material_proof": "Independent fresh copy of the verified closed-window 45-file owner archive. Only the cannibal_camp overmap placement and its eight footprint terrain cells are relocated from [135,137,0] to [130,138,0]; natural production scan offsets contain 11 forest structural-bounty candidates and one field opportunity. Player save and dimension data remain byte-identical to the owner archive. Source-bound executable must match the selected registry readiness.",
+  "current_uncertainty": "Whether normal smoke admission and the source-off dispatcher select a forest lead; whether actors physically reach its native watch/target, gather items, return, and report.",
+  "material_contradiction": [
+    "the effective profile/save/source/executable differs from the verified selected setup",
+    "any live-world lead, knowledge, actor, outing, report, target, route, or dispatch is injected",
+    "a claimed visit/scavenge lacks same-ID physical location/action and actual cargo evidence",
+    "the dispatch selects a non-forest job or blocks despite a natural eligible forest route; preserve exact ranking/rejection and stop rather than repeating identical cycles",
+    "fire/smoke or setup premises differ without recorded native cause or exact saved turn/process identity is lost"
+  ],
+  "forbidden_shortcuts": [
+    "raw save mutation beyond the recorded clean camp footprint setup",
+    "debug insertion of site knowledge, lead, actor, outing, route, target, report or dispatch",
+    "synthetic light/fire/smoke or debug signal, teleporting, or forced movement",
+    "clairvoyance or cloak",
+    "claiming planned/cursor waypoint is physical visit, or claimed scavenge without inventory/haul change",
+    "replaying untouched no-signal R012 or cycling identical road reports to satisfy a count"
+  ],
+  "honest_stop_conditions": [
+    "stop at the first natural forest scavenge/haul/return/report chain with fresh saved actor evidence",
+    "if a non-forest trip is selected, follow that one trip only to its physical/return/report boundary, then stop and record why it won",
+    "if natural scheduling does not dispatch, capture exact source eligibility, scan cursor, candidate and route rejection at the first eligible evaluation",
+    "preserve the first divergence and gracefully save/close all owned processes"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

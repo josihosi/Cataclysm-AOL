@@ -399,16 +399,209 @@ def record_artifact(path: Path, offset: int, length: int, sha256: str,
         return {"ok": False, "error": str(error)}
 
 
+_TRACE_EVENTS = frozenset({"raid_actor_action", "raid_site_search", "raid_trace_scope",
+                           "raid_trace_repeat", "raid_trace_truncated", "raid_actor_damage",
+                           "raid_actor_death", "raid_actor_sleep"})
+_ATTITUDE_LABELS = ("ignore", "talk", "legacy_1", "follow", "legacy_2", "lead",
+                    "wait", "legacy_6", "mug", "wait_for_leave", "kill", "flee",
+                    "legacy_3", "heal", "legacy_4", "legacy_5", "activity",
+                    "flee_temp", "recover_goods")
+_MISSION_LABELS = ("none", "legacy_1", "shelter", "shopkeep", "legacy_2",
+                   "legacy_3", "guard_ally", "guard", "guard_patrol", "activity",
+                   "travelling", "camp_resident")
+
+
+def _trace_repeat_scope(record: dict[str, Any]) -> tuple[str, int, str] | None:
+    key = str(record.get("key", ""))
+    if key.startswith("scenario@"):
+        group, separator, member = key[len("scenario@"):].rpartition(":")
+        if separator and group and member:
+            return group, -1, member
+        return None
+    # The recorder's key is operation_id + '#' + generation + ':' + actor/search.
+    # The operation ID itself can contain '#', so split only at the final one.
+    operation, separator, suffix = str(record.get("key", "")).rpartition("#")
+    generation, colon, member = suffix.partition(":")
+    if separator and colon and generation.isdecimal() and member:
+        return operation, int(generation), member
+    return None
+
+
+def _trace_base_key(record: dict[str, Any]) -> str | None:
+    """Reconstruct the recorder key carried by a repeat's preceding base row."""
+    kind = record.get("event")
+    group = record.get("trace_group_id")
+    if kind == "raid_trace_scope" and isinstance(group, str) and group:
+        return f"scenario@{group}:scope"
+    operation, generation = record.get("operation_id"), record.get("generation")
+    if isinstance(operation, str) and operation and isinstance(generation, int):
+        if kind == "raid_site_search":
+            return f"{operation}#{generation}:search"
+        if kind == "raid_actor_action" and isinstance(record.get("npc_id"), int):
+            return f"{operation}#{generation}:{record['npc_id']}"
+    if kind == "raid_actor_action" and isinstance(group, str) and group and isinstance(record.get("npc_id"), int):
+        return f"scenario@{group}:{record['npc_id']}"
+    return None
+
+
+def _trace_matches(record: dict[str, Any], decision: dict[str, Any],
+                   repeat_groups: dict[str, str]) -> bool:
+    kind = record.get("event")
+    if kind not in _TRACE_EVENTS:
+        return False
+    if kind == "raid_trace_truncated":
+        # The recorder cap is run-wide and has no operation or turn identity.
+        return True
+    group_id = decision.get("group_id")
+    if kind == "raid_trace_scope":
+        return bool(group_id and record.get("trace_group_id") == group_id)
+    if kind == "raid_trace_repeat":
+        scope = _trace_repeat_scope(record)
+        if scope is None:
+            return False
+        if group_id:
+            if scope[1] == -1:
+                if scope[0] != group_id:
+                    return False
+            elif repeat_groups.get(str(record.get("key"))) != group_id:
+                return False
+        elif scope[1] == -1 or scope[0] != decision["operation_id"]:
+            return False
+        if scope[2] != "search" and decision["actor_ids"] and (
+                not scope[2].isdecimal() or int(scope[2]) not in decision["actor_ids"]):
+            return False
+        first, last = record.get("first_turn"), record.get("last_turn")
+    else:
+        if group_id and record.get("trace_group_id") != group_id:
+            return False
+        if not group_id and record.get("operation_id") != decision["operation_id"]:
+            return False
+        # A group decision can affect every selected actor, even if a different
+        # member triggered it. Keep it beside the individual decisions.
+        if decision["actor_ids"]:
+            endpoints = ({record.get("npc_id")} if kind in {"raid_actor_action", "raid_actor_sleep"}
+                         else {record.get("selected_source_npc_id"), record.get("selected_victim_npc_id")}
+                         if kind == "raid_actor_damage"
+                         else {record.get("selected_killer_npc_id"), record.get("selected_victim_npc_id")}
+                         if kind == "raid_actor_death" else set(decision["actor_ids"]))
+            if not endpoints.intersection(decision["actor_ids"]):
+                return False
+        first = last = record.get("game_turn")
+    if not isinstance(first, int) or not isinstance(last, int):
+        return False
+    return ((decision["from_turn"] is None or last >= decision["from_turn"]) and
+            (decision["to_turn"] is None or first <= decision["to_turn"]))
+
+
+def _trace_project(record: dict[str, Any]) -> dict[str, Any]:
+    kind = record["event"]
+    if kind == "raid_actor_action":
+        attitude, mission = record.get("attitude"), record.get("mission")
+        return {"kind": "actor", "turn": record.get("game_turn"),
+                "actor_id": record.get("npc_id"), "action": record.get("action"),
+                "actor_role": record.get("actor_role"),
+                "decision_origin": ("execute_action call site; not the reason for the choice"
+                                    if record.get("reason") == "execute_action" else record.get("reason")),
+                "attitude": (_ATTITUDE_LABELS[attitude] if isinstance(attitude, int) and
+                             0 <= attitude < len(_ATTITUDE_LABELS) else f"unknown({attitude})"),
+                "mission": (_MISSION_LABELS[mission] if isinstance(mission, int) and
+                            0 <= mission < len(_MISSION_LABELS) else f"unknown({mission})"),
+                "target": record.get("target"), "target_visible": record.get("target_visible"),
+                "avatar_visible": record.get("avatar_visible"),
+                "position_abs": record.get("position_abs"), "goto_abs": record.get("goto_abs"),
+                "path_next_local": record.get("path_next_local"),
+                "path_next_passable": record.get("path_next_passable"),
+                "path_length": record.get("path_length"), "bravery": record.get("bravery"),
+                "panic": record.get("panic"), "flee": record.get("flee"),
+                "fire_danger": record.get("fire_danger"),
+                "danger": record.get("danger"), "sound_alerts": record.get("sound_alerts"),
+                "assigned_camp": record.get("assigned_camp"),
+                "has_job": record.get("has_job"), "patrol_priority": record.get("patrol_priority"),
+                "patrol_order": record.get("patrol_order"),
+                "guard_pos_abs": record.get("guard_pos_abs"),
+                "outing_member": record.get("outing_member"),
+                "outing_id": record.get("outing_id"), "outing_kind": record.get("outing_kind"),
+                "outing_phase": record.get("outing_phase"), "outing_owner": record.get("outing_owner"),
+                "outing_waypoint_index": record.get("outing_waypoint_index"),
+                "operation_phase": record.get("operation_phase"),
+                "operation_owner": record.get("operation_owner"),
+                "route_waypoint_index": record.get("route_waypoint_index"),
+                "actor_route_waypoint": record.get("actor_route_waypoint"),
+                "site_search_waypoint": record.get("site_search_waypoint")}
+    if kind == "raid_actor_damage":
+        return {"kind": "damage", "turn": record.get("game_turn"),
+                "source": record.get("source"), "victim": record.get("victim"),
+                "selected_source_npc_id": record.get("selected_source_npc_id"),
+                "selected_victim_npc_id": record.get("selected_victim_npc_id"),
+                "body_part": record.get("body_part"), "damage_kind": record.get("damage_kind"),
+                "hp_before": record.get("hp_before"), "hp_after": record.get("hp_after"),
+                "applied_damage": record.get("applied_damage"),
+                "operation_phase": record.get("operation_phase"),
+                "operation_owner": record.get("operation_owner"),
+                "route_waypoint_index": record.get("route_waypoint_index")}
+    if kind == "raid_actor_death":
+        return {"kind": "death", "turn": record.get("game_turn"),
+                "killer": record.get("killer"), "victim": record.get("victim"),
+                "selected_killer_npc_id": record.get("selected_killer_npc_id"),
+                "selected_victim_npc_id": record.get("selected_victim_npc_id"),
+                "confirmed": record.get("confirmed"),
+                "operation_phase": record.get("operation_phase"),
+                "operation_owner": record.get("operation_owner"),
+                "route_waypoint_index": record.get("route_waypoint_index")}
+    if kind == "raid_actor_sleep":
+        return {"kind": "sleep", "turn": record.get("game_turn"),
+                "actor_id": record.get("npc_id"), "actor": record.get("actor"),
+                "edge": record.get("edge"), "available_reason": record.get("available_reason"),
+                "cause": record.get("cause"), "narcosis": record.get("narcosis"),
+                "sleep_effect": record.get("sleep_effect"),
+                "sleepiness": record.get("sleepiness"),
+                "operation_phase": record.get("operation_phase"),
+                "operation_owner": record.get("operation_owner"),
+                "route_waypoint_index": record.get("route_waypoint_index")}
+    if kind == "raid_site_search":
+        return {"kind": "search", "turn": record.get("game_turn"), "reason": record.get("reason"),
+                "trigger_actor_id": record.get("trigger_actor_id"),
+                "seen_target": record.get("seen_target"), "waypoint": record.get("waypoint"),
+                "waypoint_attempted": record.get("waypoint_attempted"),
+                "recipients": record.get("recipients")}
+    if kind == "raid_trace_repeat":
+        scope = _trace_repeat_scope(record)
+        return {"kind": "repeat", "base_turn": record.get("base_turn"),
+                "first_turn": record.get("first_turn"),
+                "last_turn": record.get("last_turn"), "count": record.get("count"),
+                "of_event": record.get("of_event"), "generation": scope[1] if scope else None,
+                "member": scope[2] if scope else None}
+    if kind == "raid_trace_scope":
+        return {"kind": "scope", "turn": record.get("game_turn"),
+                "group_id": record.get("trace_group_id"),
+                "selected_npc_ids": record.get("selected_npc_ids"),
+                "capture_from_turn": record.get("capture_from_turn"),
+                "capture_to_turn": record.get("capture_to_turn"),
+                "selection": record.get("selection")}
+    return {"kind": "capture_truncated", "row_budget": record.get("row_budget"),
+            "decisions": record.get("decisions"), "written_rows": record.get("written_rows"),
+            "scope": record.get("scope"), "unpreserved_rows": record.get("unpreserved_rows")}
+
+
 def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
-          offset: int, limit: int, contains: str | None = None, snapshot: str | None = None) -> dict[str, Any]:
+          offset: int, limit: int, contains: str | None = None, snapshot: str | None = None,
+          decision: dict[str, Any] | None = None) -> dict[str, Any]:
     """Filter parsed records before projection; pages never cut a JSON record in half."""
     from evidence_display import retain, recover
     try:
+        if decision is not None:
+            if (not isinstance(filters.get("run_id"), str) or not filters["run_id"] or
+                    bool(decision.get("operation_id")) == bool(decision.get("group_id")) or
+                    any(not isinstance(actor, int) for actor in decision["actor_ids"]) or
+                    (decision["from_turn"] is not None and decision["to_turn"] is not None and
+                     decision["from_turn"] > decision["to_turn"])):
+                raise ValueError("invalid_decision_scope")
         if snapshot:
             manifest = recover(snapshot)
             if manifest.get("schema") != "caol-log-snapshot-v1":
                 raise ValueError("invalid_log_snapshot")
-            if manifest["filters"] != filters or manifest["selectors"] != selectors or manifest["contains"] != contains:
+            if (manifest["filters"] != filters or manifest["selectors"] != selectors or
+                    manifest["contains"] != contains or manifest.get("decision") != decision):
                 raise ValueError("snapshot_query_changed")
         else:
             entries = []
@@ -417,6 +610,8 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
                 entries.append({"path": str(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
             manifest = {"schema": "caol-log-snapshot-v1", "sources": entries,
                         "filters": filters, "selectors": selectors, "contains": contains}
+            if decision is not None:
+                manifest["decision"] = decision
             snapshot = retain(manifest)["sha256"]
         paths = [Path(entry["path"]) for entry in manifest["sources"]]
     except (OSError, ValueError, KeyError) as error:
@@ -425,6 +620,16 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
     matched = scanned = unparsed = unscoped = 0
     scanned_bytes = 0
     sources = []
+    trace_counts: dict[str, int] = {}
+    trace_actors: dict[str, str] = {}
+    trace_last_turn: dict[str, int] = {}
+    trace_cap: list[dict[str, Any]] = []
+    invalid_repeat_keys = 0
+    orphan_repeat_bases = 0
+    repeat_groups: dict[str, str] = {}
+    trace_bases: dict[tuple[str, str], dict[str, Any]] = {}
+    selected_npc_ids: list[int] = []
+    selected_capture_window: dict[str, int | None] = {}
     for path, bound in zip(paths, manifest["sources"]):
         try:
             with path.open("rb") as source:
@@ -453,6 +658,35 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
                     if not isinstance(identity, dict):
                         identity = record
                     unscoped += not identity.get("run_id")
+                    if decision is not None and record.get("run_id") == filters["run_id"] and record.get("event") in _TRACE_EVENTS:
+                        kind = record["event"]
+                        trace_counts[kind] = trace_counts.get(kind, 0) + 1
+                        base_key = _trace_base_key(record)
+                        if base_key is not None:
+                            trace_bases[(base_key, kind)] = {
+                                "path": str(path), "offset": position, "length": len(raw),
+                                "sha256": hashlib.sha256(raw).hexdigest()}
+                        if (kind == "raid_trace_scope" and decision.get("group_id") == record.get("trace_group_id") and
+                                isinstance(record.get("selected_npc_ids"), list)):
+                            selected_npc_ids = [actor for actor in record["selected_npc_ids"] if isinstance(actor, int)]
+                            selected_capture_window = {"from_turn": record.get("capture_from_turn"),
+                                                       "to_turn": record.get("capture_to_turn")}
+                        if kind == "raid_actor_action" and isinstance(record.get("trace_group_id"), str) and record.get("operation_id"):
+                            repeat_groups[f"{record['operation_id']}#{record.get('generation')}:{record.get('npc_id')}"] = record["trace_group_id"]
+                        if kind == "raid_trace_truncated":
+                            trace_cap.append({key: record.get(key) for key in
+                                              ("row_budget", "decisions", "written_rows",
+                                               "scope", "unpreserved_rows")})
+                        elif kind == "raid_trace_repeat" and _trace_repeat_scope(record) is None:
+                            invalid_repeat_keys += 1
+                        if (kind == "raid_actor_action" and
+                                record.get("trace_group_id" if decision.get("group_id") else "operation_id") ==
+                                (decision.get("group_id") or decision.get("operation_id")) and
+                                isinstance(record.get("npc_id"), int)):
+                            trace_actors[str(record["npc_id"])] = str(record.get("npc_name") or "name unavailable")
+                        trace_turn = record.get("last_turn", record.get("game_turn"))
+                        if isinstance(trace_turn, int):
+                            trace_last_turn[kind] = max(trace_last_turn.get(kind, trace_turn), trace_turn)
                     try:
                         # Responses envelope the same native identities found at log roots.
                         def matches(key: str, expected: Any) -> bool:
@@ -464,8 +698,14 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
                             continue
                     except (KeyError, IndexError):
                         continue
+                    if decision is not None and not _trace_matches(record, decision, repeat_groups):
+                        continue
                     if contains is not None and contains.casefold() not in raw.decode("utf-8", errors="replace").casefold():
                         continue
+                    repeat_base = None
+                    if decision is not None and record.get("event") == "raid_trace_repeat":
+                        repeat_base = trace_bases.get((str(record.get("key")), str(record.get("of_event"))))
+                        orphan_repeat_bases += repeat_base is None
                     matched += 1
                     if not offset <= matched - 1 < offset + limit:
                         continue
@@ -482,11 +722,14 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
                                 fields[selector] = {"error": "field_unavailable"}
                         projected = fields
                     else:
-                        projected = compact(record)
+                        projected = _trace_project(record) if decision is not None else compact(record)
+                        if decision is not None and projected.get("kind") == "repeat":
+                            projected["base_missing"] = repeat_base is None
+                            projected["base_artifact"] = repeat_base
                     rows.append({"artifact": handle, "record": projected})
         except OSError as error:
             return {"ok": False, "error": str(error), "sources": sources}
-    return {"ok": True, "sources_on_page": sources, "source_count": len(paths),
+    result = {"ok": True, "sources_on_page": sources, "source_count": len(paths),
             "source_bytes": scanned_bytes, "filters": filters, "contains": contains, "scanned": scanned,
             "matched": matched, "unparsed_records": unparsed, "records_without_run_id": unscoped,
             "rows": rows, "page": {"offset": offset, "limit": limit,
@@ -496,3 +739,18 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
             "snapshot": snapshot,
             "snapshot_paging": "Repeat this query with --snapshot HASH and --offset next_offset. Appends are excluded; replaced source prefixes fail hash verification.",
             "diagnostics": "Unparsed/unscoped records are counted, not attributed to a run. Query event=unparsed or event=text to inspect them; raw files are unchanged."}
+    if decision is not None:
+        result["decision_trace"] = {"run_id": filters["run_id"], **decision,
+                                    "actors": trace_actors, "captured_event_counts": trace_counts,
+                                    "selected_npc_ids": selected_npc_ids,
+                                    "selected_capture_window": selected_capture_window,
+                                    "last_recorded_turn_by_event": trace_last_turn,
+                                    "invalid_repeat_keys": invalid_repeat_keys,
+                                    "orphan_repeat_bases": orphan_repeat_bases,
+                                    "capture_truncation": trace_cap,
+                                    "native_cap": "The opt-in recorder defaults to 1024 rows with space reserved for combat and sleep edges. Recorder and log-window truncation rows state any observed gap.",
+                                    "tail": "Final repeats may be unflushed; absence of later rows does not establish an actor stopped acting.",
+                                    "group_scope": "Search rows are included for the operation even when a different actor triggered them.",
+                                    "display_limit": {"offset": offset, "limit": limit,
+                                                      "matched": matched, "shown": len(rows)}}
+    return result

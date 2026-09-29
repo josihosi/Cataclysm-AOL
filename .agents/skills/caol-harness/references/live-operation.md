@@ -3,8 +3,13 @@
 For short commands, put `tools/openclaw_harness` on PATH and set `CAOL_PLAY_SESSION`
 to the registry-launched session directory. `play` invokes the existing player CLI:
 `play look`, `play wait 5m`, `play collect`, `play stop`, `play yes`, `play no`, `play quit`.
-Short wait defaults to the existing ignore-danger-and-interruptions mode; add `safe` or
-`stop` to select the other existing modes. Ordinary replies and `playtest.txt` are plain
+`play look` is a read-only observation. When the current World advertises them,
+`play act world.look` opens the native look cursor and `play act world.examine` opens
+the native adjacent Examine chooser; read the resulting menu and copy its current target.
+Short wait defaults to `ignore`, which can continue through damage. Write the mode explicitly:
+`play wait 5m safe` handles recognized harmless prompts and stops on danger/damage;
+`play wait 5m stop` stops for inspection; `play wait 5m ignore` deliberately allows combat to
+unfold, including death. Choose by the test goal; see [Wait and observe](../GAME-MANUAL.md#wait-and-observe). Ordinary replies and `playtest.txt` are plain
 text. `look` observes the game; `collect` retrieves a pending result. Once collected, another
 `collect` repeats that recorded result. Use `look` to check a running activity's current progress.
 Keep the game's safe mode off during live playtests. On entering World, inspect its displayed
@@ -38,8 +43,11 @@ For a registry-launched file-backed session, use the persistent player client:
 Ordinary play replies show game changes, input choices, outcomes and actual performance alarms.
 Receipts and routine telemetry stay in the session. Capture ordinary transcripts from the default
 plain output; `--diagnostics` deliberately replaces it with transport JSON and is only useful when
-investigating transport or telemetry. Use `request-result --request-id ID` to retrieve an earlier request. Activity pause
-remains bound to the same running activity across input polls; a replacement activity or prompt
+investigating transport or telemetry. It works before or after the subcommand. Use `play inspect`
+for one retained field, `play evidence --select FIELD` for selected actor/event facts, and
+`request-result --request-id ID` for an earlier full request. An ordinary save/quit reply
+already shows the current native prompt; completed wait metadata stays in diagnostics/history.
+Activity pause remains bound to the same running activity across input polls; a replacement activity or prompt
 requires its own current input choice.
 
 ```sh
@@ -78,6 +86,20 @@ reentry. Record the completed segment and submit its witness with `finish` only 
 `collect` reports `reentered`, then `look` exposes the restored world's new owner. The bridge handles
 the declared process replacement without reinstalling the fixture. `quit` ends the entire scenario
 and skips that continuation. Saving alone does not establish new-process persistence.
+
+## Save a checkpoint
+
+From World, use `play act world.quicksave` alone. Collect a pending request before another
+input, then compare the native confirmed saved turn with the state needed for this observation.
+A timeout is not proof of save failure; inspect the resulting native checkpoint before retrying.
+
+`not_needed` means no write occurred. An unchanged already-saved state needs no extra action.
+If game time advanced but the confirmed save is older, the checkpoint is stale: preserve the
+current session and report the persistence gap. Use current native evidence where sufficient;
+if the question requires fresh disk state, arrange the existing save repair/recovery route.
+Do not move, toggle equipment or otherwise alter the experiment merely to increment the save
+counter, and do not copy such a workaround into a replay protocol. The phrase “no counted
+action” explains the current save gate; it is not an instruction to perform one.
 
 ## Macros, pending requests and current controls
 

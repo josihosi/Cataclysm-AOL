@@ -134,7 +134,8 @@ using omt_scoring_fn = std::function<omt_score( tripoint_abs_omt )>;
 simple_path<tripoint_abs_omt> find_overmap_path( const tripoint_abs_omt &source,
         const tripoint_abs_omt &dest, int radius, const omt_scoring_fn &scorer,
         const std::function<void( size_t, size_t )> &progress_fn,
-        const std::optional<int> &max_cost = std::nullopt, bool allow_diagonal = false );
+        const std::optional<int> &max_cost = std::nullopt, bool allow_diagonal = false,
+        const std::function<bool( const tripoint_abs_omt &, const tripoint_abs_omt & )> &edge_allowed = {} );
 
 } // namespace pf
 

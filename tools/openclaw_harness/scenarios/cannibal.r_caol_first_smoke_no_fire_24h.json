@@ -1,0 +1,122 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_no_fire_24h",
+  "description": "Twenty-four in-game hours on an isolated, unlit prepared cannibal-camp save. Establish that no fire/smoke source or prior cannibal site knowledge exists, then follow the camp and relevant NPCs through real game time, native metadata and fresh saved turns for unsupported discovery, dispatch or raid.",
+  "profile": "first-smoke-012-no-fire-20260926",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke": "24h_unlit_no_discovery_control",
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "first-smoke-012-no-fire-20260926",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-012-no-fire-20260926",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": ["source-bound native cockpit actions"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_isolated_unlit_control",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the prepared TestSetup00 save in the named task012 profile; verify native World and the camp footprint before any elapsed-time action."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_control_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait", "world.quicksave"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_unlit_control_for_24h",
+      "cleanup_on_finish": true,
+      "objective": "After verifying the exact isolated save in native World, safe mode off, no active fire/smoke, no prior cannibal site knowledge, and no active outing/raid, observe 24 in-game hours. At meaningful intervals inspect camp signal/site state, scout assignments and reports, dispatch/outing state, and relevant NPC identities and actions from native metadata; create actual native quicksaves and confirm each saved turn. Record any unrelated natural contact separately. The expected control is no signal-caused cannibal discovery or raid without a physical source or prior knowledge.",
+      "proof_targets": [
+        "exact prepared profile, save hashes, source and executable binding",
+        "same-run native World, initial turn and safe-mode state",
+        "actual cannibal camp geometry, no active fire/smoke and no prior cannibal site knowledge",
+        "no active outing or raid before time advances",
+        "native camp, scout, report, dispatch and relevant NPC metadata at initial state and meaningful intervals",
+        "actual fresh saved turns and exact elapsed game time through 24 hours",
+        "absence or first occurrence of camp discovery, report, outing, dispatch or raid with source attribution",
+        "any unrelated natural encounter kept separate",
+        "actual graceful cleanup and exact process identities"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "no authored or injected fire, smoke, light, signal, discovery, report, dispatch, actor or contact",
+        "no debug mutation, hostile teleport or raw save edit after launch",
+        "the camp footprint is controlled setup only and receives no natural-generation credit",
+        "prior knowledge and physical signal are assessed from native state, not inferred from the scenario label",
+        "record unrelated natural contacts independently from signal-caused behavior",
+        "record actual saved turn at each checkpoint; no-op and process exit do not prove a fresh save",
+        "stop elapsed-time progression if a clean-start premise fails"
+      ],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["load_isolated_unlit_control", "bind_native_control_world"],
+    "production_behavior": ["observe_unlit_control_for_24h"],
+    "terminal_persistence": ["observe_unlit_control_for_24h"],
+    "artifact_verdict": ["observe_unlit_control_for_24h"],
+    "disallowed_shortcuts": ["load_isolated_unlit_control"]
+  },
+  "evidence_contract": {
+    "claim": "A clean, initially unaware cannibal camp with no physical fire/smoke source produces no signal-caused discovery or raid during 24 native in-game hours.",
+    "failure_rule": "A clean-start premise failure blocks the negative control. Otherwise credit only actual 24-hour native time, current metadata and fresh saved turns; attribute unrelated natural contact separately, and preserve any first signal-caused discovery or raid with its source and actor records."
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r021_minute8300_raid_continuation_20260928",
+  "description": "Separate R021 run on a byte-exact disposable copy of saved minute8300/turn5250037; continue admitted raid operation hostile:2 toward native night approach/contact.",
+  "profile": "first-smoke-011-r021-minute8300-continuation-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r021_closed_smoke_regression": "r021_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.first_smoke_021_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "capabilities.r_caol.first_smoke_011_r021_minute8300_raid_continuation": "saved_turn5250037_minute8300_same_build_new_run_continuation",
+    "capabilities.r_caol.first_smoke_021_minute8300_continuation": "ids_8_7_6_at_rally_omt_133_141_continue_native_night_gate"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r021-minute8300-continuation-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-021/immutable-executable/8179a770d8f3fa976d1d72025624ad266104bcaf38c8e613cb658b3ecd7e1819/cataclysm-tiles",
+      "profile": "first-smoke-011-r021-minute8300-continuation-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_disposable_saved_minute8300_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable profile whose 45 TestSetup00 saves match build_logs/first-smoke-021/r021-minute8300-continuation-copy-manifest.json; verify same-run World/current turn 5250037, Safe Off, no clairvoyance/cloak/invulnerability, admitted smoke lead and raid operation hostile:2."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No fixture transforms or gameplay interventions are declared; resume only the saved native raid state."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r021_minute8300_saved_raid_continuation",
+      "objective": "Continue the already-admitted smoke-origin R021 raid from saved turn 5250037/minute8300. This is a new run from a byte-exact saved checkpoint, not uninterrupted session reentry and not a replay of smoke/scout/report setup. Follow same native IDs 8/7/6, verify current calendar and saved external cursor/night eligibility, use useful native safe wait intervals toward night, then observe physical approach/contact/attack and exact sourced damage/health/death if eligible.",
+      "proof_targets": [
+        "45/45 save hashes, effective userdir, same-run World at turn5250037, immutable executable SHA8179a770d8f3fa976d1d72025624ad266104bcaf38c8e613cb658b3ecd7e1819 and source receipt",
+        "persisted smoke lead and hostile operation:2 from previous run clearly identified as checkpoint context, not current-run creation",
+        "same saved IDs8/7/6, physical OMT position, operation rally_omt/route/cursor/night gate before and after advancement",
+        "actual physical approach/contact/attack and exact actor/target/HP/damage source/death, or first concrete persistent divergence",
+        "standalone quicksave at meaningful stage and exact process lifecycle/cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal/contact/report/dispatch/fire/light injection, teleport, debug hostile kill, clairvoyance/cloak/invulnerability",
+        "Do not repeat smoke/scout/report setup; begin from exact saved turn5250037 checkpoint",
+        "Track actors by native IDs and saved roster beyond sight",
+        "Use short safe/stop windows around first harm; preserve exact actor and sourced damage",
+        "Do not claim uninterrupted run continuity; this is a new run using the exact saved checkpoint",
+        "Stop at first material persistent divergence after one confirming sample"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_disposable_saved_minute8300_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r021_minute8300_saved_raid_continuation"
+    ],
+    "terminal_persistence": [
+      "r021_minute8300_saved_raid_continuation"
+    ],
+    "artifact_verdict": [
+      "r021_minute8300_saved_raid_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Continue the saved smoke-admitted R021 raid from turn5250037/minute8300 on a separate byte-exact disposable profile and exact R021 build. Same IDs8/7/6 and native night/physical attack behavior required for current-run credit.",
+    "failure_rule": "Prior-run admissions and scouting are checkpoint provenance only. This separate run receives credit only for resumed same-ID native behavior; preserve the first current-run divergence."
+  }
+}

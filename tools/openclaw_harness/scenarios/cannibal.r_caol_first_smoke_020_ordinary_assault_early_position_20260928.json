@@ -1,0 +1,187 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_ordinary_assault_early_position_20260928",
+  "description": "Ordinary-view continuation from exact pre-feral turn5257223/minute8420 checkpoint; change player position/defense before ferals close while preserving real raid operation.",
+  "profile": "first-smoke-020-clean-closed-assault-early-position-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_shelter_continuation": "ordinary_view_committed_cannibal_contact_shelter_from_turn_5257643",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_local_evasion": "ordinary_view_committed_cannibal_contact_local_evasion_from_turn_5257643",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_early_position": "ordinary_view_committed_cannibal_contact_early_position_from_turn_5257223"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-clean-closed-assault-early-position-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-clean-closed-assault-early-position-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_byte_exact_turn5257223_pre_feral_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the byte-exact disposable 55-file save and seven-file config copy at turn5257223/minute8420. The source run already established physical smoke, scout/watch/return/report and ID4->Casey damage; do not replay or call fresh discovery. Verify effective userdir, World/turn, Safe Off, clair mutations absent, current actual fire/smoke and native actor metadata before input."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No save or world fixture transforms beyond the exact disposable copy are declared."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "early_position_survival_then_assess_raid",
+      "objective": "Continue from exact turn5257223/minute8420 ordinary-view checkpoint. Before ferals close, use native metadata and current terrain to choose a materially changed legal defensive/positioning action; avoid NW basement stairs and do not tear down curtains. Preserve fire and committed raid. Track IDs4/7 and defenders2/3 plus any ferals by native metadata; inspect actual harm. Stop at first consequential threat/divergence.",
+      "proof_targets": [
+        "byte-exact 55-file save and seven-file config copy; effective userdir and loaded saved turn",
+        "current native fire and sampled smoke plus operation IDs4/7 and defender IDs2/3; earlier smoke/watch/report and ID4->Casey damage cited to run8fba7b6 only",
+        "ordinary view with clairvoyance/cloak/invulnerability absent; Safe mode Off",
+        "native metadata of feral actors, positions/actions and route before and after first changed action; current terrain/door response",
+        "same-ID cannibal pursuit/attack/damage/casualty or exact first divergence; source-attributed harm, distinguish ferals",
+        "quicksave/current saved-turn correctness and run-bound timings; exact source/build/session/process cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal/contact/report/dispatch/hostile teleport/fire/light injection or debug raider/feral kill",
+        "No clairvoyance/cloak/invulnerability; ordinary view preserved",
+        "Do not claim prior smoke/scout/report/ID4-to-Casey proof as newly observed",
+        "Keep brazier burning unless a concrete safety issue requires a change",
+        "Track all actors by native IDs/metadata including outside sight; do not infer from player visibility alone",
+        "Use advertised native actions; avoid basement/submap reload and curtain tear-down; stop on consequential harm when inspecting its source",
+        "Stop unchanged waits at first material divergence"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish",
+        "harness:debug.ignore"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_byte_exact_turn5257223_pre_feral_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "early_position_survival_then_assess_raid"
+    ],
+    "terminal_persistence": [
+      "early_position_survival_then_assess_raid"
+    ],
+    "artifact_verdict": [
+      "early_position_survival_then_assess_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From an exact disposable copy of the clean ordinary-view arm saved after committed contact, test one native local sidestep and assess actor-level outcomes. Prior signal/discovery stages remain bound to the original run.",
+    "failure_rule": "Credit only current-run physical actor and damage records. Prior run evidence may establish the saved continuation premises but cannot prove new movement or combat in this run."
+  }
+}

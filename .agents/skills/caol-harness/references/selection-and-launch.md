@@ -51,7 +51,19 @@ repair, create, rebind, or deliberately run an isolated zero-credit diagnosis. D
 question or combine incompatible footing. On this Mac, `python3 tools/openclaw_harness/build_source_bound_macos.py --renderer tiles` builds
 and records the exact source/executable binding. `runtime-status` and registry readiness expose the
 current binding and build entrypoint. Use it when the binding is insufficient or contradicted; a
-ready binding needs no rediscovery or rebuild.
+ready binding needs no rediscovery or rebuild. Compare product-source hashes with product-source
+hashes: `runtime_source_sha256` also covers harness/fixture changes and need not equal
+`product_source_sha256`. A difference between those domains alone is not executable staleness.
+When native headers/layouts change, a source/executable hash alone does not prove dependent
+objects were rebuilt. Do not clone a compiled build prefix into a differently named prefix:
+its `.d` targets can still name the old path (and older dependencies may name the wrong object
+target). Use a fresh empty build prefix when dependency provenance is uncertain; otherwise
+verify the actual dependency targets and changed-header consumers before reusing objects.
+R015 mixed old `game.o` with the new site layout and crashed; R016 clean dependency rebuild
+plus same-save native World/action recovered it. Exact evidence:
+`build_logs/first-smoke-016/startup-crash-diagnosis-checkpoint.md`,
+`full-build/object-provenance.json` and `native-recovery-result.json` in that directory.
+This is a changed-header/cache condition, not a mandatory clean rebuild on every playtest.
 A stale executable may support an explicitly isolated
 harness diagnosis only; current-product conclusions require a source-matching executable.
 
@@ -62,6 +74,12 @@ Use the returned `next_action`: a ready selected route supplies its launch argum
 including the witness charter and, for a live cockpit, `registry-detached-launch` with a new session
 path. Do not pre-create that directory. A build, repair, or missing-charter response identifies the
 prerequisite instead. Saved query readiness is a snapshot; launch revalidates current state.
+
+If a launch supplies `--profile`, use the profile's name under `.userdata`, not its absolute path.
+The startup helper sanitizes slashes into a new name; an absolute path can silently select an
+empty userdir. Before game input, compare the effective userdir and intended save hashes and
+require a same-run World descriptor. The [game manual](../GAME-MANUAL.md#check-the-effective-profile)
+records the failed R010 example and its evidence.
 
 Launch revalidates source, executable, scenario, world, ownership, and runtime. Missing charter,
 stale binding, fixture defects, or tool defects are agent-owned repair when the outcome remains in

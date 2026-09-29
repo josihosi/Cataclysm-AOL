@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -196,6 +197,9 @@ class query_popup
          */
         query_popup &await_semantic_successor( bool await_successor = true );
 
+        /** Attach facts to this popup's own semantic descriptor, when one is published. */
+        query_popup &semantic_payload( std::map<std::string, std::string> payload );
+
         /**
          * Query once and return the result. In order for this method to return
          * valid results, the popup must either have at least one option, or
@@ -236,6 +240,7 @@ class query_popup
         bool fullscr;
         bool receipt_on_native_selection_;
         bool await_semantic_successor_;
+        std::map<std::string, std::string> semantic_payload_;
         keyboard_mode pref_kbd_mode;
 
         struct button {

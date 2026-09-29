@@ -7,7 +7,113 @@ import shlex
 from cockpit_evidence import action_catalog, compact, decode, gameplay_fact
 
 
-def world_look(snapshot, operation_availability=None, *, show_controls=True, controls_only=False):
+def local_text_map(facts, *, game_turn=None):
+    """Draw only the current avatar-visible native cells around the player."""
+    avatar = facts.get("avatar", {})
+    position = avatar.get("absolute_ms") if isinstance(avatar, dict) else None
+    if not isinstance(position, list) or len(position) != 3 or any(
+            not isinstance(value, int) or isinstance(value, bool) for value in position):
+        return "LOCAL MAP unavailable: current player position is unknown."
+    minimap = facts.get("minimap")
+    native_cells = minimap.get("cells") if isinstance(minimap, dict) else None
+    native_radius = minimap.get("radius") if isinstance(minimap, dict) else None
+    if not isinstance(native_cells, list) or not isinstance(native_radius, int) or native_radius < 1:
+        native_cells, native_radius = [], 1
+    local = facts.get("visible_local")
+    if not native_cells and not isinstance(local, list):
+        return "LOCAL MAP unavailable: no current local cells were supplied."
+    radius = min(9, native_radius)
+    cells = {}
+    for source in (native_cells, local if isinstance(local, list) else []):
+        for cell in source:
+            if not isinstance(cell, dict):
+                continue
+            dx, dy = cell.get("dx"), cell.get("dy")
+            if any(not isinstance(value, int) or isinstance(value, bool) for value in (dx, dy)):
+                continue
+            if abs(dx) <= radius and abs(dy) <= radius and cell.get("visibility") == "clear":
+                cells[(dx, dy)] = {**cells.get((dx, dy), {}), **cell}
+
+    def glyph(cell):
+        if cell is None:
+            return "?"
+        terrain = re.sub(r"</?color[^>]*>", "", str(cell.get("terrain", ""))).casefold()
+        furniture = str(cell.get("furniture", ""))
+        fields = cell.get("fields") if isinstance(cell.get("fields"), list) else []
+        fire, smoke = "fd_fire" in fields, "fd_smoke" in fields
+        if furniture == "f_brazier":
+            return "F" if fire else "S" if smoke else "B"
+        if fire:
+            return "*"
+        if smoke:
+            return "s"
+        passable = cell.get("passable")
+        if "wall" in terrain:
+            return "#"
+        if "door" in terrain:
+            return "D" if passable is False else "d" if passable is True else "O"
+        if "window" in terrain or "curtain" in terrain:
+            return "W" if passable is False else "w" if passable is True else "C"
+        if passable is False:
+            return "X"
+        if passable is True:
+            return "."
+        return ":"  # Seen terrain with no native passability value.
+
+    symbols = {(dx, dy): glyph(cells.get((dx, dy))) for dy in range(-radius, radius + 1)
+               for dx in range(-radius, radius + 1)}
+    creatures = []
+    entities = facts.get("visible_entities")
+    for entity in entities if isinstance(entities, list) else []:
+        if not isinstance(entity, dict):
+            continue
+        dx, dy, absolute = entity.get("dx"), entity.get("dy"), entity.get("absolute_ms")
+        if any(not isinstance(value, int) or isinstance(value, bool) for value in (dx, dy)) or \
+                not isinstance(absolute, list) or len(absolute) != 3 or \
+                absolute != [position[0] + dx, position[1] + dy, position[2]] or \
+                abs(dx) > radius or abs(dy) > radius:
+            continue
+        creatures.append((dx, dy, entity))
+    creature_lines = []
+    for index, (dx, dy, entity) in enumerate(creatures):
+        if index >= 26:
+            symbols[(dx, dy)] = "+"
+            continue
+        letter = chr(ord("a") + index)
+        if (dx, dy) != (0, 0):
+            symbols[(dx, dy)] = letter
+        offset = " ".join(part for part in (f"E{dx}" if dx > 0 else f"W{-dx}" if dx < 0 else "",
+                                                 f"S{dy}" if dy > 0 else f"N{-dy}" if dy < 0 else "") if part) or "here"
+        name = re.sub(r"</?color[^>]*>", "", str(entity.get("name") or entity.get("kind") or "creature"))
+        attitude = str(entity.get("attitude") or "unknown")
+        creature_lines.append(f"{letter} {name} ({attitude}) {offset}")
+    symbols[(0, 0)] = "@"
+    title = f"LOCAL MAP z={position[2]} · @ [{position[0]},{position[1]},{position[2]}] · N up, E right · radius {radius}"
+    if game_turn is not None:
+        title += f" · turn {game_turn}"
+    lines = [title]
+    for dy in range(-radius, radius + 1):
+        row = "".join(symbols[(dx, dy)] for dx in range(-radius, radius + 1))
+        lines.append(f"{'N' + str(-dy) if dy < 0 else 'S' + str(dy) if dy > 0 else '0'} {row}")
+    used = set(symbols.values())
+    meanings = {"@": "player", "?": "unobserved", "#": "wall", "D": "closed door",
+                "d": "passable door/frame", "O": "door; passability unreported",
+                "W": "blocked window/curtain", "w": "passable window/curtain",
+                "C": "window/curtain; passability unreported",
+                "X": "other blocked tile", ".": "passable tile", ":": "seen; passability unreported",
+                "B": "brazier", "S": "brazier with smoke", "F": "burning brazier",
+                "*": "other fire", "s": "smoke", "+": "additional visible creature"}
+    lines.append("Legend: " + " · ".join(f"{key} {meaning}" for key, meaning in meanings.items() if key in used))
+    if creature_lines:
+        lines.append("Visible creatures: " + "; ".join(creature_lines))
+    if len(creatures) > 26:
+        lines.append(f"+ {len(creatures) - 26} more visible creatures; inspect visible_entities for exact positions.")
+    lines.append("Current avatar-visible tiles only; off-screen NPCs require saved metadata.")
+    return "\n".join(lines)
+
+
+def world_look(snapshot, operation_availability=None, *, show_controls=True, controls_only=False,
+               show_local_map=False):
     """Present an existing World snapshot, using only its advertised controls."""
     current = snapshot.get("current", {})
     facts = current.get("facts", {})
@@ -81,6 +187,10 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
                          entity.get("attitude", ""), ", ".join(offsets) or "here"))))
     if not isinstance(tiles, list) and not isinstance(entities, list):
         lines.append("Surroundings unavailable in this observation.")
+    if show_local_map:
+        lines.extend(["", local_text_map(facts, game_turn=snapshot.get("game_turn"))])
+    elif isinstance(facts.get("minimap"), dict):
+        lines.append("Local layout → play look --map (optional current observation).")
 
     if operations.get("game.act") is False:
         controls = "Observation-only phase.\nplay look — observe · play quit — end playtest"
@@ -105,10 +215,10 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
                       "3 east, then 2 north. Negative east = west; negative south = north.",
                       "Stops on interruptions by default; reports partial progress."])
     groups = {
-        "Combat": {"fire", "reload", "toggle_safemode"},
+        "Combat": {"fire", "reload", "toggle_safemode", "autoattack"},
         "Items": {"inventory", "pickup", "drop"},
         "Observe": {"look", "overmap", "messages"},
-        "Interact": {"chat", "zone_manager"},
+        "Interact": {"chat", "zone_manager", "examine"},
         "Vertical": {"level_up", "level_down"},
         "Save": {"quicksave", "save_quit"},
         "Debug": {"debug_menu"},
@@ -119,6 +229,15 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
                         and action.get("id", "").startswith("world.") and not action.get("stable_id"))
         if selected:
             lines.append(label + ": " + " / ".join(action["id"].removeprefix("world.") for action in selected))
+    native_inspection = {action.get("id") for action in actions if action.get("enabled", True)} \
+                        & {"world.look", "world.examine"}
+    if native_inspection:
+        explanation = ["play look is read-only"]
+        if "world.look" in native_inspection:
+            explanation.append("world.look opens the native look cursor")
+        if "world.examine" in native_inspection:
+            explanation.append("world.examine opens native Examine")
+        lines.append("; ".join(explanation) + ".")
     people = take(lambda action: action.get("id") in
                   {"world.inspect_npc", "world.inspect_camp_npc", "world.basecamp_missions"})
     if people:
@@ -134,7 +253,13 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
     if waiting and operations.get("game.wait"):
         lines.extend(["play wait <duration> [ignore|safe|stop]",
                       "1m / 5m / 30m / 1h / 2h / 3h / 6h — native availability applies; hours require a watch.",
-                      "ignore: danger and interruptions (default); safe: classified harmless interruptions; stop: stop at interruptions."])
+                      "ignore: continue through danger (default); safe: inspect danger/damage; stop: stop at each interruption."])
+    if any(action.get("id") == "world.autoattack" for action in actions):
+        lines.append("world.autoattack: attack a hostile in reach; otherwise pass a turn when native safe mode permits.")
+    if any(action.get("id") == "world.pause" for action in actions):
+        lines.append("world.pause: pass one native turn without initiating an attack.")
+    if any(action.get("id") in {"world.pause", "world.autoattack"} for action in actions):
+        lines.append("Count repeat: play repeat world.pause --count 10 or play repeat world.autoattack --count 10; collect a pending receipt, then play repeat --resume.")
     if remaining:
         lines.extend(["", "OTHER ADVERTISED ACTIONS"])
         for action in remaining:
@@ -142,7 +267,7 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
             if action.get("stable_id"):
                 command += " --target " + shlex.quote(action["stable_id"])
             lines.append(clean(action.get("label", action["id"])) + " → " + command)
-    lines.extend(["", "SESSION", "play look — observe · play collect — retrieve pending result · play quit — end playtest"])
+    lines.extend(["", "SESSION", "play look — read-only observe · play collect — retrieve pending result · play quit — end playtest"])
     return "\n".join(line for line in (lines[controls_start:] if controls_only else lines) if line is not None).strip()
 
 
@@ -183,7 +308,7 @@ def _save_status_line(status, checkpoint, current_turn, *, quicksave=False):
     return f"{label}: {status}; saved turn unknown."
 
 
-def _plain_controls(actions, heading="ALLOWED HERE ONLY"):
+def _plain_controls(actions, heading="ALLOWED HERE ONLY", *, prompt_title=None):
     """Print every advertised choice once, sharing command syntax across targets."""
     lines = [heading]
     targeted = {}
@@ -227,7 +352,14 @@ def _plain_controls(actions, heading="ALLOWED HERE ONLY"):
                     label = _plain_text(action.get("label", verb))
                     command = "play " + label.lower() if label.lower() in {"yes", "no", "ignore"} else (
                         f"play act prompt.{verb} --target " + shlex.quote(target))
-                    lines.append(label + (" → " + command if action.get("enabled", True) else " (unavailable)"))
+                    cue = ""
+                    if prompt_title == "CANCEL_ACTIVITY_OR_IGNORE_QUERY" and action.get("enabled", True) and \
+                            action.get("id") == "prompt.choose":
+                        cue = {"no": " — continue this time",
+                               "ignore": " — continue; ignore this distraction type for the current activity and backlog"}.get(
+                                   label.casefold(), "")
+                    lines.append(label + (" → " + command + cue if action.get("enabled", True)
+                                          else " (unavailable)"))
             continue
         if namespace == "target":
             for target, choices in targets.items():
@@ -330,21 +462,300 @@ def _plain_evidence_output(result):
     return "\n".join([header, body, *([footer] if needs_retrieval else [])]).rstrip()
 
 
+def _plain_decision_output(result):
+    """Show one bounded decision page; exact byte handles remain on every row."""
+    from evidence_display import DEFAULT_BYTES
+
+    scope = result["decision_trace"]
+    page = result["page"]
+
+    def location(value):
+        return ",".join(map(str, value)) if isinstance(value, list) else "?"
+
+    def yes_no(value):
+        return "yes" if value is True else "no" if value is False else "?"
+
+    def capture_window(first, last):
+        return ("all turns" if first is None and last is None else
+                f"{first if first is not None else 'start'}.."
+                f"{last if last is not None else 'end'}")
+
+    def row_text(value):
+        kind = value.get("kind")
+        if kind == "actor":
+            target = value.get("target")
+            target_text = (f"{target.get('type', '?')}#{target.get('id', '?')}@{location(target.get('position_abs'))}"
+                           if isinstance(target, dict) else "none")
+            duty = (f" duty=camp:{yes_no(value.get('assigned_camp'))}"
+                    f"/job:{yes_no(value.get('has_job'))}"
+                    f"/patrol:{value.get('patrol_priority')}"
+                    f"/order:{yes_no(value.get('patrol_order'))}"
+                    if value.get('assigned_camp') is not None else "")
+            outing = (f" outing={value.get('outing_kind')}:{value.get('outing_phase')}"
+                      f"/{value.get('outing_owner')}@{value.get('outing_waypoint_index')}"
+                      if value.get('outing_member') else "")
+            return (f"t{value.get('turn')} #{value.get('actor_id')} {value.get('action')} "
+                    f"[{value.get('attitude')}/{value.get('mission')}] "
+                    f"role={value.get('actor_role') or '?'} "
+                    f"target={target_text} seen={yes_no(value.get('target_visible'))} "
+                    f"avatar_seen={yes_no(value.get('avatar_visible'))} "
+                    f"pos={location(value.get('position_abs'))} → goal={location(value.get('goto_abs'))} "
+                    f"next_local={location(value.get('path_next_local'))} "
+                    f"passable={yes_no(value.get('path_next_passable'))} "
+                    f"path={value.get('path_length')} panic={value.get('panic')} "
+                    f"flee={yes_no(value.get('flee'))} bravery={value.get('bravery')}"
+                    f" danger={value.get('danger')} sound={value.get('sound_alerts')}"
+                    f" phase={value.get('operation_phase')}/{value.get('operation_owner')}"
+                    f" route={value.get('route_waypoint_index')}:{value.get('actor_route_waypoint')}"
+                    f" search={value.get('site_search_waypoint')}{duty}{outing}")
+        if kind == "damage":
+            source = value.get("source") or {}
+            victim = value.get("victim") or {}
+            return (f"t{value.get('turn')} DAMAGE {value.get('damage_kind')} "
+                    f"{source.get('type', 'unknown')}#{source.get('id')}@{location(source.get('position_abs'))}"
+                    f" → {victim.get('type', 'unknown')}#{victim.get('id')}@{location(victim.get('position_abs'))}"
+                    f" {value.get('body_part')} HP {value.get('hp_before')}→{value.get('hp_after')}"
+                    f" applied={value.get('applied_damage')}")
+        if kind == "death":
+            killer = value.get("killer") or {}
+            victim = value.get("victim") or {}
+            return (f"t{value.get('turn')} CONFIRMED DEATH "
+                    f"{victim.get('type', 'unknown')}#{victim.get('id')}@{location(victim.get('position_abs'))}"
+                    f" killer={killer.get('type', 'unknown')}#{killer.get('id')}@{location(killer.get('position_abs'))}")
+        if kind == "sleep":
+            return (f"t{value.get('turn')} #{value.get('actor_id')} {value.get('edge')} "
+                    f"pos={location((value.get('actor') or {}).get('position_abs'))} "
+                    f"sleepiness={value.get('sleepiness')} narcosis={yes_no(value.get('narcosis'))} "
+                    f"cause={value.get('cause') or 'unknown'}")
+        if kind == "scope":
+            return (f"t{value.get('turn')} SCOPE group={value.get('group_id')} "
+                    f"selected_npc_ids={value.get('selected_npc_ids')} "
+                    f"capture={capture_window(value.get('capture_from_turn'), value.get('capture_to_turn'))} "
+                    f"selection={value.get('selection')}")
+        if kind == "search":
+            recipients = value.get("recipients") or []
+            orders = ",".join(f"#{item.get('id')}→{location(item.get('goto_abs'))}"
+                              for item in recipients if isinstance(item, dict)) or "none"
+            target = value.get("seen_target")
+            seen = (f"{target.get('type', '?')}#{target.get('id', '?')}"
+                    if isinstance(target, dict) else "?")
+            return (f"t{value.get('turn')} SEARCH {value.get('reason')} "
+                    f"trigger=#{value.get('trigger_actor_id') or '?'} seen={seen} "
+                    f"waypoint={value.get('waypoint')} attempted={yes_no(value.get('waypoint_attempted'))} "
+                    f"orders={orders}")
+        if kind == "repeat":
+            return (f"t{value.get('first_turn')}..{value.get('last_turn')} "
+                    f"REPEAT {value.get('count')} × {value.get('of_event')} "
+                    f"generation={value.get('generation')} member={value.get('member')} "
+                    f"({'base row missing from snapshot; action/search payload unknown' if value.get('base_missing') else 'base handle in diagnostics'}; "
+                    "full span may extend outside requested window)")
+        if kind == "capture_truncated":
+            return (f"CAPTURE TRUNCATED scope={value.get('scope')} budget={value.get('row_budget')} "
+                    f"decisions={value.get('decisions')} written={value.get('written_rows')} "
+                    f"unpreserved={value.get('unpreserved_rows')}")
+        # --select is an exact raw field projection; show it without guessing
+        # the missing decision fields or converting null into a negative fact.
+        return ", ".join(f"{key}={json.dumps(item, ensure_ascii=False, separators=(',', ':'))}"
+                         for key, item in value.items())
+
+    actors = ", ".join(f"#{actor} {name}" for actor, name in sorted(
+        scope["actors"].items(), key=lambda pair: int(pair[0]))
+                     if not scope["actor_ids"] or int(actor) in scope["actor_ids"]) or "none recorded"
+    window = f"{scope['from_turn'] if scope['from_turn'] is not None else 'start'}..{scope['to_turn'] if scope['to_turn'] is not None else 'end'}"
+    counts = scope["captured_event_counts"]
+    capture = ", ".join(f"{key}={counts.get(key, 0)}" for key in
+                        ("raid_actor_action", "raid_site_search", "raid_trace_scope",
+                         "raid_trace_repeat", "raid_trace_truncated"))
+    cap = ("TRUNCATED " + str(scope["capture_truncation"])
+           if scope["capture_truncation"] else "no truncation marker in snapshot; current recorder default 1024 rows")
+    paths = {row["artifact"]["path"] for row in result["rows"]}
+    source = (next(iter(paths)) if len(paths) == 1 else
+              "no rows on this page" if not paths else "multiple; see each row's diagnostic artifact")
+    scope_label = (f"operation={scope['operation_id']}" if scope.get("operation_id") else
+                   f"group={scope.get('group_id')}")
+    selected = (f" Selected NPC IDs: {scope.get('selected_npc_ids') or 'none recorded'}."
+                if scope.get("group_id") else "")
+    if scope.get("group_id") and scope.get("selected_capture_window"):
+        bounds = scope["selected_capture_window"]
+        selected += (" Capture turns: " +
+                     capture_window(bounds.get('from_turn'), bounds.get('to_turn')) + ".")
+    header = (f"Decision trace run={scope['run_id']} {scope_label} window={window}\n"
+              f"Actors observed: {actors}.{selected} "
+              f"{'Group search rows include other members gates.' if scope.get('operation_id') else 'Only loaded NPC hook decisions are captured; abstract travel is outside this hook.'}\n"
+              f"Recorded in source snapshot: {capture}; {cap}. Final repeat tail unconfirmed. "
+              f"Orphan repeat bases: {scope.get('orphan_repeat_bases', 0)}.\n"
+              f"Matching {result['matched']}; page offset={page['offset']} limit={page['limit']} "
+              f"returned={len(result['rows'])}; next={page['next_offset']}.\n"
+              f"Source: {source}\n"
+              "Each @offset+length sha256 is an exact raw source handle; use cockpit_file_bridge.py record-artifact. "
+              "execute_action names the trace call site, not why an action was chosen.\n")
+    footer = (f"Snapshot={result['snapshot']}; page with the same scope plus --snapshot HASH --offset N. "
+              "--select FIELD projects raw fields; --diagnostics returns full row handles and coverage.")
+    if len((header + footer + "\n").encode("utf-8")) + 100 > DEFAULT_BYTES:
+        return (f"Decision view header exceeds {DEFAULT_BYTES} bytes; "
+                f"snapshot={result['snapshot']}. Use --diagnostics for exact scope and source handles.")
+    allowance = DEFAULT_BYTES - len((header + footer + "\n").encode("utf-8")) - 100
+    shown = []
+    for index, row in enumerate(result["rows"], page["offset"] + 1):
+        artifact = row["artifact"]
+        rendered = (f"{index}. {row_text(row['record'])} "
+                    f"@{artifact['offset']}+{artifact['length']} sha256={artifact['sha256']}")
+        size = len((rendered + "\n").encode("utf-8"))
+        if size > allowance:
+            break
+        shown.append(rendered)
+        allowance -= size
+    if len(shown) < len(result["rows"]):
+        footer = (f"Stdout byte limit displayed {len(shown)} of {len(result['rows'])} page rows. " + footer)
+    return header + "\n".join(shown) + "\n" + footer
+
+
+def _startup_dialog_text(dialog):
+    """Present a startup UI observation without upgrading OCR or log clues to proof."""
+    if not isinstance(dialog, dict):
+        return ""
+    state = dialog.get("state")
+    pid = dialog.get("pid")
+    birth = dialog.get("birth_identity")
+    identity = f"PID {pid}" if pid else "game PID unknown"
+    if birth:
+        identity += f"; born {birth}"
+    lines = [f"Startup UI ({identity}; {dialog.get('evidence_class', 'startup_ui_only')}):"]
+    if dialog.get("run_id"):
+        lines.append("Run: " + str(dialog["run_id"]) + "; bridge binding: " +
+                     str(dialog.get("binding_id", "unknown")))
+    if state == "confirmed_debug_dialog":
+        lines.append("Current debug dialog confirmed by a fresh window capture and matching log text.")
+        lines.append("Message: " + str(dialog.get("message", "")))
+        source = dialog.get("source_file")
+        if source:
+            lines.append(f"Log source: {source}:{dialog.get('source_line', '?')}")
+    elif state == "debug_dialog_unmatched":
+        lines.append("A debug dialog is visible; its exact log message is unconfirmed.")
+        if dialog.get("ocr_excerpt"):
+            lines.append("Window OCR: " + str(dialog["ocr_excerpt"]))
+    elif state == "other_surface":
+        lines.append("A different startup screen is visible; no debug recovery decision is established.")
+        if dialog.get("ocr_excerpt"):
+            lines.append("Window OCR: " + str(dialog["ocr_excerpt"]))
+    elif state == "loading_unknown":
+        lines.append("No blocking debug dialog confirmed; loading state remains unknown.")
+    else:
+        lines.append("Current blocking screen unknown: " + str(dialog.get("reason", state or "unavailable")))
+        if dialog.get("capture_detail"):
+            lines.append("Capture detail: " + str(dialog["capture_detail"]))
+    if dialog.get("image_path"):
+        if dialog.get("window_title"):
+            lines.append("Window: " + str(dialog["window_title"]))
+        lines.append("UI capture: " + str(dialog["image_path"]) +
+                     (" (SHA-256 " + str(dialog["image_sha256"]) + ")"
+                      if dialog.get("image_sha256") else ""))
+    if state == "confirmed_debug_dialog" and dialog.get("log_path") is not None:
+        lines.append(f"Exact log: {dialog['log_path']} @ byte {dialog.get('log_byte_offset', '?')}")
+        other_clues = [clue for clue in dialog.get("log_clues", [])
+                       if clue.get("message") != dialog.get("message")]
+        if other_clues:
+            lines.append("Other profile log clues (separate messages; not the current captured dialog):")
+            for clue in other_clues[-3:]:
+                lines.append(f"- {clue.get('source_file', '?')}:{clue.get('source_line', '?')} "
+                             f"{clue.get('message', '')}")
+    elif dialog.get("log_clues"):
+        lines.append("Recent profile debug-log clues (not confirmed as the current screen):")
+        for clue in dialog["log_clues"][-3:]:
+            lines.append(f"- {clue.get('source_file', '?')}:{clue.get('source_line', '?')} "
+                         f"{clue.get('message', '')} — {clue.get('log_path', '?')} "
+                         f"@ byte {clue.get('log_byte_offset', '?')}")
+    if state == "confirmed_debug_dialog":
+        lines.append("Decision: Record this exact UI/log/run clue; notify the coordinator asynchronously "
+                     "for triage without waiting. Assess its consequence for this playtest.")
+        if dialog.get("image_sha256") and dialog.get("session"):
+            command = ("play --session " + shlex.quote(str(dialog["session"])) +
+                       " debug-ignore --capture " + str(dialog["image_sha256"]))
+            lines.append("Recovery for an understood non-destructive debug continuation: " + command)
+            lines.append("Add --note only when a claim-specific consequence needs recording; message wording alone needs no new approval.")
+            lines.append("This sends one native Ignore, then reobserves. No input sent by play look.")
+        else:
+            lines.append("Recovery command unavailable until a current capture and session are bound. No input sent.")
+        lines.append("Guidance: .agents/skills/caol-harness/references/debug-errors.md")
+    elif state == "debug_dialog_unmatched":
+        lines.append("Decision: Assess the visible debug text and notify the coordinator asynchronously; "
+                     "the exact current log message is unconfirmed. Reobserve or use independently verified "
+                     "PID-bound input after identifying the current dialog. No input sent.")
+    else:
+        lines.append("Decision: Reobserve or report the unknown screen before recovery input. No input sent.")
+    lines.append("UI and log diagnostics do not prove save integrity, gameplay, or actor behavior.")
+    return "\n".join(lines)
+
+
+def _startup_debug_recovery_text(recovery):
+    before = recovery.get("before", {})
+    lines = ["Debug Ignore: " + ("one key reported delivered" if recovery.get("ok") else "no confirmed delivery")]
+    if before.get("message"):
+        lines.append("Before: " + str(before["message"]))
+        lines.append("Source: " + str(before.get("source_file", "?")) + ":" +
+                     str(before.get("source_line", "?")) + "; run " + str(before.get("run_id", "?")) +
+                     "; PID " + str(before.get("pid", "?")) + "; born " +
+                     str(before.get("birth_identity", "?")))
+    if recovery.get("reason"):
+        lines.append("Input not sent: " + str(recovery["reason"]))
+    input_result = recovery.get("input", {}).get("peekaboo", {})
+    if input_result.get("error"):
+        lines.append("Delivery error: " + str(input_result["error"]) +
+                     ("; " + str(input_result["detail"]) if input_result.get("detail") else ""))
+    if recovery.get("attempt_path"):
+        lines.append("Attempt record: " + str(recovery["attempt_path"]))
+    if recovery.get("result_path"):
+        lines.append("Delivery/result record: " + str(recovery["result_path"]))
+    after = recovery.get("after", {})
+    if after.get("state") == "bridge_status_changed":
+        lines.append("Bridge state after input: " + str(after.get("status", "unknown")) +
+                     "; native World still needs verification.")
+    elif after:
+        if (recovery.get("ok") and before.get("image_sha256")
+                and after.get("image_sha256") == before.get("image_sha256")):
+            lines.append("The same modal remains in the immediate reobservation; recheck it before another Ignore.")
+        lines.append("Current UI after input:\n" + _startup_dialog_text(after))
+    elif before and not recovery.get("ok"):
+        lines.append("Current UI at refusal:\n" + _startup_dialog_text(before))
+    lines.append("Next: play look; use the new current capture for any next distinct debug warning. "
+                 "Key delivery does not prove World or item integrity.")
+    return "\n".join(lines)
+
+
 def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=None,
-                        operation_availability=None, inspection_request_id=None):
+                        operation_availability=None, inspection_request_id=None,
+                        show_local_map=False):
     """Render the existing player projection; never replace game facts with advice."""
     import shlex
     import re
 
+    if result.get("schema") == "caol-startup-debug-recovery-v1":
+        return _startup_debug_recovery_text(result)
+    if result.get("schema") == "caol-play-count-repeat-v1":
+        lines = [f"{result.get('action_id')}: {result.get('completed_count')}/{result.get('requested_count')} actions — {result.get('state')}"]
+        if result.get("stop_reason"):
+            lines.append("Stop: " + str(result["stop_reason"]))
+        lines.append("Unused: " + str(result.get("unused_count")))
+        lines.append(f"Native turns: {result.get('first_native_turn')} → {result.get('last_native_turn')}; owner: {result.get('current_owner')}")
+        if result.get("receipt_handles"):
+            lines.append("Receipts: " + ", ".join(str(item.get("request_id")) for item in result["receipt_handles"]))
+        if result.get("outstanding_request_id"):
+            lines.append("Pending exact request: " + str(result["outstanding_request_id"]))
+        if result.get("next"):
+            lines.append("Next: " + str(result["next"]))
+        return "\n".join(lines)
     lines = []
     status = result.get("status", {})
     if not isinstance(status, dict):
         status = {}
-    if status.get("state") == "starting":
-        return "Loading → play look"
+    if status.get("state") in {"starting", "preparing"}:
+        dialog = _startup_dialog_text(result.get("startup_dialog"))
+        return "Loading → play look" + ("\n" + dialog if dialog else "")
     if status.get("state") in {"process_dead", "bridge_failed", "reentry_failed", "terminalization_failed"}:
         reason = startup_error or status.get("error") or status.get("reason") or "game process exited"
-        return "Playtest stopped: " + str(reason).replace("pre_descriptor_no_progress", "startup failed before game controls became available")
+        stopped = "Playtest stopped: " + str(reason).replace("pre_descriptor_no_progress", "startup failed before game controls became available")
+        dialog = _startup_dialog_text(result.get("startup_dialog"))
+        return stopped + ("\n" + dialog if dialog else "")
 
     view = player_output(result)
     if "latest" in result and "turn_assessment" in result:
@@ -390,7 +801,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                  "Pending result → play collect; end playtest → play quit"]
         if availability.get("game.wait"):
             lines += ["Wait → play wait 5m [ignore|safe|stop] (example duration)",
-                      "ignore: continue through danger (default); safe: harmless interruptions only; stop: any interruption.",
+                      "ignore: continue through danger (default); safe: inspect danger/damage; stop: each interruption.",
                       "For other native durations/modes → play act world.wait (when advertised)."]
         elif availability.get("game.wait") is False:
             lines.append("Short wait unavailable in this scenario; use the advertised native wait menu.")
@@ -406,8 +817,10 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
         lines += ["After rejection/interruption, read the current state; do not blindly replay input.",
                   "Speech: an emitted LLM response may need play act world.pause to apply (only when advertised).",
                   "look/collect do not advance game time. Use play evidence to check request/response events.",
-                  "Full technical examples → play --diagnostics controls"]
+                  "Exact retained field → play inspect SELECTOR; full transport JSON → play controls --diagnostics when needed."]
         return "\n".join(lines)
+    if isinstance(result.get("decision_trace"), dict):
+        return _plain_decision_output(result)
     evidence_snapshot = result.get("snapshot") if isinstance(result.get("rows"), list) else None
     if isinstance(evidence_snapshot, dict) and evidence_snapshot.get("sha256"):
         return _plain_evidence_output(result)
@@ -529,12 +942,17 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
     owner = current.get("owner")
     fresh = (snapshot and result.get("state") in {"collected", "rejected"}
              and owner and owner == snapshot.get("owner"))
+    prompt_title = (current.get("facts_changed", {}).get("title")
+                    if owner == "prompt" and isinstance(current.get("facts_changed"), dict) else None)
     if fresh:
         facts = snapshot["current"].get("facts", {})
+        if owner == "prompt":
+            prompt_title = facts.get("title")
         if owner == "world":
             if full_look:
                 lines.append(world_look(snapshot, operation_availability,
-                                        show_controls=not result.get("world_controls_unchanged", False)))
+                                        show_controls=not result.get("world_controls_unchanged", False),
+                                        show_local_map=show_local_map))
             else:
                 lines.append("World.")
             # Keep messages/outcomes on actions, without reprinting world diagnostics/maps.
@@ -861,7 +1279,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                 if key in {"actions", "actions_changed"} and isinstance(item, list) and all(
                         isinstance(action, dict) and "id" in action and "enabled" in action for action in item):
                     if (operation_availability or {}).get("game.act") is not False:
-                        lines.append(_plain_controls(item))
+                        lines.append(_plain_controls(item, prompt_title=prompt_title))
                     continue
                 if key in {"current_input", "facts_changed", "outcome", "response", "new_events", "value", "slice"}:
                     write(item)
@@ -942,13 +1360,16 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
             removed = current.get("actions_removed", [])
             if removed:
                 lines.append(_plain_controls(snapshot["current"].get("actions", []),
-                                             "Allowed actions replaced — use only these:"))
+                                             "Allowed actions replaced — use only these:",
+                                             prompt_title=prompt_title))
             elif changed:
-                lines.append(_plain_controls(changed, "Changed controls (others unchanged):"))
+                lines.append(_plain_controls(changed, "Changed controls (others unchanged):",
+                                             prompt_title=prompt_title))
             if not changed and not removed:
                 lines.append("Allowed actions unchanged.")
         else:
-            lines.append(_plain_controls(snapshot["current"].get("actions", [])))
+            lines.append(_plain_controls(snapshot["current"].get("actions", []),
+                                         prompt_title=prompt_title))
     if fresh and owner == "activity_wait" and result.get("state") == "collected":
         lines.append("Check progress → play look (collect repeats this recorded result).")
     if any(line.startswith("Movement stopped:") for line in lines):
@@ -1211,12 +1632,12 @@ def display(response, previous=None, refresh=False):
     if owner == "world":
         view["facts_changed"] = changed
         view["facts_removed"] = removed
-    for key in ("game_minutes", "game_turn", "game_time", "turn"):
+    for key in ("game_minutes", "game_turn", "avatar_moves", "game_time", "turn"):
         if key in observed and (reset or previous.get(key) != observed[key]):
             view[key] = {"before": previous.get(key), "after": observed[key]}
     snapshot = {**identity, "facts": facts, "actions": actions, "breadcrumbs": breadcrumbs}
     state = {**previous, "run_id": observed.get("run_id"), "owner": owner,
-             "current": snapshot, **{k: observed[k] for k in ("game_minutes", "game_turn", "game_time", "turn") if k in observed}}
+             "current": snapshot, **{k: observed[k] for k in ("game_minutes", "game_turn", "avatar_moves", "game_time", "turn") if k in observed}}
     if owner == "world":
         state["world"] = snapshot
     return view, state

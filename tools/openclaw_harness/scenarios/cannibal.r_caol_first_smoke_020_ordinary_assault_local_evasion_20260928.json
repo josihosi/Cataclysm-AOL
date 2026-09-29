@@ -1,0 +1,187 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_020_ordinary_assault_local_evasion_20260928",
+  "description": "Ordinary-view post-contact continuation from byte-exact pre-feral turn5257643; sidestep east within the loaded z0 floor instead of entering stairs/basement.",
+  "profile": "first-smoke-020-clean-closed-assault-local-evasion-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_shelter_continuation": "ordinary_view_committed_cannibal_contact_shelter_from_turn_5257643",
+    "capabilities.r_caol.first_smoke_020_ordinary_assault_local_evasion": "ordinary_view_committed_cannibal_contact_local_evasion_from_turn_5257643"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-020-clean-closed-assault-local-evasion-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/build-prefix/cataclysm-tiles",
+      "profile": "first-smoke-020-clean-closed-assault-local-evasion-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_verified_pre_feral_committed_contact_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the byte-exact disposable clone of run c2e83b0f saved at turn5257643/minute8427. This state follows the clean ordinary-view run smoke admission, same-ID scout/watch/return/report and cannibal ID4 hit on Casey; it precedes the feral ID12/17 attack/death. It is post-contact, not fresh discovery. Verify effective userdir, World/turn, safe mode Off, both clairvoyance mutations absent, fd_fire at brazier, smoke state as actually sampled, and actor IDs2/3/4/7 before input."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No additional fixture transform is declared; camp geometry is the already-recorded controlled setup in the byte-exact manifest."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "local_evasion_then_assess_committed_raid",
+      "objective": "Continue from turn5257643/minute8427 by one different legal native move east from [3156,3449,0] onto the observed passable floor [3157,3449,0]. This tests an ordinary loaded-area sidestep and does not descend/change z. Inspect state and the exact error surface after the action. If no duplicate warning, assess same IDs4/7, defenders2/3, ferals and fire; do not repeat smoke/scout/report.",
+      "proof_targets": [
+        "byte-exact copy from turn5257643/min8427 saved payload, correct effective userdir, same-run World and runtime binding",
+        "both clairvoyance mutations absent and safe mode verified Off",
+        "one native east sidestep on z0; verify exact new position and same-ID actors from metadata",
+        "fd_fire/smoke fields and committed operation members4/7 plus defenders2/3 tracked from saved metadata",
+        "same-ID pursuit/attack/action/target/health/death evidence and source-attributed player harm; distinguish ferals12-17",
+        "native quicksave and verified saved turn plus simulation turn timing",
+        "exact process/session/binding and graceful cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal/contact/report/dispatch/hostile teleport/fire/light injection or debug raider kill",
+        "Both clairvoyance mutations, cloak and invulnerability remain absent in this ordinary-view continuation",
+        "Do not present prior arm stages as newly observed in this run; cite the original run handles",
+        "Maintain the existing fire through natural combat unless a concrete safety blocker requires stopping",
+        "Track all relevant actors by native ID/metadata, including unseen actors; do not infer attacker from bark or death alone",
+        "Choose safe/stop near first harm; use ignore only deliberately for combat-through-outcome",
+        "Stop unchanged waits at the first material divergence"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish",
+        "harness:debug.ignore"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_verified_pre_feral_committed_contact_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "local_evasion_then_assess_committed_raid"
+    ],
+    "terminal_persistence": [
+      "local_evasion_then_assess_committed_raid"
+    ],
+    "artifact_verdict": [
+      "local_evasion_then_assess_committed_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From an exact disposable copy of the clean ordinary-view arm saved after committed contact, test one native local sidestep and assess actor-level outcomes. Prior signal/discovery stages remain bound to the original run.",
+    "failure_rule": "Credit only current-run physical actor and damage records. Prior run evidence may establish the saved continuation premises but cannot prove new movement or combat in this run."
+  }
+}

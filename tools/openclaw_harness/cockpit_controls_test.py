@@ -22,12 +22,12 @@ class ControlsTest(unittest.TestCase):
         self.assertEqual(controls["manual_start_request"], {
             "action": "game.act", "action_id": "world.wait",
         })
-        self.assertIn("not a turn", controls["recipe"])
+        self.assertIn("passes one native turn", controls["recipe"])
 
-    def test_published_pause_recipe_refuses_a_nonadvancing_native_action(self):
-        frames = [wait_fixture.frame(i, 100, {
+    def test_pause_recipe_advances_short_native_turns_before_the_next_minute(self):
+        frames = [wait_fixture.frame(i, minutes, {
             "classification": "clear", "monster": False, "danger": False, "damage": False,
-        }) for i in (1, 2, 3)]
+        }) for i, minutes in ((1, 100), (2, 100), (3, 101))]
         for frame in frames:
             frame["schema_version"] = 1
             frame["event"] = "surface_descriptor"
@@ -45,8 +45,33 @@ class ControlsTest(unittest.TestCase):
             "bound": {"basis": "scheduler_boundary", "source": "test", "unit": "game_minutes",
                       "maximum": 1, "progress_required": True},
         }})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.pause", "world.pause"])
+        self.assertEqual(result["result"]["terminal_game_minutes"], 101)
+
+    def test_pause_recipe_stops_when_native_turn_and_moves_do_not_progress(self):
+        frames = [wait_fixture.frame(i, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        }) for i in (1, 2)]
+        for frame in frames:
+            frame["schema_version"] = 1
+            frame["event"] = "surface_descriptor"
+            frame["surface_id"] = f"surface:{frame['frame_id']}"
+            frame["kind"] = "world"
+            frame["breadcrumbs"] = ["World"]
+            frame["payload"] = {}
+            frame["valid_actions"] = [{"id": "world.pause", "stable_id": "",
+                                       "label": "Pause", "enabled": True}]
+        frames[1]["observed_turn"] = frames[0]["observed_turn"]
+        service, dispatched = wait_fixture.KeepWatchTest().service(frames)
+        result = service.call({"action": "game.wait", "wait": {
+            "enabled": True, "target_delta_game_minutes": 1,
+            "danger_handling": "handle_classified_non_dangerous", "recipe": ["world.pause"],
+            "bound": {"basis": "scheduler_boundary", "source": "test", "unit": "game_minutes",
+                      "maximum": 1, "progress_required": True},
+        }})
         self.assertFalse(result["ok"])
-        self.assertEqual(result["error"], "keep_watch_no_native_time_progress")
+        self.assertEqual(result["error"], "keep_watch_pause_progress_unproved")
         self.assertEqual(dispatched, ["world.pause"])
 
     def test_documented_absolute_target_variant_uses_cautious_route(self):

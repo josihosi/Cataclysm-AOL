@@ -6,8 +6,23 @@ description: Query, explain, launch, operate, and audit C-AOL playtests through 
 # C-AOL harness
 
 Use the registry to select and launch a scenario and the cockpit/player CLI to operate its native
-input owners. The coordinator supplies the outcome and compact charter; the worker owns the
-strategy and evidence. Run CLI commands from the game worktree.
+input owners. The coordinator supplies the gameplay goal, current state and expected next
+observable development; the worker owns strategy and evidence. Run CLI commands from the game worktree.
+
+Play toward the intended outcome. An observation is a snapshot, not automatically a verdict.
+When conditions are developing, continue ordinary play and compare changes. Preserve the first
+meaningful divergence, then decide whether continued play can explain it. Investigate when behavior
+contradicts the expected outcome or stops progressing; a crash or known hard rejection needs
+recovery, not more waiting. Consult code when gameplay observations leave a consequential question
+unresolved. Protocols are adaptable examples, not scripts whose first unexpected result ends the test.
+
+Use the [game manual](GAME-MANUAL.md) for reusable playtest knowledge, behavior
+assessment, owner handling corrections and note maintenance. Screenshots and OCR help locate
+controls; native logs, receipts and saved state establish gameplay claims.
+
+For the ordered faction/camp replay arms and a compact fire/raid recipe with its verified evidence boundary, use
+[the sequential playtest suite](references/playtest-suite.md). It maps behaviors to recipes,
+retained proof and the next build-specific replay pass, including bandit drafts. Select only the relevant arm.
 
 ## Live playtesting belongs to Luna
 
@@ -27,10 +42,13 @@ contain the detailed commands and evidence boundaries for that situation.
 | Situation or question | Read |
 | --- | --- |
 | Choose a scenario, resolve readiness or binding, build, launch, inspect registry status | [Selection and launch](references/selection-and-launch.md) |
+| A native debug warning interrupts loading or play | [Debug error catalogue: record/report, Ignore and continue](references/debug-errors.md) |
 | Operate an existing session: look, act, controls, collect, cancel, macros, save/reload | [Live operation](references/live-operation.md) |
+| Light, extinguish or check the prepared brazier | [Fire in a prepared brazier](GAME-MANUAL.md#fire-in-a-prepared-brazier) |
+| Fire is burning but a camp cannot see smoke/light; range, time or height is unclear | [Smoke and light visibility](references/smoke-light-visibility.md) |
 | Choose movement, separation or elapsed time; distinguish a weak experiment from a failure | [Behavior and movement](references/behavior-and-movement.md) |
 | Apply setup interventions, handle danger, use free-text speech, inspect item ownership or zones | [Setup and interactions](references/setup-and-interactions.md) |
-| Retrieve omitted facts, correlate NPC/log events, inspect receipts or compare performance | [Evidence and diagnostics](references/evidence-and-diagnostics.md) |
+| Understand NPC decisions, retrieve omitted facts, correlate events or compare performance | [Evidence and diagnostics](references/evidence-and-diagnostics.md) |
 | Produce journal-cited conclusions, finish a run, separate claim verdicts or check cleanup | [Witness and finish](references/witness-and-finish.md) |
 
 For a specific missing field or implementation location, the [search map](references/searching.md)
@@ -61,15 +79,6 @@ is relevant when interpreting that feature's signal evidence.
   cited evidence rather than duplicating the investigation.
 - Keep observations and contradictions through recovery. At closeout, distinguish the feature
   result, remaining uncertainty and actual cleanup; use the witness theme when reaching that point.
-- For fire, smoke and hostile-camp journeys, use the player's ordinary brazier and lighter actions,
-  verify a real burning tile, then give distant responses enough in-game time. Quicksave and inspect
-  camp/dispatch state at useful checkpoints while keeping an inconclusive session live. See
-  [item activation and placement](references/setup-interaction.md) and
-  [behavior and movement](references/behavior-and-movement.md); the proven controls are indexed in
-  `build_logs/harness-fixes-matrix20/INDEX.md` (row 03).
-- In the prepared closed-room and open-room smoke/light saves, the brazier, firewood and charged
-  lighter are already supplied. Go straight to lighter **Activate** and choose the brazier at
-  **Light where?** Do not use a smokebomb or open a bulk pickup on planks or splintered wood as
-  routine setup. Only investigate fuel after a concrete ignition failure. If the owner has
-  already lit the fire in the current session, verify `fd_fire` and continue observation without
-  repeating ignition. Row 03 above is the native control example.
+- For prepared fire/smoke journeys and NPC observation, retrieve the relevant procedure from
+  [the living game manual](GAME-MANUAL.md). It separates verified setup from current state,
+  links the ordinary lighter/brazier controls and explains actor-level progress assessment.

@@ -1,0 +1,186 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_011_r020_repaired_clean_closed_smoke_regression",
+  "description": "R011 independent fresh closed smoke regression on immutable source-bound R020 build; controlled camp geometry remains disclosed setup.",
+  "profile": "first-smoke-011-r020-closed-smoke-regression-20260928",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-011-r020-closed-smoke-regression-20260928",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-020/immutable-executable/3a31e719e1d300cea19477cf2b19f4b088c4b902b068ef0efee38f7ec1e8a45a/cataclysm-tiles",
+      "profile": "first-smoke-011-r020-closed-smoke-regression-20260928",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_closed_window_pre_signal_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable profile whose 45 TestSetup00 save files match build_logs/first-smoke-011/ordinary-closed-smoke-start-manifest.json. Verify effective userdir, same-run World/current turn, Safe mode Off, no clairvoyance/cloak/invulnerability, no pending input, unlit brazier and no prior site knowledge/signal/outing; saved baseline turn 5216234."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No additional fixture transform is declared; camp geometry is the already-recorded controlled setup in the byte-exact manifest."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "ordinary_closed_window_smoke_only_regression",
+      "objective": "Use the normal lighter on the prepared indoor brazier in the clean closed-window copy. Prove actual fd_fire/fd_smoke and a smoke-attributed eligible camp admission before any light/contact source. Then follow same-ID scout/watch/return/report and natural night raid behavior, recording actor actions, targets, health and sourced damage. Historical ID7-attributed death remains evidence from its own run only.",
+      "proof_targets": [
+        "45/45 start-save hashes, effective userdir, same-run World/turn, immutable executable/path receipt, Safe Off and no clairvoyance/cloak/invulnerability",
+        "closed windows; clean pre-signal knowledge/contact/outing baseline; controlled camp geometry disclosed as setup",
+        "ordinary lighter ignition and real fd_fire/fd_smoke; separate smoke/light packet records and source attribution",
+        "smoke admission before any valid light/contact signal; exact camp/site/observer/weather/cap/LOS fields",
+        "same native actors through physical scout, three-OMT watch, return and delivered report",
+        "actual natural night raid pursuit/attack, actor action/target/health, damage source and terminal outcome if reached",
+        "fresh quicksave turns/payloads and simulation timing at meaningful transitions; exact process lifecycle and cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal, contact, report, dispatch, hostile teleport, fire or light injection; no debug raider kill",
+        "Ordinary-view arm: both clairvoyance mutations, cloak and invulnerability remain absent",
+        "Do not call the controlled cannibal-site geometry natural generation or initial site knowledge",
+        "Maintain actual brazier fire through observed raid unless a concrete safety blocker requires stopping",
+        "Track all relevant actors by native ID/metadata and saved roster, including actors outside sight",
+        "At first harm use safe/stop observation; use ignore only deliberately for combat-through-outcome and preserve death attribution",
+        "Stop unchanged waits at the first material divergence; keep the first divergent save and transition handle"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_closed_window_pre_signal_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "ordinary_closed_window_smoke_only_regression"
+    ],
+    "terminal_persistence": [
+      "ordinary_closed_window_smoke_only_regression"
+    ],
+    "artifact_verdict": [
+      "ordinary_closed_window_smoke_only_regression"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh ordinary-view closed-window smoke-only regression on R020 from a byte-exact unlit pre-signal save; physical smoke must be the first admitted cause, followed by the native actor lifecycle and actual raid behavior where eligible.",
+    "failure_rule": "Treat historical ID7 proof as separate. Credit this run only from its own signal, admission, actor and combat records; preserve first divergence and do not infer smoke-only from fire presence."
+  }
+}
