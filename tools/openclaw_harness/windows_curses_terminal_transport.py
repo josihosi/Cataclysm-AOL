@@ -339,7 +339,7 @@ class WindowsCursesTerminalTransport:
         while time.monotonic() < deadline:
             try:
                 owner = _read_owner(endpoint)
-                if owner.get('launch_state') == 'ready' and endpoint.exists():
+                if owner.get('launch_state') in {'ready', 'exited'} and endpoint.exists():
                     return owner['game_process_generation'], endpoint
                 if owner.get('launch_state') == 'failed':
                     raise LaunchOwnershipError('Windows terminal startup failed', _public_owner(owner))

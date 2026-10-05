@@ -1190,6 +1190,9 @@ cata_path PATH_INFO::current_dimension_player_save_path()
 }
 
 bandit_live_world::local_projection_reconciliation_result
+reconcile_loaded_bandit_live_world_projections_for_test();
+
+bandit_live_world::local_projection_reconciliation_result
 reconcile_loaded_bandit_live_world_projections_for_test()
 {
     return reconcile_loaded_bandit_live_world_projections();

@@ -20,19 +20,10 @@ import startup_harness  # noqa: E402
 
 
 def pch_recovery_paths(root: Path, build_prefix: str, *, tiles: bool) -> tuple[Path, ...]:
-    """Return only the generated PCH files owned by this Makefile configuration.
-
-    Makefile defines ``ODIR = $(BUILD_PREFIX)obj`` and
-    ``ODIRTILES = $(BUILD_PREFIX)obj/tiles``.  BUILD_PREFIX is therefore a
-    literal prefix, not always a directory: ``r033-headless-`` owns
-    ``r033-headless-obj`` while ``isolated/`` owns ``isolated/obj``.
-    """
-    object_dir = root / f'{build_prefix}obj' / ('tiles' if tiles else '')
-    # ``Path`` intentionally normalizes the empty curses component.  The PCH
-    # and its make-generated dependency file are the narrow stale-cache pair;
-    # object files and libraries remain reusable.
-    pch = object_dir / 'pch' / 'main-pch.hpp.pch'
-    return pch, pch.with_suffix('.pch.d')
+    """Exact UCRT64 GCC targets: W32ODIR/pch/main-pch.hpp.gch and .d."""
+    object_dir = root / f'{build_prefix}objwin' / ('tiles' if tiles else '')
+    pch = object_dir / 'pch' / 'main-pch.hpp.gch'
+    return pch, pch.with_suffix('.d')
 
 
 def incompatible_pch_diagnostic(text: str) -> bool:
@@ -54,6 +45,12 @@ def invalidate_owned_pch(root: Path, build_prefix: str, *, tiles: bool) -> list[
     return removed
 
 
+def unpublished_resume_allowed(executable: Path) -> bool:
+    """Resume an owned failed build only before any receipt publishes this path."""
+    namespace = startup_harness.product_build_receipt_path(executable)
+    return not namespace.exists() and not any(namespace.parent.glob(f"{namespace.stem}-*.json"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build one native Windows renderer using existing MSYS2 and record its source binding."
@@ -61,6 +58,8 @@ def main() -> int:
     parser.add_argument("--msys-root", default="C:/Users/josef/dev/msys64")
     parser.add_argument("--renderer", choices=("tiles", "curses"), default="tiles")
     parser.add_argument("--jobs", type=int, default=8, help="Build concurrency for this host.")
+    parser.add_argument("--resume-unpublished", action="store_true",
+                        help="Reuse the same owned failed build prefix only while no receipt publishes its executable path.")
     parser.add_argument(
         "--build-prefix", default="",
         help="Optional literal Make BUILD_PREFIX; use a trailing / only for a directory-style prefix.",
@@ -83,8 +82,14 @@ def main() -> int:
         PATH=str(msys_root / "ucrt64/bin") + ";" + str(msys_root / "usr/bin") + ";" + os.environ.get("PATH", ""))
     tiles = args.renderer == "tiles"
     build_prefix = str(args.build_prefix).strip()
-    if not tiles and (not build_prefix or (ROOT / f"{build_prefix}cataclysm.exe").exists()):
-        parser.error("curses requires a separate build prefix with no published executable; never overwrite a selected build")
+    if not tiles:
+        if not build_prefix:
+            parser.error("curses requires a separate build prefix")
+        candidate = ROOT / f"{build_prefix}cataclysm.exe"
+        if not unpublished_resume_allowed(candidate):
+            parser.error("a receipt already publishes this executable path; select a new build prefix")
+        if candidate.exists() and not args.resume_unpublished:
+            parser.error("existing curses executable requires explicit unpublished recovery")
     command = [
         "make", f"-j{args.jobs}", f"TILES={int(tiles)}", f"SOUND={int(tiles)}", "RELEASE=1", "LOCALIZE=0", "MSYS2=1",
         "LINTJSON=0", "ASTYLE=0", "TESTS=0",
@@ -142,11 +147,11 @@ def main() -> int:
     # The direct product target does not depend on Makefile's phony ``version``
     # target.  Refresh it first so the executable's embedded revision cannot
     # remain at a prior checkout while its build receipt claims current source.
-    source_before = startup_harness.product_source_binding() if not tiles else None
     version_command = [*command, "version"]
     version_run = run_logged(version_command, "version")
     if version_run["exit_status"] != 0:
         return emit_failure(version_run)
+    source_before = startup_harness.product_source_binding() if not tiles else None
     command.append(f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}.exe")
     build_run = run_logged(command, "build")
     pch_recovery = None

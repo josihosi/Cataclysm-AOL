@@ -23546,13 +23546,23 @@ def launch_game(
         generation, endpoint = WindowsCursesTerminalTransport.launch(
             run_dir / "game.terminal.log", run_id=binding["run_id"], argv=cmd,
             cwd=repo_root(), env=env, native_lease=lease.export_native_lease())
-        process = WindowsOwnedProcess(generation, cmd)
-        process._openclaw_terminal_input_endpoint = str(endpoint)
-        write_json(run_dir / "process.json", {"pid": process.pid, "command": cmd,
+        # Persist the creation identity even if an early native exit wins the
+        # race with opening this caller's read-only process handle.
+        write_json(run_dir / "process.json", {"pid": generation["pid"], "command": cmd,
             "process_generation": generation, "host": __import__("socket").gethostname(),
             "run_id": binding["run_id"], "userdir": str(userdir_for_profile(profile).resolve()),
             "mode": "terminal", "transport": "windows_conpty"})
         lease.bind_game(generation)
+        try:
+            process = WindowsOwnedProcess(generation, cmd)
+        except (OSError, RuntimeError) as error:
+            from windows_curses_terminal_transport import LaunchOwnershipError
+            raise LaunchOwnershipError("native child exited or identity is unavailable before startup", {
+                "game_process_generation": generation, "endpoint": str(endpoint),
+                "run_owner_path": str(run_dir / "terminal.owner.json"),
+                "run_id": binding["run_id"],
+            }) from error
+        process._openclaw_terminal_input_endpoint = str(endpoint)
         record_bridge_game_process(process, env)
         append_semantic_wake_observation(run_dir, {
             "schema": "caol-semantic-wake-observation-v1", "event": "writer_bound",
