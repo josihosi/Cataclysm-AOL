@@ -8,6 +8,7 @@ import os
 import socket
 import argparse
 import hashlib
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -58,6 +59,8 @@ def main() -> int:
     parser.add_argument("--msys-root", default="C:/Users/josef/dev/msys64")
     parser.add_argument("--renderer", choices=("tiles", "curses"), default="tiles")
     parser.add_argument("--jobs", type=int, default=8, help="Build concurrency for this host.")
+    parser.add_argument("--target-name", default="",
+                        help="Optional immutable executable basename; reuse the configuration's object cache without overwriting a published product.")
     parser.add_argument("--resume-unpublished", action="store_true",
                         help="Reuse the same owned failed build prefix only while no receipt publishes its executable path.")
     parser.add_argument(
@@ -71,6 +74,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
+    target_name = args.target_name or ("cataclysm-tiles" if args.renderer == "tiles" else "cataclysm")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", target_name):
+        parser.error("--target-name must be a portable basename without extension or path")
     if os.name != "nt":
         parser.error("native Windows builder must run on Windows")
     msys_root = Path(args.msys_root).resolve()
@@ -85,7 +91,7 @@ def main() -> int:
     if not tiles:
         if not build_prefix:
             parser.error("curses requires a separate build prefix")
-        candidate = ROOT / f"{build_prefix}cataclysm.exe"
+        candidate = ROOT / f"{build_prefix}{target_name}.exe"
         if not unpublished_resume_allowed(candidate):
             parser.error("a receipt already publishes this executable path; select a new build prefix")
         if candidate.exists() and not args.resume_unpublished:
@@ -98,6 +104,8 @@ def main() -> int:
         command.extend(["USE_XDG_DIR=0", "USE_HOME_DIR=0"])
     if build_prefix:
         command.append(f"BUILD_PREFIX={build_prefix}")
+    if args.target_name:
+        command.append(f"{'TILES_TARGET_NAME' if tiles else 'TARGET_NAME'}={target_name}")
     invocation = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     log_dir = Path(args.log_dir).expanduser() if str(args.log_dir).strip() else (
         ROOT / "build_logs" / "source_bound_windows" / invocation
@@ -152,7 +160,7 @@ def main() -> int:
     if version_run["exit_status"] != 0:
         return emit_failure(version_run)
     source_before = startup_harness.product_source_binding() if not tiles else None
-    command.append(f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}.exe")
+    command.append(f"{build_prefix}{target_name}.exe")
     build_run = run_logged(command, "build")
     pch_recovery = None
     if build_run["exit_status"] != 0 and incompatible_pch_diagnostic(str(build_run["diagnostic"])):
@@ -169,7 +177,21 @@ def main() -> int:
         failure = emit_failure(build_run, pch_recovery=pch_recovery)
         return failure
 
-    executable = (ROOT / f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}.exe").resolve()
+    executable = (ROOT / f"{build_prefix}{target_name}.exe").resolve()
+    version_header = (ROOT / "src/version.h").read_text(encoding="utf-8")
+    expected_version = re.search(r'^#define VERSION "([^"\n]+)"', version_header, re.MULTILINE)
+    version_check = subprocess.run([str(executable), "--version"], cwd=ROOT,
+                                   env=build_env, capture_output=True, check=False)
+    version_output = version_check.stdout.decode("utf-8", errors="replace")
+    if version_check.returncode != 0 or expected_version is None or (
+            f"Cataclysm Dark Days Ahead: {expected_version.group(1)}" not in version_output):
+        print(json.dumps({"ok": False, "phase": "embedded-version",
+                          "exit_status": version_check.returncode,
+                          "expected": expected_version.group(1) if expected_version else "",
+                          "stdout": version_output,
+                          "stderr": version_check.stderr.decode("utf-8", errors="replace")}), file=sys.stderr)
+        return 1
+
     source = startup_harness.product_source_binding()
     if source_before is not None and (not source_before.get("ok") or source_before.get("sha256") != source.get("sha256")):
         print(json.dumps({"ok": False, "phase": "source-binding",
@@ -203,6 +225,8 @@ def main() -> int:
         "build_configuration": {
             "renderer": args.renderer,
             "build_prefix": build_prefix,
+            "target_name": target_name,
+            "embedded_version": expected_version.group(1),
             "make_variables": command[2:-1],
             "pch_recovery": pch_recovery,
         },

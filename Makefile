@@ -1365,6 +1365,8 @@ $(ODIR)/%.o: $(SRC_DIR)/%.rc
 $(ODIR)/resource.o: data/cataicon.ico data/application_manifest.xml
 
 src/version.cpp: src/version.h
+# Bind the embedded revision even when native dependency output omits it.
+$(ODIR)/version.o: $(SRC_DIR)/version.h
 
 TEST_MO := data/mods/TEST_DATA/lang/mo/ru/LC_MESSAGES/TEST_DATA.mo
 
