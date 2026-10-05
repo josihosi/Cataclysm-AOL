@@ -61,8 +61,8 @@
       ],
       "action": "acknowledge_restart",
       "required_obligations": [
-        "set_fresh_post_mutation_clock_without_inheritance",
-        "estimate_from_current_ledger_with_uncertainty_margin"
+        "preserve_existing_clocks_unless_actually_retired",
+        "estimate_retired_claims_from_current_ledger_with_uncertainty_margin"
       ]
     },
     {

@@ -50,6 +50,13 @@ the registry supplies single-use technical run authority. The worker owns scenar
 native actions, repair, binding-safe reruns, and the final witness. Missing charter or stale binding
 is agent-owned repair unless an expressly human outcome is required.
 
+For a combat arm, carry the requested combat outcome into the worker brief; a saved checkpoint
+or first harm is not completion. Use the smoke-raid recipe's rally/night decision rather than a
+blanket instruction to stop at the first divergence. Preserve a contradiction, then decide whether
+ordinary continued play can resolve it or a repair is needed. A further wait should test an
+identified future gate or evolving condition; pending consultation alone is not a reason to
+repeat an unchanged interval. Diagnose the saved state when the expected gate is already past.
+
 The charter states the proof question and credit boundary, not an interaction script. Fictional
 danger, injury, or death is gameplay evidence, not external safety. For wait or movement, select the
 operation's danger handling: stop on interruption, handle classified non-dangerous interruptions,
@@ -61,7 +68,10 @@ The CAOL harness skill and bridge CLI expose compact `response-status` and field
 `log-query` for session responses and exact debug/JSONL logs. These retain identities, outcomes,
 action availability, omissions, and verified retrieval handles. Use semantic selectors or exact
 record retrieval for the decision at hand; an accepted native request alone does not establish its
-gameplay postcondition. Unparsed or unscoped diagnostics remain visible separately.
+gameplay postcondition. For visibility or response comparisons, bind the actual observer and stage:
+a distant home-camp rejection does not describe a nearer scout's read. Compare source/geometry,
+roster and rule changes before calling two runs equivalent. Reuse their exact decision records;
+unparsed or unscoped diagnostics remain visible separately.
 
 Finish with the smallest supported conclusion, its causal evidence, contradictions, and remaining
 unknowns. Use independent claim verdicts when a combined run has mixed outcomes; route an ordinary
@@ -84,9 +94,22 @@ Use the prepared brief and selected context bundles. `context_library.py catalog
 replace the current handoff with accepted results, shared repairs, bindings, constraints, uncertainty
 and original evidence handles. Do not reload a growing history or inherit a predecessor conversation.
 Name recurring context/tool obstructions so Sol can commission a repair at the producing surface.
+The coordinator should record concrete problems, friction, inefficiency and bloat as deferred
+mutation suggestions, and is encouraged to do so during ordinary work. Include the observed
+impact and original evidence; propose simplification when useful, separating inference from fact.
+Extend a related pending entry instead of duplicating it. These are reviewer input, not permission
+to mutate, a reporting quota or a reason to interrupt useful work; use the existing deferred queue
+for the next scheduled review unless Josef explicitly promotes the suggestion.
 
 Return the supported result, material changes, tests and live actions, evidence ceiling, exact
 bindings and artifact/journal references, accepted work and first remaining boundary. The coordinator
-records the existing durable receipt and lifecycle transition. No parallel report or new receipt
-system. A context boundary ends only an attempt, never the unfinished outcome. Keep pending owner
+records the existing durable receipt and lifecycle transition. Reuse the prepared checkpoint and
+its original handles for quiet handoff. Once the saved continuation, input/process ownership and
+helper return are settled, return the editing turn; do not expand closeout into another history
+audit. Disclose unavailable historical process identities as unknown rather than reconstructing
+them after verified exit. A concrete unresolved live owner or save risk still needs resolution.
+No parallel report or new receipt system. A context boundary ends only an attempt, never the unfinished outcome. Keep pending owner
 corrections in the current owner contract until applied with evidence or deliberately deferred.
+
+
+For sequential faction/camp playtests, select one arm from `.agents/skills/caol-harness/references/playtest-suite.md` and pass its linked protocol, selected registry revision, current completed setup and remaining proof question to Luna. Reuse the existing assignments and receipts. After a successful new route or an evidenced stale step, have the returning worker update/prune its protocol; commission Sol only for needed tooling. Protocols are adaptable reference segments, not rigid scripts or new acceptance gates.
