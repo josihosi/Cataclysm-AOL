@@ -10,7 +10,10 @@ import gc
 import json
 import os
 from pathlib import Path
-import resource
+try:
+    import resource
+except ImportError:  # Native Windows has no POSIX resource module.
+    resource = None
 import subprocess
 import sys
 import time
@@ -27,6 +30,8 @@ def enabled() -> bool:
 
 def _rss_bytes() -> int | None:
     """Read current RSS rather than treating ru_maxrss as live retention."""
+    if os.name == "nt":
+        return None  # Unavailable telemetry is not a startup failure.
     try:
         completed = subprocess.run(
             ["ps", "-o", "rss=", "-p", str(os.getpid())],

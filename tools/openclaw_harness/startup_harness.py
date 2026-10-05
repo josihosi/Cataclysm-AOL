@@ -170,6 +170,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/semantic_state.py",
     "tools/openclaw_harness/cockpit.py",
     "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/cockpit_memory_profile.py",
     "tools/openclaw_harness/curses_terminal_transport.py",
     "tools/openclaw_harness/writable_run_owner.py",
     "tools/openclaw_harness/windows_native_process.py",
@@ -23041,7 +23042,7 @@ def semantic_wake_pipe_contract(run_dir: Path, run_id: str) -> Dict[str, Any]:
             owner = json.loads((run_dir / "terminal.owner.json").read_text(encoding="utf-8"))
             generation = owner.get("game_process_generation", {})
             observed = asdict(WindowsProcessInspector().inspect(int(generation.get("pid", 0))))
-            matches = all(observed.get(key) == generation.get(key) for key in ("pid", "birth", "command", "executable"))
+            matches = all(observed.get(key) == generation.get(key) for key in ("pid", "birth_identity", "command", "executable_path"))
             if (record.get("schema") == "caol-semantic-wake-pipe-v2" and
                     record.get("transport") == "windows_event" and record.get("run_id") == run_id and
                     record.get("host") == owner.get("host") == __import__("socket").gethostname() and
@@ -23556,15 +23557,6 @@ def launch_game(
         append_semantic_wake_observation(run_dir, {
             "schema": "caol-semantic-wake-observation-v1", "event": "writer_bound",
             "run_id": binding["run_id"], "transport": "windows_event", "pid": process.pid})
-        def release_native_terminal_after_exit():
-            exit_code = process.wait()
-            record_bridge_game_exit(process, env, exit_code)
-            append_semantic_wake_observation(run_dir, {
-                "schema": "caol-semantic-wake-observation-v1", "event": "child_exit",
-                "run_id": binding["run_id"], "transport": "windows_event",
-                "pid": process.pid, "returncode": exit_code})
-        threading.Thread(target=release_native_terminal_after_exit,
-            name="caol-native-terminal-exit", daemon=True).start()
         return process
     if terminal:
         transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
@@ -23754,8 +23746,8 @@ def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path) -> Di
         return row
     contract = scenario.get("runtime_contract", {})
     reason = ""
-    if sys.platform != "darwin":
-        reason = "Mac terminal adapter only; native Windows adapter remains unavailable"
+    if sys.platform not in {"darwin", "win32"}:
+        reason = "terminal adapter is available on native Mac and Windows only"
     elif contract.get("require_screen_observability") is True or scenario.get("capture_world_after") is True:
         reason = "selected scenario requires graphical observability; select Tiles for this claim"
     elif any(step.get("kind") not in {"native_semantic_bootstrap", "cockpit_live_session"}
@@ -32598,7 +32590,7 @@ def submit_semantic_surface_probe_request(
         bytes_written = write_semantic_wake_pipe(run_dir, run_id)
         return {
             "accepted": True,
-            "transport": "anonymous_pipe",
+            "transport": pipe_contract["contract"]["transport"],
             "bytes_written": bytes_written,
             "request_path": str(request_path),
             "malformed": malformed,

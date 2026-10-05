@@ -23,7 +23,7 @@ import time
 import uuid
 
 from windows_native_process import (NativeConPTY, WindowsProcessInspector, cim_process,
-    adopt_native_lease, create_semantic_wake_event, lease_kernel)
+    adopt_native_lease, create_semantic_wake_event, lease_kernel, replace_with_readers)
 
 OWNER_SCHEMA = 'caol-curses-terminal-owner-v1'
 REQUEST_SCHEMA = 'caol-curses-terminal-request-v1'
@@ -80,7 +80,7 @@ def _write_json_atomic(path, value):
             json.dump(value, sink, sort_keys=True)
             sink.flush()
             os.fsync(sink.fileno())
-        os.replace(temp, path)
+        replace_with_readers(temp, path)
     finally:
         temp.unlink(missing_ok=True)
 
@@ -485,6 +485,15 @@ def _broker(config_path):
         # Complete any interrupted input journal while output keeps draining.
         with input_lock:
             owner.update(launch_state='exited', child_exit_code=native.exit_code())
+            # The broker survives launcher/SSH return and therefore owns the
+            # existing bridge closeout receipt as well as the native handles.
+            from startup_harness import record_bridge_game_exit, append_semantic_wake_observation
+            from types import SimpleNamespace
+            record_bridge_game_exit(SimpleNamespace(pid=owner['game_pid']), os.environ, owner['child_exit_code'])
+            append_semantic_wake_observation(Path(owner['transcript']).parent, {
+                'schema': 'caol-semantic-wake-observation-v1', 'event': 'child_exit',
+                'run_id': owner['run_id'], 'transport': 'windows_event',
+                'pid': owner['game_pid'], 'returncode': owner['child_exit_code']})
             native.close_after_exit()
             owner['native_handles_closed'] = True
             for handle in held_native_leases:

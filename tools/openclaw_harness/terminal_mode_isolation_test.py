@@ -95,11 +95,18 @@ class TerminalModeIsolationTest(unittest.TestCase):
         control['temporary_root_removed'] = True
         print(json.dumps(control))
 
-    def test_posix_inspector_refuses_windows_without_signalling(self):
-        from certification_process_lease import SystemProcessInspector
-        with patch("certification_process_lease.os.name", "nt"), patch("certification_process_lease.os.kill") as kill:
-            with self.assertRaisesRegex(OSError, "native Windows"):
-                SystemProcessInspector().inspect(42)
+    def test_windows_inspector_selects_read_only_backend_without_signalling(self):
+        from certification_process_lease import SystemProcessInspector, ProcessSnapshot
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        backend = Mock()
+        backend.inspect.return_value = ProcessSnapshot(42, True, "C:/dummy.exe", "windows-filetime:1", "dummy")
+        module = SimpleNamespace(WindowsProcessInspector=Mock(return_value=backend))
+        with patch.dict("sys.modules", {"windows_native_process": module}), \
+                patch("certification_process_lease.os.name", "nt"), \
+                patch("certification_process_lease.os.kill") as kill:
+            self.assertEqual(SystemProcessInspector().inspect(42), backend.inspect.return_value)
+            backend.inspect.assert_called_once_with(42)
             with self.assertRaisesRegex(OSError, "native Windows"):
                 SystemProcessInspector().signal(42, 0)
             kill.assert_not_called()

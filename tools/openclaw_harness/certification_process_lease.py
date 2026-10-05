@@ -46,7 +46,7 @@ class ProcessInspector(Protocol):
 
 
 class SystemProcessInspector:
-    """POSIX inspector using a start identity, executable path, and command line."""
+    """Platform process identity; native Windows observation is read-only."""
 
     def inspect(self, pid: int) -> ProcessSnapshot:
         if os.name == "nt":

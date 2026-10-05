@@ -145,7 +145,7 @@ class WindowsProcessInspector:
                 row = cim_process(pid)
                 # CIM rounds native creation times to microseconds.
                 if row.get('pid') != pid or int(row.get('birth_ticks', 0)) // 10 != birth // 10:
-                    return ProcessSnapshot(pid=pid, alive=True)
+                    return ProcessSnapshot(pid=pid, alive=handle_alive(self.k, h))
                 command = str(row.get('command', '')).strip()
                 if command:
                     self._commands[key] = command
@@ -472,3 +472,39 @@ def signal_semantic_wake_event(name):
         return 1
     finally:
         k.CloseHandle(h)
+
+
+def pipe_readable(descriptor, timeout):
+    """Observe an existing anonymous subprocess pipe without a socket select."""
+    import msvcrt
+    import time
+    k = kernel()
+    k.PeekNamedPipe.argtypes = [w.HANDLE, c.c_void_p, w.DWORD, c.POINTER(w.DWORD), c.POINTER(w.DWORD), c.POINTER(w.DWORD)]
+    k.PeekNamedPipe.restype = w.BOOL
+    handle = msvcrt.get_osfhandle(descriptor)
+    deadline = None if timeout is None else time.monotonic() + max(0, timeout)
+    while True:
+        available = w.DWORD()
+        if not k.PeekNamedPipe(handle, None, 0, None, c.byref(available), None):
+            if c.get_last_error() in (109, 232):  # broken/no-data pipe: read observes EOF.
+                return True
+            raise c.WinError(c.get_last_error())
+        if available.value:
+            return True
+        if deadline is not None and time.monotonic() >= deadline:
+            return False
+        time.sleep(.01)
+
+
+def replace_with_readers(source, destination, *, timeout=2.0):
+    """Publish one atomic file despite brief Windows read-handle sharing races."""
+    import time
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or time.monotonic() >= deadline:
+                raise
+            time.sleep(.01)

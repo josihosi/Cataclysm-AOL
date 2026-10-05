@@ -134,7 +134,16 @@ curses_wait_result wait_for_curses_input_or_semantic_wake( const int timeout_ms 
     if( wake_handle == nullptr ) {
         return curses_wait_result::use_curses_input;
     }
-    const HANDLE handles[] = { wake_handle, GetStdHandle( STD_INPUT_HANDLE ) };
+    // A detached ConPTY child can have redirected/invalid standard handles.
+    // Ncurses owns its own console streams; the wait observes this console's
+    // input buffer explicitly rather than assuming stdin is a console HANDLE.
+    static const HANDLE console_input = CreateFileW( L"CONIN$", GENERIC_READ,
+                                        FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                        OPEN_EXISTING, 0, nullptr );
+    if( console_input == INVALID_HANDLE_VALUE ) {
+        throw std::runtime_error( "native terminal console input handle unavailable" );
+    }
+    const HANDLE handles[] = { wake_handle, console_input };
     const DWORD timeout = timeout_ms < 0 ? INFINITE : static_cast<DWORD>( timeout_ms );
     const DWORD result = WaitForMultipleObjects( 2, handles, FALSE, timeout );
     if( result == WAIT_OBJECT_0 ) {
@@ -143,7 +152,9 @@ curses_wait_result wait_for_curses_input_or_semantic_wake( const int timeout_ms 
     if( result == WAIT_TIMEOUT ) {
         return curses_wait_result::timed_out;
     }
-    // Even failure must not enter an unbounded getch behind the wake source.
+    if( result != WAIT_OBJECT_0 + 1 ) {
+        throw std::runtime_error( "native terminal input/wake wait failed" );
+    }
     return curses_wait_result::input_ready;
 #else
     semantic_wake_source &wake_source = active_semantic_wake_source();
