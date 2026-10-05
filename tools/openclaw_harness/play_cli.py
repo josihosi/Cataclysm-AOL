@@ -1154,8 +1154,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     look = commands.add_parser("look", help="Observe the current input owner and its legal actions")
     look.add_argument("--map", action="store_true", help="Add a compact current avatar-visible local text map")
-    debug_ignore = commands.add_parser("debug-ignore", help="Send one Ignore to a currently captured native debug dialog")
-    debug_ignore.add_argument("--capture", required=True, help="SHA-256 from the current play look UI capture")
+    debug_ignore = commands.add_parser("debug-ignore", help="Send one Ignore to a currently captured startup native debug dialog")
+    debug_ignore.add_argument("--capture", required=True, help="SHA-256 from the current play look window or terminal capture")
     debug_ignore.add_argument("--note", default="",
                               help="Optional consequence note; known warning handling is in debug-errors.md")
     for answer in ("yes", "no", "ignore"):

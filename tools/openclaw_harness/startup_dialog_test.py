@@ -517,5 +517,209 @@ class StartupDialogTest(unittest.TestCase):
             self.assertEqual(matched["source_line"], expected_line, name)
 
 
+class TerminalStartupDialogTest(unittest.TestCase):
+    _write = StartupDialogTest._write
+
+    def setUp(self):
+        StartupDialogTest.setUp(self)
+        from hashlib import sha256
+        from curses_terminal_transport import _host_identity
+        self.run = self.userdir.resolve() / "harness_runs" / "current"
+        self.run.mkdir(parents=True)
+        self.endpoint = Path(self.temp.name).resolve() / "broker" / "input.sock"
+        self.endpoint.parent.mkdir()
+        self.endpoint.touch()
+        self.transcript = self.run / "game.terminal.log"
+        self.lines = ["An error has occurred! Written below is the error report:",
+                      "DEBUG : " + ERRORS[0][2], "REPORTING FUNCTION : test",
+                      "Press space bar to continue the game.",
+                      "Press I (or i) to also ignore this particular message in the future."]
+        self._frame(self.lines)
+        host = _host_identity()
+        self.bridge = {"pid": 71000, "alive": True, "birth_identity": "bridge-birth", "command": "bridge"}
+        self.status.update(bridge_pid=71000, bridge_process_generation=self.bridge)
+        self._write("status.json", self.status)
+        self.owner = json.loads((self.session / "game-process.json").read_text())
+        self.owner.update(playtest_mode="terminal", userdir=str(self.userdir), host=host)
+        self.owner["log_paths"]["native_semantic_events"] = {
+            "path": str(self.run / "semantic.native.events.jsonl"), "scope": "run_bound"}
+        self._write("game-process.json", self.owner)
+        command = ["/python", "/curses_terminal_transport.py", "--broker", "--transcript",
+                   str(self.transcript), "--endpoint", str(self.endpoint), "--owner",
+                   str(self.endpoint.parent / "owner.json"), "--run-owner", str(self.run / "terminal.owner.json")]
+        self.broker = {"pid": 70000, "alive": True, "birth_identity": "broker-birth",
+                       "command": " ".join(command)}
+        self.terminal = {"schema": "caol-curses-terminal-owner-v1", "host": host,
+                         "run_id": self.owner["run_id"], "game_pid": self.generation["pid"],
+                         "game_process_generation": self.generation,
+                         "broker_pid": self.broker["pid"], "broker_process_generation": self.broker,
+                         "broker_command": command, "endpoint": str(self.endpoint),
+                         "run_owner_path": str(self.run / "terminal.owner.json")}
+        self._owners()
+        self.declaration = Path(self.temp.name) / "scenario.json"
+        declaration = {"name": "terminal-test", "runtime_contract": {
+            "permitted_input": ["semantic:world.move.*"], "forbidden_input": ["keyboard"],
+            "setup_only_debug": True, "playtest_mode": "terminal", "terminal_transport": "pty"}}
+        declaration["runtime_contract"]["permitted_input"].append("debug:ignore")
+        selected = (json.dumps(declaration, indent=2) + "\n").encode()
+        preflight = {"scenario": "terminal-test", "scenario_source": {
+            "path": str(self.declaration), "sha256": sha256(selected).hexdigest()}}
+        (self.run / "contract.preflight.json").write_text(json.dumps(preflight))
+        self.declaration.write_bytes(selected)
+
+    def _owners(self):
+        for path in [self.run / "terminal.owner.json", self.endpoint.parent / "owner.json"]:
+            path.write_text(json.dumps(self.terminal))
+
+    def _frame(self, lines):
+        self.transcript.write_text("\x1b[2J\x1b[H" + "\r\n".join(lines))
+
+    def _snapshot(self, pid):
+        return self.bridge if pid == 71000 else self.broker if pid == self.broker["pid"] else self.generation
+
+    def _observe(self):
+        return observe_startup_dialog(self.session, self.binding, self.status,
+                                      snapshot=self._snapshot,
+                                      runner=lambda *a, **k: self.fail("terminal path called GUI"))
+
+    def _recover(self, capture=None):
+        return recover_startup_debug_dialog(self.session, self.binding,
+            capture or self._observe()["capture_sha256"], snapshot=self._snapshot,
+            runner=lambda *a, **k: self.fail("terminal path called GUI"))
+
+    def _receipt(self, endpoint, **kwargs):
+        from hashlib import sha256
+        return {"ok": True, "request_id": kwargs["request_id"], "run_id": kwargs["run_id"],
+                "pid": kwargs["pid"], "host": self.terminal["host"], "keys": ["i"],
+                "process_generation": self.generation, "owner": "run_bound_pty",
+                "payload_sha256": sha256(b"i").hexdigest()}
+
+    def test_valid_terminal_warning_single_dispatch_and_attempt(self):
+        seen = self._observe()
+        self.assertEqual(seen["state"], "confirmed_debug_dialog")
+        self.assertEqual(seen["message"], ERRORS[0][2])
+        self.assertTrue(seen["ignore_advertised"])
+        with patch("curses_terminal_transport.dispatch_input", side_effect=self._receipt) as send:
+            result = self._recover(seen["capture_sha256"])
+        self.assertTrue(result["ok"])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.kwargs["keys"], ["i"])
+        self.assertEqual(result["authorization"]["scope"], "startup_only")
+        self.assertTrue(Path(result["attempt_path"]).exists())
+        self.assertEqual(json.loads(Path(result["result_path"]).read_text())["state"], "input_reported_delivered")
+        output = plain_player_output({"ok": False, "status": self.status, "startup_dialog": seen})
+        self.assertIn("terminal frame", output)
+        self.assertIn("debug-ignore --capture " + seen["capture_sha256"], output)
+
+    def test_stale_owner_wrong_run_and_private_mismatch_refuse(self):
+        original = dict(self.terminal)
+        for update in [{"run_id": "other-run"}, {"game_pid": 123},
+                       {"broker_process_generation": {**self.broker, "birth_identity": "stale"}}]:
+            with self.subTest(update=update):
+                self.terminal = {**original, **update}
+                self._owners()
+                with patch("curses_terminal_transport.dispatch_input") as send:
+                    result = self._recover("a" * 64)
+                self.assertEqual(result["state"], "input_not_sent")
+                send.assert_not_called()
+        self.terminal = original
+        self._owners()
+        (self.endpoint.parent / "owner.json").write_text("{}")
+        self.assertEqual(self._observe()["state"], "unavailable")
+
+    def test_absent_changed_and_unmatched_warning_and_absent_ignore_refuse(self):
+        captured = self._observe()["capture_sha256"]
+        for lines in [["Loading"], self.lines[:3],
+                      [self.lines[0], "DEBUG : unknown error", *self.lines[2:]],
+                      [self.lines[0], "DEBUG : " + ERRORS[1][2], *self.lines[2:]]]:
+            with self.subTest(lines=lines):
+                self._frame(lines)
+                with patch("curses_terminal_transport.dispatch_input") as send:
+                    result = self._recover(captured)
+                self.assertFalse(result["ok"])
+                send.assert_not_called()
+
+    def test_ready_wrong_binding_and_generation_refuse(self):
+        capture = self._observe()["capture_sha256"]
+        for update in [{"state": "ready"}, {"state": "process_dead"}, {"binding_id": "other"},
+                       {"session_generation": 1}, {"bridge_process_generation": {**self.bridge, "alive": False}}]:
+            with self.subTest(update=update):
+                self._write("status.json", {**self.status, **update})
+                with patch("curses_terminal_transport.dispatch_input") as send:
+                    result = self._recover(capture)
+                self.assertFalse(result["ok"])
+                send.assert_not_called()
+
+    def test_only_exact_selected_debug_ignore_permission_is_accepted(self):
+        capture = self._observe()["capture_sha256"]
+        original = json.loads(self.declaration.read_text())
+        for mutation in ["remove_permission", "allow_keyboard", "different_name", "extra_permission"]:
+            value = json.loads(json.dumps(original))
+            contract = value["runtime_contract"]
+            if mutation == "remove_permission": contract["permitted_input"].remove("debug:ignore")
+            elif mutation == "allow_keyboard": contract["forbidden_input"].remove("keyboard")
+            elif mutation == "different_name": value["name"] = "different"
+            else: contract["permitted_input"].append("debug:teleport")
+            self.declaration.write_text(json.dumps(value, indent=2) + "\n")
+            with patch("curses_terminal_transport.dispatch_input") as send:
+                result = self._recover(capture)
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["reason"], "startup_debug_ignore_permission_unavailable")
+            send.assert_not_called()
+
+    def test_changed_serialization_and_old_hash_additive_grant_refuse(self):
+        from hashlib import sha256
+        capture = self._observe()["capture_sha256"]
+        selected = self.declaration.read_bytes()
+        declaration = json.loads(selected)
+        for changed in [json.dumps(declaration).encode(),
+                        (json.dumps(declaration, indent=2) + "\n\n").encode()]:
+            self.declaration.write_bytes(changed)
+            with patch("curses_terminal_transport.dispatch_input") as send:
+                result = self._recover(capture)
+            self.assertEqual(result["reason"], "startup_debug_ignore_permission_unavailable")
+            send.assert_not_called()
+        self.declaration.write_bytes(selected)
+        declaration["runtime_contract"]["permitted_input"].remove("debug:ignore")
+        preflight = json.loads((self.run / "contract.preflight.json").read_text())
+        preflight["scenario_source"]["sha256"] = sha256(
+            (json.dumps(declaration, indent=2) + "\n").encode()).hexdigest()
+        (self.run / "contract.preflight.json").write_text(json.dumps(preflight))
+        with patch("curses_terminal_transport.dispatch_input") as send:
+            result = self._recover(capture)
+        self.assertEqual(result["reason"], "startup_debug_ignore_permission_unavailable")
+        send.assert_not_called()
+
+    def test_uncertain_delivery_and_acknowledgement_mismatch_record_unknown_without_retry(self):
+        capture = self._observe()["capture_sha256"]
+        for behavior in [TimeoutError("lost acknowledgement"), {"ok": True, "request_id": "wrong"}, None]:
+            with self.subTest(behavior=behavior):
+                options = {"side_effect": behavior} if isinstance(behavior, Exception) else {"return_value": behavior}
+                with patch("curses_terminal_transport.dispatch_input", **options) as send:
+                    result = self._recover(capture)
+                self.assertEqual(result["state"], "input_outcome_unknown")
+                output = plain_player_output(result)
+                self.assertIn("Input outcome unknown:", output)
+                self.assertNotIn("Input not sent:", output)
+                self.assertIn("do not retry automatically", output)
+                self.assertFalse(result["ok"])
+                send.assert_called_once()
+                self.assertEqual(json.loads(Path(result["result_path"]).read_text())["state"], "input_outcome_unknown")
+
+    def test_ambiguous_exact_log_sources_refuse(self):
+        with self.log.open("a") as stream:
+            stream.write("20:33:53.928 ERROR : src/other.cpp:99 [test] " + ERRORS[0][2] + "\n")
+        with patch("curses_terminal_transport.dispatch_input") as send:
+            result = self._recover("a" * 64)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["before"]["state"], "debug_dialog_unmatched")
+        send.assert_not_called()
+
+    def test_previous_modal_erased_from_current_screen_is_not_recoverable(self):
+        raw = self.transcript.read_text()
+        self.transcript.write_text(raw + "\x1b[2J\x1b[HWorld ready")
+        self.assertNotEqual(self._observe()["state"], "confirmed_debug_dialog")
+
+
 if __name__ == "__main__":
     unittest.main()
