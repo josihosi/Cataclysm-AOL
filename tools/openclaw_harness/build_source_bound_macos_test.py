@@ -172,5 +172,22 @@ class BuildSourceBoundMacOSTest(unittest.TestCase):
                 self.assertEqual(found["executable_sha256"], "a" * 64)
 
 
+class WindowsReceiptPathTest(unittest.TestCase):
+    def test_deep_native_workspace_keeps_full_receipt_identity_in_short_path(self):
+        harness = builder.startup_harness
+        legacy = Path("C:/Users/josef/dev/Cataclysm-AOL-terminal-dev_w/.userdata/openclaw_harness/source_bindings/cataclysm.exe-17803618565784bc.json")
+        with patch.object(harness, "product_build_receipt_path", return_value=legacy), patch.object(harness.os, "name", "nt"):
+            first = harness.product_build_receipt_archive_path(legacy, "a"*64, "b"*64, "1"*64)
+            second = harness.product_build_receipt_archive_path(legacy, "a"*64, "b"*64, "2"*64)
+            without_metadata = harness.product_build_receipt_archive_path(legacy, "a"*64, "b"*64)
+            changed_source = harness.product_build_receipt_archive_path(legacy, "a"*64, "c"*64)
+        self.assertLess(len(str(first)), 260)
+        self.assertTrue(first.name.endswith("1"*64 + ".json"))
+        self.assertNotEqual(first, second)
+        self.assertNotEqual(without_metadata, changed_source)
+        self.assertEqual(first.parent, legacy.parent)
+        self.assertTrue(first.name.startswith(legacy.stem + "-"))
+
+
 if __name__ == "__main__":
     unittest.main()

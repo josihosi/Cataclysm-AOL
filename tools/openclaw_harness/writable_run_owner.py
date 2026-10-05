@@ -56,7 +56,7 @@ def reject_aliases(root: Path) -> Path:
         # Saves/config/cache subtrees must not escape into another run. This
         # includes installed snapshots, so check again before creating a child.
         for path in root.rglob('*'):
-            if path.is_symlink():
+            if path.is_symlink() or (os.name == 'nt' and path.is_junction()):
                 raise WritableRootConflict(f"writable subtree alias rejected: {path}", reason="root_alias")
             if path.name == '.harness-owner.lock' and path.parent != root:
                 raise WritableRootConflict(f"writable root contains another owner boundary: {path.parent}",
@@ -335,10 +335,8 @@ class WritableRunOwner:
 
 @contextlib.contextmanager
 def own_writable_root(root: Path, run_id: str, inspect: Callable, matches: Callable | None = None):
-    if os.name != 'posix':
-        # Native Windows adapter is a separate delivery, not POSIX/WSL proof.
-        yield None
-        return
+    if os.name not in ('posix', 'nt'):
+        raise OSError('native writable-root ownership unavailable on this platform')
     key = str(reject_aliases(root))
     if key in ACTIVE:
         owner = ACTIVE[key]
@@ -346,7 +344,8 @@ def own_writable_root(root: Path, run_id: str, inspect: Callable, matches: Calla
             raise WritableRootConflict(f"different in-process run owns {root}", reason="in_process_collision")
         yield owner
         return
-    owner = WritableRunOwner(root, run_id, inspect, matches)
+    owner_class = WindowsWritableRunOwner if os.name == 'nt' else WritableRunOwner
+    owner = owner_class(root, run_id, inspect, matches)
     ACTIVE[key] = owner
     try:
         yield owner
@@ -357,3 +356,99 @@ def own_writable_root(root: Path, run_id: str, inspect: Callable, matches: Calla
 
 def current_owner(root: Path):
     return ACTIVE.get(str(root.absolute()))
+
+
+class WindowsWritableRunOwner(WritableRunOwner):
+    """Same persisted owner/state transitions, native transferable share leases."""
+    def __init__(self, root, run_id, inspect, matches=None):
+        from windows_native_process import WindowsDirectoryLease
+        if not str(run_id).strip() or not callable(inspect):
+            raise ValueError('native writable owner requires run ID and inspector')
+        self.root = reject_aliases(root)
+        self.run_id, self.inspect, self.matches = run_id, inspect, matches
+        self.handle = None
+        self._native_lease = None
+        try:
+            try:
+                self._native_lease = WindowsDirectoryLease(self.root)
+            except OSError as error:
+                raise WritableRootConflict('native writable directory overlaps or is unavailable: ' + str(self.root),
+                    reason='root_overlap' if getattr(error, 'winerror', None) == 32 else 'native_lease_unavailable') from error
+            reject_aliases(self.root)
+            self.path = self.root / '.harness-owner.lock'
+            existed = self.path.exists()
+            self.handle = os.fdopen(os.open(self.path, os.O_CREAT | os.O_RDWR | os.O_BINARY, 0o600), 'r+b', buffering=0)
+            if not stat.S_ISREG(os.fstat(self.fd).st_mode):
+                raise WritableRootConflict('native writable owner is not a regular file', reason='malformed_owner')
+            self._check_prior_owner(existed=existed)
+            launcher = inspect(os.getpid())
+            if not self._valid_generation(launcher) or not launcher.get('executable_path'):
+                raise WritableRootConflict('native launcher process generation incomplete', reason='identity_unavailable')
+            self.record = {'schema': 'caol-writable-run-owner-v1', 'host': socket.gethostname(),
+                'run_id': run_id, 'userdir': str(self.root), 'launcher_generation': dict(launcher),
+                'game_generation': None, 'launch_state': 'not_started',
+                'directory_lock_scope': 'exclusive_root_shared_ancestors',
+                'native_lease_kind': 'transferable_directory_share_handles'}
+            self._write()
+        except BaseException:
+            if self.handle is not None:
+                self.handle.close()
+            if self._native_lease:
+                self._native_lease.close()
+            raise
+
+    @property
+    def inherited_fds(self):
+        return ()  # Never represent native HANDLEs as POSIX descriptors.
+
+    def bind_game(self, generation, *, native_owner_path=None):
+        try:
+            return super().bind_game(generation)
+        except WritableRootConflict as error:
+            if error.reason != 'generation_mismatch' or native_owner_path is None:
+                raise
+            observed = self.inspect(int(generation['pid']))
+            if not isinstance(observed, Mapping) or observed.get('alive') is not False:
+                raise
+            path = Path(native_owner_path).resolve()
+            if not path.is_relative_to(self.root):
+                raise
+            # A fast child may exit before this caller acquires a query handle.
+            # The existing broker owns its creation handle and publishes the
+            # exact exit/closed-handles record, never just a sampled dead PID.
+            import time
+            deadline = time.monotonic() + 6.0
+            while True:
+                owner = json.loads(path.read_text())
+                if owner.get('launch_state') == 'exited':
+                    break
+                if time.monotonic() >= deadline:
+                    raise error
+                time.sleep(.05)
+            if owner.get('schema') != 'caol-curses-terminal-owner-v1' \
+                    or owner.get('host') != self.record['host'] \
+                    or owner.get('run_id') != self.run_id \
+                    or owner.get('game_process_generation') != dict(generation) \
+                    or owner.get('native_handles_closed') is not True \
+                    or owner.get('native_lease_handles_closed') is not True \
+                    or 'child_exit_code' not in owner \
+                    or self.inspect(int(generation['pid'])).get('alive') is not False:
+                raise error
+            self.record['game_generation'] = dict(generation)
+            self.record['launch_state'] = 'bound'
+            self._write()
+
+    def export_native_lease(self):
+        import msvcrt
+        if self.record['launch_state'] != 'launching':
+            raise WritableRootConflict('native lease export requires begin_launch', reason='invalid_launch_transition')
+        return self._native_lease.export(root_file_handle=msvcrt.get_osfhandle(self.fd),
+            root_file_path=self.path, generation=self.record['launcher_generation'], run_id=self.run_id)
+
+    def close(self):
+        try:
+            self.record['launcher_state'] = 'returned'
+            self._write()
+        finally:
+            self.handle.close()
+            self._native_lease.close()  # Exact duplicated broker handles retain exclusion.

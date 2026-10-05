@@ -170,8 +170,11 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/semantic_state.py",
     "tools/openclaw_harness/cockpit.py",
     "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/cockpit_memory_profile.py",
     "tools/openclaw_harness/curses_terminal_transport.py",
     "tools/openclaw_harness/writable_run_owner.py",
+    "tools/openclaw_harness/windows_native_process.py",
+    "tools/openclaw_harness/windows_curses_terminal_transport.py",
     "tools/openclaw_harness/certification_process_lease.py",
     "tools/openclaw_harness/cockpit_evidence.py",
     "tools/openclaw_harness/harness_log_window.py",
@@ -1873,6 +1876,14 @@ def product_build_receipt_archive_path(
     archive_identity = str(archive_identity).strip().lower()
     if not executable_sha256 or not product_source_sha256:
         raise ValueError("immutable receipt requires executable and source digests")
+    if os.name == "nt":
+        # Three full digests exceed MAX_PATH in an ordinary owned Windows
+        # workspace. The receipt digest already addresses all serialized
+        # executable/source/build fields; keep that full identity once.
+        identity = archive_identity or hashlib.sha256(
+            (executable_sha256 + "\0" + product_source_sha256).encode("ascii")
+        ).hexdigest()
+        return legacy.with_name(f"{legacy.stem}-{identity}.json")
     suffix = f"-{archive_identity}" if archive_identity else ""
     return legacy.with_name(
         f"{legacy.stem}-{executable_sha256}-{product_source_sha256}{suffix}.json"
@@ -6901,7 +6912,7 @@ def execute_semantic_act(
                 stream.write(json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n")
                 stream.flush()
                 os.fsync(stream.fileno())
-            if os.name != "nt":
+            if os.name != "nt" or (run_dir / "terminal.owner.json").is_file():
                 pipe_contract = semantic_wake_pipe_contract(run_dir, run_id)
                 if pipe_contract["status"] != "bound":
                     raise OSError("launch-bound anonymous semantic wake pipe is unavailable")
@@ -6912,7 +6923,7 @@ def execute_semantic_act(
                     "run_id": run_id,
                     "request_id": request["request_id"],
                     "contract": pipe_contract["path"],
-                    "transport": "named_fifo",
+                    "transport": pipe_contract["contract"]["transport"],
                     "bytes_written": bytes_written if isinstance(bytes_written, int) else None,
                     "semantic_request_path": str(request_path.resolve()),
                     "run_dir": str(run_dir.resolve()),
@@ -22993,7 +23004,17 @@ def semantic_wake_pipe_contract_path(run_dir: Path) -> Path:
 def open_semantic_wake_pipe(run_dir: Path, run_id: str) -> Tuple[int, int, Dict[str, str]]:
     """Create a run-private FIFO whose writer can outlive the launcher process."""
     if os.name == "nt":
-        return -1, -1, {}
+        event_name = "Local\\caol-semantic-wake-" + uuid.uuid4().hex
+        path = semantic_wake_pipe_contract_path(run_dir)
+        record = {"schema": "caol-semantic-wake-pipe-v2", "transport": "windows_event",
+                  "host": __import__("socket").gethostname(), "run_id": run_id,
+                  "read_descriptor": "native_named_event", "writer_owner": "worker_session",
+                  "writer_endpoint": event_name}
+        with path.open("x", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, separators=(",", ":")) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        return -1, -1, {"OPENCLAW_HARNESS_SEMANTIC_WAKE_EVENT": event_name}
     wake_path = run_dir / "semantic.wake.pipe"
     if wake_path.exists():
         raise RuntimeError("semantic wake FIFO already exists for this run")
@@ -23023,6 +23044,24 @@ def semantic_wake_pipe_contract(run_dir: Path, run_id: str) -> Dict[str, Any]:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         record = {}
+    if os.name == "nt":
+        from windows_native_process import WindowsProcessInspector
+        try:
+            owner = json.loads((run_dir / "terminal.owner.json").read_text(encoding="utf-8"))
+            generation = owner.get("game_process_generation", {})
+            observed = asdict(WindowsProcessInspector().inspect(int(generation.get("pid", 0))))
+            matches = all(observed.get(key) == generation.get(key) for key in ("pid", "birth_identity", "command", "executable_path"))
+            if (record.get("schema") == "caol-semantic-wake-pipe-v2" and
+                    record.get("transport") == "windows_event" and record.get("run_id") == run_id and
+                    record.get("host") == owner.get("host") == __import__("socket").gethostname() and
+                    owner.get("run_id") == run_id and owner.get("wake_event_name") == record.get("writer_endpoint") and
+                    str(record.get("writer_endpoint", "")).startswith("Local\\caol-semantic-wake-") and
+                    record.get("read_descriptor") == "native_named_event" and
+                    record.get("writer_owner") == "worker_session" and matches and observed.get("alive") is True):
+                return {"status": "bound", "contract": dict(record), "path": str(path)}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+        return {"status": "unavailable", "path": str(path), "run_id": run_id}
     endpoint = Path(str(record.get("writer_endpoint", ""))) if isinstance(record, Mapping) else Path()
     if isinstance(record, Mapping) and record.get("schema") == "caol-semantic-wake-pipe-v2" and \
             record.get("transport") == "named_fifo" and record.get("run_id") == run_id and \
@@ -23037,6 +23076,9 @@ def write_semantic_wake_pipe(run_dir: Path, run_id: str) -> int:
     contract = semantic_wake_pipe_contract(run_dir, run_id)
     if contract["status"] != "bound":
         raise OSError("launch-bound semantic wake FIFO is unavailable")
+    if os.name == "nt":
+        from windows_native_process import signal_semantic_wake_event
+        return signal_semantic_wake_event(contract["contract"]["writer_endpoint"])
     endpoint = Path(str(contract["contract"]["writer_endpoint"]))
     write_fd = os.open(endpoint, os.O_WRONLY | os.O_NONBLOCK)
     try:
@@ -23500,6 +23542,40 @@ def launch_game(
     if terminal:
         env["OPENCLAW_HARNESS_CACHE_DIR"] = str(userdir_for_profile(profile).resolve() / "cache" / "native")
     inherited_lease = lease.inherited_fds if lease is not None else ()
+    if terminal and os.name == "nt":
+        from windows_curses_terminal_transport import WindowsCursesTerminalTransport
+        from windows_native_process import WindowsOwnedProcess
+        if lease is None or not hasattr(lease, "export_native_lease"):
+            raise WritableRootConflict("native terminal launch requires its transferable writable-root owner")
+        _, _, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
+        env.update(wake_environment)
+        env.setdefault("TERM", "xterm-256color")
+        lease.begin_launch()
+        generation, endpoint = WindowsCursesTerminalTransport.launch(
+            run_dir / "game.terminal.log", run_id=binding["run_id"], argv=cmd,
+            cwd=repo_root(), env=env, native_lease=lease.export_native_lease())
+        # Persist the creation identity even if an early native exit wins the
+        # race with opening this caller's read-only process handle.
+        write_json(run_dir / "process.json", {"pid": generation["pid"], "command": cmd,
+            "process_generation": generation, "host": __import__("socket").gethostname(),
+            "run_id": binding["run_id"], "userdir": str(userdir_for_profile(profile).resolve()),
+            "mode": "terminal", "transport": "windows_conpty"})
+        lease.bind_game(generation, native_owner_path=run_dir / "terminal.owner.json")
+        try:
+            process = WindowsOwnedProcess(generation, cmd)
+        except (OSError, RuntimeError) as error:
+            from windows_curses_terminal_transport import LaunchOwnershipError
+            raise LaunchOwnershipError("native child exited or identity is unavailable before startup", {
+                "game_process_generation": generation, "endpoint": str(endpoint),
+                "run_owner_path": str(run_dir / "terminal.owner.json"),
+                "run_id": binding["run_id"],
+            }) from error
+        process._openclaw_terminal_input_endpoint = str(endpoint)
+        record_bridge_game_process(process, env)
+        append_semantic_wake_observation(run_dir, {
+            "schema": "caol-semantic-wake-observation-v1", "event": "writer_bound",
+            "run_id": binding["run_id"], "transport": "windows_event", "pid": process.pid})
+        return process
     if terminal:
         transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
         read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
@@ -23688,8 +23764,8 @@ def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path) -> Di
         return row
     contract = scenario.get("runtime_contract", {})
     reason = ""
-    if sys.platform != "darwin":
-        reason = "Mac terminal adapter only; native Windows adapter remains unavailable"
+    if sys.platform not in {"darwin", "win32"}:
+        reason = "terminal adapter is available on native Mac and Windows only"
     elif contract.get("require_screen_observability") is True or scenario.get("capture_world_after") is True:
         reason = "selected scenario requires graphical observability; select Tiles for this claim"
     elif any(step.get("kind") not in {"native_semantic_bootstrap", "cockpit_live_session"}
@@ -23772,19 +23848,15 @@ def process_generation_snapshot(
     PID with the same executable.  The start identity supplied by the process
     inspector is the stable component used for all bound cleanup decisions.
     """
-    if inspector is None and os.name != "posix":
-        return {"schema": "caol-owned-process-generation-v1", "pid": int(pid),
-                "alive": pid_is_alive(pid), "birth_identity": "", "command": "",
-                "executable_path": "", "status": "native_process_identity_adapter_unavailable"}
     observed = (inspector or SystemProcessInspector()).inspect(int(pid))
     if not isinstance(observed, ProcessSnapshot):
         raise TypeError("process inspector returned an invalid snapshot")
     # POSIX ``kill(pid, 0)`` reports a zombie until its parent reaps it.  A
     # zombie has already exited and must not be mistaken for a reused PID or a
     # still-live cleanup blocker.
-    if inspector is None and observed.alive and not pid_is_alive(pid):
+    if inspector is None and os.name == "posix" and observed.alive and not pid_is_alive(pid):
         observed = ProcessSnapshot(pid=int(pid), alive=False)
-    command = str(observed.command or pid_command(pid)).strip()
+    command = str(observed.command or (pid_command(pid) if os.name == "posix" else "")).strip()
     return {
         "schema": "caol-owned-process-generation-v1",
         "pid": int(pid),
@@ -24159,6 +24231,18 @@ def cleanup_game_process(
 
     if not explicit_quit:
         info["status"] = "retained_waiting_for_player_quit"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+
+    if os.name == "nt":
+        # Python's Windows SIGTERM terminates immediately.  Native save/quit
+        # belongs to the current input owner; this fallback retains the child.
+        info["status"] = "graceful_quit_unconfirmed_process_retained"
+        info["next_action"] = {
+            "owner": "launching_worker",
+            "action": "inspect_native_quit_blocker",
+            "reason": "Windows native save/quit has not established process exit",
+        }
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
@@ -32536,7 +32620,7 @@ def submit_semantic_surface_probe_request(
         bytes_written = write_semantic_wake_pipe(run_dir, run_id)
         return {
             "accepted": True,
-            "transport": "anonymous_pipe",
+            "transport": pipe_contract["contract"]["transport"],
             "bytes_written": bytes_written,
             "request_path": str(request_path),
             "malformed": malformed,

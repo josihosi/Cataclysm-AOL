@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from certification_process_lease import SystemProcessInspector
 from writable_run_owner import (
-    WritableRootConflict, WritableRunOwner, current_owner, own_writable_root,
+    WritableRootConflict, WritableRunOwner, WindowsWritableRunOwner, current_owner, own_writable_root,
 )
 
 
@@ -227,6 +227,51 @@ class WritableRunOwnerTest(unittest.TestCase):
             with self.assertRaises(WritableRootConflict) as caught:
                 WritableRunOwner(real, "subtree-run", inspect_process, matches)
             self.assertEqual(caught.exception.reason, "root_alias")
+
+
+class NativeExitBindingTest(unittest.TestCase):
+    def check_binding(self, changes=None, observed_alive=False):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            generation = {"schema": "caol-owned-process-generation-v1", "pid": 42,
+                          "birth_identity": "windows-filetime:42", "command": "dummy.exe",
+                          "executable_path": "dummy.exe", "alive": True}
+            owner = WindowsWritableRunOwner.__new__(WindowsWritableRunOwner)
+            owner.root, owner.run_id = root, "run"
+            owner.inspect = lambda pid: {"pid": pid, "alive": observed_alive}
+            owner.matches = None
+            owner.record = {"host": socket.gethostname(), "launch_state": "launching"}
+            owner._write = lambda: None
+            exit_record = {"schema": "caol-curses-terminal-owner-v1", "host": socket.gethostname(),
+                           "run_id": "run", "launch_state": "exited",
+                           "game_process_generation": generation, "native_handles_closed": True,
+                           "native_lease_handles_closed": True, "child_exit_code": 0}
+            exit_record.update(changes or {})
+            path = root / "terminal.owner.json"
+            path.write_text(json.dumps(exit_record))
+            if changes or observed_alive is not False:
+                with self.assertRaises(WritableRootConflict):
+                    owner.bind_game(generation, native_owner_path=path)
+                self.assertEqual(owner.record["launch_state"], "launching")
+            else:
+                owner.bind_game(generation, native_owner_path=path)
+                self.assertEqual(owner.record["launch_state"], "bound")
+                self.assertEqual(owner.record["game_generation"], generation)
+
+    def test_exact_closed_broker_receipt_preserves_fast_exit_binding(self):
+        self.check_binding()
+
+    def test_wrong_scope_identity_or_unclosed_receipt_retains_reservation(self):
+        for changes in ({"host": "wrong"}, {"run_id": "wrong"},
+                        {"game_process_generation": {"birth_identity": "wrong"}},
+                        {"native_handles_closed": False}, {"native_lease_handles_closed": False},
+                        {"schema": "wrong"}):
+            with self.subTest(changes=changes):
+                self.check_binding(changes)
+
+    def test_live_or_unknown_pid_cannot_use_dead_child_receipt(self):
+        self.check_binding(observed_alive=True)
+        self.check_binding(observed_alive=None)
 
 
 if __name__ == "__main__":

@@ -6,8 +6,10 @@
 #include "live_light.h"
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 class avatar;
@@ -18,6 +20,7 @@ class npc;
 
 namespace bandit_live_world
 {
+struct world_state;
 struct site_record;
 struct active_outing_state;
 struct structural_threat_observer_request;
@@ -49,6 +52,21 @@ void maintain_live_bandit_structural_bounty_for_test(
 // Pure ownership read for an actual completed abstract watch motor. The live
 // assigned destination remains pending until its pair consumer commits.
 bool live_bandit_scout_watch_order_pending( const npc &member );
+// Shared declarations for existing production-backed test seams.
+std::map<character_id, tripoint_abs_omt> live_bandit_elevated_recovery_orders_for_test();
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_elevated_recovery_boundary_for_test();
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_ingress_boundary_steps_for_test();
+void live_bandit_elevated_recovery_npc_turn_for_test( bool overmap_step );
+int record_live_bandit_stationary_watch_signals_for_test( bandit_live_world::world_state &state,
+        const std::vector<live_bandit_signal_observation> &signals, bool cadence_due );
+int advance_live_bandit_local_scout_assessments_for_test();
+bool persist_live_bandit_local_projection_leases_for_test( const bandit_live_world::site_record &site );
+bool persist_live_bandit_local_progress_for_test( const bandit_live_world::site_record &before,
+        const bandit_live_world::site_record &after );
+bool record_live_bandit_structural_member_returns_for_test();
+bool complete_loaded_live_bandit_route_arrivals_for_test();
 void prepare_live_bandit_abstract_scout_travel_for_test();
 int observe_live_bandit_sounds_for_test();
 void run_live_light_staffed_observer_for_test();

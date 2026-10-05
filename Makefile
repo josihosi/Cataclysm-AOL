@@ -775,7 +775,7 @@ ifeq ($(TARGETSYSTEM),WINDOWS)
   else
     LDFLAGS += -static
   endif
-  W32FLAGS += -Wl,-stack,12000000,-subsystem,windows
+  W32FLAGS += -Wl,-stack,12000000,-subsystem,$(if $(filter 1,$(TILES)),windows,console)
   RFLAGS = -J rc -O coff
   ifeq ($(NATIVE), win64)
     RFLAGS += -F pe-x86-64
@@ -952,10 +952,18 @@ else
       endif
   endif
 
-  # Link to ncurses if we're using a non-tiles, Linux build
+  # Native Windows static headers and import/static libraries must agree.
+  NCURSES_PKG_CONFIG_FLAGS =
+  ifeq ($(TARGETSYSTEM),WINDOWS)
+    ifneq ($(DYNAMIC_LINKING),1)
+      NCURSES_PKG_CONFIG_FLAGS = --static
+    endif
+  endif
+
+  # Select curses for the native terminal target.
   ifeq ($(HAVE_PKGCONFIG),1)
-    CXXFLAGS += $(subst -I,-isystem ,$(shell $(PKG_CONFIG) --cflags $(NCURSES_PREFIX)))
-    LDFLAGS += $(shell $(PKG_CONFIG) --libs $(NCURSES_PREFIX))
+    CXXFLAGS += $(subst -I,-isystem ,$(shell $(PKG_CONFIG) $(NCURSES_PKG_CONFIG_FLAGS) --cflags $(NCURSES_PREFIX)))
+    LDFLAGS += $(shell $(PKG_CONFIG) $(NCURSES_PKG_CONFIG_FLAGS) --libs $(NCURSES_PREFIX))
   else
     ifeq ($(HAVE_NCURSES5CONFIG),1)
       CXXFLAGS += $(shell $(NCURSES_PREFIX)5-config --cflags)
@@ -1357,6 +1365,8 @@ $(ODIR)/%.o: $(SRC_DIR)/%.rc
 $(ODIR)/resource.o: data/cataicon.ico data/application_manifest.xml
 
 src/version.cpp: src/version.h
+# Bind the embedded revision even when native dependency output omits it.
+$(ODIR)/version.o: $(SRC_DIR)/version.h
 
 TEST_MO := data/mods/TEST_DATA/lang/mo/ru/LC_MESSAGES/TEST_DATA.mo
 
