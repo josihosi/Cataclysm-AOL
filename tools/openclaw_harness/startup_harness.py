@@ -24216,6 +24216,18 @@ def cleanup_game_process(
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
+    if os.name == "nt":
+        # Python's Windows SIGTERM terminates immediately.  Native save/quit
+        # belongs to the current input owner; this fallback retains the child.
+        info["status"] = "graceful_quit_unconfirmed_process_retained"
+        info["next_action"] = {
+            "owner": "launching_worker",
+            "action": "inspect_native_quit_blocker",
+            "reason": "Windows native save/quit has not established process exit",
+        }
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+
     try:
         os.kill(pid, signal.SIGTERM)
         info["signal"] = "SIGTERM"

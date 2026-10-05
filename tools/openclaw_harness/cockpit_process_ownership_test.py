@@ -163,6 +163,27 @@ class ProcessOwnershipTest(unittest.TestCase):
         self.assertEqual(cleanup["status"], "retained_process_identity_changed")
         kill.assert_not_called()
 
+    def test_windows_explicit_cleanup_retains_native_quit_blocker(self):
+        class StillAliveInspector:
+            def inspect(self, pid):
+                return harness.ProcessSnapshot(
+                    pid=pid, alive=True, birth_identity="birth-123",
+                    command="C:/test/cataclysm.exe",
+                )
+
+        expected = {
+            "pid": 123, "birth_identity": "birth-123", "command": "C:/test/cataclysm.exe",
+        }
+        with patch.object(harness.os, "name", "nt"), patch.object(harness.os, "kill") as kill:
+            result = harness.cleanup_game_process(
+                123, explicit_quit=True, expected_process_generation=expected,
+                inspector=StillAliveInspector(),
+            )
+        self.assertEqual(result["status"], "graceful_quit_unconfirmed_process_retained")
+        self.assertEqual(result["expected_process_generation"], expected)
+        self.assertFalse(result["native_exit_credit"])
+        kill.assert_not_called()
+
     def test_explicit_cleanup_does_not_escalate_to_forced_kill(self):
         class StillAliveInspector:
             def inspect(self, pid):
