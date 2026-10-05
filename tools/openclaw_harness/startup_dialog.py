@@ -58,7 +58,11 @@ def _read_object(path: Path, limit: int = 65536) -> dict[str, Any]:
 def _debug_log_path(owner: Mapping[str, Any], session: Path) -> Path | None:
     """Resolve relative userdir against the game's owned cwd, never its binary."""
     try:
-        command = shlex.split(str(owner["command"]))
+        if os.name == "nt":
+            from windows_native_process import command_line_arguments
+            command = command_line_arguments(str(owner["command"]))
+        else:
+            command = shlex.split(str(owner["command"]))
         userdir = Path(command[command.index("--userdir") + 1])
         if not userdir.is_absolute():
             raw_cwd = str(owner.get("launch_cwd", "")).strip()
@@ -85,7 +89,7 @@ def _debug_log_path(owner: Mapping[str, Any], session: Path) -> Path | None:
         if published.get("scope") != "profile_shared" or path != userdir / "config" / "debug.log":
             return None
         return path
-    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+    except (KeyError, IndexError, TypeError, ValueError, AttributeError, OSError):
         return None
 
 
@@ -216,6 +220,7 @@ def _terminal_context(owner: Mapping[str, Any], snapshot: Callable[[int], Mappin
         native_windows = terminal.get("transport") == "windows_conpty"
         if native_windows:
             from windows_curses_terminal_transport import _public_owner
+            from windows_native_process import command_line_arguments
             private = _public_owner(private)
         game = owner["process_generation"]
         broker = terminal["broker_process_generation"]
@@ -245,7 +250,7 @@ def _terminal_context(owner: Mapping[str, Any], snapshot: Callable[[int], Mappin
                     or command[3] != str(endpoint.parent / "launch.json")
                     or terminal.get("transcript") != str(transcript)
                     or terminal.get("request_journal") != str(run_dir / "terminal.requests.jsonl")
-                    or str(broker.get("command", "")) != subprocess.list2cmdline(command)):
+                    or command_line_arguments(str(broker.get("command", ""))) != command):
                 raise ValueError("terminal_broker_command_mismatch")
         elif (command[command.index("--transcript") + 1] != str(transcript)
                 or command[command.index("--endpoint") + 1] != str(endpoint)

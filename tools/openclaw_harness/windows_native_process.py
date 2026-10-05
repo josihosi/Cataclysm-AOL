@@ -83,6 +83,27 @@ def handle_alive(k, handle) -> bool:
     raise c.WinError(c.get_last_error())
 
 
+def command_line_arguments(command: str) -> list[str]:
+    """Parse a native process command with the Windows quoting rules."""
+    if os.name != 'nt':
+        raise OSError('native command parsing requires Windows')
+    if not str(command).strip():
+        return []
+    shell = c.WinDLL('shell32', use_last_error=True)
+    shell.CommandLineToArgvW.argtypes = [w.LPCWSTR, c.POINTER(c.c_int)]
+    shell.CommandLineToArgvW.restype = c.POINTER(w.LPWSTR)
+    k = c.WinDLL('kernel32', use_last_error=True)
+    k.LocalFree.argtypes = [c.c_void_p]
+    k.LocalFree.restype = c.c_void_p
+    count = c.c_int()
+    argv = shell.CommandLineToArgvW(str(command), c.byref(count))
+    checked(bool(argv))
+    try:
+        return [argv[index] for index in range(count.value)]
+    finally:
+        k.LocalFree(c.cast(argv, c.c_void_p))
+
+
 def handle_birth(k, handle) -> int:
     times = [w.FILETIME() for _ in range(4)]
     checked(k.GetProcessTimes(handle, *(c.byref(item) for item in times)))
