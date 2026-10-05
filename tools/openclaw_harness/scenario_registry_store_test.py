@@ -19,6 +19,8 @@ sys.path.insert(0, str(HARNESS_DIR))
 from scenario_registry_store import (  # noqa: E402
     SCHEMA_VERSION,
     RegistryQueryCandidateSnapshot,
+    RegistryQueryEvaluation,
+    RegistryStoredQueryEvaluation,
     ScenarioRegistryStoreError,
     apply_migrations,
     claim_migration_item_launch,
@@ -41,6 +43,7 @@ from scenario_registry_store import (  # noqa: E402
     snapshot_migration_run,
     _first_run_certification_route,
     _coordinator_authorization,
+    _select_coordinator_query_candidate,
 )
 import scenario_registry_store as registry_store  # noqa: E402
 
@@ -96,6 +99,151 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             _coordinator_authorization(request, candidate, {
                 **brief, "query": {"requirements": [{"key": "x", "op": "present"}], "preferences": []},
             }, charter)
+
+    def test_named_brief_selects_only_one_eligible_query_candidate(self) -> None:
+        facts = {
+            "capability": {"present": True, "evidence_state": "declared", "value": "same"},
+        }
+        def candidate(identity: str, name: str, *, lifecycle: str = "active",
+                      token_eligible: bool = True, executable: bool = True):
+            return RegistryQueryCandidateSnapshot(
+                scenario_id=identity, lifecycle_state=lifecycle, token_eligible=token_eligible,
+                facts=facts, explanation={"manifest": {"name": name, "executable": executable}},
+            )
+
+        first = candidate("manifest-a", "base-copy")
+        second = candidate("manifest-b", "saved-copy")
+        evaluation = RegistryStoredQueryEvaluation(
+            candidates=(first, second),
+            evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=("manifest-a", "manifest-b")),
+        )
+        self.assertIs(_select_coordinator_query_candidate(evaluation, {"scenario": "saved-copy"}), second)
+        self.assertIs(_select_coordinator_query_candidate(evaluation, {"scenario_id": "manifest-a"}), first)
+        self.assertIs(_select_coordinator_query_candidate(evaluation, None), first)
+        self.assertIs(_select_coordinator_query_candidate(evaluation, {"outcome": "unnamed"}), first)
+
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "missing"):
+            _select_coordinator_query_candidate(evaluation, {"scenario": "not-published"})
+        ineligible = RegistryStoredQueryEvaluation(
+            candidates=(first, second),
+            evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=("manifest-a",)),
+        )
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "typed-query match"):
+            _select_coordinator_query_candidate(ineligible, {"scenario_id": "manifest-b"})
+        duplicate_name = candidate("manifest-c", "saved-copy")
+        ambiguous = RegistryStoredQueryEvaluation(
+            candidates=(first, second, duplicate_name),
+            evaluation=RegistryQueryEvaluation(
+                candidates=(), ranked_scenario_ids=("manifest-a", "manifest-b", "manifest-c"),
+            ),
+        )
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "ambiguous"):
+            _select_coordinator_query_candidate(ambiguous, {"scenario": "saved-copy"})
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "conflicting"):
+            _select_coordinator_query_candidate(
+                evaluation, {"scenario_id": "manifest-a", "scenario": "saved-copy"},
+            )
+        for invalid in (
+            candidate("manifest-d", "inactive-copy", lifecycle="quarantined"),
+            candidate("manifest-e", "unowned-copy", token_eligible=False),
+            candidate("manifest-f", "nonexecutable-copy", executable=False),
+        ):
+            invalid_evaluation = RegistryStoredQueryEvaluation(
+                candidates=(invalid,),
+                evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=(invalid.scenario_id,)),
+            )
+            with self.assertRaisesRegex(ScenarioRegistryStoreError, "launch eligible"):
+                _select_coordinator_query_candidate(invalid_evaluation, {"scenario_id": invalid.scenario_id})
+
+    def test_execute_query_binds_token_and_selected_identity_to_named_rank_two_candidate(self) -> None:
+        def candidate(identity: str, name: str):
+            return RegistryQueryCandidateSnapshot(
+                scenario_id=identity, lifecycle_state="active", token_eligible=True,
+                facts={"capability": {"present": True, "evidence_state": "declared", "value": "same"}},
+                explanation={
+                    "manifest": {"manifest_id": identity, "name": name, "revision": 1,
+                                 "sha256": "a" * 64 if identity == "manifest-a" else "b" * 64,
+                                 "source_path": f"/{name}.json",
+                                 "executable": True},
+                    "lifecycle": {"state": "active"},
+                },
+            )
+
+        first, second = candidate("manifest-a", "base-copy"), candidate("manifest-b", "saved-copy")
+        stored = RegistryStoredQueryEvaluation(
+            candidates=(first, second),
+            evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=("manifest-a", "manifest-b")),
+        )
+        request = parse_registry_query_request({"requirements": [], "preferences": []})
+        charter = {
+            "claim": "use the named candidate", "material_proof": "native state",
+            "current_uncertainty": "selection behavior", "requested_evidence_ceiling": "focused",
+        }
+        brief = {
+            "outcome": charter["claim"], "query": {"requirements": [], "preferences": []},
+            "scenario": "saved-copy",
+        }
+        route = {"route_key": "verified-route", "evidence_state": "verified",
+                 "internal_resolution_state": "verified", "details": {}, "bindings": ()}
+        with tempfile.TemporaryDirectory() as temporary:
+            connection = open_registry(str(Path(temporary) / "registry.sqlite3"))
+            connection.execute("PRAGMA foreign_keys = OFF")
+            try:
+                with mock.patch.object(registry_store, "evaluate_registry_query_from_store", return_value=stored), \
+                        mock.patch.object(registry_store, "_current_verified_route", return_value=route), \
+                        mock.patch.object(registry_store, "_append_query_audit"), \
+                        mock.patch.object(registry_store, "_append_scenario_selection", return_value="selection"):
+                    result = execute_registry_query(
+                        connection, request, coordinator_brief=brief, witness_charter=charter,
+                    )
+                self.assertIsNotNone(result.token_id)
+                self.assertEqual(result.selected_scenario_id, "manifest-b")
+                token = connection.execute(
+                    "SELECT manifest_id, details_json FROM token_history WHERE token_id = ? AND event_kind = 'issued'",
+                    (result.token_id,),
+                ).fetchone()
+                self.assertEqual(token["manifest_id"], "manifest-b")
+                self.assertEqual(json.loads(token["details_json"])["scenario_id"], "manifest-b")
+
+                def reject_without_fallback(candidate_set, ranked_ids, choice, *, selected_brief=None):
+                    candidate_evaluation = RegistryStoredQueryEvaluation(
+                        candidates=candidate_set,
+                        evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=ranked_ids),
+                    )
+                    request_brief = {**brief, **choice}
+                    if selected_brief is not None:
+                        request_brief.update(selected_brief)
+                    with mock.patch.object(
+                            registry_store, "evaluate_registry_query_from_store",
+                            return_value=candidate_evaluation), \
+                            mock.patch.object(registry_store, "_current_verified_route", return_value=route), \
+                            mock.patch.object(registry_store, "_append_query_audit"), \
+                            mock.patch.object(registry_store, "_append_scenario_selection", return_value="selection"):
+                        with self.assertRaises(ScenarioRegistryStoreError):
+                            execute_registry_query(
+                                connection, request, coordinator_brief=request_brief,
+                                witness_charter=charter,
+                            )
+                    return connection.execute(
+                        "SELECT COUNT(*) FROM token_history WHERE event_kind = 'issued'",
+                    ).fetchone()[0]
+
+                self.assertEqual(reject_without_fallback((first, second), ("manifest-a", "manifest-b"),
+                                                         {"scenario": "missing-copy"}), 1)
+                self.assertEqual(reject_without_fallback((first, second), ("manifest-a",),
+                                                         {"scenario_id": "manifest-b"}), 1)
+                duplicate = candidate("manifest-c", "saved-copy")
+                self.assertEqual(reject_without_fallback((first, second, duplicate),
+                                                         ("manifest-a", "manifest-b", "manifest-c"),
+                                                         {"scenario": "saved-copy"}), 1)
+                self.assertEqual(reject_without_fallback((first, second), ("manifest-a", "manifest-b"),
+                                                         {"scenario": "saved-copy"},
+                                                         selected_brief={"query": {
+                                                             "requirements": [{"key": "other", "op": "present"}],
+                                                             "preferences": [],
+                                                         }}), 1)
+            finally:
+                connection.close()
 
     def test_r013_declared_bootstrap_route_is_exact_and_fail_closed(self) -> None:
         manifest = {

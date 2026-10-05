@@ -2720,14 +2720,16 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result["status"], "green")
         self.assertEqual(result["feature_gate"], "startup_clean")
 
+    @patch("startup_harness.process_generation_snapshot", return_value={"pid": 42, "alive": True, "birth_identity": "birth", "command": "/Volumes/CodexBulk/cataclysm --world McWilliams"})
     @patch("startup_harness.compare_runtime_binding", return_value={"status": "matched"})
     @patch("startup_harness.pid_is_alive", return_value=True)
     @patch("startup_harness.pid_command", return_value="/Volumes/CodexBulk/cataclysm --world McWilliams")
     def test_terminal_native_identity_uses_bound_process_without_gui_focus(
-        self, _command: Any, _alive: Any, _binding: Any,
+        self, _command: Any, _alive: Any, _binding: Any, _generation: Any,
     ) -> None:
         identity = terminal_native_startup_identity(
             42, Path("/Volumes/CodexBulk/cataclysm"), {"schema": 1},
+            {"pid": 42, "birth_identity": "birth", "command": "/Volumes/CodexBulk/cataclysm --world McWilliams"},
         )
         screen_summary = self.screen_summary(self.gameplay_probe())
         screen_summary["version_matches_runtime_paths"] = None

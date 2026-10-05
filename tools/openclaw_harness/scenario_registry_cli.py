@@ -121,6 +121,9 @@ def _query_launch_action(result: Mapping[str, Any], args: argparse.Namespace,
     if result.get("next_action") is not None:
         return result["next_action"]
     ranked = result["evaluation"]["evaluation"]["ranked_scenario_ids"]
+    selected_id = result.get("selected_scenario_id")
+    if not selected_id and ranked:
+        selected_id = ranked[0]
     if not result.get("token_id"):
         return {"kind": "inspect_query_fit", "draft_path": result.get("draft_path"),
                 "action": "Inspect candidate fit and missing evidence; refine the query or repair the route."}
@@ -130,7 +133,7 @@ def _query_launch_action(result: Mapping[str, Any], args: argparse.Namespace,
                 "action": readiness.get("next_action"),
                 "evidence_ceiling": readiness.get("evidence_ceiling", "none")}
     selected = next(item for item in result["evaluation"]["candidates"]
-                    if item["scenario_id"] == ranked[0])
+                    if item["scenario_id"] == selected_id)
     manifest = selected["explanation"]["manifest"]
     source = Path(manifest["source_path"])
     try:
@@ -146,7 +149,7 @@ def _query_launch_action(result: Mapping[str, Any], args: argparse.Namespace,
                 "reason": str(error)}
     charter = str(args.witness_charter or "").strip()
     if detached and not charter:
-        return {"kind": "provide_witness_charter", "scenario_id": ranked[0],
+        return {"kind": "provide_witness_charter", "scenario_id": selected_id,
                 "action": "Supply the matching witness charter for the selected live-cockpit launch."}
     command = [sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
                "registry-detached-launch" if detached else "registry-launch", result["token_id"]]
@@ -492,6 +495,7 @@ def _current_source_executable_readiness(
     isolated_harness_diagnosis: bool = False,
     executable: str = "",
     selected_product_build: Mapping[str, Any] | None = None,
+    terminal_scenario: Mapping[str, Any] | None = None,
 ) -> Mapping[str, Any]:
     """Observe one actionable source/executable status without launching gameplay."""
     executable_text = str(executable).strip()
@@ -516,6 +520,12 @@ def _current_source_executable_readiness(
     if selected_product_build is not None:
         readiness_options["selected_product_build"] = selected_product_build
     readiness = dict(startup_harness.executable_source_readiness(candidate, **readiness_options))
+    if terminal_scenario is not None:
+        mode_readiness = startup_harness.terminal_mode_readiness(terminal_scenario, candidate.resolve())
+        readiness["mode_readiness"] = mode_readiness
+        if mode_readiness["status"] != "ready":
+            readiness.update(status="unsupported_terminal_mode", reason=mode_readiness["reason"],
+                             next_action="Select a supported source-bound curses scenario/build; no GUI substitution.")
     return _with_build_entrypoint(readiness)
 
 
@@ -1241,7 +1251,11 @@ def _selected_readiness_options(scenario: str | Any) -> Dict[str, Any]:
             str(getattr(scenario, "source_sha256", "")).strip()):
         return {}
     selected = _selected_product_build(scenario)
-    return {"selected_product_build": selected} if selected is not None else {}
+    options = {"selected_product_build": selected} if selected is not None else {}
+    declaration = _selected_declaration(scenario)
+    if startup_harness.scenario_playtest_mode(declaration) == "terminal":
+        options["terminal_scenario"] = declaration
+    return options
 
 
 def _selected_runtime_binding(executable: Path, scenario: str | Any) -> Dict[str, Any]:
@@ -1298,6 +1312,8 @@ def _preflight_selected_save_setup(selection: Any, args: argparse.Namespace) -> 
         saved_world_snapshot=str(getattr(args, "saved_world_snapshot", "") or ""),
         profile_override=str(getattr(args, "profile", "") or ""))
     scenario = _load_selected_scenario(selection)
+    if startup_harness.scenario_playtest_mode(scenario) == "terminal" and not str(getattr(args, "profile", "") or "").strip():
+        profile = startup_harness.resolve_profile_name(profile + "-run-" + uuid.uuid4().hex)
     world = str(scenario.get("world", "") or "").strip()
     replace = bool(scenario.get("replace_existing_worlds", False))
     destination = startup_harness.save_dir_for_profile(profile) / world
@@ -1471,8 +1487,12 @@ def build_parser() -> argparse.ArgumentParser:
     rebuild = commands.add_parser("rebuild", help="project scenario declarations into the registry")
     rebuild.add_argument(
         "--scenarios-root",
-        default=str(_default_scenarios_root()),
-        help="scenario manifest directory (default: canonical harness scenarios directory)",
+        default=None,
+        help="scan this directory for additions, changes and removals (default: canonical directory when no --source is supplied)",
+    )
+    rebuild.add_argument(
+        "--source", action="append", type=Path, default=[],
+        help="add/update this exact selected source without removing unrelated sources; repeat for multiple files",
     )
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
@@ -2585,7 +2605,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         connection = open_registry(str(registry_path))
         try:
             if args.command == "rebuild":
-                result = rebuild_manifest_projection(connection, Path(args.scenarios_root))
+                scan_root = (Path(args.scenarios_root) if args.scenarios_root else
+                             (None if args.source else _default_scenarios_root()))
+                result = rebuild_manifest_projection(connection, scan_root, source_paths=args.source)
             elif args.command == "ingest-report":
                 try:
                     report = json.loads(Path(args.report).read_text(encoding="utf-8"))
@@ -2723,7 +2745,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     if isinstance(stored_evaluation, Mapping) else {}
                 ranked = evaluated.get("ranked_scenario_ids", []) \
                     if isinstance(evaluated, Mapping) else []
-                selected_id = str(ranked[0]).strip() if isinstance(ranked, Sequence) and ranked else ""
+                selected_id = str(query_result.get("selected_scenario_id", "")).strip()
+                if not selected_id and isinstance(ranked, Sequence) and ranked:
+                    selected_id = str(ranked[0]).strip()
                 selected_manifest: Mapping[str, Any] | None = None
                 candidates = stored_evaluation.get("candidates", []) \
                     if isinstance(stored_evaluation, Mapping) else []

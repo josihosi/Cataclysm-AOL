@@ -49,6 +49,8 @@ class SystemProcessInspector:
     """POSIX inspector using a start identity, executable path, and command line."""
 
     def inspect(self, pid: int) -> ProcessSnapshot:
+        if os.name != "posix":
+            raise OSError("POSIX process inspector unavailable; native Windows read-only identity adapter is required")
         if pid <= 0:
             return ProcessSnapshot(pid=pid, alive=False)
         try:
@@ -90,6 +92,8 @@ class SystemProcessInspector:
                                birth_identity=birth, command=command)
 
     def signal(self, pid: int, sig: int) -> None:
+        if os.name != "posix":
+            raise OSError("POSIX process signals unavailable; native Windows adapter is required")
         os.kill(pid, sig)
 
 

@@ -70,7 +70,10 @@ class StartupHudRunBindingTest( unittest.TestCase ):
             run_dir = Path(temp_dir)
             with mock.patch.object(startup_harness, "detect_executable", return_value=Path("game")), \
                     mock.patch.object(startup_harness, "build_game_command", return_value=["game"]), \
+                    mock.patch.object(startup_harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(startup_harness, "stable_terminal_process_generation", return_value={}), \
                     mock.patch.object(startup_harness.subprocess, "Popen") as popen:
+                popen.return_value.pid = 123456
                 startup_harness.launch_game(
                     "profile", "world", run_dir,
                     child_environment={"OPENCLAW_HARNESS_SEMANTIC_RUN_ID": "prior-run"},
@@ -89,7 +92,10 @@ class StartupHudRunBindingTest( unittest.TestCase ):
                     mock.patch.object(startup_harness, "build_game_command", return_value=["game"]), \
                     mock.patch.object(startup_harness, "should_use_curses_terminal", return_value=False), \
                     mock.patch.object(startup_harness, "open_semantic_wake_pipe", return_value=(-1, -1, {})), \
+                    mock.patch.object(startup_harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(startup_harness, "stable_terminal_process_generation", return_value={}), \
                     mock.patch.object(startup_harness.subprocess, "Popen") as popen:
+                popen.return_value.pid = 123456
                 startup_harness.launch_game(
                     "profile", "world", run_dir,
                     child_environment={"TEST_RUN": "1"},
@@ -108,7 +114,10 @@ class StartupHudRunBindingTest( unittest.TestCase ):
             prepared = '{"binding_id":"sealed-binding","round_id":"round-a"}'
             with mock.patch.object(startup_harness, "detect_executable", return_value=Path("game")), \
                     mock.patch.object(startup_harness, "build_game_command", return_value=["game"]), \
+                    mock.patch.object(startup_harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(startup_harness, "stable_terminal_process_generation", return_value={}), \
                     mock.patch.object(startup_harness.subprocess, "Popen") as popen:
+                popen.return_value.pid = 123456
                 startup_harness.launch_game(
                     "profile", "world", run_dir,
                     child_environment={

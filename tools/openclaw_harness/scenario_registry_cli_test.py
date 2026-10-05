@@ -48,6 +48,40 @@ from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
+    def test_rebuild_explicit_cli_source_preserves_other_root_and_bad_input(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            canonical = root / "canonical"; canonical.mkdir()
+            task = root / "task"; task.mkdir()
+            a = canonical / "a.json"; a.write_text(json.dumps({"name": "a", "steps": []}))
+            b = task / "b.json"; b.write_text(json.dumps({"name": "b", "steps": []}))
+            registry = root / "registry.sqlite3"
+            def run(*args):
+                result = self.run_cli("--registry", str(registry), "rebuild", *args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return result
+            run("--scenarios-root", str(canonical))
+            run("--source", str(b))
+            run("--scenarios-root", str(canonical))
+            connection = open_registry(str(registry))
+            try:
+                rows = connection.execute("SELECT source_path, present, revision FROM manifest_current ORDER BY source_path").fetchall()
+                self.assertEqual([tuple(row) for row in rows], [(str(a.resolve()), 1, 1), (str(b.resolve()), 1, 1)])
+                before = tuple(connection.iterdump())
+                bad = task / "bad.json"; bad.write_text("{truncated")
+                c = task / "c.json"; c.write_text(json.dumps({"name": "c", "steps": []}))
+                result = self.run_cli("--registry", str(registry), "rebuild", "--source", str(c), "--source", str(bad))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(tuple(connection.iterdump()), before)
+                # Combined explicit files and directory scan use the same transaction.
+                a.unlink()
+                run("--scenarios-root", str(canonical), "--source", str(c))
+                self.assertEqual(connection.execute("SELECT present FROM manifest_current WHERE source_path=?", (str(a.resolve()),)).fetchone()[0], 0)
+                self.assertEqual(connection.execute("SELECT present FROM manifest_current WHERE source_path=?", (str(b.resolve()),)).fetchone()[0], 1)
+                self.assertEqual(connection.execute("SELECT present FROM manifest_current WHERE source_path=?", (str(c.resolve()),)).fetchone()[0], 1)
+            finally:
+                connection.close()
+
     def test_build_entrypoint_survives_missing_binary_and_compact_status(self):
         with mock.patch.object(scenario_registry_cli.sys, "platform", "darwin"), mock.patch.object(startup_harness, "detect_executable", side_effect=SystemExit("missing")):
             absent = scenario_registry_cli._current_source_executable_readiness()
@@ -174,6 +208,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(scenario_registry_cli, "_selected_executable", return_value=root / "cataclysm-tiles"), \
                     mock.patch.object(scenario_registry_cli, "_scenario_requires_bound_live_bridge",
                                       return_value=True), \
+                    mock.patch.object(scenario_registry_cli, "_preflight_selected_save_setup"), \
                     mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix",
                                       return_value=[]), \
                     mock.patch.object(scenario_registry_cli, "_declared_live_session_reentries",
@@ -1155,6 +1190,10 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             scenarios.mkdir()
             declaration = self.strict_manifest()
             declaration.update({"world": "TestWorld", "profile": str(root / "profile")})
+            declaration['steps'][0] = {'label': 'setup', 'kind': 'native_semantic_bootstrap',
+                                       'native_semantic_checkpoint': {'required_actions': ['world.look'], 'required_state': 'world'}}
+            declaration['post_relaunch'] = {'terminal_save_step_label': 'terminal',
+                                          'steps': [{'label': 'continue', 'kind': 'cockpit_live_session'}]}
             self.write_json(scenarios / "bootstrap.json", declaration)
             executable = root / "cataclysm-tiles"
             executable.write_bytes(b"bootstrap runtime")
@@ -1177,7 +1216,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 stdout=json.dumps({"ok": True, "bridge_pid": 123, "session_dir": str(session_dir)}),
                 stderr="",
             )
-            with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
+            with mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness", return_value={"status": "ready"}), \
+                    mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
                     mock.patch.object(scenario_registry_cli.subprocess, "run", return_value=bridge_result) as run, \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
                 exit_code = scenario_registry_cli.main(["--json",
@@ -1779,6 +1819,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 mock.patch.object(startup_harness, "build_plan", return_value=plan), \
                 mock.patch.object(startup_harness, "game_child_environment", return_value={}), \
                 mock.patch.object(startup_harness, "startup_gui_automation_required", return_value=False), \
+                mock.patch.object(startup_harness, "userdir_for_profile", return_value=(root / "userdir").resolve()), \
                 mock.patch.object(startup_harness, "config_dir_for_profile", return_value=root / "config"), \
                 mock.patch.object(startup_harness, "latest_world_save_marker", return_value={}), \
                 mock.patch.object(startup_harness, "copy_file_if_exists"), \
@@ -2611,7 +2652,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             source = Path(temporary) / "scenario.json"
             source.write_text(json.dumps({
+                "steps": [{"label": "saved", "kind": "wait"}],
                 "post_relaunch": {
+                    "terminal_save_step_label": "saved",
                     "steps": [{"kind": "cockpit_live_session"}],
                 },
             }), encoding="utf-8")
@@ -2628,7 +2671,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ), 0
             )
             source.write_text(json.dumps({
+                "steps": [{"label": "saved", "kind": "wait"}],
                 "post_relaunch": {
+                    "terminal_save_step_label": "saved",
                     "steps": [
                         {"kind": "cockpit_live_session"},
                         {"kind": "cockpit_live_session"},

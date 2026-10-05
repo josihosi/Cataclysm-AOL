@@ -21,6 +21,7 @@ import select
 import shlex
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,26 @@ except ImportError:
 
 SCHEMA = "caol-cockpit-file-bridge-v1"
 TERMINALIZATION_SIGNAL = "cockpit.bridge.safe_to_cleanup.json"
+
+
+def _bridge_identity_error(status: Mapping[str, Any], *, require_alive: bool = True) -> str:
+    # Legacy Tiles evidence predates these fields. Current bridges always
+    # publish them; terminal lane admission never relies on legacy metadata.
+    if "host" not in status:
+        return ""
+    if status.get("host") != socket.gethostname():
+        return "bridge_host_mismatch"
+    from startup_harness import process_generation_snapshot, process_generation_matches
+    expected = status.get("bridge_process_generation")
+    if not isinstance(expected, Mapping):
+        return "bridge_process_generation_unavailable"
+    observed = process_generation_snapshot(int(status.get("bridge_pid", 0) or 0))
+    if observed.get("alive"):
+        if not process_generation_matches(expected, observed):
+            return "bridge_process_generation_changed"
+    elif require_alive:
+        return "bridge_process_exited"
+    return ""
 
 
 class _ExplicitPreDescriptorCleanup(Exception):
@@ -201,6 +222,8 @@ class FileBackedCockpitBridge:
         # segment.  Keep its launch boundary so durable-descriptor recovery
         # cannot reopen admission from an earlier segment's artifact.
         self._child_started_ns = 0
+        from startup_harness import process_generation_snapshot
+        self._bridge_generation = process_generation_snapshot(os.getpid())
 
     def _startup_cleanup_requested(self) -> bool:
         """Read only an explicit bound cleanup while no public owner exists."""
@@ -222,6 +245,13 @@ class FileBackedCockpitBridge:
             list(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=self._child_stderr, text=True, bufsize=1, env=self._child_environment,
         )
+        from startup_harness import process_generation_snapshot
+        _atomic_json(self.session_dir / "launcher-process.json", {
+            "schema": "caol-owned-launcher-process-v1", "host": socket.gethostname(),
+            "binding_id": self.binding_id, "session_generation": self._session_generation,
+            "process_generation": process_generation_snapshot(self._child.pid),
+            "bridge_process_generation": self._bridge_generation,
+        })
 
     def _bootstrap_receipt(self, *, sequence: int, stage: Mapping[str, Any],
                            descriptor: Mapping[str, Any]) -> None:
@@ -274,6 +304,8 @@ class FileBackedCockpitBridge:
             "schema": SCHEMA,
             "binding_id": self.binding_id,
             "bridge_pid": os.getpid(),
+            "host": socket.gethostname(),
+            "bridge_process_generation": self._bridge_generation,
             "state": state,
             "request_count": self._sequence,
             "session_generation": self._session_generation,
@@ -1113,13 +1145,14 @@ class FileBackedCockpitBridge:
         finally:
             os.close(descriptor)
             os.close(anchor_writer)
+            launcher_retained = None
             if self._child.poll() is None:
                 self._child.terminate()
                 try:
                     self._child.wait(timeout=2)
                 except subprocess.TimeoutExpired:
-                    self._child.kill()
-                    self._child.wait(timeout=2)
+                    from startup_harness import process_generation_snapshot
+                    launcher_retained = process_generation_snapshot(self._child.pid)
             previous = json.loads(self.status_path.read_text(encoding="utf-8"))
             terminal_state = str(previous.get("state", "cleaned"))
             terminal_details = {
@@ -1127,6 +1160,10 @@ class FileBackedCockpitBridge:
                 if key not in {"schema", "binding_id", "state", "request_count", "child_exit_code", "cleanup"}
             }
             cleanup = previous.get("cleanup", {"status": "controller_stopped_game_retained"})
+            if launcher_retained is not None:
+                terminal_state = "controller_retained"
+                terminal_details["launcher_retained"] = launcher_retained
+                terminal_details["next_action"] = "inspect_controller_shutdown_blocker"
             self._write_status(terminal_state, **terminal_details,
                                child_exit_code=self._child.returncode, cleanup=cleanup)
             self._close_child_streams()
@@ -1137,6 +1174,9 @@ class FileBackedCockpitBridge:
                      request: Mapping[str, Any]) -> dict[str, Any]:
         session_dir = Path(session_dir)
         status = json.loads((session_dir / "status.json").read_text(encoding="utf-8"))
+        identity_error = _bridge_identity_error(status)
+        if identity_error:
+            return {"ok": False, "error": identity_error}
         if status.get("state") != "ready" or status.get("binding_id") != binding_id:
             return {"ok": False, "status": status}
         request_path = session_dir / "requests" / (request_id + ".json")
@@ -1160,6 +1200,9 @@ class FileBackedCockpitBridge:
             status = json.loads((session_dir / "status.json").read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return {"ok": False, "error": "session_status_unavailable"}
+        identity_error = _bridge_identity_error(status)
+        if identity_error:
+            return {"ok": False, "error": identity_error}
         if status.get("binding_id") != binding_id:
             return {"ok": False, "error": "request_binding_drift"}
         if status.get("state") != "awaiting_response" or status.get("inflight_request_id") != request_id:
@@ -1390,6 +1433,9 @@ class FileBackedCockpitBridge:
     @staticmethod
     def cleanup(session_dir: Path, binding_id: str) -> dict[str, Any]:
         status = json.loads((Path(session_dir) / "status.json").read_text(encoding="utf-8"))
+        identity_error = _bridge_identity_error(status, require_alive=False)
+        if identity_error:
+            return {"ok": False, "error": identity_error}
         if status.get("binding_id") != binding_id:
             return {"ok": False, "error": "request_binding_drift"}
         if status.get("state") == "safe_to_cleanup":
@@ -1763,7 +1809,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             child = subprocess.Popen(bridge_command, stdin=subprocess.DEVNULL,
                                      stdout=subprocess.DEVNULL, stderr=error_log,
                                      start_new_session=True)
+        from startup_harness import process_generation_snapshot
         print(json.dumps({"ok": True, "schema": SCHEMA, "bridge_pid": child.pid,
+                          "host": socket.gethostname(), "bridge_process_generation": process_generation_snapshot(child.pid),
                           "session_dir": args.session_dir, "binding_id": args.binding_id}))
         return 0
     if args.command == "serve":

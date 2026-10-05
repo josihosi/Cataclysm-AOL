@@ -1,5 +1,6 @@
 #include "json_loader.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <unordered_map>
@@ -11,9 +12,23 @@
 
 namespace
 {
+std::filesystem::path shared_asset_cache_root( const char *kind,
+        const std::filesystem::path &ordinary_root )
+{
+    // Optional harness-owned mutable storage; source assets remain at their
+    // real read-only locations. Separate namespaces prevent base/data aliases.
+    const char *root = std::getenv( "OPENCLAW_HARNESS_CACHE_DIR" );
+    if( root != nullptr && *root != '\0' ) {
+        return std::filesystem::u8path( root ) / kind;
+    }
+    return ordinary_root;
+}
+
 flexbuffer_cache &base_cache()
 {
-    static flexbuffer_cache cache{ ( PATH_INFO::base_path() / "cache" ).get_unrelative_path(), PATH_INFO::base_path().get_unrelative_path() };
+    static flexbuffer_cache cache{ shared_asset_cache_root( "base",
+                                  ( PATH_INFO::base_path() / "cache" ).get_unrelative_path() ),
+                                  PATH_INFO::base_path().get_unrelative_path() };
     return cache;
 }
 
@@ -25,7 +40,9 @@ flexbuffer_cache &config_cache()
 
 flexbuffer_cache &data_cache()
 {
-    static flexbuffer_cache cache{ ( PATH_INFO::datadir_path() / "cache" ).get_unrelative_path(), PATH_INFO::datadir_path().get_unrelative_path() };
+    static flexbuffer_cache cache{ shared_asset_cache_root( "data",
+                                  ( PATH_INFO::datadir_path() / "cache" ).get_unrelative_path() ),
+                                  PATH_INFO::datadir_path().get_unrelative_path() };
     return cache;
 }
 

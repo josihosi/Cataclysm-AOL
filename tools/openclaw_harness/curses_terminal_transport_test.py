@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import json
+import socket
 import tempfile
 import time
 import unittest
@@ -13,7 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from curses_terminal_transport import _key_bytes, dispatch_input, should_use_curses_terminal
+from curses_terminal_transport import (
+    _key_bytes, cleanup_dispatcher, dispatch_input, dispatcher_status,
+    should_use_curses_terminal,
+)
 
 
 class CursesTerminalTransportTest(unittest.TestCase):
@@ -29,7 +34,9 @@ class CursesTerminalTransportTest(unittest.TestCase):
 
     def test_text_reaches_bound_terminal_instead_of_gui(self) -> None:
         import startup_harness as harness
-        owner = {"endpoint": "/tmp/owned-terminal", "run_id": "run", "run_dir": "/tmp"}
+        generation = {"pid": 123, "birth_identity": "birth", "command": "owned game"}
+        owner = {"endpoint": "/tmp/owned-terminal", "run_id": "run", "run_dir": "/tmp",
+                 "host": "owned-host", "process_generation": generation}
         with mock.patch.dict(harness.TERMINAL_NATIVE_INPUTS, {123: owner}), \
                 mock.patch.object(harness, "dispatch_terminal_input", return_value={"ok": True, "request_id": "text"}) as send, \
                 mock.patch.object(harness, "write_json"), \
@@ -40,6 +47,8 @@ class CursesTerminalTransportTest(unittest.TestCase):
         self.assertEqual(send.call_args.kwargs["run_id"], "run")
         self.assertEqual(send.call_args.kwargs["pid"], 123)
         self.assertEqual(send.call_args.kwargs["delay_ms"], 20)
+        self.assertEqual(send.call_args.kwargs["host"], "owned-host")
+        self.assertEqual(send.call_args.kwargs["process_generation"], generation)
         gui.assert_not_called()
         self.assertTrue(receipt["ok"])
 
@@ -102,7 +111,7 @@ class CursesTerminalTransportTest(unittest.TestCase):
             transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
             try:
                 process = subprocess.Popen(
-                    [sys.executable, "-c", "import os, sys, tty; tty.setraw(0); print(os.read(0, 1).decode(), flush=True)"],
+                    [sys.executable, "-c", "import os, sys, tty, time; tty.setraw(0); print(os.read(0, 1).decode(), flush=True); time.sleep(.2)"],
                     stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, start_new_session=True,
                     preexec_fn=CursesTerminalTransport.make_controlling_terminal,
                 )
@@ -110,18 +119,232 @@ class CursesTerminalTransportTest(unittest.TestCase):
                 import os
                 os.close(slave_fd)
             endpoint = transport.hand_off_to_dispatcher(run_id="run-a", pid=process.pid)
-            with self.assertRaisesRegex(RuntimeError, "rejected request"):
+            with self.assertRaisesRegex(RuntimeError, "host, run, or PID"):
                 dispatch_input(endpoint, run_id="wrong-run", pid=process.pid, keys=["f"])
+            with self.assertRaisesRegex(RuntimeError, "host, run, or PID"):
+                dispatch_input(endpoint, run_id="run-a", pid=process.pid, keys=["f"], host="other-host")
+            owner = json.loads((run_dir / "terminal.owner.json").read_text())
+            stale_generation = dict(owner["game_process_generation"], birth_identity="old-birth")
+            with self.assertRaisesRegex(RuntimeError, "expected process generation"):
+                dispatch_input(endpoint, run_id="run-a", pid=process.pid, keys=["f"],
+                               process_generation=stale_generation)
+            self.assertEqual(owner["run_id"], "run-a")
+            self.assertEqual(owner["game_process_generation"]["pid"], process.pid)
+            self.assertTrue(owner["game_process_generation"]["birth_identity"])
+            self.assertTrue(owner["broker_process_generation"]["birth_identity"])
+            self.assertTrue(owner["broker_command"])
+            self.assertEqual(endpoint.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(endpoint.parent.stat().st_mode & 0o777, 0o700)
             receipt = dispatch_input(endpoint, run_id="run-a", pid=process.pid, keys=["f"])
             self.assertTrue(receipt["ok"])
             self.assertEqual(receipt["owner"], "run_bound_pty")
+            self.assertEqual(receipt["host"], owner["host"])
+            deadline = time.monotonic() + 2
+            while "f" not in (run_dir / "game.terminal.log").read_text() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertIn("f", (run_dir / "game.terminal.log").read_text())
             self.assertEqual(process.wait(timeout=5), 0)
             deadline = time.monotonic() + 2
             while endpoint.exists() and time.monotonic() < deadline:
                 time.sleep(0.01)
             self.assertFalse(endpoint.exists())
+            self.assertEqual(cleanup_dispatcher(endpoint, owner_path=run_dir / "terminal.owner.json")["status"],
+                             "cleaned_after_game_exit")
+            self.assertFalse(endpoint.parent.exists(), "exact private endpoint directory should be removed")
             transport.close()
-            self.assertIn("f", (run_dir / "game.terminal.log").read_text())
+
+    def test_live_receiver_is_retained_and_exact_child_exit_cleans_only_its_endpoint(self) -> None:
+        import os
+        from curses_terminal_transport import CursesTerminalTransport
+
+        def launch(root: Path, run_id: str):
+            transport, slave = CursesTerminalTransport.open(root / "game.terminal.log")
+            code = "import os,tty; tty.setraw(0); print('ready',flush=True); " \
+                   "key=os.read(0,1); print('key='+key.decode(),flush=True); " \
+                   "os.read(0,1)"
+            try:
+                child = subprocess.Popen([sys.executable, "-c", code], stdin=slave,
+                    stdout=slave, stderr=slave, start_new_session=True,
+                    preexec_fn=CursesTerminalTransport.make_controlling_terminal)
+            finally:
+                os.close(slave)
+            endpoint = transport.hand_off_to_dispatcher(run_id=run_id, pid=child.pid)
+            deadline = time.monotonic() + 3
+            while "ready" not in (root / "game.terminal.log").read_text() and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertIn("ready", (root / "game.terminal.log").read_text())
+            return transport, child, endpoint
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "a").mkdir()
+            (root / "b").mkdir()
+            transport_a, child_a, endpoint_a = launch(root / "a", "run-a")
+            transport_b, child_b, endpoint_b = launch(root / "b", "run-b")
+            self.assertNotEqual(endpoint_a, endpoint_b)
+            self.assertEqual(cleanup_dispatcher(endpoint_a)["status"], "retained_live_game")
+            self.assertTrue(endpoint_a.exists())
+            first = dispatch_input(endpoint_a, run_id="run-a", pid=child_a.pid, keys=["a"])
+            self.assertTrue(first["ok"])
+            self.assertEqual(first["keys"], ["a"])
+            # Exit A through its own terminal. B remains live and addressable.
+            dispatch_input(endpoint_a, run_id="run-a", pid=child_a.pid, keys=["q"])
+            self.assertEqual(child_a.wait(timeout=5), 0)
+            self.assertTrue(endpoint_b.exists())
+            self.assertEqual(dispatcher_status(endpoint_b)["game_status"], "alive")
+            second = dispatch_input(endpoint_b, run_id="run-b", pid=child_b.pid, keys=["b"])
+            self.assertTrue(second["ok"])
+            dispatch_input(endpoint_b, run_id="run-b", pid=child_b.pid, keys=["q"])
+            self.assertEqual(child_b.wait(timeout=5), 0)
+            self.assertEqual(cleanup_dispatcher(
+                endpoint_a, owner_path=root / "a" / "terminal.owner.json")["status"],
+                "cleaned_after_game_exit")
+            self.assertEqual(cleanup_dispatcher(
+                endpoint_b, owner_path=root / "b" / "terminal.owner.json")["status"],
+                "cleaned_after_game_exit")
+            self.assertFalse(endpoint_a.parent.exists())
+            self.assertFalse(endpoint_b.parent.exists())
+            transport_a.close()
+            transport_b.close()
+
+    def test_private_cleanup_failure_reports_exact_retained_path(self) -> None:
+        import os
+        from curses_terminal_transport import CursesTerminalTransport
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            transport, slave = CursesTerminalTransport.open(root / "game.terminal.log")
+            try:
+                child = subprocess.Popen(
+                    [sys.executable, "-c", "import os,tty; tty.setraw(0); os.read(0,1)"],
+                    stdin=slave, stdout=slave, stderr=slave, start_new_session=True,
+                    preexec_fn=CursesTerminalTransport.make_controlling_terminal,
+                )
+            finally:
+                os.close(slave)
+            endpoint = transport.hand_off_to_dispatcher(run_id="retained-cleanup", pid=child.pid)
+            marker = endpoint.parent / "unowned-residue.txt"
+            marker.write_text("keep and report")
+            owner_path = root / "terminal.owner.json"
+            dispatch_input(endpoint, run_id="retained-cleanup", pid=child.pid, keys=["q"])
+            self.assertEqual(child.wait(timeout=5), 0)
+            result = cleanup_dispatcher(endpoint, owner_path=owner_path)
+            self.assertEqual(result["status"], "private_directory_retained_after_game_exit")
+            self.assertEqual(result["retained_paths"], [str(marker)])
+            self.assertFalse(endpoint.exists())
+            self.assertFalse((endpoint.parent / "owner.json").exists())
+            self.assertTrue(owner_path.exists(), "durable run owner record must remain")
+            marker.unlink()
+            endpoint.parent.rmdir()
+            transport.close()
+
+    def test_inherited_profile_lease_fd_stays_held_until_child_and_broker_exit(self) -> None:
+        import fcntl
+        import os
+        from curses_terminal_transport import CursesTerminalTransport
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            lease_path = root / "profile.lease"
+            lease_fd = os.open(lease_path, os.O_CREAT | os.O_RDWR, 0o600)
+            fcntl.flock(lease_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            transport, slave = CursesTerminalTransport.open(root / "game.terminal.log")
+            script = "import os,tty; tty.setraw(0); os.read(0,1)"
+            try:
+                child = subprocess.Popen([sys.executable, "-c", script], stdin=slave,
+                    stdout=slave, stderr=slave, start_new_session=True,
+                    preexec_fn=CursesTerminalTransport.make_controlling_terminal,
+                    pass_fds=(lease_fd,))
+            finally:
+                os.close(slave)
+            endpoint = transport.hand_off_to_dispatcher(
+                run_id="leased-run", pid=child.pid, lease_fd=lease_fd,
+            )
+            os.close(lease_fd)
+            owner = json.loads((root / "terminal.owner.json").read_text())
+            self.assertTrue(owner["lease_fd_inherited"])
+
+            competitor = os.open(lease_path, os.O_RDWR)
+            with self.assertRaises(BlockingIOError):
+                fcntl.flock(competitor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            dispatch_input(endpoint, run_id="leased-run", pid=child.pid, keys=["q"])
+            self.assertEqual(child.wait(timeout=5), 0)
+            self.assertEqual(cleanup_dispatcher(
+                endpoint, owner_path=root / "terminal.owner.json")["status"],
+                "cleaned_after_game_exit")
+            deadline = time.monotonic() + 2
+            acquired = False
+            while time.monotonic() < deadline:
+                try:
+                    fcntl.flock(competitor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    acquired = True
+                    break
+                except BlockingIOError:
+                    time.sleep(.02)
+            os.close(competitor)
+            self.assertTrue(acquired, "broker retained or leaked the profile lease after child exit")
+            transport.close()
+
+    def test_reconnect_rejects_wrong_birth_and_deduplicates_lost_receipt(self) -> None:
+        import os
+        from curses_terminal_transport import CursesTerminalTransport
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            transport, slave = CursesTerminalTransport.open(root / "game.terminal.log")
+            script = "import os,tty,time; tty.setraw(0); key=os.read(0,1); print('received='+key.decode(),flush=True); time.sleep(.3)"
+            try:
+                child = subprocess.Popen([sys.executable, "-c", script], stdin=slave,
+                    stdout=slave, stderr=slave, start_new_session=True,
+                    preexec_fn=CursesTerminalTransport.make_controlling_terminal)
+            finally:
+                os.close(slave)
+            endpoint = transport.hand_off_to_dispatcher(run_id="reconnect-run", pid=child.pid)
+            owner = json.loads((root / "terminal.owner.json").read_text())
+            wrong_birth = dict(owner["game_process_generation"], birth_identity="old-generation")
+            forged = {
+                "schema": "caol-curses-terminal-request-v1", "request_id": "wrong-birth",
+                "host": owner["host"], "run_id": "reconnect-run", "pid": child.pid,
+                "process_generation": wrong_birth, "keys": ["z"], "delay_ms": 0,
+            }
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.connect(str(endpoint))
+                client.sendall((json.dumps(forged) + "\n").encode())
+                rejected = json.loads(client.recv(4096).decode())
+            self.assertFalse(rejected["ok"])
+            self.assertIn("process_generation_mismatch", rejected["error"])
+
+            request_id = "retry-same-input"
+            request = {
+                "schema": "caol-curses-terminal-request-v1", "request_id": request_id,
+                "host": owner["host"], "run_id": "reconnect-run", "pid": child.pid,
+                "process_generation": owner["game_process_generation"], "keys": ["x"], "delay_ms": 0,
+            }
+            # Simulate a disconnected client after request delivery but before
+            # receipt collection, then reconnect with the same request ID.
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.connect(str(endpoint))
+                client.sendall((json.dumps(request) + "\n").encode())
+            deadline = time.monotonic() + 2
+            while "received=x" not in (root / "game.terminal.log").read_text() and time.monotonic() < deadline:
+                time.sleep(.01)
+            receipt = dispatch_input(endpoint, run_id="reconnect-run", pid=child.pid,
+                                     keys=["x"], request_id=request_id)
+            self.assertTrue(receipt["duplicate_request"])
+            self.assertEqual(receipt["request_id"], request_id)
+            changed_request = dict(request, keys=["z"])
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.connect(str(endpoint))
+                client.sendall((json.dumps(changed_request) + "\n").encode())
+                rejected_retry = json.loads(client.recv(4096).decode())
+            self.assertFalse(rejected_retry["ok"])
+            self.assertEqual(rejected_retry["error"], "duplicate_request_payload_mismatch")
+            self.assertEqual((root / "game.terminal.log").read_text().count("received=x"), 1)
+            self.assertEqual(child.wait(timeout=5), 0)
+            self.assertEqual(cleanup_dispatcher(
+                endpoint, owner_path=root / "terminal.owner.json")["status"],
+                "cleaned_after_game_exit")
+            transport.close()
 
     def test_detached_dispatcher_preserves_requested_key_spacing(self) -> None:
         import os
@@ -131,7 +354,7 @@ class CursesTerminalTransportTest(unittest.TestCase):
             transport, slave = CursesTerminalTransport.open(log)
             script = ("import os,tty,time; tty.setraw(0); print('ready',flush=True); "
                       "a=os.read(0,1); t=time.monotonic(); b=os.read(0,1); "
-                      "print('paced=' + str(time.monotonic()-t > .05),flush=True)")
+                      "print('paced=' + str(time.monotonic()-t > .05),flush=True); time.sleep(.2)")
             try:
                 child = subprocess.Popen([sys.executable, "-c", script], stdin=slave,
                     stdout=slave, stderr=slave, start_new_session=True,
@@ -144,6 +367,10 @@ class CursesTerminalTransportTest(unittest.TestCase):
                 time.sleep(.01)
             self.assertIn("ready", log.read_text())
             dispatch_input(endpoint, run_id="paced", pid=child.pid, keys=["a", "b"], delay_ms=100)
+            deadline = time.monotonic() + 2
+            while "paced=True" not in log.read_text() and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertIn("paced=True", log.read_text())
             self.assertEqual(child.wait(timeout=3), 0)
             deadline = time.monotonic() + 2
             while endpoint.exists() and time.monotonic() < deadline:
@@ -165,8 +392,8 @@ class CursesTerminalTransportTest(unittest.TestCase):
                 # Regression coverage is source-level because the real broker
                 # intentionally outlives this test's starter process.
                 source = Path(__file__).with_name("curses_terminal_transport.py").read_text()
-                self.assertIn("stdout=__import__(\"subprocess\").DEVNULL", source)
-                self.assertIn("stderr=__import__(\"subprocess\").DEVNULL", source)
+                self.assertIn("stdout=subprocess.DEVNULL", source)
+                self.assertIn("stderr=subprocess.DEVNULL", source)
             finally:
                 import os
                 os.close(slave_fd)

@@ -360,7 +360,7 @@ def query_page(payload: Mapping[str, Any], receipt: Mapping[str, Any], *,
         **dict(receipt),
         **{key: result.get(key) for key in
            ("query_id", "query_sha256", "selection_id", "token_id", "draft_path", "next_action")},
-        "selected_scenario_id": ranked[0] if ranked else None,
+        "selected_scenario_id": result.get("selected_scenario_id") or (ranked[0] if ranked else None),
         "source_executable_readiness": {key: readiness[key] for key in
             ("status", "reason", "evidence_ceiling", "executable_path", "build_entrypoint",
              "executable_sha256", "product_source_sha256", "product_build_receipt") if key in readiness},
