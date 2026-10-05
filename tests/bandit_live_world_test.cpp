@@ -42245,6 +42245,154 @@ TEST_CASE( "stationary scout light and smoke share fresh habitation buckets thro
 
 }
 
+TEST_CASE( "a newer camp lead cannot rebind a completed watch on its way to the report owner",
+           "[bandit][returned_watch_revision_067][save]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    auto world = make_structural_signal_test_world( cannibal, 967000 );
+    auto &site = world.sites.front();
+    auto &outing = site.active_outing;
+    outing.schema_version = 10;
+    outing.target_footprint = { outing.target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = outing.target_omt + tripoint( 0, 3, 0 );
+    const auto approach = outing.target_omt + tripoint( 0, 4, 0 );
+    outing.shared_route = { site.anchor, approach, outing.selected_watch_omt, approach, site.anchor };
+    outing.waypoint_index = 2;
+    outing.selected_watch_route_cost = 8;
+    outing.assessment.observation_started_minutes = 220;
+    outing.assessment.last_progress_minutes = 220;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    const int watched_revision = outing.target_lead_revision;
+    const std::string lead_id = outing.target_lead_id;
+    const auto target = outing.target_omt;
+    const auto watch = outing.selected_watch_omt;
+    const auto ids = outing.member_ids;
+    for( int minute : { 221, 251, 281, 311, 341 } ) {
+        outing.last_advanced_minutes = minute - 1;
+        REQUIRE( bandit_live_world::record_structural_signal_observations( world, minute,
+        [&]( const auto &, const auto &, const auto & ) {
+            auto read = make_structural_signal_read(
+                            bandit_live_world::sortie_observation_sense::smoke,
+                            target + tripoint( 0, 0, 1 ), 4, 60, 1 );
+            read.line_of_sight = true;
+            read.observed_minutes = minute;
+            return std::vector<bandit_live_world::structural_signal_read>{ read };
+        } ).facts_recorded > 0 );
+        outing.last_advanced_minutes = minute;
+    }
+    const auto original_records = outing.observations;
+    const auto refresh = [&]( const int minute ) {
+        auto lead = *site.intelligence_map.find_lead( lead_id );
+        const int previous = lead.revision;
+        lead.last_seen_minutes = minute;
+        lead.source_summary = "newer physical camp observation";
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+        REQUIRE( site.intelligence_map.find_lead( lead_id )->revision > previous );
+    };
+    refresh( 350 );
+    REQUIRE( outing.target_lead_revision == watched_revision );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment( site, outing.activity_id,
+             outing.generation, watched_revision, 461 ) ==
+             bandit_live_world::scout_assessment_result::normal_success );
+    REQUIRE( outing.phase == bandit_live_world::scout_phase::returning_report );
+    // This is the first destructive old caller: a real phase transition made
+    // normalization stop protecting the already observed revision.
+    bandit_live_world::normalize_camp_intelligence( site );
+    CHECK( outing.target_lead_revision == watched_revision );
+    CHECK( outing.assessment.pinned_target_revision == watched_revision );
+    refresh( 462 );
+    CHECK( outing.target_lead_revision == watched_revision );
+    CHECK( outing.assessment.pinned_target_revision == watched_revision );
+    world = round_trip_world( world );
+    auto &loaded = world.sites.front();
+    REQUIRE( loaded.active_outing.target_lead_revision == watched_revision );
+    REQUIRE( loaded.active_outing.assessment.pinned_target_revision == watched_revision );
+    REQUIRE( loaded.active_outing.selected_watch_omt == watch );
+    REQUIRE( loaded.active_outing.member_ids == ids );
+    REQUIRE( loaded.active_outing.observations.size() == original_records.size() );
+    bool invalid = false;
+    SECTION( "legitimate refresh retains the original typed evidence" ) {}
+    SECTION( "an unrelated newer lead is not this watch" ) {
+        auto other = *loaded.intelligence_map.find_lead( lead_id );
+        other.lead_id = "unrelated-newer-lead";
+        other.target_id = "unrelated-target";
+        other.omt += tripoint( 1, 0, 0 );
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( loaded, other ) );
+    }
+    SECTION( "stale receipts are not refreshed with the lead" ) {
+        for( auto &record : loaded.active_outing.observations ) {
+            record.expiry_minutes = 463;
+        }
+        invalid = true;
+    }
+    SECTION( "wrong observation revision remains rejected" ) {
+        for( auto &record : loaded.active_outing.observations ) {
+            ++record.target_revision;
+        }
+        invalid = true;
+    }
+    bandit_live_world::advance_structural_bounty_outings( world, 463, {} );
+    REQUIRE( loaded.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    // Controlled physical arrivals use the production identity/cursor receipt
+    // writer. This is not a native replay or proof of travel across a saved map.
+    loaded.active_outing.actor_departure_observed = true;
+    loaded.active_outing.actor_route_waypoint =
+        static_cast<int>( loaded.active_outing.shared_route.size() ) - 1;
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( loaded,
+             require_current_simulation_cursor( loaded ), ids.front(), loaded.anchor, 464 ) );
+    world = round_trip_world( world );
+    auto &returned = world.sites.front();
+    REQUIRE_FALSE( returned.current_scout_report.is_present() );
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( returned,
+             require_current_simulation_cursor( returned ), ids.back(), returned.anchor, 465 ) );
+    bandit_live_world::advance_structural_bounty_outings( world, 466, {} );
+    REQUIRE( returned.current_scout_report.is_present() );
+    if( returned.active_outing.is_active() ) {
+        bandit_live_world::advance_structural_bounty_outings( world,
+                returned.active_outing.expected_return_minutes, {} );
+    }
+    REQUIRE_FALSE( returned.active_outing.is_active() );
+    auto &report = returned.current_scout_report;
+    CHECK( report.target_lead_revision == watched_revision );
+    CHECK( report.assessment.pinned_target_revision == watched_revision );
+    CHECK( report.carrier_ids == ids );
+    for( const auto &record : report.observations ) {
+        CHECK( record.observed_minutes <= 341 );
+        CHECK( record.source_omt == target + tripoint( 0, 0, 1 ) );
+        CHECK( record.receiver_omt == watch );
+    }
+    auto newer = *returned.intelligence_map.find_lead( lead_id );
+    newer.last_seen_minutes = report.delivered_minutes + 1;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( returned, newer ) );
+    world = round_trip_world( world );
+    const auto &final_site = world.sites.front();
+    std::vector<bandit_live_world::response_member_power_read> reads;
+    for( const auto &member : final_site.members ) {
+        reads.push_back( { member.npc_id, true,
+                          member.state == bandit_live_world::member_state::at_home, true, 20 } );
+    }
+    const auto selection = bandit_live_world::select_capable_response_party( final_site,
+                           final_site.current_scout_report.action_policy,
+                           final_site.current_scout_report.assessment.danger_high, reads );
+    const int now = final_site.current_scout_report.delivered_minutes + 1;
+    const auto authorization = bandit_live_world::evaluate_response_authorization(
+                                   final_site, now, selection, reads );
+    INFO( authorization.rejection_reason );
+    CHECK( authorization.report_current );
+    CHECK( authorization.report_unexpired );
+    CHECK( authorization.assessment_ready == !invalid );
+    if( !invalid ) {
+        auto contradicted = final_site;
+        auto contradiction = contradicted.current_scout_report.observations.front();
+        contradiction.kind = bandit_live_world::sortie_observation_kind::contradiction;
+        contradiction.source_omt = contradicted.current_scout_report.target_omt;
+        contradicted.current_scout_report.observations.push_back( contradiction );
+        CHECK_FALSE( bandit_live_world::evaluate_response_authorization(
+                         contradicted, now, selection, reads ).assessment_ready );
+    }
+}
+
 TEST_CASE( "legacy returning optical certainty is credited once after save migration",
            "[bandit][binocular_056][legacy_return][save]" )
 {
