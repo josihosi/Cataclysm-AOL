@@ -213,6 +213,10 @@ def _terminal_context(owner: Mapping[str, Any], snapshot: Callable[[int], Mappin
         terminal = _read_object(run_owner_path)
         endpoint = Path(terminal["endpoint"])
         private = _read_object(endpoint.parent / "owner.json")
+        native_windows = terminal.get("transport") == "windows_conpty"
+        if native_windows:
+            from windows_curses_terminal_transport import _public_owner
+            private = _public_owner(private)
         game = owner["process_generation"]
         broker = terminal["broker_process_generation"]
         command = terminal["broker_command"]
@@ -228,17 +232,26 @@ def _terminal_context(owner: Mapping[str, Any], snapshot: Callable[[int], Mappin
                 or terminal.get("run_owner_path") != str(run_owner_path)
                 or not endpoint.is_absolute() or not endpoint.exists()
                 or not isinstance(command, list) or "--broker" not in command
-                or command[command.index("--transcript") + 1] != str(transcript)
-                or command[command.index("--endpoint") + 1] != str(endpoint)
-                or command[command.index("--run-owner") + 1] != str(run_owner_path)
-                or command[command.index("--owner") + 1] != str(endpoint.parent / "owner.json")
                 or terminal.get("broker_pid") != broker.get("pid")
                 or not process_generation_matches(broker, observed_broker)
                 or not process_generation_matches(game, observed_game)):
             raise ValueError("terminal_owner_identity_mismatch")
         # The inspected broker command must identify the recorded argument list;
         # Python may resolve its executable symlink in ps, so compare the tail.
-        if shlex.split(str(broker.get("command", "")))[1:] != command[1:]:
+        if native_windows:
+            # Native broker argv is exported by the same launch primitive;
+            # private authentication/lease handles never enter a capture.
+            if (len(command) != 4 or command[2] != "--broker"
+                    or command[3] != str(endpoint.parent / "launch.json")
+                    or terminal.get("transcript") != str(transcript)
+                    or terminal.get("request_journal") != str(run_dir / "terminal.requests.jsonl")
+                    or str(broker.get("command", "")) != subprocess.list2cmdline(command)):
+                raise ValueError("terminal_broker_command_mismatch")
+        elif (command[command.index("--transcript") + 1] != str(transcript)
+                or command[command.index("--endpoint") + 1] != str(endpoint)
+                or command[command.index("--run-owner") + 1] != str(run_owner_path)
+                or command[command.index("--owner") + 1] != str(endpoint.parent / "owner.json")
+                or shlex.split(str(broker.get("command", "")))[1:] != command[1:]):
             raise ValueError("terminal_broker_command_mismatch")
         return {"run_dir": run_dir, "transcript": transcript, "owner": terminal}
     except (KeyError, IndexError, TypeError, ValueError, OSError, AttributeError) as error:
@@ -560,7 +573,9 @@ def recover_startup_debug_dialog(
                 if (receipt.get("ok") is not True or receipt.get("request_id") != recovery_id
                         or receipt.get("run_id") != before["run_id"] or receipt.get("pid") != pid
                         or receipt.get("host") != terminal_context["owner"]["host"]
-                        or receipt.get("keys") != ["i"] or receipt.get("owner") != "run_bound_pty"
+                        or receipt.get("keys") != ["i"]
+                        or receipt.get("owner") != ("run_bound_conpty" if
+                            terminal_context["owner"].get("transport") == "windows_conpty" else "run_bound_pty")
                         or receipt.get("payload_sha256") != sha256(b"i").hexdigest()
                         or not process_generation_matches(expected, receipt.get("process_generation", {}))):
                     raise ValueError("terminal_dispatch_acknowledgement_mismatch")

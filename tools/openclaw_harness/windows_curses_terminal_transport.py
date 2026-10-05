@@ -321,8 +321,9 @@ class WindowsCursesTerminalTransport:
         except BaseException:
             private_dir.rmdir()
             raise
-        _write_json_atomic(private_dir / 'launch.json', config)
         command = [sys.executable, str(Path(__file__).resolve()), '--broker', str(private_dir / 'launch.json')]
+        config['broker_command'] = command
+        _write_json_atomic(private_dir / 'launch.json', config)
         try:
             with (run_dir / 'terminal.broker.stderr.log').open('xb') as stderr:
                 broker = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
