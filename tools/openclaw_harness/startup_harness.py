@@ -1876,6 +1876,14 @@ def product_build_receipt_archive_path(
     archive_identity = str(archive_identity).strip().lower()
     if not executable_sha256 or not product_source_sha256:
         raise ValueError("immutable receipt requires executable and source digests")
+    if os.name == "nt":
+        # Three full digests exceed MAX_PATH in an ordinary owned Windows
+        # workspace. The receipt digest already addresses all serialized
+        # executable/source/build fields; keep that full identity once.
+        identity = archive_identity or hashlib.sha256(
+            (executable_sha256 + "\0" + product_source_sha256).encode("ascii")
+        ).hexdigest()
+        return legacy.with_name(f"{legacy.stem}-{identity}.json")
     suffix = f"-{archive_identity}" if archive_identity else ""
     return legacy.with_name(
         f"{legacy.stem}-{executable_sha256}-{product_source_sha256}{suffix}.json"
