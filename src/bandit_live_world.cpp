@@ -1970,15 +1970,52 @@ static std::string camp_map_lead_payload_diff( const camp_map_lead &lhs,
     return out.str().empty() ? " none" : out.str();
 }
 
+// A completed watch still owns the revision it actually observed while it
+// returns and reports. New camp knowledge may advance the lead, not this receipt.
+bool watch_revision_is_pinned( const bandit_live_world::active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie &&
+           outing.assessment.observation_started_minutes >= 0 &&
+           outing.target_lead_revision > 0 &&
+           outing.assessment.pinned_target_revision == outing.target_lead_revision;
+}
+
+bool watch_revision_is_pinned( const bandit_live_world::scout_report_record &report )
+{
+    return report.is_present() && report.source_job_type == "scout" &&
+           report.assessment.observation_started_minutes >= 0 &&
+           report.target_lead_revision > 0 &&
+           report.assessment.pinned_target_revision == report.target_lead_revision;
+}
+
+bool report_matches_camp_decision( const bandit_live_world::scout_report_record &report,
+                                   const bandit_live_world::camp_decision_record &decision )
+{
+    const bool lead_id_matches = report.target_lead_id.empty() ||
+                                 decision.target_lead_id.empty() ||
+                                 decision.target_lead_id == report.target_lead_id;
+    return report.is_present() && !report.provisional &&
+           ( report.source_job_type == "scout" || report.source_job_type == "scavenge" ) &&
+           report.action_policy != camp_report_policy::none &&
+           decision.report_policy == report.action_policy &&
+           decision.has_pinned_report() &&
+           decision.source_report_revision == report.revision &&
+           decision.source_report_generation == report.source_generation &&
+           decision.source_report_activity_id == report.source_activity_id &&
+           decision.source_report_application_key == report.application_key &&
+           decision.target_id == report.target_id && decision.target_omt == report.target_omt &&
+           lead_id_matches &&
+           decision.target_lead_revision == report.target_lead_revision;
+}
+
+
 void update_target_lead_reference( bandit_live_world::active_outing_state &outing,
                                    const std::string &lead_id, const int old_revision,
                                    const int new_revision )
 {
     if( outing.target_lead_id == lead_id &&
         ( outing.target_lead_revision == old_revision || outing.target_lead_revision <= 0 ) ) {
-        if( outing.kind == outing_kind::structural_sortie &&
-            outing.phase == scout_phase::observing &&
-            outing.assessment.observation_started_minutes >= 0 ) {
+        if( watch_revision_is_pinned( outing ) ) {
             return;
         }
         outing.target_lead_revision = new_revision;
@@ -1992,7 +2029,7 @@ void update_target_lead_reference( bandit_live_world::scout_report_record &repor
                                    const std::string &lead_id, const int old_revision,
                                    const int new_revision )
 {
-    if( report.target_lead_id == lead_id &&
+    if( !watch_revision_is_pinned( report ) && report.target_lead_id == lead_id &&
         ( report.target_lead_revision == old_revision || report.target_lead_revision <= 0 ) ) {
         report.target_lead_revision = new_revision;
     }
@@ -2015,8 +2052,12 @@ void update_target_lead_references( bandit_live_world::site_record &site,
     update_target_lead_reference( site.active_outing, lead_id, old_revision, new_revision );
     update_target_lead_reference( site.active_hostile_operation.reservation, lead_id,
                                   old_revision, new_revision );
+    const bool pinned_decision = watch_revision_is_pinned( site.current_scout_report ) &&
+                                 report_matches_camp_decision( site.current_scout_report, site.camp_decision );
     update_target_lead_reference( site.current_scout_report, lead_id, old_revision, new_revision );
-    update_target_lead_reference( site.camp_decision, lead_id, old_revision, new_revision );
+    if( !pinned_decision ) {
+        update_target_lead_reference( site.camp_decision, lead_id, old_revision, new_revision );
+    }
 }
 
 bool advance_camp_map_lead_revision( bandit_live_world::site_record &site,
@@ -2623,25 +2664,6 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
     return group;
 }
 
-bool report_matches_camp_decision( const bandit_live_world::scout_report_record &report,
-                                   const bandit_live_world::camp_decision_record &decision )
-{
-    const bool lead_id_matches = report.target_lead_id.empty() ||
-                                 decision.target_lead_id.empty() ||
-                                 decision.target_lead_id == report.target_lead_id;
-    return report.is_present() && !report.provisional &&
-           ( report.source_job_type == "scout" || report.source_job_type == "scavenge" ) &&
-           report.action_policy != camp_report_policy::none &&
-           decision.report_policy == report.action_policy &&
-           decision.has_pinned_report() &&
-           decision.source_report_revision == report.revision &&
-           decision.source_report_generation == report.source_generation &&
-           decision.source_report_activity_id == report.source_activity_id &&
-           decision.source_report_application_key == report.application_key &&
-           decision.target_id == report.target_id && decision.target_omt == report.target_omt &&
-           lead_id_matches &&
-           decision.target_lead_revision == report.target_lead_revision;
-}
 
 bool acted_report_key_matches( const bandit_live_world::acted_report_summary &summary,
                                const std::string &target_id,
@@ -7635,13 +7657,10 @@ static void resolve_camp_lead_reference( Reference &reference,
 
 void normalize_camp_intelligence( site_record &site )
 {
-    const bool preserve_in_field_assessment_revision =
-        site.active_outing.kind == outing_kind::structural_sortie &&
-        site.active_outing.phase == scout_phase::observing &&
-        site.active_outing.assessment.observation_started_minutes >= 0 &&
-        site.active_outing.assessment.pinned_target_revision ==
-        site.active_outing.target_lead_revision &&
-        site.active_outing.target_lead_revision > 0;
+    const bool pinned_outing = watch_revision_is_pinned( site.active_outing );
+    const bool pinned_report = watch_revision_is_pinned( site.current_scout_report );
+    const bool pinned_decision = pinned_report &&
+                                 report_matches_camp_decision( site.current_scout_report, site.camp_decision );
     bound_target_lead_reference( site.active_outing );
     bound_target_lead_reference( site.active_hostile_operation.reservation );
     bound_target_lead_reference( site.current_scout_report );
@@ -7677,13 +7696,17 @@ void normalize_camp_intelligence( site_record &site )
     }
     site.intelligence_map.leads = std::move( normalized );
 
-    if( !preserve_in_field_assessment_revision ) {
+    if( !pinned_outing ) {
         resolve_camp_lead_reference( site.active_outing, site.intelligence_map.leads );
     }
     resolve_camp_lead_reference( site.active_hostile_operation.reservation,
                                  site.intelligence_map.leads );
-    resolve_camp_lead_reference( site.current_scout_report, site.intelligence_map.leads );
-    resolve_camp_lead_reference( site.camp_decision, site.intelligence_map.leads );
+    if( !pinned_report ) {
+        resolve_camp_lead_reference( site.current_scout_report, site.intelligence_map.leads );
+    }
+    if( !pinned_decision ) {
+        resolve_camp_lead_reference( site.camp_decision, site.intelligence_map.leads );
+    }
 
     std::sort( site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
     [&site]( const camp_map_lead &lhs, const camp_map_lead &rhs ) {
@@ -17151,7 +17174,9 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     report.target_id = lead->target_id;
     report.target_omt = lead->omt;
     report.target_lead_id = lead->lead_id;
-    report.target_lead_revision = lead->revision;
+    report.target_lead_revision = player_observation == nullptr &&
+                                  watch_revision_is_pinned( reported_outing ) ?
+                                  reported_outing.target_lead_revision : lead->revision;
     report.application_key = reported_outing.report_application_key;
     report.carrier_ids = carrier_ids;
     report.observations = make_reportable_sortie_observations(
