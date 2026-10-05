@@ -46,11 +46,14 @@ class ProcessInspector(Protocol):
 
 
 class SystemProcessInspector:
-    """POSIX inspector using a start identity, executable path, and command line."""
+    """Platform process identity; native Windows observation is read-only."""
 
     def inspect(self, pid: int) -> ProcessSnapshot:
+        if os.name == "nt":
+            from windows_native_process import WindowsProcessInspector
+            return WindowsProcessInspector().inspect(pid)
         if os.name != "posix":
-            raise OSError("POSIX process inspector unavailable; native Windows read-only identity adapter is required")
+            raise OSError("native process inspector unavailable on this platform")
         if pid <= 0:
             return ProcessSnapshot(pid=pid, alive=False)
         try:

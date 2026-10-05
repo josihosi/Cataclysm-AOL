@@ -10714,7 +10714,7 @@ int camp_supply_cap( const site_record &site )
     return static_cast<int>( std::min<long long>( max_camp_supply_units, capacity ) );
 }
 
-int routine_supply_need( const site_record &site )
+static int routine_supply_need( const site_record &site )
 {
     const long long living = std::max( 1, camp_supply_living_total( site ) );
     const long long supply = std::max( 0, site.supply_units );
@@ -10727,7 +10727,7 @@ int routine_supply_need( const site_record &site )
     return supply >= living ? 667 : 1000;
 }
 
-bool update_routine_unmet_need_start( site_record &site, const int now_minutes )
+static bool update_routine_unmet_need_start( site_record &site, const int now_minutes )
 {
     if( now_minutes < 0 ) {
         return false;
