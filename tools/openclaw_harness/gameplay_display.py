@@ -675,7 +675,9 @@ def _startup_dialog_text(dialog):
         lines.append("Run: " + str(dialog["run_id"]) + "; bridge binding: " +
                      str(dialog.get("binding_id", "unknown")))
     if state == "confirmed_debug_dialog":
-        lines.append("Current debug dialog confirmed by a fresh window capture and matching log text.")
+        lines.append("Current debug dialog confirmed by a fresh " +
+                     ("terminal frame" if dialog.get("capture_kind") == "terminal" else "window capture") +
+                     " and matching log text.")
         lines.append("Message: " + str(dialog.get("message", "")))
         source = dialog.get("source_file")
         if source:
@@ -700,6 +702,9 @@ def _startup_dialog_text(dialog):
         lines.append("UI capture: " + str(dialog["image_path"]) +
                      (" (SHA-256 " + str(dialog["image_sha256"]) + ")"
                       if dialog.get("image_sha256") else ""))
+    if dialog.get("capture_kind") == "terminal" and dialog.get("capture_path"):
+        lines.append("UI capture: " + str(dialog["capture_path"]) +
+                     " (SHA-256 " + str(dialog["capture_sha256"]) + ")")
     if state == "confirmed_debug_dialog" and dialog.get("log_path") is not None:
         lines.append(f"Exact log: {dialog['log_path']} @ byte {dialog.get('log_byte_offset', '?')}")
         other_clues = [clue for clue in dialog.get("log_clues", [])
@@ -718,9 +723,10 @@ def _startup_dialog_text(dialog):
     if state == "confirmed_debug_dialog":
         lines.append("Decision: Record this exact UI/log/run clue; notify the coordinator asynchronously "
                      "for triage without waiting. Assess its consequence for this playtest.")
-        if dialog.get("image_sha256") and dialog.get("session"):
+        capture = dialog.get("capture_sha256", dialog.get("image_sha256"))
+        if capture and dialog.get("session"):
             command = ("play --session " + shlex.quote(str(dialog["session"])) +
-                       " debug-ignore --capture " + str(dialog["image_sha256"]))
+                       " debug-ignore --capture " + str(capture))
             lines.append("Recovery for an understood non-destructive debug continuation: " + command)
             lines.append("Add --note only when a claim-specific consequence needs recording; message wording alone needs no new approval.")
             lines.append("This sends one native Ignore, then reobserves. No input sent by play look.")
@@ -747,7 +753,8 @@ def _startup_debug_recovery_text(recovery):
                      "; PID " + str(before.get("pid", "?")) + "; born " +
                      str(before.get("birth_identity", "?")))
     if recovery.get("reason"):
-        lines.append("Input not sent: " + str(recovery["reason"]))
+        label = "Input outcome unknown: " if recovery.get("state") == "input_outcome_unknown" else "Input not sent: "
+        lines.append(label + str(recovery["reason"]))
     input_result = recovery.get("input", {}).get("peekaboo", {})
     if input_result.get("error"):
         lines.append("Delivery error: " + str(input_result["error"]) +
@@ -761,14 +768,19 @@ def _startup_debug_recovery_text(recovery):
         lines.append("Bridge state after input: " + str(after.get("status", "unknown")) +
                      "; native World still needs verification.")
     elif after:
-        if (recovery.get("ok") and before.get("image_sha256")
-                and after.get("image_sha256") == before.get("image_sha256")):
+        capture = before.get("capture_sha256", before.get("image_sha256"))
+        if (recovery.get("ok") and capture
+                and after.get("capture_sha256", after.get("image_sha256")) == capture):
             lines.append("The same modal remains in the immediate reobservation; recheck it before another Ignore.")
         lines.append("Current UI after input:\n" + _startup_dialog_text(after))
     elif before and not recovery.get("ok"):
         lines.append("Current UI at refusal:\n" + _startup_dialog_text(before))
-    lines.append("Next: play look; use the new current capture for any next distinct debug warning. "
-                 "Key delivery does not prove World or item integrity.")
+    if recovery.get("state") == "input_outcome_unknown":
+        lines.append("Next: play look and reconcile the retained attempt; do not retry automatically. "
+                     "Delivery and World remain unconfirmed.")
+    else:
+        lines.append("Next: play look; use the new current capture for any next distinct debug warning. "
+                     "Key delivery does not prove World or item integrity.")
     return "\n".join(lines)
 
 
