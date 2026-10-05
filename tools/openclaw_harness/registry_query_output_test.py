@@ -14,7 +14,7 @@ from unittest import mock
 import scenario_registry_cli as cli
 import scenario_registry_cli_test as fixtures
 import evidence_display
-from registry_query_output import _compact_candidate_detail, _run_observation, plain_registry_output
+from registry_query_output import _compact_candidate_detail, _run_observation, plain_registry_output, query_page
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
@@ -34,6 +34,34 @@ class RegistryQueryOutputTest(unittest.TestCase):
                 "build_entrypoint": {"argv": ["python3", "build.py"]}}}})
         self.assertIn("runtime.fixture: equality mismatch (requires camp)", text)
         self.assertIn("Build: python3 build.py", text)
+
+    def test_saved_query_projection_preserves_named_selection_over_rank_order(self):
+        snapshots = [
+            {"scenario_id": "ranked-first", "facts": {}, "lifecycle_state": "active",
+             "token_eligible": True, "explanation": {"manifest": {"name": "base", "revision": 1,
+                                                                      "sha256": "a" * 64,
+                                                                      "source_path": "/base.json"}}},
+            {"scenario_id": "named-second", "facts": {}, "lifecycle_state": "active",
+             "token_eligible": True, "explanation": {"manifest": {"name": "saved", "revision": 1,
+                                                                      "sha256": "b" * 64,
+                                                                      "source_path": "/saved.json"}}},
+        ]
+        observations = [{"scenario_id": identity, "hard_results": [], "preference_results": []}
+                       for identity in ("ranked-first", "named-second")]
+        payload = {"result": {
+            "evaluation": {"candidates": snapshots, "evaluation": {
+                "candidates": observations,
+                "ranked_scenario_ids": ["ranked-first", "named-second"],
+            }},
+            "selected_scenario_id": "named-second", "token_id": "named-token",
+        }}
+        result = query_page(
+            payload, {"artifact": {"sha256": "c" * 64, "path": "/query.json", "bytes": 1}},
+            offset=0, page_size=5, cli=["python", "scenario_registry_cli.py"],
+        )
+        self.assertEqual(result["selected_scenario_id"], "named-second")
+        self.assertEqual(result["token_id"], "named-token")
+        self.assertEqual(result["candidates"][0]["scenario_id"], "ranked-first")
 
     def test_run_bound_projection_captures_staffed_camp_lead_before_after_payload(self):
         before = {"schema": "caol-staffed-camp-signal-leads-v1", "known": True,
@@ -253,11 +281,18 @@ class RegistryQueryOutputTest(unittest.TestCase):
     def test_selected_live_route_supplies_charter_and_absent_session_path(self):
         declaration = self.scenarios / "live.json"
         declaration.write_text(json.dumps({"steps": [{"kind": "cockpit_live_session"}]}))
+        ranked_declaration = self.scenarios / "ranked.json"
+        ranked_declaration.write_text(json.dumps({"steps": [{"kind": "press"}]}))
         result = {"token_id": "issued-token", "next_action": None,
+                  "selected_scenario_id": "selected",
                   "source_executable_readiness": {"status": "ready"},
-                  "evaluation": {"evaluation": {"ranked_scenario_ids": ["selected"]},
-                                 "candidates": [{"scenario_id": "selected", "explanation": {
-                                     "manifest": {"source_path": str(declaration)}}}]}}
+                  "evaluation": {"evaluation": {"ranked_scenario_ids": ["ranked-first", "selected"]},
+                                 "candidates": [
+                                     {"scenario_id": "ranked-first", "explanation": {
+                                         "manifest": {"source_path": str(ranked_declaration)}}},
+                                     {"scenario_id": "selected", "explanation": {
+                                         "manifest": {"source_path": str(declaration)}}},
+                                 ]}}
         charter = self.root / "charter.json"
         action = cli._query_launch_action(result, argparse.Namespace(witness_charter=str(charter)), self.registry)
         args = cli.build_parser().parse_args(action["command"]["argv"][2:])

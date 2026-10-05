@@ -217,6 +217,7 @@ class RegistryQueryExecution:
     draft_path: Optional[str]
     selection_id: Optional[str] = None
     next_action: Optional[Mapping[str, Any]] = None
+    selected_scenario_id: Optional[str] = None
 
 
 def _canonical_hash(value: Any, label: str) -> str:
@@ -265,6 +266,51 @@ def _coordinator_authorization(
         "charter_id": normalized["charter_id"],
         "outcome": outcome,
     }
+
+
+def _select_coordinator_query_candidate(
+    evaluation: RegistryStoredQueryEvaluation,
+    brief: Optional[Mapping[str, Any]],
+) -> Optional[RegistryQueryCandidateSnapshot]:
+    """Honor a named brief choice only among unique, eligible typed-query matches."""
+    ranked_ids = evaluation.evaluation.ranked_scenario_ids
+    if brief is None:
+        selected_id = ranked_ids[0] if ranked_ids else None
+        return next((candidate for candidate in evaluation.candidates
+                     if candidate.scenario_id == selected_id), None)
+    if not isinstance(brief, Mapping):
+        raise ScenarioRegistryStoreError("coordinator brief must be an object")
+
+    names = [str(brief[key]).strip() for key in ("scenario_id", "scenario")
+             if key in brief and str(brief[key]).strip()]
+    if len(set(names)) > 1:
+        raise ScenarioRegistryStoreError("coordinator brief names conflicting scenario choices")
+    if not names:
+        selected_id = ranked_ids[0] if ranked_ids else None
+        return next((candidate for candidate in evaluation.candidates
+                     if candidate.scenario_id == selected_id), None)
+
+    requested = names[0]
+    def matches_choice(candidate: RegistryQueryCandidateSnapshot) -> bool:
+        manifest = candidate.explanation.get("manifest", {})
+        name = str(manifest.get("name", "")) if isinstance(manifest, Mapping) else ""
+        return candidate.scenario_id == requested or name == requested
+
+    matches = [candidate for candidate in evaluation.candidates if matches_choice(candidate)]
+    if not matches:
+        raise ScenarioRegistryStoreError("coordinator brief named candidate is missing")
+    if len(matches) != 1:
+        raise ScenarioRegistryStoreError("coordinator brief named candidate is ambiguous")
+    selected = matches[0]
+    if selected.scenario_id not in ranked_ids:
+        raise ScenarioRegistryStoreError(
+            "coordinator brief named candidate is not an eligible typed-query match"
+        )
+    manifest = selected.explanation.get("manifest", {})
+    if (selected.lifecycle_state != "active" or not selected.token_eligible or
+            not isinstance(manifest, Mapping) or not bool(manifest.get("executable"))):
+        raise ScenarioRegistryStoreError("coordinator brief named candidate is not launch eligible")
+    return selected
 
 
 @dataclass(frozen=True)
@@ -2910,8 +2956,15 @@ def execute_registry_query(
         include_lifecycle_states=include_lifecycle_states,
         allow_current_manifest_retry=True,
     )
-    selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
-    selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
+    selected = _select_coordinator_query_candidate(evaluation, coordinator_brief)
+    selected_id = selected.scenario_id if selected is not None else None
+    coordinator_authorization = None
+    if selected is not None and (coordinator_brief is not None or witness_charter is not None):
+        # Validate every supplied brief/charter pair, including when an existing
+        # route would otherwise make the coordinator route unnecessary.
+        coordinator_authorization = _coordinator_authorization(
+            request, selected, coordinator_brief, witness_charter,
+        )
     route = _current_verified_route(selected) if selected is not None and selected.token_eligible else None
     first_run_route = None
     selected_name = str(selected.explanation.get("manifest", {}).get("name", "")) if selected is not None else ""
@@ -2943,11 +2996,11 @@ def execute_registry_query(
         )
         if len(stale_routes) == 1:
             route = stale_routes[0]
-    coordinator_authorization = None
     if route is None and selected is not None:
-        coordinator_authorization = _coordinator_authorization(
-            request, selected, coordinator_brief, witness_charter,
-        )
+        if coordinator_authorization is None:
+            coordinator_authorization = _coordinator_authorization(
+                request, selected, coordinator_brief, witness_charter,
+            )
         if coordinator_authorization is not None:
             # This is technical authority only.  It deliberately carries no
             # verification evidence and cannot promote bootstrap/setup facts.
@@ -2997,7 +3050,8 @@ def execute_registry_query(
                 ) if selected is not None else None
             )
         return RegistryQueryExecution(
-            query_id, query_sha256, evaluation, None, draft_path, selection_id, next_action
+            query_id, query_sha256, evaluation, None, draft_path, selection_id, next_action,
+            selected_id,
         )
 
     manifest = selected.explanation["manifest"]
@@ -3096,7 +3150,9 @@ def execute_registry_query(
             candidate=selected, evaluation=evaluation.evaluation,
             authorization=coordinator_authorization,
         )
-    return RegistryQueryExecution(query_id, query_sha256, evaluation, token_id, None, selection_id)
+    return RegistryQueryExecution(
+        query_id, query_sha256, evaluation, token_id, None, selection_id, None, selected.scenario_id,
+    )
 
 
 def _invalidate_manifest_tokens(
@@ -6789,10 +6845,29 @@ def detect_scenario_relations(connection: sqlite3.Connection) -> Dict[str, int]:
 
 def rebuild_manifest_projection(
     connection: sqlite3.Connection,
-    scenarios_root: Path,
+    scenarios_root: Optional[Path] = None,
+    *,
+    source_paths: Sequence[Path] = (),
 ) -> Dict[str, int]:
-    """Transactionally project staged scenario sources without rewriting them."""
-    staged = stage_manifest_projection(scenarios_root)
+    """Upsert validated sources; absence belongs only to the scanned directory.
+
+    Explicit files add/update their canonical identities without implying that
+    any other source was scanned or removed. All validation precedes mutation.
+    """
+    if scenarios_root is None and not source_paths:
+        raise ScenarioRegistryStoreError("A scenario directory or explicit source is required")
+    scanned_root = scenarios_root.resolve() if scenarios_root is not None else None
+    staged_by_path = {
+        entry.source_path: entry
+        for entry in (stage_manifest_projection(scenarios_root) if scenarios_root is not None else ())
+    }
+    for path in source_paths:
+        entry = _stage_manifest(Path(path))
+        previous = staged_by_path.get(entry.source_path)
+        if previous is not None and previous.source_sha256 != entry.source_sha256:
+            raise ScenarioRegistryStoreError(f"Scenario changed while staging: {entry.source_path}")
+        staged_by_path[entry.source_path] = entry
+    staged = tuple(staged_by_path[path] for path in sorted(staged_by_path))
     discovered = 0
     changed = 0
     absent = 0
@@ -6880,6 +6955,10 @@ def rebuild_manifest_projection(
             _append_source_binding_capability_evidence(connection, entry)
 
         for source_path, previous in existing_rows.items():
+            # The scan is a direct *.json directory scan, not a global catalogue.
+            # Sources published explicitly or from another root retain authority.
+            if scanned_root is None or Path(source_path).parent != scanned_root:
+                continue
             if source_path in staged_paths or int(previous["present"]) == 0:
                 continue
             manifest_id = str(previous["manifest_id"])

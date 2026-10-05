@@ -11,22 +11,38 @@ import build_source_bound_macos as builder
 
 
 class BuildSourceBoundMacOSTest(unittest.TestCase):
-    def invoke(self, responses: list[object], log_dir: Path, build_prefix: str = "") -> tuple[int, str, str]:
-        argv = ["build_source_bound_macos.py", "--log-dir", str(log_dir)]
+    def invoke(self, responses: list[object], log_dir: Path, build_prefix: str = "", renderer: str = "tiles", sources=None) -> tuple[int, str, str]:
+        argv = ["build_source_bound_macos.py", "--log-dir", str(log_dir), "--renderer", renderer]
         if build_prefix:
             argv += ["--build-prefix", build_prefix]
         with patch.object(sys, "argv", argv), patch.object(
             builder.subprocess, "run", side_effect=responses
         ), patch.object(builder, "ROOT", log_dir), patch.object(
-            builder.startup_harness, "product_source_binding", return_value={"ok": True, "sha256": "source"}
+            builder.startup_harness, "product_source_binding", side_effect=sources if sources else None, return_value={"ok": True, "sha256": "source"}
         ), patch.object(builder.startup_harness, "sha256_file", return_value=("binary", "")), patch.object(
             builder.startup_harness, "current_head_short", return_value="head"
-        ), patch.object(builder.startup_harness, "product_build_receipt_path", return_value=log_dir / "receipt.json"
+        ), patch.object(builder.startup_harness, "product_build_receipt_archive_path", return_value=log_dir / "receipt.json"
         ), patch("sys.stdout") as stdout, patch("sys.stderr") as stderr:
             status = builder.main()
             output = "".join(call.args[0] for call in stdout.write.call_args_list)
             error = "".join(call.args[0] for call in stderr.write.call_args_list)
             return status, output, error
+
+    def test_curses_receipt_binds_configuration_and_rejects_source_change(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            ok = type('Result', (), {'returncode': 0, 'stdout': b'ok', 'stderr': b''})()
+            status, out, error = self.invoke([ok, ok], root/'stable', 'terminal/', 'curses')
+            self.assertEqual(status, 0)
+            receipt = json.loads(out)['receipt']
+            self.assertEqual(receipt['build_configuration']['renderer'], 'curses')
+            self.assertIn('SOUND=0', receipt['command'])
+            self.assertIn('USE_XDG_DIR=0', receipt['command'])
+            status, out, error = self.invoke([ok, ok], root/'changed', 'terminal/', 'curses',
+                                           [{'ok': True, 'sha256': 'a'}, {'ok': True, 'sha256': 'b'}])
+            self.assertEqual(status, 1)
+            self.assertIn('changed while building', json.loads(error)['reason'])
+            self.assertFalse((root/'changed/receipt.json').exists())
 
     def test_version_failure_retains_diagnostic_and_full_log(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

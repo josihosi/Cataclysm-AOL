@@ -49,6 +49,76 @@ class ScenarioRegistryRebuildTest(unittest.TestCase):
         with self.assertRaises(scenario_registry.ManifestValidationError):
             scenario_registry.validate_manifest(sight, path=sight_path)
 
+    def test_explicit_sources_and_directory_absence_preserve_unrelated_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            canonical = root / "canonical"; canonical.mkdir()
+            task = root / "task"; task.mkdir()
+            source = HARNESS_DIR / "scenarios/r013.cockpit_transaction_bootstrap_mcw.json"
+            original = canonical / source.name
+            original.write_bytes(source.read_bytes())
+            selected = self.write_manifest(task, "selected", self.strict_manifest())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                rebuild_manifest_projection(connection, canonical)
+                request = parse_registry_query_request({"requirements": [{
+                    "key": "capabilities.r013.cockpit_transaction_bootstrap", "op": "eq",
+                    "value": "public_native_wait_and_advertised_activity_ignore_recovery",
+                    "minimum_evidence": "declared"}], "preferences": []})
+                token = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNotNone(token.token_id)
+                before = tuple(tuple(row) for row in connection.execute("SELECT * FROM token_history"))
+                original_row = dict(connection.execute("SELECT * FROM manifest_current").fetchone())
+                first = rebuild_manifest_projection(connection, source_paths=[selected])
+                self.assertEqual(first, {"staged": 1, "discovered": 1, "changed": 0, "absent": 0})
+                self.assertEqual(tuple(tuple(row) for row in connection.execute("SELECT * FROM token_history")), before)
+                self.assertEqual(dict(connection.execute("SELECT * FROM manifest_current WHERE source_path = ?", (str(original.resolve()),)).fetchone()), original_row)
+                # A later ordinary canonical scan cannot erase a task-local source.
+                self.assertEqual(rebuild_manifest_projection(connection, canonical)["absent"], 0)
+                row = connection.execute("SELECT * FROM manifest_current WHERE source_path = ?", (str(selected.resolve()),)).fetchone()
+                self.assertEqual((row["present"], row["revision"]), (1, 1))
+                value = json.loads(selected.read_text()); value["description"] = "changed exact selected source"
+                selected.write_text(json.dumps(value))
+                self.assertEqual(rebuild_manifest_projection(connection, source_paths=[selected])["changed"], 1)
+                row = connection.execute("SELECT * FROM manifest_current WHERE source_path = ?", (str(selected.resolve()),)).fetchone()
+                self.assertEqual((row["present"], row["revision"]), (1, 2))
+                self.assertEqual(tuple(tuple(row) for row in connection.execute("SELECT * FROM token_history")), before)
+                # True removal belongs to the directory actually scanned.
+                original.unlink()
+                self.assertEqual(rebuild_manifest_projection(connection, canonical)["absent"], 1)
+                self.assertEqual(connection.execute("SELECT present FROM manifest_current WHERE source_path = ?", (str(selected.resolve()),)).fetchone()[0], 1)
+                self.assertEqual(connection.execute("SELECT present FROM manifest_current WHERE source_path = ?", (str(original.resolve()),)).fetchone()[0], 0)
+            finally:
+                connection.close()
+
+    def test_explicit_bad_source_and_upsert_failure_leave_one_transaction_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            a = self.write_manifest(root, "a", self.strict_manifest())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                rebuild_manifest_projection(connection, source_paths=[a])
+                before = tuple(connection.iterdump())
+                value = self.strict_manifest(); value["name"] = "another.fixture"
+                b = self.write_manifest(root, "b", value)
+                bad = root / "bad.json"; bad.write_text("{truncated")
+                with self.assertRaises(ScenarioRegistryStoreError):
+                    rebuild_manifest_projection(connection, source_paths=[b, bad])
+                self.assertEqual(tuple(connection.iterdump()), before)
+                value = json.loads(a.read_text()); value["description"] = "new revision"
+                a.write_text(json.dumps(value))
+                real_replace = scenario_registry_store._replace_current_materializations
+                def fail_second(conn, entry):
+                    if entry.source_path == str(b.resolve()):
+                        raise RuntimeError("second upsert failure")
+                    return real_replace(conn, entry)
+                with mock.patch.object(scenario_registry_store, "_replace_current_materializations", side_effect=fail_second):
+                    with self.assertRaisesRegex(RuntimeError, "second upsert failure"):
+                        rebuild_manifest_projection(connection, source_paths=[a, b])
+                self.assertEqual(tuple(connection.iterdump()), before)
+            finally:
+                connection.close()
+
     def strict_manifest(self) -> dict:
         return {
             "manifest_version": 1,

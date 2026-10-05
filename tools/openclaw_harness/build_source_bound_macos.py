@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build cataclysm-tiles and emit a fail-closed dirty-source binding receipt."""
+"""Build a selected renderer and emit its exact source/executable receipt."""
 
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ def main() -> int:
         description="Build one macOS renderer and record its exact source binding."
     )
     parser.add_argument("--renderer", choices=("tiles", "curses"), default="tiles")
+    parser.add_argument("--jobs", type=int, default=8, help="Build concurrency for this host.")
     parser.add_argument(
         "--build-prefix", default="",
         help="Optional literal Make BUILD_PREFIX; use a trailing / only for a directory-style prefix.",
@@ -66,12 +67,18 @@ def main() -> int:
         help="Directory for complete version/build stdout, stderr, and combined logs.",
     )
     args = parser.parse_args()
+    if args.jobs <= 0:
+        parser.error("--jobs must be positive")
     tiles = args.renderer == "tiles"
     build_prefix = str(args.build_prefix).strip()
+    if not tiles and (not build_prefix or (ROOT / f"{build_prefix}cataclysm").exists()):
+        parser.error("curses requires a separate build prefix with no published executable; never overwrite a selected build")
     command = [
-        "make", "-j8", f"TILES={int(tiles)}", "SOUND=1", "RELEASE=1", "LOCALIZE=1", "LANGUAGES=all",
+        "make", f"-j{args.jobs}", f"TILES={int(tiles)}", f"SOUND={int(tiles)}", "RELEASE=1", "LOCALIZE=1", "LANGUAGES=all",
         "LINTJSON=0", "ASTYLE=0", "TESTS=0",
     ]
+    if not tiles:
+        command.extend(["USE_XDG_DIR=0", "USE_HOME_DIR=0"])
     if build_prefix:
         command.append(f"BUILD_PREFIX={build_prefix}")
     invocation = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
@@ -122,6 +129,7 @@ def main() -> int:
     # The direct product target does not depend on Makefile's phony ``version``
     # target.  Refresh it first so the executable's embedded revision cannot
     # remain at a prior checkout while its build receipt claims current source.
+    source_before = startup_harness.product_source_binding() if not tiles else None
     version_command = [*command, "version"]
     version_run = run_logged(version_command, "version")
     if version_run["exit_status"] != 0:
@@ -145,6 +153,11 @@ def main() -> int:
 
     executable = (ROOT / f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}").resolve()
     source = startup_harness.product_source_binding()
+    if source_before is not None and (not source_before.get("ok") or source_before.get("sha256") != source.get("sha256")):
+        print(json.dumps({"ok": False, "phase": "source-binding",
+                          "reason": "product source changed while building; executable is not ready",
+                          "before": source_before.get("sha256"), "after": source.get("sha256")}), file=sys.stderr)
+        return 1
     executable_sha256, error = startup_harness.sha256_file(executable)
     captured_head = startup_harness.current_head_short()
     if not source.get("ok") or error or not captured_head:

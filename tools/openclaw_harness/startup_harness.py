@@ -79,7 +79,8 @@ from certification_route import (
     capture_and_finalize_certification,
     continuous_capture_proof_classification,
 )
-from curses_terminal_transport import CursesTerminalTransport, dispatch_input as dispatch_terminal_input, should_use_curses_terminal
+from curses_terminal_transport import CursesTerminalTransport, dispatch_input as dispatch_terminal_input, should_use_curses_terminal, _stable_generation as stable_terminal_process_generation
+from writable_run_owner import own_writable_root, current_owner, reject_aliases, WritableRootConflict
 from identity_binding import (
     authoritative_identity_binding,
     canonical_digest,
@@ -169,6 +170,9 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/semantic_state.py",
     "tools/openclaw_harness/cockpit.py",
     "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/curses_terminal_transport.py",
+    "tools/openclaw_harness/writable_run_owner.py",
+    "tools/openclaw_harness/certification_process_lease.py",
     "tools/openclaw_harness/cockpit_evidence.py",
     "tools/openclaw_harness/harness_log_window.py",
     "tools/openclaw_harness/play_cli.py",
@@ -181,6 +185,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/r022_item_spawn_adapter.py",
     "tools/openclaw_harness/r027_camp_signal_receipt.py",
     "tools/openclaw_harness/scenario_registry_cli.py",
+    "tools/openclaw_harness/scenario_registry.py",
     "tools/openclaw_harness/scenario_registry_store.py",
 )
 PRODUCT_BINARY_RELEVANT_PATHS: Tuple[str, ...] = (
@@ -1575,6 +1580,8 @@ def sanitize_profile_name(name: str) -> str:
         return "default"
     name = name.replace("/", "_").replace("\\", "_")
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
+    if name in {".", ".."}:
+        raise ValueError("profile must name an isolated directory, not dot or dot-dot")
     return name or "default"
 
 
@@ -2514,7 +2521,7 @@ def resolve_profile_name(explicit: str) -> str:
 
 
 def userdir_for_profile(profile: str) -> Path:
-    return repo_root() / ".userdata" / profile
+    return repo_root() / ".userdata" / sanitize_profile_name(profile)
 
 
 def save_dir_for_profile(profile: str) -> Path:
@@ -4021,13 +4028,17 @@ PEEKABOO_KEY_ALIASES = {
 # Populated only after startup returns a matched terminal-native owner.  A
 # registered PID is fail-closed: its scenario actions never fall back to GUI
 # automation, which may address a different desktop session.
-TERMINAL_NATIVE_INPUTS: Dict[int, Dict[str, str]] = {}
+TERMINAL_NATIVE_INPUTS: Dict[int, Dict[str, Any]] = {}
 
 
 def register_terminal_native_input(pid: int, endpoint: str, run_id: str, run_dir: Path) -> None:
     if pid <= 0 or not endpoint or not run_id:
         raise ValueError("terminal-native input registration requires pid, endpoint, and run id")
-    TERMINAL_NATIVE_INPUTS[pid] = {"endpoint": endpoint, "run_id": run_id, "run_dir": str(run_dir)}
+    binding = json.loads((run_dir / "terminal.owner.json").read_text())
+    if binding.get("run_id") != run_id or binding.get("game_pid") != pid or binding.get("host") != __import__("socket").gethostname() or binding.get("endpoint") != endpoint:
+        raise ValueError("terminal-native input registration owner mismatch")
+    TERMINAL_NATIVE_INPUTS[pid] = {"endpoint": endpoint, "run_id": run_id, "run_dir": str(run_dir),
+                                  "host": binding["host"], "process_generation": binding["game_process_generation"]}
 
 
 def terminal_native_press_sequence(pid: int, keys: List[str], delay_ms: int = 0) -> Dict[str, Any]:
@@ -4036,7 +4047,8 @@ def terminal_native_press_sequence(pid: int, keys: List[str], delay_ms: int = 0)
         raise RuntimeError("terminal-native input owner is not registered")
     normalized = [normalize_peekaboo_key(key) for key in keys]
     receipt = dispatch_terminal_input(Path(owner["endpoint"]), run_id=owner["run_id"], pid=pid,
-                                     keys=normalized, delay_ms=delay_ms)
+                                     keys=normalized, delay_ms=delay_ms, host=owner["host"],
+                                     process_generation=owner["process_generation"])
     receipt["input_owner"] = "run_bound_pty"
     write_json(Path(owner["run_dir"]) / f"terminal.input.{receipt['request_id']}.receipt.json", receipt)
     return receipt
@@ -23389,6 +23401,9 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
     value = {"binding_id": bridge, "pid": process.pid,
              "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
              "command": generation["command"], "process_generation": generation,
+             "host": __import__("socket").gethostname(),
+             "playtest_mode": env.get("OPENCLAW_HARNESS_PLAYTEST_MODE", "tiles"),
+             "userdir": str(userdir_for_profile(profile).resolve()) if profile else "",
              "launch_cwd": str(repo_root().resolve()),
              "log_paths": log_paths}
     try:
@@ -23445,6 +23460,12 @@ def launch_game(
     terminal_transport: str = "auto",
 ) -> subprocess.Popen[str]:
     exe = Path(executable).resolve() if executable else detect_executable()
+    terminal = should_use_curses_terminal(exe, terminal_transport)
+    lease = current_owner(userdir_for_profile(profile))
+    if terminal and lease is None:
+        raise WritableRootConflict("terminal launch requires the existing run-bound writable-root owner")
+    if lease is not None:
+        reject_aliases(userdir_for_profile(profile))
     cmd = build_game_command(
         exe,
         profile,
@@ -23452,6 +23473,7 @@ def launch_game(
         harness_new_world=harness_new_world,
         harness_raw_seed=harness_raw_seed,
         harness_new_world_scenario=harness_new_world_scenario,
+        isolated_writable=terminal,
     )
     env = dict(child_environment or game_child_environment(profile))
     env["OPENCLAW_HARNESS_RUN_DIR"] = str((artifact_run_dir or run_dir).resolve())
@@ -23471,18 +23493,34 @@ def launch_game(
     env.pop("OPENCLAW_HARNESS_SCENARIO", None)
     if scenario:
         env["OPENCLAW_HARNESS_SCENARIO"] = scenario
-    if should_use_curses_terminal(exe, terminal_transport):
+    env["OPENCLAW_HARNESS_PLAYTEST_MODE"] = "terminal" if terminal else "tiles"
+    # Discard inherited cache authority. Only this exact launch/profile owns
+    # an opt-in cache root; ordinary Tiles retains its existing defaults.
+    env.pop("OPENCLAW_HARNESS_CACHE_DIR", None)
+    if terminal:
+        env["OPENCLAW_HARNESS_CACHE_DIR"] = str(userdir_for_profile(profile).resolve() / "cache" / "native")
+    inherited_lease = lease.inherited_fds if lease is not None else ()
+    if terminal:
         transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
         read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
         env.update(wake_environment)
         env.setdefault("TERM", "xterm-256color")
         try:
+            if lease is not None:
+                lease.begin_launch()
             process = subprocess.Popen(
                 cmd, cwd=str(repo_root()), stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
                 text=False, env=env, start_new_session=True,
                 preexec_fn=CursesTerminalTransport.make_controlling_terminal,
-                pass_fds=(read_fd,),
+                pass_fds=(read_fd, *inherited_lease),
             )
+            generation = stable_terminal_process_generation(process.pid) if isinstance(process.pid, int) else {}
+            write_json(run_dir / "process.json", {"pid": process.pid,
+                "command": cmd, "process_generation": generation,
+                "host": __import__("socket").gethostname(), "run_id": binding["run_id"],
+                "userdir": str(userdir_for_profile(profile).resolve()), "mode": "terminal"})
+            if lease is not None:
+                lease.bind_game(generation)
             record_bridge_game_process(process, env)
         except BaseException:
             os.close(read_fd)
@@ -23504,7 +23542,8 @@ def launch_game(
         })
         endpoint = ""
         if isinstance(process.pid, int):
-            endpoint = str(transport.hand_off_to_dispatcher(run_id=binding["run_id"], pid=process.pid))
+            endpoint = str(transport.hand_off_to_dispatcher(run_id=binding["run_id"], pid=process.pid,
+                          process_generation=generation, lease_fds=inherited_lease))
         else:  # unit-test doubles do not own a usable descriptor or PID.
             transport.start_reader()
         # The detached broker owns the master FD beyond this probe process.
@@ -23538,12 +23577,22 @@ def launch_game(
     # command returns.  Give Tiles the same independent session ownership as
     # the PTY route so launcher teardown cannot turn a live semantic request
     # into ESRCH.
-    wake_fds = {"pass_fds": (read_fd,)} if read_fd >= 0 else {}
+    wake_fds = {"pass_fds": (read_fd, *inherited_lease)} if read_fd >= 0 else {}
     try:
+        if lease is not None:
+            lease.begin_launch()
         process = subprocess.Popen(
             cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log,
             text=True, env=env, start_new_session=True, **wake_fds,
         )
+        generation = (stable_terminal_process_generation(process.pid) if os.name == "posix"
+                      else process_generation_snapshot(process.pid)) if isinstance(process.pid, int) else {}
+        write_json(run_dir / "process.json", {"pid": process.pid,
+            "command": cmd, "process_generation": generation,
+            "host": __import__("socket").gethostname(), "run_id": binding["run_id"],
+            "userdir": str(userdir_for_profile(profile).resolve()), "mode": "tiles"})
+        if lease is not None:
+            lease.bind_game(generation)
         record_bridge_game_process(process, env)
     except BaseException:
         if read_fd >= 0:
@@ -23585,8 +23634,15 @@ def build_game_command(
     harness_new_world: str = "",
     harness_raw_seed: str = "",
     harness_new_world_scenario: str = "",
+    isolated_writable: bool = False,
 ) -> List[str]:
     cmd = [str(executable), "--userdir", f".userdata/{profile}/"]
+    if isolated_writable:
+        root = userdir_for_profile(profile).resolve()
+        cmd = [str(executable), "--userdir", str(root) + "/",
+               "--configdir", str(root / "config") + "/",
+               "--savedir", str(root / "save") + "/",
+               "--memorialdir", str(root / "memorial") + "/"]
     if harness_new_world:
         cmd.extend(["--harness-new-world", harness_new_world, "--harness-raw-seed", harness_raw_seed])
         if harness_new_world_scenario:
@@ -23612,10 +23668,56 @@ def scenario_terminal_transport(scenario: Mapping[str, Any]) -> str:
     return transport
 
 
+def scenario_playtest_mode(scenario: Mapping[str, Any]) -> str:
+    contract = scenario.get("runtime_contract", {})
+    mode = str(contract.get("playtest_mode", "tiles")) if isinstance(contract, Mapping) else "tiles"
+    if mode not in {"tiles", "terminal"}:
+        raise ValueError("runtime_contract.playtest_mode must be tiles or terminal")
+    if mode == "terminal" and scenario_terminal_transport(scenario) != "pty":
+        raise ValueError("terminal mode requires explicit terminal_transport=pty")
+    return mode
+
+
+def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path) -> Dict[str, Any]:
+    """Validate the additive mechanical lane, without GUI or save substitution."""
+    mode = scenario_playtest_mode(scenario)
+    row = {"status": "ready", "mode": mode, "host": __import__("socket").gethostname(),
+           "platform": sys.platform, "executable_path": str(executable),
+           "visual_claims": mode == "tiles"}
+    if mode != "terminal":
+        return row
+    contract = scenario.get("runtime_contract", {})
+    reason = ""
+    if sys.platform != "darwin":
+        reason = "Mac terminal adapter only; native Windows adapter remains unavailable"
+    elif contract.get("require_screen_observability") is True or scenario.get("capture_world_after") is True:
+        reason = "selected scenario requires graphical observability; select Tiles for this claim"
+    elif any(step.get("kind") not in {"native_semantic_bootstrap", "cockpit_live_session"}
+             for step in scenario.get("steps", []) if isinstance(step, Mapping)):
+        reason = "terminal launch requires native semantic bootstrap/live steps; other scripted startup controls are unvalidated"
+    selected = contract.get("selected_product_build")
+    if not reason:
+        receipt, error = validate_selected_product_build(executable, selected)
+        if error:
+            reason = error
+        else:
+            configuration = receipt.get("build_configuration", {})
+            row["build_configuration"] = configuration
+            row["source_revision"] = receipt.get("captured_head")
+            row["executable_sha256"] = receipt.get("executable_sha256")
+            row["product_source_sha256"] = receipt.get("product_source_sha256")
+            if configuration.get("renderer") != "curses" or "SOUND=0" not in configuration.get("make_variables", []):
+                reason = "selected terminal executable requires a source-bound curses build without SDL sound"
+    if reason:
+        row.update(status="unsupported_terminal_mode", reason=reason)
+    return row
+
+
 def terminal_native_startup_identity(
     pid: int,
     executable: Path,
     runtime_binding: Mapping[str, Any],
+    process_generation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Authenticate a PTY child without inventing a GUI window requirement."""
     expected_executable = str(Path(executable).resolve())
@@ -23629,7 +23731,11 @@ def terminal_native_startup_identity(
         "runtime_binding": binding,
         "ok": False,
     }
-    if not pid_is_alive(pid):
+    observed_generation = process_generation_snapshot(pid)
+    result["process_generation"] = observed_generation
+    if not process_generation or not process_generation_matches(process_generation, observed_generation):
+        result["error"] = "terminal_native_process_generation_unproven"
+    elif not pid_is_alive(pid):
         result["error"] = "terminal_native_process_not_alive"
     elif not command or expected_executable not in command:
         result["error"] = "terminal_native_process_command_mismatch"
@@ -23666,6 +23772,10 @@ def process_generation_snapshot(
     PID with the same executable.  The start identity supplied by the process
     inspector is the stable component used for all bound cleanup decisions.
     """
+    if inspector is None and os.name != "posix":
+        return {"schema": "caol-owned-process-generation-v1", "pid": int(pid),
+                "alive": pid_is_alive(pid), "birth_identity": "", "command": "",
+                "executable_path": "", "status": "native_process_identity_adapter_unavailable"}
     observed = (inspector or SystemProcessInspector()).inspect(int(pid))
     if not isinstance(observed, ProcessSnapshot):
         raise TypeError("process inspector returned an invalid snapshot")
@@ -38818,7 +38928,42 @@ def run_checkpoint_contract_preflight(
     return result
 
 
+def require_managed_terminal_root(root: Path) -> None:
+    # A fresh root is created and leased by this caller before installation.
+    # An existing unmanaged directory has incomplete ownership coverage;
+    # scoped PID records alone cannot authorize replacing its save/config.
+    if root.exists() and not (root / ".harness-owner.lock").exists():
+        raise WritableRootConflict(f"existing terminal root has no supported owner binding: {root}")
+
+
 def run_startup(args: argparse.Namespace) -> int:
+    """Reserve the mutable profile before installation/config/cache writes."""
+    profile = resolve_profile_name(args.profile)
+    run_id = str(getattr(args, "harness_run_id", "") or uuid.uuid4().hex)
+    args.harness_run_id = run_id
+    scenario_contract_path = str(getattr(args, "scenario_contract_path", "") or "").strip()
+    if scenario_contract_path:
+        declaration = load_scenario(
+            str(getattr(args, "scenario_identity", "") or Path(scenario_contract_path).stem),
+            source_path=scenario_contract_path,
+            expected_sha256=str(getattr(args, "scenario_source_sha256", "") or "") or None)
+        if scenario_playtest_mode(declaration) == "terminal":
+            executable = Path(str(getattr(args, "executable", "") or "")).resolve()
+            mode_readiness = terminal_mode_readiness(declaration, executable)
+            if mode_readiness["status"] != "ready":
+                raise SystemExit("terminal mode refused before profile writes: " + json.dumps(mode_readiness))
+            require_managed_terminal_root(userdir_for_profile(profile))
+    if getattr(args, "dry_run", False):
+        return _run_startup(args)
+    try:
+        with own_writable_root(userdir_for_profile(profile), run_id,
+                               process_generation_snapshot, process_generation_matches):
+            return _run_startup(args)
+    except WritableRootConflict as error:
+        raise SystemExit(str(error)) from error
+
+
+def _run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     config_profile = resolve_profile_name(getattr(args, "config_profile", "") or profile)
     config = load_profile_config(config_profile)
@@ -39234,6 +39379,10 @@ def run_startup(args: argparse.Namespace) -> int:
         "pid": proc.pid,
         "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
         "process_generation": process_generation,
+        "host": __import__("socket").gethostname(),
+        "run_id": transition_binding["run_id"],
+        "userdir": str(userdir_for_profile(profile).resolve()),
+        "mode": "terminal" if terminal_native_transport else "tiles",
         "harness_new_world": plan.harness_new_world,
         "harness_raw_seed": plan.harness_raw_seed,
         "harness_bandit_feasibility": plan.harness_bandit_feasibility,
@@ -39276,7 +39425,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "status": "not_required_native_semantic" if semantic_only_startup else "skipped_harness_new_world",
     }
     if terminal_native_transport:
-        terminal_identity = terminal_native_startup_identity(proc.pid, Path(plan.executable), runtime_binding)
+        terminal_identity = terminal_native_startup_identity(proc.pid, Path(plan.executable), runtime_binding, process_generation)
         terminal_identity["input_endpoint"] = str(
             getattr(proc, "_openclaw_terminal_input_endpoint", "")
         )
@@ -41466,11 +41615,47 @@ def cockpit_step_explicitly_quit(step: Mapping[str, Any]) -> bool:
 
 
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
+    """Keep terminal profile ownership across bootstrap, play and reentry."""
+    selected_path = str(getattr(args, "registry_selected_source_path", "") or "")
+    selected_sha = str(getattr(args, "registry_selected_source_sha256", "") or "")
+    if bool(selected_path) != bool(selected_sha):
+        raise SystemExit("Registry selected scenario path and hash must travel together")
+    scenario = load_scenario(args.scenario, source_path=selected_path or None,
+                             expected_sha256=str(getattr(args, "registry_selected_source_sha256", "") or ""))
+    args._loaded_scenario = scenario
+    mode = scenario_playtest_mode(scenario)
+    if mode != "terminal":
+        return _run_probe_mode(args, handoff=handoff)
+    executable = str(getattr(args, "executable", "") or scenario.get("runtime_contract", {}).get("requirements", {}).get("executable", ""))
+    readiness = terminal_mode_readiness(scenario, (repo_root() / executable).resolve())
+    if readiness["status"] != "ready":
+        raise SystemExit("terminal mode unavailable before launch: " + json.dumps(readiness))
+    run_id = registry_authority_transition_run_id(str(getattr(args, "registry_launch_receipt", "") or "")) or uuid.uuid4().hex
+    args._terminal_run_id = run_id
+    base_profile = resolve_profile_name(str(scenario.get("profile", "")))
+    args.profile = resolve_profile_name(str(getattr(args, "profile", "") or base_profile + "-run-" + run_id))
+    # The declaration's startup settings are read-only; mutable config is
+    # installed into the new run's profile, never back into the source profile.
+    scenario = dict(scenario)
+    scenario.setdefault("config_profile", base_profile)
+    args._loaded_scenario = scenario
+    require_managed_terminal_root(userdir_for_profile(args.profile))
+    if getattr(args, "dry_run", False):
+        return _run_probe_mode(args, handoff=handoff)
+    try:
+        with own_writable_root(userdir_for_profile(args.profile), run_id,
+                               process_generation_snapshot, process_generation_matches):
+            return _run_probe_mode(args, handoff=handoff)
+    except WritableRootConflict as error:
+        raise SystemExit(str(error)) from error
+
+
+def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     selected_path = str(getattr(args, "registry_selected_source_path", "") or "")
     selected_sha256 = str(getattr(args, "registry_selected_source_sha256", "") or "")
     if bool(selected_path) != bool(selected_sha256):
         raise SystemExit("Registry selected scenario path and hash must travel together")
-    scenario = load_scenario(
+    scenario = getattr(args, "_loaded_scenario", None) or load_scenario(
         args.scenario, source_path=selected_path or None, expected_sha256=selected_sha256,
     )
     args.terminal_transport = scenario_terminal_transport(scenario)
@@ -41484,7 +41669,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             )
     scenario_manifest = scenario_manifest_binding(scenario)
     scenario_name = str(scenario.get("name", args.scenario))
-    transition_event_run_id = uuid.uuid4().hex
+    transition_event_run_id = str(getattr(args, "_terminal_run_id", "") or uuid.uuid4().hex)
     registry_authority_run_id = registry_authority_transition_run_id(
         str(getattr(args, "registry_launch_receipt", "") or "")
     )

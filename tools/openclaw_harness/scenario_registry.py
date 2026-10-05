@@ -306,6 +306,10 @@ def _validate_runtime_contract(
     if "require_screen_observability" in value and \
             type(value["require_screen_observability"]) is not bool:
         raise _error(path, "runtime_contract.require_screen_observability must be bool")
+    if value.get("playtest_mode", "tiles") not in {"tiles", "terminal"}:
+        raise _error(path, "runtime_contract.playtest_mode must be tiles or terminal")
+    if value.get("playtest_mode") == "terminal" and value.get("terminal_transport") != "pty":
+        raise _error(path, "terminal mode requires explicit terminal_transport=pty")
 
     requirements = value["requirements"]
     for key in RUNTIME_REQUIREMENT_KEYS:
