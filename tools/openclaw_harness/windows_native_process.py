@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import threading
 
 
@@ -192,6 +193,8 @@ class NativeConPTY:
         self.reader = None
         self.reader_error = ''
         self._closed = False
+        self.utf8_setup_receipt = None
+        self.child_role = 'unlaunched'
         try:
             checked(self.k.CreatePipe(c.byref(self.ir), c.byref(self.iw), None, 0))
             checked(self.k.CreatePipe(c.byref(self.orr), c.byref(self.ow), None, 0))
@@ -222,6 +225,53 @@ class NativeConPTY:
     def launch(self, argv: list[str], cwd: Path):
         if self.pi.process:
             raise RuntimeError('ConPTY already owns a child')
+        self._prime_utf8(cwd)
+        self.child_role = 'game'
+        return self._launch_child(argv, cwd)
+
+    def _prime_utf8(self, cwd: Path):
+        """Configure this private HPCON's output CP before the game exists.
+
+        ConPTY's UTF8 byte stream alone does not set the client's console CP.
+        Input CP is preserved. The helper exits normally; the next child uses the same primed
+        console while preserving its real executable, PID and command line.
+        """
+        receipt_path = self.transcript_path.with_name(self.transcript_path.name + '.utf8.json')
+        if receipt_path.exists():
+            raise RuntimeError('console_utf8_receipt_already_exists')
+        script = ("import ctypes,json,os,sys;from pathlib import Path;"
+            "k=ctypes.WinDLL('kernel32',use_last_error=True);"
+            "r={'pid':os.getpid(),'before_output_cp':k.GetConsoleOutputCP(),'before_input_cp':k.GetConsoleCP()};"
+            "r.update(set_output_ok=bool(k.SetConsoleOutputCP(65001)));"
+            "r.update(after_output_cp=k.GetConsoleOutputCP(),after_input_cp=k.GetConsoleCP());"
+            "p=Path(sys.argv[1]);f=p.open('x',encoding='utf-8');json.dump(r,f);f.flush();os.fsync(f.fileno());f.close();"
+            "sys.exit(0 if r['set_output_ok'] and r['after_output_cp']==65001 and r['after_input_cp']==r['before_input_cp'] else 1)")
+        self.child_role = 'console_setup'
+        # Establish the recovery record before creation. _launch_child binds its
+        # native PID immediately when CreateProcessW succeeds, before any image,
+        # birth or alive query can fail. Unknown fields remain explicit.
+        self.utf8_setup_receipt = {'generation': None, 'receipt_path': str(receipt_path)}
+        generation = self._launch_child([sys.executable, '-c', script, str(receipt_path)], cwd)
+        if self.k.WaitForSingleObject(self.pi.process, 10000) != 0:
+            raise RuntimeError('console_utf8_helper_exit_unobserved')
+        code = self.exit_code()
+        self.utf8_setup_receipt['exit_code'] = code
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+            self.utf8_setup_receipt['native_result'] = receipt
+            if (code != 0 or receipt.get('pid') != generation['pid'] or
+                    receipt.get('set_output_ok') is not True or receipt.get('after_output_cp') != 65001 or
+                    receipt.get('after_input_cp') != receipt.get('before_input_cp')):
+                raise RuntimeError('console_utf8_setup_unconfirmed')
+        finally:
+            # This handle is proven exited. Never close HPCON or a live helper.
+            self.k.CloseHandle(self.pi.process)
+            self.pi = PI()
+            self.child_role = 'unlaunched'
+
+    def _launch_child(self, argv: list[str], cwd: Path):
+        if self.pi.process:
+            raise RuntimeError('ConPTY already owns a child')
         attrs = None
         try:
             size = c.c_size_t()
@@ -235,15 +285,38 @@ class NativeConPTY:
             command = subprocess.list2cmdline(argv)
             checked(self.k.CreateProcessW(argv[0], c.create_unicode_buffer(command), None, None,
                 False, 0x00080000, None, str(cwd), c.byref(si), c.byref(self.pi)))
+            generation = {'schema': 'caol-owned-process-generation-v1',
+                'pid': int(self.pi.pid), 'alive': None, 'executable_path': '',
+                'birth_identity': '', 'command': command}
+            if self.child_role == 'console_setup':
+                self.utf8_setup_receipt['generation'] = generation
             self.k.CloseHandle(self.pi.thread)
             self.pi.thread = None
+            # Retain all available independent handle facts if any one query
+            # fails. The first error still aborts launch; ownership is not lost.
+            observations = (
+                ('alive', lambda: self.alive()),
+                ('birth_identity', lambda: 'windows-filetime:' + str(handle_birth(self.k, self.pi.process))),
+                ('executable_path', lambda: handle_image(self.k, self.pi.process)),
+            )
+            first_error = None
+            unavailable = {}
+            for field, observe in observations:
+                try:
+                    generation[field] = observe()
+                except Exception as error:
+                    unavailable[field] = type(error).__name__ + ': ' + str(error)
+                    if first_error is None:
+                        first_error = error
+            if first_error is not None:
+                if self.child_role == 'console_setup':
+                    self.utf8_setup_receipt['unavailable_fields'] = unavailable
+                raise first_error
             for handle in (self.ir, self.ow):
-                self.k.CloseHandle(handle)
-                handle.value = None
-            return {'schema': 'caol-owned-process-generation-v1', 'pid': int(self.pi.pid),
-                'alive': self.alive(), 'executable_path': handle_image(self.k, self.pi.process),
-                'birth_identity': 'windows-filetime:' + str(handle_birth(self.k, self.pi.process)),
-                'command': command}
+                if handle:
+                    self.k.CloseHandle(handle)
+                    handle.value = None
+            return generation
         finally:
             if attrs:
                 self.k.DeleteProcThreadAttributeList(attrs)
@@ -276,6 +349,12 @@ class NativeConPTY:
             return
         if self.alive():
             raise RuntimeError('retained_live_native_child')
+        # A prelaunch failure still owns redundant pipe ends. Close those
+        # only after no child is alive, so the drain can observe EOF too.
+        for handle in (self.ir, self.ow):
+            if handle:
+                self.k.CloseHandle(handle)
+                handle.value = None
         # ClosePseudoConsole can terminate attached clients; never use it as quit.
         if self.pc:
             self.k.ClosePseudoConsole(self.pc)

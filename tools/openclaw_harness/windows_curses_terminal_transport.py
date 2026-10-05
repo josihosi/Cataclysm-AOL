@@ -403,7 +403,8 @@ def _broker(config_path):
         if not owner['conhost_process_generations'] or not all(_same_generation(row, row) for row in owner['conhost_process_generations']):
             raise RuntimeError('ConPTY host identity incomplete')
         game = native.launch(owner['argv'], Path(owner['cwd']))
-        owner.update(game_pid=game['pid'], game_process_generation=game, launch_state='ready')
+        owner.update(game_pid=game['pid'], game_process_generation=game, launch_state='ready',
+            console_utf8_setup=native.utf8_setup_receipt)
         publish()
         _write_json_atomic(endpoint, {'instance_id': owner['instance_id'], 'transport': 'windows_conpty'})
 
@@ -509,7 +510,10 @@ def _broker(config_path):
         return 0
     except BaseException as error:
         owner.update(launch_state='failed', error=type(error).__name__ + ': ' + str(error))
-        if native and native.pi.process:
+        if native and native.child_role == 'console_setup':
+            owner['console_utf8_setup'] = native.utf8_setup_receipt
+            owner['cleanup_blocker'] = 'console_setup_child_exit_unobserved'
+        elif native and native.pi.process:
             # Do not unwind a live HPCON. Preserve its exact native ownership
             # and allow a human/coordinator to reconcile the recorded blocker.
             owner.setdefault('game_pid', int(native.pi.pid))
