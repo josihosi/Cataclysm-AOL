@@ -1808,7 +1808,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         with error_path.open("a", encoding="utf-8") as error_log:
             child = subprocess.Popen(bridge_command, stdin=subprocess.DEVNULL,
                                      stdout=subprocess.DEVNULL, stderr=error_log,
-                                     start_new_session=True)
+                                     **({"creationflags": subprocess.DETACHED_PROCESS |
+                                         subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_BREAKAWAY_FROM_JOB}
+                                        if os.name == "nt" else {"start_new_session": True}))
         from startup_harness import process_generation_snapshot
         print(json.dumps({"ok": True, "schema": SCHEMA, "bridge_pid": child.pid,
                           "host": socket.gethostname(), "bridge_process_generation": process_generation_snapshot(child.pid),

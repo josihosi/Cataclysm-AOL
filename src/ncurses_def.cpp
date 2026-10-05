@@ -61,9 +61,9 @@
 
 std::unique_ptr<cataimgui::client> imclient;
 
-#if !defined(_WIN32)
 namespace
 {
+#if !defined(_WIN32)
 class semantic_wake_source
 {
     public:
@@ -110,6 +110,8 @@ semantic_wake_source &active_semantic_wake_source()
     return source;
 }
 
+#endif
+
 enum class curses_wait_result {
     use_curses_input,
     input_ready,
@@ -119,6 +121,31 @@ enum class curses_wait_result {
 
 curses_wait_result wait_for_curses_input_or_semantic_wake( const int timeout_ms )
 {
+#if defined(_WIN32)
+    // The broker creates the per-run event before launching this child.  It
+    // carries no game input and wakes only durable semantic-request polling.
+    static const auto wake_handle = []() {
+        const char *name = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_WAKE_EVENT" );
+        if( name == nullptr || std::strncmp( name, "Local\\caol-semantic-wake-", 25 ) != 0 ) {
+            return static_cast<HANDLE>( nullptr );
+        }
+        return OpenEventA( SYNCHRONIZE, FALSE, name );
+    }();
+    if( wake_handle == nullptr ) {
+        return curses_wait_result::use_curses_input;
+    }
+    const HANDLE handles[] = { wake_handle, GetStdHandle( STD_INPUT_HANDLE ) };
+    const DWORD timeout = timeout_ms < 0 ? INFINITE : static_cast<DWORD>( timeout_ms );
+    const DWORD result = WaitForMultipleObjects( 2, handles, FALSE, timeout );
+    if( result == WAIT_OBJECT_0 ) {
+        return curses_wait_result::semantic_wake;
+    }
+    if( result == WAIT_TIMEOUT ) {
+        return curses_wait_result::timed_out;
+    }
+    // Even failure must not enter an unbounded getch behind the wake source.
+    return curses_wait_result::input_ready;
+#else
     semantic_wake_source &wake_source = active_semantic_wake_source();
     const int wake_fd = wake_source.fd();
     if( wake_fd < 0 ) {
@@ -147,9 +174,9 @@ curses_wait_result wait_for_curses_input_or_semantic_wake( const int timeout_ms 
         return curses_wait_result::semantic_wake;
     }
     return curses_wait_result::input_ready;
+#endif
 }
 } // namespace
-#endif
 
 static void curses_check_result( const int result, const int expected, const char *const /*name*/ )
 {
@@ -535,7 +562,6 @@ input_event input_manager::get_input_event( const keyboard_mode /*preferred_keyb
         previously_pressed_key = 0;
         // flush any output
         catacurses::doupdate();
-#if !defined(_WIN32)
         const curses_wait_result wait_result = wait_for_curses_input_or_semantic_wake( input_timeout );
         if( wait_result == curses_wait_result::semantic_wake ) {
             bool request_polled = poll_active_semantic_surface_request();
@@ -565,9 +591,6 @@ input_event input_manager::get_input_event( const keyboard_mode /*preferred_keyb
         } else {
             key = getch();
         }
-#else
-        key = getch();
-#endif
         const bool request_polled = poll_active_semantic_surface_request();
         if( request_polled ) {
             return input_event();

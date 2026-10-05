@@ -46,7 +46,7 @@ def _process_generation(pid: int) -> dict[str, Any]:
     # macOS and POSIX kill(pid, 0) report zombies as present until their
     # parent reaps them. The startup harness treats those as exited; mirror
     # that distinction here without importing its much larger module.
-    if observed.alive:
+    if observed.alive and os.name == "posix":
         try:
             state = subprocess.run(
                 ["ps", "-p", str(int(pid)), "-o", "stat="],
@@ -325,6 +325,10 @@ def dispatch_input(
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Deliver one exact request after reconciling its persisted process owner."""
+    if os.name == "nt":
+        from windows_curses_terminal_transport import dispatch_input as native_dispatch
+        return native_dispatch(endpoint, run_id=run_id, pid=pid, keys=keys, delay_ms=delay_ms,
+            host=host, process_generation=process_generation, request_id=request_id)
     endpoint = Path(endpoint)
     owner = _read_owner(endpoint)
     actual_host = _host_identity() if host is None else str(host)
@@ -365,6 +369,9 @@ def dispatch_input(
 
 def dispatcher_status(endpoint: Path, *, owner_path: Path | None = None) -> dict[str, Any]:
     """Inspect persisted game and broker identities without mutating either."""
+    if os.name == "nt":
+        from windows_curses_terminal_transport import dispatcher_status as native_status
+        return native_status(endpoint, owner_path=owner_path)
     endpoint = Path(endpoint)
     owner = _read_owner(endpoint, owner_path)
     if str(owner.get("endpoint", "")) != str(endpoint):
@@ -389,6 +396,9 @@ def cleanup_dispatcher(
     endpoint: Path, *, timeout: float = 2.0, owner_path: Path | None = None,
 ) -> dict[str, Any]:
     """Wait for natural exact-child cleanup; retain live or ambiguous owners."""
+    if os.name == "nt":
+        from windows_curses_terminal_transport import cleanup_dispatcher as native_cleanup
+        return native_cleanup(endpoint, timeout=timeout, owner_path=owner_path)
     endpoint = Path(endpoint)
     try:
         owner = _read_owner(endpoint, owner_path)
