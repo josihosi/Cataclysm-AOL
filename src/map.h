@@ -716,6 +716,13 @@ class map
         */
         bool sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, int range,
                    bool with_fields = true ) const;
+        // Observer-relative optics preserves cumulative native weather/field attenuation
+        // and vision-only barriers, while extending clear-air recognition only.
+        bool sees_with_optics( const tripoint_bub_ms &origin, const tripoint_bub_ms &target,
+                               int range, float magnification ) const;
+        bool sees_site_with_optics( const tripoint_bub_ms &origin, const tripoint_bub_ms &target,
+                                   int range, float magnification,
+                                   const std::vector<tripoint_abs_omt> &footprint ) const;
     private:
         /**
          * Don't expose the slope adjust outside map functions.
@@ -736,10 +743,13 @@ class map
         * First tile from the target is an obstacle, which has the coverage value.
         * If there's no obstacle adjacent to the target - no coverage.
         */
-        int obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &loc2 ) const;
-        int ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p ) const;
+        int obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &loc2,
+                               const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;
+        int ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
+                            const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;
         int ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms &target_p,
-                            const float &eye_level = 1.0f ) const;
+                            const float &eye_level = 1.0f,
+                            const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;
         /**
         * Returns coverage value of the tile.
         */
@@ -2039,7 +2049,7 @@ class map
         bool build_transparency_cache( int zlev );
         bool build_vision_transparency_cache( int zlev );
         // fills lm with sunlight. pzlev is current player's zlevel
-        void build_sunlight_cache( int pzlev );
+        void build_sunlight_cache( int pzlev, bool observe_only = false );
     public:
         void build_outside_cache( int zlev );
         // Get a bitmap indicating which layers are potentially visible from the target layer.
@@ -2054,12 +2064,12 @@ class map
                                         const std::optional<tripoint_bub_ms> &override_p ) const;
 
     protected:
-        void generate_lightmap( int zlev );
+        void generate_lightmap( int zlev, bool observe_only = false );
         void build_seen_cache( const tripoint_bub_ms &origin, int target_z,
                                int extension_range = MAX_VIEW_DISTANCE,
                                bool cumulative = false,
                                bool camera = false, int penalty = 0 );
-        void apply_character_light( Character &p );
+        void apply_character_light( Character &p, bool observe_only = false );
 
         int my_MAPSIZE;
         int my_HALF_MAPSIZE;

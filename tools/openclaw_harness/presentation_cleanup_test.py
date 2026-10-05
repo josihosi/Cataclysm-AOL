@@ -44,8 +44,8 @@ class PresentationCleanupTest(unittest.TestCase):
             "surface": {"facts": {"avatar": {}, "messages": []}}}} for i in range(2)]
         text = plain_player_output({"selector": "result.evidence_journal.entries", "slice": entries})
         self.assertEqual(text.count("FIELD: avatar, messages"), 1)
-        self.assertIn("INDEX 1; same PATH/FIELD as J0", text)
-        self.assertIn("INDEX 0; PATH surface.facts.FIELD", text)
+        self.assertIn("INDEX 1; same SELECTOR/FIELD as J0", text)
+        self.assertIn("INDEX 0; SELECTOR result.evidence_journal.entries.INDEX.value.surface.facts.FIELD", text)
 
     def test_zone_summary_preserves_bounds_state_and_controls(self):
         zone = {"id": "zone-6", "name": "Storage", "type": "LOOT", "enabled": False,

@@ -1,3 +1,4 @@
+#include "scout_observation.h"
 #include "map.h"
 
 #include <algorithm>
@@ -555,7 +556,9 @@ bool map::place_vehicle( std::unique_ptr<vehicle> &&new_vehicle )
                   new_vehicle->sm_pos.to_string() );
     } else {
         place_on_submap->ensure_nonuniform();
+        vehicle *placed = new_vehicle.get();
         place_on_submap->vehicles.push_back( std::move( new_vehicle ) );
+        MAPBUFFER.update_vehicle_index( *placed );
     }
     return collision;
 }
@@ -583,6 +586,7 @@ void map::add_vehicle_to_cache( vehicle *veh )
         return;
     }
 
+    MAPBUFFER.update_vehicle_index( *veh );
     // Get parts
     for( const vpart_reference &vpr : veh->get_all_parts_with_fakes() ) {
         if( vpr.part().removed ) {
@@ -729,6 +733,7 @@ std::unique_ptr<vehicle> map::detach_vehicle( vehicle *veh )
             }
             ch.vehicle_list.erase( veh );
             ch.zone_vehicles.erase( veh );
+            MAPBUFFER.forget_vehicle( *veh );
             std::unique_ptr<vehicle> result = std::move( current_submap->vehicles[i] );
             current_submap->vehicles.erase( current_submap->vehicles.begin() + i );
             if( veh->tracking_on ) {
@@ -8073,6 +8078,101 @@ void map::draw_from_above( const catacurses::window &w, const tripoint_bub_ms &p
     }
 }
 
+bool map::sees_with_optics( const tripoint_bub_ms &origin,
+                            const tripoint_bub_ms &target, const int range,
+                            const float magnification ) const
+{
+    if( !std::isfinite( magnification ) || magnification <= 0.0f || magnification > 2.0f ||
+        !inbounds( origin ) || !inbounds( target ) || !sees( origin, target, range, true ) ) {
+        return false;
+    }
+    // Native apparent_light_helper classifies transmission <=0.1 as obstructed.
+    // Extend clear-air recognition only; weather, fields and vision-only barriers
+    // retain their native excess attenuation rather than being magnified away.
+    float depth = 0.0f;
+    float previous_distance = 0.0f;
+    for( const tripoint_bub_ms &p : line_to( origin, target ) ) {
+        const float radial_distance = rl_dist_exact( origin.raw(), p.raw() );
+        const float distance = radial_distance - previous_distance;
+        previous_distance = radial_distance;
+        if( p == target ) {
+            break;
+        }
+        if( has_flag_ter( ter_furn_flag::TFLAG_TRANSLUCENT, p ) ) {
+            return false;
+        }
+        const float transparency = get_cache_ref( p.z() ).transparency_cache[p.x()][p.y()];
+        if( transparency <= LIGHT_TRANSPARENCY_SOLID ) {
+            return false;
+        }
+        depth += distance * ( LIGHT_TRANSPARENCY_OPEN_AIR / magnification +
+                             std::max( 0.0f, transparency - LIGHT_TRANSPARENCY_OPEN_AIR ) );
+    }
+    return std::exp( -depth ) > 0.1f;
+}
+
+bool map::sees_site_with_optics( const tripoint_bub_ms &origin,
+                                 const tripoint_bub_ms &target, const int range,
+                                 const float magnification,
+                                 const std::vector<tripoint_abs_omt> &footprint ) const
+{
+    if( footprint.empty() || !inbounds( target ) || !std::isfinite( magnification ) ||
+        magnification <= 0.0f || magnification > 2.0f || rl_dist( origin, target ) > range ) {
+        return false;
+    }
+    const auto checked = [&]( const tripoint_bub_ms &p ) {
+        const auto omt = project_to<coords::omt>( get_abs( p ) );
+        return std::any_of( footprint.begin(), footprint.end(), [&]( const auto &tile ) {
+            return tile.xy() == omt.xy();
+        } );
+    };
+    // Keep the original discrete bearing/elevation. Never recast from an invented
+    // entry eye or change the Bresenham slope to find a more favourable opening.
+    float depth = 0.0f;
+    float previous_distance = 0.0f;
+    tripoint_bub_ms previous = origin;
+    bool entered = false;
+    for( const tripoint_abs_ms &absolute : scout_observation::site_sightline( get_abs( origin ),
+                                                                        get_abs( target ) ) ) {
+        const auto p = get_bub( absolute );
+        const float radial = rl_dist_exact( origin.raw(), p.raw() );
+        const float distance = radial - previous_distance;
+        previous_distance = radial;
+        if( !checked( p ) ) {
+            previous = p;
+            continue;
+        }
+        if( !inbounds( p ) ) {
+            return false;
+        }
+        // The entry cell itself must be clear, including an opaque wall/tree.
+        const bool first = !entered;
+        entered = true;
+        if( ( p != target || first ) &&
+            ( has_flag_ter( ter_furn_flag::TFLAG_TRANSLUCENT, p ) || !is_transparent( p ) ) ) {
+            return false;
+        }
+        if( p.z() != previous.z() ) {
+            const int high = std::max( p.z(), previous.z() );
+            const bool current_blocked = has_floor_or_support( {p.xy(), high} ) ||
+                                         !is_transparent( {p.xy(), previous.z()} );
+            const bool previous_blocked = checked( previous ) &&
+                ( has_floor_or_support( {previous.xy(), high} ) ||
+                  !is_transparent( {previous.xy(), p.z()} ) );
+            if( current_blocked && ( !checked( previous ) || previous_blocked ) ) {
+                return false;
+            }
+        }
+        if( p != target ) {
+            const float transparency = get_cache_ref( p.z() ).transparency_cache[p.x()][p.y()];
+            depth += distance * ( LIGHT_TRANSPARENCY_OPEN_AIR / magnification +
+                                  std::max( 0.0f, transparency - LIGHT_TRANSPARENCY_OPEN_AIR ) );
+        }
+        previous = p;
+    }
+    return entered && std::exp( -depth ) > 0.1f;
+}
+
 bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int range,
                 bool with_fields ) const
 {
@@ -8170,7 +8270,8 @@ bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int ra
     return visible;
 }
 
-int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &loc2 ) const
+int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &loc2,
+                            const std::vector<tripoint_abs_omt> *footprint ) const
 {
     // Can't hide if you are standing on furniture, or non-flat slowing-down terrain tile.
     if( furn( loc2 ).obj().id || ( move_cost( loc2 ) > 2 &&
@@ -8185,6 +8286,12 @@ int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &
         obstaclepos = new_point;
         return false;
     } );
+    if( footprint ) {
+        const auto omt = project_to<coords::omt>( get_abs( obstaclepos ) );
+        if( std::none_of( footprint->begin(), footprint->end(), [&]( const auto &tile ) {
+            return tile.xy() == omt.xy();
+        } ) ) { return 0; }
+    }
     if( const furn_id &obstacle_f = furn( tripoint_bub_ms( obstaclepos ) ) ) {
         return obstacle_f->coverage;
     }
@@ -8198,9 +8305,10 @@ int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &
     return ter( obstaclepos )->coverage;
 }
 
-int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p ) const
+int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
+                         const std::vector<tripoint_abs_omt> *footprint ) const
 {
-    tripoint_bub_ms viewer_p = viewer.pos_bub();
+    tripoint_bub_ms viewer_p = viewer.pos_bub( *this );
     creature_size viewer_size = viewer.get_size();
 
     // Viewer eye level from ground in grids
@@ -8234,16 +8342,17 @@ int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p
         }
     }
     // Viewer eye level is higher when standing on furniture
-    const furn_id &viewer_furn = furn( viewer_p );
-    if( viewer_furn.obj().id ) {
-        eye_level += viewer_furn->coverage * 0.01f;
+    if( !footprint ) {
+        const furn_id &viewer_furn = furn( viewer_p );
+        if( viewer_furn.obj().id ) { eye_level += viewer_furn->coverage * 0.01f; }
     }
 
-    return ledge_coverage( viewer_p, target_p, eye_level );
+    return ledge_coverage( viewer_p, target_p, eye_level, footprint );
 }
 
 int map::ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms &target_p,
-                         const float &eye_level ) const
+                         const float &eye_level,
+                         const std::vector<tripoint_abs_omt> *footprint ) const
 {
     if( viewer_p.z() == target_p.z() ) {
         return 0;
@@ -8262,7 +8371,15 @@ int map::ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms 
     }
     tripoint_bub_ms ledge_p = high_p;
     bresenham( tripoint_bub_ms( low_p.xy(), high_p.z() ), high_p, 0, 0, [this,
-    &ledge_p]( const tripoint_bub_ms & new_point ) {
+    &ledge_p, footprint]( const tripoint_bub_ms & new_point ) {
+        if( footprint ) {
+            const auto omt = project_to<coords::omt>( get_abs( new_point ) );
+            if( std::none_of( footprint->begin(), footprint->end(), [&]( const auto &tile ) {
+                return tile.xy() == omt.xy();
+            } ) ) {
+                return true;
+            }
+        }
         if( dont_draw_lower_floor( new_point ) ) {
             ledge_p = new_point;
             return false;

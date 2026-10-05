@@ -1,0 +1,196 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r_caol_first_smoke_050_rural_roof_bandit_only",
+  "description": "R050 rural roof bandit-only control derived from untouched B: preserve both bandit sites and ordinary unsignaled behavior while removing the nearby cannibal camp interference.",
+  "profile": "first-smoke-050-rural-bandit-only-20260930",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "added_bandit_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r050_rural_roof": "bandit_only_derivative_of_B"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-050-rural-bandit-only-20260930",
+    "fixture": "r050_rural_roof_bandit_only_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-050-rural-bandit-only-20260930",
+      "fixture": "r050_rural_roof_bandit_only_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions; ordinary roof ignition and save"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r050_bandit_only_baseline",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load exact R050 45-file pre-signal bandit-only rural roof start at turn 5216234. House, roof, braziers, weather, added bandit_camp [129,149,0], inherited bandit_cabin [103,167,0] and its old lead match the parent. The cannibal camp placement and terrain are absent. Verify effective userdir, exact executable, World, safe mode, mutations and pending input; the fixture has no new bandit lead, report, roster or operation."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r050_bandit_only_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "native_r050_bandit_only_journey",
+      "objective": "From this independent unlit roof baseline, use ordinary lighter and verified brazier controls to establish physical smoke. Follow the added bandit camp at [129,149,0] through native admission, same-ID scouting/watch/return/report, demand and a saved pre-choice Pay/Fight boundary. For the peaceful branch, verify actual loot transfer, departure and return. Distinguish the inherited distant cabin by site ID and preserve normal bandit supply, drive and cadence.",
+      "proof_targets": [
+        "byte-exact selected fixture and same-run native World/action/quicksave/reload",
+        "current roof fire/fuel/weather and physical source-bound smoke packet",
+        "added bandit_camp admission, actor IDs, physical scouting/watch/return/report",
+        "bandit demand, saved pre-choice boundary and actual peaceful transfer/departure",
+        "site-specific saved knowledge, roster, route and supplies without seeded state",
+        "graceful game/bridge/launcher closure and saved turns"
+      ],
+      "invariants": [
+        "offline edits have zero gameplay credit; no injected signal, knowledge, report, raid or payment",
+        "the added bandit_camp differs from the inherited distant bandit_cabin and old player lead",
+        "do not alter normal supply, response power, drive or dispatch cadence",
+        "native scout/response IDs are resolved from this run, never copied from R049"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r050_bandit_only_baseline",
+      "bind_same_run_r050_bandit_only_world"
+    ],
+    "production_behavior": [
+      "native_r050_bandit_only_journey"
+    ],
+    "terminal_persistence": [
+      "native_r050_bandit_only_journey"
+    ],
+    "artifact_verdict": [
+      "native_r050_bandit_only_journey"
+    ],
+    "disallowed_shortcuts": [
+      "native_r050_bandit_only_journey"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R050 bandit-only rural roof start permits an uncontaminated native bandit journey; the fixture itself grants no gameplay proof.",
+    "failure_rule": "Offline selection and load do not prove smoke admission, scouting, demand, payment or departure."
+  },
+  "fixture": "r050_rural_roof_bandit_only_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "post_relaunch": {
+    "terminal_save_step_label": "native_r050_bandit_only_journey",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "r050_bandit_only_reloaded_world",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "A native quicksave from this disposable R050 world reloads at its verified saved turn under the same selected immutable executable and profile."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r050_bandit_only_saved_reentry",
+        "objective": "Verify the reloaded native World, effective userdir, saved turn, safe mode and survival setup, then close the disposable process gracefully.",
+        "proof_targets": [
+          "same saved world and confirmed quicksaved turn after process replacement",
+          "source-bound selected executable and exact R050 disposable profile",
+          "game, bridge and launcher OS exit after the reentry check"
+        ],
+        "invariants": [
+          "reload begins from the verified native quicksave, without substituting fixture bytes",
+          "no fixture reinstall on saved-process reentry",
+          "reload alone grants no new faction outcome"
+        ],
+        "live_operations": [
+          "game.act"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

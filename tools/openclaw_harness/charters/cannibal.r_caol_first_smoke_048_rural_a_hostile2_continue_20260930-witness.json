@@ -1,0 +1,30 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "From the exact R048 post-report/pre-harm checkpoint, can the same committed hostile:2 IDs5/7 route through the actual roof ladder, door and stairs to an upstairs search/combat outcome while the player reaches shelter, or where is the first precise native divergence?",
+  "material_proof": "Verify the 45-file saved checkpoint hash and saved turn, load it in a distinct disposable profile under a current R040 executable/runtime binding, and confirm report generation1/revision1 and hostile:2 membership IDs5/7. Do not replay ignition, scouts, report generation, or dispatch. Verify Safe Off and existing DEBUG_LS without toggling. If safely feasible, move by observed passable roof tiles to actual ladder [3149,3454,1], descend and enter a visibly accessible sheltered interior by ordinary controls before contact. Track IDs5/7 with run-bound dynamic raid_actor_trace through exact positions/z, actions/goals/path, combat damage and deaths, actual door/stairs/upstairs/search. Save meaningful boundaries and close through supported lifecycle.",
+  "current_uncertainty": "The saved run already has a smoke report and committed hostile response. The prior R048 run proved roof-level contact and player death but not ground descent, interior entry, stairs or upstairs search. This continuation starts from turn5241819 before the prior combat, with IDs5/7 already reserved.",
+  "material_contradiction": [
+    "Checkpoint bytes or saved turn differ from the cited manifest",
+    "Loaded report/hostile operation/member IDs do not match the existing committed checkpoint",
+    "Safe Off or DEBUG_LS cannot be verified without changing the experiment",
+    "No usable native dynamic trace scope for actual IDs5/7",
+    "A real ladder/door/stair route is rejected or physically diverges; retain exact first edge/floor",
+    "Player is harmed before safe access; preserve actual HP/damage and do not repeat an unsafe route",
+    "A same-ID actor dies or disappears without sufficient source attribution",
+    "Save/process cleanup cannot be verified"
+  ],
+  "forbidden_shortcuts": [
+    "replaying ignition/scouting/report/dispatch",
+    "starting from the pristine A fixture or advanced death state",
+    "B arm, injected signal/knowledge/report/actors, faction seeding, teleport, cloak or clairvoyance",
+    "autoattack, raw Tab, or unvalidated repeated/batched movement",
+    "claiming route/entry/upstairs from goal, waypoint, or omitted trace rows",
+    "inferring attacker without a named native record"
+  ],
+  "honest_stop_conditions": [
+    "same-ID physical route through stairs/upstairs/search/combat or first exact native route divergence",
+    "native harm/contact before shelter: preserve state and assess without repeating fatal approach",
+    "source binding or selection failure: hold before launch and report exact field"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

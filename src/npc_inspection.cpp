@@ -12,8 +12,10 @@
 #include "bodypart.h"
 #include "calendar.h"
 #include "cata_imgui.h"
+#include "cata_scope_helpers.h"
 #include "color.h"
 #include "enum_conversions.h"
+#include "do_turn.h"
 #include "game.h"
 #include "game_constants.h"
 #include "imgui/imgui.h"
@@ -26,6 +28,7 @@
 #include "overmapbuffer.h"
 #include "output.h"
 #include "pocket_type.h"
+#include "rng.h"
 #include "string_formatter.h"
 #include "translations.h"
 #include "ui_manager.h"
@@ -207,6 +210,98 @@ void show_item( npc &actor, const std::string &uid )
 }
 } // namespace
 
+std::string npc_outing_member_diagnostic( const character_id id, const bool include_body )
+{
+    const auto persistent = overmap_buffer.find_npc( id );
+    std::vector<const npc *> tracked;
+    if( g ) {
+        for( const auto &reference : g->all_npcs().items ) {
+            const auto copy = reference.lock();
+            if( copy && copy->getID() == id ) {
+                tracked.push_back( copy.get() );
+            }
+        }
+    }
+    const auto lease_matches = []( const bandit_live_world_projection_lease & a,
+    const bandit_live_world_projection_lease & b ) {
+        return a.present == b.present && a.site_id == b.site_id &&
+               a.activity_id == b.activity_id && a.owner == b.owner &&
+               a.generation == b.generation && a.handoff_epoch == b.handoff_epoch &&
+               a.last_advanced_minutes == b.last_advanced_minutes;
+    };
+    const auto write_object = [include_body]( JsonOut & json, const npc & actor ) {
+        const auto &lease = actor.get_bandit_live_world_projection_lease();
+        json.member( "name", actor.get_name() );
+        json.member( "absolute_ms", actor.pos_abs() );
+        json.member( "absolute_omt", actor.pos_abs_omt() );
+        json.member( "active", actor.is_active() );
+        json.member( "dead", actor.is_dead() );
+        json.member( "body_update_turn", to_turns<int>( actor.get_last_updated() - calendar::turn_zero ) );
+        json.member( "goal_omt", actor.goal );
+        json.member( "has_omt_destination", actor.has_omt_destination() );
+        json.member( "omt_path_length", actor.omt_path.size() );
+        json.member( "mission", static_cast<int>( actor.mission ) );
+        if( include_body ) {
+            json.member( "attitude", npc_attitude_name( actor.get_attitude() ) );
+            json.member( "activity", actor.current_activity_id.str() );
+            json.member( "hp", actor.get_hp() );
+            json.member( "hp_max", actor.get_hp_max() );
+            json.member( "local_move_target", actor.goto_to_this_pos );
+            json.member( "local_path_length", actor.path.size() );
+            // This projection neither reads nor refreshes the transient AI cache.
+            json.member( "runtime_target_available", false );
+            json.member( "llm_pending_available", false );
+        }
+        json.member( "lease" );
+        json.start_object();
+        json.member( "present", lease.present );
+        json.member( "site_id", lease.site_id );
+        json.member( "activity_id", lease.activity_id );
+        json.member( "owner", lease.owner );
+        json.member( "generation", lease.generation );
+        json.member( "handoff_epoch", lease.handoff_epoch );
+        json.member( "last_advanced_minutes", lease.last_advanced_minutes );
+        json.end_object();
+    };
+    return json_text( [&]( JsonOut & json ) {
+        json.start_object();
+        json.member( "id", id.get_value() );
+        json.member( "calendar_turn", to_turns<int>( calendar::turn - calendar::turn_zero ) );
+        json.member( "found", bool( persistent ) );
+        json.member( "selected_object_source", persistent ? "persistent_overmap_in_memory" : "unavailable" );
+        json.member( "game_lookup_source", "game_find_npc_aliases_overmap_buffer" );
+        json.member( "persistent_object_available", bool( persistent ) );
+        json.member( "tracker_objects_available", !tracked.empty() );
+        json.member( "tracker_object_count", tracked.size() );
+        if( persistent ) {
+            // Preserve the existing row's selection; diagnostics never change the control object.
+            write_object( json, *persistent );
+        }
+        json.member( "tracker_objects" );
+        json.start_array();
+        for( const npc *copy : tracked ) {
+            json.start_object();
+            json.member( "object_source", "current_creature_tracker" );
+            write_object( json, *copy );
+            json.member( "persistent_comparison_available", bool( persistent ) );
+            if( persistent ) {
+                json.member( "same_object", copy == persistent.get() );
+                json.member( "position_matches_persistent", copy->pos_abs() == persistent->pos_abs() );
+                json.member( "update_clock_matches_persistent", copy->get_last_updated() == persistent->get_last_updated() );
+                json.member( "lease_matches_persistent", lease_matches(
+                                 copy->get_bandit_live_world_projection_lease(),
+                                 persistent->get_bandit_live_world_projection_lease() ) );
+            }
+            json.end_object();
+        }
+        json.end_array();
+        json.member( "provenance", "Read-only current in-memory objects. Persistent-only is not a current tracker actor. "
+                     "Unavailable tracker/copy comparison is not absence/death or agreement. Body update clock is native body/effect lifecycle data, not position freshness or movement proof. "
+                     "Same-pointer comparison is not independent saved-copy validation; durable outing remains the owner authority." );
+        json.end_object();
+    } );
+}
+
 std::string npc_inspection_actor_id( const npc &actor )
 {
     return string_format( "character:%d", actor.getID().get_value() );
@@ -255,6 +350,9 @@ std::vector<semantic_action_descriptor> npc_inspection_current_camp_actions( ava
 
 std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &viewer )
 {
+    // Existing follower labels expand randomized dialogue tags. Reading this
+    // diagnostic must not consume the simulation's random sequence.
+    restore_on_out_of_scope restore_rng( rng_get_engine() );
     const auto items = physical_items( actor );
     const auto labels = follower_rules_ui::semantic_labels( actor );
     const auto rules = follower_rules_ui::semantic_payload( actor, labels );
@@ -262,6 +360,7 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
         { "schema", "caol-npc-inspection-v1" },
         { "actor_id", npc_inspection_actor_id( actor ) },
         { "actor_name", actor.get_name() },
+        { "diagnostic_shakedown_communication", bandit_shakedown_communication_diagnostic( actor ) },
         { "calendar_turn", std::to_string( to_turns<int>( calendar::turn - calendar::turn_zero ) ) },
         { "provenance", "Native NPC inspection; visible facts use npc::print_info getters. diagnostic_* facts are internal state, not avatar knowledge or gameplay proof. Items include every pocket type, excluding virtual pseudo-items." },
         { "item_details_parameters", "npc_inspection.item_details requires parameter item_uid from diagnostic_items; ownership is revalidated against actor_id." },

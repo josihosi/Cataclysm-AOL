@@ -1,0 +1,205 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r_caol_first_smoke_051_open_building_r050_20261005",
+  "description": "R051 open-building signal comparison from an exact fresh R050 bandit-only start. Keep the retained added bandit camp; open the real nearby window/door by ordinary native actions, then compare physical light and smoke and follow only naturally admitted added-site actors.",
+  "profile": "r051-open-building-r050-20261005",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "light",
+      "smoke"
+    ],
+    "world.hostile_policy": "added_bandit_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r050_rural_roof": "bandit_only_derivative_of_B",
+    "capabilities.r_caol.open_building_comparison": "real_r050_bandit_camp_ordinary_opening"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-open-building-r050-20261005",
+    "fixture": "r050_rural_roof_bandit_only_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "selected-immutable-product-build",
+      "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-open-building-r050-20261005",
+      "fixture": "r050_rural_roof_bandit_only_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "Fresh exact R050 45-file pre-signal fixture; verify the actual native open terrain, ordinary-open the relevant nearby window/door if needed, use downstairs brazier only if unlit, and follow the added bandit camp without seeding knowledge, actors, reports, or dispatch."
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false,
+    "selected_product_build": {
+      "schema": "caol-selected-product-build-v1",
+      "receipt_path": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-5a8bcd0d2c2af8d5-0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68-74c64b5992ce33799346d71c5c62fd9a37b945ce172a219cb7b6b346998712ee-ca4bf941a1a52e044e9a04c740fe84bb4036ad7c25bb80e7ffd8580729e1cf65.json",
+      "receipt_sha256": "ca4bf941a1a52e044e9a04c740fe84bb4036ad7c25bb80e7ffd8580729e1cf65",
+      "executable_sha256": "0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68",
+      "product_source_sha256": "74c64b5992ce33799346d71c5c62fd9a37b945ce172a219cb7b6b346998712ee"
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r050_bandit_only_baseline",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "First World from the exact 45-file R050 pre-signal bandit-only fixture (saved_sha256_tree b71d2c2ae067256bdf27cb272e7a7bab322e48aa0c5058e96f3435ccfeca5972); verify World, current turn/player, safe mode, DEBUG_LS, fire/fuel, and the real window/door terrain. The added bandit camp is [129,149,0]; inherited cabin [103,167,0] stays distinct. The fixture grants no added-site lead, report, roster, or operation."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r050_bandit_only_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "native_r051_open_building_signal_and_added_camp",
+      "objective": "Starting from the fresh R050 pre-signal fixture, compare the actual downstairs brazier signal with the ordinary nearby window/door opened in this native run. Preserve normal fire/weather/light/smoke; use current lighter and direction targets only if the brazier is unlit. Follow only naturally admitted actors at added bandit_camp [129,149,0] through any actual scout/watch/return/report/response. Keep inherited cabin [103,167,0] separate and stop at the real first divergence or requested outcome.",
+      "proof_targets": [
+        "exact selected R050 45-file fresh-start bytes, selected immutable executable, first native World and safe native save",
+        "actual nearby windows/doors and ordinary opening receipts, with coordinates and current terrain afterward",
+        "current downstairs brazier fire/fuel and source-bound light/smoke packets under observed weather/time",
+        "added bandit camp admission, same-ID natural scouting/watch/return/report and response where emitted",
+        "inherited cabin lead remains separate; no added-site knowledge, roster, report or operation seeded",
+        "safe mode off, active DEBUG_LS survival setup, ordinary visibility, and graceful closure"
+      ],
+      "invariants": [
+        "the exact retained R050 fixture is pre-signal and the install itself earns no gameplay credit",
+        "no injected signal, fire, smoke, light, knowledge, actor, report, roster, dispatch, or relocation",
+        "added bandit camp [129,149,0] and inherited cabin [103,167,0] remain distinct site identities",
+        "use the current native menu/action target; never reuse stale lighter, prompt, or window target IDs",
+        "do not claim a camp response from the no-camp owner-prepared open reference"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r050_bandit_only_baseline",
+      "bind_same_run_r050_bandit_only_world"
+    ],
+    "production_behavior": [
+      "native_r051_open_building_signal_and_added_camp"
+    ],
+    "terminal_persistence": [
+      "native_r051_open_building_signal_and_added_camp"
+    ],
+    "artifact_verdict": [
+      "native_r051_open_building_signal_and_added_camp"
+    ],
+    "disallowed_shortcuts": [
+      "native_r051_open_building_signal_and_added_camp"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Ordinary native opening in a fresh real-camp R050 start permits an honest open-building signal comparison and any naturally supported added-bandit scouting journey.",
+    "failure_rule": "Fixture selection, a visual open window, or a phase label alone proves neither physical light/smoke reception nor natural camp admission; preserve the first native divergence and exact source handles."
+  },
+  "fixture": "r050_rural_roof_bandit_only_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "post_relaunch": {
+    "terminal_save_step_label": "native_r051_open_building_signal_and_added_camp",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "r050_bandit_only_reloaded_world",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Reload only a confirmed native quicksave from this exact disposable R050 open-building arm under the same selected immutable build; verify the saved turn and live signal/actor facts. Reload alone grants no signal or faction credit."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_r050_bandit_only_saved_reentry",
+        "objective": "Verify the reloaded native World, effective userdir, saved turn, safe mode and survival setup, then close the disposable process gracefully.",
+        "proof_targets": [
+          "same saved world and confirmed quicksaved turn after process replacement",
+          "source-bound selected executable and exact R050 disposable profile",
+          "game, bridge and launcher OS exit after the reentry check"
+        ],
+        "invariants": [
+          "reload begins from the verified native quicksave, without substituting fixture bytes",
+          "no fixture reinstall on saved-process reentry",
+          "reload alone grants no new faction outcome"
+        ],
+        "live_operations": [
+          "game.act"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

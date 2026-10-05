@@ -35,6 +35,14 @@ class EvidenceDisplayTest(unittest.TestCase):
                 source = source[part]
             self.assertEqual(source, expected)
 
+    def test_json_pointer_expands_literal_projected_fields_without_decoding_values(self):
+        value = {"rows": [{"fields": {"payload.attitude": 10, "a/b~c": "{\"retained\":true}"}}]}
+        self.assertEqual(exact_select(value, "/rows/0/fields/payload.attitude"), 10)
+        self.assertEqual(exact_select(value, "/rows/0/fields/a~1b~0c"), "{\"retained\":true}")
+        self.assertEqual(exact_select(value, "rows.0.fields"), value["rows"][0]["fields"])
+        with self.assertRaises(KeyError):
+            exact_select(value, "/rows/0/fields/absent")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

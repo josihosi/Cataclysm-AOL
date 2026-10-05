@@ -2294,6 +2294,12 @@ void renderer_resource_coordinator::end_atlas_upload()
 // Whether this fixture initialized the video subsystem (so teardown must quit
 // it) and the SDL_VIDEODRIVER value to restore afterwards.
 static bool test_fixture_acquired_video = false;
+static bool test_fixture_acquired_ttf = false;
+static bool test_fixture_ui = false;
+static int test_fixture_termx;
+static int test_fixture_termy;
+static catacurses::window test_fixture_stdscr;
+static palette_array test_fixture_palette;
 static bool test_fixture_had_prior_driver = false;
 static std::string test_fixture_prior_driver;
 
@@ -2446,8 +2452,71 @@ bool renderer_recovery_test_support::setup_software_renderer()
     return true;
 }
 
+void renderer_recovery_test_support::setup_software_ui()
+{
+    cata_assert( renderer && window && !imclient && !font && !gui_font );
+    test_fixture_ui = true;
+    test_fixture_termx = TERMX;
+    test_fixture_termy = TERMY;
+    test_fixture_stdscr = catacurses::stdscr;
+    test_fixture_palette = windowsPalette;
+    test_fixture_acquired_ttf = !TTF_WasInit();
+    if( test_fixture_acquired_ttf ) {
+#if SDL_MAJOR_VERSION >= 3
+        throwErrorIf( !TTF_Init(), "TTF_Init failed" );
+#else
+        throwErrorIf( TTF_Init() != 0, "TTF_Init failed" );
+#endif
+    }
+    fontwidth = 8;
+    fontheight = 16;
+    set_scaling_and_resize_window( 1, 960, 640 );
+    renderer_coordinator.drain_pending();
+    TERMX = TERMINAL_WIDTH;
+    TERMY = TERMINAL_HEIGHT;
+    color_loader<SDL_Color>().load( windowsPalette );
+    init_colors();
+    const std::vector<font_config> typeface{ font_config( "data/font/Terminus.ttf" ) };
+    font = std::make_unique<FontFallbackList>( renderer, pixel_format, fontwidth, fontheight,
+            windowsPalette, typeface, 16, true );
+    gui_font = std::make_unique<FontFallbackList>( renderer, pixel_format, fontwidth, fontheight,
+               windowsPalette, typeface, 16, true );
+    catacurses::stdscr = catacurses::newwin( TERMINAL_HEIGHT, TERMINAL_WIDTH, point::zero );
+    imclient = std::make_unique<cataimgui::client>( renderer, window, geometry );
+    imclient->load_fonts( gui_font, font, windowsPalette, typeface, typeface );
+}
+
+std::vector<uint32_t> renderer_recovery_test_support::read_display_pixels( const SDL_Rect &rect )
+{
+    display_buffer_draw_scope scope;
+    if( !scope.should_draw() ) {
+        throw std::runtime_error( "Software fixture cannot read the display buffer" );
+    }
+    std::vector<uint32_t> pixels( rect.w * rect.h );
+    if( !RenderReadPixels( renderer, &rect, SDL_PIXELFORMAT_ARGB8888, pixels.data(),
+                          rect.w * sizeof( uint32_t ) ) ) {
+        throw std::runtime_error( "Software fixture pixel read failed" );
+    }
+    return pixels;
+}
+
 void renderer_recovery_test_support::teardown_software_renderer()
 {
+    if( test_fixture_ui ) {
+        imclient.reset();
+        font.reset();
+        gui_font.reset();
+        catacurses::stdscr = test_fixture_stdscr;
+        test_fixture_stdscr = catacurses::window();
+        windowsPalette = test_fixture_palette;
+        if( test_fixture_acquired_ttf ) {
+            TTF_Quit();
+            test_fixture_acquired_ttf = false;
+        }
+        test_fixture_ui = false;
+        TERMX = test_fixture_termx;
+        TERMY = test_fixture_termy;
+    }
     ts_cache.release_live_atlases();
     // Every draw scope must have unwound; clear the full scope state so an
     // injected boundary failure cannot leave invalid/aborted set for a later

@@ -72,6 +72,16 @@ An ordinary interruption stops only the macro: inspect its terminal observation 
 progress, then choose the next native action. All action and observation failures leave the game
 running. Ownership or receipt failures revoke stale input grants: `look` again before choosing an
 action. A failed command does not authorize quitting, cleanup, replay, or a replacement game.
+
+If an activity has visibly finished but collecting its request and one fresh `look` still return
+its old owner, inspect the exact owned window and native input state. R051 recovered while the
+same process was waiting in ordinary World input: Luna opened the native main menu with
+exact-PID Peekaboo Escape, observed it, canceled with Escape, then obtained fresh World through
+`look`. Use that bounded recovery only after verifying World/no modal and PID/birth; never send
+an action against the stale activity frame or replay the wait. Reobserve each step and retain the
+actual result. See `build_logs/first-smoke-051/continuation-minute7810-wait-block-observation.json`
+and `coordinator-stale-world-sample.txt`; final recovery handles belong to the R051 return.
+
 To end without making a gameplay claim, use `quit --reason "your reason"`, or send
 `{"action":"run.quit","stop_reason":"your reason"}` through `call --request`. A client disconnect also leaves the game running. Only explicit native
 quit, `run.quit`, `run.finish`, or requested bridge cleanup ends it.
@@ -142,6 +152,16 @@ the original request and look again. Cancellation leaves the game running. Input
 while `collect` waits and read the last retained displayed frame or exact receipt; they neither
 refresh native input nor make a stale frame actionable.
 
+For retained surface facts use one envelope-independent path:
+`play inspect surface.facts --select balance,player_offer_value --request-id REQUEST`.
+Ordinary slices and `--view items|actors` accept the same `surface` path. The reader resolves
+only the selected authenticated response's sole surface (including terminal observations),
+returns `resolved_selector` with its original path, and reports absent/ambiguous surfaces.
+Explicit `result.surface...` and `observation.surface...` paths remain exact for full raw retrieval.
+Pin a request for reproducible evidence; an old retained frame grants no input authority.
+Item action labels are not serialized inventory rows: zero item-view rows does not prove an
+empty local pool, and unpublished item owner/location/native price or aggregates stay unavailable.
+
 When handing a session to another worker, use its recorded lifecycle state rather than a generic
 `look`: `awaiting_response` or a client-side pending request requires
 `collect` in that same session; a retained latest completed result can be replayed
@@ -169,6 +189,47 @@ event,actor_name,payload.FIELD`. `--select` can be repeated. `--limit` limits re
 of each record; avoid retrieving whole observations when one value answers the question.
 Omitted text includes its character count and a retrieval command. New retained snapshots are
 compressed; use the printed retrieval command, which also reads older snapshots.
+
+## Trade baskets with current native rows
+
+Trade shows the actual payer and trader, OUR SIDE or TRADER SIDE, the requested demand,
+native debt/credit, max credit and both offers. The compact table shows eight filtered groups:
+current native letter, group UID, selected/available quantity and unit, displayed Unit price,
+selected value and actual location/owner. A dash means no currently mapped native letter; use the current
+UID instead. Collapsed contents have unavailable native page/letter rather than invented keys. Unit price is the representative item's displayed cell; selected value uses the
+actual selected locations/quantities. Mixed groups expose their individual locations in raw facts.
+These are native Trade values, not raw item prices or a promised whole-pool funding total.
+
+Use `play act trade.switch_pane` for OUR SIDE, then `play act inventory.filter --param text=QUERY`
+for the native filter. `play inspect --view trade --offset 8 --limit 8` pages the current retained
+rows; `--contains TEXT` filters those retained rows without changing the native filter. Read exact
+facts with `play inspect surface.facts.trade_rows --diagnostics`; inspect an individual row/location
+through that same surface-relative path and its indices. Every page retains request, response SHA
+and resolved original path. A page from an older request is evidence, not current selection authority.
+
+`play trade abc` toggles those **currently advertised** letters in one authenticated native batch.
+It validates every letter, duplicate and pane/actor identity before selecting anything. It performs
+native group toggles only: no Pay, commit or confirmation. A pending result requires `play collect`,
+never replay. A prompt, different owner, stale frame or unknown outcome requires observing that
+boundary before another batch. For an unlettered row use `play act inventory.toggle --target UID`.
+Use current `inventory.increase_quantity`/`inventory.decrease_quantity` controls for partial groups.
+`trade.auto_balance` is native F1 for the highlighted group only, not whole-pool selection.
+Nested Contents **Close contents** returns to Trade; it does not commit the basket. Review the
+native debt/credit and offers, then explicitly `inventory.commit` and the advertised confirmation,
+or `inventory.cancel` to leave without transfer. Do not infer transfer from selection or an accepted
+receipt; use the native successor/result and physical goods evidence.
+
+A new actual simulation alarm during a long pending `collect` returns immediately with the
+same pending request. Inspect `play performance`, then collect that request again; no replay,
+cancellation or new frame is created. Existing waiting alarms use a100-turn mean above100ms,
+not each individual turn. General non-wait alarms require the explicit session turn config;
+missing config is measured_unassessed, missing bound owner/trace is unavailable.
+
+Shakedown Trade marks `payment_destination=bandit_home_stash`; generic Trade marks `trader`.
+Successful shakedown goods go to actual persistent items in the bound home OMT, independently
+of physical party return. Failed storage retains the offer for native correction/cancel and
+changes no goods. Selection/confirmation is not saved stash proof; use the
+[compatible resident-payment segment](bandit-journeys.md#ready-report-resident-payment--home-stash).
 
 ## Process exit and cleanup
 

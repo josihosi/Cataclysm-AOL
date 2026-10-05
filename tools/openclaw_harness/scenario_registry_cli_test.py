@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import gzip
 import io
 import json
 import os
@@ -64,6 +65,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         selection = scenario_registry_cli.RegistryBootstrapToken(
             "token", True, "current", scenario,
             str(startup_harness.scenario_path(scenario)), {},
+            hashlib.sha256(startup_harness.scenario_path(scenario).read_bytes()).hexdigest(),
         )
 
         prefix = scenario_registry_cli._declared_pre_descriptor_prefix(selection)
@@ -209,6 +211,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         selection = scenario_registry_cli.RegistryLaunchToken(
             "token", True, "current", scenario,
             str(startup_harness.scenario_path(scenario)),
+            hashlib.sha256(startup_harness.scenario_path(scenario).read_bytes()).hexdigest(),
         )
 
         namespace = scenario_registry_cli._registry_launch_probe_namespace(
@@ -222,6 +225,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         selection = scenario_registry_cli.RegistryLaunchToken(
             "token", True, "current", scenario,
             str(startup_harness.scenario_path(scenario)),
+            hashlib.sha256(startup_harness.scenario_path(scenario).read_bytes()).hexdigest(),
         )
         snapshot = "/exact/preserved/McWilliams"
 
@@ -232,6 +236,36 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
         self.assertTrue(namespace.post_relaunch_continuation)
         self.assertEqual(namespace.saved_world_snapshot, snapshot)
+
+    def test_selected_probe_namespace_retains_declared_immutable_product_build(self) -> None:
+        scenario = "cli.selected-product-build"
+        source_path = Path("/tmp/selected-product-build.json")
+        source_hash = "a" * 64
+        selected_build = {
+            "schema": "caol-selected-product-build-v1",
+            "receipt_path": "build_logs/immutable-receipt.json",
+            "receipt_sha256": "b" * 64,
+            "executable_sha256": "c" * 64,
+            "product_source_sha256": "d" * 64,
+        }
+        selection = scenario_registry_cli.RegistryBootstrapToken(
+            "token", True, "current", scenario, str(source_path), {}, source_hash,
+        )
+        declaration = {
+            "name": scenario,
+            "path": str(source_path),
+            "runtime_contract": {"selected_product_build": selected_build},
+            "_scenario_registry": {"source": {"sha256": source_hash}},
+        }
+        with mock.patch.object(scenario_registry_cli, "_load_selected_scenario", return_value=declaration):
+            namespace = scenario_registry_cli._registry_bootstrap_probe_namespace(
+                selection, cockpit_live_session=True, post_relaunch_continuation=True,
+                saved_world_snapshot="/exact/snapshot",
+            )
+
+        self.assertEqual(namespace.registry_selected_product_build, selected_build)
+        self.assertEqual(namespace.registry_selected_source_path, str(source_path))
+        self.assertEqual(namespace.registry_selected_source_sha256, source_hash)
 
     def test_detached_launch_refuses_stale_product_binary_without_starting_bridge(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -266,10 +300,11 @@ class ScenarioRegistryCliTest(unittest.TestCase):
     def test_detached_live_namespaces_force_bounded_terminal_stdout(self) -> None:
         scenario = "bandit.r008_natural_safe_watch_validation_mcw"
         source_path = str(startup_harness.scenario_path(scenario))
+        source_sha256 = hashlib.sha256(Path(source_path).read_bytes()).hexdigest()
         selection = scenario_registry_cli.RegistryBootstrapToken(
-            "token", True, "accepted", scenario, source_path, {},
+            "token", True, "accepted", scenario, source_path, {}, source_sha256,
         )
-        repair = RegistryRepairToken("token", True, "accepted", scenario, source_path, {})
+        repair = RegistryRepairToken("token", True, "accepted", scenario, source_path, {}, source_sha256)
         bootstrap = scenario_registry_cli._registry_bootstrap_probe_namespace(
             selection, cockpit_live_session=True,
         )
@@ -391,11 +426,16 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             "feature_proof": True,
         }
 
-    def issue_selection_token(self, root: Path) -> tuple[Path, Path, str]:
-        scenarios = root / "scenarios"
+    def issue_selection_token(
+        self, root: Path, *, scenarios_name: str = "scenarios", selected_marker: str = "",
+    ) -> tuple[Path, Path, str]:
+        scenarios = root / scenarios_name
         scenarios.mkdir()
         manifest_path = scenarios / "cli.json"
-        self.write_json(manifest_path, self.strict_manifest())
+        declaration = self.strict_manifest()
+        if selected_marker:
+            declaration["selected_marker"] = selected_marker
+        self.write_json(manifest_path, declaration)
         executable_path = root / "cataclysm-tiles"
         executable_path.write_bytes(b"registry launch runtime fixture")
         report_path = root / "probe.report.json"
@@ -431,6 +471,118 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             return registry_path, scenarios, str(issued.token_id)
         finally:
             connection.close()
+
+    def test_public_registry_launch_loads_distinct_selected_source_with_spaces(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(
+                root, scenarios_name="selected scenarios with spaces", selected_marker="selected",
+            )
+            selected_path = scenarios / "cli.json"
+            canonical = root / "canonical"
+            canonical.mkdir()
+            other = self.strict_manifest()
+            other["selected_marker"] = "wrong canonical copy"
+            other["runtime_contract"]["requirements"]["executable"] = "wrong-canonical-executable"
+            self.write_json(canonical / "cli.json", other)
+            loaded = []
+
+            def stop_after_real_load(scenario: dict) -> str:
+                loaded.append(scenario)
+                raise RuntimeError("test stopped after selected declaration load")
+
+            selected_executable = (startup_harness.repo_root() / "cataclysm-tiles").resolve()
+            runtime = {"ok": True, "schema": 1,
+                       "executable_path": str(selected_executable),
+                       "executable_sha256": "selected-test-binary",
+                       "runtime_source_sha256": "selected-test-source"}
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=canonical), \
+                    mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                      return_value={"status": "ready"}) as readiness, \
+                    mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime), \
+                    mock.patch.object(startup_harness, "scenario_terminal_transport",
+                                      side_effect=stop_after_real_load), \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--json", "--registry", str(registry_path), "registry-launch", token_id,
+                ])
+            self.assertEqual(result, 1)
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0]["selected_marker"], "selected")
+            self.assertEqual(loaded[0]["path"], str(selected_path.resolve()))
+            self.assertEqual(startup_harness.scenario_manifest_binding(loaded[0])["source"], {
+                "path": str(selected_path.resolve()),
+                "sha256": hashlib.sha256(selected_path.read_bytes()).hexdigest(),
+            })
+            self.assertEqual(readiness.call_args.kwargs["executable"], str(selected_executable))
+            self.assertNotEqual(loaded[0]["selected_marker"], other["selected_marker"])
+
+    def test_all_registry_probe_adapters_use_selected_loader_and_reject_changed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            selected = root / "selected with spaces" / "cli.json"
+            selected.parent.mkdir()
+            declaration = self.strict_manifest()
+            declaration["selected_marker"] = "selected"
+            self.write_json(selected, declaration)
+            source_sha256 = hashlib.sha256(selected.read_bytes()).hexdigest()
+            tokens = (
+                (scenario_registry_cli._registry_launch_probe_namespace,
+                 scenario_registry_cli.RegistryLaunchToken(
+                     "launch", True, "current", "cli", str(selected), source_sha256)),
+                (scenario_registry_cli._registry_bootstrap_probe_namespace,
+                 scenario_registry_cli.RegistryBootstrapToken(
+                     "bootstrap", True, "current", "cli", str(selected), {}, source_sha256)),
+                (scenario_registry_cli._registry_repair_probe_namespace,
+                 RegistryRepairToken(
+                     "repair", True, "current", "cli", str(selected), {}, source_sha256)),
+            )
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=root / "absent-canonical"):
+                for adapt, token in tokens:
+                    with self.subTest(adapter=adapt.__name__):
+                        namespace = adapt(token, post_relaunch_continuation=True)
+                        self.assertEqual(namespace.registry_selected_source_path, str(selected.resolve()))
+                        self.assertEqual(namespace.registry_selected_source_sha256, source_sha256)
+                        observed = []
+
+                        def stop_after_real_load(scenario: dict) -> str:
+                            observed.append(scenario)
+                            raise RuntimeError("test stopped after selected declaration load")
+
+                        with mock.patch.object(startup_harness, "scenario_terminal_transport",
+                                               side_effect=stop_after_real_load):
+                            with self.assertRaisesRegex(RuntimeError, "selected declaration load"):
+                                startup_harness.run_probe_mode(namespace)
+                        self.assertEqual(observed[0]["selected_marker"], "selected")
+                        self.assertEqual(observed[0]["path"], str(selected.resolve()))
+                changed = dict(declaration)
+                changed["selected_marker"] = "changed after selection"
+                self.write_json(selected, changed)
+                stale_namespace = namespace
+                with self.assertRaisesRegex(SystemExit, "Selected scenario source changed"):
+                    startup_harness.run_probe_mode(stale_namespace)
+
+    def test_public_registry_launch_rejects_changed_source_and_wrong_token(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            selected = scenarios / "cli.json"
+            declaration = json.loads(selected.read_text(encoding="utf-8"))
+            declaration["selected_marker"] = "changed after token"
+            self.write_json(selected, declaration)
+            with mock.patch.object(startup_harness, "run_probe_mode") as probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                stale = scenario_registry_cli.main([
+                    "--json", "--registry", str(registry_path), "registry-launch", token_id,
+                ])
+                wrong = scenario_registry_cli.main([
+                    "--json", "--registry", str(registry_path), "registry-launch", "wrong-token",
+                ])
+            self.assertEqual(stale, 1)
+            self.assertEqual(wrong, 1)
+            probe.assert_not_called()
+            events = self.token_events(registry_path, token_id)
+            self.assertIn(("invalidated", "registry_launch_manifest_source_changed"), events)
 
     def token_events(self, registry_path: Path, token_id: str) -> list[tuple[str, str]]:
         connection = sqlite3.connect(registry_path)
@@ -535,6 +687,92 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             }],
             "preferences": [],
         }
+
+    def test_bootstrap_binds_selected_manifest_executable_before_token_issue(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "selected scenarios"
+            scenarios.mkdir()
+            declaration = self.strict_manifest()
+            declaration["name"] = "bootstrap"
+            declaration["runtime_contract"]["requirements"]["executable"] = "isolated/cataclysm-tiles"
+            selected_product_build = {
+                "schema": "caol-selected-product-build-v1",
+                "receipt_path": "published/receipt.json",
+                "receipt_sha256": "a" * 64,
+                "executable_sha256": "b" * 64,
+                "product_source_sha256": "c" * 64,
+            }
+            declaration["runtime_contract"]["selected_product_build"] = selected_product_build
+            self.write_json(scenarios / "bootstrap.json", declaration)
+            selected = root / "isolated/cataclysm-tiles"
+            selected.parent.mkdir()
+            selected.write_bytes(b"selected source-bound game")
+            ambient = root / "cataclysm-tiles"
+            ambient.write_bytes(b"unrelated ambient game")
+            registry = root / "registry.sqlite3"
+            connection = open_registry(str(registry))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+            finally:
+                connection.close()
+
+            def binding(executable: Path, *, selected_product_build: dict | None = None) -> dict:
+                return {"ok": True, "schema": 1,
+                        "executable_path": str(executable.resolve()),
+                        "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+                        "runtime_source_sha256": "f" * 64,
+                        "selected_product_build": selected_product_build}
+
+            output = io.StringIO()
+            with (mock.patch.object(startup_harness, "repo_root", return_value=root),
+                  mock.patch.object(startup_harness, "detect_executable", return_value=ambient),
+                  mock.patch.object(startup_harness, "build_runtime_binding", side_effect=binding) as built,
+                  mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                    return_value={"status": "ready"}) as readiness,
+                  redirect_stdout(output)):
+                code = scenario_registry_cli.main(["--json", "--registry", str(registry),
+                    "registry-bootstrap", "--query-json", json.dumps(self.bootstrap_request())])
+            self.assertEqual(code, 0)
+            result = json.loads(output.getvalue())["result"]
+            self.assertTrue(result["accepted"])
+            self.assertEqual(result["runtime_binding"]["executable_path"], str(selected.resolve()))
+            self.assertEqual(result["runtime_binding"]["selected_product_build"], selected_product_build)
+            built.assert_called_once_with(selected.resolve(), selected_product_build=selected_product_build)
+            readiness.assert_called_once_with(
+                executable=str(selected.resolve()), selected_product_build=selected_product_build,
+            )
+
+    def test_bootstrap_rejects_stale_selected_executable_without_token(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            declaration = self.strict_manifest()
+            declaration["name"] = "bootstrap"
+            declaration["runtime_contract"]["requirements"]["executable"] = "isolated/cataclysm-tiles"
+            self.write_json(scenarios / "bootstrap.json", declaration)
+            selected = root / "isolated/cataclysm-tiles"
+            selected.parent.mkdir()
+            selected.write_bytes(b"selected stale game")
+            registry = root / "registry.sqlite3"
+            connection = open_registry(str(registry))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+            finally:
+                connection.close()
+            output = io.StringIO()
+            with (mock.patch.object(startup_harness, "repo_root", return_value=root),
+                  mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                    return_value={"status": "build_required", "reason": "stale"}),
+                  mock.patch.object(scenario_registry_cli, "issue_registry_bootstrap_token") as issue,
+                  redirect_stdout(output)):
+                code = scenario_registry_cli.main(["--json", "--registry", str(registry),
+                    "registry-bootstrap", "--query-json", json.dumps(self.bootstrap_request())])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(output.getvalue())["result"]["reason"],
+                             "source_matching_executable_required")
+            issue.assert_not_called()
 
     def test_bootstrap_authorizes_only_first_query_bound_run_and_is_not_a_selection_token(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -738,11 +976,81 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ]), 1)
             reused_probe.assert_not_called()
 
+    def test_saved_start_preflight_reuses_source_steps_and_preserves_snapshot_binding(self):
+        raw = gzip.decompress((HARNESS_DIR /
+            "fixtures/controls/r067_original_saved_night_no_relaunch.json.gz").read_bytes())
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); source = root / (json.loads(raw)["name"] + ".json"); source.write_bytes(raw)
+            snapshot = root / "exact-save"; snapshot.mkdir()
+            (snapshot / "master.gsav").write_bytes(b"control-only snapshot bytes")
+            profile = root / "profile"
+            selection = scenario_registry_cli.RegistryBootstrapToken(
+                "unclaimed-control-token", True, "current", json.loads(raw)["name"],
+                str(source), {}, hashlib.sha256(raw).hexdigest())
+            args = argparse.Namespace(post_relaunch_continuation=True,
+                                      saved_world_snapshot=str(snapshot), profile="chosen-profile")
+            with mock.patch.object(startup_harness, "save_dir_for_profile", return_value=profile):
+                scenario_registry_cli._preflight_selected_save_setup(selection, args)
+                self.assertEqual(args.saved_world_snapshot, str(snapshot.resolve()))
+                self.assertTrue(args.post_relaunch_continuation)
+                self.assertEqual(args.profile, "chosen-profile")
+                self.assertEqual(scenario_registry_cli._declared_live_session_reentries(
+                    selection, post_relaunch_continuation=True), 0)
+                self.assertFalse(profile.exists())
+                probe = startup_harness.build_parser().parse_args([
+                    "probe", selection.scenario, "--post-relaunch-continuation",
+                    "--saved-world-snapshot", str(snapshot), "--profile", "chosen-profile"])
+                probe.registry_selected_source_path = str(source)
+                probe.registry_selected_source_sha256 = selection.source_sha256
+                class ResolvedWithoutNativeLaunch(Exception):
+                    pass
+                def stop_at_resolved_steps(steps, scenario):
+                    self.assertEqual(steps, scenario["steps"])
+                    self.assertEqual([step["kind"] for step in steps],
+                                     ["native_semantic_bootstrap", "cockpit_live_session"])
+                    raise ResolvedWithoutNativeLaunch()
+                with mock.patch.object(startup_harness, "bind_pre_descriptor_bootstrap_objectives",
+                                       side_effect=stop_at_resolved_steps), \
+                        mock.patch.object(startup_harness, "install_fixture") as install, \
+                        mock.patch.object(startup_harness, "launch_game") as launch:
+                    with self.assertRaises(ResolvedWithoutNativeLaunch):
+                        startup_harness.run_probe_mode(probe)
+                    install.assert_not_called(); launch.assert_not_called()
+                # It does not silently overwrite an existing different save.
+                world = profile / "TestSetup00"; world.mkdir(parents=True)
+                (world / "master.gsav").write_bytes(b"different retained save")
+                with self.assertRaisesRegex(scenario_registry_cli.ScenarioRegistryStoreError,
+                                            "different data"):
+                    scenario_registry_cli._preflight_selected_save_setup(selection, args)
+                self.assertEqual((world / "master.gsav").read_bytes(), b"different retained save")
+            self.assertEqual(source.read_bytes(), raw)
+            # An explicit CLI continuation also checks shape before a token
+            # claim, even when the source has no saved_world_snapshot field.
+            ambiguous = json.loads(raw)
+            ambiguous.pop("saved_world_snapshot")
+            ambiguous.pop("manifest_version")
+            ambiguous.pop("proof_route")
+            ambiguous["steps"].insert(1, {"kind": "press", "label": "initial_setup"})
+            source.write_text(json.dumps(ambiguous))
+            unsafe = scenario_registry_cli.RegistryBootstrapToken(
+                "still-unclaimed", True, "current", selection.scenario, str(source), {},
+                hashlib.sha256(source.read_bytes()).hexdigest())
+            with mock.patch.object(startup_harness, "save_dir_for_profile", return_value=profile):
+                with self.assertRaisesRegex(scenario_registry_cli.ScenarioRegistryStoreError,
+                                            "declare post_relaunch.steps explicitly"):
+                    scenario_registry_cli._preflight_selected_save_setup(unsafe, args)
+            self.assertEqual((world / "master.gsav").read_bytes(), b"different retained save")
+            source.write_bytes(raw + b" ")
+            with self.assertRaisesRegex(scenario_registry_cli.ScenarioRegistryStoreError, "source"):
+                scenario_registry_cli._preflight_selected_save_setup(selection, args)
+            self.assertEqual((snapshot / "master.gsav").read_bytes(), b"control-only snapshot bytes")
+
     def test_bootstrap_reentry_flag_is_accepted_and_forwarded_to_the_probe(self) -> None:
         scenario = "bandit.r008_natural_return_validation_mcw"
         selection = scenario_registry_cli.RegistryBootstrapToken(
             "token", True, "current", scenario,
             str(startup_harness.scenario_path(scenario)), {},
+            hashlib.sha256(startup_harness.scenario_path(scenario).read_bytes()).hexdigest(),
         )
 
         outer_args = scenario_registry_cli.build_parser().parse_args([
@@ -810,7 +1118,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             root = Path(temp_dir)
             scenarios = root / "scenarios"
             scenarios.mkdir()
-            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            declaration = self.strict_manifest()
+            declaration["steps"].append({"label": "live", "kind": "cockpit_live_session"})
+            self.write_json(scenarios / "bootstrap.json", declaration)
             executable = root / "cataclysm-tiles"
             executable.write_bytes(b"bootstrap runtime")
             registry_path = root / "registry.sqlite3"
@@ -843,11 +1153,15 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             root = Path(temp_dir)
             scenarios = root / "scenarios"
             scenarios.mkdir()
-            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            declaration = self.strict_manifest()
+            declaration.update({"world": "TestWorld", "profile": str(root / "profile")})
+            self.write_json(scenarios / "bootstrap.json", declaration)
             executable = root / "cataclysm-tiles"
             executable.write_bytes(b"bootstrap runtime")
             registry_path = root / "registry.sqlite3"
             session_dir = root / "bridge-session"
+            snapshot = (root / "immutable-world").resolve()
+            snapshot.mkdir()
             connection = open_registry(str(registry_path))
             try:
                 rebuild_manifest_projection(connection, scenarios)
@@ -869,7 +1183,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 exit_code = scenario_registry_cli.main(["--json",
                     "--registry", str(registry_path), "registry-bootstrap-detached-launch",
                     bootstrap.token_id, "--session-dir", str(session_dir),
-                    "--post-relaunch-continuation", "--saved-world-snapshot", "/tmp/immutable-world",
+                    "--post-relaunch-continuation", "--saved-world-snapshot", str(snapshot),
                 ])
 
             self.assertEqual(exit_code, 0)
@@ -882,7 +1196,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("--adaptive-semantic-autodrive", command)
             self.assertIn("--post-relaunch-continuation", command)
             self.assertIn("--saved-world-snapshot", command)
-            self.assertEqual(command[command.index("--saved-world-snapshot") + 1], "/tmp/immutable-world")
+            self.assertEqual(command[command.index("--saved-world-snapshot") + 1], str(snapshot))
             self.assertIn("--session-reentries", command)
             result = write_result.call_args.args[0]
             self.assertTrue(result["ok"])
@@ -1138,9 +1452,11 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 repair_token="repair-token",
                 session_dir=str(session_dir),
             )
+            self.write_json(root / "repair.json", self.strict_manifest())
             selection = RegistryRepairToken(
                 "repair-token", True, "current", "repair", str(root / "repair.json"),
                 {"executable_sha256": "exe", "runtime_source_sha256": "source"},
+                source_sha256=hashlib.sha256((root / "repair.json").read_bytes()).hexdigest(),
             )
             issued = {
                 "manifest_id": "manifest", "verification_id": "5bb0e5f8", "route_key": "route",
@@ -1273,6 +1589,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             received = vars(run_probe.call_args.args[0]).copy()
             receipt = json.loads(received.pop("registry_launch_receipt"))
             post_finalize_hook = received.pop("registry_post_finalize_hook")
+            self.assertEqual(received.pop("registry_selected_source_path"), str((scenarios / "cli.json").resolve()))
+            self.assertEqual(received.pop("registry_selected_source_sha256"),
+                             hashlib.sha256((scenarios / "cli.json").read_bytes()).hexdigest())
             self.assertEqual(received, vars(expected))
             self.assertTrue(callable(post_finalize_hook))
             self.assertEqual(receipt["registry_path"], str(registry_path.resolve()))
@@ -2068,6 +2387,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             received = vars(namespace).copy()
             receipt = json.loads(received.pop("registry_migration_receipt"))
             received.pop("registry_post_finalize_hook")
+            self.assertEqual(received.pop("registry_selected_source_path"), str(manifest_path.resolve()))
+            self.assertEqual(received.pop("registry_selected_source_sha256"),
+                             hashlib.sha256(manifest_path.read_bytes()).hexdigest())
             self.assertEqual(received, vars(expected))
             self.assertTrue(namespace.profile.startswith("registry-migration-"))
             self.assertEqual(receipt["source_path"], str(manifest_path.resolve()))
@@ -2293,7 +2615,10 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     "steps": [{"kind": "cockpit_live_session"}],
                 },
             }), encoding="utf-8")
-            selection = argparse.Namespace(source_path=str(source))
+            selection = argparse.Namespace(
+                source_path=str(source), scenario="scenario",
+                source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+            )
             self.assertEqual(
                 scenario_registry_cli._declared_live_session_reentries(selection), 0
             )
@@ -2310,6 +2635,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     ],
                 },
             }), encoding="utf-8")
+            selection.source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
             self.assertEqual(
                 scenario_registry_cli._declared_live_session_reentries(
                     selection, post_relaunch_continuation=True,

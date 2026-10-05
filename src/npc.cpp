@@ -30,6 +30,7 @@
 #include "damage.h"
 #include "debug.h"
 #include "debug_capture.h"
+#include "do_turn.h"
 #include "dialogue.h"
 #include "dialogue_chatbin.h"
 #include "effect.h"
@@ -74,6 +75,7 @@
 #include "player_activity.h"
 #include "ret_val.h"
 #include "rng.h"
+#include "raid_decision_trace.h"
 #include "shop_cons_rate.h"
 #include "skill.h"
 #include "sounds.h"
@@ -1556,10 +1558,19 @@ void npc::on_move( const tripoint_abs_ms &old_pos )
 void npc::travel_overmap( const tripoint_abs_omt &pos )
 {
     const point_abs_om pos_om_old = project_to<coords::om>( pos_abs_omt().xy() );
+    const bool completes_assigned_route = is_travelling() && pos == goal &&
+                                         pos != pos_abs_omt() && !omt_path.empty() && omt_path.front() == goal &&
+                                         omt_path.back() == pos;
     spawn_at_omt( pos );
     const point_abs_om pos_om_new = project_to<coords::om>( pos_abs_omt().xy() );
     if( pos_abs_omt() == goal ) {
-        reach_omt_destination();
+        if( completes_assigned_route && live_bandit_scout_watch_order_pending( *this ) ) {
+            // The motor completed this live order, but the pair owner has not
+            // consumed it yet. Keep the assigned goal, not a new arrival flag.
+            omt_path.clear();
+        } else {
+            reach_omt_destination();
+        }
     }
     if( !is_fake() && pos_om_old != pos_om_new ) {
         overmap &om_old = overmap_buffer.get( pos_om_old );
@@ -2220,6 +2231,29 @@ void npc::clear_bandit_live_world_projection_lease()
     bandit_live_world_projection_lease.clear();
 }
 
+std::vector<npc *> bandit_live_world_projection_lease_copies( npc &member )
+{
+    std::vector<npc *> copies = { &member };
+    const auto add = [&copies]( npc * copy ) {
+        if( copy != nullptr && std::find( copies.begin(), copies.end(), copy ) == copies.end() ) {
+            copies.push_back( copy );
+        }
+    };
+    add( overmap_buffer.find_npc( member.getID() ).get() );
+    if( g ) {
+        // Include dead copies awaiting removal: retiring their claim is still
+        // part of the same casualty/owner transaction.
+        const auto active = g->all_npcs();
+        for( const auto &reference : active.items ) {
+            const auto copy = reference.lock();
+            if( copy && copy->getID() == member.getID() ) {
+                add( copy.get() );
+            }
+        }
+    }
+    return copies;
+}
+
 void sync_bandit_live_world_projection_lease_copies(
     npc &member, const bandit_live_world_projection_lease &lease )
 {
@@ -2230,16 +2264,8 @@ void sync_bandit_live_world_projection_lease_copies(
             target.clear_bandit_live_world_projection_lease();
         }
     };
-    apply( member );
-    const shared_ptr_fast<npc> persistent = overmap_buffer.find_npc( member.getID() );
-    if( persistent && persistent.get() != &member ) {
-        apply( *persistent );
-    }
-    if( g ) {
-        npc *active = g->find_npc( member.getID() );
-        if( active != nullptr && active != &member && active != persistent.get() ) {
-            apply( *active );
-        }
+    for( npc *copy : bandit_live_world_projection_lease_copies( member ) ) {
+        apply( *copy );
     }
 }
 
@@ -2340,6 +2366,7 @@ void npc::make_angry()
 
 void npc::on_attacked( const Creature &attacker )
 {
+    const auto trace_entry = raid_decision_trace::record_attack_callback_entry( *this, attacker );
     map &here = get_map();
 
     hallucination_die( &here, nullptr );
@@ -2358,12 +2385,168 @@ void npc::on_attacked( const Creature &attacker )
     // This callback represents a launched melee/projectile attack even when damage is avoided.
     // Ranged shot commitment may already have set hit_by_player, so qualify the exact assignment
     // without consulting that flag.  Player-allied defenders break the same relationship.
+    std::string_view anger_branch = "none";
     if( !is_dead() && ( active_covert_scout || defender_attacked_shakedown ) ) {
+        anger_branch = "covert_or_shakedown";
         make_angry();
         hit_by_player = true;
     } else if( attacker.is_avatar() && !is_enemy() && !is_dead() && !guaranteed_hostile() ) {
+        anger_branch = "avatar_nonhostile";
         make_angry();
         hit_by_player = true;
+    }
+    bool alarm_invoked = false;
+    bool alarm_raised = false;
+    if( !is_dead() && !attacker.is_hallucination() && attitude_to( attacker ) != Attitude::FRIENDLY ) {
+        alarm_invoked = true;
+        // A received attack establishes an incident here, even without sight
+        // of the attacker. It does not establish the attacker's coordinates.
+        alarm_raised = raise_faction_alarm( pos_abs() );
+    }
+    raid_decision_trace::record_attack_callback_outcome( trace_entry, *this,
+            defender_attacked_shakedown, active_covert_scout, anger_branch, alarm_invoked, alarm_raised );
+}
+
+void npc_alarm::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "group", group );
+    json.member( "source_id", source_id );
+    json.member( "incident", incident );
+    json.member( "until", until );
+    json.end_object();
+}
+
+void npc_alarm::deserialize( const JsonObject &json )
+{
+    json.read( "group", group );
+    json.read( "source_id", source_id );
+    json.read( "incident", incident );
+    json.read( "until", until );
+}
+
+std::string npc::faction_alarm_group() const
+{
+    if( is_dead() || is_fake() ) {
+        return {};
+    }
+    std::string group;
+    for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        using namespace bandit_live_world;
+        if( site.retired_empty_site || ( site.site_kind != owned_site_kind::bandit_camp &&
+                                      site.site_kind != owned_site_kind::bandit_work_camp &&
+                                      site.site_kind != owned_site_kind::bandit_cabin &&
+                                      site.site_kind != owned_site_kind::cannibal_camp ) ) {
+            continue;
+        }
+        const member_record *member = site.find_member( getID() );
+        if( !member || member->state == member_state::dead || member->state == member_state::missing ) {
+            continue;
+        }
+        const active_outing_state *party = site.active_external_outing();
+        std::string candidate;
+        if( party && party->is_active() && !party->member_is_resolved( getID() ) &&
+            std::find( party->member_ids.begin(), party->member_ids.end(), getID() ) !=
+            party->member_ids.end() ) {
+            candidate = site.site_id + ":party:" + party->activity_id + ":" +
+                        std::to_string( party->generation );
+        } else if( member->state == member_state::at_home &&
+                   std::find( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end(),
+                              getID() ) == site.active_outing.member_ids.end() &&
+                   std::find( site.active_hostile_operation.reservation.member_ids.begin(),
+                              site.active_hostile_operation.reservation.member_ids.end(), getID() ) ==
+                   site.active_hostile_operation.reservation.member_ids.end() ) {
+            candidate = site.site_id + ":home";
+        }
+        if( !candidate.empty() ) {
+            if( !group.empty() ) {
+                return {}; // Contradictory claims cannot authorize an order.
+            }
+            group = std::move( candidate );
+        }
+    }
+    return group;
+}
+
+bool npc::has_active_faction_alarm() const
+{
+    if( !faction_alarm || faction_alarm->until <= calendar::turn ||
+        faction_alarm->group.empty() || faction_alarm->group != faction_alarm_group() ) {
+        return false;
+    }
+    const auto source = overmap_buffer.find_npc( faction_alarm->source_id );
+    return source && !source->is_dead() && source->faction_alarm_group() == faction_alarm->group &&
+           is_ally( *source );
+}
+
+bool npc::raise_faction_alarm( const tripoint_abs_ms &incident )
+{
+    const std::string group = faction_alarm_group();
+    if( group.empty() || has_active_faction_alarm() || duty_incapacitated() ) {
+        return false;
+    }
+    // Match the existing patrol alarm's finite response duration. Only an
+    // actual new perception/attack can renew it after expiry.
+    faction_alarm = npc_alarm{ group, getID(), incident, calendar::turn + 30_minutes };
+    raid_decision_trace::record_alarm_edge( *this, *faction_alarm, "perceived_or_attacked",
+                                          in_sleep_state() );
+    sounds::sound( pos_bub(), get_shout_volume(), sounds::sound_t::alert,
+                   _( "To arms!" ), *faction_alarm );
+    return true;
+}
+
+bool npc::receive_faction_alarm( const npc_alarm &alarm, int heard_volume )
+{
+    const bool was_sleeping = in_sleep_state();
+    if( heard_volume <= 0 || alarm.until <= calendar::turn || alarm.group.empty() ||
+        alarm.group != faction_alarm_group() ) {
+        raid_decision_trace::record_alarm_edge( *this, alarm, "unrelated_or_expired", was_sleeping );
+        return false;
+    }
+    const auto source = overmap_buffer.find_npc( alarm.source_id );
+    if( !source || source->is_dead() || !is_ally( *source ) ||
+        source->faction_alarm_group() != alarm.group ) {
+        raid_decision_trace::record_alarm_edge( *this, alarm, "invalid_source", was_sleeping );
+        return false;
+    }
+    faction_alarm = alarm;
+    interrupt_ordinary_sleep_for_duty();
+    raid_decision_trace::record_alarm_edge( *this, alarm, "heard_exact_unit", was_sleeping );
+    return true;
+}
+
+bool npc::has_active_alarm_response() const
+{
+    if( has_active_faction_alarm() ) {
+        return true;
+    }
+    if( assigned_camp && job.get_priority_of_job( activity_id( "ACT_CAMP_PATROL" ) ) > 0 ) {
+        const auto camp = overmap_buffer.find_camp( assigned_camp->xy() );
+        return camp && *camp && ( *camp )->is_patrol_alarm_active() &&
+               ( *camp )->get_current_patrol_runtime( getID(), calendar::turn ).has_value();
+    }
+    return false;
+}
+
+void npc::reconcile_alarm_response()
+{
+    if( faction_alarm && !has_active_faction_alarm() ) {
+        faction_alarm.reset();
+    }
+    // Runtime reconciliation also releases an expired off-shift patrol order.
+    if( assigned_camp && job.get_priority_of_job( activity_id( "ACT_CAMP_PATROL" ) ) > 0 ) {
+        if( const auto camp = overmap_buffer.find_camp( assigned_camp->xy() ); camp && *camp ) {
+            ( *camp )->get_current_patrol_runtime( getID(), calendar::turn );
+        }
+    }
+    if( has_active_alarm_response() ) {
+        const bool was_sleeping = in_sleep_state();
+        interrupt_ordinary_sleep_for_duty();
+        if( was_sleeping && !in_sleep_state() ) {
+            raid_decision_trace::record_sleep_edge( *this, "duty_alarm_wake",
+                has_active_faction_alarm() ? faction_alarm->group :
+                "basecamp:" + assigned_camp->to_string() );
+        }
     }
 }
 
@@ -4524,20 +4707,33 @@ const pathfinding_settings &npc::get_pathfinding_settings( bool no_bashing ) con
 
 std::function<bool( const tripoint_bub_ms & )> npc::get_path_avoid() const
 {
-    return [this]( const tripoint_bub_ms & p ) {
-        if( get_creature_tracker().creature_at( p ) ) {
+    return get_path_avoid( {} );
+}
+
+std::function<bool( const tripoint_bub_ms & )> npc::get_path_avoid(
+    const path_avoid_diagnostic &diagnostic ) const
+{
+    return [this, diagnostic]( const tripoint_bub_ms & p ) {
+        const Creature *const occupant = get_creature_tracker().creature_at( p );
+        const auto reject = [&]( const std::string_view reason, const Creature *blocked_by = nullptr ) {
+            if( diagnostic ) {
+                diagnostic( p, reason, blocked_by );
+            }
             return true;
+        };
+        if( occupant != nullptr ) {
+            return reject( "occupied", occupant );
         }
         map &here = get_map();
         if( rules.has_flag( ally_rule::avoid_doors ) && here.open_door( *this, p, true, true ) ) {
-            return true;
+            return reject( "avoid_doors" );
         }
         if( rules.has_flag( ally_rule::avoid_locks ) &&
             doors::can_unlock_door( here, *this, p ) ) {
-            return true;
+            return reject( "avoid_locks" );
         }
         if( here.is_open_air( p ) ) {
-            return true;
+            return reject( "open_air" );
         }
         if( rules.has_flag( ally_rule::hold_the_line ) &&
             rl_dist( p, get_avatar().pos_bub() ) == 1 &&
@@ -4547,10 +4743,10 @@ std::function<bool( const tripoint_bub_ms & )> npc::get_path_avoid() const
                 !( here.veh_at( p ).has_value() && here.veh_at( get_avatar().pos_abs() ) &&
                    here.veh_at( p ).value().vehicle().pos_abs() == here.veh_at(
                        get_avatar().pos_abs() ).value().vehicle().pos_abs() ) ) ) ) {
-            return true;
+            return reject( "hold_the_line" );
         }
         if( sees_dangerous_field( p ) ) {
-            return true;
+            return reject( "dangerous_field" );
         }
         return false;
     };

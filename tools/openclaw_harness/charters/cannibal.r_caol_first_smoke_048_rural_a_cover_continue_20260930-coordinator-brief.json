@@ -1,0 +1,35 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-048",
+  "scenario": "cannibal.r_caol_first_smoke_048_rural_a_cover_continue_20260930",
+  "objective": "Continue R048 from the exact 55-file rural-A turn5256260 copy with selected IDs5/7; resolve the first floor-access route and, on immediate harm, use a single observed cover step before continuing toward house/stairs/upstairs combat.",
+  "outcome": "From the exact rural-A turn5256260 post-report checkpoint, can the same committed hostile:2 IDs 5/7 find real passable routes into the house and connected upper floors, and what native candidate-level occupancy/avoid evidence explains any rejection?",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_048_rural_a_cover_continue_20260930-witness.json",
+  "constraints": [
+    "Use only the exact turn5256260 checkpoint, tree SHA de1c9a02070d6a79574dd172f3cb37efd6f8457c33861dfd624f76582e23b11a, in a distinct disposable profile.",
+    "Bind current source-ready executable SHA-256 fe3b1c40a81918aa5ed7a00137a190fc6e3596902559a579051229817ae77c3b (product source SHA-256 00944aad0ab9661672c2c2cce7683624e03b19f53e8f0797a0adca370eee2bb6) and exact standard runtime status; use a fresh standard registry selection/token.",
+    "Trace only native actor IDs5/7 from the first resumed turn through5256699; preserve cap, truncation, original handles and candidate rows.",
+    "No ignition/scout/report/dispatch replay, no B fixture or A/B declaration edits, no cloak/clairvoyance/autoattack/Tab/batching.",
+    "Verify Safe Off and DEBUG_LS individually without toggling; keep player stationary unless immediate danger demands safety.",
+    "Compare actual route and same-settings relaxed route plus tracker-backed exact sampled occupancy; do not infer sole cause from samples.",
+    "Continue through real door, stairs, upstairs search/combat only if physical progress occurs; save meaningful checkpoints and reconcile every game/bridge/launcher PID/birth.",
+    "Changed safety step from the prior death branch: after a safe-wait pain/attack/damage stop, inspect native source/HP and current map; choose at most one currently advertised passable cover step away from the shooter, verify exposure/position, save, and do not repeat an ignore wait from the exposed tile."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r048_rural_roof",
+        "op": "eq",
+        "value": "post_report_selected_id_cover_route_entry_stairs_combat_continuation",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

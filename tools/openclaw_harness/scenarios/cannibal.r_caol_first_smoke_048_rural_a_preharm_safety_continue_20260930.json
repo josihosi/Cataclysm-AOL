@@ -1,0 +1,185 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_048_rural_a_preharm_safety_continue_20260930",
+  "description": "R048 changed safety continuation from the exact 55-file full-health turn5256302 pre-harm checkpoint; same post-report hostile:2 IDs 5/7 and candidate-level route trace only.",
+  "profile": "first-smoke-048-route-safety-turn5256302-20260930",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "rural_A_cannibal_site_only; inherited_bandit_cabin_separate",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r048_rural_roof": "post_report_selected_id_route_probe_physical_entry_stairs_combat_continuation_from_preharm"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.examine",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:menu.cancel",
+      "semantic:prompt.choose",
+      "semantic:world.wait",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:main_menu.quit",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install",
+      "world.autoattack",
+      "count-repeat"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-048-hostile2-route-probe-20260930",
+    "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-048-hostile2-route-probe-20260930",
+      "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native actor and route evidence; ordinary individual controls only"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_r048_turn5256302_preharm_checkpoint",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Install the exact 55-file derived R048 continuation copy from build_logs/first-smoke-048/r048-turn5256302-replay-fixture-manifest.json (tree SHA 9c72cb86e5106b2fb759d97ad4936f8e622f9fd3e8bca8ecfc8940c1c20bdee6), saved turn5256302/minute8405, in a distinct disposable profile. It derives from the exact turn5256260 post-report response start; report generation1/revision1 and hostile:2 with IDs5/7 already exist. At this checkpoint the player is [3151,3454,0], full HP, ID5 attacks defender3 from [3158,3437,0], and ID7 routes from [3166,3436,0] toward [3156,3444,0]. Do not replay ignition, scouting, report, or dispatch."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r048_turn5256302_preharm_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look",
+          "world.examine",
+          "world.debug_menu"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r048_rural_a_selected_ids_preharm_safety_continuation",
+      "objective": "Continue the already reported/committed rural-A hostile:2 response from exact saved turn5256302, preserving the prior turn5256260 route-probe result. Bind site, report generation1/revision1, operation and IDs5/7. Verify same-run World, current player position/HP and Safe Off; inspect DEBUG_LS individually and leave active, and verify no cloak or clairvoyance. Capture selected-ID trace and per-candidate route/avoid/occupancy rows from turn5256302 through 5256699. Start by observing while the player is not in immediate danger. Use an individual current native action only if fresh danger makes safety necessary; if moving, inspect the current map and choose a route that increases separation/cover without approaching raiders. Do not repeat the earlier roof-ladder egress path blindly. Track exact actor position/z/actions and route, actual door/stairs/upstairs search and attacks/damage/death, or the first divergence. Save before harm and at meaningful physical transitions.",
+      "proof_targets": [
+        "exact 55-file derived checkpoint tree/hash/turn and source-ready selected build/runtime binding",
+        "same-run World, rural-A cannibal site overmap_special:cannibal_camp@135,137,0 separate from inherited bandit_cabin@103,167,0, report1/revision1 and hostile:2 IDs5/7",
+        "player start [3151,3454,0] and full-health pre-harm state; Safe Off verified; DEBUG_LS active without toggle; no DEBUG_CLOAK or clairvoyance",
+        "bounded selected-ID trace from turn5256302 through5256699 with original handles, cap and truncation state",
+        "per-candidate floor route diagnostics: in-bounds/passable, strict route/length, avoid counts/samples/occupant identities, relaxed route and truncation",
+        "actual same-ID positions/floors/actions, player positions/exposure, connected route and physical door/stairs/upstairs search/combat or first divergence",
+        "actual outgoing/incoming damage and killer/death source records, meaningful saved checkpoints and exact game/bridge/launcher exit identities"
+      ],
+      "invariants": [
+        "This is a derived post-report continuation from exact turn5256260; not a fresh A smoke/scout/report journey. Preserve that earlier scope.",
+        "Use only the verified exact 55-file turn5256302 copy; do not use turn5256386, fresh A, advanced profile, or rural B as start.",
+        "Keep cannibal site ID separate from inherited distant bandit cabin.",
+        "No signal/report/actor/route/HP injection, teleport, clairvoyance, cloak, autoattack, raw Tab or unvalidated batching.",
+        "DEBUG_LS is survival setup, never toggle blindly. Safe mode must be verified off before actions.",
+        "Player remains stationary while safe; use one individually observed action only for actual safety. Do not move toward actors or treat route goal as physical traversal.",
+        "Avoid samples are bounded explored-node observations, not exhaustive proof of a specific blocking actor.",
+        "Attribute each damage/death only through named source/victim records; death itself is not a failure if raiders fought.",
+        "Preserve the first candidate route, contact, damage or floor divergence with pre-harm save and exact source handle."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_r048_turn5256302_preharm_checkpoint",
+      "bind_same_run_r048_turn5256302_preharm_world"
+    ],
+    "production_behavior": [
+      "r048_rural_a_selected_ids_preharm_safety_continuation"
+    ],
+    "terminal_persistence": [
+      "r048_rural_a_selected_ids_preharm_safety_continuation"
+    ],
+    "artifact_verdict": [
+      "r048_rural_a_selected_ids_preharm_safety_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "r048_rural_a_selected_ids_preharm_safety_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From the exact derived rural-A turn5256302 full-health pre-harm copy, can the same committed hostile:2 IDs5/7 use candidate routes into the house and connected upper floors while the player avoids a repeatable exposed position, and what actor-bound route/contact/combat evidence results?",
+    "failure_rule": "Compare exact source-bound candidate route, avoid/occupancy, actor movement and dynamic target evidence. Treat player movement as survival response only when triggered by actual current danger, preserve its coordinates/exposure effect, and distinguish target waypoint from physical door/stair traversal."
+  },
+  "fixture": "r048_hostile2_route_probe_turn5256302_20260930",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    5,
+    7
+  ],
+  "decision_trace_from_turn": 5256302,
+  "decision_trace_to_turn": 5256699
+}

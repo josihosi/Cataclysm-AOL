@@ -1,0 +1,169 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_r051_r067_post_report_expiry_9482_continuation_20261004",
+  "description": "Same R051 branch continuation from exact native save at9482/turn5320942 on immutable R067; check source fire and camp report expiry at10920.",
+  "profile": "r051-r067-report-expiry-continuation-20261004",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.r051_fresh_ordinary_smoke_raid": "ordinary_view_clean_closed_window_smoke_same_id_report_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation_v2": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid_v2",
+    "capabilities.r_caol.r051_post_report_expiry_9482_continuation": "same_r051_native_save_9482_to_report_expiry_10920_and_natural_progression"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-r067-report-expiry-continuation-20261004",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-r067-report-expiry-continuation-20261004",
+      "fixture": "explicit saved-world snapshot",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_post_report_expiry_saved_world_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "verify_post_report_expiry_saved_world_reload",
+      "bind_post_report_expiry_saved_world_native_world"
+    ],
+    "production_behavior": [
+      "r051_report_expiry_service_boundary"
+    ],
+    "terminal_persistence": [
+      "r051_report_expiry_service_boundary"
+    ],
+    "artifact_verdict": [
+      "r051_report_expiry_service_boundary"
+    ],
+    "disallowed_shortcuts": [
+      "bind_post_report_expiry_saved_world_native_world"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Same R051 native report-awaiting-assessment save at9482/5320942 continued to actual delivered-report expiry at10920, with current source-fire check and exact natural site/actor boundary evidence.",
+    "failure_rule": "Preserve exact report readiness/expiry, site transition, actor and scheduler evidence. Do not infer raid or report completion from a signal read or time passage."
+  },
+  "config_profile": "r051-r067-report-expiry-continuation-20261004",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r051-r067-report-expiry-continuation-20261004/source-snapshot/TestSetup00",
+  "post_relaunch": {
+    "terminal_save_step_label": "bind_post_report_expiry_saved_world_native_world",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "verify_post_report_expiry_saved_world_reload",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Fresh registry-bootstrap process loads exact native quicksave snapshot without fixture reinstall; verify current World minute9482 / turn5320942 before gameplay input."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "r051_report_expiry_service_boundary",
+        "objective": "Continue the same R051 native world at minute9482. Verify actual source fire once and current report/site/actor state. Use one safe interruptible wait aimed at the report expiry/service boundary minute10920 (delivered_minutes8040 + 48h). Record any actual overshoot/interruption. Then query exact site camp_decision/report expiry/new routine candidate and the same native IDs4/5. If report remains held/unready or no new candidate after invoked expiry boundary, save and stop. If natural progression occurs, observe before further time. No forced report, knowledge, dispatch, raid, attack or death.",
+        "proof_targets": [
+          "exact saved World at9482/5320942, current fire source, and original report readiness/expiry state",
+          "actual target crossing/overshoot to minute10920",
+          "camp_decision/report expiration, new routine candidate, and same actor IDs4/5 at boundary",
+          "native save evidence and graceful game/bridge process cleanup"
+        ],
+        "invariants": [
+          "continue exact native save; no initial fixture/setup/ignition/scouting replay",
+          "no injected signal, knowledge, report, roster, dispatch, raid, attack or death",
+          "DEBUG_LS only; Safe Mode Off; no cloak or clairvoyance",
+          "one safe interruptible interval to expiry; stop at held report or missing routine candidate after expiry",
+          "resolve current site and actor IDs from this run"
+        ],
+        "live_operations": [
+          "game.act",
+          "game.wait",
+          "game.raw_wait"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

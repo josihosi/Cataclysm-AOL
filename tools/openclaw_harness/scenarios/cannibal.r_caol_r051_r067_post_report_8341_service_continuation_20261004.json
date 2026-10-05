@@ -1,0 +1,189 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_r051_r067_post_report_8341_service_continuation_20261004",
+  "description": "Same R051 branch continuing from the native post-report saved world at game minute 8341 on immutable R067; inspect one next camp service and, if it advances, continue the natural raid.",
+  "profile": "r051-r067-report-continuation-20261004",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.r051_fresh_ordinary_smoke_raid": "ordinary_view_clean_closed_window_smoke_same_id_report_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-r067-report-continuation-20261004",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-r067-report-continuation-20261004",
+      "fixture": "explicit saved-world snapshot",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_closed_window_pre_signal_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load only the disposable profile whose 45 TestSetup00 save files match build_logs/first-smoke-011/ordinary-closed-smoke-start-manifest.json. Verify effective userdir, same-run World/current turn, Safe mode Off, no clairvoyance/cloak/invulnerability, no pending input, unlit brazier and no prior site knowledge/signal/outing; saved baseline turn 5216234."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No additional fixture transform is declared; camp geometry is the already-recorded controlled setup in the byte-exact manifest."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r051_fresh_ordinary_closed_smoke_raid",
+      "objective": "Ordinary fresh clean closed-window smoke, same-ID physical scout/watch/return/report, then natural raid physical attacks, sourced damage and outcome if reached.",
+      "proof_targets": [
+        "45/45 exact starting saves, effective userdir, same-run World/turn, immutable R067 executable/path receipt, Safe Off and no clairvoyance/cloak/invulnerability",
+        "closed windows; clean pre-signal knowledge/contact/outing baseline; camp geometry disclosed as setup",
+        "ordinary lighter ignition and real fd_fire/fd_smoke; separate smoke/light packet records and source attribution",
+        "smoke admission before any valid light/contact signal; exact camp/site/observer/weather/cap/LOS fields",
+        "same native actors through physical scout, watch, return and delivered report",
+        "actual natural raid pursuit/attack, actor action/target/health/damage source and terminal outcome if reached"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No signal, contact, report, dispatch, hostile teleport, fire or light injection; no debug raider kill",
+        "Ordinary-view arm: both clairvoyance mutations, cloak and invulnerability remain absent",
+        "Do not call the controlled cannibal-site geometry natural generation or initial site knowledge",
+        "Maintain actual brazier fire through observed raid unless a concrete safety blocker requires stopping",
+        "Track all relevant actors by native ID/metadata and saved roster, including actors outside sight",
+        "At first harm use safe/stop observation; use ignore only deliberately for combat-through-outcome and preserve death attribution",
+        "Stop unchanged waits at the first material divergence; keep the first divergent save and transition handle"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_closed_window_pre_signal_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r051_fresh_ordinary_closed_smoke_raid"
+    ],
+    "terminal_persistence": [
+      "r051_fresh_ordinary_closed_smoke_raid"
+    ],
+    "artifact_verdict": [
+      "r051_fresh_ordinary_closed_smoke_raid"
+    ],
+    "disallowed_shortcuts": [
+      "no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Fresh ordinary-view closed-window smoke-only journey on immutable R067 from byte-exact saved pre-signal start; physical smoke must be first admitted cause, followed by same-ID scout/watch/return/report and natural raid behavior.",
+    "failure_rule": "Credit only this run’s signal, admission, actor and combat records. Preserve first divergence; do not infer smoke-only from fire presence."
+  },
+  "config_profile": "r051-r067-fresh-ordinary-smoke-20261004",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r051-r067-report-continuation-20261004/source-snapshot/TestSetup00"
+}

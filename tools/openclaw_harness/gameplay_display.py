@@ -308,6 +308,33 @@ def _save_status_line(status, checkpoint, current_turn, *, quicksave=False):
     return f"{label}: {status}; saved turn unknown."
 
 
+def _plain_trade_rows(rows, *, limit=8):
+    """Native group/cell facts only; compact display never estimates item value."""
+    lines = ["Letter | UID | Item | selected/available | Unit price | selected value | location/owner"]
+    for row in rows[:limit]:
+        locations = row.get("locations")
+        places = list(dict.fromkeys(str(loc.get("root_source", "?")) + "/" + str(loc.get("owner_faction", "?"))
+                                    for loc in locations if isinstance(loc, dict))) if isinstance(locations, list) else []
+        source = places[0] if len(places) == 1 else "mixed(" + str(len(places)) + ")" if places else "unavailable"
+        line = (f"{row.get('letter') or '-'} | {row.get('group_uid', '?')} | {_plain_text(row.get('name', '?'))} | "
+                f"{row.get('selected', '?')}/{row.get('available', '?')} {row.get('unit', '?')} | "
+                f"{row.get('unit_price', 'unavailable')} | {row.get('selected_value', 'unavailable')} | {source}")
+        if row.get("native_row_available") is False:
+            line += " (collapsed; select by current UID)"
+        if row.get("enabled") is False:
+            line += " - unavailable: " + _plain_text(row.get("denial", ""))
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _trade_page_actions(actions, facts):
+    rows = decode(facts.get("trade_rows"))
+    if not isinstance(rows, list):
+        return actions
+    visible = {row.get("group_uid") for row in rows[:8] if isinstance(row, dict)}
+    return [action for action in actions if not action.get("stable_id") or action.get("stable_id") in visible]
+
+
 def _plain_controls(actions, heading="ALLOWED HERE ONLY", *, prompt_title=None):
     """Print every advertised choice once, sharing command syntax across targets."""
     lines = [heading]
@@ -330,13 +357,15 @@ def _plain_controls(actions, heading="ALLOWED HERE ONLY", *, prompt_title=None):
             targeted.setdefault(namespace, {}).setdefault(target, []).append((verb, action))
             continue
         label = _plain_text(action.get("label", action_id))
-        if action_id == "inventory.commit":
+        if action_id == "inventory.commit" and label != "Close contents":
             label = ("Confirm marked items: " if "inventory.toggle" in ids else "Confirm highlighted item: ") + label
         if not action.get("enabled", True):
             lines.append(label + " (unavailable)")
             continue
         command = "play act " + shlex.quote(action_id)
-        if action_id in {"menu.filter", "inventory.filter"}:
+        if action_id == "trade.toggle_letters":
+            command = "play trade LETTERS (toggle these current letters together; no commit)"
+        elif action_id in {"menu.filter", "inventory.filter"}:
             command += ' --param "text=TEXT"'
         elif action_id == "prompt.submit":
             command += ' --param "text=TEXT"'
@@ -409,10 +438,10 @@ def _plain_evidence_output(result):
     header = f"{result.get('matched', len(rows))} matches; showing {len(rows)}."
     footer = ("Full rows → python3 tools/openclaw_harness/evidence_display.py --sha256 "
               + result["snapshot"]["sha256"] + " --selector rows --offset 0 --limit 20")
+    footer += "\nOne field: replace --selector rows with /rows/INDEX/fields/FIELD (dots in FIELD stay literal); source/raw handle: rows.INDEX.source (INDEX starts at 0)."
     if isinstance(result.get("next"), dict):
         footer += "\nMore rows: --offset " + str(result["next"]["offset"])
     unavailable = len(result.get("unavailable_sources", []))
-    needs_retrieval = bool(result.get("next") or unavailable)
     if unavailable:
         header += f"\nUnavailable sources: {unavailable}."
         footer += "\nSource errors: replace --selector rows with --selector unavailable_sources."
@@ -424,7 +453,6 @@ def _plain_evidence_output(result):
         incomplete = sum(link.get("status") != "complete" for link in links)
         if incomplete:
             header += f" {incomplete} incomplete or contradictory; inspect links for details."
-            needs_retrieval = True
             footer += "\nRequest details: replace --selector rows with --selector links."
 
     def facts(value, prefix=""):
@@ -447,19 +475,20 @@ def _plain_evidence_output(result):
                       **(row.get("payload") if isinstance(row.get("payload"), dict)
                          else {"details": row.get("payload")})}
             detail = {key: value for key, value in detail.items() if value is not None}
-        text = f"{index}. " + facts(detail)
+        row_id = str(row.get("event_id", "unavailable"))
+        source = row.get("source", {})
+        location = f"{source.get('producer', 'source')}@{source.get('offset', '?')}"
+        text = f"{index}. Situation {row_id} ({location})\n" + facts(detail)
         raw = text.encode("utf-8")
         if len(raw) > per_row:
-            needs_retrieval = True
             shown = raw[:max(0, per_row - 70)].decode("utf-8", errors="ignore")
             text = shown + f"\n[{len(text) - len(shown)} rendered characters omitted.]"
         entries.append(text)
     body = "\n".join(entries)
     if len(body.encode("utf-8")) > available:
-        needs_retrieval = True
         shown = body.encode("utf-8")[:max(0, available - 70)].decode("utf-8", errors="ignore")
         body = shown + f"\n[{len(body) - len(shown)} rendered characters omitted.]"
-    return "\n".join([header, body, *([footer] if needs_retrieval else [])]).rstrip()
+    return "\n".join([header, body, footer]).rstrip()
 
 
 def _plain_decision_output(result):
@@ -508,6 +537,27 @@ def _plain_decision_output(result):
                     f" phase={value.get('operation_phase')}/{value.get('operation_owner')}"
                     f" route={value.get('route_waypoint_index')}:{value.get('actor_route_waypoint')}"
                     f" search={value.get('site_search_waypoint')}{duty}{outing}")
+        if kind == "shakedown_contact":
+            return (f"t{value.get('turn')} SHAKEDOWN CONTACT #{value.get('speaker_id')}"
+                    f" → {'avatar' if value.get('receiver_is_avatar') else 'camp NPC'}#{value.get('receiver_id')}"
+                    f" audible={yes_no(value.get('audible_shout'))} unseen={yes_no(value.get('unseen_receiver'))}"
+                    f" operation={value.get('operation_id')} generation={value.get('generation')}")
+        if kind == "fight_reply":
+            return (f"t{value.get('turn')} FIGHT REPLY "
+                    f"{'avatar' if value.get('receiver_is_avatar') else 'camp NPC'}#{value.get('receiver_id')}"
+                    f" pos={location(value.get('position_abs'))} attempted={yes_no(value.get('attempted'))}"
+                    f" emitted={yes_no(value.get('emitted'))} native_volume={value.get('native_volume')}"
+                    f" operation={value.get('operation_id')} generation={value.get('generation')}")
+        if kind == "attack_callback":
+            source = value.get("source") or {}
+            victim = value.get("victim") or {}
+            return (f"t{value.get('turn')} ATTACK CALLBACK {value.get('edge')} "
+                    f"{source.get('type', 'unknown')}#{source.get('id')}@{location(source.get('position_abs'))}"
+                    f" → {victim.get('type', 'unknown')}#{victim.get('id')}@{location(victim.get('position_abs'))}"
+                    f" attitude={value.get('attitude_before')}→{value.get('attitude_after')}"
+                    f" release={yes_no(value.get('shakedown_released'))}"
+                    f" anger={value.get('anger_branch') or 'unknown'}"
+                    f" alarm={yes_no(value.get('alarm_invoked'))}/{yes_no(value.get('alarm_raised'))}")
         if kind == "damage":
             source = value.get("source") or {}
             victim = value.get("victim") or {}
@@ -751,6 +801,10 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
     if status.get("state") in {"starting", "preparing"}:
         dialog = _startup_dialog_text(result.get("startup_dialog"))
         return "Loading → play look" + ("\n" + dialog if dialog else "")
+    if (status.get("state") == "transitioning" and
+            status.get("phase") == "awaiting_declared_reentry_descriptor"):
+        dialog = _startup_dialog_text(result.get("startup_dialog"))
+        return "Reloading saved game → play look" + ("\n" + dialog if dialog else "")
     if status.get("state") in {"process_dead", "bridge_failed", "reentry_failed", "terminalization_failed"}:
         reason = startup_error or status.get("error") or status.get("reason") or "game process exited"
         stopped = "Playtest stopped: " + str(reason).replace("pre_descriptor_no_progress", "startup failed before game controls became available")
@@ -875,8 +929,8 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                    result.get("source_indices", range(offset, offset + len(selected))))
         request_option = (" --request-id " + shlex.quote(inspection_request_id)
                           if inspection_request_id else "")
-        summary.append(f"Read a field → play inspect {selector}.INDEX.value.PATH{request_option}\n"
-                       "INDEX and PATH are listed below. Copy raw values into checks; quoted strings stay quoted.")
+        summary.append(f"Inspect → play inspect SELECTOR{request_option}\n"
+                       "Replace INDEX/FIELD in the complete SELECTOR below. Copy exact values into checks.")
         field_sets = {}
         for index, entry in zip(indices, selected):
             value = entry.get("value", {})
@@ -900,11 +954,11 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                     relative_path = ""
                 signature = (relative_path, tuple(fields))
                 if signature in field_sets:
-                    summary.append(f"  INDEX {index}; same PATH/FIELD as {field_sets[signature]}.")
+                    summary.append(f"  INDEX {index}; same SELECTOR/FIELD as {field_sets[signature]}.")
                 else:
                     field_sets[signature] = entry["citation_id"]
-                    summary.append(f"  INDEX {index}; PATH " + (relative_path + ".FIELD" if relative_path else "FIELD") +
-                                   "; FIELD: " + ", ".join(fields))
+                    field_selector = f"{selector}.INDEX.value." + (relative_path + "." if relative_path else "") + "FIELD"
+                    summary.append(f"  INDEX {index}; SELECTOR {field_selector}; FIELD: " + ", ".join(fields))
             else:
                 summary.append("  No value fields.")
         page = result.get("page", {})
@@ -988,6 +1042,14 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                 lines.append(_plain_text(title))
             if owner == "target" and str(facts.get("mode", "")) == "0":
                 lines.append("Firing can leave targeting open. Cancel returns to World; check ammo and shot messages there.")
+            if isinstance(decode(facts.get("trade_rows")), list):
+                side = "OUR SIDE" if facts.get("active_party") == "player" else "TRADER SIDE"
+                name = facts.get("player_name") if facts.get("active_party") == "player" else facts.get("trader_name")
+                lines.append(f"{side}: {name or '?'} | Demand {facts.get('demand_amount', 'unavailable')} | "
+                             f"{facts.get('balance_label', 'Balance')} {facts.get('balance_amount', facts.get('balance', 'unavailable'))} | "
+                             f"Max credit {facts.get('max_credit', 'unavailable')} | "
+                             f"Our offer {facts.get('player_offer_value', 'unavailable')} | "
+                             f"Trader offer {facts.get('trader_offer_value', 'unavailable')}")
             view = {**view, "facts_changed": facts}
         view = {key: value for key, value in view.items() if key not in {"current_input", "facts_removed"}}
     terminal = view.get("result", {})
@@ -1177,6 +1239,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                         "action_not_advertised": "This action is not available in the current menu.",
                         "stable_id_not_advertised": "Use the target listed for this exact action; targets differ between actions.",
                         "stale_observation": "The game has moved on from that observation.",
+                        "native_surface_receipt_timeout": "Native acknowledgment was not observed. The action outcome is unknown. Observe the current game; do not replay the submitted input.",
                         "proved_no_progress": "No game progress was recorded. Check for an interruption → play look.",
                         "operation_not_authorized_for_live_session": "This shortcut is unavailable in this scenario. Use the controls shown by play look.",
                     }.get(str(item))
@@ -1276,9 +1339,26 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                     continue
                 if label == "visible" and key in {"worn", "wielded_item_uid"}:
                     continue
+                if fresh and snapshot and isinstance(decode(snapshot.get("current", {}).get("facts", {}).get("trade_rows")), list):
+                    if key in {"active_party", "active_actor_id", "player_actor_id", "player_name",
+                               "trader_actor_id", "trader_name", "demand_amount", "balance", "balance_label",
+                               "balance_amount", "max_credit", "player_offer_value", "trader_offer_value",
+                               "opening_balance", "trade_values_source", "selection_source"}:
+                        continue  # These native values are already in the Trade header; raw facts remain inspectable.
+                    if key == "selected_items" and isinstance(decode(item), dict):
+                        lines.append(f"{len(decode(item))} selected locations; exact: play inspect surface.facts.selected_items")
+                        continue
+                if key == "trade_rows" and isinstance(decode(item), list):
+                    rows = decode(item)
+                    lines.append(_plain_trade_rows(rows))
+                    lines.append(f"{len(rows)} filtered groups; more: play inspect --view trade --offset 8 --limit 8; "
+                                 "full raw: play inspect surface.facts.trade_rows --diagnostics")
+                    continue
                 if key in {"actions", "actions_changed"} and isinstance(item, list) and all(
                         isinstance(action, dict) and "id" in action and "enabled" in action for action in item):
                     if (operation_availability or {}).get("game.act") is not False:
+                        if fresh and snapshot:
+                            item = _trade_page_actions(item, snapshot.get("current", {}).get("facts", {}))
                         lines.append(_plain_controls(item, prompt_title=prompt_title))
                     continue
                 if key in {"current_input", "facts_changed", "outcome", "response", "new_events", "value", "slice"}:
@@ -1286,6 +1366,9 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                 else:
                     write(item, (label + "." if label else "") + key.removeprefix("diagnostic_").replace("_", " "))
         elif isinstance(value, list):
+            if value and all(isinstance(row, dict) and "group_uid" in row for row in value):
+                lines.append(_plain_trade_rows(value, limit=len(value)))
+                return
             if label.rsplit(".", 1)[-1] in {"zones", "visible zones"} and all(isinstance(row, dict) for row in value):
                 lines.append("Zones:")
                 for row in value:
@@ -1359,16 +1442,16 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
             changed = current.get("actions_changed", [])
             removed = current.get("actions_removed", [])
             if removed:
-                lines.append(_plain_controls(snapshot["current"].get("actions", []),
+                lines.append(_plain_controls(_trade_page_actions(snapshot["current"].get("actions", []), snapshot["current"].get("facts", {})),
                                              "Allowed actions replaced — use only these:",
                                              prompt_title=prompt_title))
             elif changed:
-                lines.append(_plain_controls(changed, "Changed controls (others unchanged):",
+                lines.append(_plain_controls(_trade_page_actions(changed, snapshot["current"].get("facts", {})), "Changed controls (others unchanged):",
                                              prompt_title=prompt_title))
             if not changed and not removed:
                 lines.append("Allowed actions unchanged.")
         else:
-            lines.append(_plain_controls(snapshot["current"].get("actions", []),
+            lines.append(_plain_controls(_trade_page_actions(snapshot["current"].get("actions", []), snapshot["current"].get("facts", {})),
                                          prompt_title=prompt_title))
     if fresh and owner == "activity_wait" and result.get("state") == "collected":
         lines.append("Check progress → play look (collect repeats this recorded result).")
@@ -1553,7 +1636,7 @@ def display(response, previous=None, refresh=False):
     owner = surface.get("kind")
     facts = {k: decode(v) for k, v in surface.get("facts", {}).items()}
     actions = surface.get("actions", [])
-    identity = {k: observed.get(k) for k in ("run_id", "surface_id")}
+    identity = {k: observed.get(k) for k in ("run_id", "surface_id", "observation_id")}
     previous = previous or {}
     reset = refresh or previous.get("run_id") != observed.get("run_id")
     old = {} if reset else previous.get("world" if owner == "world" else "current", {})

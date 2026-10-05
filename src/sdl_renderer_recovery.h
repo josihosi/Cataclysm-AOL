@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "cata_tiles.h"
 
@@ -400,6 +401,10 @@ struct renderer_recovery_test_support {
     // and geometry on the file-static globals, then seed and bootstrap the
     // coordinator. False (globals clean) if the dummy backend fails or a window is up.
     static bool setup_software_renderer();
+    // Add the normal fonts and ImGui backend to the hidden software fixture
+    // for tests exercising actual curses/ImGui modal composition.
+    static void setup_software_ui();
+    static std::vector<uint32_t> read_display_pixels( const SDL_Rect &rect );
     // Reverse setup: drain the quarantine and release atlases on the live
     // renderer, destroy variant_pass before the renderer, reset globals and the
     // coordinator, and quit video only if this fixture acquired it.

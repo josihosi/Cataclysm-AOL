@@ -1,0 +1,116 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_056_native_optics_turn5220219",
+  "description": "Exact private continuation of the retained R048 rural-A turn5220219 outbound natural cannibal scout pair for R056 target-local optics, finite watch, and native performance evidence.",
+  "profile": "first-smoke-056-r051-native-optics-20261002",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "world.hostile_policy": "rural_A_cannibal_camp_only; inherited_bandit_cabin_separate",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r056_native_optics": "retained_turn5220219_assigned_ids4_5_natural_exact3_lookout_optics_watch_return_report"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install",
+      "Pay",
+      "Fight"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-056-r051-native-optics-20261002",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-056/immutable-executable/72315060013bac8df6f774c9f583529bea18d3d27846a1e9f62b27a21d67603e/cataclysm-tiles",
+      "profile": "first-smoke-056-r051-native-optics-20261002",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "advertised native cockpit actions"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_private_turn5220219_stage",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Fresh private profile was copied from .userdata/first-smoke-048-smoke-signal-turn5220219-20260930/save/TestSetup00 and hash-verified to the original 45-file tree b8c1f351e82e8f3296a59aa92270f25619b55948af7299c34fd259bfceca118b; source remains untouched. Verify effective userdir, TestSetup00, saved turn5220219, Safe mode Off, DEBUG_LS active if present, ordinary visibility, no pending input, current signal/weather, and actual cannibal outing generation1 IDs4/5 positions/site/watch/ownership/capability before time advances."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_turn5220219_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r056_target_local_optics_and_finite_watch",
+      "cleanup_on_finish": true,
+      "objective": "Continue the exact selected native stage with assigned cannibal IDs4/5. Preserve actual natural movement and arrival. Observe actual exposed roof/avatar/NPC targets at the reachable exact3-OMT lookout using ordinary visibility and narrow site-bound native evidence. Separate optional disclosed debug positioning from travel credit. Sample a completed finite120-minute watch, valid fresh30-minute signal buckets, actual same-ID home and a new report. Capture populated stationary-watch native simulation turns and a comparable ordinary interval. Stop after first concrete diversion/divergence, preserving exact state and queries. No Pay/Fight, forced report/demand/dispatch, actor or knowledge seeding, terrain changes, or clairvoyance."
+    }
+  ],
+  "replace_existing_worlds": false,
+  "raid_actor_trace": false,
+  "evidence_contract": {
+    "claim": "Can assigned native cannibal scouts at their actual reachable exact3 OMT lookout acquire exposed roof/avatar/NPC optics and site light/smoke observations, complete a finite watch, physically return with the same IDs and report the actual result under the R056 immutable build, with native simulation turns measured?",
+    "failure_rule": "Retain first exact obstruction/divergence; distinguish aborted watch from completed empty evidence; preserve raw source handles, actors and positions. Do not interpret debug positioning as natural travel."
+  },
+  "proof_route": {
+    "precondition": [
+      "load_exact_private_turn5220219_stage",
+      "bind_same_run_turn5220219_world"
+    ],
+    "production_behavior": [
+      "r056_target_local_optics_and_finite_watch"
+    ],
+    "terminal_persistence": [
+      "r056_target_local_optics_and_finite_watch"
+    ],
+    "artifact_verdict": [
+      "r056_target_local_optics_and_finite_watch"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_private_turn5220219_stage"
+    ]
+  }
+}

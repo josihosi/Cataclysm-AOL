@@ -483,6 +483,21 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
             return semantic_action_dispatch_result{ true, "", "" };
         } );
     }
+    const auto apply_semantic_result = [&]() {
+        if( semantic_canceled ) {
+            _text.clear();
+            _position = -1;
+            _canceled = true;
+            return true;
+        }
+        if( semantic_submitted_text ) {
+            add_to_history( *semantic_submitted_text );
+            _confirmed = true;
+            _text = *semantic_submitted_text;
+            return true;
+        }
+        return false;
+    };
     do {
         if( _text_changed ) {
             ret = utf8_wrapper( _text );
@@ -532,24 +547,18 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
 
         if( semantic_scope ) {
             semantic_scope->consume_request();
-            // The input context may already have consumed the request while
-            // waiting for its transport wake.  Apply that stored result even
-            // when this iteration has no new request to consume.
-            if( semantic_canceled ) {
-                _text.clear();
-                _position = -1;
-                _canceled = true;
-                return _text;
-            }
-            if( semantic_submitted_text ) {
-                add_to_history( *semantic_submitted_text );
-                _confirmed = true;
-                _text = *semantic_submitted_text;
+            if( apply_semantic_result() ) {
                 return _text;
             }
         }
 
         const std::string action = ctxt->handle_input();
+        // The blocking input context consumes transport requests itself.
+        // Apply its result before a loop=false query returns and destroys
+        // this invocation's consumer, text and cancellation flags.
+        if( semantic_scope && apply_semantic_result() ) {
+            return _text;
+        }
         const input_event ev = ctxt->get_raw_input();
         ch = ev.type == input_event_t::keyboard_char ? ev.get_first_input() : 0;
         _handled = true;

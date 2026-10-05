@@ -1,0 +1,19 @@
+{
+  "name": "r050_rural_roof_bandit_only_v1",
+  "description": "Declared bandit-only derivative of untouched R042 rural B; the cannibal camp is removed, while both bandit sites retain their parent state. Ordinary roof ignition and bandit roster/knowledge are native.",
+  "source_parent_fixture": "r042_rural_roof_dual_faction_b_v1",
+  "parent_sha256_tree": "c3f54eab5b0d09230d218f6a7c6d0d80633e90e67851b62024b969dce4da1fe6",
+  "parent_manifest_tree_sha256": "9956763e309b3ac37c65b5ab60375ecd05789e3636c0e580e36274f8f6b63978",
+  "saved_file_count": 45,
+  "saved_tree_sha256": "8a3f92fb84abe96b49e93a7c787f13b32689d18b631dd4fd4f50847b01cdbb9f",
+  "saved_sha256_tree": "b71d2c2ae067256bdf27cb272e7a7bab322e48aa0c5058e96f3435ccfeca5972",
+  "saved_overmap_sha256": "ebe62c0387f01ea434375e26930d94f22976bef9e75204ac2309aac55e9da90b",
+  "saved_player_sha256": "037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247",
+  "save_transforms": [],
+  "offline_parent_edit_manifest": "build_logs/first-smoke-050/preparation.json",
+  "removed_cannibal_site": "overmap_special:cannibal_camp@135,137,0",
+  "retained_added_bandit_camp": "overmap_special:bandit_camp@129,149,0",
+  "retained_inherited_bandit_cabin": "overmap_special:bandit_cabin@103,167,0",
+  "pre_signal": true,
+  "gameplay_credit": false
+}

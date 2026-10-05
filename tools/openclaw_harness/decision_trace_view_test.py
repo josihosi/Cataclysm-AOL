@@ -23,6 +23,104 @@ OPERATION = "overmap_special:cannibal_camp@135,137,0#hostile:2"
 
 
 class DecisionTraceViewTest(unittest.TestCase):
+    def test_fight_reply_preserves_measured_emission_and_physical_receiver(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "reply.jsonl"
+            reply = {"event": "bandit_shakedown_fight_reply", "run_id": "run", "game_turn": 8925,
+                     "trace_group_id": "encounter", "operation_id": "bandit#hostile:2", "generation": 2,
+                     "site_id": "bandit", "receiver_id": 1, "receiver_is_avatar": True,
+                     "position_abs": [3155, 3447, 1], "attempted": True, "emitted": True,
+                     "native_volume": 24}
+            refused = dict(reply, receiver_id=3, receiver_is_avatar=False, emitted=False, native_volume=0)
+            path.write_text("".join(json.dumps(row) + "\n" for row in
+                                    (reply, refused, dict(reply, run_id="foreign"))))
+            scope = {"operation_id": "bandit#hostile:2", "group_id": None, "actor_ids": [],
+                     "from_turn": 8925, "to_turn": 8925}
+            result = query([path], {"run_id": "run"}, [], 0, 10, decision=scope)
+            self.assertEqual(result["matched"], 2)
+            self.assertEqual([row["record"]["native_volume"] for row in result["rows"]], [24, 0])
+            self.assertEqual([row["record"]["emitted"] for row in result["rows"]], [True, False])
+            self.assertIn("FIGHT REPLY avatar#1", _plain_decision_output(result))
+            self.assertIn("native_volume=0", _plain_decision_output(result))
+            for row in result["rows"]:
+                self.assertNotIn("heard", row["record"])
+                handle = row["artifact"]
+                self.assertTrue(record_artifact(Path(handle["path"]), handle["offset"], handle["length"],
+                                               handle["sha256"], [])["ok"])
+            for actor_id in (1, 3):
+                selected = query([path], {"run_id": "run"}, [], 0, 10,
+                                 decision=dict(scope, actor_ids=[actor_id]))
+                self.assertEqual(selected["matched"], 1)
+                self.assertEqual(selected["rows"][0]["record"]["receiver_id"], actor_id)
+            for field, wrong in (("operation_id", "foreign"), ("actor_ids", [4]), ("from_turn", 8926)):
+                self.assertEqual(query([path], {"run_id": "run"}, [], 0, 10,
+                                       decision=dict(scope, **{field: wrong}, to_turn=None))["matched"], 0)
+
+    def test_shakedown_contact_keeps_real_receiver_and_exact_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "contact.jsonl"
+            contact = {"event": "bandit_shakedown_contact", "run_id": "run", "game_turn": 8915,
+                       "trace_group_id": "peaceful", "operation_id": "bandit#hostile:2", "generation": 2,
+                       "site_id": "bandit", "speaker_id": 4, "receiver_id": 2,
+                       "receiver_is_avatar": False, "audible_shout": True, "unseen_receiver": True}
+            path.write_text(json.dumps(contact) + "\n" + json.dumps(dict(contact, run_id="foreign")) + "\n")
+            scope = {"operation_id": None, "group_id": "peaceful", "actor_ids": [2],
+                     "from_turn": 8915, "to_turn": 8915}
+            result = query([path], {"run_id": "run"}, [], 0, 10, decision=scope)
+            self.assertEqual(result["matched"], 1)
+            value = result["rows"][0]["record"]
+            self.assertEqual(value["receiver_id"], 2)
+            self.assertFalse(value["receiver_is_avatar"])
+            self.assertIn("camp NPC#2", _plain_decision_output(result))
+            handle = result["rows"][0]["artifact"]
+            self.assertTrue(record_artifact(Path(handle["path"]), handle["offset"], handle["length"],
+                                           handle["sha256"], [])["ok"])
+            for field, wrong in (("group_id", "other"), ("actor_ids", [3]), ("from_turn", 8916)):
+                self.assertEqual(query([path], {"run_id": "run"}, [], 0, 10,
+                                       decision=dict(scope, **{field: wrong}, to_turn=None))["matched"], 0)
+            self.assertEqual(query([path], {"run_id": "run"}, [], 0, 10,
+                                   decision=dict(scope, group_id=None, operation_id="bandit#hostile:2"))["matched"], 1)
+
+    def test_attack_callback_preserves_entry_outcome_and_either_selected_endpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "callbacks.jsonl"
+            base = {"event": "npc_attack_callback", "run_id": "run", "game_turn": 8945,
+                    "trace_group_id": "peaceful", "selected_source_npc_id": 2,
+                    "selected_victim_npc_id": 4,
+                    "source": {"type": "npc", "id": 2, "position_abs": [1, 2, 1]},
+                    "victim": {"type": "npc", "id": 4, "position_abs": [2, 2, 1]},
+                    "attitude_before": 0,
+                    "victim_operation": {"site_id": "bandit", "operation_id": "hostile:2",
+                                         "generation": 2, "shakedown_pending_branch": ""}}
+            entry = dict(base, edge="entry")
+            outcome = dict(base, edge="outcome", attitude_after=10, shakedown_released=True,
+                           anger_branch="covert_or_shakedown", alarm_invoked=True, alarm_raised=True,
+                           victim_operation_after={"shakedown_pending_branch": "fight"})
+            rows = [entry, outcome, entry, outcome, dict(outcome, run_id="foreign")]
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+            for actor_id in (2, 4):
+                scope = {"operation_id": None, "group_id": "peaceful", "actor_ids": [actor_id],
+                         "from_turn": 8945, "to_turn": 8945}
+                result = query([path], {"run_id": "run"}, [], 0, 10, decision=scope)
+                self.assertEqual(result["matched"], 4)
+                self.assertEqual([row["record"]["edge"] for row in result["rows"]],
+                                 ["entry", "outcome", "entry", "outcome"])
+                self.assertIsNone(result["rows"][0]["record"]["shakedown_released"])
+                self.assertTrue(result["rows"][1]["record"]["shakedown_released"])
+                self.assertIn("ATTACK CALLBACK outcome", _plain_decision_output(result))
+                for row in result["rows"]:
+                    handle = row["artifact"]
+                    self.assertTrue(record_artifact(Path(handle["path"]), handle["offset"],
+                                                    handle["length"], handle["sha256"], [])["ok"])
+            scope["actor_ids"] = [3]
+            self.assertEqual(query([path], {"run_id": "run"}, [], 0, 10,
+                                   decision=scope)["matched"], 0)
+            scope["actor_ids"] = [4]
+            scope["from_turn"] = 8946
+            scope["to_turn"] = None
+            self.assertEqual(query([path], {"run_id": "run"}, [], 0, 10,
+                                   decision=scope)["matched"], 0)
+
     def test_selected_combat_sleep_and_death_edges_have_raw_handles(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "combat.jsonl"

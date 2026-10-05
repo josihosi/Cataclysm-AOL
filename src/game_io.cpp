@@ -108,63 +108,89 @@ namespace
 bandit_live_world::local_projection_reconciliation_result
 reconcile_loaded_bandit_live_world_projections()
 {
-    std::map<character_id, bandit_live_world::local_projection_claim> claims_by_npc;
-    std::vector<bandit_live_world::local_projection_claim> conflicting_claims;
-    const auto collect_claim = [&claims_by_npc, &conflicting_claims]( const npc & member ) {
-        const bandit_live_world_projection_lease &lease =
-            member.get_bandit_live_world_projection_lease();
-        if( !lease.present ) {
-            return;
+    std::map<character_id, std::vector<const npc *>> copies;
+    const auto collect_copy = [&copies]( const npc & member ) {
+        auto &group = copies[member.getID()];
+        if( std::find( group.begin(), group.end(), &member ) == group.end() ) {
+            group.push_back( &member );
         }
-        const bandit_live_world::local_projection_claim claim = { member.getID(), lease.site_id,
-            lease.activity_id, lease.owner, lease.generation, lease.handoff_epoch,
-            lease.last_advanced_minutes, member.pos_abs(), !member.is_active(), true,
-            !member.is_dead() };
-        const auto inserted = claims_by_npc.emplace( claim.npc_id, claim );
-        if( inserted.second ) {
-            return;
-        }
-        bandit_live_world::local_projection_claim &existing = inserted.first->second;
-        if( existing.site_id != claim.site_id || existing.activity_id != claim.activity_id ||
-            existing.owner != claim.owner || existing.generation != claim.generation ||
-            existing.handoff_epoch != claim.handoff_epoch ||
-            existing.last_advanced_minutes != claim.last_advanced_minutes ) {
-            conflicting_claims.push_back( existing );
-            conflicting_claims.push_back( claim );
-        }
-        existing.copies_agree_on_position &= existing.physical_position == claim.physical_position;
-        existing.all_copies_unloaded &= claim.all_copies_unloaded;
-        existing.all_copies_alive &= claim.all_copies_alive;
     };
     for( const shared_ptr_fast<npc> &member : overmap_buffer.get_overmap_npcs() ) {
         if( member ) {
-            collect_claim( *member );
+            collect_copy( *member );
         }
     }
-    // An active reality-bubble projection and its persistent overmap handle
-    // are distinct save owners.  On reload the local copy can be restored
-    // before the persistent handle is visible to the overmap scan.  Reconcile
-    // the same exact lease once, but keep any disagreement fail-closed.
-    for( npc &member : g->all_npcs() ) {
-        collect_claim( member );
+    const auto active = g->all_npcs();
+    for( const auto &reference : active.items ) {
+        if( const auto member = reference.lock() ) {
+            collect_copy( *member );
+        }
     }
-    if( !conflicting_claims.empty() ) {
-        bandit_live_world::quarantine_loaded_local_projection_claims(
-            overmap_buffer.global_state.bandit_live_world, conflicting_claims );
-        return bandit_live_world::local_projection_reconciliation_result::rejected;
-    }
+    const auto read_claim = []( const npc & member ) {
+        const auto &lease =
+            member.get_bandit_live_world_projection_lease();
+        return bandit_live_world::local_projection_claim { member.getID(), lease.site_id,
+                lease.activity_id, lease.owner, lease.generation, lease.handoff_epoch,
+                lease.last_advanced_minutes, member.pos_abs(), !member.is_active(), true,
+                !member.is_dead() };
+    };
     std::vector<bandit_live_world::local_projection_claim> claims;
-    claims.reserve( claims_by_npc.size() );
-    for( const std::pair<const character_id,
-           bandit_live_world::local_projection_claim> &entry : claims_by_npc ) {
-        claims.push_back( entry.second );
+    for( const auto &entry : copies ) {
+        const auto &group = entry.second;
+        if( std::none_of( group.begin(), group.end(), []( const npc * member ) {
+        return member->get_bandit_live_world_projection_lease().present;
+        } ) ) {
+            continue;
+        }
+        auto claim = read_claim( *group.front() );
+        // A living local projection must have its persistent save owner, even
+        // when a distinct loaded copy also claims the identity.
+        bool coherent = group.size() <= 2 && overmap_buffer.find_npc( entry.first );
+        for( const npc *member : group ) {
+            const auto copy = read_claim( *member );
+            coherent &= member->get_bandit_live_world_projection_lease().present &&
+                        claim.site_id == copy.site_id && claim.activity_id == copy.activity_id &&
+                        claim.owner == copy.owner && claim.generation == copy.generation &&
+                        claim.handoff_epoch == copy.handoff_epoch &&
+                        claim.last_advanced_minutes == copy.last_advanced_minutes &&
+                        claim.physical_position == copy.physical_position;
+            claim.all_copies_unloaded &= copy.all_copies_unloaded;
+            claim.all_copies_alive &= copy.all_copies_alive;
+        }
+        if( coherent ) {
+            claims.push_back( claim );
+        } else {
+            // Keep both raw identities.  The operation reconciler rejects the
+            // complete implicated owner, while independent sites still reconcile.
+            for( const npc *member : group ) {
+                claims.push_back( read_claim( *member ) );
+            }
+            if( group.size() == 1 ) {
+                claims.push_back( claim );
+            }
+        }
     }
     std::vector<character_id> retired_old_leases;
+    std::vector<character_id> refreshed_local_leases;
     const auto result = bandit_live_world::reconcile_loaded_local_projections(
                             overmap_buffer.global_state.bandit_live_world, claims,
-                            &retired_old_leases );
-    if( result == bandit_live_world::local_projection_reconciliation_result::rejected ) {
-        return result;
+                            &retired_old_leases, &refreshed_local_leases );
+    // Output IDs belong only to fully validated, committed operations, even
+    // when another operation failed.  Propagate those repairs to all save copies.
+    for( const character_id id : refreshed_local_leases ) {
+        const auto member = overmap_buffer.find_npc( id );
+        if( !member ) {
+            continue;
+        }
+        const auto &old = member->get_bandit_live_world_projection_lease();
+        const auto *site = overmap_buffer.global_state.bandit_live_world.find_site( old.site_id );
+        const auto *outing = site == nullptr ? nullptr : site->active_external_outing();
+        if( outing != nullptr ) {
+            sync_bandit_live_world_projection_lease_copies( *member, {
+                true, site->site_id, outing->activity_id, "local", outing->generation,
+                outing->handoff_epoch, outing->last_advanced_minutes
+            } );
+        }
     }
     // The acknowledged crossing owns the abstract pair now.  Retire the
     // attested old lease from both save owners so a second load is quiet.
@@ -172,9 +198,6 @@ reconcile_loaded_bandit_live_world_projections()
         if( const shared_ptr_fast<npc> member = overmap_buffer.find_npc( id ) ) {
             sync_bandit_live_world_projection_lease_copies(
                 *member, bandit_live_world_projection_lease() );
-        } else if( npc *active = g->find_npc( id ) ) {
-            sync_bandit_live_world_projection_lease_copies(
-                *active, bandit_live_world_projection_lease() );
         }
     }
     return result;
@@ -1164,4 +1187,10 @@ cata_path PATH_INFO::current_dimension_save_path()
 cata_path PATH_INFO::current_dimension_player_save_path()
 {
     return PATH_INFO::current_dimension_save_path() / base64_encode( get_avatar().get_save_id() );
+}
+
+bandit_live_world::local_projection_reconciliation_result
+reconcile_loaded_bandit_live_world_projections_for_test()
+{
+    return reconcile_loaded_bandit_live_world_projections();
 }

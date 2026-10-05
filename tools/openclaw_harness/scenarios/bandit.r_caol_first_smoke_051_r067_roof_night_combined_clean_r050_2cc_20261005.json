@@ -1,0 +1,175 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r_caol_first_smoke_051_r067_roof_night_combined_clean_r050_2cc_20261005",
+  "description": "Focused R051 native nighttime combined smoke and light recipient comparison from a fresh exact R050 bandit-only fixture copy using the accepted 2cc immutable build.",
+  "profile": "r051-roof-night-combined-clean-r050-2cc-20261005",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "added_bandit_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r050_rural_roof": "bandit_only_derivative_of_B",
+    "capabilities.r_caol.r051_night_combined": "fresh_clean_R050_roof_source_at_native_night_with_actual_bandit_camp_recipient_129_149"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-roof-night-combined-clean-r050-2cc-20261005",
+    "fixture": "r050_rural_roof_bandit_only_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "selected-immutable-product-build",
+      "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build_logs/first-smoke-067/immutable-executable/2cc94f295bc4d6e6fbe830a95585fb072838aeab65a3f0b107cd15ef30163b20/cataclysm-tiles",
+      "profile": "r051-roof-night-combined-clean-r050-2cc-20261005",
+      "fixture": "r050_rural_roof_bandit_only_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "ordinary native waits to night, roof access, real fuel pickup/drop, lighter ignition, one 900-turn signal interval, native save and graceful close"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false,
+    "selected_product_build": {
+      "schema": "caol-selected-product-build-v1",
+      "receipt_path": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-6b4619eca343fe63-2cc94f295bc4d6e6fbe830a95585fb072838aeab65a3f0b107cd15ef30163b20-03aca587638cfef4d8e55e579e93e2961f035b4cb3dd54efed36885b039ac587-96f357ff874736e31886dcc2b5784c037e376098eb41e4e8298fa7e02a6379eb.json",
+      "receipt_sha256": "96f357ff874736e31886dcc2b5784c037e376098eb41e4e8298fa7e02a6379eb",
+      "executable_sha256": "2cc94f295bc4d6e6fbe830a95585fb072838aeab65a3f0b107cd15ef30163b20",
+      "product_source_sha256": "03aca587638cfef4d8e55e579e93e2961f035b4cb3dd54efed36885b039ac587"
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_r050_roof_start",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Fresh disposable profile copied from exact untouched 45-file R050 bandit-only fixture; initial native start turn, player position, Safe Mode Off, DEBUG_LS only, ordinary visibility and no pending input verified before gameplay."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_clean_r050_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "native_r051_night_combined_roof_to_camp",
+      "objective": "At the real night-time bandit camp site 129,149, prove ordinary roof brazier smoke and an ordinary exposed, wielded, powered smartphone light are both received in the same useful discovery interval. Prepare/maintain only with existing real-world stock and current native controls. At the endpoint query source packet and exact recipient/admission fields for both sources at this exact camp. Stop on positive combined receipt or first concrete refusal/divergence.",
+      "proof_targets": [
+        "Exact 45-file R050 template tree and accepted immutable 2cc/source/receipt on same-run World; actual build/run/pending state after World.",
+        "Current World at native night with Safe Mode Off, DEBUG_LS only, ordinary view; current fire, fuel and roof terrain physically maintained.",
+        "Ordinary phone actually exposed/wielded/active and powered; no hidden-pocket emitter.",
+        "Source-bound smoke and light packet plus actual recipient/admission fields at staffed bandit camp site 129,149 in the same useful discovery interval.",
+        "Largest currently supported interruptible safe wait covering one complete source discovery interval; native save and graceful close at a useful boundary."
+      ],
+      "invariants": [
+        "No debug lamp/fuel/terrain/camp/knowledge edits, forced weather, seeded report/dispatch, fabricated signal or fixture/save rewrite.",
+        "Use ordinary roof brazier/fire and exposed wielded powered smartphone only; never relight an already burning brazier.",
+        "No scout, payment, contact, assault, raid, journey, report or death claim."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "authority": [
+        "Owner-authorized R051 night-time combined source-to-recipient comparison using ordinary native actions only."
+      ],
+      "input": [
+        "Sole Luna input owner; collect pending requests, inspect interruptions and resume only from current advertised controls."
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_r050_roof_start",
+      "bind_same_run_clean_r050_world"
+    ],
+    "production_behavior": [
+      "native_r051_night_combined_roof_to_camp"
+    ],
+    "terminal_persistence": [
+      "native_r051_night_combined_roof_to_camp"
+    ],
+    "artifact_verdict": [
+      "native_r051_night_combined_roof_to_camp"
+    ],
+    "disallowed_shortcuts": [
+      "native_r051_night_combined_roof_to_camp"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "At actual native night, determine whether ordinary smoke from the maintained roof brazier and light from an exposed wielded powered smartphone are both received by the actual staffed bandit camp at 129,149 in one useful discovery interval.",
+    "failure_rule": "Inspect the exact camp recipient/admission fields as well as source packets. A source packet alone is not reception. Preserve the exact concrete consumer reason if one channel refuses. Do not infer reception from another site or from historical runs."
+  },
+  "fixture": "r050_rural_roof_bandit_only_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true
+}

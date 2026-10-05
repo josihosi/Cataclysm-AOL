@@ -9,6 +9,7 @@ just because a log/artifact pattern matched.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -690,6 +691,132 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertEqual(provisional["status"], "provisional_diagnosis_allowed")
         self.assertEqual(provisional["evidence_ceiling"], "provisional harness diagnosis only")
         self.assertIn("revalidate", provisional["next_action"])
+
+    def test_selected_immutable_product_receipt_survives_changed_worktree_and_rejects_mismatches(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            executable = root / "published" / "cataclysm-tiles"
+            executable.parent.mkdir()
+            executable.write_bytes(b"immutable selected binary")
+            executable_sha256 = hashlib.sha256(executable.read_bytes()).hexdigest()
+            product_source_sha256 = "d" * 64
+            captured_head = "8543f3d8dc"
+            receipt = {
+                "schema": "caol-product-build-receipt-v1",
+                "executable_path": str(executable.resolve()),
+                "executable_sha256": executable_sha256,
+                "product_source_sha256": product_source_sha256,
+                "captured_head": captured_head,
+            }
+            receipt_path = root / "published-receipt.json"
+            receipt_bytes = json.dumps(receipt, sort_keys=True).encode("utf-8")
+            receipt_path.write_bytes(receipt_bytes)
+            selected = {
+                "schema": "caol-selected-product-build-v1",
+                "receipt_path": "published-receipt.json",
+                "receipt_sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+                "executable_sha256": executable_sha256,
+                "product_source_sha256": product_source_sha256,
+            }
+            with patch("startup_harness.repo_root", return_value=root):
+                archived_receipt = harness.product_build_receipt_archive_path(
+                    executable, executable_sha256, product_source_sha256,
+                    hashlib.sha256(receipt_bytes).hexdigest(),
+                )
+            archived_receipt.parent.mkdir(parents=True, exist_ok=True)
+            archived_receipt.write_bytes(receipt_bytes)
+            version = subprocess.CompletedProcess(
+                args=[], returncode=0,
+                stdout=f"Cataclysm Dark Days Ahead: {captured_head}+SDL3\n", stderr="",
+            )
+            patches = (
+                patch("startup_harness.repo_root", return_value=root),
+                patch("startup_harness.subprocess.run", return_value=version),
+                patch("startup_harness.current_head_short", return_value=captured_head),
+                patch("startup_harness.runtime_relevant_changes_since", return_value=([], "")),
+                patch("startup_harness.runtime_relevant_worktree_changes",
+                      return_value=([], "")),
+                patch("startup_harness.product_source_binding", return_value={
+                    "ok": True, "sha256": "c" * 64,
+                }),
+            )
+            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+                accepted = executable_source_readiness(executable, selected_product_build=selected)
+                ambient_same_name = root / "ambient" / executable.name
+                ambient_same_name.parent.mkdir()
+                ambient_same_name.write_bytes(b"different binary at same executable basename")
+                wrong_executable = executable_source_readiness(
+                    ambient_same_name, selected_product_build=selected,
+                )
+                wrong_source = executable_source_readiness(
+                    executable,
+                    selected_product_build={**selected, "product_source_sha256": "e" * 64},
+                )
+                wrong_receipt = executable_source_readiness(
+                    executable,
+                    selected_product_build={**selected, "receipt_sha256": "f" * 64},
+                )
+                provisional_wrong_receipt = executable_source_readiness(
+                    executable, isolated_harness_diagnosis=True,
+                    selected_product_build={**selected, "receipt_sha256": "f" * 64},
+                )
+                current_source_only = executable_source_readiness(executable)
+
+            self.assertEqual(accepted["status"], "ready")
+            self.assertEqual(accepted["reason"], "selected_immutable_product_build")
+            self.assertEqual(accepted["selected_product_build"]["product_source_sha256"], product_source_sha256)
+            self.assertEqual(wrong_executable["status"], "build_required")
+            self.assertEqual(wrong_executable["reason"], "selected_immutable_product_build_invalid")
+            self.assertEqual(wrong_source["status"], "build_required")
+            self.assertEqual(wrong_source["reason"], "selected_immutable_product_build_invalid")
+            self.assertIn("source hash does not match", wrong_source["product_build_receipt"]["error"])
+            self.assertEqual(wrong_receipt["status"], "build_required")
+            self.assertEqual(wrong_receipt["reason"], "selected_immutable_product_build_invalid")
+            self.assertIn("receipt hash does not match", wrong_receipt["product_build_receipt"]["error"])
+            self.assertEqual(provisional_wrong_receipt["status"], "provisional_diagnosis_allowed")
+            self.assertEqual(provisional_wrong_receipt["evidence_ceiling"], "provisional harness diagnosis only")
+            self.assertIn("revalidate", provisional_wrong_receipt["next_action"])
+            self.assertEqual(current_source_only["status"], "ready")
+            self.assertEqual(current_source_only["reason"], "source_matching_executable")
+
+    def test_runtime_binding_preserves_and_revalidates_selected_product_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            executable = root / "selected" / "cataclysm-tiles"
+            executable.parent.mkdir()
+            executable.write_bytes(b"selected executable")
+            executable_sha256 = hashlib.sha256(executable.read_bytes()).hexdigest()
+            receipt_path = root / "selected-receipt.json"
+            receipt = {
+                "schema": "caol-product-build-receipt-v1",
+                "executable_path": str(executable.resolve()),
+                "executable_sha256": executable_sha256,
+                "product_source_sha256": "a" * 64,
+                "captured_head": "8543f3d8dc",
+            }
+            receipt_bytes = json.dumps(receipt, sort_keys=True).encode("utf-8")
+            receipt_path.write_bytes(receipt_bytes)
+            selected = {
+                "schema": "caol-selected-product-build-v1",
+                "receipt_path": receipt_path.name,
+                "receipt_sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+                "executable_sha256": executable_sha256,
+                "product_source_sha256": "a" * 64,
+            }
+            runtime_source = {"ok": True, "sha256": "b" * 64,
+                              "worktree_changes": [], "untracked_paths": []}
+            with patch("startup_harness.repo_root", return_value=root), \
+                    patch("startup_harness.runtime_source_binding", return_value=runtime_source):
+                binding = build_runtime_binding(executable, selected_product_build=selected)
+                compared = compare_runtime_binding(binding)
+                receipt_path.write_text("{}", encoding="utf-8")
+                changed_receipt = compare_runtime_binding(binding)
+
+            self.assertTrue(binding["ok"])
+            self.assertEqual(binding["selected_product_build"]["receipt_sha256"], selected["receipt_sha256"])
+            self.assertEqual(compared["status"], "matched")
+            self.assertEqual(changed_receipt["status"], "mismatch")
+            self.assertIn("selected_product_build:", changed_receipt["error"])
 
     def test_matching_dirty_build_is_blocked_when_runtime_worktree_is_dirty(self) -> None:
         payload = {

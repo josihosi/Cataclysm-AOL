@@ -150,6 +150,32 @@ def read_semantic_step_trace(
                 if not isinstance(catalog, Mapping) or catalog.get("run_id") != run_id:
                     return [], "contamination"
                 normalized["valid_actions"] = catalog.get("valid_actions")
+            reference = normalized.get("payload_ref")
+            if reference is not None:
+                # Large current Trade facts stay lossless and bound to this
+                # exact native owner/frame, outside the bounded wire channel.
+                if not isinstance(reference, Mapping) or normalized.get("payload") != {}:
+                    return [], "invalid_surface_payload_reference"
+                relative = reference.get("path")
+                if not isinstance(relative, str) or Path(relative).is_absolute():
+                    return [], "invalid_surface_payload_reference"
+                catalog_path = Path(run_dir) / relative
+                if not _owned_path(catalog_path, Path(run_dir)):
+                    return [], "escaped_authority"
+                try:
+                    if catalog_path.stat().st_size != reference.get("bytes"):
+                        return [], "invalid_surface_payload_reference"
+                    catalog_bytes = catalog_path.read_bytes()
+                    if hashlib.sha256(catalog_bytes).hexdigest() != reference.get("sha256"):
+                        return [], "invalid_surface_payload_reference"
+                    catalog = json.loads(catalog_bytes)
+                except (OSError, UnicodeError, ValueError):
+                    return [], "invalid_surface_payload_reference"
+                if not isinstance(catalog, Mapping) or catalog.get("run_id") != run_id:
+                    return [], "contamination"
+                if any(catalog.get(key) != normalized.get(key) for key in ("surface_id", "frame_id", "kind")):
+                    return [], "invalid_surface_payload_reference"
+                normalized["payload"] = catalog.get("payload")
             schema_version = normalized.get("schema_version")
             surface_id = normalized.get("surface_id")
             kind = normalized.get("kind")

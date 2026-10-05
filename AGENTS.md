@@ -1,4 +1,4 @@
-Current model direction, 2026-09-23: only GPT-6 Sol, GPT-6 Luna and GPT-6 Astra for new work. Coordinator GPT-6 Sol low; Luna workers preferred and mandatory for live harness playtests. No GPT-5.6 models or Terra. This supersedes historical model guidance below. Existing records remain evidence, not dispatch choices.
+Current model direction, 2026-09-30: only GPT-6.1 Sol, GPT-6 Luna and GPT-6 Astra for new work. Coordinator GPT-6.1 Sol low; Luna workers preferred and mandatory for live harness playtests. No GPT-5.6 models or Terra. This supersedes historical model guidance below. Existing records remain evidence, not dispatch choices.
 
 # Workspace command and evidence habits
 

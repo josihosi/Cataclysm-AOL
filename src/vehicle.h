@@ -60,6 +60,7 @@ class JsonObject;
 class JsonOut;
 class monster;
 class veh_menu;
+class mapbuffer;
 class vehicle;
 class vpart_info;
 class vpart_variant;
@@ -862,6 +863,15 @@ class vpart_display
 class vehicle
 {
     private:
+        friend class mapbuffer;
+        // Native copy/move assignment replaces geometry, not physical ownership.
+        // refresh() updates the destination's index; a moved source unregisters
+        // its own remaining footprint independently.
+        struct resident_index_link {
+            mapbuffer *owner = nullptr;
+            resident_index_link &operator=( const resident_index_link & ) { return *this; }
+        };
+        resident_index_link resident_index; // NOLINT(cata-serialize)
         // TODO: Get rid of untyped overload.
         // Miscellaneous key/value pairs.
         global_variables::impl_t values;

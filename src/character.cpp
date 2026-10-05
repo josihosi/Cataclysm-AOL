@@ -4600,7 +4600,7 @@ int Character::get_shout_volume() const
     return noise;
 }
 
-void Character::shout( std::string msg, bool order )
+int Character::shout( std::string msg, bool order )
 {
     int base = 10;
     std::string shout;
@@ -4609,7 +4609,7 @@ void Character::shout( std::string msg, bool order )
     if( has_trait( trait_PROF_FOODP ) && !( is_wearing( itype_foodperson_mask ) ||
                                             is_wearing( itype_foodperson_mask_on ) ) ) {
         add_msg_if_player( m_warning, _( "You try to shout, but you have no face!" ) );
-        return;
+        return 0;
     }
 
     // Mutations make shouting louder, they also define the default message
@@ -4661,6 +4661,7 @@ void Character::shout( std::string msg, bool order )
     sounds::sound( pos_bub(), noise, order ? sounds::sound_t::order : sounds::sound_t::alert, msg,
                    false,
                    "shout", shout );
+    return std::max( 0, noise );
 }
 
 void Character::signal_nemesis()

@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R040 selected-ID11 continuation determines whether the saved fleeing actor physically exits the city roof by the real ladder and routes toward camp, preserving actions, health and source-attributed damage.",
+  "material_proof": "Exact saved turn5345813 copy and 61-file manifest; fresh source-bound build and frozen runtime; same-run World and hostile:2/ID11 identity, Safe Off and DEBUG_LS; new run-bound ID11 trace scope; exact native actions, physical positions/z, ladder crossing, path, HP, incoming damage/death attribution and final route state; final saved copy and all process exit evidence.",
+  "current_uncertainty": "Whether ID11 exits the roof by the real ladder and routes to camp after the prior source-driven flee/home directive; whether any incoming damage is named to a particular attacker.",
+  "material_contradiction": [
+    "checkpoint, run binding, effective profile or trace scope differs from declared ID11 continuation",
+    "trace is incomplete/truncated or fails to cover the first resumed turn without explicit limitation",
+    "flee decision/goal is reported as physical descent or home arrival without position/z evidence",
+    "claimed damage or attacker lacks direct native attribution",
+    "save copy, final state, or owned process exit cannot be verified"
+  ],
+  "forbidden_shortcuts": [
+    "signal/report/roster/route/actor/HP/combat injection",
+    "autoattack, count repeat, clairvoyance or hostile teleport",
+    "raw save rewriting after install",
+    "merging prior-run trace with current trace",
+    "treating owner historical statement as current-run proof"
+  ],
+  "honest_stop_conditions": [
+    "first complete physically observed withdrawal/home outcome supported by actor and route evidence",
+    "or first concrete source-bound divergence with current checkpoint and process cleanup evidence"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -16,9 +16,12 @@ import traceback
 import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from scenario_registry import ManifestValidationError, lint_manifest, validate_manifest
+from scenario_registry import (
+    ManifestValidationError, lint_manifest, saved_world_continuation_steps, validate_manifest,
+)
 from scenario_registry_store import (
     BindingAdapters,
+    _select_registry_bootstrap_candidate,
     RegistryBootstrapToken,
     RegistryLaunchToken,
     RegistryRepairToken,
@@ -404,12 +407,22 @@ def production_binding_adapters() -> BindingAdapters:
 
 def _current_bootstrap_revalidation_facts(declaration: Mapping[str, Any]) -> Mapping[str, Any]:
     """Observe the live owners used by a stale-route first-run release."""
-    requirements = declaration.get("runtime_contract", {}).get("requirements", {})
+    runtime_contract = declaration.get("runtime_contract", {})
+    requirements = runtime_contract.get("requirements", {}) \
+        if isinstance(runtime_contract, Mapping) else {}
     declared_executable = str(requirements.get("executable", "")).strip() \
                           if isinstance(requirements, Mapping) else ""
     executable = (startup_harness.repo_root() / declared_executable).resolve() \
                  if declared_executable else startup_harness.detect_executable()
-    runtime = startup_harness.build_runtime_binding(executable)
+    selected_product_build = runtime_contract.get("selected_product_build") \
+        if isinstance(runtime_contract, Mapping) else None
+    runtime = (
+        startup_harness.build_runtime_binding(executable)
+        if not isinstance(selected_product_build, Mapping) else
+        startup_harness.build_runtime_binding(
+            executable, selected_product_build=selected_product_build,
+        )
+    )
 
     def current_payload(kind: str, name_key: str, profile_key: str, resolver: Any) -> Mapping[str, Any]:
         name = str(declaration.get(name_key, "")).strip()
@@ -478,6 +491,7 @@ def _current_source_executable_readiness(
     *,
     isolated_harness_diagnosis: bool = False,
     executable: str = "",
+    selected_product_build: Mapping[str, Any] | None = None,
 ) -> Mapping[str, Any]:
     """Observe one actionable source/executable status without launching gameplay."""
     executable_text = str(executable).strip()
@@ -496,10 +510,12 @@ def _current_source_executable_readiness(
                 "evidence_ceiling": "none until source-matching executable revalidation",
                 "comparison_error": str(exc),
             })
-    readiness = dict(startup_harness.executable_source_readiness(
-        candidate,
-        isolated_harness_diagnosis=isolated_harness_diagnosis,
-    ))
+    readiness_options: Dict[str, Any] = {
+        "isolated_harness_diagnosis": isolated_harness_diagnosis,
+    }
+    if selected_product_build is not None:
+        readiness_options["selected_product_build"] = selected_product_build
+    readiness = dict(startup_harness.executable_source_readiness(candidate, **readiness_options))
     return _with_build_entrypoint(readiness)
 
 
@@ -954,16 +970,6 @@ def _dispatch_migration_item(
         )
         return {"source_path": current.source_path, "status": terminal.status, "action": "imported"}
     scenario_name = source_path.stem
-    if startup_harness.scenario_path(scenario_name).resolve() != source_path.resolve():
-        terminal = _quarantine_migration_terminal(
-            connection,
-            migration_run_id=migration_run_id,
-            source_path=source_path,
-            source_sha256=source_sha256,
-            disposition="failed",
-            reason="canonical_probe_source_mismatch",
-        )
-        return {"source_path": current.source_path, "status": terminal.status, "action": "failed"}
     current = claim_migration_item_launch(
         connection,
         migration_run_id=migration_run_id,
@@ -977,6 +983,8 @@ def _dispatch_migration_item(
         "--profile",
         profile,
     ])
+    probe_namespace.registry_selected_source_path = str(source_path.resolve())
+    probe_namespace.registry_selected_source_sha256 = source_sha256
     probe_namespace.registry_migration_receipt = json.dumps(receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     probe_namespace.registry_post_finalize_hook = _migration_post_finalize_reconcile(receipt)
     result = startup_harness.run_probe_mode(probe_namespace)
@@ -1195,10 +1203,132 @@ def _load_query_request(args: argparse.Namespace) -> Mapping[str, Any]:
     return value
 
 
-def _selected_executable(scenario: str) -> Path:
-    declaration = startup_harness.load_scenario(scenario)
+def _load_selected_scenario(selection: Any) -> Dict[str, Any]:
+    """Read the exact source checked by the selected registry token."""
+    source_path = str(getattr(selection, "source_path", "") or "")
+    source_sha256 = str(getattr(selection, "source_sha256", "") or "")
+    if not source_path or not source_sha256:
+        raise ScenarioRegistryStoreError("Selected scenario source path or hash is missing")
+    try:
+        return startup_harness.load_scenario(
+            selection.scenario, source_path=source_path, expected_sha256=source_sha256,
+        )
+    except (OSError, SystemExit, ValueError) as exc:
+        raise ScenarioRegistryStoreError(f"Selected scenario source is unavailable: {exc}") from exc
+
+
+def _selected_declaration(scenario: str | Any) -> Dict[str, Any]:
+    return (startup_harness.load_scenario(scenario) if isinstance(scenario, str)
+            else _load_selected_scenario(scenario))
+
+
+def _selected_executable(scenario: str | Any) -> Path:
+    declaration = _selected_declaration(scenario)
     declared = declaration.get("runtime_contract", {}).get("requirements", {}).get("executable", "")
     return (startup_harness.repo_root() / declared).resolve() if declared else startup_harness.detect_executable()
+
+
+def _selected_product_build(scenario: str | Any) -> Mapping[str, Any] | None:
+    declaration = _selected_declaration(scenario)
+    runtime_contract = declaration.get("runtime_contract", {})
+    selected = runtime_contract.get("selected_product_build") if isinstance(runtime_contract, Mapping) else None
+    return dict(selected) if isinstance(selected, Mapping) else None
+
+
+def _selected_readiness_options(scenario: str | Any) -> Dict[str, Any]:
+    if not isinstance(scenario, str) and not (
+            str(getattr(scenario, "source_path", "")).strip() and
+            str(getattr(scenario, "source_sha256", "")).strip()):
+        return {}
+    selected = _selected_product_build(scenario)
+    return {"selected_product_build": selected} if selected is not None else {}
+
+
+def _selected_runtime_binding(executable: Path, scenario: str | Any) -> Dict[str, Any]:
+    selected = _selected_product_build(scenario)
+    if selected is None:
+        return startup_harness.build_runtime_binding(executable)
+    return startup_harness.build_runtime_binding(executable, selected_product_build=selected)
+
+
+def _bootstrap_selected_executable(connection: sqlite3.Connection, request: Any,
+                                   scenario_id: str | None) -> tuple[Path, str, str, Mapping[str, Any] | None] | None:
+    """Read the same eligible manifest that token issuance will bind."""
+    candidate = _select_registry_bootstrap_candidate(connection, request, scenario_id=scenario_id)
+    if candidate is None:
+        return None
+    manifest = candidate.explanation.get("manifest", {})
+    if not isinstance(manifest, Mapping):
+        raise ScenarioRegistryStoreError("bootstrap selected manifest is missing")
+    source_path = str(manifest.get("source_path", ""))
+    source_sha256 = str(manifest.get("sha256", ""))
+    if not source_path or not source_sha256:
+        raise ScenarioRegistryStoreError("bootstrap selected source identity is missing")
+    selected = RegistryBootstrapToken("", True, "inspected", Path(source_path).stem,
+                                      source_path, {}, source_sha256)
+    return (_selected_executable(selected), source_path, source_sha256,
+            _selected_product_build(selected))
+
+
+def _bind_selected_probe_source(namespace: argparse.Namespace, selection: Any) -> argparse.Namespace:
+    declaration = _load_selected_scenario(selection)
+    namespace.registry_selected_source_path = declaration["path"]
+    namespace.registry_selected_source_sha256 = declaration["_scenario_registry"]["source"]["sha256"]
+    selected_product_build = _selected_product_build(selection)
+    if selected_product_build is not None:
+        namespace.registry_selected_product_build = selected_product_build
+    return namespace
+
+
+def _selected_saved_world_defaults(selection: Any, *, post_relaunch_continuation: bool,
+                                   saved_world_snapshot: str, profile_override: str
+                                   ) -> tuple[bool, str, str]:
+    """Reuse setup from the hash-bound selected declaration, not another handoff store."""
+    scenario = _load_selected_scenario(selection)
+    declared = str(scenario.get("saved_world_snapshot", "") or "").strip()
+    snapshot = str(saved_world_snapshot or declared).strip()
+    profile = str(profile_override or scenario.get("profile", "") or "").strip()
+    return bool(post_relaunch_continuation or declared), snapshot, profile
+
+
+def _preflight_selected_save_setup(selection: Any, args: argparse.Namespace) -> None:
+    """Check the selected copy before starting a bridge or claiming its token."""
+    continuation, snapshot, profile = _selected_saved_world_defaults(
+        selection, post_relaunch_continuation=bool(getattr(args, "post_relaunch_continuation", False)),
+        saved_world_snapshot=str(getattr(args, "saved_world_snapshot", "") or ""),
+        profile_override=str(getattr(args, "profile", "") or ""))
+    scenario = _load_selected_scenario(selection)
+    world = str(scenario.get("world", "") or "").strip()
+    replace = bool(scenario.get("replace_existing_worlds", False))
+    destination = startup_harness.save_dir_for_profile(profile) / world
+    if continuation:
+        try:
+            saved_world_continuation_steps(scenario.get("steps"), scenario.get("post_relaunch"))
+        except ValueError as exc:
+            raise ScenarioRegistryStoreError(str(exc)) from exc
+        if not snapshot:
+            raise ScenarioRegistryStoreError(
+                "saved continuation requires saved_world_snapshot in the selected declaration "
+                "or --saved-world-snapshot; no token or game input was consumed")
+        source = Path(snapshot).expanduser().resolve()
+        if not source.is_dir():
+            raise ScenarioRegistryStoreError(f"selected saved-world snapshot is unavailable: {source}")
+        if not world:
+            raise ScenarioRegistryStoreError("selected saved-world snapshot requires a world")
+        if destination.exists() and not replace:
+            source_hash, source_error = startup_harness.sha256_tree(source)
+            target_hash, target_error = startup_harness.sha256_tree(destination)
+            if source_error or target_error or source_hash != target_hash:
+                raise ScenarioRegistryStoreError(
+                    f"profile world already contains different data: {destination}; "
+                    "use a fresh --profile or an explicitly selected replacement; no overwrite or token claim")
+        args.post_relaunch_continuation = True
+        args.saved_world_snapshot = str(source)
+    elif scenario.get("fixture") and destination.exists() and not replace:
+        raise ScenarioRegistryStoreError(
+            f"fixture profile world already exists: {destination}; use a fresh --profile "
+            "or a saved-world continuation; no overwrite or token claim")
+    args.profile = profile
 
 
 def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
@@ -1206,15 +1336,12 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
         cockpit_live_session: bool = False, profile_override: str = "",
         saved_world_snapshot: str = "") -> argparse.Namespace:
     """Adapt one validated registry selection into the ordinary probe parser."""
-    source_path = Path(selection.source_path).resolve()
-    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
-    if canonical_path != source_path:
-        raise ScenarioRegistryStoreError(
-            "Selected scenario source is not the canonical probe manifest: "
-            f"{source_path}"
-        )
+    scenario = _load_selected_scenario(selection)
     # The full report is retained and ingested from disk, as for bootstrap
     # and repair launches. Do not echo all native artifacts to the worker.
+    post_relaunch_continuation, saved_world_snapshot, profile_override = _selected_saved_world_defaults(
+        selection, post_relaunch_continuation=post_relaunch_continuation,
+        saved_world_snapshot=saved_world_snapshot, profile_override=profile_override)
     command = ["probe", selection.scenario, "--compact-stdout"]
     if profile_override:
         command.extend(["--profile", profile_override])
@@ -1222,12 +1349,11 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
         command.extend(["--fixture", "", "--post-relaunch-continuation"])
         if saved_world_snapshot:
             command.extend(["--saved-world-snapshot", saved_world_snapshot])
-    scenario = startup_harness.load_scenario(selection.scenario)
     if bool(scenario.get("replace_existing_worlds", False)):
         command.append("--replace-existing-worlds")
     if cockpit_live_session:
         command.append("--cockpit-live-session")
-    return startup_harness.build_parser().parse_args(command)
+    return _bind_selected_probe_source(startup_harness.build_parser().parse_args(command), selection)
 
 
 def _registry_bootstrap_probe_namespace(
@@ -1235,18 +1361,15 @@ def _registry_bootstrap_probe_namespace(
     post_relaunch_continuation: bool = False, saved_world_snapshot: str = "",
     profile_override: str = "",
 ) -> argparse.Namespace:
-    """Adapt a separately authorized bootstrap run into the same canonical probe route."""
-    source_path = Path(selection.source_path).resolve()
-    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
-    if canonical_path != source_path:
-        raise ScenarioRegistryStoreError(
-            "Bootstrap scenario source is not the canonical probe manifest: "
-            f"{source_path}"
-        )
+    """Adapt a separately authorized bootstrap run to its selected source."""
+    scenario = _load_selected_scenario(selection)
     # A detached bridge owns the child's stdout.  The terminal probe report is
     # already immutable on disk and ingested by the post-finalize hook; emit
     # only its bounded index card so a completed child cannot block on an
     # unread stdout pipe after its correlated run.finish reply was persisted.
+    post_relaunch_continuation, saved_world_snapshot, profile_override = _selected_saved_world_defaults(
+        selection, post_relaunch_continuation=post_relaunch_continuation,
+        saved_world_snapshot=saved_world_snapshot, profile_override=profile_override)
     command = ["probe", selection.scenario, "--compact-stdout"]
     if profile_override:
         command.extend(["--profile", profile_override])
@@ -1254,9 +1377,11 @@ def _registry_bootstrap_probe_namespace(
         command.extend(["--fixture", "", "--post-relaunch-continuation"])
         if saved_world_snapshot:
             command.extend(["--saved-world-snapshot", saved_world_snapshot])
+    if bool(scenario.get("replace_existing_worlds", False)):
+        command.append("--replace-existing-worlds")
     if cockpit_live_session:
         command.append("--cockpit-live-session")
-    return startup_harness.build_parser().parse_args(command)
+    return _bind_selected_probe_source(startup_harness.build_parser().parse_args(command), selection)
 
 
 def _registry_repair_probe_namespace(
@@ -1264,16 +1389,13 @@ def _registry_repair_probe_namespace(
     post_relaunch_continuation: bool = False, saved_world_snapshot: str = "",
     profile_override: str = "",
 ) -> argparse.Namespace:
-    """Adapt a separately authorized repair run into the same canonical probe route."""
-    source_path = Path(selection.source_path).resolve()
-    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
-    if canonical_path != source_path:
-        raise ScenarioRegistryStoreError(
-            "Repair scenario source is not the canonical probe manifest: "
-            f"{source_path}"
-        )
+    """Adapt a separately authorized repair run to its selected source."""
+    scenario = _load_selected_scenario(selection)
     # See the bootstrap counterpart: the file bridge persists correlated
     # request replies, while the post-session report must stay bounded.
+    post_relaunch_continuation, saved_world_snapshot, profile_override = _selected_saved_world_defaults(
+        selection, post_relaunch_continuation=post_relaunch_continuation,
+        saved_world_snapshot=saved_world_snapshot, profile_override=profile_override)
     command = ["probe", selection.scenario, "--compact-stdout"]
     if profile_override:
         command.extend(["--profile", profile_override])
@@ -1281,9 +1403,11 @@ def _registry_repair_probe_namespace(
         command.extend(["--fixture", "", "--post-relaunch-continuation"])
     if saved_world_snapshot:
         command.extend(["--saved-world-snapshot", saved_world_snapshot])
+    if bool(scenario.get("replace_existing_worlds", False)):
+        command.append("--replace-existing-worlds")
     if cockpit_live_session:
         command.append("--cockpit-live-session")
-    return startup_harness.build_parser().parse_args(command)
+    return _bind_selected_probe_source(startup_harness.build_parser().parse_args(command), selection)
 
 
 def _registry_post_finalize_ingest(receipt: str) -> Any:
@@ -1772,12 +1896,7 @@ def _repair_bridge_binding_id(selection: RegistryRepairToken, repair_details: Ma
 
 def _declared_pre_descriptor_prefix(selection: Any) -> list[dict[str, Any]]:
     """Return only the scenario-owned adaptive stages allowed before live entry."""
-    try:
-        scenario = json.loads(Path(selection.source_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ScenarioRegistryStoreError("bootstrap scenario declaration is unavailable") from exc
-    if not isinstance(scenario, Mapping):
-        raise ScenarioRegistryStoreError("bootstrap scenario declaration is malformed")
+    scenario = _load_selected_scenario(selection)
     declared = scenario.get("cockpit_pre_descriptor_bootstrap")
     if declared is None:
         return []
@@ -1832,9 +1951,10 @@ def _declared_pre_descriptor_prefix(selection: Any) -> list[dict[str, Any]]:
     return result
 
 
-def _scenario_requires_bound_live_bridge(scenario_name: str) -> bool:
+def _scenario_requires_bound_live_bridge(scenario_name: str | Any) -> bool:
     """Identify a selected scenario whose public owner needs a live stdin channel."""
-    scenario = startup_harness.load_scenario(scenario_name)
+    scenario = (startup_harness.load_scenario(scenario_name) if isinstance(scenario_name, str)
+                else _load_selected_scenario(scenario_name))
     initial_live = any(
         isinstance(step, Mapping) and step.get("kind") == "cockpit_live_session"
         for step in scenario.get("steps", [])
@@ -1851,12 +1971,7 @@ def _declared_live_session_reentries(
     selection: Any, *, post_relaunch_continuation: bool = False,
 ) -> int:
     """Count only cockpit sessions that follow the bridge's initial session."""
-    try:
-        scenario = json.loads(Path(selection.source_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ScenarioRegistryStoreError("live bridge scenario declaration is unavailable") from exc
-    if not isinstance(scenario, Mapping):
-        raise ScenarioRegistryStoreError("live bridge scenario declaration is malformed")
+    scenario = _load_selected_scenario(selection)
     post_relaunch = scenario.get("post_relaunch")
     if post_relaunch is None:
         return 0
@@ -1956,8 +2071,11 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         # executable.  Checking the ambient default here would reject that
         # ready selection before its launch path gets to validate the exact
         # declared binary.
-        selected_executable = _selected_executable( selection.scenario )
-        readiness = _current_source_executable_readiness( executable=str( selected_executable ) )
+        selected_executable = _selected_executable( selection )
+        readiness = _current_source_executable_readiness(
+            executable=str(selected_executable),
+            **_selected_readiness_options(selection),
+        )
         if readiness.get("status") != "ready":
             # Do this before starting the bridge, so an executable that cannot
             # prove the current product source never strands or consumes a
@@ -1973,13 +2091,14 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
                 "source_executable_readiness": dict(readiness),
             }, stream=sys.stderr)
             return 1
-        if not _scenario_requires_bound_live_bridge(selection.scenario):
+        if not _scenario_requires_bound_live_bridge(selection):
             _write_result({"ok": False, "command": args.command,
                            "error": "selected scenario has no live cockpit session"}, stream=sys.stderr)
             return 1
     finally:
         connection.close()
     try:
+        _preflight_selected_save_setup(selection, args)
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
         initial_post_relaunch_continuation = bool(getattr(args, "post_relaunch_continuation", False))
         session_reentries = _declared_live_session_reentries(
@@ -2090,6 +2209,7 @@ def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path)
         connection.close()
 
     try:
+        _preflight_selected_save_setup(selection, args)
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
         session_reentries = _declared_live_session_reentries(
             selection, post_relaunch_continuation=bool(getattr(args, "post_relaunch_continuation", False))
@@ -2213,6 +2333,7 @@ def _launch_repair_file_bridge(args: argparse.Namespace, registry_path: Path) ->
     finally:
         connection.close()
     try:
+        _preflight_selected_save_setup(selection, args)
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
         session_reentries = _declared_live_session_reentries(
             selection, post_relaunch_continuation=bool(getattr(args, "post_relaunch_continuation", False))
@@ -2603,7 +2724,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ranked = evaluated.get("ranked_scenario_ids", []) \
                     if isinstance(evaluated, Mapping) else []
                 selected_id = str(ranked[0]).strip() if isinstance(ranked, Sequence) and ranked else ""
-                selected_name = ""
+                selected_manifest: Mapping[str, Any] | None = None
                 candidates = stored_evaluation.get("candidates", []) \
                     if isinstance(stored_evaluation, Mapping) else []
                 if isinstance(candidates, Sequence):
@@ -2612,30 +2733,71 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 str(candidate.get("scenario_id", "")).strip() == selected_id:
                             explanation = candidate.get("explanation", {})
                             manifest = explanation.get("manifest", {}) if isinstance(explanation, Mapping) else {}
-                            selected_name = str(manifest.get("name", "")).strip() \
-                                if isinstance(manifest, Mapping) else ""
+                            selected_manifest = manifest if isinstance(manifest, Mapping) else None
                             break
-                readiness = _current_source_executable_readiness(
-                    isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
-                    **({"executable": str(_selected_executable(selected_name))} if selected_name else {}),
-                )
+                readiness_options: Dict[str, Any] = {
+                    "isolated_harness_diagnosis": bool(args.isolated_harness_diagnosis),
+                }
+                if selected_manifest is not None:
+                    selected_stub = RegistryBootstrapToken(
+                        "", True, "inspected",
+                        Path(str(selected_manifest.get("source_path", ""))).stem,
+                        str(selected_manifest.get("source_path", "")), {},
+                        str(selected_manifest.get("sha256", "")),
+                    )
+                    if selected_stub.source_path and selected_stub.source_sha256:
+                        selected_executable = _selected_executable(selected_stub)
+                        readiness_options["executable"] = str(selected_executable)
+                        readiness_options.update(_selected_readiness_options(selected_stub))
+                readiness = _current_source_executable_readiness(**readiness_options)
                 result = _apply_source_readiness_to_query(query_result, readiness)
                 result["next_action"] = _query_launch_action(result, args, registry_path)
             elif args.command == "registry-bootstrap":
-                runtime_binding = startup_harness.build_runtime_binding(
-                    startup_harness.detect_executable()
-                )
-                if not runtime_binding.get("ok"):
-                    raise ScenarioRegistryStoreError(
-                        "bootstrap runtime binding unavailable: "
-                        + str(runtime_binding.get("error", "unknown error"))
-                    )
-                result = asdict(issue_registry_bootstrap_token(
-                    connection,
-                    parse_registry_query_request(_load_query_request(args)),
-                    runtime_binding=runtime_binding,
-                    scenario_id=str(args.scenario_id or "").strip() or None,
-                ))
+                request = parse_registry_query_request(_load_query_request(args))
+                scenario_id = str(args.scenario_id or "").strip() or None
+                selected = _bootstrap_selected_executable(connection, request, scenario_id)
+                if selected is None:
+                    result = asdict(RegistryBootstrapToken(
+                        "", False, "query_has_no_active_compatible_manifest"))
+                else:
+                    executable, source_path, source_sha256, selected_product_build = selected
+                    readiness_options = {"executable": str(executable)}
+                    if selected_product_build is not None:
+                        readiness_options["selected_product_build"] = selected_product_build
+                    readiness = _current_source_executable_readiness(**readiness_options)
+                    if readiness.get("status") != "ready":
+                        result = {**asdict(RegistryBootstrapToken(
+                            "", False, "source_matching_executable_required")),
+                            "source_executable_readiness": dict(readiness)}
+                    else:
+                        runtime_binding = (
+                            startup_harness.build_runtime_binding(executable)
+                            if selected_product_build is None else
+                            startup_harness.build_runtime_binding(
+                                executable, selected_product_build=selected_product_build,
+                            )
+                        )
+                        if not runtime_binding.get("ok"):
+                            raise ScenarioRegistryStoreError(
+                                "bootstrap runtime binding unavailable: "
+                                + str(runtime_binding.get("error", "unknown error"))
+                            )
+                        issued = issue_registry_bootstrap_token(
+                            connection, request, runtime_binding=runtime_binding,
+                            scenario_id=scenario_id,
+                        )
+                        if issued.accepted and (Path(issued.source_path).resolve() !=
+                                                Path(source_path).resolve() or
+                                                issued.source_sha256 != source_sha256):
+                            record_bootstrap_token_rejection(
+                                connection, issued.token_id,
+                                reason="selected_source_changed_before_token_issue",
+                                details={"expected_source_path": source_path,
+                                         "expected_source_sha256": source_sha256},
+                            )
+                            issued = RegistryBootstrapToken(
+                                issued.token_id, False, "selected_source_changed_before_token_issue")
+                        result = {**asdict(issued), "source_executable_readiness": dict(readiness)}
             elif args.command == "registry-repair-bootstrap":
                 # A repair bootstrap is query-bound.  Resolve its selected
                 # declaration before evaluating readiness, otherwise an
@@ -2661,10 +2823,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "executable", ""
                         )
                     ).strip()
-                readiness = _current_source_executable_readiness(
-                    **({"executable": str((startup_harness.repo_root() / selected_executable).resolve())}
-                       if selected_executable else {})
+                selected_build = None
+                if repair_action is not None:
+                    selected_build_value = repair_declaration.get("runtime_contract", {}).get(
+                        "selected_product_build",
+                    )
+                    selected_build = selected_build_value if isinstance(selected_build_value, Mapping) else None
+                readiness_options: Dict[str, Any] = (
+                    {"executable": str((startup_harness.repo_root() / selected_executable).resolve())}
+                    if selected_executable else {}
                 )
+                if selected_build is not None:
+                    readiness_options["selected_product_build"] = selected_build
+                readiness = _current_source_executable_readiness(**readiness_options)
                 if readiness.get("status") != "ready":
                     result = {
                         "accepted": False,
@@ -2788,8 +2959,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not selection.accepted:
                     result = asdict(selection)
                 else:
-                    selected_executable = _selected_executable(selection.scenario)
-                    readiness = _current_source_executable_readiness(executable=str(selected_executable))
+                    selected_executable = _selected_executable(selection)
+                    readiness = _current_source_executable_readiness(
+                        executable=str(selected_executable),
+                        **_selected_readiness_options(selection),
+                    )
                     if readiness.get("status") != "ready":
                         record_selection_token_rejection(
                             connection,
@@ -2802,7 +2976,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             accepted=False,
                             reason="source_matching_executable_required",
                         ))
-                    elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
+                    elif _scenario_requires_bound_live_bridge(selection) and not \
                             bridge_binding_id and not str(
                                 os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
                             ).strip():
@@ -2842,13 +3016,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                             record_selection_token_rejection(
                                 connection,
                                 selection.token_id,
-                                reason="canonical_probe_source_mismatch",
+                                reason="selected_probe_source_mismatch",
                                 details={"error": str(exc)},
                             )
                             result = asdict(RegistryLaunchToken(
                                 token_id=selection.token_id,
                                 accepted=False,
-                                reason="canonical_probe_source_mismatch",
+                                reason="selected_probe_source_mismatch",
                             ))
                         else:
                             runtime_binding = startup_harness.build_runtime_binding(selected_executable)
@@ -2879,7 +3053,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     # manifest, then prevent the probe from
                                     # reinstalling (and thereby changing) the
                                     # sealed world between preflight and recheck.
-                                    launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                    launch_scenario = _load_selected_scenario(selection)
                                     launch_profile = startup_harness.resolve_profile_name(
                                         str(launch_scenario.get("profile", ""))
                                     )
@@ -2896,7 +3070,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                                         )
                                         certification_setup_installed = True
                                     producer_inputs = startup_harness.derive_registry_owned_certification_inputs(
-                                        selection.scenario
+                                        selection.scenario, source_path=selection.source_path,
+                                        expected_sha256=selection.source_sha256,
                                     )
                                 else:
                                     producer_inputs = None
@@ -2939,7 +3114,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                         probe_namespace.fixture = ""
                                         probe_namespace.fixture_profile = ""
                                 else:
-                                    launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                    launch_scenario = _load_selected_scenario(selection)
                                     runtime_contract = launch_scenario.get("runtime_contract", {})
                                     setup_support = isinstance(runtime_contract, Mapping) and \
                                         runtime_contract.get("setup_only_debug") is True and \
@@ -2962,6 +3137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     "registry_path": str(registry_path),
                                     "token_id": selection.token_id,
                                     "source_path": selection.source_path,
+                                    "source_sha256": selection.source_sha256,
                                     "runtime_binding": runtime_binding,
                                     "wec_authority": wec_authority,
                                     "diagnostic_replay": diagnostic_replay,
@@ -2979,7 +3155,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 selection = reload_bootstrap_token_for_launch(connection, args.bootstrap_token)
                 if not selection.accepted:
                     result = asdict(selection)
-                elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
+                elif _scenario_requires_bound_live_bridge(selection) and not \
                         str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")).strip():
                     # A live session reads its worker protocol from stdin.  The public
                     # bootstrap command has no worker attached, so claiming here would
@@ -3001,6 +3177,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             selection.token_id, False, "runtime_binding_changed",
                         ))
                     else:
+                        _preflight_selected_save_setup(selection, args)
                         selection = claim_bootstrap_token_for_launch(connection, selection.token_id)
                         if not selection.accepted:
                             result = asdict(selection)
@@ -3021,11 +3198,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 record_bootstrap_token_rejection(
                                     connection,
                                     selection.token_id,
-                                    reason="canonical_probe_source_mismatch",
+                                    reason="selected_probe_source_mismatch",
                                     details={"error": str(exc)},
                                 )
                                 result = asdict(RegistryBootstrapToken(
-                                    selection.token_id, False, "canonical_probe_source_mismatch",
+                                    selection.token_id, False, "selected_probe_source_mismatch",
                                 ))
                             else:
                                 probe_namespace.adaptive_semantic_autodrive = bool(
@@ -3042,6 +3219,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     "registry_path": str(registry_path),
                                     "token_id": selection.token_id,
                                     "source_path": selection.source_path,
+                                    "source_sha256": selection.source_sha256,
                                     "runtime_binding": selection.runtime_binding,
                                     "wec_authority": wec_authority,
                                 }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -3088,6 +3266,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     selection.token_id, False, "runtime_binding_changed",
                                 ))
                             else:
+                                _preflight_selected_save_setup(selection, args)
                                 selection = claim_repair_token_for_launch(
                                     connection, selection.token_id, binding=binding,
                                 )
@@ -3112,11 +3291,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                         record_repair_token_rejection(
                                             connection,
                                             selection.token_id,
-                                            reason="canonical_probe_source_mismatch",
+                                            reason="selected_probe_source_mismatch",
                                             details={"error": str(exc)},
                                         )
                                         result = asdict(RegistryRepairToken(
-                                            selection.token_id, False, "canonical_probe_source_mismatch",
+                                            selection.token_id, False, "selected_probe_source_mismatch",
                                         ))
                                     else:
                                         # A repair authority is the canonical executor for its
@@ -3146,6 +3325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                             "token_id": selection.token_id,
                                             "red_verification_id": str(issued["verification_id"]),
                                             "source_path": selection.source_path,
+                                            "source_sha256": selection.source_sha256,
                                             "runtime_binding": selection.runtime_binding,
                                             "wec_authority": wec_authority,
                                         }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

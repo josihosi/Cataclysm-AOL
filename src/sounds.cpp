@@ -202,6 +202,7 @@ struct sound_event {
     std::string id;
     std::string variant;
     std::string season;
+    std::optional<npc_alarm> alarm;
 };
 
 struct significant_sound_event {
@@ -407,8 +408,17 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     }
     sounds_since_last_turn.emplace_back( p,
                                          sound_event{ vol, category, description, ambient,
-                                                 false, id, variant, seas_str } );
+                                                 false, id, variant, seas_str, std::nullopt } );
     record_significant_sound( p, vol, significant_kind );
+}
+
+void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
+                    const std::string &description, const npc_alarm &alarm )
+{
+    sound( p, vol, category, description );
+    if( vol >= 0 && !sounds_since_last_turn.empty() ) {
+        sounds_since_last_turn.back().second.alarm = alarm;
+    }
 }
 
 void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
@@ -433,7 +443,7 @@ void sounds::add_footstep( const tripoint_bub_ms &p, int volume, int, monster *,
     const season_type seas = season_of_year( calendar::turn );
     const std::string seas_str = season_str( seas );
     sounds_since_last_turn.emplace_back( p, sound_event { volume,
-                                         sound_t::movement, footstep, false, true, "", "", seas_str} );
+                                         sound_t::movement, footstep, false, true, "", "", seas_str, std::nullopt } );
 }
 
 template <typename C>
@@ -720,6 +730,16 @@ void sounds::process_sound_markers( Character *you )
 
         // Secure the flag before wake_up() clears the effect
         bool slept_through = you->has_effect( effect_slept_through_alarm );
+        if( sound.alarm && you->is_npc() ) {
+            // Audibility has already been established. An exact unit recipient
+            // can acknowledge ordinary sleep before the generic sound wake roll.
+            if( you->as_npc()->receive_faction_alarm( *sound.alarm, heard_volume ) &&
+                you->in_sleep_state() ) {
+                // The exact order was heard but waking retained forced collapse
+                // or flight. This message cannot cure it through random noise.
+                continue;
+            }
+        }
         // See if we need to wake someone up
         if( you->in_sleep_state() ) {
             if( ( ( !( you->has_trait( trait_HEAVYSLEEPER ) ||

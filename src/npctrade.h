@@ -3,6 +3,8 @@
 #define CATA_SRC_NPCTRADE_H
 
 #include <list>
+
+#include "coordinates.h"
 #include <string>
 #include <utility>
 #include <vector>
@@ -63,7 +65,20 @@ std::list<item> transfer_items( trade_selector::select_t &stuff, Character &give
                                 bool use_escrow );
 double net_price_adjustment( const Character &buyer, const Character &seller );
 bool trade( npc &p, int cost, const std::string &deal, int you_nearby_item_radius = 1,
-            int you_nearby_ally_radius = 0, basecamp *you_basecamp = nullptr );
+            int you_nearby_ally_radius = 0, basecamp *you_basecamp = nullptr,
+            Character *payer = nullptr, bool encounter_only = false );
+// Applies the selection made by the existing trade UI. The physical payer
+// can be a contacted camp member while the avatar controls the response.
+bool complete_trade( npc &trader, Character &payer, trade_ui::trade_result_t &result );
+// Shakedown payments use the same selection/prices but deposit actual items at
+// the validated home camp instead of testing or filling the collector's pockets.
+bool trade_to_stash( npc &trader, Character &payer, const tripoint_abs_omt &home,
+                     int cost, const std::string &deal, int nearby_item_radius,
+                     int nearby_ally_radius, basecamp *payer_basecamp, bool encounter_only );
+// Placement failure leaves both the accepted selection and its sources intact.
+// A successful application consumes the result, just like complete_trade.
+bool complete_trade_to_stash( npc &trader, Character &payer,
+                              trade_ui::trade_result_t &result, const tripoint_abs_omt &home );
 std::vector<item_pricing> init_selling( npc &p );
 } // namespace npc_trading
 

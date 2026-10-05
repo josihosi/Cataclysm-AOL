@@ -33,6 +33,7 @@ PROOF_ROUTE_ROLES = (
     "artifact_verdict",
     "disallowed_shortcuts",
 )
+SELECTED_PRODUCT_BUILD_SCHEMA = "caol-selected-product-build-v1"
 PROOF_DEPTHS = (
     "startup",
     "interaction",
@@ -150,6 +151,87 @@ def _require_string_list(value: Any, *, path: Path, field: str) -> List[str]:
     return list(value)
 
 
+def post_relaunch_terminal_label(raw_contract: Any, initial_steps: Any) -> str | None:
+    """Pure initial-step reference check shared by declaration lint and startup."""
+    if raw_contract in (None, ""):
+        return None
+    if not isinstance(raw_contract, dict):
+        raise ValueError("post_relaunch must be an object")
+    label = raw_contract.get("terminal_save_step_label")
+    if not isinstance(label, str) or not label.strip():
+        raise ValueError("post_relaunch.terminal_save_step_label must be a non-empty string")
+    label = label.strip()
+    labels = set()
+    for index, step in enumerate(initial_steps if isinstance(initial_steps, list) else [], start=1):
+        if not isinstance(step, dict):
+            continue
+        # Preserve startup's existing implicit labels for legacy unlabeled steps.
+        kind = step.get("kind", "step")
+        default = f"step_{index:02d}_{kind.strip() or 'step'}" if isinstance(kind, str) else None
+        initial_label = step.get("label", default)
+        if isinstance(initial_label, str) and initial_label.strip():
+            labels.add(initial_label.strip())
+    labels = sorted(labels)
+    if label not in labels:
+        raise ValueError("post_relaunch.terminal_save_step_label must name an initial scenario step; "
+                         f"available initial labels: {json.dumps(labels)}")
+    return label
+
+
+def saved_world_continuation_steps(initial_steps: Any, post_relaunch: Any) -> List[Dict[str, Any]]:
+    """Reuse explicit reentry steps or an unambiguous direct saved-world start.
+
+    A task-local bootstrap plus interactive session already declares what the
+    player should do after loading.  It needs no synthetic reentry label or
+    duplicate post_relaunch contract.  Other routes must declare which setup
+    actions to omit rather than having this reader guess.
+    """
+    steps = initial_steps if isinstance(initial_steps, list) else []
+    if post_relaunch is None:
+        kinds = [str(step.get("kind", "")).strip().lower()
+                 if isinstance(step, Mapping) else "" for step in steps]
+        if kinds != ["native_semantic_bootstrap", "cockpit_live_session"]:
+            raise ValueError(
+                "saved-world continuation without post_relaunch requires steps to be "
+                "native_semantic_bootstrap followed by cockpit_live_session; "
+                "declare post_relaunch.steps explicitly for routes with setup or other steps "
+                "and terminal_save_step_label naming an actual initial step")
+        return copy.deepcopy(steps)
+    if (not isinstance(post_relaunch, Mapping) or not isinstance(post_relaunch.get("steps"), list)
+            or not post_relaunch["steps"]):
+        raise ValueError("post_relaunch.steps must be a non-empty list")
+    continuation = post_relaunch["steps"]
+    bootstrap = [step for step in steps if isinstance(step, Mapping) and
+                 str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"]
+    if not bootstrap:
+        bootstrap = [step for step in continuation if isinstance(step, Mapping) and
+                     str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"]
+    if len(bootstrap) != 1:
+        raise ValueError("post-relaunch continuation requires exactly one native semantic bootstrap step")
+    return copy.deepcopy([*bootstrap, *continuation])
+
+
+def _validate_saved_world_start(manifest: Mapping[str, Any], *, path: Path) -> None:
+    snapshot = manifest.get("saved_world_snapshot")
+    if snapshot in (None, ""):
+        return
+    if not isinstance(snapshot, str):
+        raise _error(path, "saved_world_snapshot must be a path string")
+    if not snapshot.strip():
+        return
+    try:
+        saved_world_continuation_steps(manifest.get("steps"), manifest.get("post_relaunch"))
+    except ValueError as exc:
+        raise _error(path, str(exc)) from exc
+
+
+def _validate_post_relaunch_reference(manifest: Mapping[str, Any], *, path: Path) -> None:
+    try:
+        post_relaunch_terminal_label(manifest.get("post_relaunch"), manifest.get("steps"))
+    except ValueError as exc:
+        raise _error(path, str(exc)) from exc
+
+
 def _step_labels(manifest: Mapping[str, Any], *, path: Path) -> List[str]:
     initial_steps = manifest.get("steps")
     if not isinstance(initial_steps, list):
@@ -231,6 +313,29 @@ def _validate_runtime_contract(
             raise _error(path, f"runtime_contract.requirements.{key} is required")
         if not _is_capability_value(requirements[key]):
             raise _error(path, f"runtime_contract.requirements.{key} has an unsupported JSON shape")
+
+    selected_build = value.get("selected_product_build")
+    if selected_build is not None:
+        fields = {
+            "schema", "receipt_path", "receipt_sha256", "executable_sha256",
+            "product_source_sha256",
+        }
+        if not isinstance(selected_build, dict) or set(selected_build) != fields:
+            raise _error(path, "runtime_contract.selected_product_build must use the supported exact fields")
+        if selected_build.get("schema") != SELECTED_PRODUCT_BUILD_SCHEMA:
+            raise _error(path, "runtime_contract.selected_product_build.schema is unsupported")
+        receipt_path = selected_build.get("receipt_path")
+        if not isinstance(receipt_path, str) or not receipt_path.strip():
+            raise _error(path, "runtime_contract.selected_product_build.receipt_path must be a non-empty workspace-relative path")
+        receipt_relative = Path(receipt_path)
+        if receipt_relative.is_absolute() or ".." in receipt_relative.parts:
+            raise _error(path, "runtime_contract.selected_product_build.receipt_path must stay within the workspace")
+        for key in ("receipt_sha256", "executable_sha256", "product_source_sha256"):
+            digest = selected_build.get(key)
+            if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise _error(path, f"runtime_contract.selected_product_build.{key} must be a lowercase SHA-256")
+        if not isinstance(requirements.get("executable"), str) or not requirements["executable"].strip():
+            raise _error(path, "runtime_contract.selected_product_build requires an exact executable path string")
 
 
 def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path) -> None:
@@ -714,6 +819,9 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
     if not isinstance(source_manifest, dict) or source_manifest != manifest:
         raise _error(path, "provided declaration does not match the source bytes")
 
+    _validate_post_relaunch_reference(manifest, path=path)
+    _validate_saved_world_start(manifest, path=path)
+
     isolated = manifest.get("r027_isolated_launch")
     if isolated is not None:
         _validate_isolated_launch(isolated, path=path)
@@ -831,6 +939,11 @@ def lint_manifest(path: Path) -> Dict[str, Any]:
     if not isinstance(manifest, dict):
         add("$", "top_level_object", "top level must be an object")
         return outcome("invalid")
+
+    collect("post_relaunch", "post_relaunch_initial_step_reference",
+            lambda: _validate_post_relaunch_reference(manifest, path=path))
+    collect("saved_world_snapshot", "saved_world_continuation_steps",
+            lambda: _validate_saved_world_start(manifest, path=path))
 
     if manifest.get("r027_isolated_launch") is not None:
         collect("r027_isolated_launch", "isolated_launch", lambda: _validate_isolated_launch(

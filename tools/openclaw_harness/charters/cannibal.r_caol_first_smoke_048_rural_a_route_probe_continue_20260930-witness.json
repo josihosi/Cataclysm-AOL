@@ -1,0 +1,33 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "From the exact rural-A turn5256260 post-report checkpoint, can the same committed hostile:2 IDs 5/7 find real passable routes into the house and connected upper floors, and what native candidate-level occupancy/avoid evidence explains any rejection?",
+  "material_proof": "Launch only after current standard source/runtime readiness and a fresh registry token. Verify the byte-exact 55-file checkpoint and same-run World; bind rural-A cannibal site overmap_special:cannibal_camp@135,137,0 separately from bandit_cabin@103,167,0, report generation1/revision1, operation #hostile:2, selected member IDs5/7, player [3151,3454,0], Safe Off, DEBUG_LS without toggle, and no cloak/clairvoyance. The native trace is selected IDs5/7 from turn5256260 through5256699. Retrieve route-probe rows by exact actor/candidate; compare inbounds/passability, route/length, avoid rejection categories, exact bounded occupant samples, same-settings relaxed route and truncation. Preserve actual positions/z and actions; if route exists, follow real entry, connected stairs and upstairs search/combat. Do not move the player unless immediate safety requires it.",
+  "current_uncertainty": "The previous exact R048 run emitted floor_access_unavailable at waypoint7 but had no candidate-level route/occupancy diagnostic. Its later combat, damage, roof escape and death retain their original scope. The turn5256260 save starts before that material divergence with IDs7/5 outbound. New trace rows can distinguish a genuine absent route from member avoid/occupancy and record the first rejected candidate; samples alone are not exhaustive.",
+  "material_contradiction": [
+    "The copy tree or saved turn differs from the exact manifest",
+    "The loaded cannibal site, report/revision, operation, or IDs5/7 do not match the retained checkpoint",
+    "Safe Off or DEBUG_LS cannot be verified without altering the experiment, or cloak/clairvoyance is present",
+    "The trace is not bound to IDs5/7 from the first resumed turn, or cap/truncation hides the relevant row",
+    "A candidate goal is out of bounds/impassable, or route/relaxed-route outcomes contradict the expected geometry",
+    "A sampled occupant/rejection cannot be tied to the actual creature tracker/source identity",
+    "Actors fail to physically enter the house or traverse real stairs; preserve first exact edge/floor and candidate",
+    "A same-ID actor takes or receives damage/dies without sufficient native attribution",
+    "Save or process cleanup cannot be verified"
+  ],
+  "forbidden_shortcuts": [
+    "replaying ignition, scouting, report generation, or dispatch",
+    "starting from pristine A, advanced/damaged profiles, or rural B",
+    "injected signal, knowledge, report, actors, route, HP, teleport, cloak, or clairvoyance",
+    "autoattack, raw Tab, or unvalidated repeated/batched inputs",
+    "claiming entry or stairs from a waypoint or candidate goal",
+    "treating the bounded avoid sample as exhaustive or inferring a named attacker without native source evidence"
+  ],
+  "honest_stop_conditions": [
+    "first candidate-level native route cause is preserved with original handle and before/after saved checkpoint",
+    "same IDs5/7 physically enter and traverse connected stairs into an upstairs search/combat outcome",
+    "immediate harm interrupts observation: save and record exact attacker/HP/source before choosing another action",
+    "trace or route query lacks the needed exact field: preserve the scene and state the narrow missing field, not an inferred cause",
+    "source/runtime binding or selection is not ready: hold before native launch and report the exact status"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -31,6 +31,18 @@ class PlayCliEvidenceTest(unittest.TestCase):
         self.assertNotIn("event ids", process.stdout)
         self.assertTrue((self.session / "playtest.txt").is_file())
 
+    def test_native_turn_range_and_state_predicate_use_published_cli(self):
+        rows = [json.loads(line) for line in self.log.read_text().splitlines()]
+        for index, row in enumerate(rows):
+            row["game_turn"] = 100 + index
+        self.log.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        result = self.cli("evidence", "--actor-id", self.actor, "--from-turn", 101,
+                          "--to-turn", 103, "--where", "payload.payload.accepted=false",
+                          "--select", "game_time.turn,payload.payload.rejection_reason")
+        self.assertEqual(result["matched"], 1)
+        self.assertEqual(result["rows"][0]["fields"]["game_time.turn"], 102)
+        self.assertEqual(result["rows"][0]["fields"]["payload.payload.rejection_reason"], "frame_mismatch")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

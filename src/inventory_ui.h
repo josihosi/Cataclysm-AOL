@@ -410,6 +410,10 @@ class inventory_column
             return page_of( page_offset );
         }
 
+        size_t page_of_entry( const inventory_entry &entry ) const {
+            return page_of( entry );
+        }
+
         size_t pages_count() const {
             return page_of( entries.size() + entries_per_page - 1 );
         }
@@ -956,6 +960,9 @@ class inventory_selector
             return get_column( active_column_index );
         }
 
+        bool item_navigation_mode() const {
+            return mode == navigation_mode::ITEM;
+        }
         void toggle_categorize_contained();
         void set_active_column( size_t index );
         void toggle_skip_unselectable();

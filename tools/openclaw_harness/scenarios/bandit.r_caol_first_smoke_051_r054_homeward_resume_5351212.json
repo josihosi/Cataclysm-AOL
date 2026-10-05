@@ -1,0 +1,211 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r_caol_first_smoke_051_r054_homeward_resume_5351212",
+  "description": "R051 R054 saved-world successor segment after native quicksave at turn5351212; same bandit scouts and build.",
+  "profile": "first-smoke-051-r054-homeward-resume5351212-20261001",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "added_bandit_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r050_rural_roof": "bandit_only_derivative_of_B",
+    "capabilities.r_caol.r054_homeward_continuation": "r051_r053_saved_world_on_immutable_r054",
+    "capabilities.r_caol.r054_homeward_resume": "checkpoint_5351212_after_native_pause_quicksave"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-051-r054-homeward-resume5351212-20261001",
+    "fixture": "r050_rural_roof_bandit_only_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/build_logs/first-smoke-054/immutable-executable/a959f6a8286a77230e90be6d0a602c68faa75d61779929085d887c74a22e5450/cataclysm-tiles",
+      "profile": "first-smoke-051-r054-homeward-resume5351212-20261001",
+      "fixture": "r050_rural_roof_bandit_only_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions; ordinary roof ignition and save"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false,
+    "input": [
+      "source-bound native cockpit continuation from the exact saved turn 5216319; ordinary route-fuel inspection, roof signal sampling and natural added-bandit journey"
+    ]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r051_turn5216319_saved_world_continuation",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the exact R051 native saved-world snapshot at turn 5216319 into the separate continuation profile without fixture reinstall. The snapshot follows the R050 45-file bandit-only B derivative; added bandit_camp@129,149,0 and inherited bandit_cabin@103,167,0 remain separate, while nearby cannibal placement is absent."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r051_saved_bandit_only_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "continue_native_r051_bandit_only_journey",
+      "objective": "Resume exact turn5351212 save from the immediately preceding R054 segment. Preserve the current local owner and the same IDs4/5. Use one bounded safe native wait for natural NPC scheduling, then compare actors, lease/owner state, current selector, motor and transfer evidence. Continue the same scouts through physical return and honest report if reached, then natural cadence toward the first real shakedown demand. Save exact pre-choice state and stop before Pay/Fight. Do not interpret not_invoked as rejection; inspect sleeping/action-loop state.",
+      "proof_targets": [
+        "exact saved-world snapshot identity and native World at saved turn5216319 in a distinct private continuation profile",
+        "current roof source fields, weather, source-scan packet and ordinary fuel inspection/action evidence",
+        "site-specific added bandit_camp admission, current-run actor IDs, physical scouting/watch/return/report",
+        "genuine shakedown demand and exact pre-choice save or first precise source/admission/route divergence",
+        "site-specific saved knowledge, roster, route and supplies without seeded state",
+        "graceful game/bridge/launcher closure and saved turns"
+      ],
+      "invariants": [
+        "continuation reuses saved native state and never reinstalls the R050 fixture",
+        "no injected signal, knowledge, report, roster, dispatch, raid or payment",
+        "added bandit_camp@129,149,0 remains distinct from inherited bandit_cabin@103,167,0",
+        "DEBUG_LS only; Safe Mode Off; no cloak or clairvoyance",
+        "normal supplies, need, response power and dispatch cadence",
+        "resolve all native actor and operation IDs from this run",
+        "stop at an actual demand before selecting Pay or Fight"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r051_turn5216319_saved_world_continuation",
+      "bind_r051_saved_bandit_only_world"
+    ],
+    "production_behavior": [
+      "continue_native_r051_bandit_only_journey"
+    ],
+    "terminal_persistence": [
+      "continue_native_r051_bandit_only_journey"
+    ],
+    "artifact_verdict": [
+      "continue_native_r051_bandit_only_journey"
+    ],
+    "disallowed_shortcuts": [
+      "continue_native_r051_bandit_only_journey"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R051 native successor segment resumes the exact R054 quicksave at turn5351212 and gives the same added bandit scouts a bounded safe natural scheduling interval to continue homeward movement/transfer/return/report toward a genuine demand or a precise invoked divergence.",
+    "failure_rule": "Preserve current-run ownership, selection, actor positions/motor, safe-wait receipt and a fresh changed-turn save. Distinguish not_invoked from called-and-rejected; no Pay/Fight."
+  },
+  "fixture": "r050_rural_roof_bandit_only_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": false,
+  "post_relaunch": {
+    "terminal_save_step_label": "continue_native_r051_bandit_only_journey",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "verify_r051_saved_world_reload",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Fresh registry-bootstrap process loads the exact native checkpoint, with no fixture reinstall; verify saved turn5216319 and current signal/survival state before any action."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "run_r051_bandit_only_saved_world_continuation",
+        "objective": "Resume exact turn5351212 save from the immediately preceding R054 segment. Preserve the current local owner and the same IDs4/5. Use one bounded safe native wait for natural NPC scheduling, then compare actors, lease/owner state, current selector, motor and transfer evidence. Continue the same scouts through physical return and honest report if reached, then natural cadence toward the first real shakedown demand. Save exact pre-choice state and stop before Pay/Fight. Do not interpret not_invoked as rejection; inspect sleeping/action-loop state.",
+        "proof_targets": [
+          "exact saved-world snapshot identity and native World at saved turn5216319 in a distinct private continuation profile",
+          "current roof source fields, weather, source-scan packet and ordinary fuel inspection/action evidence",
+          "site-specific added bandit_camp admission, current-run actor IDs, physical scouting/watch/return/report",
+          "genuine shakedown demand and exact pre-choice save or first precise source/admission/route divergence",
+          "site-specific saved knowledge, roster, route and supplies without seeded state",
+          "graceful game/bridge/launcher closure and saved turns"
+        ],
+        "invariants": [
+          "continuation reuses saved native state and never reinstalls the R050 fixture",
+          "no injected signal, knowledge, report, roster, dispatch, raid or payment",
+          "added bandit_camp@129,149,0 remains distinct from inherited bandit_cabin@103,167,0",
+          "DEBUG_LS only; Safe Mode Off; no cloak or clairvoyance",
+          "normal supplies, need, response power and dispatch cadence",
+          "resolve all native actor and operation IDs from this run",
+          "stop at an actual demand before selecting Pay or Fight"
+        ],
+        "live_operations": [
+          "game.act"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

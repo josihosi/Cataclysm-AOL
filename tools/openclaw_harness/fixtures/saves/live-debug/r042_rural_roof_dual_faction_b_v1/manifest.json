@@ -1,0 +1,19 @@
+{
+  "name": "r042_rural_roof_dual_faction_b_v1",
+  "description": "R042 countryside B: A plus one normal unseeded southern bandit camp; assess factions separately. Setup only: ordinary player ignition and faction roster are native.",
+  "source_parent_fixture": "first_smoke_smoke-first_testsetup00_v1",
+  "source_owner_archive_sha256": "4b11469931507c49f0b373934730fed6b729b7a29b87c6f78eca0f728e8320c3",
+  "parent_overmap_sha256": "afd2754727e93157c658f9f65f9d9521defbd1e2309cebfd1d1df877b8983b47",
+  "parent_player_sha256": "037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247",
+  "saved_file_count": 45,
+  "saved_tree_sha256": "9956763e309b3ac37c65b5ab60375ecd05789e3636c0e580e36274f8f6b63978",
+  "saved_overmap_sha256": "2d71ce55e6d65bc42f5201f04d3a4bafe93dcc066c592fbb1631c71980a88d9c",
+  "save_transforms": [],
+  "inherited_distant_site": {
+    "site_id": "overmap_special:bandit_cabin@103,167,0",
+    "has_preexisting_player_terrain_lead": true
+  },
+  "added_bandit_camp": "overmap_special:bandit_camp@129,149,0",
+  "pre_signal": true,
+  "gameplay_credit": false
+}

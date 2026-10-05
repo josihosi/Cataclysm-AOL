@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -35,6 +36,8 @@
 #include "monster.h"
 #include "mtype.h"
 #include "npc.h"
+#include "overmap.h"
+#include "overmapbuffer.h"
 #include "point.h"
 #include "string_formatter.h"
 #include "submap.h"
@@ -322,20 +325,26 @@ bool map::build_vision_transparency_cache( int zlev )
     return dirty;
 }
 
-void map::apply_character_light( Character &p )
+void map::apply_character_light( Character &p, const bool observe_only )
 {
+    const tripoint_bub_ms source = observe_only ? p.pos_bub( *this ) : p.pos_bub();
+    if( observe_only && !inbounds( source ) ) {
+        // Native light-source buffers require a local source cell. A supplied
+        // observation map can be far from the avatar or another active NPC.
+        return;
+    }
     if( p.has_effect( effect_onfire ) ) {
-        apply_light_source( p.pos_bub(), 8 );
+        apply_light_source( source, 8 );
     } else if( p.has_effect( effect_haslight ) ) {
-        apply_light_source( p.pos_bub(), 4 );
+        apply_light_source( source, 4 );
     }
 
     const float held_luminance = p.active_light();
     if( held_luminance > LIGHT_AMBIENT_LOW ) {
-        apply_light_source( p.pos_bub(), held_luminance );
+        apply_light_source( source, held_luminance );
     }
 
-    if( held_luminance >= 4 && held_luminance > ambient_light_at( p.pos_bub() ) - 0.5f ) {
+    if( !observe_only && held_luminance >= 4 && held_luminance > ambient_light_at( source ) - 0.5f ) {
         p.add_effect( effect_haslight, 1_turns );
     }
 }
@@ -344,7 +353,7 @@ void map::apply_character_light( Character &p )
 // toward the lower limit. Since it's sunlight, the rays are parallel.
 // Each layer consults the next layer up to determine the intensity of the light that reaches it.
 // Once this is complete, additional operations add more dynamic lighting.
-void map::build_sunlight_cache( int pzlev )
+void map::build_sunlight_cache( int pzlev, const bool observe_only )
 {
     const int zlev_min = -OVERMAP_DEPTH;
     // Start at the topmost populated zlevel to avoid unnecessary raycasting
@@ -367,7 +376,7 @@ void map::build_sunlight_cache( int pzlev )
 
     // Iterate top to bottom because sunlight cache needs to construct in that order.
     for( int zlev = zlev_max; zlev >= zlev_min; zlev-- ) {
-        if( pzlev != get_avatar().posz() && zlev == get_avatar().posz() ) {
+        if( !observe_only && pzlev != get_avatar().posz() && zlev == get_avatar().posz() ) {
             // Don't trash the lighting for the PC when this is called for someone else at a different
             // Z level, as only the specified Z level is being rebuilt with light sources by the caller.
             continue;
@@ -481,7 +490,7 @@ void map::build_sunlight_cache( int pzlev )
     }
 }
 
-void map::generate_lightmap( const int zlev )
+void map::generate_lightmap( const int zlev, const bool observe_only )
 {
     level_cache &map_cache = get_cache( zlev );
     if( !map_cache.lightmap_dirty ) {
@@ -524,7 +533,7 @@ void map::generate_lightmap( const int zlev )
 
     const float natural_light = g->natural_light_level( zlev );
 
-    build_sunlight_cache( zlev );
+    build_sunlight_cache( zlev, observe_only );
 
     // Dawn/dusk tint: color sunlit tiles during twilight. At this point lm
     // contains only sunlight (no artificial sources yet), so any excess over
@@ -555,9 +564,29 @@ void map::generate_lightmap( const int zlev )
         }
     }
 
-    apply_character_light( get_player_character() );
+    apply_character_light( get_player_character(), observe_only );
     for( npc &guy : g->all_npcs() ) {
-        apply_character_light( guy );
+        apply_character_light( guy, observe_only );
+    }
+    if( observe_only ) {
+        // An abstract scout's existing character and carried light are real
+        // even outside the active NPC bubble. Inspect only currently loaded
+        // overmap records intersecting this native light window; no roster
+        // materialization, overmap load, actor effects or item processing.
+        std::set<const Character *> included;
+        included.insert( &get_player_character() );
+        for( const npc &guy : g->all_npcs() ) {
+            included.insert( &guy );
+        }
+        const point_abs_sm center = get_abs_sub().xy() + point( my_MAPSIZE / 2, my_MAPSIZE / 2 );
+        for( const overmap *om : overmap_buffer.get_loaded_overmaps_near( center, my_MAPSIZE / 2 + 1 ) ) {
+            for( const shared_ptr_fast<npc> &guy : om->get_npcs() ) {
+                if( !guy->is_dead_state() && !guy->is_fake() && inbounds( guy->pos_bub( *this ) ) &&
+                    included.insert( guy.get() ).second ) {
+                    apply_character_light( *guy, true );
+                }
+            }
+        }
     }
 
     std::vector<std::pair<tripoint_bub_ms, float>> lm_override;
@@ -635,7 +664,7 @@ void map::generate_lightmap( const int zlev )
         if( critter.is_hallucination() ) {
             continue;
         }
-        const tripoint_bub_ms mp = critter.pos_bub();
+        const tripoint_bub_ms mp = observe_only ? critter.pos_bub( *this ) : critter.pos_bub();
         if( inbounds( mp ) ) {
             if( critter.has_effect( effect_onfire ) ) {
                 apply_light_source( mp, 8 );

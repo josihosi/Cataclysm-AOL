@@ -15,6 +15,8 @@ struct site_record;
 }
 class Creature;
 class Character;
+class npc;
+struct npc_alarm;
 
 namespace raid_decision_trace
 {
@@ -105,11 +107,24 @@ bool reserved_local_actor( const bandit_live_world::site_record &site, int numer
 binding environment_binding();
 selected_npc_scope environment_selected_npcs();
 recorder &native_recorder();
+// Entry is emitted before any attack reaction. The outcome carries the same
+// snapshot so a zero-damage callback is distinct from applied harm.
+struct attack_callback_snapshot {
+    std::string payload;
+};
+std::optional<attack_callback_snapshot> record_attack_callback_entry(
+    const npc &victim, const Creature &attacker );
+void record_attack_callback_outcome( const std::optional<attack_callback_snapshot> &entry,
+                                    const npc &victim, bool shakedown_released,
+                                    bool active_covert_scout, std::string_view anger_branch,
+                                    bool alarm_invoked, bool alarm_raised );
 void record_applied_damage( const Creature *source, const Creature &victim,
                             std::string_view body_part, int hp_before, int hp_after );
 void record_confirmed_death( const Creature &victim, const Creature *killer );
 void record_sleep_edge( const Character &actor, std::string_view edge,
                         std::string_view available_reason );
+void record_alarm_edge( const npc &actor, const npc_alarm &alarm,
+                        std::string_view reason, bool was_sleeping );
 
 } // namespace raid_decision_trace
 

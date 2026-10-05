@@ -44,15 +44,22 @@ game minutes; a dispatch or return may need a full day or more. A short clean ca
 tool responses does not settle the player's observed journey. The native wait menu may offer
 five minutes, one hour or multi-hour choices; inspect its current advertised controls instead of
 assuming a maximum or repeatedly choosing short waits. With a verified fire and active test,
-several long waits can be the useful action. The [game manual](../GAME-MANUAL.md#wait-and-observe)
-covers interrupted waits and [viewing setup](../GAME-MANUAL.md#viewing-setup), including the two
+one longer wait is preferable to adjacent shorter waits with no useful decision between them;
+combine their duration under the same interruption policy when advertised. Several supported
+long waits remain appropriate when no single native duration covers the interval. Stop when the
+requested outcome is established: extra waiting after saved payment/home proof adds no evidence
+unless a later visit, persistence interval or another delayed behavior is the assigned question.
+The [game manual](../GAME-MANUAL.md#wait-and-observe) covers duration merging and interrupted waits and [viewing setup](../GAME-MANUAL.md#viewing-setup), including the two
 debug clairvoyance mutations and their local AI exposure caveat.
 
 At a useful checkpoint, [save without closing the live session](live-operation.md#save-a-checkpoint). Inspect the saved camp roster,
 signal/source lead, dispatch members, owner, phase, route cursor and positions, together with
 exact native logs. A save can establish that smoke created a dispatch while leaving later movement
 unproved. If the state answers the assignment, report the outcome. If it is still developing,
-continue and check the next expected change. If actors are stalled or a known gate rejects them,
+continue and check the next expected change. A temporary sleep/rest state is still developing: a missing wake timer is not a prerequisite
+for a meaningful safe wait in the same writable session. Compare real elapsed time and actor states;
+do not replace playable continuation with repeated read-only relaunches. If actors remain blocked
+after the relevant condition changes, or an invoked gate prevents progress independently of time,
 inspect that cause instead of repeating unchanged waits. Preserve the first meaningful divergence
 without automatically ending the run. A short scripted interval ending is not a gameplay verdict. Preserve the same actor and dispatch identities across
 checkpoints, and distinguish the player's basecamp from the hostile camp being tested.

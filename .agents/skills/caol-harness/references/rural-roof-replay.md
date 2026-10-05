@@ -24,10 +24,19 @@ Use the shared [decision points for efficient repeats](smoke-raid-replay.md#deci
 1. Use [shared start/ignition controls](smoke-raid-replay.md#start), the roof variant's verified `DEBUG_LS` survival setup, ordinary roof access and the normal lighter. Confirm current roof source, fuel and weather; no redundant ignition if already lit. Use explicit `safe` waits while signals develop. Do not move when saving.
 2. Collect source/observer/turn-bound light and smoke records. Track each **site and operation separately** through admitted scouts, physical watch, return/report and capability decision. Camp discovery by smoke alone is not scout proof of both senses.
 3. Resolve the newly reserved response IDs at dispatch; enable the existing opt-in trace for those IDs and defenders before the encounter. Never carry old scout IDs forward as the complete raid trace selection. Reuse compact actor/action, sleep/wake, damage/death and source-handle retrieval; missing/truncated capture is not passivity. Retain the nearest useful pre-encounter checkpoint.
-4. A follows actual raiders to the building and connected stairs, upstairs search and effective combat or an explained blocker. For intentional combat outcome, use explicit `ignore` wait; `safe` stops at near/pain/attack. Death of either side can be valid gameplay, but death en route does not prove entry/stairs. Record other encounters and their causal effect.
+4. A follows actual raiders to roof-level presence and effective combat. Any real terrain-connected ascent can prove roof arrival; a particular ladder is not required. Interior door/stair/search coverage is a separate outcome. For intentional combat outcome, use explicit `ignore` wait; `safe` stops at near/pain/attack. Death of either side can be valid gameplay, but death en route does not prove entry/stairs. Record other encounters and their causal effect.
 5. B also follows bandit discovery and shakedown. Use the existing [bandit branches](bandit-journeys.md): preserve a pre-choice save, Pay for actual transfer/peaceful departure and later return; use an independent copy for refusal/Fight and attributed combat. Simultaneous cannibal combat may invalidate a peaceful-isolation conclusion; retain the combined result and use A/B or a declared bandit-only derivative when needed, rather than forcing peace or changing faction hostility. Do not assume cannibal night timing for bandits.
 
-Finish each branch at its intended outcome or diagnosed divergence. Keep admission, travel, building/stair access, fighting and payment claims distinct. Return scenario/build/start hashes, edited map bounds, site/actor IDs, tested compact queries and native outcome links. Populate this variant's suite row after actual use; shared controls are validated elsewhere, this fixture and its outcomes are not. Existing full-suite replay and the original city/death regression remain open independently.
+Finish each branch at its intended outcome or diagnosed divergence. Keep admission, travel, building/stair access, fighting and payment claims distinct. Return scenario/build/start hashes, edited map bounds, site/actor IDs, tested compact queries and native outcome links. Update this variant's suite row after actual use; keep each fixture/build and outcome distinct. Existing full-suite replay and the original city/death regression remain open independently.
+
+## Retained roof proof
+
+[R048](../../../../build_logs/first-smoke-048/r048-roof-and-route-result.md) has source-bound
+`raid_actor_action` rows for IDs5/7 at z1 attacking the z1 avatar, and native wounds attributed to
+ID5. This proves roof arrival/combat; the fatal killer and interior stair route remain unknown.
+For a repeat, query actual response IDs, turn, position/z, target and action, then damage/terminal
+records separately. Keep raw offset/length/hash handles. Do not require another ascent merely
+because an aggregate search row says `floor_access_unavailable`; compare the actor evidence first.
 
 ## Panic and withdrawal regression
 

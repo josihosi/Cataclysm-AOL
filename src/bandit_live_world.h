@@ -404,6 +404,8 @@ struct sortie_observation {
     int strength = 0;
     int visual_quality = 0;
     std::vector<std::string> defender_ids;
+    std::vector<tripoint_abs_ms> defender_positions;
+    std::string observed_site_id;
     int observed_defender_count = -1;
     int simultaneity_start_minutes = -1;
     int simultaneity_end_minutes = -1;
@@ -632,6 +634,10 @@ struct scout_assessment_state {
     int burned_minutes = -1;
     tripoint_abs_omt burn_origin_omt;
     int certainty = 0;
+    int habitation_certainty = 0;
+    // A legacy assessment has optical credit in certainty but no separate ledger.
+    // Preserve that distinction through reload until its facts are reassessed.
+    bool habitation_certainty_known = true;
     bool readiness_latched = false;
     scout_assessment_threshold_class threshold_class =
         scout_assessment_threshold_class::none;
@@ -850,7 +856,7 @@ struct active_outing_state {
 };
 
 struct hostile_operation_state {
-    int schema_version = 3;
+    int schema_version = 4;
     hostile_operation_kind operation_kind = hostile_operation_kind::none;
     hostile_operation_phase phase = hostile_operation_phase::assembling;
     active_outing_state reservation;
@@ -859,10 +865,21 @@ struct hostile_operation_state {
     std::string source_report_activity_id;
     std::string source_report_application_key;
     std::string shakedown_pending_branch;
+    // Identity of a Pay choice waiting on physical return preflight. The
+    // existing branch owns the intent; this snapshot only rejects stale reuse.
+    std::string shakedown_pending_pay_identity;
     int shakedown_pending_demanded_value = 0;
     int shakedown_pending_surrendered_value = 0;
     int shakedown_pending_reachable_value = 0;
     bool shakedown_pending_basecamp_scene = false;
+    // Communication belongs to this reservation, not to simulation ownership.
+    // A camp receiver authorizes player control of the camp response, never
+    // knowledge of a distant avatar or use of that avatar's inventory.
+    bool shakedown_contact_established = false;
+    character_id shakedown_receiver_id;
+    bool shakedown_receiver_is_avatar = false;
+    bool shakedown_contact_by_shout = false;
+    bool shakedown_waiting_local = false;
     int site_search_waypoint = 0;
     int site_search_initial_goods_value = -1;
     bool site_search_waypoint_attempted = false;
@@ -1426,7 +1443,11 @@ struct abstract_threat_detour_read {
 struct structural_threat_observer_request {
     tripoint_abs_omt current_omt;
     int observation_window_start_minutes = -1;
+    // Stationary light/smoke samples have their own fresh window; sound/movement keep the cursor.
+    int signal_window_start_minutes = -1;
     std::vector<tripoint_abs_omt> visible_forward_omts;
+    // Only an established exact watch binds its complete site footprint for optics.
+    std::vector<tripoint_abs_omt> stationary_watch_footprint;
     std::optional<tripoint_abs_omt> retained_threat_omt;
     std::vector<std::string> retained_threat_ids;
     int retained_threat_age_minutes = -1;
@@ -1507,6 +1528,10 @@ struct structural_signal_read {
     sortie_observation_sense sense = sortie_observation_sense::smoke;
     structural_sound_kind sound_kind = structural_sound_kind::none;
     tripoint_abs_omt source_omt;
+    // A physical stationary watch reader supplies the actual capable member.
+    // Unset preserves the ordinary travel/camp reader's existing leader basis.
+    character_id observer_id;
+    bool physical_pair_can_share = false;
     // Producer-local source token used only to keep separately evaluated
     // emitters distinct during scoring.  It is not a player/camp identity and
     // the public observation remains the uncertain source_omt.
@@ -1542,6 +1567,12 @@ struct structural_signal_record_result {
 struct camp_signal_observer_request {
     character_id observer_id;
     tripoint_abs_omt camp_omt;
+    simulation_owner owner = simulation_owner::abstract;
+};
+
+struct camp_signal_observer_resolution {
+    camp_signal_observer_request request;
+    std::string exclusion_reason;
 };
 
 struct camp_signal_observation_result {
@@ -1894,6 +1925,11 @@ std::optional<int> release_structural_outing_reservation( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::string &summary );
 int structural_outing_party_power( const site_record &site );
+// Terrain exploration visits its outer target directly; it has no surveillance ring.
+bool structural_outing_uses_frontier_route( const active_outing_state &outing );
+local_handoff_commit_result complete_structural_frontier_arrival(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads );
 abstract_threat_resolution resolve_structural_abstract_threat( site_record &site,
         const tripoint_abs_omt &current_omt, const abstract_threat_read &read,
         int now_minutes );
@@ -1903,7 +1939,8 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                 const structural_threat_observer_request & )> &abstract_threat_lookup = {},
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
-                const structural_threat_observer_request & )> &signal_lookup = {} );
+                const structural_threat_observer_request & )> &signal_lookup = {},
+        const std::function<bool( const site_record &, const site_record & )> &projection_commit = {} );
 structural_signal_record_result record_structural_signal_observations( world_state &state,
         int now_minutes,
         const std::function<std::vector<structural_signal_read>( const site_record &,
@@ -1916,11 +1953,14 @@ structural_signal_record_result record_local_structural_signal_observations( wor
         int now_minutes,
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
-                const structural_threat_observer_request & )> &signal_lookup );
+                const structural_threat_observer_request & )> &signal_lookup,
+        const std::function<bool( const site_record &, const site_record & )> &projection_commit = {} );
 camp_signal_observation_result record_staffed_camp_signal_observations( world_state &state,
         int now_minutes,
         const std::function<std::vector<structural_signal_read>( const site_record &,
-                const camp_signal_observer_request & )> &signal_lookup );
+                const camp_signal_observer_request & )> &signal_lookup,
+        const std::function<camp_signal_observer_resolution( world_state &,
+                std::size_t )> &observer_resolver = {} );
 sortie_observation_effect record_physically_observed_player_opportunity(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const character_id &observer_id, const std::string &target_id,
@@ -1944,7 +1984,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const std::function<std::optional<canonical_hostile_operation_route>(
         const site_record & )> &hostile_route_lookup = {},
         const std::function<bool( site_record &, const authorized_hostile_operation_plan & )>
-        &hostile_operation_apply = {} );
+        &hostile_operation_apply = {},
+        const std::function<bool( const site_record &, const site_record & )> &projection_commit = {} );
 std::string render_structural_bounty_maintenance_report(
     const structural_bounty_maintenance_result &result );
 std::string render_evidence_debug_report( const world_state &state, int current_minutes );
@@ -1959,7 +2000,8 @@ bool normal_shakedown_first_sight_requires_parley( bool player_contact,
 std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
-// Route footing may enter one OMT inside an ordinary three-OMT watch ring.
+// Ordinary route footing stays at least two OMT from the target, including
+// travel to a farther fallback watch.  Watch geometry is independent.
 // An exposed scout still uses the full watch distance for withdrawal.
 std::optional<int> covert_scout_travel_minimum_target_distance(
     const active_outing_state &outing );
@@ -2018,8 +2060,9 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
         const site_record &site );
 local_projection_reconciliation_result reconcile_loaded_local_projections(
-        world_state &state, const std::vector<local_projection_claim> &claims,
-        std::vector<character_id> *retired_stale_leases = nullptr );
+    world_state &state, const std::vector<local_projection_claim> &claims,
+    std::vector<character_id> *retired_stale_leases = nullptr,
+    std::vector<character_id> *refreshed_local_leases = nullptr );
 // A rejected saved claim blocks only operations identified by its site or actor.
 // An unattributable claim keeps the conservative whole-world quarantine.
 void quarantine_loaded_local_projection_claims( world_state &state,
@@ -2103,7 +2146,9 @@ local_handoff_commit_result commit_local_pair_alternate_watch_reposition(
     const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
 local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     site_record &site, const local_alternate_watch_reposition_plan &plan );
-local_handoff_commit_result commit_local_pair_route_arrival(
+// Commit actual assigned pair arrival for local or abstract ownership. This
+// reconciles route mirrors and starts assessment at the validated current minute.
+local_handoff_commit_result commit_scout_pair_watch_arrival(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     int current_minutes, const std::vector<local_route_arrival_member_read> &member_reads );
 bool record_local_pair_member_death( site_record &site,
@@ -2111,6 +2156,13 @@ bool record_local_pair_member_death( site_record &site,
                                      character_id member_id,
                                      const tripoint_abs_ms &death_position,
                                      int current_minutes );
+// Native cleanup commits the casualty and its surviving NPC projection copies
+// together, before the dead physical actor is removed from the game.
+bool record_live_local_pair_member_death( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        character_id member_id,
+        const tripoint_abs_ms &death_position,
+        int current_minutes );
 bool reconcile_local_pair_casualties( site_record &site,
                                       const simulation_advance_cursor &expected_cursor,
                                       const std::vector<local_pair_casualty_read> &reads,
@@ -2191,6 +2243,8 @@ enum class hostile_operation_player_relationship {
 };
 hostile_operation_player_relationship hostile_operation_player_relationship_for(
     const world_state &state, character_id npc_id );
+hostile_operation_player_relationship hostile_operation_player_relationship_for(
+    const world_state &state, character_id npc_id, const site_record **matched_site );
 bool release_shakedown_combat_on_player_attack( world_state &state, character_id npc_id );
 bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
 // A local committed raid, or a shakedown whose Fight branch has been activated,
@@ -2229,6 +2283,7 @@ struct covert_scout_burn_read {
         tripoint_abs_omt position;
         int normalized_power = 0;
         int equipment_detail = 0;
+        std::optional<tripoint_abs_ms> actual_position = std::nullopt;
     };
     std::vector<visible_defender_read> visible_defenders;
 };
@@ -2236,7 +2291,7 @@ sortie_observation_effect record_covert_visible_defender_observations(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     character_id observer_id, const tripoint_abs_omt &observer_position,
     const std::vector<covert_scout_burn_read::visible_defender_read> &visible_defenders,
-    int current_minutes );
+    int current_minutes, bool physical_pair_can_share = false );
 struct covert_vehicle_wealth_read {
     tripoint_abs_ms origin;
     std::vector<tripoint_abs_ms> ordinarily_visible_occupied_points;

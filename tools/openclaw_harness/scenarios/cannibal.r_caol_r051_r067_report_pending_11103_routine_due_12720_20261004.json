@@ -1,0 +1,170 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_r051_r067_report_pending_11103_routine_due_12720_20261004",
+  "description": "Same R051 native save at11103/5418208 on R067; inspect new report and same actors at next routine service due12720.",
+  "profile": "r051-r067-report-due-12720-continuation-20261004",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.r051_fresh_ordinary_smoke_raid": "ordinary_view_clean_closed_window_smoke_same_id_report_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation_v2": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid_v2",
+    "capabilities.r_caol.r051_post_report_expiry_9482_continuation": "same_r051_native_save_9482_to_report_expiry_10920_and_natural_progression",
+    "capabilities.r_caol.r051_report_pending_11103_routine_due_12720": "same_r051_native_save_11103_to_routine_due_12720_report_and_actor_boundary"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-r067-report-due-12720-continuation-20261004",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-r067-report-due-12720-continuation-20261004",
+      "fixture": "explicit saved-world snapshot",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_report_pending_11103_saved_world_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "verify_report_pending_11103_world_reload",
+      "bind_report_pending_11103_saved_world_native_world"
+    ],
+    "production_behavior": [
+      "r051_report_pending_next_routine_due"
+    ],
+    "terminal_persistence": [
+      "r051_report_pending_next_routine_due"
+    ],
+    "artifact_verdict": [
+      "r051_report_pending_next_routine_due"
+    ],
+    "disallowed_shortcuts": [
+      "bind_report_pending_11103_saved_world_native_world"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Same R051 native post-rescout report-pending save at11103/5418208 continued once to evaluator next routine service due12720 with exact same-site decision, report and IDs4/5 evidence.",
+    "failure_rule": "Observe only current transition/scheduler/actor data at the due service. Do not infer readiness, physical travel, hostile operation, raid or damage from abstract completion or a refreshed signal."
+  },
+  "config_profile": "r051-r067-report-due-12720-continuation-20261004",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r051-r067-report-due-12720-continuation-20261004/source-snapshot/TestSetup00",
+  "post_relaunch": {
+    "terminal_save_step_label": "bind_report_pending_11103_saved_world_native_world",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "verify_report_pending_11103_world_reload",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Fresh selected-source process loads the exact current native save; verify World at minute11103/turn5418208 before input."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "r051_report_pending_next_routine_due",
+        "objective": "Continue same R051 branch at11103/turn5418208. Confirm the actual brazier fire once in current World. Inspect current same-site report/readiness/decision, outgoing scout rows and same IDs4/5. Use one safe interruptible wait to the live evaluator next_routine_dispatch_eligible_minutes=12720 and inspect actual target crossing/overshoot. At the service, query the exact camp decision/report readiness or expiry, new routine candidate/evaluator, and current actor4/5 records. If the report remains held/unready or no candidate appears after service, stop and save. If state progresses, observe resulting owner/target/actors before more time. No forced report/knowledge/dispatch/raid/attack/death.",
+        "proof_targets": [
+          "same saved World11103/5418208, native fire at brazier and immutable R067 binding",
+          "native transition showing new report delivered at11100 and any actual current readiness/observation fields or their unavailability",
+          "targeted same IDs4/5 home/physical receipt and report decision at minute12720 boundary",
+          "native save and graceful process cleanup"
+        ],
+        "invariants": [
+          "continue exact11103 native save with no fixture/setup/ignition/scouting replay",
+          "no injected knowledge, report, dispatch, raid, attack or death",
+          "DEBUG_LS only; Safe Mode Off; no cloak or clairvoyance",
+          "one safe interval to the evaluator due minute12720; no repeated wait if unchanged",
+          "distinguish physical actor receipts from abstract cursor/owner completion"
+        ],
+        "live_operations": [
+          "game.act",
+          "game.wait",
+          "game.raw_wait"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

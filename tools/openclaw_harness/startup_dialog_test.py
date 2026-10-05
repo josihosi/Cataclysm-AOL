@@ -249,6 +249,68 @@ class StartupDialogTest(unittest.TestCase):
         self.assertEqual(list((self.session / "requests").glob("*.json")) if
                          (self.session / "requests").exists() else [], [])
 
+    def test_sealed_reentry_look_exposes_current_warning_without_game_request(self):
+        reentry = {"binding_id": self.binding, "state": "transitioning",
+                   "phase": "awaiting_declared_reentry_descriptor", "session_generation": 0}
+        self._write("status.json", reentry)
+        self._write("play-client.json", {"binding_id": self.binding, "finished": True,
+            "sealed_terminal": {"stop_reason": "saved and quit"}, "session_generation": 0})
+        dialog = {"state": "confirmed_debug_dialog", "pid": 61861,
+                  "birth_identity": self.generation["birth_identity"],
+                  "message": ERRORS[0][2], "source_file": "src/item_location.cpp",
+                  "source_line": 388, "log_path": str(self.log), "log_byte_offset": 0,
+                  "evidence_class": "startup_ui_only", "session": str(self.session),
+                  "image_sha256": "a" * 64}
+        output = io.StringIO()
+        with (patch.object(play_cli, "observe_startup_dialog", return_value=dialog) as observe,
+              contextlib.redirect_stdout(output)):
+            code = play_cli.main(["--session", str(self.session), "look"])
+        self.assertEqual(code, 1)
+        observe.assert_called_once()
+        self.assertIn(ERRORS[0][2], output.getvalue())
+        self.assertIn("debug-ignore --capture", output.getvalue())
+        self.assertEqual(json.loads((self.session / "play-client.json").read_text())["finished"], True)
+        self.assertFalse((self.session / "requests").exists())
+        self._write("status.json", {**reentry, "phase": "different_phase"})
+        refused = io.StringIO()
+        with (patch.object(play_cli, "observe_startup_dialog") as unexpected,
+              contextlib.redirect_stdout(refused)):
+            self.assertEqual(play_cli.main(["--session", str(self.session), "look"]), 1)
+        unexpected.assert_not_called()
+        self.assertIn("journal_is_sealed", refused.getvalue())
+
+    def test_declared_reentry_exact_item_warning_requires_current_phase_and_capture(self):
+        reentry = {"binding_id": self.binding, "state": "transitioning",
+                   "phase": "awaiting_declared_reentry_descriptor", "session_generation": 0}
+        self._write("status.json", reentry)
+        lines = ["An error has occurred! Written below is the error report:",
+                 "DEBUG : " + ERRORS[0][2], "REPORTING FUNCTION : " + ERRORS[0][1]]
+        presses = []
+        base = self._runner(lines)
+        def run(args, **kwargs):
+            if args[1:3] == ["type", "i"]:
+                presses.append(args)
+                self._write("status.json", {**reentry, "phase": "different_phase"})
+                return subprocess.CompletedProcess(args, 0, json.dumps({"success": True}), "")
+            return base(args, **kwargs)
+        observed = observe_startup_dialog(self.session, self.binding, reentry,
+            snapshot=lambda _pid: self.generation, runner=run)
+        self.assertEqual(observed["state"], "confirmed_debug_dialog")
+        self.assertEqual((observed["source_file"], observed["source_line"]),
+                         ("src/item_location.cpp", 388))
+        wrong_phase = observe_startup_dialog(self.session, self.binding,
+            {**reentry, "phase": "different_phase"},
+            snapshot=lambda _pid: self.generation,
+            runner=lambda *_a, **_k: self.fail("wrong phase must not capture"))
+        self.assertEqual(wrong_phase["reason"], "not_bound_pre_world_startup")
+        recovered = recover_startup_debug_dialog(self.session, self.binding,
+            observed["image_sha256"], snapshot=lambda _pid: self.generation, runner=run)
+        self.assertTrue(recovered["ok"])
+        self.assertEqual(len(presses), 1)
+        self.assertEqual(recovered["before"]["message"], ERRORS[0][2])
+        self.assertEqual(recovered["after"]["state"], "bridge_status_changed")
+        self.assertTrue(Path(recovered["result_path"]).is_file())
+
     def test_three_distinct_debug_ignores_reobserve_before_world_verification(self):
         stage = [0]
         pressed = []

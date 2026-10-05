@@ -1,0 +1,34 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "From the exact derived rural-A turn5256302 full-health pre-harm copy, can the same committed hostile:2 IDs5/7 use candidate routes into the house and connected upper floors while the player avoids a repeatable exposed position, and what actor-bound route/contact/combat evidence results?",
+  "material_proof": "Launch only after fresh standard source/runtime readiness and a new registry token. Verify the exact 55-file derived turn5256302 pre-harm copy and same-run World; bind rural-A cannibal site overmap_special:cannibal_camp@135,137,0 separately from bandit_cabin@103,167,0, report generation1/revision1, operation hostile:2, IDs5/7 and player [3151,3454,0] full HP. Verify Safe Off, DEBUG_LS active without toggle, and no cloak/clairvoyance. The selected-ID trace is scoped from turn5256302 through5256699. Retrieve per-candidate route/avoid/occupancy rows by actor/candidate; compare bounds/passability, strict and relaxed route/length, exact bounded occupant samples and truncation. Keep the player still while safe; if danger requires an individual move, inspect the current map and record position/exposure. Require actual same-ID door, connected stair and upstairs-search movement rather than a waypoint. Preserve attack, damage and death source records and a meaningful pre-harm save.",
+  "current_uncertainty": "The exact turn5256260 replay already showed valid selected-ID routes to z1 goals, including ID5 choosing [3162,3450,1], but player death occurred before physical stair crossing. The turn5256302 copy starts full health after 42 turns: ID5 engages defender3 at [3158,3437,0], while ID7 is approaching a ground goal from [3166,3436,0]. A new trace/continuation can show whether IDs5/7 physically enter and climb with a player-safety route; it cannot retroactively complete the earlier rooftop exposure sequence.",
+  "material_contradiction": [
+    "The copied file set or tree hash differs from exact saved manifest 9c72cb86e5106b2fb759d97ad4936f8e622f9fd3e8bca8ecfc8940c1c20bdee6 or saved turn5256302",
+    "The loaded site, report, operation, actor IDs, player position or HP do not match the retained checkpoint",
+    "Safe Off or DEBUG_LS cannot be verified, or cloak/clairvoyance is active",
+    "Trace is not bound to IDs5/7 from the first resumed turn, or truncation obscures the candidate/combat question",
+    "Candidate route rows disagree with actual route/occupancy evidence or a proposed blocker cannot be bound to tracker identity",
+    "Actors do not physically enter or cross a connected stair; preserve exact position/z/action/path instead of inferring from waypoint",
+    "Player safety movement changes exposure or becomes a cause of faction target selection; retain exact before/after state",
+    "Actor attack/damage/death lacks named source or victim confirmation",
+    "Current source/runtime binding or registry selection fails readiness",
+    "Game, bridge or launcher remains live after supported cleanup"
+  ],
+  "forbidden_shortcuts": [
+    "replaying ignition, scouting, report generation, or dispatch",
+    "starting from pristine A, advanced/damaged profiles, or rural B",
+    "injected signal, knowledge, report, actors, route, HP, teleport, cloak, or clairvoyance",
+    "autoattack, raw Tab, or unvalidated repeated/batched inputs",
+    "claiming entry or stairs from a waypoint or candidate goal",
+    "treating the bounded avoid sample as exhaustive or inferring a named attacker without native source evidence"
+  ],
+  "honest_stop_conditions": [
+    "IDs5/7 physically enter, traverse connected floors and reach upstairs search/combat with actor-bound evidence",
+    "First genuine route/occupancy or behavior divergence is saved with original handle and before/after copy",
+    "Immediate harm interrupts safe observation: save before the next risky action, query named source/HP and continue only with a changed safety response",
+    "Exact route/actor field is missing: preserve scene and name only that field and source handle",
+    "Source/runtime or registry readiness is not current: stop before native input"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

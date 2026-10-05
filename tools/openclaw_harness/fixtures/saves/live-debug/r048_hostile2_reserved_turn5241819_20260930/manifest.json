@@ -1,0 +1,12 @@
+{
+  "schema": "r048-checkpoint-fixture-v1",
+  "fixture": "r048_hostile2_reserved_turn5241819_20260930",
+  "profile": "live-debug",
+  "world": "TestSetup00",
+  "native_saved_turn": 5241819,
+  "source_run_id": "502b4ad2579e8d2886a716b05966767db2a91c21ec1831c2985b4364ee70e894",
+  "source_copy_manifest": "build_logs/first-smoke-048/hostile2-reserved-turn5241819-copy-manifest.json",
+  "source_copy_tree_sha256": "f55d9797fa756faeb46eb425163fca3934926f82f4423d43de60aa9524d53fc9",
+  "source_path": ".userdata/first-smoke-048-hostile2-reserved-turn5241819-20260930/save/TestSetup00",
+  "note": "Exact byte copy of the already committed R048 smoke report / hostile:2 response checkpoint. This continuation does not replay ignition, scouting, report generation, or dispatch."
+}

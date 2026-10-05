@@ -29,8 +29,20 @@ MAX_CAPTURE_BYTES = 20 * 1024 * 1024
 MAX_CAPTURE_FILES = 8
 MAX_DIAGNOSTIC_LINE_CHARS = 2048
 STARTUP_STATES = {"starting", "preparing", "process_dead", "bridge_failed"}
+REENTRY_STARTUP_PHASE = "awaiting_declared_reentry_descriptor"
 ERROR_LINE = re.compile(r"ERROR\s+:\s+(src/[^:\r\n]+):(\d+)\s+\[[^\]]*\]\s+(.+)")
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def pre_world_startup_phase(status: Mapping[str, Any]) -> str | None:
+    """Identify the exact predescriptor phase that can own a PID-bound UI view."""
+    if status.get("state") == "transitioning" and status.get("phase") == REENTRY_STARTUP_PHASE:
+        generation = status.get("session_generation")
+        return "declared_reentry" if type(generation) is int and generation >= 0 else None
+    if (status.get("state") in STARTUP_STATES and not status.get("session_descriptor")
+            and status.get("session_generation", 0) == 0):
+        return "initial_startup"
+    return None
 
 
 def _read_object(path: Path, limit: int = 65536) -> dict[str, Any]:
@@ -194,9 +206,10 @@ def observe_startup_dialog(
                               "state": "unavailable", "reason": "startup_identity_unavailable",
                               "evidence_class": "startup_ui_only", "binding_id": binding_id,
                               "session": str(Path(session).resolve()), "log_clues": []}
-    if status.get("binding_id") != binding_id or status.get("state") not in STARTUP_STATES or \
-            status.get("session_descriptor") or status.get("session_generation", 0) != 0:
+    phase = pre_world_startup_phase(status)
+    if status.get("binding_id") != binding_id or phase is None:
         return {**result, "reason": "not_bound_pre_world_startup"}
+    result["startup_phase"] = phase
     owner = _read_object(Path(session) / "game-process.json")
     expected = owner.get("process_generation")
     if owner.get("binding_id") != binding_id or not isinstance(expected, Mapping):
@@ -277,8 +290,11 @@ def observe_startup_dialog(
     if not process_generation_matches(expected, process_snapshot(pid)):
         return {**result, "state": "identity_changed", "reason": "pid_changed_during_capture"}
     current = _read_object(Path(session) / "status.json")
-    if current.get("binding_id") != binding_id or current.get("state") not in STARTUP_STATES or \
-            current.get("session_generation", 0) != 0:
+    current_owner = _read_object(Path(session) / "game-process.json")
+    if (current.get("binding_id") != binding_id or pre_world_startup_phase(current) != phase
+            or current.get("session_generation", 0) != status.get("session_generation", 0)
+            or current_owner.get("process_generation") != expected
+            or current_owner.get("run_id") != owner.get("run_id")):
         return {**result, "state": "state_changed", "reason": "startup_status_changed_during_capture"}
     result.update(correlate_visible_dialog(lines, clues))
     return result
@@ -322,6 +338,8 @@ def recover_startup_debug_dialog(
         return {**result, "reason": "current_debug_source_or_run_unbound"}
     owner = _read_object(session / "game-process.json")
     expected = owner.get("process_generation")
+    phase = before.get("startup_phase")
+    generation = status.get("session_generation", 0)
     from startup_harness import process_generation_matches, process_generation_snapshot
     process_snapshot = snapshot or process_generation_snapshot
     pid = before["pid"]
@@ -335,9 +353,8 @@ def recover_startup_debug_dialog(
                 and current_owner.get("command") == before["command"]
                 and current_owner.get("process_generation") == expected
                 and current_status.get("binding_id") == binding_id
-                and current_status.get("state") in STARTUP_STATES
-                and not current_status.get("session_descriptor")
-                and current_status.get("session_generation", 0) == 0
+                and pre_world_startup_phase(current_status) == phase
+                and current_status.get("session_generation", 0) == generation
                 and process_generation_matches(expected, process_snapshot(pid)))
     if not still_current():
         return {**result, "reason": "identity_or_status_changed_before_input"}
@@ -369,7 +386,7 @@ def recover_startup_debug_dialog(
     result["ok"] = "error" not in pressed
     result["state"] = "input_reported_delivered" if result["ok"] else "input_delivery_failed"
     after_status = _read_object(session / "status.json")
-    if after_status.get("binding_id") == binding_id and after_status.get("state") in STARTUP_STATES:
+    if after_status.get("binding_id") == binding_id and pre_world_startup_phase(after_status) == phase:
         result["after"] = observe_startup_dialog(session, binding_id, after_status,
                                                  snapshot=snapshot, runner=runner)
     else:

@@ -88,6 +88,8 @@ struct live_transition_stream {
     // The last complete validated record also detects a truncate-and-regrow
     // which happened between observations on the same file identity.
     std::string last_line;
+    std::unordered_map<std::string, bandit_live_world_probe::change_only_transition_state>
+    homeward_observations;
 };
 
 live_transition_stream transition_stream;
@@ -450,6 +452,97 @@ bool live_transition_stream_enabled()
     return reconcile_transition_stream( path, run_id );
 }
 
+void write_scout_homeward_observation( JsonOut &json,
+                                      const bandit_live_world_probe::scout_homeward_observation &read,
+                                      const bool include_moves )
+{
+    const auto optional_bool = [&json]( const char *name, const std::optional<bool> value ) {
+        if( value ) {
+            json.member( name, *value );
+        }
+    };
+    json.start_object();
+    json.member( "entrypoint", read.entrypoint );
+    json.member( "outing_kind", read.outing_kind );
+    json.member( "owner_before", read.owner_before );
+    json.member( "handoff_epoch_before", read.handoff_epoch_before );
+    json.member( "outing_member_count", read.outing_member_count );
+    json.member( "cursor_present", read.cursor_present );
+    json.member( "handoff_active", read.handoff_active );
+    json.member( "crossing_pending", read.crossing_pending );
+    json.member( "handoff_member_count", read.handoff_member_count );
+    if( !read.action.empty() ) {
+        json.member( "action", read.action );
+    }
+    optional_bool( "relationship_present", read.relationship_present );
+    optional_bool( "route_found", read.route_found );
+    optional_bool( "route_safe", read.route_safe );
+    optional_bool( "next_step_cohesive", read.next_step_cohesive );
+    optional_bool( "next_center_in_bounds", read.next_center_in_bounds );
+    optional_bool( "ordinary_local_reentry", read.ordinary_local_reentry );
+    if( !read.next_step_ms.empty() ) {
+        json.member( "next_step_absolute_ms", read.next_step_ms );
+    }
+    optional_bool( "next_step_passable", read.next_step_passable );
+    optional_bool( "next_step_occupied", read.next_step_occupied );
+    optional_bool( "next_step_dangerous", read.next_step_dangerous );
+    optional_bool( "plan_invoked", read.plan_invoked );
+    optional_bool( "plan_valid", read.plan_valid );
+    if( !read.commit_result.empty() ) {
+        json.member( "commit_result", read.commit_result );
+    }
+    json.member( "members" );
+    json.start_array();
+    for( const auto &member : read.members ) {
+        json.start_object();
+        json.member( "npc_id", member.npc_id );
+        json.member( "found", member.found );
+        if( member.found ) {
+            json.member( "loaded", member.loaded );
+            json.member( "active", member.active );
+            json.member( "in_bounds", member.in_bounds );
+            json.member( "dead", member.dead );
+            json.member( "sleeping", member.sleeping );
+            json.member( "cannot_move", member.cannot_move );
+            json.member( "movement_impaired", member.movement_impaired );
+            json.member( "travelling", member.travelling );
+            json.member( "has_destination", member.has_destination );
+            json.member( "mission", member.mission );
+            json.member( "has_moves", member.moves > 0 );
+            if( include_moves ) {
+                json.member( "moves_before", member.moves );
+                if( member.moves_after ) {
+                    json.member( "moves_after", *member.moves_after );
+                }
+            }
+            json.member( "absolute_ms", member.position_ms );
+            json.member( "absolute_omt", member.position_omt );
+            json.member( "goal_omt", member.goal_omt );
+            if( !member.position_after_ms.empty() ) {
+                json.member( "position_after_absolute_ms", member.position_after_ms );
+            }
+            if( !member.next_omt.empty() ) {
+                json.member( "next_omt", member.next_omt );
+            }
+            json.member( "local_path_length", member.local_path_size );
+            json.member( "omt_path_length", member.omt_path_size );
+        }
+        optional_bool( "selected", member.selected );
+        optional_bool( "boundary_selected", member.boundary_selected );
+        optional_bool( "assembly_selected", member.assembly_selected );
+        optional_bool( "ingress_selected", member.ingress_selected );
+        if( !member.boundary_departure_ms.empty() ) {
+            json.member( "boundary_departure_absolute_ms", member.boundary_departure_ms );
+        }
+        if( !member.transfer_position_ms.empty() ) {
+            json.member( "transfer_position_absolute_ms", member.transfer_position_ms );
+        }
+        json.end_object();
+    }
+    json.end_array();
+    json.end_object();
+}
+
 bool append_live_transition_event( const bandit_live_world_probe::transition_event &event )
 {
     if( !live_transition_stream_enabled() ||
@@ -518,6 +611,10 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
     }
     if( event.turn >= 0 ) {
         json.member( "turn", event.turn );
+    }
+    if( event.scout_homeward ) {
+        json.member( "scout_homeward" );
+        write_scout_homeward_observation( json, *event.scout_homeward, true );
     }
     if( !event.fixture_actor_id.empty() ) {
         json.member( "fixture_actor_id", event.fixture_actor_id );
@@ -1081,6 +1178,91 @@ void record_live_transition_event( transition_event event )
     try {
         append_live_transition_event( event );
     } catch( ... ) {
+        transition_stream = {};
+    }
+}
+
+void record_scout_homeward_observation( transition_event event )
+{
+    if( !event.scout_homeward || event.reason.empty() || !transition_events_enabled() ) {
+        return;
+    }
+    try {
+        event.schema_version = 1;
+        std::ostringstream subject;
+        JsonOut subject_json( subject );
+        subject_json.start_array();
+        subject_json.write( event.site_id );
+        subject_json.write( event.operation_id );
+        subject_json.write( event.generation );
+        subject_json.write( event.transition );
+        subject_json.write( event.scout_homeward->entrypoint );
+        subject_json.write( event.actor_ids );
+        subject_json.end_array();
+        std::ostringstream context;
+        JsonOut context_json( context );
+        context_json.start_array();
+        context_json.write( event.outcome );
+        context_json.write( event.reason );
+        context_json.write( event.simulation_owner );
+        context_json.write( event.handoff_epoch );
+        context_json.write( event.previous_phase );
+        context_json.write( event.new_phase );
+        write_scout_homeward_observation( context_json, *event.scout_homeward, false );
+        context_json.end_array();
+
+        const auto retain_change = [&]( auto &subjects, transition_event &receipt, const bool commit ) {
+            const auto previous = subjects.find( subject.str() );
+            if( previous == subjects.end() && subjects.size() >= max_transition_events ) {
+                // One extra bounded sentinel makes an exhausted subject table observable.
+                const auto sentinel = subjects.find( "" );
+                if( sentinel != subjects.end() && sentinel->second.truncated ) {
+                    return false;
+                }
+                if( commit ) {
+                    subjects[""].truncated = true;
+                }
+                receipt.outcome = "truncated";
+                receipt.reason = "homeward observation subject budget exhausted; later subjects unknown";
+                return true;
+            }
+            change_only_transition_state retained = previous == subjects.end() ?
+                    change_only_transition_state{} : previous->second;
+            if( retained.truncated || retained.signature == context.str() ) {
+                return false;
+            }
+            if( retained.emitted >= max_transition_events ) {
+                retained.truncated = true;
+                receipt.outcome = "truncated";
+                receipt.reason = "homeward observation change budget exhausted; later states unknown";
+                if( commit ) {
+                    subjects[subject.str()] = std::move( retained );
+                }
+                return true;
+            }
+            retained.signature = context.str();
+            ++retained.emitted;
+            if( commit ) {
+                subjects[subject.str()] = std::move( retained );
+            }
+            return true;
+        };
+        if( active_session != nullptr && active_session->result_.transition_events_collected ) {
+            transition_event receipt = event;
+            if( retain_change( active_session->homeward_observations_, receipt, true ) ) {
+                record_transition_event( std::move( receipt ) );
+            }
+        }
+        // The stream owns its cache, so its existing run/file reconciliation also
+        // resets diagnostic deduplication after replacement, truncation or rebinding.
+        if( live_transition_stream_enabled() &&
+            retain_change( transition_stream.homeward_observations, event, false ) &&
+            append_live_transition_event( event ) && live_transition_stream_enabled() ) {
+            // Failed writes must not consume the last changed state or its budget.
+            retain_change( transition_stream.homeward_observations, event, true );
+        }
+    } catch( ... ) {
+        // A diagnostic receipt can fail without changing a native decision.
         transition_stream = {};
     }
 }

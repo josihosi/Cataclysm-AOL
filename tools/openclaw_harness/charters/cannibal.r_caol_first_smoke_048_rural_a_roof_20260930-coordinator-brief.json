@@ -1,0 +1,35 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-048",
+  "scenario": "cannibal.r_caol_first_smoke_048_rural_a_roof_20260930",
+  "objective": "From the original unlit rural A footing, observe actual light/smoke source evidence, natural cannibal admission/scouting/report/dispatch and the selected group\u2019s physical assault/access/upstairs behavior.",
+  "outcome": "On a fresh untouched rural A footing, ordinary roof fire/smoke naturally admits a cannibal response whose same-ID scouts and raiders physically route through real access/stairs into an upstairs search/attack or a precise native divergence.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_048_rural_a_roof_20260930-witness.json",
+  "constraints": [
+    "Only fresh disposable profile copied from published original A 45-file fixture; no advanced A or R044 profile as start.",
+    "Use immutable R040/R047 e4f1 executable and standard current runtime/registry selection.",
+    "No B arm. Keep inherited distant bandit cabin and old lead separate.",
+    "No clairvoyance or cloak. Safe Off. DEBUG_LS alone as survival setup; record one real-turn confirmation.",
+    "Ordinary lighter only if source is not already burning; no injected signal/knowledge/report/raid/actors or teleport.",
+    "Trace dynamically selected committed raiders with raid_actor_trace true; validate scope, actual actor IDs, raw handles, cap and truncation.",
+    "No autoattack, raw Tab or action batching; use current advertised individual controls.",
+    "Save meaningful transitions; gracefully close and verify every game/bridge/launcher PID birth and exit."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r048_rural_roof",
+        "op": "eq",
+        "value": "A_fresh_native_roof_light_smoke_response_entry_stairs_combat",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

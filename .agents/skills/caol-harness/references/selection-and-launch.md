@@ -75,6 +75,25 @@ including the witness charter and, for a live cockpit, `registry-detached-launch
 path. Do not pre-create that directory. A build, repair, or missing-charter response identifies the
 prerequisite instead. Saved query readiness is a snapshot; launch revalidates current state.
 
+For a task-local saved start, carry `saved_world_snapshot` from the verified current checkpoint
+and the chosen destination profile in the selected source. When its initial `steps` are exactly
+one `native_semantic_bootstrap` followed by one `cockpit_live_session`, startup reuses those
+source-bound steps directly; no duplicate `post_relaunch` declaration or new label is needed.
+The snapshot is still copied/validated through the existing saved-world path, with fixture
+installation disabled. An explicit `post_relaunch` retains its own reentry steps and actual
+initial `terminal_save_step_label`. Routes containing setup or additional steps need that explicit
+contract so startup cannot accidentally replay setup or guess which actions to omit. Declaration
+lint/staging checks the declared saved-start shape; launch preflight also checks a continuation
+requested through CLI flags before claiming authority. It never derives a saved turn or rewrites
+source bytes. A useful read-only check is:
+
+```sh
+python3 tools/openclaw_harness/scenario_registry_cli.py --json lint-declarations "$SCENARIO_SOURCE"
+```
+
+Use the returned current checkpoint and exact retained save, not an older starting save merely
+because its label is familiar. Source declarations and native save evidence remain separate.
+
 If a launch supplies `--profile`, use the profile's name under `.userdata`, not its absolute path.
 The startup helper sanitizes slashes into a new name; an absolute path can silently select an
 empty userdir. Before game input, compare the effective userdir and intended save hashes and
@@ -107,3 +126,8 @@ The receipt's digest is the only full-recovery handle.  Retrieve its complete re
 with `registry-artifact --sha256 <receipt-digest>`, or use `--full` only when this invocation
 itself needs the complete status payload.  `runtime-status` has the same default receipt and
 explicit routes through `runtime-status-artifact --sha256 <receipt-digest>` and `--full`.
+
+For a focused Tiles-linked C++ test, reuse the configured source-bound build's compile/link inputs
+or its existing test target. A standalone default test make can omit SDL3 flags and Tiles objects;
+that is a build setup failure, not a game regression. The recovered R048 command and inputs are
+retained in `build_logs/first-smoke-048/r048-route-probe-build/build.full.log`.

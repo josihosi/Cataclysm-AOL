@@ -123,18 +123,19 @@ bool trade_preset::cat_sort_compare( const inventory_entry &lhs, const inventory
 
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
                     const int you_nearby_item_radius, const int you_nearby_ally_radius,
-                    basecamp *you_basecamp )
+                    basecamp *you_basecamp, const bool encounter_only, const bool goods_to_stash )
     : _upreset{ you, trader }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
               std::make_unique<pane_t>( this, you, _upreset, std::string(), _pane_size(),
                                         _pane_orig( 1 ) ) },
-      _parties{ &trader, &you }, _title( std::move( title ) )
+      _parties{ &trader, &you }, _requested_cost( cost ), _goods_to_stash( goods_to_stash ),
+      _title( std::move( title ) )
 
 {
     _panes[_you]->add_character_items( you );
     _panes[_you]->add_nearby_items( you_nearby_item_radius );
-    if( you_basecamp != nullptr ) {
+    if( you_basecamp != nullptr && !encounter_only ) {
         _panes[_you]->add_basecamp_items( *you_basecamp, you_nearby_item_radius );
         std::set<character_id> added_basecamp_workers;
         const auto add_basecamp_worker_items = [&]( npc &assigned ) {
@@ -167,9 +168,18 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
     }
     if( you_nearby_ally_radius > 0 ) {
         for( npc &guy : g->all_npcs() ) {
-            if( &guy == &trader || !guy.is_player_ally() ||
+            if( &guy == &trader || &guy == &you || !guy.is_player_ally() ||
                 rl_dist( guy.pos_abs(), you.pos_abs() ) > you_nearby_ally_radius ) {
                 continue;
+            }
+            if( encounter_only ) {
+                const auto from = you.pos_bub();
+                const auto to = guy.pos_bub();
+                map &here = get_map();
+                if( !guy.is_active() || guy.is_dead() || !here.inbounds( to ) ||
+                    !here.clear_path( from, to, rl_dist( from, to ), 1, 100 ) ) {
+                    continue;
+                }
             }
             _panes[_you]->add_character_items( guy );
         }
@@ -198,7 +208,7 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
     const map &here = get_map();
 
     for( const wrapped_vehicle &wv : get_map().get_vehicles() ) {
-        if( wv.v->owner == faction_your_followers ) {
+        if( !encounter_only && wv.v->owner == faction_your_followers ) {
             for( const tripoint_abs_ms &veh_pt : wv.v->get_points() ) {
                 _panes[_you]->add_vehicle_items( here.get_bub( veh_pt ) );
             }
@@ -272,6 +282,7 @@ std::map<std::string, std::string> trade_ui::semantic_payload() const
     return {
         { "title", string_format( _( "Trade: %s's items" ), active.get_name() ) },
         { "deal", _title },
+        { "payment_destination", _goods_to_stash ? "bandit_home_stash" : "trader" },
         { "active_party", _cpane == _you ? "player" : "npc" },
         { "active_actor_id", actor_id( active ) },
         { "player_actor_id", actor_id( *_parties[_you] ) },
@@ -280,10 +291,20 @@ std::map<std::string, std::string> trade_ui::semantic_payload() const
         { "trader_name", trader.get_name() },
         { "exchange_items_freely", trader.will_exchange_items_freely() ? "true" : "false" },
         { "balance", format_money( _balance ) },
+        { "balance_label", _balance >= 0 ? _( "Credit" ) : _( "Debt" ) },
+        { "balance_amount", format_money( std::abs( _balance ) ) },
+        { "demand_amount", format_money( _requested_cost ) },
+        { "opening_balance", format_money( _cost ) },
+        { "max_credit", format_money( trader.max_credit_extended() ) },
         { "player_offer_value", format_money( _trade_values[_you] ) },
         { "trader_offer_value", format_money( _trade_values[_trader] ) },
         { "trade_values_source", "trade_ui native parties, offers and balance" }
     };
+}
+
+trade_ui::currency_t trade_ui::active_offer_value( const entry_t &entry ) const
+{
+    return npc_trading::trading_price( *_parties[-_cpane + 1], *_parties[_cpane], entry );
 }
 
 void trade_ui::recalc_values_cpane()
@@ -292,13 +313,20 @@ void trade_ui::recalc_values_cpane()
 
     for( entry_t const &it : _panes[_cpane]->to_trade() ) {
         // FIXME: cache trading_price
-        _trade_values[_cpane] +=
-            npc_trading::trading_price( *_parties[-_cpane + 1], *_parties[_cpane], it );
+        _trade_values[_cpane] += active_offer_value( it );
     }
     if( !_parties[_trader]->as_npc()->will_exchange_items_freely() ) {
         _balance = _cost + _trade_values[_you] - _trade_values[_trader] + _delta_bank;
     }
     _header_ui.invalidate_ui();
+}
+
+bool trade_ui::can_autobalance() const
+{
+    const int sign = _cpane == _you ? -1 : 1;
+    const inventory_entry &entry = _panes[_cpane]->get_active_column().get_highlighted();
+    return ( ( sign < 0 && _balance < 0 ) || ( sign > 0 && _balance > 0 ) ) &&
+           entry.is_selectable() && entry.chosen_count < entry.get_available_count();
 }
 
 void trade_ui::autobalance()
@@ -377,7 +405,7 @@ bool trade_ui::_confirm_trade() const
             popup( _( "Sorry, I'm only willing to extend you %s in credit." ),
                    format_money( np.max_credit_extended() ) );
         }
-    } else if( !np.is_shopkeeper() &&
+    } else if( !_goods_to_stash && !np.is_shopkeeper() &&
                !npc_trading::npc_can_fit_items( np, _panes[_you]->to_trade() ) ) {
         popup( _( "%s doesn't have the appropriate pockets to accept that." ), np.get_name() );
     } else if( npc_trading::calc_npc_owes_you( np, _balance ) < _balance ) {

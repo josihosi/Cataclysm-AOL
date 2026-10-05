@@ -1,0 +1,163 @@
+{
+  "724": {
+    "record": {
+      "event": "surface_descriptor",
+      "schema_version": 1,
+      "process_instance": "1791029304673055",
+      "sequence": 724,
+      "game_minutes": 8978,
+      "game_turn": 5290687,
+      "wall_time": 1791032735146,
+      "is_night": false,
+      "run_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8",
+      "surface_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:surface:131",
+      "frame_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:frame:123",
+      "kind": "menu",
+      "breadcrumbs": [
+        "World",
+        "What do you want to do?"
+      ],
+      "payload": {
+        "filter": "",
+        "filter_required": "false",
+        "filtered_entry_count": "7",
+        "selected_stable_id": "uilist-entry:49",
+        "text": "What do you want to do?",
+        "title": ""
+      },
+      "live_hostile_operation": null,
+      "valid_actions": [
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:49",
+          "label": "Talk to\u2026",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:49",
+          "label": "Talk to\u2026",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:50",
+          "label": "Tell someone to work on\u2026",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:50",
+          "label": "Tell someone to work on\u2026",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:51",
+          "label": "Yell",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:51",
+          "label": "Yell",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:52",
+          "label": "Say a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:52",
+          "label": "Say a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:53",
+          "label": "Whisper a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:53",
+          "label": "Whisper a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:54",
+          "label": "Yell a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:54",
+          "label": "Yell a sentence",
+          "enabled": true
+        },
+        {
+          "id": "menu.select",
+          "stable_id": "uilist-entry:55",
+          "label": "Emote",
+          "enabled": true
+        },
+        {
+          "id": "menu.choose",
+          "stable_id": "uilist-entry:55",
+          "label": "Emote",
+          "enabled": true
+        },
+        {
+          "id": "menu.filter",
+          "stable_id": "",
+          "label": "Filter",
+          "enabled": true
+        },
+        {
+          "id": "menu.cancel",
+          "stable_id": "",
+          "label": "Cancel",
+          "enabled": true
+        }
+      ]
+    },
+    "source": {
+      "path": ".userdata/native8820-r066-camp-npc-route-cont5289708/harness_runs/20261003_140809_e966f4d8900545a885c017d5b9fff6f0/semantic.native.events.jsonl",
+      "offset": 22294845,
+      "length": 2144,
+      "sha256": "673c3956ab3885ce84c742afe9730965daa692cb194f787edc389d892926372e"
+    }
+  },
+  "730": {
+    "record": {
+      "event": "surface_receipt",
+      "run_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8",
+      "process_instance": "1791029304673055",
+      "sequence": 730,
+      "game_minutes": 8978,
+      "game_turn": 5290687,
+      "wall_time": 1791032790697,
+      "request_id": "cockpit:harness-8065968affdd4e06862121c65fd2f296:d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:frame:123:menu.select:279ffd0753bb56a6",
+      "requested_run_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8",
+      "requested_surface_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:surface:131",
+      "requested_frame_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:frame:123",
+      "consuming_surface_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:surface:131",
+      "consuming_frame_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:frame:123",
+      "action_id": "menu.select",
+      "accepted": true,
+      "rejection_reason": "",
+      "resulting_frame_id": "d506f9500bc646a0a05df9b0b4456472660f7b2054d84976052da7a66034bdd8:frame:123",
+      "outcome": ""
+    },
+    "source": {
+      "path": ".userdata/native8820-r066-camp-npc-route-cont5289708/harness_runs/20261003_140809_e966f4d8900545a885c017d5b9fff6f0/semantic.native.events.jsonl",
+      "offset": 22299963,
+      "length": 1084,
+      "sha256": "3d09b877d9025855c4ed12dde813377653e2b4524f20e8059e4ee7f022c038b1"
+    }
+  }
+}

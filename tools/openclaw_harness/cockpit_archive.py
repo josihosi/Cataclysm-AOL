@@ -8,10 +8,14 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 import hashlib
 import itertools
+import os
 import json
 from pathlib import Path
 import sqlite3
+import shutil
+import tempfile
 import uuid
+import weakref
 
 
 def is_sequence(value):
@@ -75,11 +79,31 @@ def write_json_stream(path, value, *, exclusive=True):
     return {"path": str(path), "sha256": digest.hexdigest(), "bytes": size}
 
 
+def _closed_bridge_archive(path, binding_id):
+    """Only a terminal, exited POSIX bridge may use a sidecar-free snapshot."""
+    if os.name != "posix":
+        return False
+    try:
+        status = json.loads((path.parent / "status.json").read_bytes())
+        pid = status.get("bridge_pid")
+        if (status.get("binding_id") != binding_id or status.get("state") != "safe_to_cleanup"
+                or status.get("child_exit_code") is None or not isinstance(pid, int) or pid <= 0):
+            return False
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+    return False
+
+
 class Archive:
     def __init__(self, path, *, run_id, binding_id, readonly=False):
         self.path = Path(path).resolve()
         self.run_id, self.binding_id = run_id, binding_id
         self.readonly = readonly
+        self._readonly_snapshot = None
         self.connection = sqlite3.connect(
             self.path.as_uri() + "?mode=ro" if readonly else str(self.path), uri=readonly)
         if not readonly:
@@ -109,18 +133,47 @@ class Archive:
                         (hashlib.sha256(raw.encode("utf-8")).hexdigest(), stream, sequence),
                     )
             self.connection.commit()
-        metadata = dict(self.connection.execute("SELECT key,value FROM metadata"))
-        if metadata != {"run_id": run_id, "binding_id": binding_id}:
+        try:
+            metadata = dict(self.connection.execute("SELECT key,value FROM metadata"))
+        except sqlite3.OperationalError as error:
+            # Some SQLite builds cannot reopen a checkpointed WAL database in
+            # mode=ro after the last writer removed its sidecars. Never mark a
+            # potentially live source immutable or discard an existing WAL.
+            wal = Path(str(self.path) + "-wal")
+            if (not readonly or str(error) != "unable to open database file"
+                    or not self.path.is_file() or wal.exists()
+                    or not _closed_bridge_archive(self.path, binding_id)):
+                raise
             self.connection.close()
+            self._readonly_snapshot = tempfile.TemporaryDirectory(prefix="caol-archive-read-")
+            self._snapshot_cleanup = weakref.finalize(self, self._readonly_snapshot.cleanup)
+            snapshot = Path(self._readonly_snapshot.name) / self.path.name
+            try:
+                shutil.copyfile(self.path, snapshot)
+                if wal.exists() or not _closed_bridge_archive(self.path, binding_id):
+                    raise error
+                self.connection = sqlite3.connect(snapshot.as_uri() + "?mode=ro&immutable=1", uri=True)
+                metadata = dict(self.connection.execute("SELECT key,value FROM metadata"))
+            except Exception:
+                self.close()
+                raise
+            # resolve_wire still verifies run/binding and every requested
+            # stream's count and digest against the original response handles.
+        if metadata != {"run_id": run_id, "binding_id": binding_id}:
+            self.close()
             raise ValueError("archive_run_or_binding_mismatch")
 
     def close(self):
-        self.connection.close()
-
-    def __del__(self):
         connection = getattr(self, "connection", None)
         if connection is not None:
             connection.close()
+        snapshot = getattr(self, "_readonly_snapshot", None)
+        if snapshot is not None:
+            self._snapshot_cleanup()
+            self._readonly_snapshot = None
+
+    def __del__(self):
+        self.close()
 
     def sequence(self):
         stream = uuid.uuid4().hex

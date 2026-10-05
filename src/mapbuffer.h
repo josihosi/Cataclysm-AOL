@@ -5,12 +5,16 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <set>
+#include <utility>
+#include <vector>
 
 #include "coordinates.h"
 
 class JsonArray;
 class cata_path;
 class submap;
+class vehicle;
 
 /**
  * Store, buffer, save and load the entire world map.
@@ -60,12 +64,27 @@ class mapbuffer
          * submap object, don't delete it on your own.
          */
         submap *lookup_submap( const tripoint_abs_sm &p );
+        /** Read cached or serialized geometry without generating omitted uniform submaps. */
+        submap *lookup_submap_existing( const tripoint_abs_sm &p );
+        /** Resident-only lookup; no serialized read, insertion or generation. */
+        submap *lookup_submap_cached( const tripoint_abs_sm &p ) const {
+            const auto it = submaps.find( p );
+            return it == submaps.end() ? nullptr : it->second.get();
+        }
         // Cheaper version of the above for when you only care about whether the
         // submap exists or not.
         bool submap_exists( const tripoint_abs_sm &p );
 
         // Cheaper version of the above for when you don't mind some false results
         bool submap_exists_approx( const tripoint_abs_sm &p );
+
+        // Resident physical part positions, indexed when ownership/geometry changes.
+        // A part may overhang arbitrarily far from its owning submap. Queries neither
+        // scan unrelated owners nor load/generate missing geometry.
+        using vehicle_part_position = std::pair<vehicle *, tripoint_abs_ms>;
+        const std::vector<vehicle_part_position> &vehicle_parts_at( const tripoint_abs_sm &p ) const;
+        void update_vehicle_index( vehicle &v );
+        void forget_vehicle( vehicle &v );
 
     private:
         using submap_map_t = std::map<tripoint_abs_sm, std::unique_ptr<submap>>;
@@ -82,13 +101,21 @@ class mapbuffer
         // There's a very good reason this is private,
         // if not handled carefully, this can erase in-use submaps and crash the game.
         void remove_submap( const tripoint_abs_sm &addr );
-        submap *unserialize_submaps( const tripoint_abs_sm &p );
+        submap *unserialize_submaps( const tripoint_abs_sm &p, bool generate_uniform = true );
         bool submap_file_exists( const tripoint_abs_sm &p );
-        void deserialize( const JsonArray &ja );
+        void deserialize( const JsonArray &ja, bool skip_existing = false );
         void save_quad(
             const cata_path &dirname, const cata_path &filename,
             const tripoint_abs_omt &om_addr, std::list<tripoint_abs_sm> &submaps_to_delete,
             bool delete_after_save );
+        void index_vehicle( vehicle &v, tripoint_abs_sm owner );
+        struct indexed_vehicle {
+            tripoint_abs_sm owner;
+            std::set<tripoint_abs_sm> cells;
+        };
+        // Destroy submaps first: vehicle destructors unregister while these exist.
+        std::map<tripoint_abs_sm, std::vector<vehicle_part_position>> vehicle_cells; // NOLINT(cata-serialize)
+        std::map<vehicle *, indexed_vehicle> indexed_vehicles; // NOLINT(cata-serialize)
         submap_map_t submaps; // NOLINT(cata-serialize)
 };
 

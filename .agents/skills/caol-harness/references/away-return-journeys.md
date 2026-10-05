@@ -24,7 +24,7 @@ At meaningful crossings compare same-ID position/z, life/HP, mission/goal/path, 
 
 6e — Response authorized/rallying. Leave after a real cannibal response or bandit expedition is reserved; return after a day. Inspect each faction's own timing, capability and destination. A night gate can be legitimate; do not copy cannibal timing to bandits. The base stays a known place, while an unseen avatar's new position is not automatic knowledge.
 
-6f — Response approaching/local contact. Depart before contact in one branch; leave after genuine contact in a saved branch. Return a day later and establish real survivors, abandoned/completed operations, base damage/loot if implemented, and renewed contact. Defeated raiders are a valid outcome when combat evidence explains it.
+6f — Response approaching/local contact. Depart before contact in one branch; leave after genuine contact in a saved branch. Return a day later and establish real survivors, abandoned/completed operations, base damage/loot if implemented, and renewed contact. Defeated raiders are a valid outcome when combat evidence explains it. For the new bandit encounter contract, overmap-only destination time is pending local simulation, not refusal or invented combat; verify once-only activation. Cannibal raid semantics remain separate: establish actual existing behavior and flag a missing rule rather than assuming bandit waiting applies.
 
 6g — Paid bandits departing. Pay through the real interaction, then leave a day while collectors head home. Verify retained payment/debt, cargo and departure/return, no duplicate charge or unjustified attack. Compare refusal/Fight only from a separate pre-choice branch.
 

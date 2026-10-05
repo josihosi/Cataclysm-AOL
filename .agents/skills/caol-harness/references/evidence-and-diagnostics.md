@@ -135,7 +135,10 @@ cost. Unavailable sources remain reported as unavailable rather than being treat
 For legacy exact log queries, use `cockpit_file_bridge.py log-query --path PATH` with
 `--run-id`, `--process-instance`, `--request-id`, `--actor-id`, `--actor-name`, and `--event`
 for exact identities/events, then `--where FIELD=JSON` and `--select FIELD` for a narrow
-projection. For example, to inspect one rejected request while keeping a contradictory
+projection. This reader also parses prefixed native transition records; do not feed those lines
+straight to `json.loads`. Filter their actual top-level fields, not an assumed `data.*` wrapper.
+Reuse a tested query from the current handoff; investigate its schema only when the question or
+source format changes. For example, to inspect one rejected request while keeping a contradictory
 acceptance field visible:
 
 ```sh

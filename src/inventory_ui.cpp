@@ -1,6 +1,7 @@
 #include "inventory_ui.h"
 
 #include <chrono>
+#include <cctype>
 #include <cstdlib>
 #include <optional>
 #include <stdexcept>
@@ -3792,6 +3793,15 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
                 }
                 actions.push_back( { "inventory.select", stable_id, label, enabled } );
                 for( const semantic_action_descriptor &mode_action : mode_actions ) {
+                    if( mode_action.id == "inventory.increase_quantity" ||
+                        mode_action.id == "inventory.decrease_quantity" ) {
+                        const bool applicable = mode_action.id == "inventory.increase_quantity" ?
+                                                entry->chosen_count < entry->get_available_count() :
+                                                entry->chosen_count > 0;
+                        actions.push_back( { mode_action.id, stable_id,
+                                             mode_action.label + _( " in this selection group" ),
+                                             mode_action.enabled && enabled && applicable } );
+                    }
                     if( mode_action.id == "inventory.toggle" ) {
                         actions.push_back( { mode_action.id, stable_id, mode_action.label,
                                              mode_action.enabled && enabled } );
@@ -3807,7 +3817,9 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     actions.push_back( { "inventory.filter", "", _( "Filter" ), true } );
     actions.push_back( { "inventory.reset_filter", "", _( "Reset filter" ), !get_filter().empty() } );
     for( const semantic_action_descriptor &mode_action : mode_actions ) {
-        if( mode_action.id == "inventory.toggle" || mode_action.id == "inventory.commit" ) {
+        if( mode_action.id == "inventory.toggle" || mode_action.id == "inventory.commit" ||
+            mode_action.id == "inventory.increase_quantity" ||
+            mode_action.id == "inventory.decrease_quantity" ) {
             continue;
         }
         if( !mode_action.stable_id.empty() || mode_action.id == "inventory.commit" ) {
@@ -3933,6 +3945,10 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
                 }
                 if( request.action_id == "inventory.toggle" ) {
                     native_input = inventory_input{ "TOGGLE_ENTRY", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.set_quantity" ) {
+                    native_input = inventory_input{ "MARK_WITH_COUNT", 0, nullptr, resolved };
                     return { true, "", "" };
                 }
                 if( request.action_id == "inventory.increase_quantity" ) {
@@ -5640,6 +5656,9 @@ drop_locations pickup_selector::execute()
         semantic_payload(),
         semantic_actions( {
             { "inventory.toggle", "", _( "Toggle selection" ), true },
+            { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
+            { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true },
+            { "inventory.set_quantity", "", _( "Set quantity in this selection group" ), true },
             { "inventory.wield", "", _( "Wield" ), true },
             { "inventory.wear", "", _( "Wear" ), true },
             { "inventory.commit", "", _( "Pick up selected items" ), true }
@@ -5654,6 +5673,9 @@ drop_locations pickup_selector::execute()
             semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.toggle", "", _( "Toggle selection" ), true },
+                { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
+                { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true },
+                { "inventory.set_quantity", "", _( "Set quantity in this selection group" ), true },
                 { "inventory.wield", "", _( "Wield" ), true },
                 { "inventory.wear", "", _( "Wear" ), true },
                 { "inventory.commit", "", _( "Pick up selected items" ), true }
@@ -6082,19 +6104,131 @@ trade_selector::select_t trade_selector::to_trade() const
     return to_use;
 }
 
+std::vector<std::pair<inventory_column *, inventory_entry *>> trade_selector::semantic_entries() const
+{
+    std::vector<std::pair<inventory_column *, inventory_entry *>> result;
+    std::unordered_set<std::string> seen;
+    for( inventory_column *column : get_all_columns() ) {
+        if( !column->allows_selecting() ) {
+            continue; // The offer column is a copy, not another selectable group.
+        }
+        for( inventory_entry *entry : column->get_entries( return_item, get_filter().empty() ) ) {
+            if( !entry->is_item() || !entry->any_item() || !entry->any_item()->uid().is_valid() ) {
+                continue;
+            }
+            if( seen.insert( std::to_string( entry->any_item()->uid().get_value() ) ).second ) {
+                entry->cache_denial( preset );
+                result.emplace_back( column, entry );
+            }
+        }
+    }
+    return result;
+}
+
+std::map<std::string, std::string> trade_selector::semantic_payload() const
+{
+    auto payload = inventory_selected_payload( *this, to_use, "trade_selector::to_use" );
+    const inventory_entry &highlighted = get_active_column().get_highlighted();
+    if( highlighted.is_item() ) {
+        payload["highlighted_group_uid"] = std::to_string( highlighted.any_item()->uid().get_value() );
+        payload["highlighted_group_available"] = std::to_string( highlighted.get_available_count() );
+        payload["highlighted_group_selected"] = std::to_string( highlighted.chosen_count );
+    }
+    for( const auto &entry : _parent->semantic_payload() ) {
+        payload[entry.first] = entry.second;
+    }
+    std::ostringstream out;
+    JsonOut json( out );
+    std::unordered_map<std::string, int> selected_values;
+    for( const drop_location &selected : to_use ) {
+        selected_values[std::to_string( selected.first->uid().get_value() )] += _parent->active_offer_value( selected );
+    }
+    std::unordered_set<const inventory_entry *> visible_entries;
+    for( const inventory_column *column : get_all_columns() ) {
+        for( const inventory_entry *entry : column->get_entries( return_item ) ) {
+            visible_entries.insert( entry );
+        }
+    }
+    json.start_array();
+    for( const auto &[column, entry] : semantic_entries() ) {
+        const item_location &representative = entry->any_item();
+        int selected_value = 0;
+        for( const item_location &location : entry->locations ) {
+            selected_value += selected_values[std::to_string( location->uid().get_value() )];
+        }
+        json.start_object();
+        json.member( "group_uid", std::to_string( representative->uid().get_value() ) );
+        json.member( "name", preset.get_cell_text( *entry, 0 ) );
+        json.member( "party", payload.at( "active_party" ) );
+        json.member( "actor_id", payload.at( "active_actor_id" ) );
+        json.member( "letter" );
+        const int invlet = entry->get_invlet();
+        if( invlet > 0 && invlet < 128 && std::isprint( invlet ) &&
+            find_entry_by_invlet( invlet ) == entry ) {
+            json.write( std::string( 1, static_cast<char>( invlet ) ) );
+        } else {
+            json.write_null();
+        }
+        const bool native_row_available = visible_entries.count( entry ) != 0;
+        json.member( "native_row_available", native_row_available );
+        json.member( "native_page" );
+        if( native_row_available ) {
+            json.write( column->page_of_entry( *entry ) );
+        } else {
+            json.write_null(); // Collapsed contents remain UID-addressable, but have no displayed row.
+        }
+        json.member( "on_native_page", native_row_available &&
+                     column->page_of_entry( *entry ) == column->page_index() );
+        json.member( "available", entry->get_available_count() );
+        json.member( "selected", entry->chosen_count );
+        json.member( "unit", representative->count_by_charges() ? "charges" : "items" );
+        json.member( "unit_price", preset.get_cell_text( *entry, preset.get_cells_count() - 1 ) );
+        json.member( "selected_value", format_money( selected_value ) );
+        json.member( "highlighted", column == &get_active_column() && column->is_highlighted( *entry ) );
+        json.member( "increase_quantity", entry->is_selectable() && entry->chosen_count < entry->get_available_count() );
+        json.member( "decrease_quantity", entry->is_selectable() && entry->chosen_count > 0 );
+        json.member( "enabled", entry->is_selectable() );
+        json.member( "denial", entry->denial.value_or( "" ) );
+        json.member( "locations" );
+        json.start_array();
+        for( const item_location &location : entry->locations ) {
+            if( !location ) {
+                continue;
+            }
+            item_location root = location;
+            while( root.has_parent() ) {
+                root = root.parent_item();
+            }
+            json.start_object();
+            json.member( "uid", std::to_string( location->uid().get_value() ) );
+            json.member( "source", openclaw_harness_item_location_type_name( location.where() ) );
+            json.member( "root_source", openclaw_harness_item_location_type_name( root.where() ) );
+            json.member( "owner_faction", location->get_owner().str() );
+            json.member( "absolute_ms", root.pos_abs() );
+            json.member( "carrier_id" );
+            if( root.where() == item_location::type::character && root.carrier() != nullptr ) {
+                json.write( root.carrier()->getID().get_value() );
+            } else {
+                json.write_null();
+            }
+            json.end_object();
+        }
+        json.end_array();
+        json.end_object();
+    }
+    json.end_array();
+    payload["trade_rows"] = out.str();
+    return payload;
+}
+
 void trade_selector::execute()
 {
     debug_print_timer( tp_start );
     bool exit = false;
     std::optional<std::string> semantic_input;
     std::optional<inventory_input> semantic_inventory_input;
-    const auto semantic_payload = [this]() {
-        auto payload = inventory_selected_payload( *this, to_use, "trade_selector::to_use" );
-        for( const auto &entry : _parent->semantic_payload() ) {
-            payload[entry.first] = entry.second;
-        }
-        return payload;
-    };
+    std::vector<item_location> letter_batch;
+    const auto current_payload = [this]() { return semantic_payload(); };
     const auto semantic_trade_actions = [this]() {
         auto actions = semantic_actions( {
             { "inventory.toggle", "", _( "Toggle trade item" ), true },
@@ -6102,14 +6236,63 @@ void trade_selector::execute()
             { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true },
             { "inventory.commit", "", _( "Confirm trade" ), true }
         } );
+        actions.push_back( { "trade.toggle_letters", "", _( "Toggle current item letters" ), true } );
         actions.push_back( { "trade.switch_pane", "", _( "Switch trader inventory" ), true } );
+        actions.push_back( { "trade.auto_balance", "", _( "Auto Balance with highlighted group" ),
+                             _parent->can_autobalance() } );
         return actions;
     };
+    get_active_column().on_activate();
+    _ui->invalidate_ui();
+    ui_manager::redraw_invalidated();
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-        semantic_scope.emplace( *manager, "inventory", semantic_payload().at( "title" ),
-        semantic_payload(), semantic_trade_actions(),
-        [this, &semantic_input, &semantic_inventory_input]( const semantic_action_request &request ) {
+        const auto initial_payload = current_payload();
+        semantic_scope.emplace( *manager, "inventory", initial_payload.at( "title" ),
+        initial_payload, semantic_trade_actions(),
+        [this, &semantic_input, &semantic_inventory_input, &letter_batch]( const semantic_action_request &request ) {
+            if( request.action_id == "trade.toggle_letters" ) {
+                const auto letters = request.parameters.find( "letters" );
+                const auto party = request.parameters.find( "party" );
+                const auto actor = request.parameters.find( "actor_id" );
+                const auto identity = _parent->semantic_payload();
+                if( letters == request.parameters.end() || letters->second.empty() ||
+                    party == request.parameters.end() || actor == request.parameters.end() ) {
+                    return semantic_action_dispatch_result{ false, "missing_batch_identity", "" };
+                }
+                if( party->second != identity.at( "active_party" ) ||
+                    actor->second != identity.at( "active_actor_id" ) ) {
+                    return semantic_action_dispatch_result{ false, "foreign_trade_pane", "" };
+                }
+                if( !item_navigation_mode() ) {
+                    return semantic_action_dispatch_result{ false, "category_selection_active", "" };
+                }
+                std::vector<item_location> targets;
+                std::unordered_set<char> seen;
+                const auto entries = semantic_entries();
+                for( const char letter : letters->second ) {
+                    if( !seen.insert( letter ).second ) {
+                        return semantic_action_dispatch_result{ false, "duplicate_trade_letter", "" };
+                    }
+                    inventory_entry *matched = find_entry_by_invlet( letter );
+                    const bool owned_group = std::any_of( entries.begin(), entries.end(),
+                    [matched]( const auto &candidate ) { return candidate.second == matched; } );
+                    if( matched == nullptr || !owned_group || !matched->is_selectable() ) {
+                        return semantic_action_dispatch_result{ false, "unavailable_trade_letter", "" };
+                    }
+                    targets.push_back( matched->any_item() );
+                }
+                letter_batch = std::move( targets );
+                semantic_input = "TRADE_LETTER_BATCH";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id == "trade.auto_balance" ) {
+                if( !_parent->can_autobalance() ) {
+                    return semantic_action_dispatch_result{ false, "disabled_action", "" };
+                }
+                semantic_input = ACTION_AUTOBALANCE;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
             if( request.action_id == "trade.switch_pane" ) {
                 semantic_input = ACTION_SWITCH_PANES;
                 return semantic_action_dispatch_result{ true, "", "" };
@@ -6126,7 +6309,6 @@ void trade_selector::execute()
         } );
     }
 
-    get_active_column().on_activate();
 
     while( !exit ) {
         _ui->invalidate_ui();
@@ -6135,7 +6317,7 @@ void trade_selector::execute()
         openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
                 "trade_highlight_after_redraw", "trade_selector" );
         if( semantic_scope ) {
-            semantic_scope->publish( semantic_payload(), semantic_trade_actions() );
+            semantic_scope->publish( current_payload(), semantic_trade_actions() );
             semantic_scope->consume_request();
         }
         std::string action;
@@ -6154,7 +6336,15 @@ void trade_selector::execute()
                                             semantic_inventory_input->semantic_target : item_location();
         semantic_input.reset();
         semantic_inventory_input.reset();
-        if( action == ACTION_SWITCH_PANES ) {
+        if( action == "TRADE_LETTER_BATCH" ) {
+            // Every letter was validated against this authenticated pane before mutation.
+            // Ordinary native group toggles do not advance time or open a modal prompt.
+            for( const item_location &location : letter_batch ) {
+                highlight( location );
+                inventory_drop_selector::on_input( inventory_input{ "TOGGLE_ENTRY" } );
+            }
+            letter_batch.clear();
+        } else if( action == ACTION_SWITCH_PANES ) {
             _parent->pushevent( trade_ui::event::SWITCH );
             get_active_column().on_deactivate();
             exit = true;

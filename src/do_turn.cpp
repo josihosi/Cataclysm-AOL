@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -74,6 +75,7 @@
 #include "map_iterator.h"
 #include "map_scale_constants.h"
 #include "mapbuffer.h"
+#include "scout_observation.h"
 #include "mapdata.h"
 #include "memorial_logger.h"
 #include "messages.h"
@@ -132,6 +134,7 @@ static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 static const activity_id ACT_OPERATION( "ACT_OPERATION" );
 
 static const bionic_id bio_alarm( "bio_alarm" );
+static const bionic_id bio_sleep_shutdown( "bio_sleep_shutdown" );
 
 static const efftype_id effect_controlled( "controlled" );
 static const efftype_id effect_downed( "downed" );
@@ -388,6 +391,286 @@ bool live_bandit_local_handoff_position_is_motor_addressable(
 
 namespace
 {
+bool live_bandit_member_can_take_homeward_step( const npc &member );
+
+
+bandit_live_world_projection_lease live_bandit_projection_lease(
+    const std::string &site_id, const bandit_live_world::active_outing_state &outing )
+{
+    return { true, site_id, outing.activity_id, "local", outing.generation,
+             outing.handoff_epoch, outing.last_advanced_minutes };
+}
+
+bandit_live_world_projection_lease live_bandit_projection_lease(
+    const std::string &site_id, const bandit_live_world::local_handoff_snapshot &snapshot )
+{
+    return { true, site_id, snapshot.activity_id, "local", snapshot.activity_generation,
+             snapshot.handoff_epoch, snapshot.committed_minutes };
+}
+
+bool live_bandit_projection_lease_matches( const bandit_live_world_projection_lease &claim,
+        const bandit_live_world_projection_lease &expected )
+{
+    return claim.present == expected.present && ( !claim.present ||
+            ( claim.site_id == expected.site_id && claim.activity_id == expected.activity_id &&
+              claim.owner == expected.owner && claim.generation == expected.generation &&
+              claim.handoff_epoch == expected.handoff_epoch &&
+              claim.last_advanced_minutes == expected.last_advanced_minutes ) );
+}
+
+bool live_bandit_projection_copies_match( npc &member,
+        const bandit_live_world_projection_lease &expected )
+{
+    const auto copies = bandit_live_world_projection_lease_copies( member );
+    return copies.size() <= 2 && std::all_of( copies.begin(), copies.end(),
+    [&expected]( const npc * copy ) {
+        return live_bandit_projection_lease_matches(
+                   copy->get_bandit_live_world_projection_lease(), expected );
+    } );
+}
+
+void reset_live_bandit_local_projection( npc &member,
+        const bandit_live_world_projection_lease &lease )
+{
+    member.goal = npc::no_goal_point;
+    member.omt_path.clear();
+    member.mission = NPC_MISSION_NULL;
+    member.previous_mission = NPC_MISSION_NULL;
+    member.goto_to_this_pos = std::nullopt;
+    member.clear_ai_guard_pos();
+    member.path.clear();
+    sync_bandit_live_world_projection_lease_copies( member, lease );
+}
+
+int live_bandit_current_minutes();
+bool live_bandit_confirmed_member_death(
+    const bandit_live_world::active_outing_state &reservation,
+    character_id member_id, int current_minutes );
+
+// The transfer callbacks own physical bind/quiesce rollback.  This writer owns
+// just the persisted claims: validate every copy before changing any of them.
+// A local progress commit uses the previous exact cursor, never a <= clock rule.
+bool persist_live_bandit_local_projection_leases( const bandit_live_world::site_record &site,
+        const bandit_live_world::site_record *previous = nullptr, const bool apply = true,
+        const bool restore_previous_cursor = false,
+        const bool allow_confirmed_missing_deaths = false,
+        const bool allow_deadline_missing_resolution = false,
+        const std::optional<character_id> confirmed_cleanup_death = {} )
+{
+    const auto *next = site.active_external_outing();
+    const auto *prior = previous == nullptr ? nullptr : previous->active_external_outing();
+    const bool was_local = prior != nullptr &&
+                           prior->owner == bandit_live_world::simulation_owner::local;
+    const bool is_local = next != nullptr && next->is_active() &&
+                          next->owner == bandit_live_world::simulation_owner::local;
+    if( !was_local && !is_local ) {
+        return true;
+    }
+    if( is_local && !bandit_live_world::current_external_simulation_cursor( site ) ) {
+        return false;
+    }
+    const bool hostile_owner_transition = next != nullptr && prior != nullptr &&
+                                          next->kind == bandit_live_world::outing_kind::hostile_operation &&
+                                          previous->site_id == site.site_id && next->activity_id == prior->activity_id &&
+                                          next->generation == prior->generation &&
+                                          next->last_advanced_minutes >= prior->last_advanced_minutes &&
+                                          prior->kind == next->kind && next->member_ids == prior->member_ids &&
+                                          next->handoff_epoch == prior->handoff_epoch + 1 && next->owner != prior->owner;
+    // A complete native camp arrival terminates local ownership directly.
+    // Its per-member physical-return receipts replace an abstract resume crossing.
+    const bool completed_structural_return = was_local && next != nullptr &&
+            next->kind == bandit_live_world::outing_kind::structural_sortie &&
+            next->owner == bandit_live_world::simulation_owner::abstract &&
+            next->handoff_epoch == prior->handoff_epoch + 1 &&
+            next->member_ids == prior->member_ids &&
+    std::all_of( next->member_ids.begin(), next->member_ids.end(), [&]( character_id id ) {
+        if( !next->member_is_resolved( id ) ) {
+            return false;
+        }
+        if( prior->member_is_resolved( id ) ||
+            std::find( next->casualty_ids.begin(), next->casualty_ids.end(), id ) !=
+            next->casualty_ids.end() ) {
+            return true;
+        }
+        const std::string key = bandit_pursuit_handoff::make_operation_component_key(
+                                    next->activity_id, next->generation, "return", std::to_string( id.get_value() ) );
+        return std::count_if( next->member_return_receipts.begin(), next->member_return_receipts.end(),
+        [&]( const auto & receipt ) {
+            return receipt.member_id == id && receipt.application_key == key &&
+                   receipt.returned_minutes == next->last_advanced_minutes;
+        } ) == 1;
+    } );
+    const bool initial_hostile_contact = prior == nullptr && is_local &&
+                                         next->kind == bandit_live_world::outing_kind::hostile_operation &&
+                                         site.active_hostile_operation.phase ==
+                                         bandit_live_world::hostile_operation_phase::committed_contact;
+    if( was_local && ( previous->site_id != site.site_id ||
+                       ( next != nullptr && ( next->activity_id != prior->activity_id ||
+                               next->generation != prior->generation ||
+                               ( next->handoff_epoch != prior->handoff_epoch &&
+                                 !hostile_owner_transition && !completed_structural_return &&
+                                 !( prior->owner == bandit_live_world::simulation_owner::local &&
+                                    next->owner == bandit_live_world::simulation_owner::abstract &&
+                                    next->handoff_epoch == prior->handoff_epoch + 1 &&
+                                    next->crossing.pending() &&
+                                    next->crossing.prior_owner == prior->owner &&
+                                    next->crossing.next_owner == next->owner &&
+                                    next->crossing.actor_ids == prior->member_ids &&
+                                    next->crossing.activity_id == next->activity_id &&
+                                    next->crossing.generation == next->generation &&
+                                    next->crossing.handoff_epoch == next->handoff_epoch &&
+                                    next->crossing.cursor_minutes == next->last_advanced_minutes ) ) ||
+                               ( !restore_previous_cursor &&
+                                 next->last_advanced_minutes < prior->last_advanced_minutes ) ) ) ) ) {
+        return false;
+    }
+    if( !was_local && !hostile_owner_transition && !initial_hostile_contact &&
+        ( !next->crossing.pending() ||
+          next->crossing.prior_owner != bandit_live_world::simulation_owner::abstract ||
+          next->crossing.next_owner != bandit_live_world::simulation_owner::local ||
+          next->crossing.actor_ids != next->member_ids ) ) {
+        return false;
+    }
+    const auto cleanup_actor = confirmed_cleanup_death ?
+                               overmap_buffer.find_npc( *confirmed_cleanup_death ) : nullptr;
+    // Cleanup cannot defer a witnessed death until an absent partner returns:
+    // the native body is about to be erased.  Preserve only this terminal fact;
+    // absence does not resolve the partner or admit a load/progress claim.
+    const bool committing_cleanup_death = was_local && cleanup_actor && cleanup_actor->is_dead() &&
+                                          !prior->member_is_resolved( *confirmed_cleanup_death ) &&
+                                          std::find( prior->member_ids.begin(), prior->member_ids.end(),
+                                                  *confirmed_cleanup_death ) != prior->member_ids.end() &&
+                                          ( !apply || ( next != nullptr && next->member_is_resolved( *confirmed_cleanup_death ) &&
+                                                  site.find_member( *confirmed_cleanup_death ) != nullptr &&
+                                                  site.find_member( *confirmed_cleanup_death )->state ==
+                                                  bandit_live_world::member_state::dead ) );
+    const auto &ids = was_local ? prior->member_ids : next->member_ids;
+    std::set<character_id> unique_ids;
+    struct update {
+        npc *copy;
+        bandit_live_world_projection_lease before;
+        bandit_live_world_projection_lease after;
+    };
+    std::vector<update> updates;
+    for( const character_id id : ids ) {
+        if( !unique_ids.insert( id ).second ) {
+            return false;
+        }
+        const bool prior_resolved = was_local && prior->member_is_resolved( id );
+        const bool next_resolved = next == nullptr || next->member_is_resolved( id );
+        auto actor = overmap_buffer.find_npc( id );
+        if( !actor && g ) {
+            for( npc &active : g->all_npcs() ) {
+                if( active.getID() == id ) {
+                    // The persistent save owner is required for a living projection.
+                    return false;
+                }
+            }
+        }
+        if( !actor ) {
+            // Absence is eligible only for the existing native terminal paths.
+            // The post-commit pass still requires that candidate to resolve it;
+            // ordinary progress and load reconciliation never use this allowance.
+            if( prior_resolved || next_resolved || committing_cleanup_death ||
+                ( !apply && allow_confirmed_missing_deaths && was_local &&
+                  live_bandit_confirmed_member_death( *prior, id, live_bandit_current_minutes() ) ) ||
+                ( !apply && allow_deadline_missing_resolution && was_local &&
+                  prior->missing_deadline_minutes >= 0 &&
+                  live_bandit_current_minutes() >= prior->missing_deadline_minutes ) ) {
+                continue;
+            }
+            return false;
+        }
+        const auto expected = prior_resolved ? bandit_live_world_projection_lease() :
+                              was_local ? live_bandit_projection_lease( site.site_id, *prior ) :
+                              bandit_live_world_projection_lease();
+        const auto desired = is_local && !next_resolved ?
+                             live_bandit_projection_lease( site.site_id, *next ) :
+                             bandit_live_world_projection_lease();
+        const auto copies = bandit_live_world_projection_lease_copies( *actor );
+        if( copies.size() > 2 ) {
+            return false;
+        }
+        for( npc *copy : copies ) {
+            const auto &claim = copy->get_bandit_live_world_projection_lease();
+            // Initial bind callbacks may already have installed this exact lease.
+            if( !live_bandit_projection_lease_matches( claim, expected ) &&
+                !( !was_local && live_bandit_projection_lease_matches( claim, desired ) ) ) {
+                return false;
+            }
+            updates.push_back( { copy, claim, desired } );
+        }
+    }
+    if( !apply ) {
+        return true;
+    }
+    try {
+        for( const update &entry : updates ) {
+            entry.copy->set_bandit_live_world_projection_lease( entry.after );
+        }
+    } catch( ... ) {
+        for( const update &entry : updates ) {
+            entry.copy->set_bandit_live_world_projection_lease( entry.before );
+        }
+        throw;
+    }
+    return true;
+}
+
+// Keep the existing candidate/commit boundary coupled to the actor save owners.
+// Rejected progress changes neither the authoritative site nor any actor claim.
+template<typename Commit>
+auto commit_live_bandit_local_progress( bandit_live_world::site_record &site, Commit commit,
+                                        const bool resolve_deadline_missing = false,
+const std::optional<character_id> confirmed_cleanup_death = {} )
+{
+    using result_type = decltype( commit( site ) );
+    if( !persist_live_bandit_local_projection_leases( site, &site, false, false, true,
+            resolve_deadline_missing, confirmed_cleanup_death ) ) {
+        return result_type{};
+    }
+    bandit_live_world::site_record candidate = site;
+    const result_type result = commit( candidate );
+    bool applied;
+    if constexpr( std::is_same_v<result_type, bool> ) {
+        applied = result;
+    } else if constexpr( std::is_same_v<result_type, std::optional<int>> ) {
+        applied = result.has_value();
+    } else if constexpr( std::is_enum_v<result_type> ) {
+        if constexpr( std::is_same_v<result_type, bandit_live_world::local_handoff_commit_result> ) {
+            applied = result == bandit_live_world::local_handoff_commit_result::applied;
+        } else {
+            applied = static_cast<int>( result ) > 1;
+        }
+    } else if constexpr(
+        std::is_same_v<result_type, bandit_live_world::covert_scout_egress_failure_effect> ) {
+        applied = result.result != bandit_live_world::covert_scout_egress_failure_result::rejected;
+    } else if constexpr( std::is_same_v<result_type, bandit_live_world::covert_scout_burn_effect> ) {
+        applied = result.result == bandit_live_world::covert_scout_burn_result::applied;
+    } else {
+        applied = result.changed;
+    }
+    if( !applied ) {
+        return result;
+    }
+    if( !persist_live_bandit_local_projection_leases( candidate, &site, true, false, false, false,
+            confirmed_cleanup_death ) ) {
+        return result_type{};
+    }
+    site = std::move( candidate );
+    return result;
+}
+
+bool rollback_live_bandit_local_progress( bandit_live_world::site_record &site,
+        const bandit_live_world::site_record &before )
+{
+    if( !persist_live_bandit_local_projection_leases( before, &site, true, true ) ) {
+        return false;
+    }
+    site = before;
+    return true;
+}
+
 bool live_bandit_can_make_ordinary_visual_observation( const Character &observer )
 {
     return !observer.is_blind() && !observer.has_effect( effect_narcosis ) &&
@@ -723,7 +1006,7 @@ int live_bandit_current_vehicle_goods_value( const avatar &u )
     return value;
 }
 
-int live_bandit_nearby_basecamp_defender_count( const avatar &u )
+int live_bandit_nearby_basecamp_defender_count( const Character &u )
 {
     static constexpr int nearby_defender_radius = 30;
     int defenders = 0;
@@ -735,6 +1018,79 @@ int live_bandit_nearby_basecamp_defender_count( const avatar &u )
         defenders++;
     }
     return defenders;
+}
+
+Character *live_bandit_shakedown_receiver( const bandit_live_world::site_record &site );
+bool live_bandit_shakedown_speaker_ready( const npc &actor );
+
+npc *live_bandit_shakedown_local_speaker( const bandit_live_world::site_record &site )
+{
+    const auto *outing = site.active_external_outing();
+    if( outing == nullptr ) {
+        return nullptr;
+    }
+    for( const character_id id : outing->member_ids ) {
+        if( outing->member_is_resolved( id ) ) {
+            continue;
+        }
+        npc *actor = g->find_npc( id );
+        if( actor != nullptr && actor->is_active() && !actor->is_dead() &&
+            get_map().inbounds( actor->pos_bub() ) && live_bandit_shakedown_speaker_ready( *actor ) ) {
+            return actor;
+        }
+    }
+    return nullptr;
+}
+
+bool live_bandit_encounter_reachable( const Character &receiver,
+                                    const tripoint_abs_ms &position, const int radius )
+{
+    map &here = get_map();
+    const auto from = receiver.pos_bub( here );
+    const auto to = here.get_bub( position );
+    return here.inbounds( from ) && here.inbounds( to ) &&
+           rl_dist( from, to ) <= radius &&
+           ( from == to || here.clear_path( from, to, rl_dist( from, to ), 1, 100 ) );
+}
+
+bandit_live_world::shakedown_goods_pool live_bandit_encounter_goods_pool(
+    const bandit_live_world::local_gate_input &input, Character &receiver )
+{
+    bandit_live_world::shakedown_goods_pool pool;
+    pool.basecamp_or_camp_scene = input.basecamp_or_camp_scene;
+    pool.player_carried_value = receiver.is_avatar() ? live_bandit_character_goods_value( receiver ) : 0;
+    pool.companion_carried_value = receiver.is_npc() ? live_bandit_character_goods_value( receiver ) : 0;
+    // Match the encounter trade selector: only physically reachable local
+    // goods and allies. Neither remote assigned workers nor remote vehicles
+    // contribute merely by being registered to the camp.
+    for( const npc &ally : g->all_npcs() ) {
+        if( &ally != &receiver && ally.is_player_ally() && !ally.is_dead() &&
+            ally.is_active() && live_bandit_encounter_reachable( receiver, ally.pos_abs(), 12 ) ) {
+            pool.companion_carried_value += live_bandit_character_goods_value( ally );
+        }
+    }
+    const int radius = input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1;
+    map &here = get_map();
+    for( const auto &tile : here.points_in_radius( receiver.pos_bub( here ), radius ) ) {
+        if( !live_bandit_encounter_reachable( receiver, here.get_abs( tile ), radius ) ) {
+            continue;
+        }
+        if( here.accessible_items( tile ) ) {
+            for( const item &it : here.i_at( tile ) ) {
+                pool.reachable_basecamp_value += live_bandit_item_value( it );
+            }
+        }
+        if( const auto cargo = here.veh_at( tile ).cargo() ) {
+            for( const item &it : cargo->items() ) {
+                pool.reachable_basecamp_value += live_bandit_item_value( it );
+            }
+        }
+    }
+    if( !input.basecamp_or_camp_scene ) {
+        pool.vehicle_carried_value = pool.reachable_basecamp_value;
+        pool.reachable_basecamp_value = 0;
+    }
+    return pool;
 }
 
 bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
@@ -869,13 +1225,7 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
     if( outing == nullptr ) {
         return 0;
     }
-    npc *trader = nullptr;
-    for( const character_id &member_id : outing->member_ids ) {
-        if( npc *candidate = g->find_npc( member_id ) ) {
-            trader = candidate;
-            break;
-        }
-    }
+    npc *trader = live_bandit_shakedown_local_speaker( site );
     if( trader == nullptr ) {
         DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result=no_trader demanded="
                                    << surface.demanded_value << " reachable="
@@ -883,56 +1233,29 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
         return 0;
     }
 
-    const int player_value = live_bandit_character_goods_value( u );
-    const int companion_value = [&u, &input]() {
-        int value = 0;
-        static constexpr int nearby_companion_radius = 12;
-        for( const npc &guy : g->all_npcs() ) {
-            if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
-                continue;
-            }
-            if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
-                continue;
-            }
-            value += live_bandit_character_goods_value( guy );
-        }
-        return value;
-    }();
-    basecamp *payment_basecamp = input.basecamp_or_camp_scene ?
+    Character *receiver = live_bandit_shakedown_receiver( site );
+    if( site.active_hostile_operation.is_active() && receiver == nullptr ) {
+        return 0;
+    }
+    Character &payer = receiver != nullptr ? *receiver : static_cast<Character &>( u );
+    const bool encounter_only = receiver != nullptr;
+    basecamp *payment_basecamp = !encounter_only && input.basecamp_or_camp_scene ?
                                  live_bandit_nearest_basecamp( u ) : nullptr;
     if( payment_basecamp != nullptr ) {
         live_bandit_refresh_basecamp_storage_tiles( u, *payment_basecamp );
     }
-    const int basecamp_storage_value = payment_basecamp != nullptr ?
-                                       live_bandit_basecamp_storage_goods_value( u, *payment_basecamp,
-                                               live_bandit_basecamp_reach_radius ) : 0;
-    static constexpr int nearby_companion_radius = 12;
-    const int basecamp_npc_value = payment_basecamp != nullptr ?
-                                   live_bandit_basecamp_assigned_npc_goods_value( u, *payment_basecamp,
-                                           nearby_companion_radius ) : 0;
-    const int scene_value = input.basecamp_or_camp_scene ?
-                            live_bandit_nearby_ground_goods_value( u ) + basecamp_storage_value :
-                            live_bandit_current_vehicle_goods_value( u );
-
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui opened demanded="
-                               << surface.demanded_value << " reachable="
-                               << surface.reachable_goods_value
-                               << " player_pool=" << player_value
-                               << " nearby_npc_pool=" << companion_value
-                               << " basecamp_npc_pool=" << basecamp_npc_value
-                               << " scene_pool=" << scene_value
-                               << " basecamp_storage_pool=" << basecamp_storage_value
-                               << " trader=" << trader->getID().get_value()
-                               << " trade_api=npc_trading::trade"
-                               << " title=Pay:\n";
-    const bool paid = npc_trading::trade( *trader, surface.demanded_value, _( "Pay:" ),
+                               << surface.demanded_value << " reachable=" << surface.reachable_goods_value
+                               << " payer=" << payer.getID().get_value()
+                               << " encounter_only=" << ( encounter_only ? "true" : "false" )
+                               << " trader=" << trader->getID().get_value();
+    const bool paid = npc_trading::trade_to_stash( *trader, payer, site.anchor,
+                                          surface.demanded_value, _( "Pay:" ),
                                           input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
-                                          nearby_companion_radius, payment_basecamp );
-    DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result="
-                               << ( paid ? "paid" : "cancel_or_short" )
+                                          12, payment_basecamp, encounter_only );
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result=" << ( paid ? "paid" : "cancel_or_short" )
                                << " demanded=" << surface.demanded_value
-                               << " reachable=" << surface.reachable_goods_value
-                               << " trader=" << trader->getID().get_value() << '\n';
+                               << " payer=" << payer.getID().get_value();
     return paid ? surface.demanded_value : 0;
 }
 
@@ -960,6 +1283,7 @@ int live_bandit_current_minutes();
 struct live_bandit_paid_return_travel_order {
     npc *member_npc;
     std::vector<tripoint_abs_omt> route;
+    bool local_descent = false;
 };
 
 struct live_bandit_paid_return_plan {
@@ -968,7 +1292,7 @@ struct live_bandit_paid_return_plan {
 };
 
 std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
-    const bandit_live_world::site_record &site )
+    const bandit_live_world::site_record &site, const bool allow_local_descent = false )
 {
     const bandit_live_world::active_outing_state *outing = site.active_external_outing();
     const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -977,6 +1301,7 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
         site.active_hostile_operation.phase !=
         bandit_live_world::hostile_operation_phase::committed_contact ||
         outing->owner != bandit_live_world::simulation_owner::local || !cursor ||
+        ( !outing->camp_id.empty() && outing->camp_id != site.site_id ) ||
         live_bandit_current_minutes() < cursor->last_advanced_minutes ) {
         return std::nullopt;
     }
@@ -997,14 +1322,37 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
             member_npc == nullptr || member_npc->is_dead() ) {
             return std::nullopt;
         }
-        const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
-                    member_npc->pos_abs_omt(), site.anchor,
-                    overmap_path_params::for_npc() ).points;
-        if( route.empty() || route.front() != site.anchor ||
-            route.back() != member_npc->pos_abs_omt() ) {
+        const tripoint_abs_omt start = member_npc->pos_abs_omt();
+        bool local_descent = false;
+        std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                    start, site.anchor, overmap_path_params::for_npc() ).points;
+        if( route.empty() && allow_local_descent && start.z() > site.anchor.z() && member_npc->is_active() ) {
+            // The macro map does not represent local roof ladders/stairs.
+            // Compose its ground route only if the ordinary NPC motor can
+            // physically reach that route's first onward waypoint, at its
+            // real height. Do not order an unreachable indoor OMT centre.
+            const tripoint_abs_omt ground( start.xy(), site.anchor.z() );
+            route = overmap_buffer.get_travel_path( ground, site.anchor,
+                                                  overmap_path_params::for_npc() ).points;
+            if( route.size() < 2 || route.front() != site.anchor || route.back() != ground ) {
+                return std::nullopt;
+            }
+            route.pop_back();
+            local_descent = true;
+            const tripoint_bub_ms next = get_map().get_bub(
+                                            project_to<coords::ms>( route.back() ) + point( SEEX, SEEY ) );
+            if( !get_map().inbounds( next ) ) {
+                return std::nullopt;
+            }
+            const auto connector = get_map().route( *member_npc,
+                                   pathfinding_target::radius( next, 2 ) );
+            if( connector.empty() || !pathfinding_target::radius( next, 2 ).contains( connector.back() ) ) {
+                return std::nullopt;
+            }
+        } else if( route.empty() || route.front() != site.anchor || route.back() != start ) {
             return std::nullopt;
         }
-        plan.travel_orders.push_back( { member_npc, route } );
+        plan.travel_orders.push_back( { member_npc, std::move( route ), local_descent } );
     }
     return plan;
 }
@@ -1012,23 +1360,31 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
 void live_bandit_apply_hostile_return_orders( bandit_live_world::site_record &site,
         live_bandit_paid_return_plan &plan )
 {
+    const bool composed_descent = std::any_of( plan.travel_orders.begin(), plan.travel_orders.end(),
+    []( const live_bandit_paid_return_travel_order &order ) { return order.local_descent; } );
     for( live_bandit_paid_return_travel_order &order : plan.travel_orders ) {
         const bool assigned_withdrawal = std::find(
                 site.active_hostile_operation.withdrawing_member_ids.begin(),
                 site.active_hostile_operation.withdrawing_member_ids.end(),
                 order.member_npc->getID() ) !=
             site.active_hostile_operation.withdrawing_member_ids.end();
-        const bool frightened_withdrawal = assigned_withdrawal &&
-                                            ( order.member_npc->get_attitude() == NPCATT_FLEE ||
-                                              order.member_npc->get_attitude() == NPCATT_FLEE_TEMP ||
-                                              order.member_npc->has_effect( effect_npc_run_away ) );
-        sync_bandit_live_world_projection_lease_copies(
-            *order.member_npc, bandit_live_world_projection_lease() );
+        const bool frightened_withdrawal = ( assigned_withdrawal ||
+                                            site.active_hostile_operation.operation_kind ==
+                                            bandit_live_world::hostile_operation_kind::shakedown ) &&
+                                           ( order.member_npc->get_attitude() == NPCATT_FLEE ||
+                                             order.member_npc->get_attitude() == NPCATT_FLEE_TEMP ||
+                                             order.member_npc->has_effect( effect_npc_run_away ) );
         for( const shared_ptr_fast<npc> &persistent_member : overmap_buffer.get_overmap_npcs() ) {
             if( persistent_member && persistent_member->getID() == order.member_npc->getID() &&
                 persistent_member.get() != order.member_npc ) {
                 if( !frightened_withdrawal ) {
                     persistent_member->set_attitude( NPCATT_NULL );
+                }
+                if( composed_descent ) {
+                    persistent_member->path.clear();
+                    persistent_member->goto_to_this_pos.reset();
+                    persistent_member->fetching_item = false;
+                    persistent_member->wanted_item = {};
                 }
                 persistent_member->goal = site.anchor;
                 persistent_member->omt_path = order.route;
@@ -1038,6 +1394,12 @@ void live_bandit_apply_hostile_return_orders( bandit_live_world::site_record &si
         if( !frightened_withdrawal ) {
             order.member_npc->set_attitude( NPCATT_NULL );
         }
+        if( composed_descent ) {
+            order.member_npc->path.clear();
+            order.member_npc->goto_to_this_pos.reset();
+            order.member_npc->fetching_item = false;
+            order.member_npc->wanted_item = {};
+        }
         order.member_npc->goal = site.anchor;
         order.member_npc->omt_path = std::move( order.route );
         order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
@@ -1045,21 +1407,25 @@ void live_bandit_apply_hostile_return_orders( bandit_live_world::site_record &si
 }
 
 bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
-                                      live_bandit_paid_return_plan &plan,
-                                      const bandit_live_world::shakedown_surface &surface,
-                                      const int surrendered_value )
+                                     live_bandit_paid_return_plan &plan,
+                                     const bandit_live_world::shakedown_surface &surface,
+                                     const int surrendered_value )
 {
-    const std::string summary = string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
-                                surrendered_value, surface.demanded_value,
-                                surface.reachable_goods_value );
-    if( bandit_live_world::transition_hostile_operation_phase( site, plan.cursor,
+    const std::string summary =
+        string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
+                       surrendered_value, surface.demanded_value,
+                       surface.reachable_goods_value );
+    if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+    return bandit_live_world::transition_hostile_operation_phase( next, plan.cursor,
             bandit_live_world::hostile_operation_phase::committed_contact,
             bandit_live_world::hostile_operation_phase::returning_home,
-            live_bandit_current_minutes(), summary, true ) !=
-        bandit_live_world::hostile_operation_transition_result::applied ) {
+            live_bandit_current_minutes(), summary, true );
+    } ) !=
+    bandit_live_world::hostile_operation_transition_result::applied ) {
         return false;
     }
     site.active_hostile_operation.shakedown_pending_branch = "paid";
+    site.active_hostile_operation.shakedown_pending_pay_identity.clear();
     site.active_hostile_operation.shakedown_pending_demanded_value = surface.demanded_value;
     site.active_hostile_operation.shakedown_pending_surrendered_value = surrendered_value;
     site.active_hostile_operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
@@ -1070,7 +1436,7 @@ bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
 }
 
 void live_bandit_choose_fight( bandit_live_world::site_record &site,
-                               const bandit_live_world::shakedown_surface &surface, const avatar &u )
+                               const bandit_live_world::shakedown_surface &surface, const Character &u )
 {
     const bandit_live_world::active_outing_state *outing = site.active_external_outing();
     if( outing == nullptr ) {
@@ -1079,6 +1445,7 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
     const std::vector<character_id> member_ids = outing->member_ids;
     bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
     operation.shakedown_pending_branch = "fight";
+    operation.shakedown_pending_pay_identity.clear();
     operation.shakedown_pending_demanded_value = surface.demanded_value;
     operation.shakedown_pending_surrendered_value = 0;
     operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
@@ -1092,10 +1459,17 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
                                 surface.demanded_value, surface.reachable_goods_value );
     DebugLog( D_INFO, DC_ALL ) << summary << '\n';
     for( const character_id &member_id : member_ids ) {
+        if( outing->member_is_resolved( member_id ) ) {
+            continue;
+        }
         bandit_live_world::update_member_state( site, member_id,
                                                 bandit_live_world::member_state::local_contact, summary );
         if( npc *member_npc = g->find_npc( member_id ) ) {
-            member_npc->set_attitude( NPCATT_KILL );
+            if( !member_npc->is_dead() && member_npc->get_attitude() != NPCATT_FLEE &&
+                member_npc->get_attitude() != NPCATT_FLEE_TEMP &&
+                !member_npc->has_effect( effect_narcosis ) ) {
+                member_npc->set_attitude( NPCATT_KILL );
+            }
         }
     }
     if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -1107,36 +1481,68 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
 
 std::pair<std::string, nc_color> live_bandit_shakedown_speaker( const bandit_live_world::site_record &site )
 {
-    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
-    if( outing == nullptr ) {
-        return { _( "Bandit" ), c_red };
-    }
-    for( const character_id &member_id : outing->member_ids ) {
-        if( const npc *member_npc = g->find_npc( member_id ) ) {
-            return { member_npc->disp_name(), member_npc->basic_symbol_color() };
-        }
+    if( const npc *speaker = live_bandit_shakedown_local_speaker( site ) ) {
+        return { speaker->disp_name(), speaker->basic_symbol_color() };
     }
     return { _( "Bandit" ), c_red };
+}
+
+bool live_bandit_shakedown_response_is_current( const bandit_live_world::site_record &site,
+        const std::string &activity_id, const int generation, const character_id receiver_id )
+{
+    const auto &operation = site.active_hostile_operation;
+    return operation.is_active() && operation.reservation.activity_id == activity_id &&
+           operation.reservation.generation == generation &&
+           operation.shakedown_receiver_id == receiver_id &&
+           operation.shakedown_pending_branch.empty() && live_bandit_shakedown_receiver( site ) != nullptr;
 }
 
 enum class live_bandit_shakedown_response : int {
     pay,
     fight,
+    fight_on_backout,
 };
+
+bool live_bandit_consume_explicit_fight( bandit_live_world::site_record &site,
+                                       const bandit_live_world::shakedown_surface &surface,
+                                       const std::string &activity_id, const int generation,
+                                       const character_id receiver_id )
+{
+    if( !live_bandit_shakedown_response_is_current( site, activity_id, generation, receiver_id ) ) {
+        return false;
+    }
+    Character *receiver = live_bandit_shakedown_receiver( site );
+    // Commit the existing branch before attempting native vocalization. Its
+    // persisted response prevents retries/reload from shouting a second time.
+    live_bandit_choose_fight( site, surface, *receiver );
+    const int emitted_volume = receiver->shout( "No, fuck you!" );
+    const auto scope = raid_decision_trace::environment_selected_npcs();
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    if( scope.includes_turn( turn ) &&
+        ( scope.includes( receiver->getID().get_value() ) ||
+          std::any_of( site.active_hostile_operation.reservation.member_ids.begin(),
+                       site.active_hostile_operation.reservation.member_ids.end(),
+    [&scope]( const character_id id ) { return scope.includes( id.get_value() ); } ) ) ) {
+        const tripoint_abs_ms position = receiver->pos_abs();
+        raid_decision_trace::native_recorder().record_edge( "bandit_shakedown_fight_reply", turn,
+                "\"trace_group_id\":" + raid_decision_trace::quote( scope.group_id ) +
+                ",\"operation_id\":" + raid_decision_trace::quote( activity_id ) +
+                ",\"generation\":" + std::to_string( generation ) +
+                ",\"site_id\":" + raid_decision_trace::quote( site.site_id ) +
+                ",\"receiver_id\":" + std::to_string( receiver->getID().get_value() ) +
+                ",\"receiver_is_avatar\":" + ( receiver->is_avatar() ? "true" : "false" ) +
+                ",\"position_abs\":[" + std::to_string( position.x() ) + ',' +
+                std::to_string( position.y() ) + ',' + std::to_string( position.z() ) + ']' +
+                ",\"attempted\":true,\"emitted\":" + ( emitted_volume > 0 ? "true" : "false" ) +
+                ",\"native_volume\":" + std::to_string( emitted_volume ) );
+    }
+    return true;
+}
 
 live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     const bandit_live_world::site_record &site,
     const bandit_live_world::shakedown_surface &surface )
 {
-    // A committed contact can open while an activity advances, outside the
-    // World handle_action() semantic-session lifetime.  Re-establish the
-    // current run's native manager here so this real modal owns its input;
-    // otherwise the last wait-duration descriptor remains stale while SDL
-    // waits in this dialogue and a durable request can never be consumed.
-    std::optional<semantic_surface_manager_session> semantic_session;
-    if( openclaw_harness_semantic_session_active() && active_semantic_surface_manager() == nullptr ) {
-        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
-    }
     semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
     std::optional<live_bandit_shakedown_response> semantic_response;
     std::optional<semantic_surface_scope> semantic_scope;
@@ -1148,6 +1554,12 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
             { "opening", surface.opening_id },
             { "responses", "pay/fight" },
             { "payment_surface", "npc_trade_ui" },
+            { "operation_id", site.active_hostile_operation.reservation.activity_id },
+            { "generation", std::to_string( site.active_hostile_operation.reservation.generation ) },
+            { "receiver_id", std::to_string( site.active_hostile_operation.shakedown_receiver_id.get_value() ) },
+            { "receiver_is_avatar", site.active_hostile_operation.shakedown_receiver_is_avatar ? "true" : "false" },
+            { "camp_response", site.active_hostile_operation.shakedown_contact_established &&
+                                !site.active_hostile_operation.shakedown_receiver_is_avatar ? "true" : "false" },
         };
         const std::vector<semantic_action_descriptor> semantic_actions = {
             { "shakedown.pay", "", _( "Pay." ), true },
@@ -1176,6 +1588,17 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     d_win.is_not_conversation = true;
     const std::pair<std::string, nc_color> speaker = live_bandit_shakedown_speaker( site );
     d_win.add_to_history( surface.bark, speaker.first, speaker.second );
+    if( const Character *receiver = live_bandit_shakedown_receiver( site ) ) {
+        if( !receiver->is_avatar() ) {
+            const auto camp = overmap_buffer.find_camp(
+                                  site.active_hostile_operation.reservation.shared_route.back().xy() );
+            d_win.add_to_history( string_format( _( "Camp response for %1$s — threat received by %2$s." ),
+                                                camp && *camp ? ( *camp )->camp_name() :
+                                                string_format( _( "camp at %s" ),
+                                                        site.active_hostile_operation.reservation.shared_route.back().to_string() ),
+                                                receiver->get_name() ) );
+        }
+    }
     d_win.add_history_separator();
     d_win.add_to_history( string_format(
                               _( "Reachable goods: %1$d\nDemanded toll: %2$d\nOpening: %3$s" ),
@@ -1205,6 +1628,12 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     } );
 
     while( true ) {
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        if( semantic_response ) {
+            return *semantic_response;
+        }
         ui_manager::redraw();
         std::string action = ctxt.handle_input();
         if( semantic_response ) {
@@ -1219,7 +1648,7 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
             return live_bandit_shakedown_response::fight;
         }
         if( action == "QUIT" ) {
-            return live_bandit_shakedown_response::fight;
+            return live_bandit_shakedown_response::fight_on_backout;
         }
         if( action == "ANY_INPUT" && ( evt.type == input_event_t::keyboard_char ||
                                         evt.type == input_event_t::keyboard_code ) &&
@@ -1238,50 +1667,179 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     }
 }
 
+// A deferred choice is owned by the existing visit branch. Compare its exact
+// sender/receiver and reservation identity without reusing a stale UI consumer.
+std::string live_bandit_pending_pay_identity( const bandit_live_world::site_record &site )
+{
+    const auto &operation = site.active_hostile_operation;
+    const auto &outing = operation.reservation;
+    const npc *speaker = live_bandit_shakedown_local_speaker( site );
+    if( speaker == nullptr || live_bandit_shakedown_receiver( site ) == nullptr ||
+        ( !outing.camp_id.empty() && outing.camp_id != site.site_id ) ) {
+        return {};
+    }
+    for( character_id id : outing.member_ids ) {
+        if( !outing.member_is_resolved( id ) ) {
+            const npc *actor = g->find_npc( id );
+            if( actor == nullptr || !actor->is_active() || actor->is_dead() ||
+                !live_bandit_shakedown_speaker_ready( *actor ) ) {
+                return {};
+            }
+        }
+    }
+    std::ostringstream result;
+    JsonOut json( result );
+    json.start_array();
+    json.write( site.site_id );
+    json.write( outing.activity_id );
+    json.write( outing.generation );
+    json.write( outing.handoff_epoch );
+    json.write( to_string( outing.owner ) );
+    json.write( operation.source_report_application_key );
+    json.write( speaker->getID() );
+    json.write( operation.shakedown_receiver_id );
+    json.write( outing.member_ids );
+    json.write( outing.resolved_member_ids );
+    json.write( outing.casualty_ids );
+    json.end_array();
+    return result.str();
+}
+
+bool live_bandit_cancel_stale_pending_pay( bandit_live_world::site_record &site,
+        const bool unrelated_dialogue = false )
+{
+    auto &operation = site.active_hostile_operation;
+    if( operation.shakedown_pending_branch != "pay_waiting_route" ) {
+        return false;
+    }
+    const std::string identity = live_bandit_pending_pay_identity( site );
+    const auto *manager = active_semantic_surface_manager();
+    if( !unrelated_dialogue && !identity.empty() && identity == operation.shakedown_pending_pay_identity &&
+        !( manager != nullptr && manager->top().has_value() && manager->top()->kind == "dialogue" ) ) {
+        return false;
+    }
+    operation.shakedown_pending_branch.clear();
+    operation.shakedown_pending_pay_identity.clear();
+    add_msg( m_warning, _( "The interrupted payment choice is cancelled.  No goods changed hands." ) );
+    return true;
+}
+
 bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         const bandit_live_world::local_gate_input &input,
         const bandit_live_world::local_gate_decision &decision )
 {
-    if( live_bandit_shakedown_already_opened( site ) ) {
+    auto &operation = site.active_hostile_operation;
+    if( operation.shakedown_pending_branch == "paid_pending_return" ) {
+        // Goods already changed hands. A recoverable return-lease refusal
+        // retries only the physical return commit, never the trade itself.
+        const auto plan = live_bandit_prepare_paid_return( site, true );
+        if( !plan ) {
+            return false;
+        }
+        auto return_plan = *plan;
+        bandit_live_world::shakedown_surface receipt;
+        receipt.demanded_value = operation.shakedown_pending_demanded_value;
+        receipt.reachable_goods_value = operation.shakedown_pending_reachable_value;
+        receipt.includes_basecamp_inventory = operation.shakedown_pending_basecamp_scene;
+        return live_bandit_commit_paid_return( site, return_plan, receipt,
+                                              operation.shakedown_pending_surrendered_value );
+    }
+    if( live_bandit_cancel_stale_pending_pay( site ) ) {
+        return true;
+    }
+    const bool pending_pay = operation.shakedown_pending_branch == "pay_waiting_route";
+    if( pending_pay ) {
+        if( !live_bandit_prepare_paid_return( site, true ) ) {
+            return false; // Keep the exact choice, not another demand/menu.
+        }
+    } else if( operation.is_active() && !operation.shakedown_pending_branch.empty() ) {
+        return false;
+    }
+    if( !pending_pay && live_bandit_shakedown_already_opened( site ) ) {
         return false;
     }
 
     avatar &u = get_avatar();
-    const bandit_live_world::shakedown_goods_pool pool =
+    Character *receiver = live_bandit_shakedown_receiver( site );
+    if( operation.is_active() && ( receiver == nullptr || live_bandit_shakedown_local_speaker( site ) == nullptr ) ) {
+        return false;
+    }
+    // A real player-directed demand interrupts ordinary work. The existing
+    // cancellation hooks retain resumable crafts/sorting in the backlog and
+    // require the player to resume them, rather than working through a demand.
+    if( receiver == &u && u.activity ) {
+        if( !u.activity.is_interruptible() ) {
+            return false;
+        }
+        u.cancel_activity();
+        g->wait_popup_reset();
+    }
+    const bandit_live_world::shakedown_goods_pool pool = receiver != nullptr ?
+        live_bandit_encounter_goods_pool( input, *receiver ) :
         live_bandit_make_shakedown_goods_pool( input, u );
-    const bandit_live_world::shakedown_surface surface =
+    bandit_live_world::shakedown_surface surface =
         bandit_live_world::build_shakedown_surface( site, input, decision, pool );
+    if( pending_pay ) {
+        surface.demanded_value = operation.shakedown_pending_demanded_value;
+    }
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_shakedown_surface_report( site,
                                surface );
     if( !surface.valid ) {
         return false;
     }
+    // Activity-driven contact has no enclosing World session. Keep the native
+    // manager available through the real trade successor, while the demand's
+    // own scope still retires normally when its response is consumed.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( openclaw_harness_semantic_session_active() && active_semantic_surface_manager() == nullptr ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=valid_contact"
                                << " session_active=" << ( openclaw_harness_semantic_session_active() ? "true" : "false" )
                                << " opening=" << surface.opening_id;
-    bandit_live_world::mark_shakedown_reopen_used( site );
-    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=reopen_marked";
-
-    DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
-                               << ( surface.opening_id.empty() ? "none" : surface.opening_id )
-                               << " responses=pay/fight payment_surface=npc_trade_ui\n";
-    const live_bandit_shakedown_response response =
-        query_live_bandit_shakedown_dialogue( site, surface );
-    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=dialogue_return"
+    if( !pending_pay ) {
+        bandit_live_world::mark_shakedown_reopen_used( site );
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=reopen_marked";
+        DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
+                                   << ( surface.opening_id.empty() ? "none" : surface.opening_id )
+                                   << " responses=pay/fight payment_surface=npc_trade_ui\n";
+    }
+    const bool response_is_visit = operation.is_active();
+    const auto response_operation_id = operation.reservation.activity_id;
+    const int response_generation = operation.reservation.generation;
+    const character_id response_receiver = operation.shakedown_receiver_id;
+    const live_bandit_shakedown_response response = pending_pay ?
+        live_bandit_shakedown_response::pay : query_live_bandit_shakedown_dialogue( site, surface );
+    if( !pending_pay && response_is_visit && !live_bandit_shakedown_response_is_current(
+            site, response_operation_id, response_generation, response_receiver ) ) {
+        return false;
+    }
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event="
+                               << ( pending_pay ? "pending_pay_resumed" : "dialogue_return" )
                                << " response=" << ( response == live_bandit_shakedown_response::pay ? "pay" : "fight" );
 
     bool payment_failed = false;
     if( response == live_bandit_shakedown_response::pay ) {
         std::optional<live_bandit_paid_return_plan> return_plan =
-            live_bandit_prepare_paid_return( site );
+            live_bandit_prepare_paid_return( site, true );
         if( !return_plan ) {
-            payment_failed = true;
-            add_msg( m_warning,
-                     _( "The bandits cannot safely settle the demand.  The standoff turns into a fight." ) );
+            operation.shakedown_pending_branch = "pay_waiting_route";
+            operation.shakedown_pending_pay_identity = live_bandit_pending_pay_identity( site );
+            operation.shakedown_pending_demanded_value = surface.demanded_value;
+            operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
+            operation.shakedown_pending_basecamp_scene = surface.includes_basecamp_inventory;
+            add_msg( m_warning, _( "The bandits have no reachable return route.  Payment is postponed; no goods changed hands." ) );
+            return false;
         } else {
+            operation.shakedown_pending_pay_identity.clear();
             const int surrendered_value = live_bandit_select_shakedown_payment( site, input, surface, u );
             if( surrendered_value >= surface.demanded_value ) {
                 add_msg( m_bad, _( "You complete the shakedown payment through trade." ) );
+                operation.shakedown_pending_branch = "paid_pending_return";
+                operation.shakedown_pending_demanded_value = surface.demanded_value;
+                operation.shakedown_pending_surrendered_value = surrendered_value;
+                operation.shakedown_pending_reachable_value = surface.reachable_goods_value;
+                operation.shakedown_pending_basecamp_scene = surface.includes_basecamp_inventory;
                 return live_bandit_commit_paid_return(
                            site, *return_plan, surface, surrendered_value );
             }
@@ -1291,12 +1849,16 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         }
     }
 
-    if( response == live_bandit_shakedown_response::fight ) {
+    if( response != live_bandit_shakedown_response::pay ) {
         add_msg( m_bad, _( "You choose to fight the shakedown." ) );
     } else if( payment_failed ) {
         add_msg( m_bad, _( "The bandits come at you." ) );
     }
-    live_bandit_choose_fight( site, surface, u );
+    if( response_is_visit && response == live_bandit_shakedown_response::fight ) {
+        return live_bandit_consume_explicit_fight( site, surface, response_operation_id,
+                response_generation, response_receiver );
+    }
+    live_bandit_choose_fight( site, surface, receiver != nullptr ? *receiver : static_cast<Character &>( u ) );
     return true;
 }
 
@@ -1553,7 +2115,7 @@ bool live_bandit_route_member_home( npc &member_npc, const bandit_live_world::si
     return live_bandit_route_member_to( member_npc, site, site.anchor );
 }
 
-bool live_bandit_confirmed_hostile_member_death(
+bool live_bandit_confirmed_member_death(
     const bandit_live_world::active_outing_state &reservation,
     const character_id member_id, const int current_minutes )
 {
@@ -1600,22 +2162,25 @@ bool live_bandit_reconcile_hostile_approach_deaths( bandit_live_world::site_reco
         const bandit_live_world::member_record *member = site.find_member( member_id );
         if( member != nullptr && member->state == bandit_live_world::member_state::outbound &&
             !reservation.member_is_resolved( member_id ) &&
-            live_bandit_confirmed_hostile_member_death( reservation, member_id, current_minutes ) ) {
+            live_bandit_confirmed_member_death( reservation, member_id, current_minutes ) ) {
             confirmed_deaths.push_back( member_id );
         }
     }
     bool changed = false;
     for( const character_id member_id : confirmed_deaths ) {
-        changed |= bandit_live_world::record_matching_external_outing_casualty(
-                       site, activity_id, generation, member_id,
-                       bandit_live_world::member_state::dead, current_minutes,
-                       "authoritative hostile approach death" );
+        changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::record_matching_external_outing_casualty( next, activity_id, generation,
+                    member_id,
+                    bandit_live_world::member_state::dead, current_minutes,
+                    "authoritative hostile approach death" );
+        } );
     }
     if( changed && site.active_hostile_operation.phase ==
         bandit_live_world::hostile_operation_phase::lost ) {
-        changed |= bandit_live_world::release_matching_external_reservation(
-                       site, activity_id, generation,
-                       "all hostile approach participants died" ).has_value();
+        changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::release_matching_external_reservation( next, activity_id, generation,
+                    "all hostile approach participants died" );
+        } ).has_value();
     }
     return changed;
 }
@@ -1723,11 +2288,13 @@ bool advance_live_bandit_hostile_rallies()
                                        << " member_count=" << reservation.member_ids.size()
                                        << " target=" << reservation.target_id << '\n';
         }
-        changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
-                   bandit_live_world::hostile_operation_phase::outbound,
-                   bandit_live_world::hostile_operation_phase::rallying, current_minutes,
-                   "hostile operation reached persisted rally" ) ==
-                   bandit_live_world::hostile_operation_transition_result::applied;
+        changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::transition_hostile_operation_phase( next, *cursor,
+                    bandit_live_world::hostile_operation_phase::outbound,
+                    bandit_live_world::hostile_operation_phase::rallying, current_minutes,
+                    "hostile operation reached persisted rally" );
+        } ) ==
+        bandit_live_world::hostile_operation_transition_result::applied;
     }
     return changed;
 }
@@ -1785,6 +2352,8 @@ std::optional<tripoint_abs_ms> live_bandit_loaded_hostile_entry(
     return std::nullopt;
 }
 
+bool live_bandit_establish_shakedown_communication( bandit_live_world::site_record &site );
+
 bool advance_live_bandit_hostile_approaches()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -1792,6 +2361,7 @@ bool advance_live_bandit_hostile_approaches()
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         changed |= live_bandit_reconcile_hostile_approach_deaths( site, current_minutes );
+        changed |= live_bandit_establish_shakedown_communication( site );
         bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
         bandit_live_world::active_outing_state &reservation = operation.reservation;
         if( site.retired_empty_site || !operation.is_active() ||
@@ -1935,11 +2505,13 @@ bool advance_live_bandit_hostile_approaches()
                 }
                 changed = true;
             }
-            changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
-                       operation.phase,
-                       bandit_live_world::hostile_operation_phase::approaching, current_minutes,
-                       "hostile operation openly approached reported site entrance" ) ==
-                       bandit_live_world::hostile_operation_transition_result::applied;
+            changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::transition_hostile_operation_phase( next, *cursor,
+                        operation.phase,
+                        bandit_live_world::hostile_operation_phase::approaching, current_minutes,
+                        "hostile operation openly approached reported site entrance" );
+            } ) ==
+            bandit_live_world::hostile_operation_transition_result::applied;
             continue;
         }
 
@@ -1957,6 +2529,13 @@ bool advance_live_bandit_hostile_approaches()
                     order.member_npc->omt_path.pop_back();
                 }
                 if( !order.member_npc->omt_path.empty() ) {
+                    if( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown &&
+                        order.member_npc->is_active() ) {
+                        // Once loaded, the ordinary NPC path/action motor owns
+                        // every physical step and its survival interruptions.
+                        // An abstract reservation must not jump that actor.
+                        continue;
+                    }
                     const tripoint_abs_omt before = order.member_npc->pos_abs_omt();
                     order.member_npc->travel_overmap( order.member_npc->omt_path.back() );
                     if( order.loaded_entry ) {
@@ -1970,10 +2549,26 @@ bool advance_live_bandit_hostile_approaches()
                 }
             }
             if( approach_progressed ) {
-                changed |= bandit_live_world::record_hostile_operation_approach_progress(
-                               site, *cursor, current_minutes );
+                changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                    return bandit_live_world::record_hostile_operation_approach_progress( next, *cursor,
+                            current_minutes );
+                } );
             }
             continue;
+        }
+        if( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown ) {
+            // Reaching an overmap destination is not a locally simulated
+            // encounter. Keep this exact reservation; unloaded time cannot
+            // consume search attempts or become refusal.
+            const auto destination = get_map().get_bub(
+                                         project_to<coords::ms>( approach ) + point( SEEX, SEEY ) );
+            if( !get_map().inbounds( destination ) ) {
+                changed |= !operation.shakedown_waiting_local;
+                operation.shakedown_waiting_local = true;
+                continue;
+            }
+            operation.shakedown_waiting_local = false;
+            g->load_npcs();
         }
         // The ownership transition and the physical NPC leases must agree in
         // the next save.  Preflight every persistent actor before changing either.
@@ -1998,12 +2593,8 @@ bool advance_live_bandit_hostile_approaches()
                    bandit_live_world::hostile_operation_phase::committed_contact, current_minutes,
                    "hostile operation physically reached target contact" ) ==
             bandit_live_world::hostile_operation_transition_result::applied ) {
-            const auto &contact = contact_site.active_hostile_operation.reservation;
-            const bandit_live_world_projection_lease lease = { true, contact_site.site_id,
-                contact.activity_id, "local", contact.generation, contact.handoff_epoch,
-                contact.last_advanced_minutes };
-            for( const shared_ptr_fast<npc> &member : contact_members ) {
-                sync_bandit_live_world_projection_lease_copies( *member, lease );
+            if( !persist_live_bandit_local_projection_leases( contact_site, &site ) ) {
+                continue;
             }
             site = std::move( contact_site );
             changed = true;
@@ -2131,11 +2722,14 @@ bool advance_live_bandit_hostile_returns()
                     generation ) ) {
             continue;
         }
-        const bool released = bandit_live_world::release_matching_external_reservation( site, activity_id,
-                   generation, operation.operation_kind ==
-                   bandit_live_world::hostile_operation_kind::raid ?
-                   "cannibal raid survivors physically returned home" :
-                   "paid shakedown survivors physically returned home" ).has_value();
+        const bool released = commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record &
+        next ) {
+            return bandit_live_world::release_matching_external_reservation( next, activity_id,
+                    generation, operation.operation_kind ==
+                    bandit_live_world::hostile_operation_kind::raid ?
+                    "cannibal raid survivors physically returned home" :
+                    "paid shakedown survivors physically returned home" );
+        } ).has_value();
         changed |= released;
         if( openclaw_harness_bandit_owner_trace_enabled() ) {
             DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
@@ -2461,8 +3055,11 @@ bool live_bandit_fail_burned_egress( const character_id member_id )
         return false;
     }
     const bandit_live_world::covert_scout_egress_failure_effect effect =
-        bandit_live_world::resolve_covert_scout_burned_egress_failure(
-            *owner, *cursor, retry_candidates, live_bandit_current_minutes() );
+        commit_live_bandit_local_progress(
+    *owner, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::resolve_covert_scout_burned_egress_failure( next, *cursor,
+                retry_candidates, live_bandit_current_minutes() );
+    } );
     if( effect.result ==
         bandit_live_world::covert_scout_egress_failure_result::rejected ) {
         return false;
@@ -2631,10 +3228,13 @@ bool live_bandit_abort_alternate_watch_reposition( const character_id member_id 
     const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
         bandit_live_world::current_external_simulation_cursor( *owner );
     if( !cursor ||
-        bandit_live_world::abort_local_pair_alternate_watch_reposition(
-            *owner, *cursor, live_bandit_current_minutes(),
-            "alternate watch physical route became unavailable" ) !=
-        bandit_live_world::local_handoff_commit_result::applied ) {
+        commit_live_bandit_local_progress(
+    *owner, [&]( bandit_live_world::site_record & next ) {
+    return bandit_live_world::abort_local_pair_alternate_watch_reposition( next, *cursor,
+            live_bandit_current_minutes(),
+            "alternate watch physical route became unavailable" );
+    } ) !=
+    bandit_live_world::local_handoff_commit_result::applied ) {
         return false;
     }
     for( const character_id routed_member_id : owner->active_outing.member_ids ) {
@@ -2988,7 +3588,7 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
         [&site]( const character_id member_id ) {
             return active_committed_bandit_shakedown_member( site, member_id );
         } );
-        if( complete_admission ) {
+        if( complete_admission && persist_live_bandit_local_projection_leases( site, &site, false ) ) {
             // An already admitted party retains its local posture and receives
             // neither a second placement nor an attitude reset.
             return true;
@@ -3014,6 +3614,18 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
                        ",placement_count=" + std::to_string( placements.size() ) );
     }
 
+    const auto lease = live_bandit_projection_lease( site.site_id, *outing );
+    const bool all_unclaimed = std::all_of( party.begin(), party.end(), []( const auto & member ) {
+        return live_bandit_projection_copies_match( *member, bandit_live_world_projection_lease() );
+    } );
+    const bool all_current = std::all_of( party.begin(), party.end(), [&lease]( const auto & member ) {
+        return live_bandit_projection_copies_match( *member, lease );
+    } );
+    if( ( !all_unclaimed && !all_current ) || !persist_live_bandit_local_projection_leases( site ) ) {
+        return reject( "projection_claims_do_not_match_admission",
+                       "complete_current_or_unclaimed_party_required" );
+    }
+
     for( std::size_t index = 0; index < party.size(); ++index ) {
         party[index]->setpos( here, placements[index] );
     }
@@ -3025,7 +3637,13 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
     // lifecycle hook has completed.
     g->load_npcs();
     for( const shared_ptr_fast<npc> &member_npc : party ) {
-        member_npc->set_attitude( NPCATT_NULL );
+        if( !member_npc->hit_by_player &&
+            member_npc->get_attitude() != NPCATT_FLEE &&
+            member_npc->get_attitude() != NPCATT_FLEE_TEMP &&
+            bandit_live_world::is_active_shakedown_parley_member(
+                overmap_buffer.global_state.bandit_live_world, member_npc->getID() ) ) {
+            member_npc->set_attitude( NPCATT_NULL );
+        }
     }
     const bool complete_admission = std::all_of( outing->member_ids.begin(), outing->member_ids.end(),
     [&site]( const character_id member_id ) {
@@ -3082,17 +3700,19 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
         if( reservation.member_is_resolved( member_id ) ) {
             continue;
         }
-        if( live_bandit_confirmed_hostile_member_death( reservation, member_id,
-                current_minutes ) ) {
+        if( live_bandit_confirmed_member_death( reservation, member_id,
+                                                current_minutes ) ) {
             dead_member_ids.push_back( member_id );
         }
     }
     if( !dead_member_ids.empty() ) {
         const std::string activity_id = reservation.activity_id;
         const int generation = reservation.generation;
-        if( !bandit_live_world::reconcile_matching_hostile_operation_deaths( site, *cursor,
+        if( !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::reconcile_matching_hostile_operation_deaths( next, *cursor,
                 dead_member_ids, current_minutes,
-                "authoritative shakedown combat death" ) ) {
+                "authoritative shakedown combat death" );
+        } ) ) {
             return false;
         }
         if( site.active_hostile_operation.phase ==
@@ -3102,9 +3722,11 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
                     activity_id, generation ) ) {
                 return false;
             }
-            return bandit_live_world::release_matching_external_reservation( site,
-                    activity_id, generation,
-                    "all shakedown combat participants died" ).has_value();
+            return commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::release_matching_external_reservation( next,
+                        activity_id, generation,
+                        "all shakedown combat participants died" );
+            } ).has_value();
         }
         return true;
     }
@@ -3134,24 +3756,28 @@ bool live_cannibal_raid_reconcile_combat( bandit_live_world::site_record &site )
         if( reservation.member_is_resolved( member_id ) ) {
             continue;
         }
-        if( live_bandit_confirmed_hostile_member_death( reservation, member_id,
-                current_minutes ) ) {
+        if( live_bandit_confirmed_member_death( reservation, member_id,
+                                                current_minutes ) ) {
             dead_member_ids.push_back( member_id );
         }
     }
     if( !dead_member_ids.empty() ) {
         const std::string activity_id = reservation.activity_id;
         const int generation = reservation.generation;
-        if( !bandit_live_world::reconcile_matching_hostile_operation_deaths( site, *cursor,
+        if( !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::reconcile_matching_hostile_operation_deaths( next, *cursor,
                 dead_member_ids, current_minutes,
-                "authoritative cannibal raid combat death" ) ) {
+                "authoritative cannibal raid combat death" );
+        } ) ) {
             return false;
         }
         if( site.active_hostile_operation.phase ==
             bandit_live_world::hostile_operation_phase::lost ) {
-            return bandit_live_world::release_matching_external_reservation( site,
-                    activity_id, generation,
-                    "all cannibal raid combat participants died" ).has_value();
+            return commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::release_matching_external_reservation( next,
+                        activity_id, generation,
+                        "all cannibal raid combat participants died" );
+            } ).has_value();
         }
         return true;
     }
@@ -3303,10 +3929,14 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
                                     bandit_live_world::hostile_operation_kind::raid &&
                                     live_cannibal_raid_advance_withdrawals( site );
     if( std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
-    [&outing]( const character_id id ) { return outing.member_is_resolved( id ); } ) ) {
-        return bandit_live_world::release_matching_external_reservation( site,
-                outing.activity_id, outing.generation,
-                "all raid participants died or physically returned home" ).has_value();
+    [&outing]( const character_id id ) {
+    return outing.member_is_resolved( id );
+    } ) ) {
+        return commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::release_matching_external_reservation( next,
+                    outing.activity_id, outing.generation,
+                    "all raid participants died or physically returned home" );
+        } ).has_value();
     }
     std::vector<npc *> party;
     for( const character_id member_id : outing.member_ids ) {
@@ -3391,12 +4021,14 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
         } );
         std::optional<live_bandit_paid_return_plan> return_plan =
             all_survivors_withdrawing ? live_bandit_prepare_paid_return( site ) : std::nullopt;
-        if( return_plan && bandit_live_world::transition_hostile_operation_phase(
-                site, return_plan->cursor,
+        if( return_plan &&
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::transition_hostile_operation_phase( next, return_plan->cursor,
                 bandit_live_world::hostile_operation_phase::committed_contact,
                 bandit_live_world::hostile_operation_phase::returning_home,
                 live_bandit_current_minutes(), "raid members physically withdrawing",
-                true ) == bandit_live_world::hostile_operation_transition_result::applied ) {
+                true );
+        } ) == bandit_live_world::hostile_operation_transition_result::applied ) {
             trace_search( "physical_withdrawal_returning_home", nullptr, nullptr, {} );
             live_bandit_apply_hostile_return_orders( site, *return_plan );
             return true;
@@ -3441,6 +4073,9 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
     const int floor_count = std::abs( outing.target_omt.z() - approach.z() ) + 1;
     const int total_waypoints = floor_count * static_cast<int>( live_bandit_site_search_waypoints.size() );
     const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    raid_decision_trace::recorder &decision_trace = raid_decision_trace::native_recorder();
+    const raid_decision_trace::selected_npc_scope selected_trace = decision_trace.enabled() ?
+            raid_decision_trace::environment_selected_npcs() : raid_decision_trace::selected_npc_scope{};
     if( operation.site_search_retry_after_turn > current_turn ) {
         return false;
     }
@@ -3452,14 +4087,172 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
                                      live_bandit_site_search_waypoints.size();
         return project_to<coords::ms>( floor_source ) + live_bandit_site_search_waypoints[waypoint];
     };
-    const auto path_to_goal = [&]( const npc &member, const tripoint_abs_ms &goal ) {
-        if( member.pos_abs() == goal ) {
-            return true;
-        }
+    const auto path_to_goal = [&]( const npc &member, const tripoint_abs_ms &goal,
+                                   const int candidate, const std::size_t member_index,
+                                   const std::string_view purpose ) {
+        const int actor_id = member.getID().get_value();
+        const bool capture = selected_trace.includes( actor_id ) &&
+                             selected_trace.includes_turn( current_turn );
+        const bool engaged_member = std::find( engaged.begin(), engaged.end(), &member ) != engaged.end();
+        const bool already_at_goal = member.pos_abs() == goal;
         const tripoint_bub_ms local_goal = here.get_bub( goal );
-        return here.inbounds( local_goal ) && here.passable( local_goal ) &&
-               !here.route( member.pos_bub( here ), pathfinding_target::point( local_goal ),
-                            member.get_pathfinding_settings( false ), member.get_path_avoid() ).empty();
+        const bool goal_inbounds = here.inbounds( local_goal );
+        const bool goal_passable = goal_inbounds && here.passable( local_goal );
+        std::vector<tripoint_bub_ms> route;
+        struct avoid_sample {
+            tripoint_bub_ms local;
+            std::string reason;
+            const Creature *occupant = nullptr;
+        };
+        std::vector<avoid_sample> avoid_samples;
+        bool avoid_samples_truncated = false;
+        int avoid_checks = 0;
+        int occupied_checks = 0;
+        int other_avoid_checks = 0;
+        bool route_evaluated = false;
+        bool relaxed_route_evaluated = false;
+        std::vector<tripoint_bub_ms> relaxed_route;
+
+        if( !already_at_goal && goal_passable ) {
+            route_evaluated = true;
+            const pathfinding_settings &settings = member.get_pathfinding_settings( false );
+            if( capture ) {
+                const npc::path_avoid_diagnostic observe_avoid = [&]( const tripoint_bub_ms &p,
+                const std::string_view reason, const Creature *occupant ) {
+                    ++avoid_checks;
+                    if( reason == "occupied" ) {
+                        ++occupied_checks;
+                    } else {
+                        ++other_avoid_checks;
+                    }
+                    if( std::none_of( avoid_samples.begin(), avoid_samples.end(),
+                    [&p]( const avoid_sample &sample ) {
+                        return sample.local == p;
+                    } ) ) {
+                        if( avoid_samples.size() < 12 ) {
+                            avoid_samples.push_back( { p, std::string( reason ), occupant } );
+                        } else {
+                            avoid_samples_truncated = true;
+                        }
+                    }
+                };
+                route = here.route( member.pos_bub( here ), pathfinding_target::point( local_goal ),
+                                    settings, member.get_path_avoid( observe_avoid ) );
+                if( route.empty() ) {
+                    // Diagnostic comparison only: retry with the member-specific avoid predicate
+                    // disabled to distinguish its dynamic blockers from an otherwise absent route.
+                    relaxed_route_evaluated = true;
+                    relaxed_route = here.route( member.pos_bub( here ),
+                                                pathfinding_target::point( local_goal ),
+                                                settings,
+                    []( const tripoint_bub_ms & ) {
+                        return false;
+                    } );
+                }
+            } else {
+                route = here.route( member.pos_bub( here ), pathfinding_target::point( local_goal ),
+                                    settings, member.get_path_avoid() );
+            }
+        }
+
+        if( capture ) {
+            const std::string_view diagnosis = already_at_goal ? "already_at_goal" :
+                                               !goal_inbounds ? "goal_out_of_bounds" :
+                                               !goal_passable ? "goal_not_passable" :
+                                               !route.empty() ? "route_found" :
+                                               !relaxed_route.empty() ? "member_avoid_blocks_route" :
+                                               "no_route_without_member_avoid";
+            std::ostringstream payload;
+            const auto append_abs = [&payload]( const tripoint_abs_ms &p ) {
+                payload << '[' << p.x() << ',' << p.y() << ',' << p.z() << ']';
+            };
+            const auto append_local = [&payload]( const tripoint_bub_ms &p ) {
+                payload << '[' << p.x() << ',' << p.y() << ',' << p.z() << ']';
+            };
+            payload << "\"trace_group_id\":" << raid_decision_trace::quote( selected_trace.group_id )
+                    << ",\"operation_id\":" << raid_decision_trace::quote( outing.activity_id )
+                    << ",\"generation\":" << outing.generation
+                    << ",\"site_id\":" << raid_decision_trace::quote( site.site_id )
+                    << ",\"npc_id\":" << actor_id
+                    << ",\"member_index\":" << member_index
+                    << ",\"candidate\":" << candidate
+                    << ",\"purpose\":" << raid_decision_trace::quote( purpose )
+                    << ",\"engaged\":" << ( engaged_member ? "true" : "false" )
+                    << ",\"position_abs\":";
+            append_abs( member.pos_abs() );
+            payload << ",\"goal_abs\":";
+            append_abs( goal );
+            payload << ",\"goal_local\":";
+            append_local( local_goal );
+            payload << ",\"already_at_goal\":" << ( already_at_goal ? "true" : "false" )
+                    << ",\"goal_inbounds\":" << ( goal_inbounds ? "true" : "false" )
+                    << ",\"goal_passable\":" << ( goal_passable ? "true" : "false" )
+                    << ",\"route_evaluated\":" << ( route_evaluated ? "true" : "false" )
+                    << ",\"route_found\":" << ( already_at_goal || !route.empty() ? "true" : "false" )
+                    << ",\"route_length\":" << ( already_at_goal ? 0 :
+                            route_evaluated ? static_cast<int>( route.size() ) : -1 )
+                    << ",\"diagnosis\":" << raid_decision_trace::quote( diagnosis )
+                    << ",\"avoid_rejected_checks\":" << avoid_checks
+                    << ",\"occupied_rejected_checks\":" << occupied_checks
+                    << ",\"other_avoid_rejected_checks\":" << other_avoid_checks
+                    << ",\"avoid_samples_truncated\":" <<
+                    ( avoid_samples_truncated ? "true" : "false" )
+                    << ",\"relaxed_route_evaluated\":" << ( relaxed_route_evaluated ? "true" : "false" )
+                    << ",\"relaxed_route_found\":";
+            if( relaxed_route_evaluated ) {
+                payload << ( relaxed_route.empty() ? "false" : "true" );
+            } else {
+                payload << "null";
+            }
+            payload << ",\"relaxed_route_basis\":\"same_settings_without_member_avoid\""
+                    << ",\"relaxed_route_length\":";
+            if( relaxed_route_evaluated ) {
+                payload << relaxed_route.size();
+            } else {
+                payload << "null";
+            }
+            payload << ",\"avoid_samples\":[";
+            for( std::size_t index = 0; index < avoid_samples.size(); ++index ) {
+                if( index > 0 ) {
+                    payload << ',';
+                }
+                const avoid_sample &sample = avoid_samples[index];
+                const tripoint_abs_ms absolute = here.get_abs( sample.local );
+                payload << "{\"local\":";
+                append_local( sample.local );
+                payload << ",\"absolute\":";
+                append_abs( absolute );
+                payload << ",\"reason\":" << raid_decision_trace::quote( sample.reason )
+                        << ",\"occupant\":";
+                if( sample.occupant == nullptr ) {
+                    payload << "null";
+                } else {
+                    payload << "{\"type\":" << raid_decision_trace::quote(
+                                   sample.occupant->is_avatar() ? "avatar" :
+                                   sample.occupant->is_npc() ? "npc" :
+                                   sample.occupant->is_monster() ? "monster" : "other" )
+                            << ",\"id\":";
+                    if( const Character *person = sample.occupant->as_character() ) {
+                        payload << person->getID().get_value();
+                    } else {
+                        payload << "null";
+                    }
+                    payload << ",\"monster_type\":";
+                    if( const monster *mon = sample.occupant->as_monster() ) {
+                        payload << raid_decision_trace::quote( mon->type->id.str() );
+                    } else {
+                        payload << "null";
+                    }
+                    payload << '}';
+                }
+                payload << '}';
+            }
+            payload << ']';
+            decision_trace.record( outing.activity_id + '#' + std::to_string( outing.generation ) +
+                                   ':' + std::to_string( actor_id ), "raid_site_route_probe", current_turn,
+                                   payload.str() );
+        }
+        return already_at_goal || !route.empty();
     };
     while( operation.site_search_waypoint < total_waypoints ) {
         const int floor_end = std::min( total_waypoints,
@@ -3471,7 +4264,8 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
              ++candidate ) {
             for( std::size_t index = 0; index < party.size(); ++index ) {
                 if( std::find( engaged.begin(), engaged.end(), party[index] ) == engaged.end() &&
-                    path_to_goal( *party[index], waypoint_goal( candidate, index ) ) ) {
+                    path_to_goal( *party[index], waypoint_goal( candidate, index ), candidate, index,
+                                  "floor_access" ) ) {
                     floor_accessible = true;
                     break;
                 }
@@ -3493,7 +4287,8 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
             const tripoint_abs_ms goal = waypoint_goal( operation.site_search_waypoint, index );
             if( std::find( engaged.begin(), engaged.end(), member ) == engaged.end() &&
                 !member->goto_to_this_pos && member->pos_abs() != goal &&
-                path_to_goal( *member, goal ) ) {
+                path_to_goal( *member, goal, operation.site_search_waypoint, index,
+                              "order_recovery" ) ) {
                 missing_order = true;
                 break;
             }
@@ -3507,7 +4302,9 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
                     continue;
                 }
                 const tripoint_abs_ms goal = waypoint_goal( operation.site_search_waypoint, index );
-                if( party[index]->pos_abs() != goal && path_to_goal( *party[index], goal ) ) {
+                if( party[index]->pos_abs() != goal &&
+                    path_to_goal( *party[index], goal, operation.site_search_waypoint, index,
+                                  "waypoint_assignment" ) ) {
                     party[index]->goto_to_this_pos = goal;
                     assigned = true;
                     recipients.push_back( party[index] );
@@ -3522,10 +4319,13 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
         }
         bool travelling = false;
         std::vector<npc *> travelling_members;
-        for( npc *member : party ) {
+        for( std::size_t index = 0; index < party.size(); ++index ) {
+            npc *member = party[index];
             if( std::find( engaged.begin(), engaged.end(), member ) == engaged.end() &&
                 member->goto_to_this_pos && member->pos_abs() != *member->goto_to_this_pos ) {
-                if( !member->path.empty() || path_to_goal( *member, *member->goto_to_this_pos ) ) {
+                if( !member->path.empty() ||
+                    path_to_goal( *member, *member->goto_to_this_pos,
+                                  operation.site_search_waypoint, index, "existing_order_validation" ) ) {
                     travelling = true;
                     travelling_members.push_back( member );
                 } else {
@@ -3576,11 +4376,13 @@ bool live_cannibal_raid_advance_site_search( bandit_live_world::site_record &sit
                                    << " site=" << site.site_id;
         return false;
     }
-    if( bandit_live_world::transition_hostile_operation_phase( site, return_plan->cursor,
+    if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+    return bandit_live_world::transition_hostile_operation_phase( next, return_plan->cursor,
             bandit_live_world::hostile_operation_phase::committed_contact,
-        bandit_live_world::hostile_operation_phase::returning_home,
-        live_bandit_current_minutes(), "cannibal raid completed physical site search", true ) !=
-        bandit_live_world::hostile_operation_transition_result::applied ) {
+            bandit_live_world::hostile_operation_phase::returning_home,
+            live_bandit_current_minutes(), "cannibal raid completed physical site search", true );
+    } ) !=
+    bandit_live_world::hostile_operation_transition_result::applied ) {
         trace_search( "exhausted_transition_rejected", nullptr, nullptr, {} );
         return false;
     }
@@ -3675,11 +4477,13 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
                                      operation.site_search_initial_goods_value );
     const std::string summary = string_format( "bandit site search completed physical loot=%d",
                                 taken_value );
-    if( bandit_live_world::transition_hostile_operation_phase( site, return_plan->cursor,
+    if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+    return bandit_live_world::transition_hostile_operation_phase( next, return_plan->cursor,
             bandit_live_world::hostile_operation_phase::committed_contact,
             bandit_live_world::hostile_operation_phase::returning_home,
-            live_bandit_current_minutes(), summary, true ) !=
-        bandit_live_world::hostile_operation_transition_result::applied ) {
+            live_bandit_current_minutes(), summary, true );
+    } ) !=
+    bandit_live_world::hostile_operation_transition_result::applied ) {
         return false;
     }
     bandit_live_world::hostile_operation_state &returned_operation = site.active_hostile_operation;
@@ -3690,6 +4494,212 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
     returned_operation.shakedown_pending_basecamp_scene = true;
     live_bandit_apply_hostile_return_orders( site, *return_plan );
     DebugLog( D_INFO, DC_ALL ) << summary << " return=physical\n";
+    return true;
+}
+
+struct shakedown_speaker_readiness {
+    int shout_volume;
+    bool sleeping;
+    bool narcosis;
+    bool fleeing;
+    bool fleeing_temporary;
+    bool runaway;
+    bool dangerous_field;
+    const Creature *target;
+    bool hostile_target;
+
+    bool ready() const {
+        return shout_volume > 2 && !sleeping && !narcosis && !fleeing &&
+               !fleeing_temporary && !runaway && !dangerous_field && !hostile_target;
+    }
+};
+
+shakedown_speaker_readiness live_bandit_shakedown_speaker_readiness( const npc &actor )
+{
+    // Character::shout emits no words for a faceless speaker and only an
+    // indistinct voice at its minimum volume of two. Neither delivers a demand.
+    const Creature *const target = actor.current_target();
+    return { actor.get_shout_volume(), actor.in_sleep_state(), actor.has_effect( effect_narcosis ),
+             actor.get_attitude() == NPCATT_FLEE, actor.get_attitude() == NPCATT_FLEE_TEMP,
+             actor.has_effect( effect_npc_run_away ), get_map().dangerous_field_at( actor.pos_bub() ),
+             target, target != nullptr && actor.attitude_to( *target ) == Creature::Attitude::HOSTILE };
+}
+
+bool live_bandit_shakedown_speaker_ready( const npc &actor )
+{
+    return live_bandit_shakedown_speaker_readiness( actor ).ready();
+}
+
+Character *live_bandit_shakedown_receiver( const bandit_live_world::site_record &site )
+{
+    const auto &operation = site.active_hostile_operation;
+    const auto &outing = operation.reservation;
+    if( !operation.is_active() || !operation.shakedown_contact_established ||
+        operation.operation_kind != bandit_live_world::hostile_operation_kind::shakedown ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        outing.owner != bandit_live_world::simulation_owner::local ) {
+        return nullptr;
+    }
+    Character *receiver = operation.shakedown_receiver_is_avatar ?
+                          static_cast<Character *>( &get_avatar() ) :
+                          static_cast<Character *>( g->find_npc( operation.shakedown_receiver_id ) );
+    if( receiver == nullptr || receiver->getID() != operation.shakedown_receiver_id ||
+        receiver->is_dead_state() || receiver->in_sleep_state() || receiver->has_effect( effect_narcosis ) ||
+        !get_map().inbounds( receiver->pos_bub() ) ) {
+        return nullptr;
+    }
+    if( receiver->is_npc() ) {
+        const npc &recipient = *receiver->as_npc();
+        if( !recipient.is_active() || !recipient.is_player_ally() ||
+            !recipient.assigned_camp || outing.shared_route.empty() ||
+            recipient.assigned_camp->xy() != outing.shared_route.back().xy() ) {
+            return nullptr;
+        }
+    }
+    return receiver;
+}
+
+bool live_bandit_establish_shakedown_communication( bandit_live_world::site_record &site )
+{
+    using namespace bandit_live_world;
+    auto &operation = site.active_hostile_operation;
+    auto &outing = operation.reservation;
+    if( site.retired_empty_site || !operation.is_active() ||
+        ( site.profile == hostile_site_profile::none ? profile_for_site_kind( site.site_kind ) :
+          site.profile ) == hostile_site_profile::cannibal_camp ||
+        ( !outing.camp_id.empty() && outing.camp_id != site.site_id ) ||
+        operation.operation_kind != hostile_operation_kind::shakedown ||
+        ( operation.phase != hostile_operation_phase::approaching &&
+          operation.phase != hostile_operation_phase::committed_contact ) ||
+        operation.shakedown_contact_established || !operation.shakedown_pending_branch.empty() ||
+        outing.shared_route.empty() || !site.last_shakedown_outcome.empty() ) {
+        return false;
+    }
+    map &here = get_map();
+    const auto destination = here.get_bub( project_to<coords::ms>( outing.shared_route.back() ) +
+                                         point( SEEX, SEEY ) );
+    if( !here.inbounds( destination ) ) {
+        return false;
+    }
+    // The entire surviving reservation must really be present before a local
+    // owner handover. No menu, placement or exact doorstep substitutes for it.
+    std::vector<npc *> party;
+    for( const character_id id : outing.member_ids ) {
+        if( outing.member_is_resolved( id ) ) {
+            continue;
+        }
+        const auto *member = site.find_member( id );
+        npc *actor = g->find_npc( id );
+        if( member == nullptr || actor == nullptr || actor->is_dead() || !actor->is_active() ||
+            !here.inbounds( actor->pos_bub() ) ||
+            ( member->state != member_state::outbound && member->state != member_state::local_contact ) ) {
+            return false;
+        }
+        party.push_back( actor );
+    }
+    Character *receiver = nullptr;
+    npc *speaker = nullptr;
+    bool by_shout = false;
+    for( npc *actor : party ) {
+        if( !live_bandit_shakedown_speaker_ready( *actor ) ) {
+            continue;
+        }
+        const auto understands = [&]( Character &recipient ) {
+            return !recipient.is_dead_state() &&
+                   !recipient.has_effect( effect_npc_suspend ) &&
+                   ( !recipient.in_sleep_state() || ( recipient.is_avatar() &&
+                           !recipient.has_bionic( bio_sleep_shutdown ) ) ) &&
+                   !recipient.has_effect( effect_narcosis ) &&
+                   here.inbounds( recipient.pos_bub() ) &&
+                   recipient.can_hear( actor->pos_bub(), actor->get_shout_volume() );
+        };
+        // Hearing uses the game's actual weather/hearing/shout rules. A real
+        // emitted shout below records the communication; visibility alone
+        // never grants an unreachable or unheard receiver a remote demand.
+        if( understands( get_avatar() ) ) {
+            receiver = &get_avatar();
+        } else {
+            // Actual NPC camp assignment is the membership authority. Older
+            // prepared camps need not also have a registry object to receive speech.
+            for( npc &recipient : g->all_npcs() ) {
+                if( recipient.is_active() && recipient.is_player_ally() && recipient.assigned_camp &&
+                    recipient.assigned_camp->xy() == outing.shared_route.back().xy() &&
+                    understands( recipient ) ) {
+                    receiver = &recipient;
+                    break;
+                }
+            }
+        }
+        if( receiver != nullptr ) {
+            speaker = actor;
+            by_shout = !actor->sees( here, *receiver );
+            break;
+        }
+    }
+    if( receiver == nullptr || speaker == nullptr ) {
+        return false;
+    }
+    bool shouted = false;
+    if( receiver->is_avatar() && receiver->in_sleep_state() ) {
+        // Hearing was checked against this actual speaker. A directed robbery
+        // shout can interrupt ordinary sleep, but never anesthesia/shutdown.
+        // wake_up expires sleep through the normal effect clock; until then
+        // there is no responsive receiver and no established contact/menu.
+        if( receiver->has_effect( effect_sleep ) &&
+            receiver->get_effect( effect_sleep ).get_duration() <= 0_turns ) {
+            return false;
+        }
+        if( receiver->activity && !receiver->activity.is_interruptible() ) {
+            return false;
+        }
+        speaker->shout( _( "We want payment. Pay us, or fight!" ) );
+        shouted = true;
+        receiver->wake_up();
+        if( receiver->activity ) {
+            receiver->cancel_activity();
+        }
+        if( receiver->in_sleep_state() ) {
+            return false;
+        }
+    }
+    site_record candidate = site;
+    if( operation.phase == hostile_operation_phase::approaching ) {
+        const auto cursor = current_external_simulation_cursor( site );
+        if( !cursor || transition_hostile_operation_phase( candidate, *cursor,
+                hostile_operation_phase::approaching, hostile_operation_phase::committed_contact,
+                live_bandit_current_minutes(), "shakedown reached real communication" ) !=
+            hostile_operation_transition_result::applied ) {
+            return false;
+        }
+    }
+    auto &contact = candidate.active_hostile_operation;
+    contact.shakedown_contact_established = true;
+    contact.shakedown_receiver_id = receiver->getID();
+    contact.shakedown_receiver_is_avatar = receiver->is_avatar();
+    contact.shakedown_contact_by_shout = by_shout;
+    contact.shakedown_waiting_local = false;
+    if( !persist_live_bandit_local_projection_leases( candidate, &site ) ) {
+        return false;
+    }
+    site = std::move( candidate );
+    const auto &committed_contact = site.active_hostile_operation;
+    if( !shouted ) {
+        speaker->shout( _( "We want payment. Pay us, or fight!" ) );
+    }
+    const auto scope = raid_decision_trace::environment_selected_npcs();
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    if( scope.includes_turn( turn ) &&
+        ( scope.includes( speaker->getID().get_value() ) || scope.includes( receiver->getID().get_value() ) ) ) {
+        raid_decision_trace::native_recorder().record_edge( "bandit_shakedown_contact", turn,
+                "\"trace_group_id\":" + raid_decision_trace::quote( scope.group_id ) +
+                ",\"operation_id\":" + raid_decision_trace::quote( committed_contact.reservation.activity_id ) +
+                ",\"generation\":" + std::to_string( committed_contact.reservation.generation ) +
+                ",\"site_id\":" + raid_decision_trace::quote( site.site_id ) +
+                ",\"speaker_id\":" + std::to_string( speaker->getID().get_value() ) +
+                ",\"receiver_id\":" + std::to_string( receiver->getID().get_value() ) +
+                ",\"receiver_is_avatar\":" + ( receiver->is_avatar() ? "true" : "false" ) +
+                ",\"audible_shout\":true,\"unseen_receiver\":" + ( by_shout ? "true" : "false" ) );
+    }
     return true;
 }
 
@@ -3733,17 +4743,19 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
         }
         return changed;
     }
+    // Invalidate the deferred response before a stale reservation can be
+    // rejected by admission. It can never revive as trade after later loading.
+    if( live_bandit_cancel_stale_pending_pay( site ) ) {
+        return true;
+    }
     if( !materialize_committed_bandit_shakedown( site ) ) {
         return false;
     }
+    live_bandit_establish_shakedown_communication( site );
 
     if( site.last_shakedown_outcome.empty() ) {
-        const bool player_attack_escalated = std::any_of(
-                outing->member_ids.begin(), outing->member_ids.end(), [&site]( const character_id member_id ) {
-            const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
-            return active_committed_bandit_shakedown_member( site, member_id, member_npc ) &&
-                   member_npc->get_attitude() == NPCATT_KILL;
-        } );
+        const bool player_attack_escalated =
+            site.active_hostile_operation.shakedown_pending_branch == "fight";
         if( player_attack_escalated ) {
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                 bandit_live_world::current_external_simulation_cursor( site );
@@ -3771,6 +4783,14 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
 
     bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
     gate_input.local_contact_established = true;
+    // This reserved visit remains a shakedown even if the unrelated avatar
+    // happens to be travelling on a road. No unheard ambush releases its intent.
+    gate_input.rolling_travel_scene = false;
+    if( site.active_hostile_operation.shakedown_contact_established ) {
+        gate_input.player_contact = site.active_hostile_operation.shakedown_receiver_is_avatar;
+        gate_input.follower_sight = !gate_input.player_contact;
+        gate_input.basecamp_or_camp_scene = !gate_input.player_contact || gate_input.basecamp_or_camp_scene;
+    }
     const bandit_live_world::local_gate_decision gate_decision =
         bandit_live_world::choose_local_gate_posture( site, gate_input );
     bandit_live_world::record_local_gate_semantic_event( site, gate_input, gate_decision );
@@ -3789,10 +4809,11 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
         }
         return changed;
     }
-    if( gate_decision.opens_shakedown_surface && gate_input.player_contact ) {
+    if( site.active_hostile_operation.shakedown_contact_established &&
+        gate_decision.opens_shakedown_surface ) {
         return open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
     }
-    if( !gate_input.player_contact ) {
+    if( !site.active_hostile_operation.shakedown_contact_established ) {
         return live_bandit_advance_hidden_shakedown_search( site );
     }
     return false;
@@ -3832,8 +4853,10 @@ bool note_live_bandit_local_turn_sight_avoid()
             continue;
         }
         if( outing == &site.active_hostile_operation.reservation &&
-            site.active_hostile_operation.phase !=
-            bandit_live_world::hostile_operation_phase::committed_contact ) {
+            ( site.active_hostile_operation.operation_kind ==
+              bandit_live_world::hostile_operation_kind::shakedown ||
+              site.active_hostile_operation.phase !=
+              bandit_live_world::hostile_operation_phase::committed_contact ) ) {
             continue;
         }
 
@@ -3908,6 +4931,9 @@ int burn_live_bandit_covert_scouts()
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     std::set<character_id> claimed_members;
     for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             return 0;
         }
@@ -4243,8 +5269,10 @@ int burn_live_bandit_covert_scouts()
                     return true;
                 };
                 const bandit_live_world::local_handoff_commit_result committed =
-                    bandit_live_world::commit_local_structural_watch_exit(
-                        site, exit_plan, prepare_member, restore_member );
+                commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                    return bandit_live_world::commit_local_structural_watch_exit( next, exit_plan, prepare_member,
+                            restore_member );
+                } );
                 if( committed == bandit_live_world::local_handoff_commit_result::applied ) {
                     burned++;
                     DebugLog( D_INFO, DC_ALL )
@@ -4259,8 +5287,10 @@ int burn_live_bandit_covert_scouts()
             }
         }
         const bandit_live_world::covert_scout_burn_effect effect =
-            bandit_live_world::apply_covert_scout_burn(
-                site, *cursor, reads, egress_candidates, current_minutes, danger_read );
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::apply_covert_scout_burn( next, *cursor, reads, egress_candidates,
+                    current_minutes, danger_read );
+        } );
         if( effect.result != bandit_live_world::covert_scout_burn_result::applied ) {
             continue;
         }
@@ -4310,6 +5340,9 @@ int record_live_bandit_covert_visible_defenders()
         overmap_buffer.global_state.bandit_live_world;
     std::set<character_id> claimed_members;
     for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             return 0;
         }
@@ -4319,7 +5352,7 @@ int record_live_bandit_covert_visible_defenders()
     map &here = get_map();
     std::vector<target_character> target_characters = { { &u, "avatar" } };
     for( const npc &defender : g->all_npcs() ) {
-        if( defender.is_player_ally() && !defender.is_dead() && defender.is_active() &&
+        if( !defender.is_dead() && defender.is_active() &&
             here.inbounds( defender.pos_bub( here ) ) ) {
             target_characters.push_back( { &defender, "npc:" +
                                            std::to_string( defender.getID().get_value() ) } );
@@ -4330,17 +5363,12 @@ int record_live_bandit_covert_visible_defenders()
     int recorded = 0;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
-        const bool targets_player_camp = std::any_of(
-            outing.target_footprint.begin(), outing.target_footprint.end(),
-        []( const tripoint_abs_omt & target_omt ) {
-            return overmap_buffer.is_player_camp_omt( target_omt );
-        } );
-        if( site.retired_empty_site || !targets_player_camp || outing.schema_version != 10 ||
+        if( site.retired_empty_site || outing.schema_version < 8 ||
             outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-            outing.owner != bandit_live_world::simulation_owner::local ||
             outing.phase != bandit_live_world::scout_phase::observing ||
-            !outing.local_handoff.is_active() ||
-            !outing.local_handoff.cohesion_assembled || outing.member_ids.size() != 2 ) {
+            ( outing.owner == bandit_live_world::simulation_owner::local &&
+              ( !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
+                outing.local_handoff.cohesion_abort_return ) ) || outing.member_ids.size() != 2 ) {
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -4350,6 +5378,44 @@ int record_live_bandit_covert_visible_defenders()
         }
 
         std::vector<target_character> bounded_targets = target_characters;
+        // Existing resident NPCs remain physical targets outside the player's
+        // active list. Query only already loaded overmaps near the watched site;
+        // never load terrain, materialize a roster, or use player reveal flags.
+        std::set<const overmap *> resident_maps;
+        std::set<std::string> included_ids;
+        for( const auto &target : bounded_targets ) {
+            included_ids.insert( target.stable_id );
+        }
+        for( const auto &tile : outing.target_footprint ) {
+            for( const overmap *om : overmap_buffer.get_loaded_overmaps_near(
+                     project_to<coords::sm>( tile ).xy(), 4 ) ) {
+                if( !resident_maps.insert( om ).second ) {
+                    continue;
+                }
+                for( const auto &actor : om->get_npcs() ) {
+                    const std::string id = "npc:" + std::to_string( actor->getID().get_value() );
+                    if( !actor->is_dead_state() && !actor->is_fake() && included_ids.insert( id ).second ) {
+                        bounded_targets.push_back( { actor.get(), id } );
+                    }
+                }
+            }
+        }
+        bounded_targets.erase( std::remove_if( bounded_targets.begin(), bounded_targets.end(),
+        [&]( const target_character & target ) {
+            std::vector<tripoint_abs_omt> previous;
+            for( const auto &observation : outing.observations ) {
+                if( observation.observed_site_id == outing.target_id &&
+                    observation.target_revision == outing.target_lead_revision &&
+                    observation.observed_minutes <= current_minutes &&
+                    observation.expiry_minutes >= current_minutes &&
+                    std::find( observation.defender_ids.begin(), observation.defender_ids.end(),
+                               target.stable_id ) != observation.defender_ids.end() ) {
+                    previous.push_back( observation.source_omt );
+                }
+            }
+            return !scout_observation::associated_with_site( target.actor->pos_abs_omt(),
+                    outing.target_footprint, previous );
+        } ), bounded_targets.end() );
         std::sort( bounded_targets.begin(), bounded_targets.end(),
         [&u, &outing]( const target_character & lhs, const target_character & rhs ) {
             return std::make_tuple( lhs.actor == &u ? 0 : 1,
@@ -4363,43 +5429,84 @@ int record_live_bandit_covert_visible_defenders()
                                     bounded_targets.size(),
                                     bandit_live_world::covert_visible_defender_read_cap() ) );
 
-        std::vector<npc *> observers;
+        scout_observation::site_reader optical_geometry;
+        std::vector<shared_ptr_fast<npc>> observers;
         for( const character_id member_id : outing.member_ids ) {
-            npc *member = g->find_npc( member_id );
-            if( member != nullptr && !member->is_dead() && member->is_active() &&
-                here.inbounds( member->pos_bub( here ) ) &&
+            const shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
+            if( member != nullptr && optical_geometry.watching_member( site, *member ) &&
                 member->pos_abs_omt() == outing.selected_watch_omt &&
-                member->has_ecology_covert_noncombat_relationship( u ) &&
+                ( outing.owner == bandit_live_world::simulation_owner::abstract ||
+                  ( member->is_active() && here.inbounds( member->pos_bub( here ) ) ) ) &&
                 live_bandit_can_make_ordinary_visual_observation( *member ) ) {
                 observers.push_back( member );
             }
         }
-        std::sort( observers.begin(), observers.end(), [&outing]( const npc *lhs, const npc *rhs ) {
+        std::sort( observers.begin(), observers.end(), [&outing]( const shared_ptr_fast<npc> &lhs,
+        const shared_ptr_fast<npc> &rhs ) {
             return std::make_tuple( lhs->getID() == outing.leader_id ? 0 : 1,
                                     lhs->getID().get_value() ) <
                    std::make_tuple( rhs->getID() == outing.leader_id ? 0 : 1,
                                     rhs->getID().get_value() );
         } );
 
-        for( npc *observer : observers ) {
+        // Reuse only physical geometry and native illumination within this
+        // site's one observation decision; actor eligibility/identity/visibility
+        // are read again for every target, and nothing survives another turn.
+        bool site_changed = false;
+        bool site_observed = false;
+        for( const shared_ptr_fast<npc> &observer : observers ) {
             const bool scout_has_gun = observer->get_wielded_item() &&
                                        observer->get_wielded_item()->is_gun();
             std::vector<bandit_live_world::covert_scout_burn_read::visible_defender_read>
             visible_defenders;
+            bool physical_pair_can_share = observers.size() == 2 &&
+                                           rl_dist( observers[0]->pos_abs(), observers[1]->pos_abs() ) <= 6;
             for( const target_character &defender : bounded_targets ) {
-                if( defender.actor == observer || defender.actor->is_dead_state() ||
-                    !observer->sees_without_clairvoyance( here, *defender.actor ) ) {
+                if( defender.actor == observer.get() || defender.actor->is_dead_state() ) {
                     continue;
+                }
+                const auto visibility = optical_geometry.read_character( *observer, *defender.actor,
+                                        outing.target_footprint );
+                if( bandit_live_world_probe::transition_events_enabled() ) {
+                    bandit_live_world_probe::transition_event event;
+                    event.game_minutes = current_minutes;
+                    event.domain = "scout_observation";
+                    event.transition = "binocular_site_actor";
+                    event.observer_id = std::to_string( observer->getID().get_value() );
+                    event.site_id = site.site_id;
+                    event.operation_id = outing.activity_id;
+                    event.reason = defender.stable_id + " observer=" + std::to_string( observer->getID().get_value() ) +
+                                   " observer_abs_ms=" + observer->pos_abs().to_string() +
+                                   " target_abs_ms=" + defender.actor->pos_abs().to_string() +
+                                   " bucket=" + std::to_string( current_minutes - current_minutes % 30 ) +
+                                   " result=" + ( visibility.visible ? "observed" : visibility.known ? "rejected" : "unknown" ) +
+                                   " reason=" + visibility.reason;
+                    bandit_live_world_probe::record_live_transition_event( std::move( event ) );
+                }
+                if( !visibility.visible ) {
+                    continue;
+                }
+                // A nearby capable partner may still have different sight
+                // limits or target-local cover. Share this actor group only
+                // when both actual watchers see every person it contains.
+                if( physical_pair_can_share ) {
+                    const auto &partner = observers[0] == observer ? observers[1] : observers[0];
+                    physical_pair_can_share = optical_geometry.read_character(
+                                                  *partner, *defender.actor, outing.target_footprint ).visible;
                 }
                 bandit_live_world::covert_scout_burn_read::visible_defender_read read;
                 read.stable_id = defender.stable_id;
                 read.position = defender.actor->pos_abs_omt();
-                read.normalized_power = bandit_live_world::normalize_hostile_camp_character_power(
+                read.actual_position = defender.actor->pos_abs();
+                const bool detailed = here.inbounds( observer->pos_abs() ) &&
+                                      observer->sees_without_clairvoyance( here, *defender.actor );
+                read.normalized_power = detailed ?
+                                        bandit_live_world::normalize_hostile_camp_character_power(
                                             observer->evaluate_character_threat_without_perception_fuzz(
-                                                *defender.actor, scout_has_gun, true ) );
-                const item_location defender_weapon = defender.actor->get_wielded_item();
-                read.equipment_detail = !defender_weapon ? 0 :
-                                        defender_weapon->is_gun() ? 2 : 1;
+                                                *defender.actor, scout_has_gun, true ) ) : 3;
+                const item_location defender_weapon = detailed ? defender.actor->get_wielded_item() :
+                                                      item_location();
+                read.equipment_detail = !defender_weapon ? 0 : defender_weapon->is_gun() ? 2 : 1;
                 visible_defenders.push_back( std::move( read ) );
             }
             std::sort( visible_defenders.begin(), visible_defenders.end(),
@@ -4409,16 +5516,37 @@ int record_live_bandit_covert_visible_defenders()
             if( visible_defenders.empty() ) {
                 continue;
             }
-
-            const bandit_live_world::sortie_observation_effect effect =
-                bandit_live_world::record_covert_visible_defender_observations(
-                    site, *cursor, observer->getID(), observer->pos_abs_omt(),
-                    visible_defenders, current_minutes );
-            if( effect.valid ) {
-                if( effect.changed ) {
-                    recorded++;
-                }
+            const auto observer_cursor = bandit_live_world::current_external_simulation_cursor( site );
+            if( !observer_cursor ) {
                 break;
+            }
+
+            const auto record = [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_covert_visible_defender_observations( next, *observer_cursor,
+                        observer->getID(), observer->pos_abs_omt(), visible_defenders, current_minutes,
+                        physical_pair_can_share );
+            };
+            const bandit_live_world::sortie_observation_effect effect =
+                outing.owner == bandit_live_world::simulation_owner::local ?
+                commit_live_bandit_local_progress( site, record ) : record( site );
+            if( effect.valid ) {
+                site_observed = true;
+                site_changed = site_changed || effect.changed;
+            }
+        }
+        if( site_changed ) {
+            recorded++;
+        }
+        if( site_observed ) {
+            // Assess after both actual watchers have contributed. The finite
+            // watch may finish now, without dropping the second member's sight.
+            if( site.active_outing.owner == bandit_live_world::simulation_owner::abstract &&
+                site.active_outing.schema_version >= 10 ) {
+                const std::string activity_id = site.active_outing.activity_id;
+                const int generation = site.active_outing.generation;
+                const int revision = site.active_outing.target_lead_revision;
+                bandit_live_world::advance_structural_scout_assessment(
+                    site, activity_id, generation, revision, current_minutes );
             }
         }
     }
@@ -4431,6 +5559,9 @@ int record_live_bandit_covert_vehicle_wealth_cues()
         overmap_buffer.global_state.bandit_live_world;
     std::set<character_id> claimed_members;
     for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             return 0;
         }
@@ -4523,9 +5654,11 @@ int record_live_bandit_covert_vehicle_wealth_cues()
                 continue;
             }
             const bandit_live_world::sortie_observation_effect effect =
-                bandit_live_world::record_covert_vehicle_wealth_observations(
-                    site, *cursor, observer->getID(), observer->pos_abs_omt(), reads,
-                    current_minutes );
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_covert_vehicle_wealth_observations( next, *cursor,
+                        observer->getID(), observer->pos_abs_omt(), reads,
+                        current_minutes );
+            } );
             if( effect.valid ) {
                 if( effect.changed ) {
                     recorded++;
@@ -4543,6 +5676,9 @@ int record_live_bandit_covert_generation_infrastructure_cues()
         overmap_buffer.global_state.bandit_live_world;
     std::set<character_id> claimed_members;
     for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             return 0;
         }
@@ -4649,9 +5785,11 @@ int record_live_bandit_covert_generation_infrastructure_cues()
                 continue;
             }
             const bandit_live_world::sortie_observation_effect effect =
-                bandit_live_world::record_covert_generation_infrastructure_observations(
-                    site, *cursor, observer->getID(), observer->pos_abs_omt(), reads,
-                    current_minutes );
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_covert_generation_infrastructure_observations( next, *cursor,
+                        observer->getID(), observer->pos_abs_omt(), reads,
+                        current_minutes );
+            } );
             if( effect.valid ) {
                 if( effect.changed ) {
                     recorded++;
@@ -4669,6 +5807,9 @@ int record_live_bandit_covert_cargo_handling_cues()
         overmap_buffer.global_state.bandit_live_world;
     std::set<character_id> claimed_members;
     for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             return 0;
         }
@@ -4753,9 +5894,11 @@ int record_live_bandit_covert_cargo_handling_cues()
                 continue;
             }
             const bandit_live_world::sortie_observation_effect effect =
-                bandit_live_world::record_covert_cargo_handling_observations(
-                    site, *cursor, observer->getID(), observer->pos_abs_omt(), reads,
-                    current_minutes );
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_covert_cargo_handling_observations( next, *cursor,
+                        observer->getID(), observer->pos_abs_omt(), reads,
+                        current_minutes );
+            } );
             if( effect.valid ) {
                 if( effect.changed ) {
                     recorded++;
@@ -4767,7 +5910,6 @@ int record_live_bandit_covert_cargo_handling_cues()
     return recorded;
 }
 
-bool persist_live_bandit_local_projection_leases( const bandit_live_world::site_record &site );
 
 bool note_live_bandit_aftermath()
 {
@@ -4861,6 +6003,7 @@ bool note_live_bandit_aftermath()
                     assault_reservation.activity_id + "#" +
                     std::to_string( assault_reservation.generation ) );
         }
+        changed |= live_bandit_establish_shakedown_communication( site );
         changed |= live_bandit_apply_shakedown_defender_aftermath( site, u );
         bandit_live_world::active_outing_state *external_outing = site.active_external_outing();
         if( external_outing != nullptr && external_outing != &site.active_outing ) {
@@ -4926,8 +6069,11 @@ bool note_live_bandit_aftermath()
             if( !casualty_reads.empty() ) {
                 const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                     bandit_live_world::current_external_simulation_cursor( site );
-                if( cursor && bandit_live_world::reconcile_local_pair_casualties(
-                        site, *cursor, casualty_reads, current_minutes ) ) {
+                if( cursor &&
+                commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::reconcile_local_pair_casualties( next, *cursor, casualty_reads,
+                        current_minutes );
+                }, true ) ) {
                     changed = true;
                 }
             }
@@ -5093,16 +6239,11 @@ bool note_live_bandit_aftermath()
                 if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                     bandit_live_world::current_external_simulation_cursor( site ) ) {
                     const bool local_contact_committed =
-                        bandit_live_world::observe_active_sortie_local_contact(
-                            site, *cursor, member_id, current_minutes );
+                    commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                        return bandit_live_world::observe_active_sortie_local_contact( next, *cursor, member_id,
+                                current_minutes );
+                    } );
                     changed |= local_contact_committed;
-                    if( local_contact_committed &&
-                        !persist_live_bandit_local_projection_leases( site ) ) {
-                        DebugLog( D_ERROR, DC_ALL )
-                                << "bandit_live_world local handoff has no complete durable projection lease"
-                                << " site=" << site.site_id
-                                << " member=" << member_id.get_value() << '\n';
-                    }
                 }
                 if( live_bandit_member_routing_home( *member_npc, site ) ) {
                     observation.state = bandit_live_world::active_member_observation_state::returning_home;
@@ -5160,9 +6301,11 @@ bool note_live_bandit_aftermath()
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                 bandit_live_world::current_external_simulation_cursor( site );
             const bandit_live_world::scout_resolution_effect resolution = cursor ?
-                    bandit_live_world::apply_active_scout_observations(
-                        site, *cursor, observations, current_minutes ) :
-                    bandit_live_world::scout_resolution_effect();
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::apply_active_scout_observations( next, *cursor, observations,
+                        current_minutes );
+            }, true ) :
+                bandit_live_world::scout_resolution_effect();
             changed |= resolution.changed;
             if( resolution.completed ) {
                 DebugLog( D_INFO, DC_ALL )
@@ -5184,7 +6327,10 @@ bool note_live_bandit_aftermath()
         if( scout_phase_outing && !physical_report_scout ) {
             const std::optional<bandit_pursuit_handoff::return_packet> packet =
                 bandit_live_world::resolve_active_group_aftermath( site, observations );
-            if( packet && bandit_live_world::apply_return_packet( site, *packet ) ) {
+            if( packet &&
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::apply_return_packet( next, *packet );
+            }, true ) ) {
                 continue;
             }
         }
@@ -5256,8 +6402,11 @@ bool note_live_bandit_aftermath()
             bandit_live_world::scout_phase::burned_withdrawal ) {
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                 bandit_live_world::current_external_simulation_cursor( site );
-            if( cursor && bandit_live_world::complete_covert_scout_burned_egress(
-                    site, *cursor, acquire_reads, current_minutes ) ) {
+            if( cursor &&
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::complete_covert_scout_burned_egress( next, *cursor, acquire_reads,
+                    current_minutes );
+            } ) ) {
                 changed = true;
                 continue;
             }
@@ -5291,10 +6440,11 @@ bool note_live_bandit_aftermath()
                 if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                     bandit_live_world::current_external_simulation_cursor( site ) ) {
                     const bandit_live_world::scout_phase_transition_result transition =
-                        bandit_live_world::transition_active_scout_phase(
-                            site, *cursor, site.active_outing.phase,
-                            bandit_live_world::scout_phase::returning_home, current_minutes,
-                            "live party returning home" );
+                    commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                        return bandit_live_world::transition_active_scout_phase( next, *cursor, site.active_outing.phase,
+                                bandit_live_world::scout_phase::returning_home, current_minutes,
+                                "live party returning home" );
+                    } );
                     changed |= transition ==
                                bandit_live_world::scout_phase_transition_result::applied;
                 }
@@ -5319,6 +6469,9 @@ bool note_live_bandit_aftermath()
                                 bandit_live_world::scout_phase::returning_home;
                         }
                         candidate.active_outing.last_progress_minutes = current_minutes;
+                        if( !persist_live_bandit_local_projection_leases( candidate, &site ) ) {
+                            continue;
+                        }
                         site = std::move( candidate );
                         changed = true;
                     }
@@ -5330,9 +6483,11 @@ bool note_live_bandit_aftermath()
             site.active_outing.phase == bandit_live_world::scout_phase::returning_home &&
             site.active_outing.local_handoff.cohesion_abort_return ) {
             if( const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
-                bandit_live_world::current_external_simulation_cursor( site ) ) {
-                changed |= bandit_live_world::release_covert_cohesion_abort_after_target_clear(
-                               site, *cursor, acquire_reads );
+                    bandit_live_world::current_external_simulation_cursor( site ) ) {
+                changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                    return bandit_live_world::release_covert_cohesion_abort_after_target_clear( next, *cursor,
+                            acquire_reads );
+                } );
             }
         }
 
@@ -5494,7 +6649,10 @@ bool note_live_bandit_aftermath()
             }
             const std::string site_id = site.site_id;
             const std::string group_id = site.active_outing.activity_id;
-            const bool applied_return = bandit_live_world::apply_return_packet( site, *packet );
+            const bool applied_return = commit_live_bandit_local_progress( site, [&](
+            bandit_live_world::site_record & next ) {
+                return bandit_live_world::apply_return_packet( next, *packet );
+            } );
             changed |= applied_return;
             if( applied_return && packet->job_type == bandit_dry_run::job_template::scout ) {
                 DebugLog( D_INFO, DC_ALL )
@@ -5807,11 +6965,22 @@ live_bandit_response_member_power_reads_impl( const bandit_live_world::site_reco
 
 int live_bandit_materialize_abstract_members(
     bandit_live_world::world_state &state, bandit_live_world::site_record &site,
-    const int members_to_create, const std::string &purpose )
+    const int members_to_create, const std::string &purpose,
+    std::string *failure_reason = nullptr )
 {
+    const auto fail = [failure_reason]( const std::string &reason ) {
+        if( failure_reason != nullptr ) {
+            *failure_reason = reason;
+        }
+        return 0;
+    };
     if( site.source_kind != bandit_live_world::anchor_source_kind::overmap_special ||
         site.source_id.empty() || site.living_total <= 0 || members_to_create <= 0 ) {
-        return 0;
+        return fail( "unsupported_home_allocation_source" );
+    }
+    const bandit_live_world::roster_view roster = site.roster();
+    if( !roster.valid || members_to_create > roster.unmaterialized_home_total ) {
+        return fail( "invalid_home_allocation_roster" );
     }
 
     const npc_template_id template_id = live_bandit_template_for_site( site.site_kind );
@@ -5819,7 +6988,7 @@ int live_bandit_materialize_abstract_members(
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialization skipped: site="
                                    << site.site_id << " reason=invalid_template template="
                                    << template_id.str() << '\n';
-        return 0;
+        return fail( "invalid_home_allocation_template" );
     }
 
     const auto special_lookup = [&site]( const tripoint_abs_omt & candidate ) -> std::optional<std::string> {
@@ -5841,11 +7010,22 @@ int live_bandit_materialize_abstract_members(
                                            site.footprint[i % site.footprint.size()];
         bandit->spawn_at_omt( spawn_omt );
         bandit->toggle_trait( trait_NPC_STATIC_NPC );
-        if( bandit_live_world::claim_tracked_spawn( state, template_id.str(), bandit->getID(),
-                bandit->pos_abs(), site.source_id, std::nullopt, special_lookup ) ) {
+        // Claim through the existing population owner, but publish neither an NPC nor
+        // a changed roster unless it consumes exactly one slot of this exact site.
+        // A mismatched source/footprint must remain retryable, not create a new camp.
+        bandit_live_world::world_state candidate = state;
+        const bool claimed = bandit_live_world::claim_tracked_spawn( candidate, template_id.str(),
+                             bandit->getID(), bandit->pos_abs(), site.source_id, std::nullopt, special_lookup );
+        const bandit_live_world::site_record *allocated = candidate.find_site( site.site_id );
+        if( claimed && candidate.sites.size() == state.sites.size() && allocated != nullptr &&
+            allocated->has_member( bandit->getID() ) && allocated->roster().valid &&
+            allocated->living_total == site.living_total &&
+            allocated->roster().unmaterialized_home_total == site.roster().unmaterialized_home_total - 1 ) {
             overmap_buffer.insert_npc( bandit );
+            site = *allocated;
             created_members++;
         } else {
+            fail( "home_allocation_claim_failed" );
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialization skipped member: site="
                                        << site.site_id << " reason=claim_failed template="
                                        << template_id.str() << '\n';
@@ -5860,6 +7040,80 @@ int live_bandit_materialize_abstract_members(
                                    << " template=" << template_id.str() << '\n';
     }
     return created_members;
+}
+
+// Loaded bodies own their current senses and location.  The persistent overmap copy
+// is the sensor only when the actor is not loaded; never borrow an outing projection.
+npc *live_bandit_staffed_observer( const character_id id )
+{
+    for( npc &guy : g->all_npcs() ) {
+        if( guy.getID() == id ) {
+            return &guy;
+        }
+    }
+    return overmap_buffer.find_npc( id ).get();
+}
+
+bandit_live_world::camp_signal_observer_resolution resolve_live_bandit_staffed_observer(
+    bandit_live_world::world_state &state, const std::size_t site_index )
+{
+    bandit_live_world::site_record &site = state.sites[site_index];
+    bandit_live_world::camp_signal_observer_resolution result;
+    if( site.retired_empty_site || !site.roster().valid ) {
+        result.exclusion_reason = site.retired_empty_site ? "retired_empty_site" : "invalid_roster";
+        return result;
+    }
+    if( site.roster().physically_present_total == 0 ) {
+        result.exclusion_reason = "no_living_home_population";
+        return result;
+    }
+    const auto resolve_concrete = [&site, &result]() {
+        const bandit_live_world::roster_view roster = site.roster();
+        for( const character_id id : roster.physically_present_ids ) {
+            if( std::binary_search( roster.reserved_unresolved_ids.begin(),
+                                    roster.reserved_unresolved_ids.end(), id ) ) {
+                continue;
+            }
+            result.request.observer_id = id;
+            result.request.camp_omt = site.anchor;
+            npc *observer = live_bandit_staffed_observer( id );
+            if( observer == nullptr ) {
+                result.exclusion_reason = "home_sensor_missing";
+            } else if( observer->is_dead() ) {
+                result.exclusion_reason = "home_sensor_dead";
+            } else if( observer->pos_abs_omt() != site.anchor &&
+                       !site_contains_omt( site, observer->pos_abs_omt() ) ) {
+                result.exclusion_reason = "home_sensor_outside_camp";
+            } else if( !live_bandit_can_make_ordinary_visual_observation( *observer ) &&
+                       ( observer->is_deaf() || observer->has_effect( effect_narcosis ) ) ) {
+                result.exclusion_reason = "home_sensor_no_usable_senses";
+            } else {
+                result.request.camp_omt = observer->pos_abs_omt();
+                result.request.owner = observer->is_active() ? bandit_live_world::simulation_owner::local :
+                                       bandit_live_world::simulation_owner::abstract;
+                result.exclusion_reason.clear();
+                return true;
+            }
+        }
+        return false;
+    };
+    if( resolve_concrete() ) {
+        return result;
+    }
+    if( site.roster().unmaterialized_home_total > 0 ) {
+        std::string failure;
+        if( live_bandit_materialize_abstract_members( state, site, 1,
+                "abstract home observer", &failure ) == 1 && resolve_concrete() ) {
+            return result;
+        }
+        if( !failure.empty() ) {
+            result.exclusion_reason = failure;
+        }
+    }
+    if( result.exclusion_reason.empty() ) {
+        result.exclusion_reason = "no_unreserved_home_sensor";
+    }
+    return result;
 }
 
 int live_bandit_materialize_abstract_members_for_routine(
@@ -5907,36 +7161,6 @@ int live_bandit_materialize_abstract_members_for_response(
                     ready_concrete_source_members ), "abstract response roster" );
 }
 
-bool persist_live_bandit_local_projection_leases( const bandit_live_world::site_record &site )
-{
-    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
-    if( outing == nullptr || !outing->is_active() ||
-        outing->owner != bandit_live_world::simulation_owner::local ||
-        !outing->crossing.pending() ||
-        outing->crossing.prior_owner != bandit_live_world::simulation_owner::abstract ||
-        outing->crossing.next_owner != bandit_live_world::simulation_owner::local ||
-        outing->crossing.actor_ids != outing->member_ids ) {
-        return false;
-    }
-
-    std::vector<shared_ptr_fast<npc>> members;
-    members.reserve( outing->member_ids.size() );
-    for( const character_id member_id : outing->member_ids ) {
-        shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
-        if( !member || member->is_dead() ) {
-            return false;
-        }
-        members.push_back( member );
-    }
-
-    const bandit_live_world_projection_lease lease = { true, site.site_id,
-        outing->activity_id, "local", outing->generation, outing->handoff_epoch,
-        outing->last_advanced_minutes };
-    for( const shared_ptr_fast<npc> &member : members ) {
-        sync_bandit_live_world_projection_lease_copies( *member, lease );
-    }
-    return true;
-}
 
 struct live_bandit_local_handoff_member_backup {
     shared_ptr_fast<npc> member;
@@ -5950,6 +7174,23 @@ struct live_bandit_local_handoff_member_backup {
     std::vector<tripoint_bub_ms> local_path;
     bandit_live_world_projection_lease projection_lease;
 };
+
+void restore_live_bandit_local_projection( const live_bandit_local_handoff_member_backup &backup )
+{
+    npc &member = *backup.member;
+    member.goal = backup.goal;
+    member.omt_path = backup.omt_path;
+    member.mission = backup.mission;
+    member.previous_mission = backup.previous_mission;
+    member.goto_to_this_pos = backup.ordered_position;
+    if( backup.ai_guard_position ) {
+        member.set_ai_guard_pos( *backup.ai_guard_position );
+    } else {
+        member.clear_ai_guard_pos();
+    }
+    member.path = backup.local_path;
+    sync_bandit_live_world_projection_lease_copies( member, backup.projection_lease );
+}
 
 std::vector<std::string> live_bandit_local_zombie_ids( std::vector<std::string> type_ids )
 {
@@ -6095,8 +7336,10 @@ int record_live_bandit_local_zombie_observations()
             continue;
         }
         const bandit_live_world::sortie_observation_effect effect =
-            bandit_live_world::record_structural_local_zombie_observation(
-                site, *cursor, *read, now_minutes );
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::record_structural_local_zombie_observation( next, *cursor, *read,
+                    now_minutes );
+        } );
         if( effect.valid ) {
             recorded++;
             std::ostringstream threat_ids;
@@ -6126,6 +7369,8 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     map &here = get_map();
+    const auto forward_destinations =
+        bandit_live_world::local_pair_ingress_travel_destinations( state );
     std::map<character_id, tripoint_abs_ms> assembly_orders;
     const auto append_assembly_orders = [&assembly_orders](
     const bandit_live_world::active_outing_state & outing ) {
@@ -6146,6 +7391,9 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
     bool ownership_preflight_failed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership( site, claimed_members ) ) {
             ownership_preflight_failed = true;
         }
@@ -6156,15 +7404,11 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ) {
             continue;
         }
-        // This elevated-source pair has crossed the fixed bubble but still owns
-        // its outward approach/watch leg.  An ordinary local-to-abstract return
-        // handoff here would freeze the pre-watch physical cursor.
+        // Once the common forward owner accepts an assembled pair, staging must
+        // not recapture it while it approaches its watch.  Signal height does not
+        // change this ownership boundary.  Retain the schema-9 saved-watch migration.
         if( bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) ||
-            ( outing.target_omt.z() > site.anchor.z() && outing.schema_version >= 10 &&
-              outing.phase == bandit_live_world::scout_phase::observing &&
-              outing.waypoint_index == 1 &&
-              outing.casualty_ids.empty() &&
-              outing.assessment.observation_started_minutes < 0 ) ) {
+            forward_destinations.count( outing.leader_id ) > 0 ) {
             continue;
         }
         if( bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
@@ -6176,7 +7420,7 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
-        if( !cursor ) {
+        if( !cursor || !persist_live_bandit_local_projection_leases( site, &site, false ) ) {
             continue;
         }
 
@@ -6395,8 +7639,9 @@ std::map<character_id, tripoint_abs_ms> maintain_live_bandit_local_pair_cohesion
             }
         }
 
-        if( !bandit_live_world::commit_local_pair_cohesion(
-                site, plan, route_attempted, route_failed ) ) {
+        if( !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::commit_local_pair_cohesion( next, plan, route_attempted, route_failed );
+        } ) ) {
             if( forward_route_release ) {
                 // A saved, already assembled local pair has no further cohesion-state delta
                 // to commit, but may still need its native forward route rebound after load.
@@ -6545,9 +7790,10 @@ bool complete_loaded_live_bandit_alternate_watch_repositions()
             bandit_live_world::plan_local_pair_alternate_watch_reposition(
                 site, *cursor, live_bandit_current_minutes(), reads );
         if( !plan.valid ||
-            bandit_live_world::commit_loaded_local_pair_alternate_watch_reposition(
-                site, plan ) !=
-            bandit_live_world::local_handoff_commit_result::applied ) {
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::commit_loaded_local_pair_alternate_watch_reposition( next, plan );
+        } ) !=
+        bandit_live_world::local_handoff_commit_result::applied ) {
             continue;
         }
         for( npc *member : members ) {
@@ -6576,9 +7822,11 @@ bool complete_loaded_live_bandit_route_arrivals()
         // It remains the same local structural outing, so the exact-pair
         // arrival motor must admit it rather than stranding the assembled
         // pair before its outcome and physical return path.
-        // commit_local_pair_route_arrival validates that both actors are physically at the
+        // commit_scout_pair_watch_arrival validates that both actors are physically at the
         // selected watch.  A direct egress to that watch is therefore an admission case.
-        if( outing.schema_version < 10 ||
+        const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        const tripoint_abs_omt destination = frontier ? outing.target_omt : outing.selected_watch_omt;
+        if( ( outing.schema_version < 10 && !frontier ) ||
             outing.owner != bandit_live_world::simulation_owner::local ||
             outing.phase != bandit_live_world::scout_phase::observing ||
             !outing.local_handoff.is_active() ||
@@ -6604,17 +7852,21 @@ bool complete_loaded_live_bandit_route_arrivals()
             bandit_live_world::local_route_arrival_member_read read;
             read.npc_id = member_id;
             read.readable = true;
-            read.route_confirmed = member->goal == outing.selected_watch_omt ||
-                                   member->pos_abs_omt() == outing.selected_watch_omt;
+            read.route_confirmed = member->goal == destination ||
+                                   member->pos_abs_omt() == destination;
             read.hp_percent = member->hp_percentage();
             read.current_position = member->pos_abs();
             reads.push_back( read );
             members.push_back( member );
         }
-        if( !any_loaded || reads.size() != 2 ||
-            bandit_live_world::commit_local_pair_route_arrival(
-                site, *cursor, live_bandit_current_minutes(), reads ) !=
-            bandit_live_world::local_handoff_commit_result::applied ) {
+        if( ( !any_loaded && !frontier ) || reads.size() != 2 ||
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return frontier ? bandit_live_world::complete_structural_frontier_arrival(
+                   next, *cursor, live_bandit_current_minutes(), reads ) :
+               bandit_live_world::commit_scout_pair_watch_arrival( next, *cursor,
+                       live_bandit_current_minutes(), reads );
+        } ) !=
+        bandit_live_world::local_handoff_commit_result::applied ) {
             continue;
         }
         for( npc *member : members ) {
@@ -6625,6 +7877,9 @@ bool complete_loaded_live_bandit_route_arrivals()
             member->goto_to_this_pos = std::nullopt;
             member->path.clear();
             member->set_guard_pos( member->pos_abs() );
+            if( frontier ) {
+                live_bandit_route_member_home( *member, site );
+            }
         }
         changed = true;
     }
@@ -6671,17 +7926,15 @@ bool handoff_live_bandit_generic_scout_returns()
         }
 
         const bandit_live_world::simulation_owner_transition_result result =
-            bandit_live_world::transition_external_simulation_owner(
-                site, cursor->activity_id, cursor->generation,
-                bandit_live_world::simulation_owner::local,
-                bandit_live_world::simulation_owner::abstract, cursor->handoff_epoch,
-                cursor->last_advanced_minutes, live_bandit_current_minutes() );
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::transition_external_simulation_owner( next, cursor->activity_id,
+                    cursor->generation,
+                    bandit_live_world::simulation_owner::local,
+                    bandit_live_world::simulation_owner::abstract, cursor->handoff_epoch,
+                    cursor->last_advanced_minutes, live_bandit_current_minutes() );
+        } );
         if( result != bandit_live_world::simulation_owner_transition_result::applied ) {
             continue;
-        }
-        for( const shared_ptr_fast<npc> &member : returned_members ) {
-            sync_bandit_live_world_projection_lease_copies(
-                *member, bandit_live_world_projection_lease() );
         }
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world generic scout return handoff committed"
                                    << " site=" << site.site_id
@@ -6694,6 +7947,194 @@ bool handoff_live_bandit_generic_scout_returns()
     return changed;
 }
 
+namespace
+{
+bandit_live_world_probe::scout_homeward_member_read read_live_bandit_homeward_actor(
+    const character_id id, const npc *actual_member = nullptr )
+{
+    bandit_live_world_probe::scout_homeward_member_read read;
+    read.npc_id = id.get_value();
+    npc *loaded = nullptr;
+    for( npc &candidate : g->all_npcs() ) {
+        if( candidate.getID() == id ) {
+            loaded = &candidate;
+            break;
+        }
+    }
+    const auto stored = overmap_buffer.find_npc( id );
+    const npc *member = actual_member != nullptr ? actual_member :
+                        loaded != nullptr ? loaded : stored.get();
+    read.found = member != nullptr;
+    if( member != nullptr ) {
+        read.loaded = loaded == member;
+        read.active = member->is_active();
+        read.in_bounds = get_map().inbounds( member->pos_abs() );
+        read.dead = member->is_dead();
+        read.sleeping = member->in_sleep_state();
+        read.cannot_move = member->has_flag( json_flag_CANNOT_MOVE );
+        read.movement_impaired = member->has_effect( effect_downed ) ||
+                                 member->has_effect( effect_stunned ) ||
+                                 member->has_effect( effect_psi_stunned ) ||
+                                 member->has_effect( effect_narcosis );
+        read.travelling = member->is_travelling();
+        read.has_destination = member->has_omt_destination();
+        read.mission = static_cast<int>( member->mission );
+        read.moves = member->get_moves();
+        read.position_ms = member->pos_abs().to_string();
+        read.position_omt = member->pos_abs_omt().to_string();
+        read.goal_omt = member->goal.to_string();
+        read.local_path_size = member->path.size();
+        read.omt_path_size = member->omt_path.size();
+        if( !member->omt_path.empty() ) {
+            read.next_omt = member->omt_path.back().to_string();
+        }
+    }
+    return read;
+}
+
+std::optional<bandit_live_world_probe::transition_event> make_live_bandit_homeward_event(
+    const bandit_live_world::site_record &site, const std::string_view transition,
+    const std::string_view entrypoint )
+{
+    const auto &outing = site.active_outing;
+    if( !bandit_live_world_probe::transition_events_enabled() || !outing.is_active() ||
+        !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ) {
+        return std::nullopt;
+    }
+    bandit_live_world_probe::transition_event event;
+    event.domain = "bandit_live_world";
+    event.transition = transition;
+    event.site_id = site.site_id;
+    event.operation_id = outing.activity_id;
+    event.generation = outing.generation;
+    event.handoff_epoch = outing.handoff_epoch;
+    event.simulation_owner = bandit_live_world::to_string( outing.owner );
+    event.previous_phase = bandit_live_world::to_string( outing.phase );
+    event.new_phase = event.previous_phase;
+    event.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    event.game_minutes = live_bandit_current_minutes();
+    event.at_minutes = event.game_minutes;
+    event.scout_homeward.emplace();
+    auto &read = *event.scout_homeward;
+    read.entrypoint = entrypoint;
+    read.outing_kind = bandit_live_world::to_string( outing.kind );
+    read.owner_before = event.simulation_owner;
+    read.handoff_epoch_before = outing.handoff_epoch;
+    read.outing_member_count = outing.member_ids.size();
+    read.cursor_present = bandit_live_world::current_external_simulation_cursor( site ).has_value();
+    read.handoff_active = outing.local_handoff.is_active();
+    read.crossing_pending = outing.crossing.pending();
+    read.handoff_member_count = outing.local_handoff.members.size();
+    // Both production transfer adapters consume an exact pair. Keep invalid
+    // larger records bounded too; the actual handoff count remains explicit.
+    for( const character_id id : outing.member_ids ) {
+        if( read.members.size() == 2 ) {
+            break;
+        }
+        event.actor_ids.push_back( id.get_value() );
+        read.members.push_back( read_live_bandit_homeward_actor( id ) );
+    }
+    return event;
+}
+
+void record_live_bandit_homeward_transfer(
+    std::optional<bandit_live_world_probe::transition_event> &event,
+    const bandit_live_world::site_record &site, const std::string_view outcome,
+    const std::string &reason, const bool plan_invoked,
+    const std::optional<bool> plan_valid = std::nullopt,
+    const std::string_view commit_result = {} )
+{
+    if( !event ) {
+        return;
+    }
+    event->outcome = outcome;
+    event->reason = reason;
+    event->new_phase = bandit_live_world::to_string( site.active_outing.phase );
+    event->simulation_owner = bandit_live_world::to_string( site.active_outing.owner );
+    event->handoff_epoch = site.active_outing.handoff_epoch;
+    event->scout_homeward->plan_invoked = plan_invoked;
+    event->scout_homeward->plan_valid = plan_valid;
+    event->scout_homeward->commit_result = commit_result;
+    bandit_live_world_probe::record_scout_homeward_observation( std::move( *event ) );
+    event.reset();
+}
+
+std::string_view live_bandit_homeward_commit_result(
+    const bandit_live_world::local_handoff_commit_result result )
+{
+    switch( result ) {
+        case bandit_live_world::local_handoff_commit_result::rejected:
+            return "rejected";
+        case bandit_live_world::local_handoff_commit_result::unchanged:
+            return "unchanged";
+        case bandit_live_world::local_handoff_commit_result::applied:
+            return "applied";
+        case bandit_live_world::local_handoff_commit_result::rolled_back:
+            return "rolled_back";
+    }
+    return "unknown";
+}
+
+class live_bandit_homeward_motor_trace
+{
+    public:
+        explicit live_bandit_homeward_motor_trace( npc &member, const bool selected ) :
+            member_( member ) {
+            if( !selected || !bandit_live_world_probe::transition_events_enabled() ) {
+                return;
+            }
+            for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+                const auto &outing = site.active_outing;
+                if( outing.owner == bandit_live_world::simulation_owner::local &&
+                    bandit_live_world::current_external_simulation_cursor( site ) &&
+                    std::find( outing.member_ids.begin(), outing.member_ids.end(), member.getID() ) !=
+                    outing.member_ids.end() ) {
+                    event_ = make_live_bandit_homeward_event(
+                                 site, "scout_homeward_motor", "local_npc_motor" );
+                    if( event_ ) {
+                        event_->actor_ids = { member.getID().get_value() };
+                        event_->scout_homeward->members = {
+                            read_live_bandit_homeward_actor( member.getID(), &member )
+                        };
+                        event_->reason = "selected homeward actor reached the NPC action loop";
+                        event_->scout_homeward->members.front().selected = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        ~live_bandit_homeward_motor_trace() {
+            if( event_ ) {
+                auto &read = event_->scout_homeward->members.front();
+                read.position_after_ms = member_.pos_abs().to_string();
+                read.moves_after = member_.get_moves();
+                if( event_->outcome.empty() ) {
+                    event_->outcome = read.position_ms != read.position_after_ms ? "moved" : "stationary";
+                }
+                bandit_live_world_probe::record_scout_homeward_observation( std::move( *event_ ) );
+            }
+        }
+
+        void action( const std::string_view action, const std::string_view reason,
+                     const std::string_view outcome = {} ) {
+            if( event_ ) {
+                event_->scout_homeward->action = action;
+                event_->reason = reason;
+                event_->outcome = outcome;
+            }
+        }
+
+        bandit_live_world_probe::scout_homeward_observation *read() {
+            return event_ ? &*event_->scout_homeward : nullptr;
+        }
+
+    private:
+        npc &member_;
+        std::optional<bandit_live_world_probe::transition_event> event_;
+};
+} // namespace
+
 bool dematerialize_live_bandit_structural_handoffs()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -6701,16 +8142,22 @@ bool dematerialize_live_bandit_structural_handoffs()
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
+        auto homeward_event = make_live_bandit_homeward_event(
+                                  site, "scout_homeward_dematerialization", "stable_unloaded" );
         if( site.retired_empty_site || !outing.is_active() ||
             outing.kind != bandit_live_world::outing_kind::structural_sortie ||
             outing.schema_version < 7 ||
             outing.owner != bandit_live_world::simulation_owner::local ||
             !outing.local_handoff.is_active() || outing.local_handoff.members.size() != 2 ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "dematerialization eligibility gate did not pass", false );
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         if( !cursor ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "current_external_simulation_cursor returned no cursor", false );
             continue;
         }
 
@@ -6718,6 +8165,11 @@ bool dematerialize_live_bandit_structural_handoffs()
         // physical-return recorder below.  Turning that exact arrival into another abstract
         // resume drops its return receipts and lets a later materialization rewind the persisted
         // homeward cursor.
+        if( !persist_live_bandit_local_projection_leases( site, &site, false ) ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                  "actor projection copies do not match the current local cursor", false );
+            continue;
+        }
         const bool complete_physical_return_ready =
             bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
             std::all_of( outing.member_ids.begin(), outing.member_ids.end(),
@@ -6732,6 +8184,8 @@ bool dematerialize_live_bandit_structural_handoffs()
                    site_contains_omt( site, member->pos_abs_omt() );
         } );
         if( complete_physical_return_ready ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "complete_physical_return_ready", false );
             continue;
         }
 
@@ -6796,6 +8250,8 @@ bool dematerialize_live_bandit_structural_handoffs()
             reads.push_back( read );
         }
         if( preflight_failed ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "dematerialization member preflight did not pass", false );
             continue;
         }
         const auto find_backup = [&backups]( const character_id member_id ) {
@@ -6812,6 +8268,10 @@ bool dematerialize_live_bandit_structural_handoffs()
             const auto backup = find_backup( snapshot.npc_id );
             if( backup == backups.end() || backup->member->is_dead() ||
                 backup->member->pos_abs() != snapshot.exit_position ) {
+                return false;
+            }
+            if( !live_bandit_projection_copies_match( *backup->member,
+                    live_bandit_projection_lease( site.site_id, site.active_outing ) ) ) {
                 return false;
             }
             const bool stable_unloaded = !backup->member->is_active() &&
@@ -6833,14 +8293,7 @@ bool dematerialize_live_bandit_structural_handoffs()
             if( !stable_unloaded && !inactive_homeward_arrival && !loaded_homeward_arrival ) {
                 return false;
             }
-            backup->member->goal = npc::no_goal_point;
-            backup->member->omt_path.clear();
-            backup->member->mission = NPC_MISSION_NULL;
-            backup->member->previous_mission = NPC_MISSION_NULL;
-            backup->member->goto_to_this_pos = std::nullopt;
-            backup->member->clear_ai_guard_pos();
-            backup->member->path.clear();
-            sync_bandit_live_world_projection_lease_copies(
+            reset_live_bandit_local_projection(
                 *backup->member, bandit_live_world_projection_lease() );
             if( loaded_homeward_arrival ) {
                 backup->member->on_unload();
@@ -6854,25 +8307,15 @@ bool dematerialize_live_bandit_structural_handoffs()
             if( backup == backups.end() ) {
                 return;
             }
-            backup->member->goal = backup->goal;
-            backup->member->omt_path = backup->omt_path;
-            backup->member->mission = backup->mission;
-            backup->member->previous_mission = backup->previous_mission;
-            backup->member->goto_to_this_pos = backup->ordered_position;
-            if( backup->ai_guard_position ) {
-                backup->member->set_ai_guard_pos( *backup->ai_guard_position );
-            } else {
-                backup->member->clear_ai_guard_pos();
-            }
-            backup->member->path = backup->local_path;
-            sync_bandit_live_world_projection_lease_copies(
-                *backup->member, backup->projection_lease );
+            restore_live_bandit_local_projection( *backup );
             if( here.inbounds( backup->position ) && !backup->member->is_active() ) {
                 g->load_npcs();
             }
         };
 
         if( outing.alternate_watch_reposition_pending ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "alternate-watch reposition adapter selected", false );
             std::vector<bandit_live_world::local_alternate_watch_member_read> alternate_reads;
             alternate_reads.reserve( reads.size() );
             for( const bandit_live_world::local_dematerialization_member_read &read : reads ) {
@@ -6918,12 +8361,32 @@ bool dematerialize_live_bandit_structural_handoffs()
         const bandit_live_world::local_dematerialization_plan plan =
             bandit_live_world::plan_local_pair_dematerialization(
                 site, *cursor, live_bandit_current_minutes(), reads, outing.cargo );
+        if( homeward_event ) {
+            for( auto &member : homeward_event->scout_homeward->members ) {
+                const auto input = std::find_if( reads.begin(), reads.end(),
+                [&member]( const auto &read ) {
+                    return read.npc_id.get_value() == member.npc_id;
+                } );
+                if( input != reads.end() ) {
+                    member.transfer_position_ms = input->current_position.to_string();
+                }
+            }
+        }
         if( !plan.valid ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "rejected",
+                                                 plan.notes.empty() ? "invalid dematerialization plan returned without a note" :
+                                                 plan.notes.front(), true, false );
             continue;
         }
         const bandit_live_world::local_handoff_commit_result result =
             bandit_live_world::commit_local_pair_dematerialization(
                 site, plan, quiesce_member, rollback_member );
+        record_live_bandit_homeward_transfer( homeward_event, site,
+                                             result == bandit_live_world::local_handoff_commit_result::applied ? "committed" :
+                                             live_bandit_homeward_commit_result( result ),
+                                             "commit_local_pair_dematerialization returned " +
+                                             std::string( live_bandit_homeward_commit_result( result ) ), true, true,
+                                             live_bandit_homeward_commit_result( result ) );
         if( result != bandit_live_world::local_handoff_commit_result::applied ) {
             continue;
         }
@@ -6946,7 +8409,8 @@ namespace
 {
 void record_live_bandit_scout_travel_trace( const bandit_live_world::site_record &site,
         const bandit_live_world::active_outing_state &outing, const character_id member_id,
-        const std::string_view outcome, std::string reason )
+        const std::string_view outcome, std::string reason,
+        const std::string_view transition = "scout_travel_prepare" )
 {
     if( !bandit_live_world_probe::transition_events_enabled() ) {
         return;
@@ -6967,7 +8431,7 @@ void record_live_bandit_scout_travel_trace( const bandit_live_world::site_record
         }
         const std::string key = site.site_id + "#" + outing.activity_id + "#" +
                                  std::to_string( outing.generation ) + "#" +
-                                 std::to_string( member_id.get_value() );
+                                 std::to_string( member_id.get_value() ) + "#" + std::string( transition );
         const std::string signature = std::string( outcome ) + '|' + reason;
         const auto previous = cache.last_signature.find( key );
         if( ( previous != cache.last_signature.end() && previous->second == signature ) ||
@@ -6983,7 +8447,7 @@ void record_live_bandit_scout_travel_trace( const bandit_live_world::site_record
     }
     bandit_live_world_probe::transition_event event;
     event.domain = "bandit_live_world";
-    event.transition = "scout_travel_prepare";
+    event.transition = transition;
     event.outcome = outcome;
     event.site_id = site.site_id;
     event.operation_id = outing.activity_id;
@@ -7021,6 +8485,108 @@ std::string live_bandit_scout_member_state( const npc *member )
 }
 } // namespace
 
+void record_live_bandit_scout_motor_service( const npc &member,
+        const std::string_view outcome, const tripoint_abs_ms &before )
+{
+    if( !bandit_live_world_probe::transition_events_enabled() ) {
+        return;
+    }
+    for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        const auto &outing = site.active_outing;
+        if( !outing.is_active() || outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            std::find( outing.member_ids.begin(), outing.member_ids.end(), member.getID() ) ==
+            outing.member_ids.end() ) {
+            continue;
+        }
+        std::ostringstream reason;
+        reason << "caller=overmap_npc_move result=" << outcome
+               << " before=" << before.to_string() << " after=" << member.pos_abs().to_string()
+               << " moved=" << ( before != member.pos_abs() ) << ' '
+               << live_bandit_scout_member_state( &member );
+        record_live_bandit_scout_travel_trace( site, outing, member.getID(), outcome,
+                                             reason.str(), "scout_motor_service" );
+    }
+}
+
+// Only the current unique abstract watch assignment can own this completed
+// destination. Position or an empty path cannot create an assignment.
+bool pending_abstract_scout_watch_order( const npc &member )
+{
+    if( !member.is_travelling() || member.is_active() || member.is_dead() ||
+        member.goal != member.pos_abs_omt() ||
+        overmap_buffer.find_npc( member.getID() ).get() != &member ) {
+        return false;
+    }
+    const bandit_live_world::site_record *owner = nullptr;
+    for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        const auto &outing = site.active_outing;
+        const auto &hostile = site.active_hostile_operation;
+        const auto contains = [&member]( const auto &ids ) {
+            return std::find( ids.begin(), ids.end(), member.getID() ) != ids.end();
+        };
+        if( hostile.is_active() && contains( hostile.reservation.member_ids ) ) {
+            return false;
+        }
+        if( !outing.is_active() || !contains( outing.member_ids ) ) {
+            continue;
+        }
+        if( owner != nullptr ) {
+            return false;
+        }
+        owner = &site;
+    }
+    if( owner == nullptr ) {
+        return false;
+    }
+    const auto &outing = owner->active_outing;
+    if( owner->retired_empty_site || outing.local_projection_reconciliation_rejected ||
+        outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        outing.owner != bandit_live_world::simulation_owner::abstract || outing.schema_version < 10 ||
+        bandit_live_world::structural_outing_uses_frontier_route( outing ) ||
+        outing.phase != bandit_live_world::scout_phase::observing ||
+        outing.alternate_watch_reposition_pending || outing.crossing.pending() ||
+        outing.local_handoff.is_active() || outing.local_handoff.is_abstract_resume() ||
+        !outing.actor_departure_observed || outing.member_ids.size() != 2 ||
+        outing.member_ids[0] == outing.member_ids[1] ||
+        !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ||
+        outing.waypoint_index != 1 || outing.actor_route_waypoint != 1 ||
+        outing.assessment.observation_started_minutes >= 0 ||
+        outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none ||
+        outing.shared_route.size() != 5 || outing.shared_route[2] != member.goal ||
+        outing.selected_watch_omt != member.goal ||
+        !bandit_live_world::structural_watch_shared_route_is_canonical(
+            outing.shared_route, owner->anchor, outing.selected_watch_omt, outing.target_footprint ) ||
+        !bandit_live_world::current_external_simulation_cursor( *owner ) ||
+        live_bandit_current_minutes() < outing.last_advanced_minutes ) {
+        return false;
+    }
+    const auto cursor = bandit_live_world::current_external_simulation_cursor( *owner );
+    if( !cursor || cursor->activity_id != outing.activity_id ||
+        cursor->generation != outing.generation || cursor->owner != outing.owner ||
+        cursor->handoff_epoch != outing.handoff_epoch ||
+        cursor->last_advanced_minutes != outing.last_advanced_minutes ||
+        cursor->covert_egress_revision != outing.covert_egress_revision ) {
+        return false;
+    }
+    for( const character_id id : outing.member_ids ) {
+        const auto actor = overmap_buffer.find_npc( id );
+        const auto *record = owner->find_member( id );
+        if( !actor || actor->is_active() || actor->is_dead() || !actor->is_travelling() ||
+            actor->goal != outing.selected_watch_omt || record == nullptr ||
+            record->state != bandit_live_world::member_state::outbound ) {
+            return false;
+        }
+        // A different loaded/persistent representation must not lend this
+        // abstract order its identity or lease.
+        for( const npc *copy : bandit_live_world_projection_lease_copies( *actor ) ) {
+            if( copy != actor.get() || copy->get_bandit_live_world_projection_lease().present ) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 std::set<character_id> prepare_live_bandit_abstract_scout_travel()
 {
     std::set<character_id> held;
@@ -7029,9 +8595,13 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel()
         if( !outing.is_active() || outing.kind != bandit_live_world::outing_kind::structural_sortie ||
             outing.owner != bandit_live_world::simulation_owner::abstract ||
             outing.local_handoff.is_abstract_resume() || outing.crossing.pending() ||
-            outing.schema_version < 10 ||
-            outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none ||
-            outing.shared_route.size() != 5 || outing.member_ids.size() != 2 ) {
+            ( outing.schema_version < 10 &&
+              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
+            ( outing.selected_watch_kind == bandit_live_world::structural_watch_kind::none &&
+              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
+            ( bandit_live_world::structural_outing_uses_frontier_route( outing ) ?
+              outing.shared_route.size() < 3 : outing.shared_route.size() != 5 ) ||
+            outing.member_ids.size() != 2 ) {
             continue;
         }
         // Absence is not death.  Use the existing generation-bound casualty
@@ -7045,12 +8615,14 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel()
             if( member && !member->is_dead() ) {
                 continue;
             }
-            bandit_live_world::record_matching_external_outing_casualty(
-                site, outing.activity_id, outing.generation, id,
-                member ? bandit_live_world::member_state::dead : bandit_live_world::member_state::missing,
-                live_bandit_current_minutes(), member ? "assigned abstract scout confirmed dead" :
-                "assigned abstract scout absent after missing deadline",
-                member ? std::optional<tripoint_abs_ms>( member->pos_abs() ) : std::nullopt );
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_matching_external_outing_casualty( next, outing.activity_id,
+                        outing.generation, id,
+                        member ? bandit_live_world::member_state::dead : bandit_live_world::member_state::missing,
+                        live_bandit_current_minutes(), member ? "assigned abstract scout confirmed dead" :
+                        "assigned abstract scout absent after missing deadline",
+                        member ? std::optional<tripoint_abs_ms>( member->pos_abs() ) : std::nullopt );
+            } );
         }
         std::vector<npc *> members;
         std::size_t unresolved = 0;
@@ -7062,8 +8634,15 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel()
             }
             ++unresolved;
             const auto member = overmap_buffer.find_npc( id );
+            const bool frontier_ready =
+                ( !bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+                  outing.phase != bandit_live_world::scout_phase::observing ) ||
+                                        ( member && live_bandit_member_can_take_homeward_step( *member ) &&
+                                          member->get_attitude() != NPCATT_FLEE &&
+                                          member->get_attitude() != NPCATT_FLEE_TEMP &&
+                                          !member->has_active_faction_alarm() );
             const bool eligible = member && !member->is_active() && !member->is_dead() &&
-                                  !member->has_flag( json_flag_CANNOT_MOVE );
+                                  !member->has_flag( json_flag_CANNOT_MOVE ) && frontier_ready;
             if( eligible ) {
                 members.push_back( member.get() );
             }
@@ -7125,9 +8704,12 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel()
         const bool homeward = bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
         // The return half is independent of outbound progress.  In particular,
         // an early withdrawal must never finish the outbound watch leg first.
+        const int home_index = static_cast<int>( outing.shared_route.size() ) - 1;
         const int destination_index = homeward ?
-                ( outing.actor_route_waypoint < 2 || outing.actor_route_waypoint >= 3 ? 4 : 3 ) :
-                outing.phase == bandit_live_world::scout_phase::outbound ? 1 : 2;
+                ( outing.actor_route_waypoint < 2 || outing.actor_route_waypoint >= home_index - 1 ?
+                  home_index : home_index - 1 ) :
+                outing.phase == bandit_live_world::scout_phase::outbound ? 1 :
+                bandit_live_world::structural_outing_uses_frontier_route( outing ) ? home_index - 1 : 2;
         const tripoint_abs_omt destination = outing.shared_route[destination_index];
         const bool arrived = std::all_of( members.begin(), members.end(),
         [&destination]( const npc *member ) {
@@ -7144,7 +8726,71 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel()
                     "assigned scout departure canceled at home without field report" );
                 continue;
             }
-            outing.actor_route_waypoint = destination_index;
+            if( !homeward && outing.phase == bandit_live_world::scout_phase::observing &&
+                outing.waypoint_index == destination_index &&
+                outing.actor_route_waypoint == destination_index &&
+                outing.assessment.observation_started_minutes >= 0 ) {
+                // The pair already consumed its orders. An empty generic goal
+                // after normal cleanup does not require a second arrival.
+                held.insert( outing.member_ids.begin(), outing.member_ids.end() );
+                continue;
+            }
+            if( !homeward && outing.phase == bandit_live_world::scout_phase::observing ) {
+                const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+                auto arrival_result = bandit_live_world::local_handoff_commit_result::rejected;
+                if( cursor ) {
+                    std::vector<bandit_live_world::local_route_arrival_member_read> reads;
+                    for( const npc *member : members ) {
+                        const auto &lease = member->get_bandit_live_world_projection_lease();
+                        reads.push_back( { member->getID(), true, false,
+                            member->goal == destination && !lease.present &&
+                            live_bandit_member_can_take_homeward_step( *member ) &&
+                            member->get_attitude() != NPCATT_FLEE &&
+                            member->get_attitude() != NPCATT_FLEE_TEMP,
+                            member->hp_percentage(), member->pos_abs() } );
+                    }
+                    if( bandit_live_world::structural_outing_uses_frontier_route( outing ) ) {
+                        arrival_result = bandit_live_world::complete_structural_frontier_arrival(
+                                             site, *cursor, live_bandit_current_minutes(), reads );
+                    } else {
+                        arrival_result = bandit_live_world::commit_scout_pair_watch_arrival(
+                                             site, *cursor, live_bandit_current_minutes(), reads );
+                    }
+                }
+                for( const npc *member : members ) {
+                    std::ostringstream reason;
+                    reason << "attempted=" << bool( cursor ) << " result="
+                           << ( cursor ? live_bandit_homeward_commit_result( arrival_result ) : "cursor_unavailable" )
+                           << " object=persistent_overmap goal_matches=" << ( member->goal == destination )
+                           << " lease_present=" << member->get_bandit_live_world_projection_lease().present
+                           << " wp=" << outing.waypoint_index << " actor_wp=" << outing.actor_route_waypoint
+                           << " dest=" << destination.to_string() << ' '
+                           << live_bandit_scout_member_state( member );
+                    record_live_bandit_scout_travel_trace( site, outing, member->getID(),
+                                                         cursor ? live_bandit_homeward_commit_result( arrival_result ) : "unavailable",
+                                                         reason.str(), "scout_watch_arrival_service" );
+                }
+                const bool survival_refusal = std::any_of( members.begin(), members.end(),
+                []( const npc *member ) {
+                    return !live_bandit_member_can_take_homeward_step( *member ) ||
+                           member->get_attitude() == NPCATT_FLEE ||
+                           member->get_attitude() == NPCATT_FLEE_TEMP;
+                } );
+                for( npc *member : members ) {
+                    if( member->is_travelling() && member->goal == destination &&
+                        member->omt_path.empty() &&
+                        ( arrival_result == bandit_live_world::local_handoff_commit_result::applied ||
+                          arrival_result == bandit_live_world::local_handoff_commit_result::unchanged ||
+                          !survival_refusal || !pending_abstract_scout_watch_order( *member ) ) ) {
+                        // Consume successful orders; invalidated ownership also
+                        // releases generic travel. Temporary survival refusal
+                        // leaves the still-valid pair order pending.
+                        member->reach_omt_destination();
+                    }
+                }
+            } else {
+                outing.actor_route_waypoint = destination_index;
+            }
             held.insert( outing.member_ids.begin(), outing.member_ids.end() );
             continue;
         }
@@ -7296,7 +8942,7 @@ bool record_live_bandit_structural_member_returns()
 
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
-        if( !cursor ) {
+        if( !cursor || !persist_live_bandit_local_projection_leases( site, &site, false ) ) {
             continue;
         }
         const int current_minutes = live_bandit_current_minutes();
@@ -7311,7 +8957,7 @@ bool record_live_bandit_structural_member_returns()
                 break;
             }
         }
-        if( !committed ) {
+        if( !committed || !persist_live_bandit_local_projection_leases( candidate, &site ) ) {
             continue;
         }
         site = std::move( candidate );
@@ -7329,11 +8975,6 @@ bool record_live_bandit_structural_member_returns()
                                        << site.active_outing.member_return_receipts.size()
                                        << " owner=" << bandit_live_world::to_string(
                                            site.active_outing.owner ) << '\n';
-            // This receipt finalizes the outing.  Clear its local ownership
-            // lease from the persisted record and the active NPC before either
-            // can be written back after the durable state has become abstract.
-            sync_bandit_live_world_projection_lease_copies(
-                *member, bandit_live_world_projection_lease() );
             member->on_unload();
             g->remove_npc( member_id );
             changed = true;
@@ -7803,6 +9444,11 @@ bool materialize_live_bandit_structural_handoffs()
                                                        outing.local_handoff.cohesion_abort_return ? "yes" : "no" ) );
                 break;
             }
+            if( !live_bandit_projection_copies_match( *member, bandit_live_world_projection_lease() ) ) {
+                preflight_failed = true;
+                log_homeward_rejection( "previous owner has a conflicting projection lease" );
+                break;
+            }
             if( exact_auto_loaded_resume || exact_auto_loaded_outbound_departure ) {
                 auto_loaded_boundary_members.insert( member_id );
             }
@@ -7875,6 +9521,11 @@ bool materialize_live_bandit_structural_handoffs()
                 bind_failure_reason = "member backup unavailable";
                 return false;
             }
+            if( !live_bandit_projection_copies_match( *backup->member,
+                    bandit_live_world_projection_lease() ) ) {
+                bind_failure_reason = "previous owner has a conflicting projection lease";
+                return false;
+            }
             if( auto_loaded_boundary_members.count( snapshot.npc_id ) > 0 ) {
                 npc *loaded_member = g->find_npc( snapshot.npc_id );
                 if( loaded_member != backup->member.get() || !loaded_member->is_active() ) {
@@ -7908,9 +9559,7 @@ bool materialize_live_bandit_structural_handoffs()
                 return false;
             }
             sync_bandit_live_world_projection_lease_copies( *member,
-                    { true, site.site_id, plan.snapshot.activity_id, "local",
-                      plan.snapshot.activity_generation, plan.snapshot.handoff_epoch,
-                      plan.snapshot.committed_minutes } );
+                    live_bandit_projection_lease( site.site_id, plan.snapshot ) );
             overmap_buffer.insert_npc( member );
             return true;
         };
@@ -7926,19 +9575,7 @@ bool materialize_live_bandit_structural_handoffs()
                 return;
             }
             member->spawn_at_precise( backup->position );
-            member->goal = backup->goal;
-            member->omt_path = backup->omt_path;
-            member->mission = backup->mission;
-            member->previous_mission = backup->previous_mission;
-            member->goto_to_this_pos = backup->ordered_position;
-            if( backup->ai_guard_position ) {
-                member->set_ai_guard_pos( *backup->ai_guard_position );
-            } else {
-                member->clear_ai_guard_pos();
-            }
-            member->path = backup->local_path;
-            sync_bandit_live_world_projection_lease_copies( *member,
-                    backup->projection_lease );
+            restore_live_bandit_local_projection( *backup );
             overmap_buffer.insert_npc( member );
             if( auto_loaded_boundary_members.count( snapshot.npc_id ) > 0 &&
                 here.inbounds( backup->position ) ) {
@@ -8423,16 +10060,14 @@ int observe_live_hostile_signal_sources(
         // Both factions learn through the staffed physical observer, then use the
         // same durable paired watch/search/return lifecycle.  Assignment and
         // identity-bound travel remain with structural maintenance and its motor.
-        const auto observer = std::find_if( site.members.begin(), site.members.end(),
-        []( const bandit_live_world::member_record &member ) {
-            return member.state == bandit_live_world::member_state::at_home && !member.wounded_or_unready;
-        } );
-        if( observer == site.members.end() ) {
-            receipt_signal_admission( "rejected", "no_ready_physical_observer", *signal );
+        const bandit_live_world::camp_signal_observer_resolution observer =
+            resolve_live_bandit_staffed_observer( state, static_cast<std::size_t>( &site - state.sites.data() ) );
+        if( !observer.exclusion_reason.empty() ) {
+            receipt_signal_admission( "rejected", observer.exclusion_reason, *signal );
             continue;
         }
         const auto reads = live_bandit_staffed_camp_signal_reads(
-                               signals, {}, site, { observer->npc_id, site.anchor } );
+                               signals, {}, site, observer.request );
         if( std::none_of( reads.begin(), reads.end(), []( const auto &read ) {
             return !read.rejected;
         } ) ) {
@@ -8447,6 +10082,8 @@ int observe_live_hostile_signal_sources(
         [&reads]( const bandit_live_world::site_record &,
         const bandit_live_world::camp_signal_observer_request & ) {
             return reads;
+        }, [&observer]( bandit_live_world::world_state &, std::size_t ) {
+            return observer;
         } );
         site = std::move( observation.sites.front() );
         // Discovery owns the physical read and durable lead only.  The normal
@@ -9473,7 +11110,15 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const std::unordered_set<tripoint_abs_omt> target_footprint_exclusions(
         target_footprint.begin(), target_footprint.end() );
     std::vector<std::pair<tripoint_abs_omt, std::vector<tripoint_abs_omt>>> watch_paths;
-    const auto terrain_lookup = [&npc_route]( const tripoint_abs_omt &candidate,
+    // Route scoring precedes materialization and exact member assignment. This
+    // prospective human optical model only scores physical lookout geometry;
+    // it never publishes an observation. Actual acquisition rechecks each assigned NPC.
+    npc optical_reference;
+    optical_reference.set_fake( true );
+    optical_reference.normalize();
+    optical_reference.recalc_sight_limits();
+    scout_observation::site_reader optical_geometry;
+    const auto terrain_lookup = [&optical_reference, &optical_geometry]( const tripoint_abs_omt & candidate,
     const std::vector<tripoint_abs_omt> &footprint ) {
         bandit_live_world::structural_watch_terrain_read terrain;
         terrain.concealed = overmap_buffer.ter( candidate )->get_see_cost() > 0;
@@ -9489,21 +11134,50 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         if( nearest == footprint.end() || nearest->z() != candidate.z() ) {
             return terrain;
         }
-        const std::vector<tripoint_abs_omt> approach = line_to( candidate, *nearest );
-        if( approach.size() < 3 ) {
-            return terrain;
-        }
         terrain.intervening_omts_clear = true;
-        for( auto omt = approach.begin(); omt != std::prev( approach.end() ); ++omt ) {
-            const oter_id &omt_terrain = overmap_buffer.ter( *omt );
-            if( std::find( footprint.begin(), footprint.end(), *omt ) != footprint.end() ||
-                npc_route.get_cost( omt_terrain->get_travel_cost_type() ) < 0 ) {
-                terrain.intervening_omts_clear = false;
-                break;
+        bool checked = false;
+        bool useful = false;
+        {
+            const tripoint_abs_ms origin = project_to<coords::ms>( candidate ) + tripoint_rel_ms( SEEX, SEEY,
+                                           0 );
+            const tripoint_abs_ms target = project_to<coords::ms>( *nearest );
+            if( scout_observation::associated_with_site( get_avatar().pos_abs_omt(), footprint ) ) {
+                const auto view = optical_geometry.read( optical_reference, origin,
+                                  get_avatar().pos_abs(), footprint );
+                checked = view.known;
+                useful = view.visible;
             }
-            terrain.intervening_see_costs.push_back(
-                static_cast<int>( omt_terrain->get_see_cost() ) );
+            int actor_reads = 0;
+            for( const npc &actor : g->all_npcs() ) {
+                if( useful || actor_reads >= bandit_live_world::covert_visible_defender_read_cap() ) {
+                    break;
+                }
+                if( actor.is_dead() || !actor.is_active() ||
+                    !scout_observation::associated_with_site( actor.pos_abs_omt(), footprint ) ) {
+                    continue;
+                }
+                ++actor_reads;
+                const auto view = optical_geometry.read( optical_reference, origin, actor.pos_abs(), footprint );
+                checked = checked || view.known;
+                useful = useful || view.visible;
+            }
+            for( const point &offset : {
+                     point( 0, 0 ), point( 23, 0 ), point( 0, 23 ), point( 23, 23 )
+                 } ) {
+                if( useful ) {
+                    break;
+                }
+                const auto view = optical_geometry.read( optical_reference, origin,
+                                  target + tripoint_rel_ms( offset.x, offset.y, 0 ), footprint );
+                checked = checked || view.known;
+                useful = useful || view.visible;
+                if( useful ) {
+                    break;
+                }
+            }
         }
+        // Unavailable local geometry is not an affirmative watch view.
+        terrain.intervening_omts_clear = terrain.intervening_omts_clear && checked && useful;
         return terrain;
     };
     const auto watch_route_lookup = [&site, &npc_route, &source_node_cost, &target_footprint,
@@ -9765,7 +11439,7 @@ std::string live_bandit_structural_signal_request_diagnostic(
 std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_signal_reads(
     const std::vector<live_bandit_signal_observation> &signals,
     const std::vector<live_bandit_sound_observation> &sound_events,
-    const bandit_live_world::site_record &,
+    const bandit_live_world::site_record &site,
     const bandit_live_world::active_outing_state &outing,
     const bandit_live_world::structural_threat_observer_request &request )
 {
@@ -9788,10 +11462,19 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                                 outing.local_handoff.cohesion_assembled &&
                                 !outing.local_handoff.cohesion_abort_return &&
                                 outing.local_handoff.route_position == request.current_omt;
+    const bool exact_site_watch = outing.schema_version >= 8 &&
+                            outing.phase == bandit_live_world::scout_phase::observing &&
+                            outing.selected_watch_kind == bandit_live_world::structural_watch_kind::exact &&
+                            bandit_live_world::target_footprint_watch_distance(
+                                outing.selected_watch_omt, outing.target_footprint ) == 3 &&
+                            outing.selected_watch_omt == request.current_omt;
     if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
         ( outing.owner != bandit_live_world::simulation_owner::abstract && !local_observer ) ||
         request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
-        ( request_current_inbounds && !local_observer ) ) {
+        // A real established watch may retain abstract ownership at a loaded
+        // boundary. Its actual capable members are checked below; ordinary
+        // abstract travel still cannot read a loaded local projection.
+        ( request_current_inbounds && !local_observer && !exact_site_watch ) ) {
         if( !sound_events.empty() ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_adapter rejected_request"
                                        << " current_omt=" << request.current_omt
@@ -9805,16 +11488,40 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         return result;
     }
     const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( outing.leader_id );
-    if( !observer || observer->is_dead() || observer->is_blind() ) {
+    scout_observation::site_reader optical_geometry;
+    std::vector<shared_ptr_fast<npc>> watchers;
+    if( exact_site_watch ) {
+        for( const auto id : outing.member_ids ) {
+            const auto member = overmap_buffer.find_npc( id );
+            if( member && optical_geometry.watching_member( site, *member ) ) {
+                watchers.push_back( member );
+            }
+        }
+        std::sort( watchers.begin(), watchers.end(), [&outing]( const auto &lhs, const auto &rhs ) {
+            return std::make_tuple( lhs->getID() != outing.leader_id, lhs->getID().get_value() ) <
+                   std::make_tuple( rhs->getID() != outing.leader_id, rhs->getID().get_value() );
+        } );
+    } else if( !observer || observer->is_dead() || observer->is_blind() ) {
         return result;
     }
+    const bool site_watch = exact_site_watch && !watchers.empty();
     const auto signal_distance = [&request]( const live_bandit_signal_observation &signal ) {
         return signal.mark.kind == "smoke" ?
                rl_dist( request.current_omt.xy(), signal.source_omt.xy() ) :
                rl_dist( request.current_omt, signal.source_omt );
     };
-    std::vector<const live_bandit_signal_observation *> candidates;
+    struct optical_candidate {
+        const live_bandit_signal_observation *signal = nullptr;
+        character_id observer_id;
+        bool physical_pair_can_share = false;
+    };
+    std::vector<optical_candidate> candidates;
     for( const live_bandit_signal_observation &signal : signals ) {
+        // An interrupted exact watch cannot acquire optical evidence through
+        // the ordinary travel/legacy fallback. No optical mode is persisted.
+        if( exact_site_watch && !site_watch ) {
+            continue;
+        }
         const bool supported_kind = signal.mark.kind == "smoke" ||
                                     signal.mark.kind == "light" ||
                                     signal.mark.kind == "searchlight";
@@ -9822,10 +11529,40 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         const bool light_signal = signal.mark.kind == "light" || signal.mark.kind == "searchlight";
         const tripoint_abs_omt source_at_scout_level( signal.source_omt.x(),
                 signal.source_omt.y(), request.current_omt.z() );
-        const bool line_of_sight = signal.source_omt == request.current_omt ||
+        if( site_watch && ( !supported_kind || !signal.source_ms ||
+            project_to<coords::omt>( *signal.source_ms ) != signal.source_omt ||
+            signal.range_cap_omt <= 0 || signal.range_cap_omt > 40 ||
+            signal_distance( signal ) > signal.range_cap_omt ||
+            !scout_observation::associated_with_site( signal.source_omt, outing.target_footprint ) ) ) {
+            continue;
+        }
+        std::vector<character_id> actual_observers;
+        bool physical_pair_can_share = false;
+        bool line_of_sight = site_watch ?
+                ( signal.source_ms &&
+                  ( !light_signal || ( signal.has_light_projection &&
+                    signal.light_projection.packet.exposure != bandit_mark_generation::light_exposure_band::contained ) ) &&
+                  ( !smoke_signal || signal.source_omt.z() == request.current_omt.z() ||
+                    signal.smoke_source_exposed_to_sky ) &&
+                  scout_observation::associated_with_site( signal.source_omt,
+                    outing.target_footprint ) ) :
+                signal.source_omt == request.current_omt ||
                                    ( light_signal ?
                                      live_bandit_overmap_light_los_from( request.current_omt, signal ) :
                                      live_bandit_overmap_smoke_los_from( request.current_omt, signal ) );
+        if( site_watch && line_of_sight ) {
+            size_t visible_watchers = 0;
+            for( const auto &member : watchers ) {
+                if( optical_geometry.read_signal( *member, member->pos_abs(), *signal.source_ms,
+                                                 outing.target_footprint ).visible ) {
+                    actual_observers.push_back( member->getID() );
+                    ++visible_watchers;
+                }
+            }
+            line_of_sight = !actual_observers.empty();
+            physical_pair_can_share = visible_watchers == 2 && watchers.size() == 2 &&
+                                      rl_dist( watchers[0]->pos_abs(), watchers[1]->pos_abs() ) <= 6;
+        }
         // Preserve the source's real height.  Only a physically visible
         // cross-level signal above a permitted ground route tile can use its
         // projected footprint for route eligibility.
@@ -9835,7 +11572,9 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                   std::find( request.visible_forward_omts.begin(),
                              request.visible_forward_omts.end(), source_at_scout_level ) !=
                   request.visible_forward_omts.end() );
-        const bool source_is_permitted = signal.source_omt == request.current_omt ||
+        const bool source_is_permitted = ( site_watch &&
+                scout_observation::associated_with_site( signal.source_omt, outing.target_footprint ) ) ||
+                                         signal.source_omt == request.current_omt ||
                                          std::find( request.visible_forward_omts.begin(),
                                                  request.visible_forward_omts.end(),
                                                  signal.source_omt ) !=
@@ -9845,45 +11584,68 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         if( supported_kind && source_is_permitted && signal.range_cap_omt > 0 &&
             signal.range_cap_omt <= 40 && scout_range <= signal.range_cap_omt &&
             line_of_sight ) {
-            candidates.push_back( &signal );
+            if( site_watch && !physical_pair_can_share ) {
+                for( const auto id : actual_observers ) {
+                    candidates.push_back( { &signal, id, false } );
+                }
+            } else {
+                candidates.push_back( { &signal, actual_observers.empty() ? character_id() :
+                                        actual_observers.front(), physical_pair_can_share } );
+            }
         }
     }
     std::sort( candidates.begin(), candidates.end(), [&signal_distance](
-    const live_bandit_signal_observation *lhs,
-    const live_bandit_signal_observation *rhs ) {
+    const optical_candidate &left, const optical_candidate &right ) {
+        const auto *lhs = left.signal;
+        const auto *rhs = right.signal;
         return std::make_tuple( signal_distance( *lhs ),
                                 lhs->source_omt.z(), lhs->source_omt.y(), lhs->source_omt.x(),
-                                lhs->mark.kind, lhs->mark.mark_id ) <
+                                lhs->mark.kind, lhs->mark.mark_id, left.observer_id.get_value() ) <
                std::make_tuple( signal_distance( *rhs ),
                                 rhs->source_omt.z(), rhs->source_omt.y(), rhs->source_omt.x(),
-                                rhs->mark.kind, rhs->mark.mark_id );
+                                rhs->mark.kind, rhs->mark.mark_id, right.observer_id.get_value() );
     } );
 
     for( const bool select_smoke : { true, false } ) {
         const auto found = std::find_if( candidates.begin(), candidates.end(), [select_smoke](
-        const live_bandit_signal_observation * candidate ) {
-            return ( candidate->mark.kind == "smoke" ) == select_smoke;
+        const optical_candidate &candidate ) {
+            return ( candidate.signal->mark.kind == "smoke" ) == select_smoke;
         } );
         if( found == candidates.end() ) {
             continue;
         }
-        const live_bandit_signal_observation &signal = **found;
-        const int scout_range = signal_distance( signal );
-        bandit_live_world::structural_signal_read read;
-        read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
-                     bandit_live_world::sortie_observation_sense::light;
-        read.source_omt = signal.source_omt;
-        read.source_id = signal.sample_id.empty() ? signal.mark.mark_id : signal.sample_id;
-        read.observed_minutes = signal.observed_minutes;
-        read.range_cap_omt = signal.range_cap_omt;
-        read.strength = std::clamp( signal.mark.strength, 1, 6 );
-        read.confidence = std::clamp( 40 + 10 * signal.mark.confidence, 0, 60 );
-        read.observer_sight_points = signal.range_cap_omt;
-        read.line_of_sight = true;
-        read.uncertainty_radius_omt = std::clamp( std::max( 1, ( scout_range + 2 ) / 3 ) +
-                                                ( select_smoke ? 1 : 0 ), 1, 40 );
-        read.summary = signal.weather_summary;
-        result.push_back( std::move( read ) );
+        // Shared sight needs one receipt; separated witnesses each keep their
+        // actual private receipt for this selected source and channel.
+        for( const auto &candidate : candidates ) {
+            if( candidate.signal != found->signal ) {
+                continue;
+            }
+            const live_bandit_signal_observation &signal = *found->signal;
+            const int scout_range = signal_distance( signal );
+            bandit_live_world::structural_signal_read read;
+            read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
+                         bandit_live_world::sortie_observation_sense::light;
+            read.source_omt = signal.source_omt;
+            read.observer_id = candidate.observer_id;
+            read.physical_pair_can_share = candidate.physical_pair_can_share;
+            read.source_id = signal.sample_id.empty() ? signal.mark.mark_id : signal.sample_id;
+            read.observed_minutes = signal.observed_minutes;
+            read.range_cap_omt = signal.range_cap_omt;
+            read.strength = std::clamp( signal.mark.strength, 1, 6 );
+            read.confidence = std::clamp( 40 + 10 * signal.mark.confidence, 0, 60 );
+            read.observer_sight_points = signal.range_cap_omt;
+            read.line_of_sight = true;
+            read.uncertainty_radius_omt = std::clamp( std::max( 1, ( scout_range + 2 ) / 3 ) +
+                                                    ( select_smoke ? 1 : 0 ), 1, 40 );
+            read.summary = signal.weather_summary;
+            result.push_back( std::move( read ) );
+        }
+    }
+
+    // Ordinary hearing retains its original leader basis, independent of which
+    // capable member made the site-directed optical acquisition.
+    if( !observer || observer->is_dead() || observer->is_blind() ) {
+        return result;
     }
 
     struct audible_sound {
@@ -9987,11 +11749,11 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
     const bandit_live_world::camp_signal_observer_request &request )
 {
     std::vector<bandit_live_world::structural_signal_read> result;
-    if( request.camp_omt != site.anchor ) {
+    if( request.camp_omt != site.anchor && !site_contains_omt( site, request.camp_omt ) ) {
         return result;
     }
-    const shared_ptr_fast<npc> observer = overmap_buffer.find_npc( request.observer_id );
-    if( !observer || observer->is_dead() || observer->is_blind() ) {
+    const npc *observer = live_bandit_staffed_observer( request.observer_id );
+    if( observer == nullptr || observer->is_dead() || observer->pos_abs_omt() != request.camp_omt ) {
         return result;
     }
     const int sight_points = live_bandit_structural_observer_sight( *observer,
@@ -10002,6 +11764,24 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
                rl_dist( request.camp_omt, signal.source_omt );
     };
     for( const bool select_smoke : { true, false } ) {
+        if( !live_bandit_can_make_ordinary_visual_observation( *observer ) ) {
+            const auto source = std::find_if( signals.begin(), signals.end(),
+            [select_smoke]( const live_bandit_signal_observation &signal ) {
+                return select_smoke ? signal.mark.kind == "smoke" :
+                       signal.mark.kind == "light" || signal.mark.kind == "searchlight";
+            } );
+            if( source != signals.end() ) {
+                bandit_live_world::structural_signal_read read;
+                read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
+                             bandit_live_world::sortie_observation_sense::light;
+                read.source_omt = source->source_omt;
+                read.range_cap_omt = source->range_cap_omt;
+                read.rejected = true;
+                read.rejection_reason = "home_sensor_no_visual_senses";
+                result.push_back( std::move( read ) );
+            }
+            continue;
+        }
         const auto found = std::find_if( signals.begin(), signals.end(),
         [&request, &signal_distance, select_smoke]( const live_bandit_signal_observation & signal ) {
             const bool smoke = signal.mark.kind == "smoke";
@@ -10117,7 +11897,7 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
                                       weather_attenuation ) * observer->hearing_ability() ) );
         return supported && event.volume >= 24 && event.emitted_minutes >= 0 &&
                event.emitted_minutes <= now_minutes && now_minutes - event.emitted_minutes <= 180 &&
-               !observer->is_deaf() && effective >= required;
+               !observer->is_deaf() && !observer->has_effect( effect_narcosis ) && effective >= required;
     } );
     if( audible != sound_events.end() ) {
         bandit_live_world::structural_signal_read read;
@@ -10140,6 +11920,19 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
         result.push_back( std::move( read ) );
     }
     return result;
+}
+
+bandit_live_world::camp_signal_observation_result record_live_bandit_staffed_camp_signals(
+    bandit_live_world::world_state &state,
+    const std::vector<live_bandit_signal_observation> &signals,
+    const std::vector<live_bandit_sound_observation> &sounds )
+{
+    return bandit_live_world::record_staffed_camp_signal_observations( state,
+           live_bandit_current_minutes(),
+    [&signals, &sounds]( const bandit_live_world::site_record &site,
+                        const bandit_live_world::camp_signal_observer_request &request ) {
+        return live_bandit_staffed_camp_signal_reads( signals, sounds, site, request );
+    }, resolve_live_bandit_staffed_observer );
 }
 
 void sample_and_deliver_live_light_for_advancing_turn()
@@ -10198,27 +11991,31 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                 [&live_signals, &live_sounds](
                     const bandit_live_world::site_record & site,
                     const bandit_live_world::active_outing_state & outing,
-                    const bandit_live_world::structural_threat_observer_request & request ) {
-                    return live_bandit_structural_signal_reads( live_signals, live_sounds,
-                            site, outing, request );
-                }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
-                    if( site_index >= world.sites.size() ) {
-                        return 0;
-                    }
-                    return live_bandit_materialize_abstract_members_for_routine(
-                               world, world.sites[site_index] );
-                }, []( const bandit_live_world::site_record & site ) {
-                    return live_bandit_response_member_power_reads_impl( site );
-                }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
-                    if( site_index >= world.sites.size() ) {
-                        return 0;
-                    }
-                    return live_bandit_materialize_abstract_members_for_response(
-                               world, world.sites[site_index] );
-                }, []( const bandit_live_world::site_record & site ) {
-                    return live_bandit_hostile_operation_route_read( site );
-                } );
-    DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        return live_bandit_structural_signal_reads( live_signals, live_sounds,
+                site, outing, request );
+    }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
+        if( site_index >= world.sites.size() ) {
+            return 0;
+        }
+        return live_bandit_materialize_abstract_members_for_routine(
+                   world, world.sites[site_index] );
+    }, []( const bandit_live_world::site_record & site ) {
+        return live_bandit_response_member_power_reads_impl( site );
+    }, []( bandit_live_world::world_state & world, const std::size_t site_index ) {
+        if( site_index >= world.sites.size() ) {
+            return 0;
+        }
+        return live_bandit_materialize_abstract_members_for_response(
+                   world, world.sites[site_index] );
+    }, []( const bandit_live_world::site_record & site ) {
+        return live_bandit_hostile_operation_route_read( site );
+    }, {}, []( const bandit_live_world::site_record & before,
+               const bandit_live_world::site_record & after ) {
+        return persist_live_bandit_local_projection_leases( after, &before );
+    } );
+    DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report(
+                                   result );
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_evidence_debug_report(
                                   state, current_minutes );
     return result;
@@ -10252,7 +12049,38 @@ bandit_live_world::structural_signal_record_result record_live_bandit_local_stru
     const bandit_live_world::structural_threat_observer_request & request ) {
         return live_bandit_structural_signal_reads(
                    no_field_signals, live_sounds, site, outing, request );
+    }, []( const bandit_live_world::site_record & before,
+           const bandit_live_world::site_record & after ) {
+        return persist_live_bandit_local_projection_leases( after, &before );
     } );
+}
+
+int record_live_bandit_stationary_watch_signals( bandit_live_world::world_state &state,
+        const std::vector<live_bandit_signal_observation> &signals, const bool cadence_due )
+{
+    if( !cadence_due || signals.empty() ) {
+        return 0;
+    }
+    const auto lookup = [&signals]( const bandit_live_world::site_record &site,
+    const bandit_live_world::active_outing_state &outing,
+    const bandit_live_world::structural_threat_observer_request &request ) {
+        if( outing.phase != bandit_live_world::scout_phase::observing ||
+            outing.selected_watch_kind != bandit_live_world::structural_watch_kind::exact ||
+            request.current_omt != outing.selected_watch_omt ||
+            bandit_live_world::target_footprint_watch_distance(
+                outing.selected_watch_omt, outing.target_footprint ) != 3 ) {
+            return std::vector<bandit_live_world::structural_signal_read>();
+        }
+        return live_bandit_structural_signal_reads( signals, {}, site, outing, request );
+    };
+    const auto abstract = bandit_live_world::record_structural_signal_observations(
+                              state, live_bandit_current_minutes(), lookup );
+    const auto local = bandit_live_world::record_local_structural_signal_observations(
+                           state, live_bandit_current_minutes(), lookup,
+    []( const bandit_live_world::site_record &before, const bandit_live_world::site_record &after ) {
+        return persist_live_bandit_local_projection_leases( after, &before );
+    } );
+    return abstract.facts_recorded + local.facts_recorded;
 }
 
 std::vector<live_bandit_sound_observation> take_live_bandit_sounds()
@@ -10276,12 +12104,7 @@ int observe_live_bandit_sounds()
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     record_live_bandit_structural_sounds( state, events );
     record_live_bandit_local_structural_sounds( state, events );
-    bandit_live_world::record_staffed_camp_signal_observations(
-        state, live_bandit_current_minutes(),
-        [&events, &no_visual_signals]( const bandit_live_world::site_record & site,
-    const bandit_live_world::camp_signal_observer_request & request ) {
-        return live_bandit_staffed_camp_signal_reads( no_visual_signals, events, site, request );
-    } );
+    record_live_bandit_staffed_camp_signals( state, no_visual_signals, events );
     // Store what was heard now; ordinary overmap maintenance owns the later
     // decision to act.  A gunshot cannot advance every camp's travel/dispatch.
     return static_cast<int>( events.size() );
@@ -10319,9 +12142,11 @@ int advance_live_bandit_local_scout_assessments()
                     continue;
                 }
                 const bandit_live_world::sortie_observation_effect observed =
-                    bandit_live_world::record_physically_observed_player_opportunity( site, *cursor,
+                commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                    return bandit_live_world::record_physically_observed_player_opportunity( next, *cursor,
                             member_id, player_target_id, member->pos_abs_omt(), player_omt,
                             opportunity->revision, current_minutes );
+                } );
                 if( observed.valid && observed.progress ) {
                     DebugLog( D_INFO, DC_ALL ) << "bandit_live_world physical_player_observation"
                                                << " site=" << site.site_id
@@ -10337,8 +12162,10 @@ int advance_live_bandit_local_scout_assessments()
         const int target_revision = outing.target_lead_revision;
         const bandit_live_world::site_record before_assessment = site;
         const bandit_live_world::scout_assessment_result result =
-            bandit_live_world::advance_structural_scout_assessment(
-                site, activity_id, generation, target_revision, current_minutes );
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::advance_structural_scout_assessment( next, activity_id, generation,
+                    target_revision, current_minutes );
+        } );
         if( result == bandit_live_world::scout_assessment_result::normal_success ||
             result == bandit_live_world::scout_assessment_result::inconclusive ) {
             for( const character_id member_id : site.active_outing.member_ids ) {
@@ -10380,7 +12207,7 @@ int advance_live_bandit_local_scout_assessments()
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                 bandit_live_world::current_external_simulation_cursor( site );
             if( !cursor ) {
-                site = before_assessment;
+                rollback_live_bandit_local_progress( site, before_assessment );
                 continue;
             }
             std::vector<live_bandit_local_handoff_member_backup> backups;
@@ -10407,17 +12234,19 @@ int advance_live_bandit_local_scout_assessments()
                 routes.emplace( member_id, std::move( route ) );
             }
             if( preflight_failed || backups.size() != 2 || routes.size() != 2 ) {
-                if( bandit_live_world::abort_local_pair_alternate_watch_reposition(
-                        site, *cursor, current_minutes,
-                        "alternate watch route unavailable at departure" ) ==
-                    bandit_live_world::local_handoff_commit_result::applied ) {
+                if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::abort_local_pair_alternate_watch_reposition( next, *cursor,
+                        current_minutes,
+                        "alternate watch route unavailable at departure" );
+                } ) ==
+                bandit_live_world::local_handoff_commit_result::applied ) {
                     for( const live_bandit_local_handoff_member_backup &backup : backups ) {
                         backup.member->omt_path.clear();
                         live_bandit_route_member_home( *backup.member, site );
                     }
                     completed++;
                 } else {
-                    site = before_assessment;
+                    rollback_live_bandit_local_progress( site, before_assessment );
                 }
                 continue;
             }
@@ -10453,11 +12282,13 @@ int advance_live_bandit_local_scout_assessments()
                 backup.member->path.clear();
             }
             if( !routes_bound ||
-                bandit_live_world::start_local_pair_alternate_watch_reposition(
-                    site, *cursor, current_minutes ) !=
-                bandit_live_world::local_handoff_commit_result::applied ) {
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::start_local_pair_alternate_watch_reposition( next, *cursor,
+                    current_minutes );
+            } ) !=
+            bandit_live_world::local_handoff_commit_result::applied ) {
                 restore_routes();
-                site = before_assessment;
+                rollback_live_bandit_local_progress( site, before_assessment );
                 continue;
             }
             completed++;
@@ -10553,9 +12384,12 @@ live_bandit_elevated_recovery_orders recover_live_bandit_local_elevated_watches(
         if( all_at_approach ) {
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                 bandit_live_world::current_external_simulation_cursor( site );
-            if( cursor && bandit_live_world::recover_local_elevated_signal_watch(
-                    site, *cursor, read, member_reads, live_bandit_current_minutes() ) ==
-                bandit_live_world::structural_watch_route_apply_result::applied ) {
+            if( cursor &&
+            commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::recover_local_elevated_signal_watch( next, *cursor, read, member_reads,
+                    live_bandit_current_minutes() );
+            } ) ==
+            bandit_live_world::structural_watch_route_apply_result::applied ) {
                 DebugLog( D_INFO, DC_ALL ) << "bandit_live_world roof_watch_recovered"
                                            << " site=" << site.site_id
                                            << " generation=" << site.active_outing.generation
@@ -10614,6 +12448,11 @@ void maintain_live_bandit_structural_bounty_for_test(
 {
     maintain_live_bandit_structural_bounty( signals, {} );
     prepare_live_bandit_abstract_scout_travel();
+}
+
+bool live_bandit_scout_watch_order_pending( const npc &member )
+{
+    return pending_abstract_scout_watch_order( member );
 }
 
 void prepare_live_bandit_abstract_scout_travel_for_test()
@@ -11167,6 +13006,22 @@ std::string live_bandit_local_reality_safety_record_for_test( const map &here,
 
 namespace bandit_live_world
 {
+bool record_live_local_pair_member_death( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const character_id member_id,
+        const tripoint_abs_ms &death_position,
+        const int current_minutes )
+{
+    const auto actor = overmap_buffer.find_npc( member_id );
+    if( !actor || !actor->is_dead() || actor->pos_abs() != death_position ) {
+        return false;
+    }
+    return commit_live_bandit_local_progress( site, [&]( site_record & next ) {
+        return record_local_pair_member_death( next, expected_cursor, member_id,
+                                               death_position, current_minutes );
+    }, false, member_id );
+}
+
 bool live_structural_observer_has_optic( const npc &observer )
 {
     static const json_character_flag enhanced_vision( "ENHANCED_VISION" );
@@ -11476,6 +13331,114 @@ bool live_bandit_local_step_respects_nonreentry(
              relationship.forbidden_route_omts.end() );
 }
 
+bool live_bandit_member_can_take_homeward_step( const npc &member )
+{
+    return !member.is_dead() && !member.in_sleep_state() &&
+           !member.has_flag( json_flag_CANNOT_MOVE ) && !member.has_effect( effect_downed ) &&
+           !member.has_effect( effect_stunned ) && !member.has_effect( effect_psi_stunned ) &&
+           !member.has_effect( effect_narcosis );
+}
+
+bool live_bandit_local_step_has_known_dangerous_trap(
+    const npc &member, map &here, const tripoint_bub_ms &step )
+{
+    const trap &candidate = here.tr_at( step );
+    return candidate.can_see( step, member ) && !candidate.is_benign();
+}
+
+// A separated homeward pair needs a reachable rendezvous, not a greedy decrease
+// in straight-line distance.  Keep one actor stationary while the other follows
+// a complete native route; this permits safe detours without releasing cohesion.
+struct live_bandit_homeward_reunion_route {
+    character_id mover;
+    std::vector<tripoint_bub_ms> path;
+};
+
+live_bandit_homeward_reunion_route live_bandit_homeward_reunion_path(
+    npc &member, npc &partner, const bandit_live_world::site_record &site, map &here )
+{
+    if( site.active_outing.leader_id != member.getID() &&
+        site.active_outing.leader_id != partner.getID() ) {
+        return {};
+    }
+    npc *leader = member.getID() == site.active_outing.leader_id ? &member : &partner;
+    npc *follower = leader == &member ? &partner : &member;
+    for( npc *mover : {
+             follower, leader
+         } ) {
+        npc &anchor = mover == leader ? *follower : *leader;
+        if( !live_bandit_member_can_take_homeward_step( *mover ) ||
+            !here.inbounds( mover->pos_abs() ) || !here.inbounds( anchor.pos_abs() ) ) {
+            continue;
+        }
+        const auto relationship = bandit_live_world::read_active_covert_scout_homeward_member(
+                                      overmap_buffer.global_state.bandit_live_world, mover->getID() );
+        if( !relationship ) {
+            continue;
+        }
+        const auto npc_avoid = mover->get_path_avoid();
+        const auto avoid = [&]( const tripoint_bub_ms & step ) {
+            return npc_avoid( step ) ||
+                   live_bandit_local_step_has_known_dangerous_trap( *mover, here, step ) ||
+                   !live_bandit_local_step_respects_nonreentry(
+                       *mover, *relationship, here, step );
+        };
+        bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
+        const auto valid_reunion_path = [&]( std::vector<tripoint_bub_ms> &path ) {
+            while( !path.empty() && path.front() == mover->pos_bub( here ) ) {
+                path.erase( path.begin() );
+            }
+            if( path.empty() || project_to<coords::omt>( here.get_abs( path.back() ) ) !=
+                anchor.pos_abs_omt() || !std::all_of( path.begin(), path.end(), [&]( const auto & step ) {
+                return !avoid( step );
+            } ) ) {
+                return false;
+            }
+            if( relationship->phase == bandit_live_world::scout_phase::burned_withdrawal ) {
+                std::vector<tripoint_abs_omt> route{ mover->pos_abs_omt() };
+                for( const auto &step : path ) {
+                    const tripoint_abs_omt omt = project_to<coords::omt>( here.get_abs( step ) );
+                    if( omt != route.back() ) {
+                        route.push_back( omt );
+                    }
+                }
+                std::reverse( route.begin(), route.end() );
+                return bandit_live_world::covert_scout_egress_route_respects_retry_memory(
+                           site.active_outing, mover->pos_abs_omt(), route, false );
+            }
+            return true;
+        };
+        const int radius = bandit_live_world::local_pair_cohesion_radius();
+        auto path = here.route( mover->pos_bub( here ),
+                                pathfinding_target::radius( anchor.pos_bub( here ), radius ),
+                                mover->get_pathfinding_settings( false ), avoid );
+        if( valid_reunion_path( path ) ) {
+            return { mover->getID(), std::move( path ) };
+        }
+        // A radius target can end on an occupied/avoided tile or across an OMT edge.
+        // Try the legal endpoints of that same rendezvous, without relaxing the route.
+        std::vector<tripoint_bub_ms> endpoints;
+        for( const auto &point : here.points_in_radius( anchor.pos_bub( here ), radius ) ) {
+            if( here.inbounds( point ) && !avoid( point ) &&
+                project_to<coords::omt>( here.get_abs( point ) ) == anchor.pos_abs_omt() ) {
+                endpoints.push_back( point );
+            }
+        }
+        std::sort( endpoints.begin(), endpoints.end(), [&]( const auto & a, const auto & b ) {
+            return std::make_tuple( rl_dist( a, mover->pos_bub( here ) ), a.z(), a.y(), a.x() ) <
+                   std::make_tuple( rl_dist( b, mover->pos_bub( here ) ), b.z(), b.y(), b.x() );
+        } );
+        for( const auto &endpoint : endpoints ) {
+            path = here.route( mover->pos_bub( here ), pathfinding_target::point( endpoint ),
+                               mover->get_pathfinding_settings( false ), avoid );
+            if( valid_reunion_path( path ) ) {
+                return { mover->getID(), std::move( path ) };
+            }
+        }
+    }
+    return {};
+}
+
 struct live_bandit_safe_local_route_read {
     bool safe = false;
     bool solved = false;
@@ -11499,6 +13462,7 @@ live_bandit_safe_local_route_read live_bandit_safe_local_route_to(
     const auto combined_avoid = [&member, &relationship, &here,
                                  &npc_avoid]( const tripoint_bub_ms &step ) {
         return npc_avoid( step ) ||
+               live_bandit_local_step_has_known_dangerous_trap( member, here, step ) ||
                !live_bandit_local_step_respects_nonreentry(
                    member, relationship, here, step );
     };
@@ -11509,9 +13473,12 @@ live_bandit_safe_local_route_read live_bandit_safe_local_route_to(
     read.path_size = route.size();
     read.safe = !route.empty() &&
                 std::all_of( route.begin(), route.end(),
-    [&member, &relationship, &here]( const tripoint_bub_ms & step ) {
-        return live_bandit_local_step_respects_nonreentry(
-                   member, relationship, here, step );
+    [&member, &relationship, &here, &npc_avoid]( const tripoint_bub_ms & step ) {
+        // Native point targets may bypass avoidance at the endpoint.  A handoff
+        // needs two genuinely reachable slots, without pushing the other actor.
+        return ( step == member.pos_bub( here ) || !npc_avoid( step ) ) &&
+               !live_bandit_local_step_has_known_dangerous_trap( member, here, step ) &&
+               live_bandit_local_step_respects_nonreentry( member, relationship, here, step );
     } );
     return read;
 }
@@ -11561,6 +13528,19 @@ live_bandit_pair_boundary_steps(
             continue;
         }
         const tripoint_abs_omt destination = first_destination->second;
+        // The ingress consumer commits a watch arrival, not an intermediate
+        // boundary crossing.  A closer exit in the current OMT would be rolled
+        // back by that consumer forever, leaving the pair parked at its slots.
+        const bool watch_arrival_crossing =
+            outing.owner == bandit_live_world::simulation_owner::local &&
+            outing.phase == bandit_live_world::scout_phase::observing &&
+            !bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+            destination == outing.selected_watch_omt;
+        // Frontier and homeward crossings commit one complete pair in one OMT.
+        // Selecting adjacent exits on opposite sides of an OMT boundary leaves
+        // both local motors paused at slots the crossing consumer must refuse.
+        const bool same_omt_exit_required = require_safe_routes ||
+                                           bandit_live_world::structural_outing_uses_frontier_route( outing );
         const tripoint_abs_ms destination_center =
             project_to<coords::ms>( destination ) + point( SEEX, SEEY );
         npc *first = g->find_npc( outing.member_ids[0] );
@@ -11625,7 +13605,13 @@ live_bandit_pair_boundary_steps(
                 if( first_candidate.departure == second_candidate.departure ||
                     first_candidate.exit == second_candidate.exit ||
                     // Preserve the adjacent two-slot formation already required at handoff.
-                    rl_dist( first_candidate.exit, second_candidate.exit ) > 1 ) {
+                    rl_dist( first_candidate.exit, second_candidate.exit ) > 1 ||
+                    ( watch_arrival_crossing &&
+                      ( project_to<coords::omt>( first_candidate.exit ) != destination ||
+                        project_to<coords::omt>( second_candidate.exit ) != destination ) ) ||
+                    ( same_omt_exit_required && project_to<coords::omt>( first_candidate.exit ) !=
+                      project_to<coords::omt>( second_candidate.exit ) ) ) {
+                    // Keep the existing complete-pair crossing contract.
                     continue;
                 }
                 const std::optional<std::size_t> first_route_rank = route_rank(
@@ -11654,6 +13640,22 @@ live_bandit_pair_boundary_steps(
         }
         std::optional<std::pair<candidate, candidate>> safe_pair;
         if( require_safe_routes || route_discriminators != nullptr ) {
+            // Occupancy can rule out an endpoint which was previously accepted.
+            // Rank safe pairs by the same route/proximity score as the ordinary
+            // selector, so two actors already at legal slots do not swap forever.
+            std::stable_sort( complete_pairs.begin(), complete_pairs.end(),
+            [&route_rank, first, second]( const auto &lhs, const auto &rhs ) {
+                const auto score = [&route_rank, first, second]( const auto &pair ) {
+                    const auto first_rank = *route_rank( *first, project_to<coords::omt>( pair.first.exit ) );
+                    const auto second_rank = *route_rank( *second, project_to<coords::omt>( pair.second.exit ) );
+                    const int first_distance = rl_dist( first->pos_abs(), pair.first.departure );
+                    const int second_distance = rl_dist( second->pos_abs(), pair.second.departure );
+                    return std::make_tuple( std::max( first_rank, second_rank ), first_rank + second_rank,
+                                           std::max( first_distance, second_distance ), first_distance + second_distance,
+                                           pair.first.departure, pair.second.departure );
+                };
+                return score( lhs ) < score( rhs );
+            } );
             const auto pair_identity = [first, second](
             const std::pair<candidate, candidate> &pair ) {
                 std::ostringstream identity;
@@ -12147,7 +14149,8 @@ void complete_live_bandit_ingress_boundary_steps(
     for( bandit_live_world::site_record &site :
          overmap_buffer.global_state.bandit_live_world.sites ) {
         bandit_live_world::active_outing_state &outing = site.active_outing;
-        if( outing.member_ids.size() != 2 ) {
+        if( outing.member_ids.size() != 2 ||
+            bandit_live_world::structural_outing_uses_frontier_route( outing ) ) {
             continue;
         }
         const auto first_step = steps.find( outing.member_ids[0] );
@@ -12157,6 +14160,19 @@ void complete_live_bandit_ingress_boundary_steps(
         if( first_step == steps.end() || second_step == steps.end() || first == nullptr ||
             second == nullptr || first->pos_abs() != first_step->second.departure ||
             second->pos_abs() != second_step->second.departure ) {
+            continue;
+        }
+        // Reaching a slot through native flight/combat is not permission to
+        // consume the scout order or unload a surviving actor. Match the
+        // local motor's survival priority before applying the pair crossing.
+        const std::array<const npc *, 2> members = { first, second };
+        if( std::any_of( members.begin(), members.end(), []( const npc *member ) {
+            return !live_bandit_member_can_take_homeward_step( *member ) ||
+                   member->get_attitude() == NPCATT_FLEE ||
+                   member->get_attitude() == NPCATT_FLEE_TEMP ||
+                   member->has_active_faction_alarm() ||
+                   ( member->current_target() != nullptr && member->get_ai_danger() > 0 );
+        } ) ) {
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -12178,9 +14194,11 @@ void complete_live_bandit_ingress_boundary_steps(
             read.current_position = member->pos_abs();
             reads.push_back( read );
         }
-        if( bandit_live_world::commit_local_pair_route_arrival(
-                site, *cursor, live_bandit_current_minutes(), reads ) !=
-            bandit_live_world::local_handoff_commit_result::applied ) {
+        if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::commit_scout_pair_watch_arrival( next, *cursor,
+                live_bandit_current_minutes(), reads );
+        } ) !=
+        bandit_live_world::local_handoff_commit_result::applied ) {
             first->setpos( first_prior, false );
             second->setpos( second_prior, false );
             continue;
@@ -12206,7 +14224,7 @@ void complete_live_bandit_ingress_boundary_steps(
     }
 }
 
-std::set<character_id> complete_live_bandit_elevated_recovery_boundary_steps(
+std::set<character_id> complete_live_bandit_outward_boundary_steps(
     const std::map<character_id, live_bandit_pair_boundary_step> &steps )
 {
     std::set<character_id> crossed;
@@ -12214,7 +14232,9 @@ std::set<character_id> complete_live_bandit_elevated_recovery_boundary_steps(
     for( bandit_live_world::site_record &site :
          overmap_buffer.global_state.bandit_live_world.sites ) {
         const auto &outing = site.active_outing;
-        if( !bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) ||
+        const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        if( ( !bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) &&
+              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ||
             outing.member_ids.size() != 2 ) {
             continue;
         }
@@ -12224,6 +14244,8 @@ std::set<character_id> complete_live_bandit_elevated_recovery_boundary_steps(
         npc *second = g->find_npc( outing.member_ids[1] );
         if( a == steps.end() || b == steps.end() || first == nullptr || second == nullptr ||
             first->is_dead() || second->is_dead() ||
+            ( frontier && ( first->in_sleep_state() || second->in_sleep_state() ||
+                            first->has_active_faction_alarm() || second->has_active_faction_alarm() ) ) ||
             first->get_attitude() == NPCATT_FLEE || second->get_attitude() == NPCATT_FLEE ||
             first->get_attitude() == NPCATT_FLEE_TEMP ||
             second->get_attitude() == NPCATT_FLEE_TEMP ||
@@ -12259,12 +14281,22 @@ std::set<character_id> complete_live_bandit_elevated_recovery_boundary_steps(
             }
             continue;
         }
-        const auto unload = [&here]( npc &active, npc &stored,
+        const auto unload = [&here, frontier]( npc &active, npc &stored,
         const live_bandit_pair_boundary_step & step ) {
             if( active.in_vehicle ) {
                 here.unboard_vehicle( active.pos_bub( here ) );
             }
             active.setpos( step.exit, false );
+            if( frontier ) {
+                // The physical one-tile crossing consumed the route up to this OMT.
+                // Retaining the departure OMT at the back sends the pair into the
+                // loaded map again before its outer visit can progress.
+                const auto reached = std::find( active.omt_path.begin(), active.omt_path.end(),
+                                               active.pos_abs_omt() );
+                if( reached != active.omt_path.end() ) {
+                    active.omt_path.erase( reached + 1, active.omt_path.end() );
+                }
+            }
             active.on_unload();
             if( &stored != &active ) {
                 stored.spawn_at_precise( step.exit );
@@ -12326,9 +14358,11 @@ void record_live_bandit_persistent_elevated_watch_arrivals()
         }
         const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
         if( reads.size() != 2 || !cursor ||
-            bandit_live_world::commit_local_pair_route_arrival(
-                site, *cursor, live_bandit_current_minutes(), reads ) !=
-            bandit_live_world::local_handoff_commit_result::applied ) {
+        commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::commit_scout_pair_watch_arrival( next, *cursor,
+                live_bandit_current_minutes(), reads );
+        } ) !=
+        bandit_live_world::local_handoff_commit_result::applied ) {
             continue;
         }
         site.active_outing.actor_route_waypoint = site.active_outing.waypoint_index;
@@ -12348,6 +14382,8 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
             !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ) {
             continue;
         }
+        auto homeward_event = make_live_bandit_homeward_event(
+                                  site, "scout_homeward_dematerialization", "selected_boundary" );
         std::vector<std::pair<npc *, live_bandit_pair_boundary_step>> crossings;
         std::string collection_reason = "complete";
         for( const character_id member_id : outing.member_ids ) {
@@ -12373,7 +14409,22 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 crossings.clear();
                 break;
             }
+            if( !live_bandit_member_can_take_homeward_step( *member ) ) {
+                collection_reason = "member_incapacitated";
+                crossings.clear();
+                break;
+            }
             crossings.emplace_back( member, step->second );
+        }
+        if( homeward_event ) {
+            for( auto &member : homeward_event->scout_homeward->members ) {
+                const auto step = steps.find( character_id( member.npc_id ) );
+                member.boundary_selected = step != steps.end();
+                if( step != steps.end() ) {
+                    member.boundary_departure_ms = step->second.departure.to_string();
+                    member.transfer_position_ms = step->second.exit.to_string();
+                }
+            }
         }
         if( crossings.empty() || crossings.size() + outing.casualty_ids.size() !=
             outing.member_ids.size() ) {
@@ -12387,12 +14438,21 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                                        << " members=" << outing.member_ids.size()
                                        << " reason=" << ( crossings.empty() ? collection_reason :
                                                "incomplete_pair" ) << '\n';
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                  crossings.empty() ? collection_reason : "incomplete_pair", false );
+            continue;
+        }
+        if( !persist_live_bandit_local_projection_leases( site, &site, false ) ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                  "actor projection copies do not match the current local cursor", false );
             continue;
         }
         const tripoint_abs_omt boundary_omt = project_to<coords::omt>( crossings.front().second.exit );
         const int current_minutes = live_bandit_current_minutes();
         std::set<character_id> site_committed_member_ids;
         if( outing.kind == bandit_live_world::outing_kind::scout_sortie ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "legacy generic owner transaction selected", false );
             // A legacy scout owns the same physical exit, but has no structural
             // local-handoff snapshot.  Cross the selected adjacent boundary for
             // the complete pair, then use its existing generic owner transaction.
@@ -12430,13 +14490,18 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
             continue;
         }
         if( site_contains_omt( site, boundary_omt ) ) {
+            record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                 "physical camp-return recorder selected", false );
             for( const std::pair<npc *, live_bandit_pair_boundary_step> &crossing : crossings ) {
                 npc *member = crossing.first;
                 member->setpos( crossing.second.exit, false );
                 const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
                     bandit_live_world::current_external_simulation_cursor( site );
-                if( !cursor || !bandit_live_world::record_structural_member_physical_return(
-                        site, *cursor, member->getID(), boundary_omt, current_minutes ) ) {
+                if( !cursor ||
+                !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::record_structural_member_physical_return( next, *cursor, member->getID(),
+                        boundary_omt, current_minutes );
+                } ) ) {
                     continue;
                 }
                 // The active NPC and the overmap record are separate instances.
@@ -12467,6 +14532,8 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                                            << " activity=" << outing.activity_id
                                            << " generation=" << outing.generation
                                            << " reason=missing_cursor state=unchanged\n";
+                record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
+                                                     "missing_cursor", false );
                 continue;
             }
             std::vector<bandit_live_world::local_dematerialization_member_read> reads;
@@ -12504,6 +14571,9 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                                            << " reason=dematerialization_plan state=unchanged"
                                            << " detail=" << ( plan.notes.empty() ? "no-diagnostic" :
                                                    plan.notes.front() ) << '\n';
+                record_live_bandit_homeward_transfer( homeward_event, site, "rejected",
+                                                     plan.notes.empty() ? "invalid dematerialization plan returned without a note" :
+                                                     plan.notes.front(), true, false );
                 continue;
             }
             const auto find_backup = [&backups]( const character_id member_id ) {
@@ -12532,7 +14602,7 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 member.controlling_vehicle = false;
             };
             const auto quiesce_member = [&find_backup, &find_crossing, &backups, &crossings,
-                                         &clear_vehicle_state](
+                                                       &clear_vehicle_state, &site](
             const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
                 if( snapshot.dead ) {
                     return true;
@@ -12555,6 +14625,11 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                     if( persistent_member ) {
                         overmap_buffer.insert_npc( persistent_member );
                     }
+                    return false;
+                }
+                if( !live_bandit_projection_copies_match( *persistent_member,
+                        live_bandit_projection_lease( site.site_id, site.active_outing ) ) ) {
+                    overmap_buffer.insert_npc( persistent_member );
                     return false;
                 }
                 clear_vehicle_state( *crossing->first );
@@ -12608,19 +14683,7 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                     return;
                 }
                 persistent_member->spawn_at_precise( backup->position );
-                persistent_member->goal = backup->goal;
-                persistent_member->omt_path = backup->omt_path;
-                persistent_member->mission = backup->mission;
-                persistent_member->previous_mission = backup->previous_mission;
-                persistent_member->goto_to_this_pos = backup->ordered_position;
-                if( backup->ai_guard_position ) {
-                    persistent_member->set_ai_guard_pos( *backup->ai_guard_position );
-                } else {
-                    persistent_member->clear_ai_guard_pos();
-                }
-                persistent_member->path = backup->local_path;
-                sync_bandit_live_world_projection_lease_copies(
-                    *persistent_member, backup->projection_lease );
+                restore_live_bandit_local_projection( *backup );
                 overmap_buffer.insert_npc( persistent_member );
                 if( get_map().inbounds( backup->position ) && !persistent_member->is_active() ) {
                     g->load_npcs();
@@ -12629,6 +14692,12 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
             const bandit_live_world::local_handoff_commit_result commit_result =
                 bandit_live_world::commit_local_pair_dematerialization(
                     site, plan, quiesce_member, rollback_member );
+            record_live_bandit_homeward_transfer( homeward_event, site,
+                                                 commit_result == bandit_live_world::local_handoff_commit_result::applied ? "committed" :
+                                                 live_bandit_homeward_commit_result( commit_result ),
+                                                 "commit_local_pair_dematerialization returned " +
+                                                 std::string( live_bandit_homeward_commit_result( commit_result ) ), true, true,
+                                                 live_bandit_homeward_commit_result( commit_result ) );
             if( commit_result != bandit_live_world::local_handoff_commit_result::applied ) {
                 DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local homeward boundary rejected"
                                            << " site=" << site.site_id
@@ -12755,6 +14824,7 @@ void monmove()
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders;
     std::set<character_id> pair_homeward_travel_ids;
     std::map<character_id, character_id> pair_homeward_partner_ids;
+    std::map<character_id, std::string> pair_homeward_site_ids;
     std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
     std::map<character_id, live_bandit_pair_boundary_step> pair_ingress_boundary_steps;
     std::map<character_id, live_bandit_pair_boundary_step> pair_standard_boundary_steps;
@@ -12787,9 +14857,7 @@ void monmove()
             const int visible_defender_observations =
                 bandit_live_world::record_live_covert_visible_defenders();
             if( visible_defender_observations > 0 ) {
-                DebugLog( D_INFO, DC_ALL )
-                        << "bandit_live_world visible_defender_observations="
-                        << visible_defender_observations << '\n';
+                pair_assembly_orders = maintain_live_bandit_local_pair_cohesion();
             }
             const int vehicle_wealth_observations =
                 bandit_live_world::record_live_covert_vehicle_wealth_cues();
@@ -12846,6 +14914,9 @@ void monmove()
                                                    site.active_outing.member_ids[1] );
                 pair_homeward_partner_ids.emplace( site.active_outing.member_ids[1],
                                                    site.active_outing.member_ids[0] );
+                for( const character_id id : site.active_outing.member_ids ) {
+                    pair_homeward_site_ids.emplace( id, site.site_id );
+                }
             }
             for( const character_id member_id : site.active_outing.member_ids ) {
                 if( pair_homeward_travel_ids.count( member_id ) > 0 ) {
@@ -12862,6 +14933,34 @@ void monmove()
             live_bandit_single_homeward_boundary_steps( pair_homeward_destinations );
         pair_homeward_boundary_steps.insert( single_homeward_steps.begin(),
                                              single_homeward_steps.end() );
+        if( bandit_live_world_probe::transition_events_enabled() ) {
+            for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+                for( const character_id id : site.active_outing.member_ids ) {
+                    auto event = make_live_bandit_homeward_event(
+                                     site, "scout_homeward_selection", "local_npc_prepass" );
+                    if( !event ) {
+                        break;
+                    }
+                    const bool selected = pair_homeward_travel_ids.count( id ) > 0;
+                    event->actor_ids = { id.get_value() };
+                    event->outcome = selected ? "selected" : "not_selected";
+                    event->reason = selected ? "local_pair_homeward_travel_ids selected actor" :
+                                    "local_pair_homeward_travel_ids did not select actor";
+                    auto member = read_live_bandit_homeward_actor( id );
+                    member.selected = selected;
+                    member.assembly_selected = pair_assembly_orders.count( id ) > 0;
+                    member.ingress_selected = pair_ingress_travel_destinations.count( id ) > 0;
+                    const auto step = pair_homeward_boundary_steps.find( id );
+                    member.boundary_selected = step != pair_homeward_boundary_steps.end();
+                    if( step != pair_homeward_boundary_steps.end() ) {
+                        member.boundary_departure_ms = step->second.departure.to_string();
+                        member.transfer_position_ms = step->second.exit.to_string();
+                    }
+                    event->scout_homeward->members = { std::move( member ) };
+                    bandit_live_world_probe::record_scout_homeward_observation( std::move( *event ) );
+                }
+            }
+        }
         for( const std::string &discriminator : homeward_boundary_discriminators ) {
             DebugLog( D_INFO, DC_ALL )
                     << "bandit_live_world homeward_boundary_pair_discriminator "
@@ -12907,9 +15006,14 @@ void monmove()
         if( !guy.has_effect( effect_npc_suspend ) ) {
             guy.process_turn();
         }
+        guy.reconcile_alarm_response();
+        bool entered_action_loop = false;
         while( !guy.is_dead() && ( !guy.in_sleep_state() ||
                                    guy.activity.id() == ACT_OPERATION || guy.activity.id() == ACT_MIGRATION_CANCEL ) &&
                guy.get_moves() > 0 && turns < 10 ) {
+            entered_action_loop = true;
+            live_bandit_homeward_motor_trace homeward_trace(
+                guy, pair_homeward_travel_ids.count( guy.getID() ) > 0 );
             const int moves = guy.get_moves();
             const bool has_destination = guy.has_destination_activity();
             const auto assembly_order = pair_assembly_orders.find( guy.getID() );
@@ -12928,10 +15032,13 @@ void monmove()
             const bool native_survival = pair_motor &&
                                         ( guy.get_attitude() == NPCATT_FLEE ||
                                           guy.get_attitude() == NPCATT_FLEE_TEMP ||
+                                          guy.has_active_faction_alarm() ||
                                           ( guy.current_target() != nullptr && guy.get_ai_danger() > 0 ) );
             if( native_survival ) {
+                homeward_trace.action( "npc_move", "native_survival branch selected" );
                 guy.move();
             } else if( assembly_order != pair_assembly_orders.end() ) {
+                homeward_trace.action( "assembly_order", "assembly order precedes homeward motor" );
                 if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
                     !m.inbounds( assembly_order->second ) ||
                     guy.pos_abs() == assembly_order->second ) {
@@ -12946,6 +15053,7 @@ void monmove()
                     }
                 }
             } else if( ingress_destination != pair_ingress_travel_destinations.end() ) {
+                homeward_trace.action( "ingress_order", "ingress order precedes homeward motor" );
                 std::optional<bandit_live_world::covert_scout_relationship_read>
                 relationship = bandit_live_world::read_active_covert_scout_member(
                                    overmap_buffer.global_state.bandit_live_world, guy.getID() );
@@ -13020,9 +15128,15 @@ void monmove()
                 const std::optional<bandit_live_world::covert_scout_relationship_read>
                 relationship = bandit_live_world::read_active_covert_scout_homeward_member(
                                    overmap_buffer.global_state.bandit_live_world, guy.getID() );
+                if( homeward_trace.read() ) {
+                    homeward_trace.read()->relationship_present = relationship.has_value();
+                }
                 const auto partner_id = pair_homeward_partner_ids.find( guy.getID() );
                 npc *partner = partner_id == pair_homeward_partner_ids.end() ? nullptr :
                                g->find_npc( partner_id->second );
+                const auto homeward_site_id = pair_homeward_site_ids.find( guy.getID() );
+                const auto *homeward_site = homeward_site_id == pair_homeward_site_ids.end() ? nullptr :
+                                            overmap_buffer.global_state.bandit_live_world.find_site( homeward_site_id->second );
                 const auto step_preserves_pair_cohesion = [&m, &guy, partner](
                 const tripoint_bub_ms & step ) {
                     if( partner == nullptr ) {
@@ -13030,9 +15144,8 @@ void monmove()
                     }
                     const int current_distance = rl_dist( guy.pos_abs(), partner->pos_abs() );
                     const int next_distance = rl_dist( m.get_abs( step ), partner->pos_abs() );
-                    // Keep an assembled pair inside the hard radius.  If an earlier escape or
-                    // local-map transition separated the pair, allow only steps that reduce the
-                    // gap so the homeward motor can recover instead of deadlocking forever.
+                    // Ordinary homeward travel keeps the pair inside the hard radius.
+                    // The complete reunion route below handles an earlier separation.
                     return next_distance <= bandit_live_world::local_pair_cohesion_radius() ||
                            next_distance < current_distance;
                 };
@@ -13149,28 +15262,83 @@ void monmove()
                 if( !relationship ) {
                     // Once committed contact ends the covert relationship, ordinary combat owns
                     // the actor again.
+                    homeward_trace.action( "npc_move", "homeward relationship read returned no relationship" );
                     guy.move();
                 } else if( guy.has_flag( json_flag_CANNOT_MOVE ) ) {
+                    homeward_trace.action( "move_pause", "CANNOT_MOVE flag", "blocked" );
                     if( immediate_field_hazard && relationship->phase ==
                         bandit_live_world::scout_phase::burned_withdrawal ) {
                         bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                     }
                     if( adjacent_non_camp_threat &&
                         !guy.has_flag( json_flag_CANNOT_ATTACK ) ) {
+                        homeward_trace.action( "melee_attack", "adjacent non-camp threat while movement prohibited" );
                         guy.melee_attack( *threat, true );
                     } else {
                         guy.move_pause();
                     }
                 } else if( field_escape ) {
+                    homeward_trace.action( "move_to", "immediate field hazard selected a clear escape" );
                     guy.move_to( *field_escape, true );
                 } else if( forced_field_escape ) {
+                    homeward_trace.action( "move_to", "immediate field hazard selected a forced escape" );
                     guy.move_to( *forced_field_escape, true, nullptr, true );
                 } else if( adjacent_non_camp_threat &&
                            !guy.has_flag( json_flag_CANNOT_ATTACK ) ) {
                     // Defense follows immediate field survival but still precedes squad routing.
+                    homeward_trace.action( "melee_attack", "adjacent non-camp threat selected" );
                     guy.melee_attack( *threat, true );
+                } else if( partner != nullptr && !partner->is_dead() &&
+                           ( rl_dist( guy.pos_abs(), partner->pos_abs() ) >
+                             bandit_live_world::local_pair_cohesion_radius() ||
+                             ( homeward_site != nullptr &&
+                               homeward_site->active_outing.local_handoff.cohesion_abort_return &&
+                               guy.pos_abs_omt() != partner->pos_abs_omt() ) ) ) {
+                    const auto reunion = homeward_site ? live_bandit_homeward_reunion_path(
+                                             guy, *partner, *homeward_site, m ) : live_bandit_homeward_reunion_route{};
+                    if( reunion.mover != guy.getID() ) {
+                        guy.path.clear();
+                        homeward_trace.action( "move_pause", reunion.path.empty() ?
+                                               "safe homeward reunion route unavailable" :
+                                               "holding homeward rendezvous anchor", reunion.path.empty() ? "blocked" : "waiting" );
+                        guy.move_pause();
+                    } else {
+                        guy.path = reunion.path;
+                        if( auto *read = homeward_trace.read() ) {
+                            read->route_found = true;
+                            read->route_safe = true;
+                            read->next_step_cohesive = step_preserves_pair_cohesion( guy.path.front() );
+                            read->next_step_ms = m.get_abs( guy.path.front() ).to_string();
+                            read->next_step_passable = m.passable_through( guy.path.front() );
+                            read->next_step_occupied = get_creature_tracker().creature_at( guy.path.front() ) != nullptr;
+                            read->next_step_dangerous = guy.sees_dangerous_field( guy.path.front() );
+                        }
+                        homeward_trace.action( "move_to_next", "safe homeward reunion route" );
+                        guy.move_to_next();
+                        if( rl_dist( guy.pos_abs(), partner->pos_abs() ) <=
+                            bandit_live_world::local_pair_cohesion_radius() &&
+                            guy.pos_abs_omt() == partner->pos_abs_omt() ) {
+                            // Reunion may cross an OMT outside the actor's old homeward path.
+                            // Rebind both routes from their real positions through the existing
+                            // covert planner, without changing ownership or crediting a return.
+                            // The relationship retains a required burned egress until
+                            // its physical completion authorizes travel to camp.
+                            const tripoint_abs_omt destination = relationship->egress_omt;
+                            auto member_route = live_bandit_member_route_to( guy, *homeward_site, destination );
+                            auto partner_route = live_bandit_member_route_to( *partner, *homeward_site, destination );
+                            if( !member_route.empty() && !partner_route.empty() ) {
+                                guy.goal = destination;
+                                partner->goal = destination;
+                                guy.omt_path = std::move( member_route );
+                                partner->omt_path = std::move( partner_route );
+                                guy.path.clear();
+                                partner->path.clear();
+                            }
+                        }
+                    }
                 } else if( homeward_boundary != pair_homeward_boundary_steps.end() ) {
                     if( guy.pos_abs() == homeward_boundary->second.departure ) {
+                        homeward_trace.action( "move_pause", "at selected boundary departure", "blocked" );
                         guy.move_pause();
                     } else {
                         const auto avoid_nonreentry =
@@ -13212,6 +15380,17 @@ void monmove()
                                                       guy.has_effect( effect_stunned ) ||
                                                       guy.has_effect( effect_psi_stunned ) ||
                                                       guy.has_effect( effect_narcosis );
+                        if( auto *read = homeward_trace.read() ) {
+                            read->route_found = route_found;
+                            read->route_safe = route_safe;
+                            read->next_step_cohesive = next_step_cohesive;
+                            if( next_step ) {
+                                read->next_step_ms = m.get_abs( *next_step ).to_string();
+                                read->next_step_passable = next_step_passable;
+                                read->next_step_occupied = next_occupant != nullptr;
+                                read->next_step_dangerous = next_step_dangerous;
+                            }
+                        }
                         const bool emit_route_result = log_homeward_route_result &&
                                 logged_homeward_route_result_ids.insert( guy.getID() ).second;
                         const bool classify_rejection = emit_route_result && !route_found &&
@@ -13245,10 +15424,13 @@ void monmove()
                             rejection_classifier = classifier.str();
                         }
                         if( route_safe && next_step_cohesive ) {
+                            homeward_trace.action( "move_to_next", "safe boundary route and cohesive next step" );
                             guy.move_to_next();
                         } else if( route_safe ) {
+                            homeward_trace.action( "move_pause", "pair_cohesion", "blocked" );
                             guy.move_pause();
                         } else {
+                            homeward_trace.action( "omt_fallback", "boundary route did not pass safety preflight" );
                             guy.path.clear();
                             live_bandit_move_to_omt_destination_avoiding(
                                 guy, local_path_respects_nonreentry, avoid_nonreentry );
@@ -13286,6 +15468,7 @@ void monmove()
                     // unavailable next local route remains completely inert.
                     if( !guy.is_travelling() || !guy.has_omt_destination() ||
                         guy.omt_path.empty() ) {
+                        homeward_trace.action( "none", "homeward route binding gate did not pass", "blocked" );
                         break;
                     }
                     const tripoint_abs_omt current_omt = guy.pos_abs_omt();
@@ -13294,6 +15477,7 @@ void monmove()
                         ++next_omt;
                     }
                     if( next_omt == guy.omt_path.rend() ) {
+                        homeward_trace.action( "none", "no remaining OMT waypoint", "blocked" );
                         break;
                     }
                     const tripoint_bub_ms next_center = m.get_bub(
@@ -13330,7 +15514,21 @@ void monmove()
                                                       ( allow_ordinary_homeward_local_reentry ||
                                                         local_path_respects_nonreentry(
                                                             preflight_path ) );
+                    if( auto *read = homeward_trace.read() ) {
+                        read->next_center_in_bounds = m.inbounds( next_center );
+                        read->ordinary_local_reentry = allow_ordinary_homeward_local_reentry;
+                        read->route_found = !preflight_path.empty();
+                        read->route_safe = preflight_route_safe;
+                        if( !preflight_path.empty() ) {
+                            const auto &next = preflight_path.front();
+                            read->next_step_ms = m.get_abs( next ).to_string();
+                            read->next_step_passable = m.passable_through( next );
+                            read->next_step_occupied = get_creature_tracker().creature_at( next ) != nullptr;
+                            read->next_step_dangerous = guy.sees_dangerous_field( next );
+                        }
+                    }
                     if( !preflight_route_safe ) {
+                        homeward_trace.action( "none", "local_route_unavailable", "blocked" );
                         const bool emit_local_rejection = log_homeward_route_result &&
                                                           logged_homeward_route_result_ids.insert(
                                                               guy.getID() ).second;
@@ -13368,7 +15566,12 @@ void monmove()
                         }
                         break;
                     }
-                    if( !step_preserves_pair_cohesion( preflight_path.front() ) ) {
+                    const bool next_step_cohesive = step_preserves_pair_cohesion( preflight_path.front() );
+                    if( homeward_trace.read() ) {
+                        homeward_trace.read()->next_step_cohesive = next_step_cohesive;
+                    }
+                    if( !next_step_cohesive ) {
+                        homeward_trace.action( "move_pause", "pair_cohesion", "blocked" );
                         DebugLog( D_INFO, DC_ALL )
                                 << "bandit_live_world loaded homeward local movement deferred"
                                 << " member=" << guy.getID().get_value()
@@ -13387,6 +15590,7 @@ void monmove()
                         guy.omt_path.pop_back();
                     }
                     guy.path = std::move( preflight_path );
+                    homeward_trace.action( "move_to_next", "safe local homeward route and cohesive next step" );
                     guy.move_to_next();
                 } else if( guy.is_travelling() && guy.has_omt_destination() &&
                            !guy.has_flag( json_flag_CANNOT_MOVE ) ) {
@@ -13397,6 +15601,8 @@ void monmove()
                     const bool local_route_failed =
                         !live_bandit_move_to_omt_destination_avoiding(
                             guy, local_path_respects_nonreentry, avoid_nonreentry );
+                    homeward_trace.action( "omt_fallback", local_route_failed ?
+                                           "homeward OMT fallback returned false" : "homeward OMT fallback returned true" );
                     if( local_route_failed ) {
                         if( relationship->phase ==
                             bandit_live_world::scout_phase::burned_withdrawal ) {
@@ -13412,20 +15618,24 @@ void monmove()
                     if( m.inbounds( local_egress ) &&
                         live_bandit_update_local_path( guy, local_egress ) &&
                         local_path_respects_nonreentry( guy.path ) ) {
+                        homeward_trace.action( "move_to_next", "burned egress local route accepted" );
                         guy.move_to_next();
                     } else {
                         guy.path.clear();
                         const std::optional<tripoint_bub_ms> survival_step =
                             choose_noninward_step( false );
                         if( survival_step ) {
+                            homeward_trace.action( "move_to", "burned egress selected a survival step" );
                             guy.move_to( *survival_step, true, nullptr, true );
                             bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                         } else {
+                            homeward_trace.action( "move_pause", "burned egress has no survival step", "blocked" );
                             bandit_live_world::fail_live_covert_scout_burned_egress( guy.getID() );
                             guy.move_pause();
                         }
                     }
                 } else {
+                    homeward_trace.action( "move_pause", "homeward branch has no movement order", "blocked" );
                     guy.move_pause();
                 }
             } else {
@@ -13446,6 +15656,11 @@ void monmove()
                           guy.get_name(), guy.activity.id().str() );
             }
         }
+        if( !entered_action_loop ) {
+            live_bandit_homeward_motor_trace homeward_trace(
+                guy, pair_homeward_travel_ids.count( guy.getID() ) > 0 );
+            homeward_trace.action( "none", "NPC action loop not entered", "not_invoked" );
+        }
 
         // If we spun too long trying to decide what to do (without spending moves),
         // Invoke cognitive suspension to prevent an infinite loop.
@@ -13459,8 +15674,9 @@ void monmove()
         }
     }
     complete_live_bandit_ingress_boundary_steps( pair_standard_boundary_steps );
-    complete_live_bandit_elevated_recovery_boundary_steps(
-        pair_recovery_boundary_steps );
+    pair_recovery_boundary_steps.insert( pair_standard_boundary_steps.begin(),
+                                         pair_standard_boundary_steps.end() );
+    complete_live_bandit_outward_boundary_steps( pair_recovery_boundary_steps );
     g->cleanup_dead();
     // A homeward pair whose camp OMT is still inside the loaded bubble has no boundary
     // crossing to consume.  Once both exact members are physically home, commit their
@@ -13480,12 +15696,7 @@ bandit_live_world::camp_signal_observation_result record_live_light_staffed_obse
     bandit_live_world::camp_signal_observation_result result;
     live_light::record_staffed_observer( calendar::turn,
     [&result, &bandit_state, &live_sounds]( const std::vector<live_bandit_signal_observation> &samples ) {
-        result = bandit_live_world::record_staffed_camp_signal_observations(
-                     bandit_state, live_bandit_current_minutes(),
-        [&samples, &live_sounds]( const bandit_live_world::site_record &site,
-                                  const bandit_live_world::camp_signal_observer_request &request ) {
-            return live_bandit_staffed_camp_signal_reads( samples, live_sounds, site, request );
-        } );
+        result = record_live_bandit_staffed_camp_signals( bandit_state, samples, live_sounds );
     } );
     return result;
 }
@@ -13565,14 +15776,14 @@ void overmap_npc_move()
     if( dispatch_cadence_due || structural_cadence_due ) {
         refresh_live_bandit_member_readiness( bandit_state );
     }
-    // Idle staffed camps receive the same bounded signal packet on the existing
+    // Home rosters receive the same bounded signal packet on the existing
     // five-minute cadence.  This is discovery and memory only: the normal
     // structural/drive scheduler remains the sole dispatch decision owner.
     // Registration and observation are independent ownership boundaries.  A cadence may
     // discover an unrelated abstract source while an already staffed site is eligible for
     // its production read; suppressing the observer here made that valid callback depend on
-    // whether registration happened to run first.  Newly created/empty sites remain ineligible
-    // inside record_staffed_camp_signal_observations through their roster/observer checks.
+    // whether registration happened to run first. Counted abstract home slots resolve
+    // through the tracked-spawn owner; invalid and empty rosters remain excluded.
     if( signal_cadence_due ) {
         const bandit_live_world::camp_signal_observation_result camp_signals =
             record_live_light_staffed_observer_at_cadence(
@@ -13584,6 +15795,9 @@ void overmap_npc_move()
                                    << " created=" << camp_signals.leads_created
                                    << " refreshed=" << camp_signals.leads_refreshed
                                    << " unchanged=" << camp_signals.unchanged_reads << '\n';
+    } else if( !live_sounds.empty() ) {
+        // A consumed one-shot sound cannot wait for the next optical cadence.
+        record_live_bandit_staffed_camp_signals( bandit_state, {}, live_sounds );
     }
     // The loaded player scene owns observation.  The camp may adopt that durable
     // opportunity on the signal cadence, but structural maintenance remains on
@@ -13630,6 +15844,10 @@ void overmap_npc_move()
                                    << " local_recorded=" << local_recorded.sites_recorded
                                    << " local_facts=" << local_recorded.facts_recorded << '\n';
     }
+    // Scheduled signals and one-shot sounds read their own packet before visual evidence
+    // consumes this minute's abstract cursor. Typed batches deduplicate independently;
+    // movement and owner transitions retain their single-advance clock.
+    record_live_bandit_stationary_watch_signals( bandit_state, live_signals, signal_cadence_due );
     advance_live_bandit_hostile_rallies();
     advance_live_bandit_hostile_approaches();
     // The approach owner can commit contact in this overmap pass, after the
@@ -13654,8 +15872,9 @@ void overmap_npc_move()
             !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ||
             outing.shared_route.empty() || outing.waypoint_index < 0 ||
             outing.waypoint_index >= static_cast<int>( outing.shared_route.size() ) ||
-            outing.local_handoff.route_position ==
-            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ) {
+            ( outing.local_handoff.route_position ==
+              outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
+              !bandit_live_world::structural_outing_uses_frontier_route( outing ) ) ) {
             continue;
         }
         std::vector<tripoint_abs_ms> entry_positions =
@@ -13736,6 +15955,9 @@ void overmap_npc_move()
     std::set<character_id> assembly_claimed_members;
     bool assembly_ownership_preflight_failed = false;
     for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+        if( site.active_outing.local_projection_reconciliation_rejected ) {
+            continue;
+        }
         if( !bandit_live_world::claim_local_pair_site_ownership(
                 site, assembly_claimed_members ) ) {
             assembly_ownership_preflight_failed = true;
@@ -13744,15 +15966,12 @@ void overmap_npc_move()
     }
     if( !assembly_ownership_preflight_failed ) {
         for( const bandit_live_world::site_record &site : bandit_state.sites ) {
-            const auto &outing = site.active_outing;
-            if( bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) ||
-                ( outing.target_omt.z() > site.anchor.z() && outing.schema_version >= 10 &&
-                  outing.phase == bandit_live_world::scout_phase::observing &&
-                  outing.waypoint_index == 1 && outing.casualty_ids.empty() &&
-                  outing.assessment.observation_started_minutes < 0 ) ) {
-                // The old staging snapshot does not own an outward roof-watch leg.
+            if( bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) ) {
+                // Compatibility migration for the old schema-9 saved watch.
                 continue;
             }
+            // The common order producer releases assembled forward pairs at any
+            // source height and retains every new transfer until assembly completes.
             for( const auto &order : bandit_live_world::local_pair_assembly_orders(
                      site.active_outing ) ) {
                 if( !local_pair_assembly_orders.emplace( order ).second ) {
@@ -13819,6 +16038,11 @@ void overmap_npc_move()
             const auto member = overmap_buffer.find_npc( snapshot.npc_id );
             if( !member || member->is_active() || member->is_dead() ||
                 member->has_flag( json_flag_CANNOT_MOVE ) ||
+                ( bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+                  ( !live_bandit_member_can_take_homeward_step( *member ) ||
+                    member->get_attitude() == NPCATT_FLEE ||
+                    member->get_attitude() == NPCATT_FLEE_TEMP ||
+                    member->has_active_faction_alarm() ) ) ||
                 member->pos_abs_omt() != outing.local_handoff.route_position ) {
                 complete_party = false;
                 break;
@@ -13860,7 +16084,12 @@ void overmap_npc_move()
             member->guard_pos.reset();
             member->clear_ai_guard_pos();
             member->set_mission( NPC_MISSION_TRAVELLING );
+            const tripoint_rel_ms offset = member->pos_abs() -
+                                           project_to<coords::ms>( member->pos_abs_omt() );
             member->travel_overmap( *next );
+            if( bandit_live_world::structural_outing_uses_frontier_route( outing ) ) {
+                member->spawn_at_precise( project_to<coords::ms>( *next ) + offset );
+            }
         }
         std::vector<bandit_live_world::local_abstract_resume_progress_read> reads;
         for( const auto &snapshot : outing.local_handoff.members ) {
@@ -13910,24 +16139,30 @@ void overmap_npc_move()
             first_destination->second != second_destination->second ) {
             continue;
         }
-        if( outing.target_omt.z() > site.anchor.z() && outing.schema_version >= 10 &&
+        const bool frontier_forward = bandit_live_world::structural_outing_uses_frontier_route( outing );
+        if( ( frontier_forward ||
+              ( outing.target_omt.z() > site.anchor.z() && outing.schema_version >= 10 ) ) &&
             outing.phase == bandit_live_world::scout_phase::observing &&
             outing.waypoint_index == 1 && outing.casualty_ids.empty() &&
             outing.assessment.observation_started_minutes < 0 &&
-            first_destination->second == outing.selected_watch_omt ) {
+            first_destination->second == ( frontier_forward ? outing.target_omt : outing.selected_watch_omt ) ) {
             // Reaching the physical approach consumes the previous OMT goal
             // and sets an ordinary guard mission.  Bind both watch routes
             // together before the ingress preflight checks their missions.
             npc *first = g->find_npc( outing.member_ids[0] );
             npc *second = g->find_npc( outing.member_ids[1] );
-            const auto ready = [&outing]( const npc *member ) {
-                return member != nullptr && !member->is_active() && !member->is_dead() &&
+            const auto ready = [&outing, frontier_forward]( const npc *member ) {
+                return member != nullptr && ( frontier_forward || !member->is_active() ) &&
+                       !member->is_dead() && !member->in_sleep_state() &&
+                       ( !frontier_forward || ( live_bandit_member_can_take_homeward_step( *member ) &&
+                                                !member->has_active_faction_alarm() ) ) &&
                        !member->has_flag( json_flag_CANNOT_MOVE ) &&
                        member->get_attitude() != NPCATT_FLEE &&
                        member->get_attitude() != NPCATT_FLEE_TEMP &&
                        member->pos_abs_omt() == outing.shared_route[1];
             };
-            if( ready( first ) && ready( second ) ) {
+            if( ready( first ) && ready( second ) &&
+                ( !frontier_forward || persist_live_bandit_local_projection_leases( site, &site, false ) ) ) {
                 const std::vector<tripoint_abs_omt> first_route =
                     live_bandit_member_route_to( *first, site, first_destination->second );
                 const std::vector<tripoint_abs_omt> second_route =
@@ -14003,24 +16238,43 @@ void overmap_npc_move()
         const bool locally_owned_travel_member =
             local_pair_homeward_member_ids.count( npc_to_add->getID() ) > 0 ||
             forward_destination != local_pair_forward_destinations.end();
-        if( locally_owned_travel_member && npc_to_add->is_active() ) {
-            if( local_pair_homeward_member_ids.count( npc_to_add->getID() ) > 0 ) {
-                const bandit_live_world::site_record *homeward_owner = nullptr;
-                for( const bandit_live_world::site_record &site : bandit_state.sites ) {
-                    if( !site.retired_empty_site &&
-                        ( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie ||
-                          site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie ) &&
-                        site.active_outing.owner == bandit_live_world::simulation_owner::local &&
-                        bandit_live_world::scout_phase_requires_homeward_only(
-                            site.active_outing.phase ) &&
-                        std::find( site.active_outing.member_ids.begin(),
-                                   site.active_outing.member_ids.end(),
-                                   npc_to_add->getID() ) != site.active_outing.member_ids.end() ) {
-                        homeward_owner = &site;
-                        break;
-                    }
+        const bandit_live_world::site_record *homeward_owner = nullptr;
+        if( local_pair_homeward_member_ids.count( npc_to_add->getID() ) > 0 ) {
+            for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+                if( !site.retired_empty_site &&
+                    ( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie ||
+                      site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie ) &&
+                    site.active_outing.owner == bandit_live_world::simulation_owner::local &&
+                    bandit_live_world::scout_phase_requires_homeward_only(
+                        site.active_outing.phase ) &&
+                    std::find( site.active_outing.member_ids.begin(),
+                               site.active_outing.member_ids.end(),
+                               npc_to_add->getID() ) != site.active_outing.member_ids.end() ) {
+                    homeward_owner = &site;
+                    break;
                 }
+            }
+        }
+        const bool unloaded_structural_homeward = homeward_owner != nullptr &&
+                homeward_owner->active_outing.kind == bandit_live_world::outing_kind::structural_sortie;
+        if( locally_owned_travel_member &&
+            ( npc_to_add->is_active() || unloaded_structural_homeward ) ) {
+            if( local_pair_homeward_member_ids.count( npc_to_add->getID() ) > 0 ) {
                 if( homeward_owner != nullptr ) {
+                    // The same local operation owns unloaded survivors too.  A
+                    // destination-less inactive member cannot enter the travel pass
+                    // until this owner supplies a real route from its actual position.
+                    // Validate the complete copy set before assigning either member;
+                    // forced incapacity and individual escape still stop unloaded travel.
+                    if( !npc_to_add->is_active() &&
+                        ( !persist_live_bandit_local_projection_leases(
+                              *homeward_owner, homeward_owner, false ) ||
+                          npc_to_add->is_dead() || npc_to_add->in_sleep_state() ||
+                          npc_to_add->has_flag( json_flag_CANNOT_MOVE ) ||
+                          npc_to_add->get_attitude() == NPCATT_FLEE ||
+                          npc_to_add->get_attitude() == NPCATT_FLEE_TEMP ) ) {
+                        continue;
+                    }
                     const bool was_routing_home = live_bandit_member_routing_home(
                                                       *npc_to_add, *homeward_owner );
                     const bool route_assigned = live_bandit_route_member_home(
@@ -14035,6 +16289,9 @@ void overmap_npc_move()
                                 << " route_assigned=" << ( route_assigned ? "yes" : "no" )
                                 << " goal=" << npc_to_add->goal.to_string()
                                 << " omt_path=" << npc_to_add->omt_path.size() << '\n';
+                    }
+                    if( !npc_to_add->is_active() && !route_assigned ) {
+                        continue;
                     }
                 }
             }
@@ -14097,9 +16354,10 @@ void overmap_npc_move()
             // empty forever and prevented either the paired crossing or transactional unload.
             // Keep the reload request, but do not hide an out-of-bounds member from that owner.
             if( get_map().inbounds( npc_to_add->pos_abs() ) ) {
+                local_pair_needs_reload |= !npc_to_add->is_active();
                 continue;
             }
-            local_pair_needs_reload = true;
+            local_pair_needs_reload |= npc_to_add->is_active();
         }
         const bool reached_owned_destination =
             ( local_pair_homeward_member_ids.count( npc_to_add->getID() ) > 0 &&
@@ -14168,7 +16426,7 @@ void overmap_npc_move()
             continue;
         }
         const auto member_is_eligible = [&travelling_npcs,
-                                        &local_pair_ingress_destinations](
+                                        &local_pair_ingress_destinations, &outing](
                                             const character_id member_id ) {
             const auto member = std::find_if( travelling_npcs.begin(), travelling_npcs.end(),
             [&member_id]( const npc *candidate ) {
@@ -14181,6 +16439,11 @@ void overmap_npc_move()
             const auto destination = local_pair_ingress_destinations.find( member_id );
             return destination != local_pair_ingress_destinations.end() &&
                    candidate->is_travelling() && !candidate->has_flag( json_flag_CANNOT_MOVE ) &&
+                   ( !bandit_live_world::structural_outing_uses_frontier_route( outing ) ||
+                     ( live_bandit_member_can_take_homeward_step( *candidate ) &&
+                       candidate->get_attitude() != NPCATT_FLEE &&
+                       candidate->get_attitude() != NPCATT_FLEE_TEMP &&
+                       !candidate->has_active_faction_alarm() ) ) &&
                    candidate->has_omt_destination() && candidate->goal == destination->second &&
                    !candidate->omt_path.empty();
         };
@@ -14190,7 +16453,30 @@ void overmap_npc_move()
         }
     }
     for( npc *&elem : travelling_npcs ) {
+        const bool locally_reserved = std::any_of( bandit_state.sites.begin(), bandit_state.sites.end(),
+        [elem]( const bandit_live_world::site_record &site ) {
+            const auto &outing = site.active_outing;
+            const auto &hostile = site.active_hostile_operation;
+            return ( outing.is_active() && outing.owner == bandit_live_world::simulation_owner::local &&
+                     std::find( outing.member_ids.begin(), outing.member_ids.end(), elem->getID() ) !=
+                     outing.member_ids.end() ) ||
+                   ( hostile.is_active() &&
+                     std::find( hostile.reservation.member_ids.begin(), hostile.reservation.member_ids.end(),
+                                elem->getID() ) != hostile.reservation.member_ids.end() );
+        } );
+        if( !elem->is_active() && !locally_reserved && elem->is_travelling() &&
+            elem->goal == elem->pos_abs_omt() && elem->omt_path.empty() &&
+            !pending_abstract_scout_watch_order( *elem ) &&
+            std::any_of( bandit_state.sites.begin(), bandit_state.sites.end(),
+        [elem]( const bandit_live_world::site_record &site ) {
+            return site.find_member( elem->getID() ) != nullptr;
+        } ) ) {
+            // Release/abort/casualty/foreign ownership cannot retain a completed
+            // pending watch order. This performs no assessment or return write.
+            elem->reach_omt_destination();
+        }
         if( identity_held_members.count( elem->getID() ) > 0 ) {
+            record_live_bandit_scout_motor_service( *elem, "identity_held", elem->pos_abs() );
             continue;
         }
         if( committed_homeward_member_ids.count( elem->getID() ) > 0 ) {
@@ -14219,6 +16505,8 @@ void overmap_npc_move()
                     !outing.alternate_watch_reposition_pending &&
                     forward_destination != local_pair_forward_destinations.end() &&
                     ( outing.selected_watch_omt == forward_destination->second ||
+                      ( bandit_live_world::structural_outing_uses_frontier_route( outing ) &&
+                        outing.target_omt == forward_destination->second ) ||
                       ( bandit_live_world::local_elevated_signal_watch_recovery_needed( site ) &&
                         elevated_recovery_orders.count( elem->getID() ) != 0 ) );
                 if( !site.retired_empty_site && outing.is_active() &&
@@ -14305,19 +16593,22 @@ void overmap_npc_move()
                         }
                     }
                 } else {
-                    const bool elevated_outward_pair = local_owner != nullptr &&
+                    const bool outward_pair = local_owner != nullptr &&
                             !elem->is_active() &&
-                            local_owner->active_outing.target_omt.z() > local_owner->anchor.z() &&
+                            ( local_owner->active_outing.target_omt.z() > local_owner->anchor.z() ||
+                              bandit_live_world::structural_outing_uses_frontier_route( local_owner->active_outing ) ) &&
                             local_owner->active_outing.phase == bandit_live_world::scout_phase::observing &&
                             local_owner->active_outing.assessment.observation_started_minutes < 0 &&
                             ( bandit_live_world::local_elevated_signal_watch_recovery_needed(
                                   *local_owner ) ||
-                              ( local_owner->active_outing.schema_version >= 10 &&
+                              ( ( local_owner->active_outing.schema_version >= 10 ||
+                                  bandit_live_world::structural_outing_uses_frontier_route( local_owner->active_outing ) ) &&
                                 local_owner->active_outing.waypoint_index == 1 ) );
                     const tripoint_rel_ms former_offset = elem->pos_abs() -
                                                            project_to<coords::ms>( elem->pos_abs_omt() );
+                    const tripoint_abs_ms motor_before = elem->pos_abs();
                     elem->travel_overmap( elem->omt_path.back() );
-                    if( elevated_outward_pair ) {
+                    if( outward_pair ) {
                         // Generic OMT travel randomizes each NPC's square.  Carry
                         // this pair's distinct exit offsets into the next OMT so
                         // a random same-square landing cannot invalidate the
@@ -14325,6 +16616,7 @@ void overmap_npc_move()
                         elem->spawn_at_precise(
                             project_to<coords::ms>( elem->pos_abs_omt() ) + former_offset );
                     }
+                    record_live_bandit_scout_motor_service( *elem, "travel_overmap_returned", motor_before );
                     // A homeward pair that crossed the bubble remains unloaded until its
                     // complete camp-arrival snapshot can commit below.
                     npcs_need_reload |=
@@ -14460,6 +16752,18 @@ live_bandit_elevated_recovery_boundary_for_test()
     return result;
 }
 
+std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
+live_bandit_ingress_boundary_steps_for_test()
+{
+    std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>> result;
+    for( const auto &step : live_bandit_pair_boundary_steps(
+             bandit_live_world::local_pair_ingress_travel_destinations(
+                 overmap_buffer.global_state.bandit_live_world ) ) ) {
+        result.emplace( step.first, std::make_pair( step.second.departure, step.second.exit ) );
+    }
+    return result;
+}
+
 void live_bandit_elevated_recovery_npc_turn_for_test( const bool overmap_step )
 {
     monmove();
@@ -14478,8 +16782,9 @@ bool live_bandit_retained_homeward_resume_blocks_generic_travel(
            bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
            !outing.shared_route.empty() && outing.waypoint_index >= 0 &&
            outing.waypoint_index < static_cast<int>( outing.shared_route.size() ) &&
-           outing.local_handoff.route_position !=
-           outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
+           ( outing.local_handoff.route_position !=
+             outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ||
+             bandit_live_world::structural_outing_uses_frontier_route( outing ) );
 }
 
 std::string live_bandit_homeward_boundary_discriminator_for_test()
@@ -14648,12 +16953,31 @@ live_bandit_structural_signal_reads_for_test(
     return live_bandit_structural_signal_reads( signals, {}, site, outing, request );
 }
 
+int record_live_bandit_stationary_watch_signals_for_test( bandit_live_world::world_state &state,
+        const std::vector<live_bandit_signal_observation> &signals, const bool cadence_due )
+{
+    return record_live_bandit_stationary_watch_signals( state, signals, cadence_due );
+}
+
 std::vector<bandit_live_world::structural_signal_read>
 live_bandit_staffed_camp_signal_reads_for_test(
     const std::vector<live_bandit_signal_observation> &signals,
     const bandit_live_world::site_record &site, const character_id observer_id )
 {
     return live_bandit_staffed_camp_signal_reads( signals, {}, site, { observer_id, site.anchor } );
+}
+
+bandit_live_world::camp_signal_observer_resolution resolve_live_bandit_staffed_observer_for_test(
+    bandit_live_world::world_state &state, const std::size_t site_index )
+{
+    return resolve_live_bandit_staffed_observer( state, site_index );
+}
+
+bandit_live_world::camp_signal_observation_result record_live_bandit_staffed_camp_signals_for_test(
+    bandit_live_world::world_state &state,
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    return record_live_bandit_staffed_camp_signals( state, signals, {} );
 }
 
 bool live_bandit_overmap_los_from_for_test( const tripoint_abs_omt &origin,
@@ -14749,6 +17073,167 @@ bool live_cannibal_raid_advance_site_search_for_test( bandit_live_world::site_re
 void note_live_bandit_local_turn_sight_avoid_for_test()
 {
     note_live_bandit_local_turn_sight_avoid();
+}
+
+bool commit_bandit_shakedown_payment_for_test( bandit_live_world::site_record &site,
+        const bandit_live_world::shakedown_surface &surface, const int value )
+{
+    auto plan = live_bandit_prepare_paid_return( site, true );
+    return plan && live_bandit_commit_paid_return( site, *plan, surface, value );
+}
+
+bool bandit_shakedown_response_matches_for_test( const bandit_live_world::site_record &site,
+        const std::string &activity_id, const int generation, const character_id receiver_id )
+{
+    return live_bandit_shakedown_response_is_current( site, activity_id, generation, receiver_id );
+}
+
+bool advance_bandit_hidden_shakedown_search_for_test( bandit_live_world::site_record &site )
+{
+    return live_bandit_advance_hidden_shakedown_search( site );
+}
+
+void choose_bandit_shakedown_fight_for_test( bandit_live_world::site_record &site,
+        const bandit_live_world::shakedown_surface &surface, const Character &receiver )
+{
+    live_bandit_choose_fight( site, surface, receiver );
+}
+
+bool consume_explicit_bandit_shakedown_fight_for_test( bandit_live_world::site_record &site,
+        const bandit_live_world::shakedown_surface &surface, const std::string &activity_id,
+        const int generation, const character_id receiver_id )
+{
+    return live_bandit_consume_explicit_fight( site, surface, activity_id, generation, receiver_id );
+}
+
+bool establish_bandit_shakedown_communication_for_test( bandit_live_world::site_record &site )
+{
+    return live_bandit_establish_shakedown_communication( site );
+}
+
+void cancel_bandit_shakedown_pending_pay_on_dialogue()
+{
+    for( auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        if( site.active_hostile_operation.is_active() &&
+            site.active_hostile_operation.operation_kind ==
+            bandit_live_world::hostile_operation_kind::shakedown ) {
+            live_bandit_cancel_stale_pending_pay( site, true );
+        }
+    }
+}
+
+std::string bandit_shakedown_communication_diagnostic( const npc &actor )
+{
+    const bandit_live_world::site_record *site = nullptr;
+    for( const auto &candidate : overmap_buffer.global_state.bandit_live_world.sites ) {
+        const auto &operation = candidate.active_hostile_operation;
+        const auto &members = operation.reservation.member_ids;
+        if( operation.is_active() &&
+            operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown &&
+            std::find( members.begin(), members.end(), actor.getID() ) != members.end() ) {
+            site = &candidate;
+            break;
+        }
+    }
+    std::ostringstream stream;
+    JsonOut json( stream );
+    json.start_object();
+    json.member( "actor_id", actor.getID().get_value() );
+    json.member( "current_turn", to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    json.member( "provenance", "Current pure predicates and persisted contact; eligibility is not an emitted or delivered shout." );
+    const bool loaded = actor.is_active() && get_map().inbounds( actor.pos_bub() );
+    json.member( "actor_loaded", loaded );
+    json.member( "speaker" );
+    json.start_object();
+    json.member( "available", loaded );
+    if( loaded ) {
+        const auto readiness = live_bandit_shakedown_speaker_readiness( actor );
+        json.member( "eligible", readiness.ready() );
+        json.member( "shout_volume", readiness.shout_volume );
+        json.member( "sleep", readiness.sleeping );
+        json.member( "narcosis", readiness.narcosis );
+        json.member( "flee", readiness.fleeing );
+        json.member( "flee_temp", readiness.fleeing_temporary );
+        json.member( "runaway", readiness.runaway );
+        json.member( "dangerous_field", readiness.dangerous_field );
+        json.member( "hostile_target", readiness.hostile_target );
+        json.member( "current_target" );
+        json.start_object();
+        const bool target_loaded = readiness.target != nullptr &&
+                                   get_map().inbounds( readiness.target->pos_bub() ) &&
+                                   ( !readiness.target->is_npc() || readiness.target->as_npc()->is_active() );
+        json.member( "available", target_loaded );
+        if( target_loaded ) {
+            json.member( "name", readiness.target->get_name() );
+            json.member( "absolute_position", readiness.target->pos_abs() );
+            if( readiness.target->as_character() != nullptr ) {
+                json.member( "actor_id", readiness.target->as_character()->getID().get_value() );
+            }
+        } else {
+            json.member( "reason", readiness.target == nullptr ? "no_current_target" : "target_unloaded" );
+        }
+        json.end_object();
+    } else {
+        json.member( "reason", "actor_unloaded" );
+    }
+    json.end_object();
+    json.member( "operation_available", site != nullptr );
+    json.member( "receiver" );
+    json.start_object();
+    Character *receiver = site != nullptr ? live_bandit_shakedown_receiver( *site ) : nullptr;
+    json.member( "available", receiver != nullptr );
+    if( receiver != nullptr ) {
+        json.member( "actor_id", receiver->getID().get_value() );
+        json.member( "is_avatar", receiver->is_avatar() );
+        json.member( "hearing_available", loaded );
+        if( loaded ) {
+            json.member( "can_hear", receiver->can_hear( actor.pos_bub(), actor.get_shout_volume() ) );
+        }
+    } else {
+        const Character *recorded = nullptr;
+        if( site != nullptr && site->active_hostile_operation.shakedown_contact_established ) {
+            const auto &operation = site->active_hostile_operation;
+            recorded = operation.shakedown_receiver_is_avatar ? static_cast<const Character *>( &get_avatar() ) :
+                       static_cast<const Character *>( g->find_npc( operation.shakedown_receiver_id ) );
+            if( recorded != nullptr && recorded->getID() != operation.shakedown_receiver_id ) {
+                recorded = nullptr;
+            }
+        }
+        const bool receiver_unloaded = recorded != nullptr &&
+                                       ( !get_map().inbounds( recorded->pos_bub() ) ||
+                                         ( recorded->is_npc() && !recorded->as_npc()->is_active() ) );
+        json.member( "reason", receiver_unloaded ? "receiver_unloaded" :
+                     recorded == nullptr ? "receiver_absent" : "receiver_not_eligible" );
+    }
+    json.end_object();
+    if( site != nullptr ) {
+        const auto &operation = site->active_hostile_operation;
+        json.member( "site_id", site->site_id );
+        json.member( "operation_id", operation.reservation.activity_id );
+        json.member( "generation", operation.reservation.generation );
+        json.member( "contact_established", operation.shakedown_contact_established );
+        json.member( "contact_by_shout", operation.shakedown_contact_by_shout );
+        json.member( "recorded_receiver_id", operation.shakedown_receiver_id.get_value() );
+    }
+    json.end_object();
+    return stream.str();
+}
+
+bool handle_bandit_shakedown_contact_for_test( bandit_live_world::site_record &site )
+{
+    return live_bandit_handle_hostile_shakedown_contact( site, get_avatar() );
+}
+
+std::optional<character_id> bandit_shakedown_speaker_id_for_test( const bandit_live_world::site_record &site )
+{
+    const npc *speaker = live_bandit_shakedown_local_speaker( site );
+    return speaker != nullptr ? std::optional<character_id>( speaker->getID() ) : std::nullopt;
+}
+
+bandit_live_world::shakedown_goods_pool bandit_encounter_goods_pool_for_test(
+    const bandit_live_world::local_gate_input &input, Character &receiver )
+{
+    return live_bandit_encounter_goods_pool( input, receiver );
 }
 
 bool advance_live_bandit_hostile_approaches_for_test()
@@ -15154,4 +17639,31 @@ bool game::do_turn()
 
     debug_menu::debug_capture::tick_if_active();
     return false;
+}
+
+int advance_live_bandit_local_scout_assessments_for_test()
+{
+    return advance_live_bandit_local_scout_assessments();
+}
+
+bool persist_live_bandit_local_projection_leases_for_test( const bandit_live_world::site_record
+        &site )
+{
+    return persist_live_bandit_local_projection_leases( site );
+}
+
+bool persist_live_bandit_local_progress_for_test( const bandit_live_world::site_record &before,
+        const bandit_live_world::site_record &after )
+{
+    return persist_live_bandit_local_projection_leases( after, &before );
+}
+
+bool record_live_bandit_structural_member_returns_for_test()
+{
+    return record_live_bandit_structural_member_returns();
+}
+
+bool complete_loaded_live_bandit_route_arrivals_for_test()
+{
+    return complete_loaded_live_bandit_route_arrivals();
 }

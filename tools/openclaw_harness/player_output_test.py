@@ -123,8 +123,8 @@ class PlayerOutputTest(unittest.TestCase):
             inspection_request_id="journal-request")
         self.assertLess(len(text), 1000)
         self.assertIn("J0063: macro interruption", text)
-        self.assertIn("INDEX 62; PATH FIELD; FIELD: kind, result", text)
-        self.assertIn("entries.INDEX.value.PATH --request-id journal-request", text)
+        self.assertIn("INDEX 62; SELECTOR result.evidence_journal.entries.INDEX.value.FIELD; FIELD: kind, result", text)
+        self.assertIn("play inspect SELECTOR --request-id journal-request", text)
 
     def test_no_progress_error_directs_observation_without_claiming_a_stall(self):
         text = plain_player_output({"ok": False, "error": "proved_no_progress"})
@@ -217,7 +217,7 @@ class PlayerOutputTest(unittest.TestCase):
         text = plain_player_output({"ok": True, "selector": "result.evidence_journal.entries",
             "slice": [{"citation_id": "J0001", "kind": "observation",
                        "value": {"game_minutes": 10, "surface": {"kind": "world"}}}]})
-        self.assertIn("INDEX 0; PATH FIELD", text)
+        self.assertIn("INDEX 0; SELECTOR result.evidence_journal.entries.INDEX.value.FIELD", text)
         self.assertIn("FIELD: game_minutes, surface", text)
         self.assertNotIn("Details →", text)
 
@@ -227,7 +227,7 @@ class PlayerOutputTest(unittest.TestCase):
                 "kind": "observation", "value": {"surface": {
                     "kind": "world", "facts": {"text": "Returned", "game_minutes": 42}}}}}]},
             inspection_request_id="play-journal")
-        self.assertIn("INDEX 0; PATH value.surface.facts.FIELD", text)
+        self.assertIn("INDEX 0; SELECTOR result.evidence_journal.entries.INDEX.value.value.surface.facts.FIELD", text)
         self.assertIn("--request-id play-journal", text)
         self.assertIn("FIELD: text, game_minutes", text)
         self.assertNotIn(".value.FIELD", text)

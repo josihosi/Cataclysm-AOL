@@ -260,7 +260,12 @@ vehicle::vehicle( const vproto_id &proto_id )
     }
 }
 
-vehicle::~vehicle() = default;
+vehicle::~vehicle()
+{
+    if( resident_index.owner ) {
+        resident_index.owner->forget_vehicle( *this );
+    }
+}
 
 turret_cpu::~turret_cpu() = default;
 
@@ -7064,6 +7069,9 @@ void vehicle::refresh( const bool remove_fakes )
     invalidate_mass();
     occupied_cache_pos = tripoint_abs_ms::invalid;
     refresh_active_item_cache();
+    if( resident_index.owner ) {
+        resident_index.owner->update_vehicle_index( *this );
+    }
 }
 
 vpart_edge_info vehicle::get_edge_info( const point_rel_ms &mount ) const

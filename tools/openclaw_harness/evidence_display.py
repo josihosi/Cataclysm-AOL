@@ -107,7 +107,11 @@ def emit(value, directory=STORE):
 
 def exact_select(value, selector):
     # Artifact recovery preserves JSON types, including strings containing JSON.
-    for part in selector.split("."):
+    # A projected field can itself contain dots. JSON Pointer addresses that
+    # literal key without changing the established dot selector semantics.
+    parts = (part.replace("~1", "/").replace("~0", "~")
+             for part in selector[1:].split("/")) if selector.startswith("/") else selector.split(".")
+    for part in parts:
         value = value[int(part)] if isinstance(value, list) and part.isdecimal() else value[part]
     return value
 

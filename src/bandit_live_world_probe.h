@@ -122,6 +122,71 @@ constexpr std::size_t max_transition_events = 64;
 constexpr std::size_t max_transition_event_field_length = 256;
 constexpr std::size_t max_transition_event_reason_length = 256;
 
+// Read-only receipts from the native scout motor and owner-transfer adapters.
+// Empty/optional fields mean that the corresponding native branch was not run.
+struct scout_homeward_member_read {
+    std::int64_t npc_id = -1;
+    bool found = false;
+    bool loaded = false;
+    bool active = false;
+    bool in_bounds = false;
+    bool dead = false;
+    bool sleeping = false;
+    bool cannot_move = false;
+    bool movement_impaired = false;
+    bool travelling = false;
+    bool has_destination = false;
+    int mission = -1;
+    int moves = 0;
+    std::optional<int> moves_after;
+    std::string position_ms;
+    std::string position_omt;
+    std::string position_after_ms;
+    std::string goal_omt;
+    std::string next_omt;
+    std::size_t local_path_size = 0;
+    std::size_t omt_path_size = 0;
+    std::optional<bool> selected;
+    std::optional<bool> boundary_selected;
+    std::optional<bool> assembly_selected;
+    std::optional<bool> ingress_selected;
+    std::string boundary_departure_ms;
+    std::string transfer_position_ms;
+};
+
+struct scout_homeward_observation {
+    std::string entrypoint;
+    std::string outing_kind;
+    std::string owner_before;
+    int handoff_epoch_before = -1;
+    std::size_t outing_member_count = 0;
+    bool cursor_present = false;
+    bool handoff_active = false;
+    bool crossing_pending = false;
+    std::size_t handoff_member_count = 0;
+    std::string action;
+    std::optional<bool> relationship_present;
+    std::optional<bool> route_found;
+    std::optional<bool> route_safe;
+    std::optional<bool> next_step_cohesive;
+    std::optional<bool> next_center_in_bounds;
+    std::optional<bool> ordinary_local_reentry;
+    std::string next_step_ms;
+    std::optional<bool> next_step_passable;
+    std::optional<bool> next_step_occupied;
+    std::optional<bool> next_step_dangerous;
+    std::optional<bool> plan_invoked;
+    std::optional<bool> plan_valid;
+    std::string commit_result;
+    std::vector<scout_homeward_member_read> members;
+};
+
+struct change_only_transition_state {
+    std::string signature;
+    std::size_t emitted = 0;
+    bool truncated = false;
+};
+
 struct transition_event {
     int schema_version = 1;
     std::uint64_t sequence = 0;
@@ -215,6 +280,7 @@ struct transition_event {
     std::string aging_lead_set_hash_after;
     std::string aging_drive_state_before;
     std::string aging_drive_state_after;
+    std::optional<scout_homeward_observation> scout_homeward;
 };
 
 struct snapshot {
@@ -255,6 +321,7 @@ class session
                                              std::string_view new_phase, std::string_view reason,
                                              int at_minutes );
         friend void record_transition_event( transition_event event );
+        friend void record_scout_homeward_observation( transition_event event );
 
         struct active_frame {
             section target = section::world_serialize;
@@ -271,6 +338,7 @@ class session
         snapshot result_;
         std::unique_ptr<timing_state> timing_state_;
         std::unordered_map<std::string, std::size_t> site_service_indices_;
+        std::unordered_map<std::string, change_only_transition_state> homeward_observations_;
         std::array<active_frame, max_nested_sections> stack_ = {};
         std::size_t stack_depth_ = 0;
         session *previous_ = nullptr;
@@ -335,6 +403,10 @@ void record_transition_event( transition_event event );
 void record_fixture_monster_lifecycle( const monster &critter, std::string_view event,
                                        std::string_view owner );
 void record_live_transition_event( transition_event event );
+// Uses the existing opt-in stream/session. Repeated unchanged native results are
+// suppressed; each subject has the existing transition budget and an explicit
+// truncation receipt. Turn and movement points do not make a new diagnostic state.
+void record_scout_homeward_observation( transition_event event );
 // Admission is evaluated each turn.  Record the first rejection and changed
 // rejection context, while retaining every successful admission.
 void record_signal_dispatch_admission( transition_event event );

@@ -17,6 +17,7 @@ class Creature;
 class JsonObject;
 class item;
 class monster;
+struct npc_alarm;
 class translation;
 template <typename E> struct enum_traits;
 
@@ -73,6 +74,9 @@ void sound( const tripoint_bub_ms &p, int vol, sound_t category, const std::stri
 void sound( const tripoint_bub_ms &p, int vol, sound_t category, const std::string &description,
             bool ambient, const std::string &id, const std::string &variant,
             significant_sound_t significant_kind );
+// A spoken unit alert uses the same hearing/weather/distance delivery as sound.
+void sound( const tripoint_bub_ms &p, int vol, sound_t category,
+            const std::string &description, const npc_alarm &alarm );
 void sound( const tripoint_bub_ms &p, int vol, sound_t category, const translation &description,
             bool ambient = false, const std::string &id = "",
             const std::string &variant = "default" );

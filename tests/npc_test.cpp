@@ -1,7 +1,11 @@
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <initializer_list>
+#include <iostream>
 #include <list>
 #include <map>
 #include <memory>
@@ -32,9 +36,11 @@
 #include "common_types.h"
 #include "coordinates.h"
 #include "creature_tracker.h"
+#include "current_map.h"
 #include "damage.h"
 #include "debug.h"
 #include "do_turn.h"
+#include "worldfactory.h"
 #include "enums.h"
 #include "faction.h"
 #include "field.h"
@@ -59,11 +65,13 @@
 #include "messages.h"
 #include "iexamine.h"
 #include "monster.h"
+#include "mission_companion.h"
 #include "npc.h"
 #include "npc_class.h"
 #include "npctalk.h"
 #include "options_helpers.h"
 #include "output.h"
+#include "sounds.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
 #include "pocket_type.h"
@@ -75,6 +83,7 @@ live_bandit_homeward_boundary_steps_for_test();
 #include "player_helpers.h"
 #include "point.h"
 #include "ranged.h"
+#include "raid_decision_trace.h"
 #include "rng.h"
 #include "stomach.h"
 #include "test_data.h"
@@ -10049,5 +10058,1223 @@ TEST_CASE( "npc_warmth_indoor_hold_timeout", "[npc][needs][warmth]" )
             }
         }
         CHECK( hold_count > 0 );
+    }
+}
+
+TEST_CASE( "critical need and threat cross the real sleep scheduler gate",
+           "[npc][npc_interaction_061][scheduler_sleep]" )
+{
+    const int mechanism = GENERATE( 0, 1, 2, 3, 4, 5, 6, 7, 8 );
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    override_option food( "NO_NPC_FOOD", "false" );
+    get_player_character().camps.clear();
+    get_player_character().setpos( get_map(), tripoint_bub_ms( 50, 55, 0 ) );
+    get_weather().forced_temperature = 20_C;
+    set_time_to_day();
+    npc &guy = spawn_npc( { 50, 50 }, "test_talker" );
+    clear_character( guy, true );
+    guy.set_fac( faction_your_followers );
+    guy.set_attitude( NPCATT_FOLLOW );
+    guy.set_stored_kcal( 55000 );
+    guy.set_hunger( 0 );
+    guy.set_all_parts_temp_conv( BODYTEMP_NORM );
+    guy.set_all_parts_temp_cur( BODYTEMP_NORM );
+    guy.worn.wear_item( guy, item( itype_backpack ), false, false );
+    guy.set_sleepiness( 400 );
+    guy.set_thirst( 1100 );
+    guy.i_add( item_group::items_from( Item_spawn_data_test_bottle_water ).front() );
+    if( mechanism <= 2 ) {
+        guy.set_committed_goal( "go_to_sleep" );
+        auto &plan = guy.plan_for( npc::need_goal_id::go_to_sleep );
+        plan.goal = "go_to_sleep";
+        plan.last_result = npc::need_result::holding;
+        guy.add_effect( effect_lying_down, 30_minutes, false, 1, false, true );
+    } else if( mechanism == 3 || mechanism == 4 ) {
+        guy.fall_asleep( 1_hours );
+        if( mechanism == 4 ) {
+            guy.add_effect( efftype_id( "narcosis" ), 1_hours );
+        }
+    } else if( mechanism == 5 ) {
+        guy.add_effect( efftype_id( "npc_suspend" ), 1_hours );
+    } else if( mechanism == 7 ) {
+        guy.add_effect( efftype_id( "stunned" ), 20_turns );
+    } else if( mechanism == 8 ) {
+        guy.add_effect( efftype_id( "downed" ), 20_turns );
+    }
+    if( mechanism == 2 || mechanism == 3 || mechanism == 4 ) {
+        spawn_test_monster( "mon_zombie_hulk", guy.pos_bub() + point::east );
+    }
+    get_map().build_map_cache( 0 );
+    const int initial_thirst = guy.get_thirst();
+    const auto initial_position = guy.pos_abs();
+    const int initial_hp = guy.get_hp();
+    for( int step = 0; step < ( mechanism == 0 ? 1 : 5 ); ++step ) {
+        if( mechanism == 0 ) {
+            guy.set_moves( 100 );
+            guy.move();
+        } else {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        if( guy.is_dead() ) {
+            break;
+        }
+    }
+    INFO( "mechanism=" << mechanism << " thirst=" << guy.get_thirst() <<
+          " goal=" << guy.get_committed_goal() << " asleep=" << guy.in_sleep_state() <<
+          " lying=" << guy.has_effect( effect_lying_down ) << " moved=" <<
+          ( guy.pos_abs() != initial_position ) << " hp=" << guy.get_hp() );
+    // The direct executor comparison must establish an actual consumed drink,
+    // not merely a changed commitment. Other branches are inspected below.
+    if( mechanism == 0 || mechanism == 6 ) {
+        CHECK( guy.get_thirst() < initial_thirst );
+        CHECK_FALSE( guy.has_effect( effect_lying_down ) );
+    } else if( mechanism == 5 ) {
+        CHECK( guy.has_effect( efftype_id( "npc_suspend" ) ) );
+        CHECK( guy.get_thirst() == initial_thirst );
+        CHECK( guy.pos_abs() == initial_position );
+    } else if( mechanism == 1 ) {
+        // Effects enter real sleep before the scheduler can invoke npc::move.
+        // This records the caller difference, not a new universal wake policy.
+        CHECK( guy.has_effect( effect_sleep ) );
+        CHECK_FALSE( guy.has_effect( effect_lying_down ) );
+        CHECK( guy.get_thirst() == initial_thirst );
+        CHECK( guy.pos_abs() == initial_position );
+    } else if( mechanism == 2 || mechanism == 3 ) {
+        CHECK( guy.get_hp() < initial_hp );
+        CHECK_FALSE( guy.in_sleep_state() );
+        CHECK( guy.get_thirst() == initial_thirst );
+        if( mechanism == 2 ) {
+            CHECK( guy.pos_abs() != initial_position );
+        }
+    } else if( mechanism == 4 ) {
+        CHECK( guy.get_hp() < initial_hp );
+        CHECK( guy.has_effect( efftype_id( "narcosis" ) ) );
+        CHECK( guy.in_sleep_state() );
+        CHECK( guy.get_thirst() == initial_thirst );
+        CHECK( guy.pos_abs() == initial_position );
+    } else if( mechanism == 7 || mechanism == 8 ) {
+        // Stun/downed are movement interruptions, not the sleep admission gate.
+        CHECK_FALSE( guy.in_sleep_state() );
+        CHECK( guy.get_thirst() < initial_thirst );
+    }
+    CHECK_FALSE( guy.is_dead() );
+    std::cout << "R061_SLEEP mechanism=" << mechanism << " thirst=" << guy.get_thirst()
+              << " goal=" << guy.get_committed_goal() << " asleep=" << guy.in_sleep_state()
+              << " lying=" << guy.has_effect( effect_lying_down ) << " moved="
+              << ( guy.pos_abs() != initial_position ) << " hp=" << guy.get_hp() << '\n';
+}
+
+TEST_CASE( "scheduled duty enters actual effects and sleep motor boundary",
+           "[npc][npc_interaction_061][scheduler_duty]" )
+{
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    override_option no_food( "NO_NPC_FOOD", "true" );
+    calendar::turn = calendar::turn_zero + 12_hours;
+    npc &guy = spawn_scheduled_npc( { 50, 50 }, NC_ROBOFAC_INTERCOM_DAY );
+    guy.set_sleepiness( 100 );
+    guy.fall_asleep( 1_hours );
+    const bool forced = GENERATE( false, true );
+    if( forced ) {
+        guy.add_effect( efftype_id( "narcosis" ), 1_hours );
+    }
+    const auto initial = guy.pos_abs();
+    calendar::turn += 10_seconds;
+    process_monsters_and_npcs_turn_for_test();
+    std::cout << "R061_DUTY forced=" << forced << " asleep=" << guy.in_sleep_state()
+              << " narcosis=" << guy.has_effect( efftype_id( "narcosis" ) )
+              << " moved=" << ( guy.pos_abs() != initial ) << '\n';
+    CHECK_FALSE( guy.has_effect( effect_lying_down ) );
+    if( forced ) {
+        CHECK( guy.has_effect( efftype_id( "narcosis" ) ) );
+    } else {
+        CHECK_FALSE( guy.in_sleep_state() );
+    }
+}
+
+TEST_CASE( "perceived player attack crosses ordinary bandit rest and scheduler",
+           "[npc][npc_interaction_061][bandit_attack_sleep]" )
+{
+    // Ordinary local bandit faction actor, not an active assault operation or
+    // an on-shift scheduled NPC. Rest subtypes remain distinct controls.
+    const int condition = GENERATE( 0, 1, 2, 3, 4, 5 );
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    g->faction_manager_ptr->create_if_needed();
+    override_option food( "NO_NPC_FOOD", "false" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    set_time_to_day();
+    get_weather().forced_temperature = 20_C;
+    avatar &player = get_avatar();
+    player.setpos( get_map(), tripoint_bub_ms( 50, 55, 0 ) );
+    npc &bandit = spawn_npc( { 50, 50 }, "thug" );
+    REQUIRE( bandit.is_active() );
+    player.setpos( get_map(), tripoint_bub_ms( 130, 130, 0 ) );
+    clear_character( bandit, true );
+    bandit.set_hunger( 0 );
+    bandit.set_thirst( 0 );
+    bandit.set_stored_kcal( bandit.get_healthy_kcal() );
+    bandit.set_all_parts_temp_conv( BODYTEMP_NORM );
+    bandit.set_all_parts_temp_cur( BODYTEMP_NORM );
+    bandit.set_sleepiness( condition == 1 ? 800 : condition == 5 ? 1100 : 400 );
+    REQUIRE( bandit.guaranteed_hostile() );
+    if( condition == 2 ) {
+        bandit.set_committed_goal( "go_to_sleep" );
+        bandit.add_effect( effect_lying_down, 30_minutes, false, 1, false, true );
+    } else if( condition == 3 || condition == 4 ) {
+        // Establish a voluntary safe rest using the real executor before the
+        // attack. This is deliberately not "chose sleep while threatened".
+        get_map().build_map_cache( 0 );
+        for( int turn = 0; turn < 10 && !bandit.in_sleep_state(); ++turn ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        REQUIRE( bandit.in_sleep_state() );
+        if( condition == 4 ) {
+            bandit.add_effect( efftype_id( "narcosis" ), 1_hours );
+            bandit.fall_asleep( 1_hours );
+        }
+    }
+    const bool asleep_before_attack = bandit.has_effect( effect_sleep );
+    const bool lying_before_attack = bandit.has_effect( effect_lying_down );
+    player.setpos( get_map(), bandit.pos_bub() + point::south );
+    get_map().invalidate_map_cache( 0 );
+    get_map().build_map_cache( 0 );
+    player.set_skill_level( skill_id( "melee" ), 8 );
+    player.set_skill_level( skill_id( "unarmed" ), 8 );
+    const int before_hp = bandit.get_hp();
+    // Native melee invokes on_attacked and real damage. Bound retries only
+    // establish a landed hit; misses are not credited as a wound.
+    for( int attempt = 0; attempt < 5 && bandit.get_hp() == before_hp; ++attempt ) {
+        player.set_moves( 100 );
+        player.melee_attack( bandit, false );
+    }
+    REQUIRE( bandit.get_hp() < before_hp );
+    REQUIRE_FALSE( bandit.is_dead() );
+    const auto attack_position = bandit.pos_abs();
+    const int player_hp = player.get_hp();
+    // Existing selected-actor diagnostics witness the executor's actual action;
+    // selection supplies no NPC order or perceived threat.
+    const std::string trace_id = "r061-attack-" + std::to_string( condition );
+    const auto trace_path = std::filesystem::temp_directory_path() /
+                            ( trace_id + "-" + std::to_string( bandit.getID().get_value() ) + ".jsonl" );
+    const std::map<std::string, std::string> trace_environment = {
+        { "OPENCLAW_HARNESS_RAID_ACTOR_TRACE", trace_id },
+        { "OPENCLAW_HARNESS_RUN_ID", trace_id },
+        { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", trace_id },
+        { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace_path.string() },
+        { "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", trace_id },
+        { "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS", std::to_string( bandit.getID().get_value() ) }
+    };
+    const auto set_environment = []( const std::string &key, const std::optional<std::string> &value ) {
+#if defined( _WIN32 )
+        _putenv_s( key.c_str(), value ? value->c_str() : "" );
+#else
+        if( value ) {
+            setenv( key.c_str(), value->c_str(), 1 );
+        } else {
+            unsetenv( key.c_str() );
+        }
+#endif
+    };
+    std::map<std::string, std::optional<std::string>> old_environment;
+    for( const auto &[key, value] : trace_environment ) {
+        const char *previous = std::getenv( key.c_str() );
+        old_environment[key] = previous ? std::optional<std::string>( previous ) : std::nullopt;
+        set_environment( key, value );
+    }
+    std::filesystem::remove( trace_path );
+    on_out_of_scope restore_trace( [&]() {
+        raid_decision_trace::native_recorder().closeout();
+        for( const auto &[key, value] : old_environment ) {
+            set_environment( key, value );
+        }
+        std::filesystem::remove( trace_path );
+    } );
+    bool saw_enemy = false;
+    bool sleep_during_threat = false;
+    bool admitted_action = false;
+    for( int turn = 0; turn < 5; ++turn ) {
+        calendar::turn += 1_turns;
+        const int prior_moves = bandit.get_moves();
+        process_monsters_and_npcs_turn_for_test();
+        admitted_action |= !bandit.in_sleep_state() && bandit.get_moves() < prior_moves + bandit.get_speed();
+        saw_enemy |= bandit.is_enemy();
+        sleep_during_threat |= bandit.in_sleep_state();
+        std::cout << "R061_ATTACK_STEP condition=" << condition << " turn=" << turn
+                  << " moves=" << bandit.get_moves() << " danger=" << bandit.get_ai_danger() << " enemy=" << bandit.is_enemy()
+                  << " asleep=" << bandit.has_effect( effect_sleep )
+                  << " lying=" << bandit.has_effect( effect_lying_down )
+                  << " goal=" << bandit.get_committed_goal() << " hp=" << bandit.get_hp()
+                  << " player_hp=" << player.get_hp() << '\n';
+    }
+    std::cout << "R061_ATTACK condition=" << condition
+              << " before_sleep=" << asleep_before_attack << " before_lying=" << lying_before_attack
+              << " after_sleep=" << bandit.in_sleep_state() << " enemy_seen=" << saw_enemy
+              << " sleep_during=" << sleep_during_threat << " moved="
+              << ( bandit.pos_abs() != attack_position ) << " player_damage="
+              << ( player.get_hp() < player_hp ) << '\n';
+    CHECK_FALSE( bandit.is_dead() );
+    raid_decision_trace::native_recorder().closeout();
+    std::ifstream trace_input( trace_path );
+    bool executed = false;
+    for( std::string line; std::getline( trace_input, line ); ) {
+        JsonObject row = json_loader::from_string( line ).get_object();
+        row.allow_omitted_members();
+        if( row.get_string( "event" ) != "raid_actor_action" ) {
+            continue;
+        }
+        REQUIRE( row.get_int( "npc_id" ) == bandit.getID().get_value() );
+        executed |= row.get_string( "reason" ) == "execute_action";
+        CHECK( row.get_string( "action" ) != "Sleep" );
+        CHECK( row.get_bool( "target_visible" ) );
+        JsonObject target = row.get_object( "target" );
+        target.allow_omitted_members();
+        CHECK( target.get_string( "type" ) == "avatar" );
+        std::cout << "R061_ATTACK_ACTION condition=" << condition << ' ' << line << '\n';
+    }
+    if( condition == 4 ) {
+        CHECK( bandit.has_effect( efftype_id( "narcosis" ) ) );
+        CHECK( bandit.in_sleep_state() );
+        CHECK_FALSE( admitted_action );
+        CHECK_FALSE( executed );
+    } else {
+        CHECK( saw_enemy );
+        CHECK_FALSE( sleep_during_threat );
+        CHECK( admitted_action );
+        CHECK( executed );
+    }
+}
+
+
+TEST_CASE( "NPC admission covers the receiving map with one local owner",
+           "[npc][local_admission_061]" )
+{
+    const bool alternate = GENERATE( false, true );
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto previous_world = world;
+    world.clear();
+    on_out_of_scope restore_world( [previous_world]() {
+        overmap_buffer.global_state.bandit_live_world = previous_world;
+    } );
+    struct receiving_test_map : map {
+        receiving_test_map() : map( 2, true ) {}
+    };
+    std::unique_ptr<map> remote;
+    if( alternate ) {
+        // The explicit-map caller (off-bubble explosions) cannot use player distance.
+        // An even-sized map also requires an exact filter on the extra query submap.
+        remote = std::make_unique<receiving_test_map>();
+        remote->load( get_map().get_abs_sub() + point_rel_sm( 40, 40 ), false );
+    }
+    map &here = alternate ? *remote : get_map();
+    swap_map receiving_map( here );
+    const auto player = get_avatar().pos_abs();
+    const int edge = here.getmapsize() * SEEX - 1;
+    std::vector<shared_ptr_fast<npc>> actors;
+    on_out_of_scope remove_actors( [&actors]() {
+        for( const auto &actor : actors ) {
+            g->remove_npc( actor->getID() );
+            overmap_buffer.remove_npc( actor->getID() );
+        }
+    } );
+    const auto add = [&]( const tripoint_bub_ms &position ) {
+        auto actor = make_shared_fast<npc>();
+        actor->normalize();
+        actor->load_npc_template( npc_template_id( "test_talker" ) );
+        actor->setID( g->assign_npc_id(), true );
+        actor->spawn_at_precise( here.get_abs( position ) );
+        if( here.inbounds( position ) ) {
+            here.ter_set( position, ter_t_floor );
+        }
+        overmap_buffer.insert_npc( actor );
+        actors.push_back( actor );
+        return actor;
+    };
+    const std::vector<tripoint_bub_ms> eligible_positions = {
+        { 0, 0, 0 }, { edge, 0, 0 }, { 0, edge, 0 }, { edge, edge, 0 },
+        { 0, edge / 2, 0 }, { edge, edge / 2, 0 },
+        { edge / 2, 0, -1 }, { edge / 2, edge, 1 }
+    };
+    for( const auto &position : eligible_positions ) {
+        add( position );
+    }
+    // Admission does not erase real rest/incapacity: the scheduler still owns
+    // whether these members can act. Ordinary sleep and narcosis stay distinct.
+    actors[0]->add_effect( effect_sleep, 1_hours );
+    actors[1]->add_effect( effect_sleep, 1_hours );
+    actors[1]->add_effect( effect_narcosis, 1_hours );
+    const auto outside_x = add( { edge + 1, 3, 0 } );
+    const auto outside_y = add( { 3, edge + 1, 0 } );
+    const auto outside_z = add( { 4, 4, OVERMAP_HEIGHT + 1 } );
+    const auto companion = add( { 6, 6, 0 } );
+    mission_id mission;
+    mission.id = Scavenging_Patrol_Job;
+    companion->set_companion_mission( companion->pos_abs_omt(), "test", mission );
+    const auto abstract = add( { 7, 7, 0 } );
+    bandit_live_world::site_record site;
+    site.site_id = "admission-test";
+    site.active_outing.activity_id = "abstract-owner";
+    site.active_outing.generation = 1;
+    site.active_outing.kind = bandit_live_world::outing_kind::structural_sortie;
+    site.active_outing.owner = bandit_live_world::simulation_owner::abstract;
+    site.active_outing.actor_route_waypoint = 0;
+    site.active_outing.member_ids = { abstract->getID() };
+    world.sites.push_back( site );
+    std::vector<tripoint_abs_ms> before;
+    for( const auto &actor : actors ) {
+        before.push_back( actor->pos_abs() );
+    }
+    for( int repeat = 0; repeat < 3; ++repeat ) {
+        if( alternate || repeat % 2 ) {
+            g->load_npcs( &here );
+        } else {
+            g->load_npcs();
+        }
+        for( size_t i = 0; i < actors.size(); ++i ) {
+            INFO( "actor " << i << " at " << before[i] << " alternate " << alternate );
+            CHECK( actors[i]->pos_abs() == before[i] );
+            int count = 0;
+            for( const npc &active : g->all_npcs() ) {
+                count += active.getID() == actors[i]->getID();
+            }
+            CHECK( count == ( i < eligible_positions.size() ? 1 : 0 ) );
+        }
+        CHECK( actors[0]->has_effect( effect_sleep ) );
+        CHECK( actors[1]->has_effect( effect_sleep ) );
+        CHECK( actors[1]->has_effect( effect_narcosis ) );
+        CHECK( get_avatar().pos_abs() == player );
+    }
+    // Partial admission is honest: one actor outside stays unowned locally;
+    // its inbounds peer is admitted, with no move into the map as a workaround.
+    CHECK_FALSE( outside_x->is_active() );
+    CHECK_FALSE( outside_y->is_active() );
+    CHECK_FALSE( outside_z->is_active() );
+    CHECK_FALSE( companion->is_active() );
+    CHECK_FALSE( abstract->is_active() );
+}
+
+
+TEST_CASE( "generated bandit home camp threat crosses real rest and scheduler",
+           "[npc][camp_defense_sleep_062]" )
+{
+    // A declared home-camp fixture, created by the production roster generator.
+    // The pending decision only exposes the existing generation seam; this
+    // test supplies no report, outside operation, alarm recipient or AI order.
+    const std::string condition = GENERATE( std::string( "day_awake" ),
+                                          std::string( "night_awake" ),
+                                          std::string( "night_prior_rest" ),
+                                          std::string( "night_narcosis" ),
+                                          std::string( "night_exhausted" ),
+                                          std::string( "night_occluded_alarm" ),
+                                          std::string( "night_prior_lying" ) );
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    sounds::reset_sounds();
+    const auto previous_world = overmap_buffer.global_state.bandit_live_world;
+    const auto previous_turn = calendar::turn;
+    on_out_of_scope restore_world( [previous_world, previous_turn]() {
+        clear_npcs();
+        sounds::reset_sounds();
+        overmap_buffer.global_state.bandit_live_world = previous_world;
+        calendar::turn = previous_turn;
+    } );
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world.clear();
+    override_option food( "NO_NPC_FOOD", "false" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    g->faction_manager_ptr->create_if_needed();
+    set_time_to_day();
+    calendar::turn = calendar::turn_zero + 1_days +
+                     ( condition == "day_awake" ? 12_hours : 23_hours );
+    get_weather().forced_temperature = 20_C;
+    map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_abs_omt home = project_to<coords::omt>(
+                                     here.get_abs( tripoint_bub_ms( 60, 60, 0 ) ) );
+    const auto lookup = [home]( const tripoint_abs_omt &p ) -> std::optional<std::string> {
+        return p == home ? std::optional<std::string>( "bandit_camp" ) : std::nullopt;
+    };
+    REQUIRE( bandit_live_world::register_abstract_site( world,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
+             home, lookup, 2 ) );
+    auto &site = world.sites.front();
+    site.camp_decision.state = bandit_live_world::camp_decision_state::report_awaiting_assessment;
+    REQUIRE( materialize_live_bandit_response_members_for_test( site.site_id ) == 2 );
+    site.camp_decision = {};
+    REQUIRE_FALSE( site.active_outing.is_active() );
+    REQUIRE_FALSE( site.active_hostile_operation.is_active() );
+    REQUIRE( site.members.size() == 2 );
+    std::vector<shared_ptr_fast<npc>> actors;
+    for( const auto &member : site.members ) {
+        auto actor = overmap_buffer.find_npc( member.npc_id );
+        REQUIRE( actor );
+        REQUIRE( member.state == bandit_live_world::member_state::at_home );
+        REQUIRE( actor->pos_abs_omt() == home );
+        REQUIRE( actor->myclass == npc_class_id( "NC_SCAVENGER" ) );
+        CHECK( actor->myclass->get_work_hours() == std::make_pair( 0, 24 ) );
+        CHECK_FALSE( actor->assigned_camp );
+        CHECK_FALSE( actor->has_companion_mission() );
+        actor->set_hunger( 0 );
+        actor->set_thirst( 0 );
+        actor->set_stored_kcal( actor->get_healthy_kcal() );
+        actor->set_all_parts_temp_conv( BODYTEMP_NORM );
+        actor->set_all_parts_temp_cur( BODYTEMP_NORM );
+        actor->set_sleepiness( condition == "night_exhausted" ? 1100 : 400 );
+        here.ter_set( here.get_bub( actor->pos_abs() ), ter_id( "t_floor" ) );
+        actors.push_back( actor );
+    }
+    npc &defender = *actors.front();
+    player.setpos( here, tripoint_bub_ms( 130, 130, 0 ) );
+    g->load_npcs();
+    REQUIRE( defender.is_active() );
+    REQUIRE( actors.back()->is_active() );
+    here.build_map_cache( 0 );
+    const bool prior_rest = condition == "night_prior_rest" || condition == "night_narcosis";
+    if( prior_rest ) {
+        // Let the ordinary needs executor select rest while no threat is seen.
+        for( int turn = 0; turn < 60 && !defender.in_sleep_state(); ++turn ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        REQUIRE( defender.in_sleep_state() );
+    } else if( condition == "night_prior_lying" ) {
+        // Declared prior lying, distinct from choosing bedtime during attack.
+        defender.add_effect( effect_lying_down, 30_minutes );
+    }
+    if( condition == "night_narcosis" ) {
+        defender.add_effect( efftype_id( "narcosis" ), 10_turns );
+        defender.fall_asleep( 10_turns );
+    }
+    const bool asleep_before = defender.has_effect( effect_sleep );
+    const bool lying_before = defender.has_effect( effect_lying_down );
+    const auto before_position = defender.pos_abs();
+    const auto camp_peer_before = actors.back()->pos_abs();
+    const bool peer_sleep_before = actors.back()->in_sleep_state();
+    std::string ids = std::to_string( defender.getID().get_value() ) + "," +
+                      std::to_string( actors.back()->getID().get_value() );
+    const std::string trace_id = "r062-" + condition;
+    const char *evidence_dir = std::getenv( "R062_EVIDENCE_DIR" );
+    const auto trace_path = ( evidence_dir ? std::filesystem::path( evidence_dir ) :
+                             std::filesystem::temp_directory_path() ) /
+                            ( trace_id + ".jsonl" );
+    const std::map<std::string, std::string> environment = {
+        { "OPENCLAW_HARNESS_RAID_ACTOR_TRACE", trace_id },
+        { "OPENCLAW_HARNESS_RUN_ID", trace_id },
+        { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", trace_id },
+        { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace_path.string() },
+        { "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", trace_id },
+        { "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS", ids }
+    };
+    std::map<std::string, std::optional<std::string>> old_environment;
+    const auto set_environment = []( const std::string &key, const std::optional<std::string> &value ) {
+#if defined( _WIN32 )
+        _putenv_s( key.c_str(), value ? value->c_str() : "" );
+#else
+        if( value ) {
+            setenv( key.c_str(), value->c_str(), 1 );
+        } else {
+            unsetenv( key.c_str() );
+        }
+#endif
+    };
+    for( const auto &[key, value] : environment ) {
+        const char *old = std::getenv( key.c_str() );
+        old_environment[key] = old ? std::optional<std::string>( old ) : std::nullopt;
+        set_environment( key, value );
+    }
+    std::filesystem::remove( trace_path );
+    on_out_of_scope restore_trace( [&]() {
+        raid_decision_trace::native_recorder().closeout();
+        for( const auto &[key, value] : old_environment ) {
+            set_environment( key, value );
+        }
+        if( !evidence_dir ) {
+            std::filesystem::remove( trace_path );
+        }
+    } );
+    const bool occluded = condition == "night_occluded_alarm";
+    if( occluded ) {
+        // Attack noise outside a solid enclosure: membership is not perception.
+        const auto peer = actors.back()->pos_bub();
+        for( const auto &p : here.points_in_radius( peer, 1 ) ) {
+            if( p != peer ) {
+                here.ter_set( p, ter_id( "t_wall" ) );
+            }
+        }
+    }
+    player.setpos( here, defender.pos_bub() + point::south );
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0 );
+    REQUIRE( defender.guaranteed_hostile() );
+    player.set_skill_level( skill_id( "melee" ), 8 );
+    player.set_skill_level( skill_id( "unarmed" ), 8 );
+    const int hp_before = defender.get_hp();
+    for( int hit = 0; hit < 5 && defender.get_hp() == hp_before; ++hit ) {
+        player.set_moves( 100 );
+        player.melee_attack( defender, false );
+    }
+    REQUIRE( defender.get_hp() < hp_before );
+    REQUIRE_FALSE( defender.is_dead() );
+    const int player_hp_before = player.get_hp();
+    bool saw_player = false;
+    bool danger = false;
+    bool acting = false;
+    bool sleep_after_attack = false;
+    bool resumed = false;
+    bool forced_sleep_retained = false;
+    bool unseen_peer_slept = false;
+    bool peer_resumed = false;
+    for( int step = 0; step < 30 && !defender.is_dead() && !player.is_dead_state(); ++step ) {
+        // do_turn delivers NPC sound before monmove; the smaller motor seam
+        // alone does not deliver that stage. The alarm is declared test input,
+        // not an invented shared bandit alarm state.
+        if( occluded && step == 12 ) {
+            const auto peer = actors.back()->pos_bub();
+            for( const auto &p : here.points_in_radius( peer, 1 ) ) {
+                here.ter_set( p, ter_id( "t_floor" ) );
+            }
+            here.invalidate_map_cache( 0 );
+            here.build_map_cache( 0 );
+        }
+        if( step == 0 || ( ( condition == "night_narcosis" || occluded ) && step == 12 ) ) {
+            sounds::sound( player.pos_bub(), 100, sounds::sound_t::alarm, "camp attack test alarm" );
+        }
+        for( npc &actor : g->all_npcs() ) {
+            sounds::process_sound_markers( &actor );
+        }
+        sounds::reset_sounds();
+        calendar::turn += 1_turns;
+        const int moves = defender.get_moves();
+        process_monsters_and_npcs_turn_for_test();
+        saw_player |= defender.sees( here, player );
+        danger |= defender.get_ai_danger() > 0;
+        acting |= !defender.in_sleep_state() && defender.get_moves() < moves + defender.get_speed();
+        sleep_after_attack |= defender.in_sleep_state();
+        if( defender.has_effect( efftype_id( "narcosis" ) ) ) {
+            CHECK( defender.in_sleep_state() );
+            forced_sleep_retained = true;
+        } else if( condition != "night_narcosis" ) {
+            CHECK_FALSE( defender.in_sleep_state() );
+        }
+        if( occluded && step < 12 ) {
+            CHECK_FALSE( actors.back()->sees( here, player ) );
+            CHECK( actors.back()->get_ai_danger() == 0 );
+            unseen_peer_slept |= actors.back()->in_sleep_state();
+        } else if( occluded && actors.back()->sees( here, player ) &&
+                   actors.back()->get_ai_danger() > 0 ) {
+            CHECK_FALSE( actors.back()->in_sleep_state() );
+            peer_resumed = true;
+        }
+        resumed |= step >= 12 && !defender.in_sleep_state() &&
+                   defender.get_moves() < moves + defender.get_speed();
+        std::cout << "R062_CAMP_STEP condition=" << condition << " step=" << step
+                  << " id=" << defender.getID().get_value() << " hp=" << defender.get_hp()
+                  << " position=" << defender.pos_abs().to_string()
+                  << " asleep=" << defender.has_effect( effect_sleep )
+                  << " lying=" << defender.has_effect( effect_lying_down )
+                  << " narcosis=" << defender.has_effect( efftype_id( "narcosis" ) )
+                  << " seen=" << defender.sees( here, player ) << " danger=" << defender.get_ai_danger()
+                  << " goal=" << defender.get_committed_goal()
+                  << " peer_sleep=" << actors.back()->in_sleep_state()
+                  << " peer_seen=" << actors.back()->sees( here, player ) << '\n';
+        // Stop at the observed retaliation/resumption boundary. Continuing
+        // until this bare test world's avatar dies exercises unrelated death
+        // UI/world cleanup rather than camp sleep or alarm admission.
+        if( saw_player && danger && acting && player.get_hp() < player_hp_before &&
+            ( condition != "night_narcosis" || resumed ) &&
+            ( !occluded || peer_resumed ) ) {
+            break;
+        }
+    }
+    raid_decision_trace::native_recorder().closeout();
+    int actions = 0;
+    int voluntary_sleep_actions = 0;
+    int visible_target_actions = 0;
+    int defender_retaliation_damage = 0;
+    std::ifstream trace( trace_path );
+    for( std::string line; std::getline( trace, line ); ) {
+        const JsonObject row = json_loader::from_string( line ).get_object();
+        row.allow_omitted_members();
+        if( row.get_string( "event" ) == "raid_actor_damage" ) {
+            const JsonObject source = row.get_object( "source" );
+            const JsonObject victim = row.get_object( "victim" );
+            source.allow_omitted_members();
+            victim.allow_omitted_members();
+            if( source.get_string( "type" ) == "npc" &&
+                source.get_int( "id" ) == defender.getID().get_value() &&
+                victim.get_string( "type" ) == "avatar" ) {
+                defender_retaliation_damage += row.get_int( "applied_damage" );
+            }
+        }
+        if( row.get_string( "event" ) == "raid_actor_action" &&
+            row.get_int( "npc_id" ) == defender.getID().get_value() ) {
+            ++actions;
+            voluntary_sleep_actions += row.get_string( "action" ) == "Sleep";
+            visible_target_actions += row.get_bool( "target_visible" );
+        }
+    }
+    std::cout << "R062_CAMP_RESULT condition=" << condition << " home=" << home.to_string()
+              << " before_sleep=" << asleep_before << " before_lying=" << lying_before
+              << " saw_player=" << saw_player << " danger=" << danger << " acting=" << acting
+              << " sleep_after=" << sleep_after_attack << " resumed=" << resumed
+              << " moved=" << ( defender.pos_abs() != before_position )
+              << " peer_moved=" << ( actors.back()->pos_abs() != camp_peer_before )
+              << " player_damage=" << ( player.get_hp() < player_hp_before )
+              << " actions=" << actions << " visible_target_actions=" << visible_target_actions
+              << " Sleep_actions=" << voluntary_sleep_actions
+              << " peer_sleep_before=" << peer_sleep_before
+              << " unseen_peer_slept=" << unseen_peer_slept << " peer_resumed=" << peer_resumed << '\n';
+    CHECK( saw_player );
+    CHECK( danger );
+    CHECK( acting );
+    CHECK( actions > 0 );
+    CHECK( visible_target_actions > 0 );
+    CHECK( defender_retaliation_damage > 0 );
+    CHECK( voluntary_sleep_actions == 0 );
+    CHECK_FALSE( site.active_outing.is_active() );
+    CHECK_FALSE( site.active_hostile_operation.is_active() );
+    if( occluded ) {
+        CHECK_FALSE( peer_sleep_before );
+        // Original pre-alert product chose rest here; exact received alarm
+        // now keeps an ordinary occluded home peer ready without enemy sight.
+        CHECK_FALSE( unseen_peer_slept );
+        CHECK( peer_resumed );
+    }
+    if( condition == "night_narcosis" ) {
+        CHECK( sleep_after_attack );
+        CHECK( forced_sleep_retained );
+        CHECK( resumed );
+    }
+}
+
+
+TEST_CASE( "actual day and night class duties switch rest through the local scheduler",
+           "[npc][camp_defense_sleep_062][schedule_boundary_062]" )
+{
+    // These are actual scheduled classes, kept separate from home bandits,
+    // whose generated NC_SCAVENGER class has no work-hour shift.
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    const auto previous_turn = calendar::turn;
+    on_out_of_scope restore_turn( [previous_turn]() {
+        clear_npcs();
+        calendar::turn = previous_turn;
+    } );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    calendar::turn = calendar::turn_zero + 1_days + 17_hours + 59_minutes + 40_seconds;
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 50, 50, -2 ) );
+    npc &day = spawn_scheduled_npc( { 50, 50 }, NC_ROBOFAC_INTERCOM_DAY );
+    npc &night = spawn_scheduled_npc( { 60, 50 }, NC_ROBOFAC_INTERCOM_NIGHT );
+    day.set_sleepiness( 100 );
+    night.set_sleepiness( 100 );
+    const auto day_post = day.pos_abs();
+    const auto night_post = night.pos_abs();
+    bool off_shift_night_rest = false;
+    bool off_shift_day_rest = false;
+    bool on_shift_night_wake = false;
+    for( int step = 0; step < 60; ++step ) {
+        calendar::turn += 1_turns;
+        process_monsters_and_npcs_turn_for_test();
+        if( to_hours<int>( time_past_midnight( calendar::turn ) ) == 17 ) {
+            CHECK_FALSE( day.in_sleep_state() );
+            off_shift_night_rest |= night.in_sleep_state();
+        } else {
+            off_shift_day_rest |= day.in_sleep_state();
+            on_shift_night_wake |= !night.in_sleep_state();
+        }
+    }
+    CHECK( off_shift_night_rest );
+    CHECK( off_shift_day_rest );
+    CHECK( on_shift_night_wake );
+    CHECK_FALSE( night.in_sleep_state() );
+    CHECK( day.pos_abs() == day_post );
+    CHECK( night.pos_abs() == night_post );
+    std::cout << "R062_SCHEDULE off_shift_night_rest=" << off_shift_night_rest
+              << " off_shift_day_rest=" << off_shift_day_rest
+              << " on_shift_night_wake=" << on_shift_night_wake << '\n';
+}
+
+TEST_CASE( "existing patrol alarm admits sleeping workers to actual local response",
+           "[npc][patrol_alarm_scheduler_062]" )
+{
+    const std::string condition = GENERATE( std::string( "awake" ),
+                                          std::string( "ordinary_sleep" ),
+                                          std::string( "narcosis" ),
+                                          std::string( "suspend" ) );
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    zone_manager::get_manager().clear();
+    const auto previous_turn = calendar::turn;
+    map &here = get_map();
+    calendar::turn = calendar::turn_zero + 1_days + 12_hours;
+    get_weather().forced_temperature = 20_C;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    g->faction_manager_ptr->create_if_needed();
+    const tripoint_abs_ms post = here.get_abs( tripoint_bub_ms( 60, 60, 0 ) );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( post );
+    REQUIRE_FALSE( overmap_buffer.has_camp( camp_omt ) );
+    overmap_buffer.add_camp( basecamp( "R062 patrol alarm", camp_omt ) );
+    on_out_of_scope restore( [previous_turn, camp_omt]() {
+        clear_npcs();
+        zone_manager::get_manager().clear();
+        overmap_buffer.remove_camp( camp_omt.xy() );
+        calendar::turn = previous_turn;
+    } );
+    auto camp_ptr = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( camp_ptr );
+    basecamp &camp = **camp_ptr;
+    camp.set_owner( your_fac );
+    camp.set_bb_pos( post );
+    mapgen_place_zone( post, post + point::east, zone_type_id( "CAMP_PATROL" ),
+                       your_fac, {}, "R062 patrol post" );
+    get_avatar().setpos( here, tripoint_bub_ms( 100, 100, -2 ) );
+    npc &first = spawn_npc( { 45, 50 }, "test_talker" );
+    npc &second = spawn_npc( { 46, 50 }, "test_talker" );
+    const std::vector<npc *> workers = { &first, &second };
+    for( npc *worker : workers ) {
+        clear_character( *worker, true );
+        // clear_character resets position; establish declared initial geometry
+        // before measuring any alarm or production motion.
+        worker->setpos( here, tripoint_bub_ms( worker == &first ? 45 : 46, 50, 0 ) );
+        worker->set_fac( faction_your_followers );
+        worker->set_attitude( NPCATT_NULL );
+        worker->set_mission( NPC_MISSION_CAMP_RESIDENT );
+        REQUIRE( worker->is_active() );
+        worker->set_sleepiness( 400 );
+        REQUIRE( worker->job.set_task_priority( activity_id( "ACT_CAMP_PATROL" ), 10 ) );
+        camp.add_assignee( worker->getID() );
+        REQUIRE( worker->assigned_camp == camp_omt );
+        if( condition != "awake" ) {
+            worker->fall_asleep( 1_hours );
+        }
+        if( condition == "narcosis" ) {
+            worker->add_effect( efftype_id( "narcosis" ), 1_hours );
+        } else if( condition == "suspend" ) {
+            worker->add_effect( efftype_id( "npc_suspend" ), 1_hours );
+        }
+    }
+    const auto first_position = first.pos_abs();
+    const auto second_position = second.pos_abs();
+    const camp_patrol_shift_plan *normal = camp.get_current_patrol_shift_plan();
+    REQUIRE( normal );
+    REQUIRE( normal->roster.size() == 1 );
+    REQUIRE( camp.raise_patrol_alarm( first.getID(), 30_seconds ) );
+    const camp_patrol_shift_plan *alarm = camp.get_current_patrol_shift_plan();
+    REQUIRE( alarm );
+    CHECK( alarm->roster.size() == 2 );
+    for( int step = 0; step < 8; ++step ) {
+        calendar::turn += 1_turns;
+        process_monsters_and_npcs_turn_for_test();
+    }
+    const bool automatic_first_sleep = first.in_sleep_state();
+    const bool automatic_second_sleep = second.in_sleep_state();
+    // Query the actual runtime/order writer after observing automatic admission.
+    // This grants no target knowledge and does not clear an effect.
+    for( npc *worker : workers ) {
+        REQUIRE( camp.get_current_patrol_runtime( worker->getID(), calendar::turn ) );
+        REQUIRE( worker->has_camp_patrol_order() );
+    }
+    for( int step = 0; step < 8; ++step ) {
+        calendar::turn += 1_turns;
+        process_monsters_and_npcs_turn_for_test();
+    }
+    const bool first_moved = first.pos_abs() != first_position;
+    const bool second_moved = second.pos_abs() != second_position;
+    std::cout << "R062_PATROL_ALARM condition=" << condition
+              << " first_id=" << first.getID().get_value()
+              << " second_id=" << second.getID().get_value()
+              << " automatic_sleep=" << automatic_first_sleep << ',' << automatic_second_sleep
+              << " ordered_sleep=" << first.in_sleep_state() << ',' << second.in_sleep_state()
+              << " moved=" << first_moved << ',' << second_moved
+              << " first_pos=" << first.pos_abs().to_string()
+              << " second_pos=" << second.pos_abs().to_string() << '\n';
+    if( condition == "awake" || condition == "ordinary_sleep" ) {
+        // Owner's desired behavior: roster membership alone is insufficient.
+        CHECK_FALSE( first.in_sleep_state() );
+        CHECK_FALSE( second.in_sleep_state() );
+        CHECK( first_moved );
+        CHECK( second_moved );
+    } else {
+        CHECK( first.in_sleep_state() );
+        CHECK( second.in_sleep_state() );
+        CHECK_FALSE( first_moved );
+        CHECK_FALSE( second_moved );
+        for( npc *worker : workers ) {
+            CHECK( worker->has_effect( efftype_id( condition == "narcosis" ?
+                                                "narcosis" : "npc_suspend" ) ) );
+        }
+    }
+    for( int step = 0; step < 50; ++step ) {
+        calendar::turn += 1_turns;
+        process_monsters_and_npcs_turn_for_test();
+    }
+    CHECK_FALSE( camp.is_patrol_alarm_active() );
+    const camp_patrol_shift_plan *expired = camp.get_current_patrol_shift_plan();
+    REQUIRE( expired );
+    CHECK( expired->roster.size() == 1 );
+    std::cout << "R062_PATROL_EXPIRED condition=" << condition
+              << " sleep=" << first.in_sleep_state() << ',' << second.in_sleep_state()
+              << " roster=" << expired->roster.size() << '\n';
+}
+
+namespace
+{
+// Declared local geometry; membership and NPC templates come from the actual
+// hostile-site roster generator. No player basecamp or fabricated target order.
+class r062_alarm_scene
+{
+    bandit_live_world::world_state old_world = overmap_buffer.global_state.bandit_live_world;
+    time_point old_turn = calendar::turn;
+    public:
+        std::string site_id;
+        std::vector<shared_ptr_fast<npc>> actors;
+        r062_alarm_scene( bool cannibal ) {
+            clear_map_without_vision();
+            clear_avatar();
+            clear_npcs();
+            sounds::reset_sounds();
+            auto &world = overmap_buffer.global_state.bandit_live_world;
+            world.clear();
+            calendar::turn = calendar::turn_zero + 1_days + 23_hours;
+            get_weather().forced_temperature = 20_C;
+            g->faction_manager_ptr->create_if_needed();
+            map &here = get_map();
+            const auto home = project_to<coords::omt>( here.get_abs( tripoint_bub_ms( 60, 60, 0 ) ) );
+            const std::string kind = cannibal ? "cannibal_camp" : "bandit_camp";
+            const auto lookup = [home, kind]( const tripoint_abs_omt &p ) -> std::optional<std::string> {
+                return p == home ? std::optional<std::string>( kind ) : std::nullopt;
+            };
+            REQUIRE( bandit_live_world::register_abstract_site( world,
+                     bandit_live_world::anchor_source_kind::overmap_special, kind, home, lookup, 2 ) );
+            auto &site = world.sites.front();
+            site_id = site.site_id;
+            site.camp_decision.state = bandit_live_world::camp_decision_state::report_awaiting_assessment;
+            REQUIRE( materialize_live_bandit_response_members_for_test( site_id ) == 2 );
+            site.camp_decision = {};
+            for( const auto &member : site.members ) {
+                auto actor = overmap_buffer.find_npc( member.npc_id );
+                REQUIRE( actor );
+                REQUIRE( member.state == bandit_live_world::member_state::at_home );
+                clear_character( *actor, true );
+                actor->setpos( here, tripoint_bub_ms( 60, actors.empty() ? 60 : 68, 0 ) );
+                actor->set_sleepiness( 0 );
+                actor->personality.bravery = 10;
+                actor->personality.aggression = 0;
+                actor->set_attitude( NPCATT_NULL );
+                actor->remove_weapon();
+                actors.push_back( actor );
+            }
+            get_avatar().setpos( here, tripoint_bub_ms( 100, 100, -2 ) );
+            // Sight obstruction with a real open route around either end.
+            for( int x = 55; x <= 65; ++x ) {
+                here.ter_set( tripoint_bub_ms( x, 64, 0 ), ter_id( "t_wall" ) );
+            }
+            for( const auto &p : here.points_on_zlevel( 0 ) ) {
+                if( p.y() != 64 || p.x() < 55 || p.x() > 65 ) {
+                    here.ter_set( p, ter_id( "t_floor" ) );
+                }
+            }
+            g->load_npcs();
+            here.invalidate_map_cache( 0 );
+            here.build_map_cache( 0 );
+            REQUIRE( actors[0]->is_active() );
+            REQUIRE( actors[1]->is_active() );
+        }
+        ~r062_alarm_scene() {
+            clear_npcs();
+            g->clear_zombies();
+            sounds::reset_sounds();
+            overmap_buffer.global_state.bandit_live_world = old_world;
+            calendar::turn = old_turn;
+        }
+        void step() {
+            for( npc &actor : g->all_npcs() ) {
+                sounds::process_sound_markers( &actor );
+            }
+            sounds::reset_sounds();
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        void attack() {
+            avatar &player = get_avatar();
+            player.setpos( get_map(), actors[0]->pos_bub() + point::north );
+            player.set_skill_level( skill_id( "melee" ), 8 );
+            player.set_skill_level( skill_id( "unarmed" ), 8 );
+            const int hp = actors[0]->get_hp();
+            for( int hit = 0; hit < 5 && actors[0]->get_hp() == hp; ++hit ) {
+                player.set_moves( 100 );
+                player.melee_attack( *actors[0], false );
+            }
+            REQUIRE( actors[0]->get_hp() < hp );
+            REQUIRE_FALSE( actors[0]->is_dead() );
+        }
+};
+}
+
+TEST_CASE( "generated home defenders hear an exact unit attack before sleep admission",
+           "[npc][unit_alarm_motion_062]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r062_alarm_scene scene( cannibal );
+    npc &recipient = *scene.actors[1];
+    recipient.set_sleepiness( 400 );
+    recipient.fall_asleep( 1_hours );
+    const auto before = recipient.pos_abs();
+    scene.attack();
+    REQUIRE_FALSE( recipient.sees( get_map(), get_avatar() ) );
+    bool moved_unseen = false;
+    for( int turn = 0; turn < 24; ++turn ) {
+        scene.step();
+        moved_unseen |= recipient.pos_abs() != before && !recipient.sees( get_map(), get_avatar() );
+    }
+    CAPTURE( cannibal, recipient.pos_abs(), recipient.in_sleep_state(), moved_unseen );
+    CHECK_FALSE( recipient.in_sleep_state() );
+    CHECK( moved_unseen );
+}
+
+TEST_CASE( "unit alarm is finite exact membership and preserves forced rest",
+           "[npc][unit_alarm_limits_062]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const std::string condition = GENERATE( std::string( "ordinary" ), std::string( "narcosis" ),
+                                          std::string( "suspend" ), std::string( "exhausted" ),
+                                          std::string( "deaf" ), std::string( "remote" ),
+                                          std::string( "foreign" ) );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r062_alarm_scene scene( cannibal );
+    npc &recipient = *scene.actors[1];
+    recipient.set_sleepiness( condition == "exhausted" ? 1100 : 400 );
+    recipient.fall_asleep( 1_hours );
+    if( condition == "narcosis" || condition == "suspend" || condition == "deaf" ) {
+        recipient.add_effect( efftype_id( condition == "suspend" ? "npc_suspend" : condition ), 1_hours );
+    }
+    if( condition == "remote" ) {
+        recipient.setpos( get_map(), tripoint_bub_ms( 125, 125, 0 ) );
+    }
+    if( condition == "foreign" ) {
+        auto &world = overmap_buffer.global_state.bandit_live_world;
+        const auto member = world.sites.front().members.back();
+        world.sites.front().members.pop_back();
+        auto other = world.sites.front();
+        other.site_id += ":unrelated";
+        other.members = { member };
+        world.sites.push_back( other );
+    }
+    const auto before = recipient.pos_abs();
+    scene.attack();
+    scene.step();
+    CAPTURE( cannibal, condition, recipient.get_sleepiness() );
+    const bool delivered = condition != "deaf" && condition != "remote" &&
+                           condition != "foreign" && condition != "narcosis";
+    CHECK( recipient.has_active_faction_alarm() == delivered );
+    if( delivered ) {
+        REQUIRE( recipient.faction_alarm );
+        CHECK( recipient.faction_alarm->source_id == scene.actors[0]->getID() );
+        // Received attack gives the victim's incident, not the player's position.
+        CHECK( recipient.faction_alarm->incident != get_avatar().pos_abs() );
+    }
+    if( condition == "narcosis" || condition == "suspend" || condition == "exhausted" ) {
+        CHECK( recipient.in_sleep_state() );
+        CHECK( recipient.pos_abs() == before );
+    }
+    if( condition == "ordinary" ) {
+        CHECK_FALSE( recipient.in_sleep_state() );
+        const auto id = recipient.getID();
+        const auto source_id = scene.actors[0]->getID();
+        const auto saved_position = recipient.pos_abs();
+        const auto alarm_group = recipient.faction_alarm->group;
+        const auto deadline = recipient.faction_alarm->until;
+        const auto saved_turn = calendar::turn;
+        REQUIRE( g->save() );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        // Reload can populate unrelated monsters from neighboring generated
+        // submaps. This controlled case measures the saved unit alarm and its
+        // expiry after the player leaves, without a new ambient threat.
+        clear_creatures();
+        CHECK( calendar::turn == saved_turn );
+        auto loaded = overmap_buffer.find_npc( id );
+        REQUIRE( loaded );
+        scene.actors = { overmap_buffer.find_npc( source_id ), loaded };
+        REQUIRE( scene.actors[0] );
+        CHECK( loaded->pos_abs() == saved_position );
+        REQUIRE( loaded->faction_alarm );
+        CHECK( loaded->faction_alarm->group == alarm_group );
+        CHECK( loaded->faction_alarm->until == deadline );
+        CHECK( loaded->has_active_faction_alarm() );
+        const auto position = loaded->pos_abs();
+        for( int turn = 0; turn < 24; ++turn ) {
+            scene.step();
+        }
+        CHECK( loaded->pos_abs() != position );
+        // End the perceived threat without clearing an actor's needs/effects.
+        get_avatar().setpos( get_map(), tripoint_bub_ms( 100, 100, -2 ) );
+        calendar::turn += 31_minutes;
+        scene.step();
+        CHECK_FALSE( loaded->has_active_faction_alarm() );
+        CHECK_FALSE( loaded->faction_alarm );
+        loaded->set_sleepiness( 400 );
+        bool rested = false;
+        for( int turn = 0; turn < 90 && !rested; ++turn ) {
+            scene.step();
+            rested = loaded->in_sleep_state();
+        }
+        CHECK( rested );
+    }
+}
+
+TEST_CASE( "perceived patrol threat wakes off shift worker and releases finite duty",
+           "[npc][patrol_threat_alarm_062]" )
+{
+    const bool forced = GENERATE( false, true );
+    const std::string condition = "awake";
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    zone_manager::get_manager().clear();
+    const auto previous_turn = calendar::turn;
+    map &here = get_map();
+    calendar::turn = calendar::turn_zero + 1_days + 12_hours;
+    get_weather().forced_temperature = 20_C;
+    override_option food( "NO_NPC_FOOD", "false" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    g->faction_manager_ptr->create_if_needed();
+    const tripoint_abs_ms post = here.get_abs( tripoint_bub_ms( 60, 60, 0 ) );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( post );
+    REQUIRE_FALSE( overmap_buffer.has_camp( camp_omt ) );
+    overmap_buffer.add_camp( basecamp( "R062 patrol alarm", camp_omt ) );
+    on_out_of_scope restore( [previous_turn, camp_omt]() {
+        clear_npcs();
+        zone_manager::get_manager().clear();
+        overmap_buffer.remove_camp( camp_omt.xy() );
+        calendar::turn = previous_turn;
+    } );
+    auto camp_ptr = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( camp_ptr );
+    basecamp &camp = **camp_ptr;
+    camp.set_owner( your_fac );
+    camp.set_bb_pos( post );
+    mapgen_place_zone( post, post + point::east, zone_type_id( "CAMP_PATROL" ),
+                       your_fac, {}, "R062 patrol post" );
+    get_avatar().setpos( here, tripoint_bub_ms( 100, 100, -2 ) );
+    npc &first = spawn_npc( { 45, 50 }, "test_talker" );
+    npc &second = spawn_npc( { 46, 50 }, "test_talker" );
+    const std::vector<npc *> workers = { &first, &second };
+    for( npc *worker : workers ) {
+        clear_character( *worker, true );
+        // clear_character resets position; establish declared initial geometry
+        // before measuring any alarm or production motion.
+        worker->setpos( here, tripoint_bub_ms( worker == &first ? 45 : 46, 50, 0 ) );
+        worker->set_fac( faction_your_followers );
+        worker->set_attitude( NPCATT_NULL );
+        worker->set_mission( NPC_MISSION_CAMP_RESIDENT );
+        REQUIRE( worker->is_active() );
+        worker->set_sleepiness( 400 );
+        worker->myclass = npc_class_id( "NC_SCAVENGER" );
+        worker->set_skill_level( skill_id( "melee" ), 6 );
+        worker->set_skill_level( skill_id( "unarmed" ), 6 );
+        worker->personality.bravery = 10;
+        worker->personality.aggression = 10;
+        item knife( itype_id( "knife_combat" ) );
+        REQUIRE( worker->wield( knife ) );
+        REQUIRE( worker->job.set_task_priority( activity_id( "ACT_CAMP_PATROL" ), 10 ) );
+        camp.add_assignee( worker->getID() );
+        REQUIRE( worker->assigned_camp == camp_omt );
+        if( condition != "awake" ) {
+            worker->fall_asleep( 1_hours );
+        }
+        if( condition == "narcosis" ) {
+            worker->add_effect( efftype_id( "narcosis" ), 1_hours );
+        } else if( condition == "suspend" ) {
+            worker->add_effect( efftype_id( "npc_suspend" ), 1_hours );
+        }
+    }
+
+    const auto *normal = camp.get_current_patrol_shift_plan();
+    REQUIRE( normal );
+    REQUIRE( normal->roster.size() == 1 );
+    npc *spotter = normal->roster.front() == first.getID() ? &first : &second;
+    npc *off_shift = spotter == &first ? &second : &first;
+    REQUIRE_FALSE( camp.get_current_patrol_runtime( off_shift->getID(), calendar::turn ) );
+    off_shift->fall_asleep( 1_hours );
+    if( forced ) {
+        off_shift->add_effect( efftype_id( "narcosis" ), 1_hours );
+    }
+    spotter->personality.bravery = 10;
+    spotter->personality.aggression = 10;
+    const auto before = off_shift->pos_abs();
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0 );
+    monster &threat = spawn_test_monster( "mon_zombie", spotter->pos_bub() + point::west );
+    REQUIRE( spotter->sees( here, threat ) );
+    const int threat_hp = threat.get_hp();
+    bool alarm = false;
+    bool wake = false;
+    bool motion = false;
+    bool defense = false;
+    for( int tick = 0; tick < 30 && !spotter->is_dead() && !off_shift->is_dead(); ++tick ) {
+        calendar::turn += 1_turns;
+        process_monsters_and_npcs_turn_for_test();
+        std::cout << "R062_PATROL_THREAT forced=" << forced << " tick=" << tick
+                  << " spotter=" << spotter->getID().get_value()
+                  << " pos=" << spotter->pos_abs() << " danger=" << spotter->get_ai_danger()
+                  << " target=" << ( spotter->current_target() ? spotter->current_target()->disp_name() : "none" )
+                  << " zombie_hp=" << threat.get_hp() << " sleep=" << spotter->in_sleep_state()
+                  << " offshift_sleep=" << off_shift->in_sleep_state() << '\n';
+        alarm |= camp.is_patrol_alarm_active();
+        wake |= !off_shift->in_sleep_state();
+        motion |= off_shift->pos_abs() != before;
+        defense |= threat.get_hp() < threat_hp;
+        if( forced ) {
+            CHECK( off_shift->has_effect( efftype_id( "narcosis" ) ) );
+            CHECK( off_shift->in_sleep_state() );
+            CHECK( off_shift->pos_abs() == before );
+        }
+        if( threat.is_dead() ) {
+            break;
+        }
+    }
+    CAPTURE( forced, alarm, wake, motion, defense );
+    CHECK( alarm );
+    CHECK( defense );
+    CHECK( wake == !forced );
+    CHECK( motion == !forced );
+    // Declared threat removal makes expiry informative; no AI effect is cleared.
+    g->clear_zombies();
+    calendar::turn += 31_minutes;
+    process_monsters_and_npcs_turn_for_test();
+    CHECK_FALSE( camp.is_patrol_alarm_active() );
+    CHECK_FALSE( camp.get_current_patrol_runtime( off_shift->getID(), calendar::turn ) );
+    CHECK_FALSE( off_shift->has_camp_patrol_order() );
+    if( !forced ) {
+        // Real fatigue can again outrank ordinary downtime after expiry;
+        // below forced-collapse threshold, no sleep effect is injected.
+        off_shift->set_sleepiness( 800 );
+        bool rested = false;
+        for( int tick = 0; tick < 90 && !rested; ++tick ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+            rested = off_shift->in_sleep_state();
+        }
+        CHECK( rested );
     }
 }

@@ -400,6 +400,9 @@ class overmapbuffer
          */
         void populate_followers_vec( std::vector<npc *> &followers, bool only_following = false,
                                      bool ignore_hallu = false ) const;
+        // Unlike get_overmaps_near this only inspects resident overmap
+        // buckets; it never reads or constructs one from disk.
+        std::vector<overmap *> get_loaded_overmaps_near( const point_abs_sm &p, int radius );
         void foreach_npc( const std::function<void( npc & )> &callback );
         shared_ptr_fast<npc> find_npc_by_unique_id( const std::string &unique_id );
         /**
@@ -787,9 +790,6 @@ class overmapbuffer
          */
         std::vector<overmap *> get_overmaps_near( const point_abs_sm &p, int radius );
         std::vector<overmap *> get_overmaps_near( const tripoint_abs_sm &location, int radius );
-        // Unlike get_overmaps_near this only inspects resident overmap
-        // buckets; it never reads or constructs one from disk.
-        std::vector<overmap *> get_loaded_overmaps_near( const point_abs_sm &p, int radius );
 };
 
 extern overmapbuffer overmap_buffer;

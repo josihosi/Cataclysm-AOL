@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <iosfwd>
 #include <list>
 #include <map>
@@ -520,6 +521,16 @@ struct dangerous_sound {
     int volume = 0;
 };
 
+// Finite knowledge from a received unit alert, independent of combat targets.
+struct npc_alarm {
+    std::string group;
+    character_id source_id;
+    tripoint_abs_ms incident;
+    time_point until = calendar::turn_zero;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &json );
+};
+
 constexpr std::array<direction, 8> npc_threat_dir = {
     direction::NORTHWEST, direction::NORTH, direction::NORTHEAST, direction::EAST,
     direction::SOUTHEAST, direction::SOUTH, direction::SOUTHWEST, direction::WEST
@@ -857,6 +868,9 @@ struct bandit_live_world_projection_lease {
 };
 
 class npc;
+// Distinct physical/save copies, including the supplied actor.  Use the same
+// inventory for preflight and propagation; game::find_npc is the overmap handle.
+std::vector<npc *> bandit_live_world_projection_lease_copies( npc &member );
 // Apply one authoritative outing projection update to the actor being transferred
 // and any distinct active/overmap save copies of that same NPC.  Callers still
 // preflight the outing and actor identities before committing a transfer.
@@ -1471,7 +1485,11 @@ class npc : public Character
 
         const pathfinding_settings &get_pathfinding_settings() const override;
         const pathfinding_settings &get_pathfinding_settings( bool no_bashing ) const;
+        using path_avoid_diagnostic = std::function<void( const tripoint_bub_ms &, std::string_view,
+                                     const Creature * )>;
         std::function<bool( const tripoint_bub_ms & )> get_path_avoid() const override;
+        std::function<bool( const tripoint_bub_ms & )> get_path_avoid(
+            const path_avoid_diagnostic &diagnostic ) const;
 
         // Item discovery and fetching
 
@@ -1573,6 +1591,10 @@ class npc : public Character
         void clear_camp_patrol_order();
         bool has_camp_patrol_order() const;
         const bandit_live_world_projection_lease &get_bandit_live_world_projection_lease() const;
+        // Read-only diagnostic clock; this is not proof of movement or ownership.
+        time_point get_last_updated() const {
+            return last_updated;
+        }
         void set_bandit_live_world_projection_lease(
             const bandit_live_world_projection_lease &lease );
         void clear_bandit_live_world_projection_lease();
@@ -1699,6 +1721,15 @@ class npc : public Character
         // Called once for each locally committed assault identity, including
         // after loading a save whose member was already in ordinary sleep.
         void reconcile_active_assault_routine( const std::string &operation_key );
+        std::string faction_alarm_group() const;
+        bool raise_faction_alarm( const tripoint_abs_ms &incident );
+        bool receive_faction_alarm( const npc_alarm &alarm, int heard_volume );
+        bool has_active_faction_alarm() const;
+        bool has_active_alarm_response() const;
+        void reconcile_alarm_response();
+        void interrupt_ordinary_sleep_for_duty();
+        bool duty_incapacitated() const;
+        std::optional<npc_alarm> faction_alarm;
         using need_result = npc_short_term_cache::need_result;
         using need_plan = npc_short_term_cache::need_plan;
         using need_source = npc_short_term_cache::need_source;

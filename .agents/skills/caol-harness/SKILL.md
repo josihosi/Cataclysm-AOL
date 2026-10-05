@@ -6,7 +6,10 @@ description: Query, explain, launch, operate, and audit C-AOL playtests through 
 # C-AOL harness
 
 Use the registry to select and launch a scenario and the cockpit/player CLI to operate its native
-input owners. The coordinator supplies the gameplay goal, current state and expected next
+input owners. The harness executes the agent’s chosen playtest; it does not add human
+approval or require a canonical file location as authority. Preserve the chosen save/build and
+actual input/evidence identity. A setup convention that blocks valid play is a tooling defect to
+repair, not a gameplay failure; claim acceptance remains separate from permission to run. The coordinator supplies the gameplay goal, current state and expected next
 observable development; the worker owns strategy and evidence. Run CLI commands from the game worktree.
 
 Play toward the intended outcome. An observation is a snapshot, not automatically a verdict.
@@ -23,6 +26,10 @@ controls; native logs, receipts and saved state establish gameplay claims.
 For the ordered faction/camp replay arms and a compact fire/raid recipe with its verified evidence boundary, use
 [the sequential playtest suite](references/playtest-suite.md). It maps behaviors to recipes,
 retained proof and the next build-specific replay pass, including bandit drafts. Select only the relevant arm.
+
+## Reuse prepared work; react to the current game
+
+A prepared handoff supplies the selected save/build/scenario and prior proof. Reuse its exact handles and validation; inspect changed bindings and actual current World/input state, not the whole manifest/history again. Use complete action responses directly when they retain valid authority. Bounded wait/move may cover an unchanged segment, but inspect returned changes and interruptions; historical weather or creature absence is not a promise about this run. Do not blindly chain through a prompt or missing authority. Query only the actor/turn/event facts needed for the next decision, retaining raw retrieval handles. Unreadable evidence is incomplete, never zero events. Once current save, input and owned processes/helpers are settled, reuse that checkpoint/closeout in the handoff rather than rebuilding it at every layer.
 
 ## Live playtesting belongs to Luna
 
@@ -44,6 +51,7 @@ contain the detailed commands and evidence boundaries for that situation.
 | Choose a scenario, resolve readiness or binding, build, launch, inspect registry status | [Selection and launch](references/selection-and-launch.md) |
 | A native debug warning interrupts loading or play | [Debug error catalogue: record/report, Ignore and continue](references/debug-errors.md) |
 | Operate an existing session: look, act, controls, collect, cancel, macros, save/reload | [Live operation](references/live-operation.md) |
+| Walk upstairs, reach a brazier or maintain the fire in Josef's base save | [Base-save route and actions](GAME-MANUAL.md#josefs-two-brazier-base-save) |
 | Light, extinguish or check the prepared brazier | [Fire in a prepared brazier](GAME-MANUAL.md#fire-in-a-prepared-brazier) |
 | Fire is burning but a camp cannot see smoke/light; range, time or height is unclear | [Smoke and light visibility](references/smoke-light-visibility.md) |
 | Choose movement, separation or elapsed time; distinguish a weak experiment from a failure | [Behavior and movement](references/behavior-and-movement.md) |

@@ -1,0 +1,169 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_040_r047_id11_withdrawal_stage3_20260929",
+  "description": "R040 stage-three selected-ID11 continuation from the verified R043 final saved roof fight checkpoint, using the fresh current-source R047-repair build.",
+  "profile": "first-smoke-040-r047-stage3-id11-20260929",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r040_r043_roof_response": "saved5345813_id11_flee_ladder_withdrawal_trace"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.toggle_safemode",
+      "semantic:prompt.choose",
+      "semantic:menu.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-040-r047-stage3-id11-20260929",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-040/r040-stage3-current-source/isolated/cataclysm-tiles",
+      "profile": "first-smoke-040-r047-stage3-id11-20260929",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "bind_exact_r043_final_saved5345813_checkpoint",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Verify the fresh byte-exact 61-file disposable copy and manifest, saved turn 5345813, effective relative userdir, fresh current-source executable/source binding, same-run World, Safe Off, active DEBUG_LS, player/ID10/ID11 state, and hostile:2 operation."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r040_trace_selected_id11_withdrawal_to_ladder_and_home",
+      "objective": "Continue only the already saved hostile:2 state. Trace actual ID11 from the first resumed turn. Determine whether the persistent flee state relinquishes local search, descends the real roof ladder at [3149,3454,1] to ground, and physically routes toward camp. Follow actual coordinates, z, action, goto/path, status and HP; preserve damage/death attribution only when native evidence names the source. No autoattack.",
+      "proof_targets": [
+        "Exact 61-file turn5345813 checkpoint, effective profile, new source-bound executable and frozen runtime; same-run World, Safe Off, DEBUG_LS and saved actor/operation identity",
+        "Run-bound raid trace confirms selected ID11 from first resumed turn to bounded capture ceiling; preserve actual scope, completeness, repeat and truncation markers",
+        "Per-turn ID11 position/z, attitude/effects, action/target/visibility, goto/path/passability, HP and status; compare decisions to physical roof-to-ground ladder and subsequent route toward camp",
+        "Preserve ID10 casualty and operation hostile:2/member state as checkpoint context; distinguish saved context from newly observed events",
+        "Record applied incoming damage, named attacker, sleep/wake/death, and companion/operation state only from source-bound native evidence",
+        "First complete physical withdrawal/return outcome or exact source-bound divergence; save a full byte-exact copy at meaningful boundaries",
+        "Graceful owned game/bridge/launcher exit with exact PID/birth/OS-exit evidence"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Use only the new disposable profile copied byte-exactly from the preserved R043 final saved turn5345813 checkpoint; preserve all previous copies unchanged",
+        "Trace only actual ID11 from first resumed turn in this distinct run; do not merge with the capped R043 trace",
+        "No signal/report/roster/route/HP/actor injection, clairvoyance, hostile teleport, autoattack or count repeat",
+        "Use individual currently advertised native controls and collect pending requests; verify Safe Off before waiting or movement",
+        "The expected ladder is the observed t_ladder_down [3149,3454,1] paired with t_ladder_up [3149,3454,0]; establish physical descent by native position/z and event evidence",
+        "Distinguish operation intent, flee decision, path and physical movement; a static fleeing label is not proof of escape",
+        "Attribute incoming damage/death only from a source-bound native event/field; preserve unknown attribution honestly"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_exact_r043_final_saved5345813_checkpoint",
+      "bind_same_run_native_world"
+    ],
+    "production_behavior": [
+      "r040_trace_selected_id11_withdrawal_to_ladder_and_home"
+    ],
+    "terminal_persistence": [
+      "r040_trace_selected_id11_withdrawal_to_ladder_and_home"
+    ],
+    "artifact_verdict": [
+      "r040_trace_selected_id11_withdrawal_to_ladder_and_home"
+    ],
+    "disallowed_shortcuts": [
+      "bind_exact_r043_final_saved5345813_checkpoint"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "R040 selected-ID11 continuation determines whether the saved fleeing actor physically exits the city roof by the real ladder and routes toward camp, preserving actions, health and source-attributed damage.",
+    "failure_rule": "Preserve first source-bound divergence. Trace scope/ID must be confirmed; flee attitude is not physical route progress, a route goal is not movement, and ground exit does not establish home arrival."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    11
+  ],
+  "decision_trace_from_turn": 5345813,
+  "decision_trace_to_turn": 5370000
+}

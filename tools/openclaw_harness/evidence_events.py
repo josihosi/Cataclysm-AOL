@@ -32,6 +32,42 @@ def parse(raw):
     return {"event": match[1].replace(" ", "_"), **fields}
 
 
+def _time_roles(record, observed=None):
+    """Keep recorded/provenance clocks separate from native observation/service.
+
+    Missing service time stays unavailable. Never infer it from a report's
+    delivery time, a neighboring frame, a wall clock or a scheduler cadence.
+    """
+    def point(minutes=None, turn=None):
+        minutes = minutes if type(minutes) is int and minutes >= 0 else None
+        turn = turn if type(turn) is int and turn >= 0 else None
+        return {"available": minutes is not None or turn is not None,
+                "minutes": minutes, "turn": turn}
+
+    recorded = point(record.get("game_minutes"), record.get("game_turn"))
+    native_observation = record if record.get("event") == "surface_descriptor" else observed
+    if not isinstance(native_observation, dict) or not (
+            native_observation.get("event") == "surface_descriptor" or
+            isinstance(native_observation.get("surface"), dict)):
+        native_observation = {}
+    observation = point(native_observation.get("game_minutes"),
+                        native_observation.get("game_turn", native_observation.get("turn")))
+    service = point(record.get("service_minutes"), record.get("service_turn"))
+    delivered = record.get("report_delivered_minutes")
+    accepted_report = (record.get("domain") == "bandit_live_world" and
+                       record.get("transition") == "camp_decision" and
+                       record.get("reason") == "final scout report delivered for assessment")
+    if accepted_report and delivered is None:
+        # This exact producer records report.delivered_minutes in game_minutes.
+        delivered = record.get("game_minutes")
+    return {"recorded": recorded,
+            "recorded_role": "report_delivery" if accepted_report else
+                             "observation" if record.get("event") == "surface_descriptor" else
+                             "unclassified",
+            "observation": observation, "service": service,
+            "report_delivery": point(delivered)}
+
+
 def envelopes(record, source):
     receipt = record.get("receipt", {}) if isinstance(record, dict) else {}
     receipt = receipt if isinstance(receipt, dict) else {}
@@ -58,6 +94,7 @@ def envelopes(record, source):
             "causal_ref": record.get("causal_ref", record.get("prompt_sha256")),
             "event": record.get("event", "cockpit_response" if receipt else record.get("schema", "record")),
             "changed_fields": record.get("changed_fields", record.get("delta")),
+            "time_roles": _time_roles(record, observed),
             "source": source, "payload": record}
     yield base
 
@@ -93,6 +130,7 @@ def envelopes(record, source):
                    "process_instance": observed.get("process_instance", base["process_instance"]),
                    "game_time": {"minutes": observed.get("game_minutes"),
                                  "turn": observed.get("game_turn", status.get("observed_turn") if isinstance(status, dict) else None)},
+                   "time_roles": _time_roles({**observed, "event": "surface_descriptor"}),
                    "actor_id": identity.get("id") if isinstance(identity, dict) else None,
                    "actor_name": entity.get("name"), "changed_fields": None,
                    "payload": entity, "observation_id": observed.get("observation_id")}
@@ -197,7 +235,42 @@ def _request_result_links(events, keys=None):
     return links
 
 
-def query(sources, filters, contains=None, selectors=(), limit=20):
+def parse_predicate(expression):
+    """A field path and a JSON value, never an evaluated expression."""
+    match = re.fullmatch(r"([\w.\[\]-]+)(>=|<=|!=|=|>|<)(.+)", expression)
+    if not match:
+        raise ValueError("evidence_predicate_requires_FIELD_OPERATOR_JSON")
+    field, operator, value = match.groups()
+    return field, operator, json.loads(value)
+
+
+def matches_predicate(event, predicate):
+    field, operator, expected = predicate
+    try:
+        actual = select(event, field)
+    except (KeyError, IndexError):
+        return False
+    # Missing/null is not an ordered value. Booleans are not numeric turns.
+    if operator in (">", "<", ">=", "<="):
+        if type(actual) not in (int, float) or type(expected) not in (int, float):
+            return False
+        return {">": lambda: actual > expected, "<": lambda: actual < expected,
+                ">=": lambda: actual >= expected, "<=": lambda: actual <= expected}[operator]()
+    if operator == "!=" and actual is None:
+        return False
+    equal = actual == expected and (isinstance(actual, bool) == isinstance(expected, bool))
+    return equal if operator == "=" else not equal
+
+
+def query(sources, filters, contains=None, selectors=(), limit=20, predicates=(),
+          from_turn=None, to_turn=None):
+    predicates = list(predicates)
+    if from_turn is not None and to_turn is not None and from_turn > to_turn:
+        raise ValueError("evidence_turn_range_reversed")
+    if from_turn is not None:
+        predicates.append(("game_time.turn", ">=", from_turn))
+    if to_turn is not None:
+        predicates.append(("game_time.turn", "<=", to_turn))
     rows, events, unavailable = [], [], []
     matching_keys = set()
     scanned = 0
@@ -241,6 +314,8 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                         continue
                 except (KeyError, IndexError):
                     continue
+                if not all(matches_predicate(event, predicate) for predicate in predicates):
+                    continue
                 if contains is not None and contains.casefold() not in encoded(event).decode("utf-8").casefold():
                     continue
                 request_id = event.get("request_id")
@@ -261,7 +336,8 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
     links = _request_result_links(events, matching_keys)
     displayed_rows = rows[:limit]
     snapshot = {"rows": rows, "links": links, "unavailable_sources": unavailable, "filters": filters,
-                "contains": contains, "scanned_records": scanned, "scanned_bytes": scanned_bytes,
+                "contains": contains, "predicates": predicates,
+                "scanned_records": scanned, "scanned_bytes": scanned_bytes,
                 "displayed_records": len(displayed_rows),
                 "displayed_bytes": len(encoded(displayed_rows)),
                 "displayed_link_records": len(links),

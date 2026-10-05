@@ -1,5 +1,6 @@
 #include "mapbuffer.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <exception>
@@ -16,6 +17,7 @@
 #include <vector>
 
 #include "cata_path.h"
+#include "calendar.h"
 #include "cata_utility.h"
 #include "debug.h"
 #include "filesystem.h"
@@ -36,6 +38,7 @@
 #include "translations.h"
 #include "type_id.h"
 #include "ui_manager.h"
+#include "vehicle.h"
 #include "worldfactory.h"
 #include "zzip.h"
 
@@ -84,9 +87,85 @@ bool mapbuffer::add_submap( const tripoint_abs_sm &p, std::unique_ptr<submap> &s
         return false;
     }
 
+    submap &stored = *sm;
     submaps[p] = std::move( sm );
+    for( const auto &v : stored.vehicles ) {
+        index_vehicle( *v, p );
+    }
 
     return true;
+}
+
+const std::vector<mapbuffer::vehicle_part_position> &mapbuffer::vehicle_parts_at(
+    const tripoint_abs_sm &p ) const
+{
+    static const std::vector<vehicle_part_position> empty;
+    const auto it = vehicle_cells.find( p );
+    return it == vehicle_cells.end() ? empty : it->second;
+}
+
+void mapbuffer::forget_vehicle( vehicle &v )
+{
+    const auto it = indexed_vehicles.find( &v );
+    if( it != indexed_vehicles.end() ) {
+        for( const auto &cell : it->second.cells ) {
+            auto entry = vehicle_cells.find( cell );
+            if( entry == vehicle_cells.end() ) {
+                continue;
+            }
+            auto &parts = entry->second;
+            parts.erase( std::remove_if( parts.begin(), parts.end(), [&]( const auto &part ) {
+                return part.first == &v;
+            } ), parts.end() );
+            if( parts.empty() ) {
+                vehicle_cells.erase( entry );
+            }
+        }
+        indexed_vehicles.erase( it );
+    }
+    if( v.resident_index.owner == this ) {
+        v.resident_index.owner = nullptr;
+    }
+}
+
+void mapbuffer::index_vehicle( vehicle &v, tripoint_abs_sm owner )
+{
+    if( v.resident_index.owner ) {
+        v.resident_index.owner->forget_vehicle( v );
+    }
+    v.resident_index.owner = this;
+    auto &record = indexed_vehicles[&v];
+    record.owner = owner;
+    // Serialized submap ownership is authoritative before map::load establishes
+    // sm_pos. Correct the coordinate frame in the index without moving the vehicle.
+    const auto offset = project_to<coords::ms>( owner ) - project_to<coords::ms>( v.sm_pos );
+    for( const vpart_reference &part : v.get_all_parts_with_fakes() ) {
+        if( !part.part().removed ) {
+            const auto pos = v.abs_part_pos( part.part() ) + offset;
+            const auto cell = project_to<coords::sm>( pos );
+            vehicle_cells[cell].emplace_back( &v, pos );
+            record.cells.insert( cell );
+        }
+    }
+}
+
+void mapbuffer::update_vehicle_index( vehicle &v )
+{
+    const auto owns = [&]( const tripoint_abs_sm &owner ) {
+        const submap *sm = lookup_submap_cached( owner );
+        return sm && std::any_of( sm->vehicles.begin(), sm->vehicles.end(),
+        [&]( const auto &candidate ) { return candidate.get() == &v; } );
+    };
+    if( owns( v.sm_pos ) ) {
+        index_vehicle( v, v.sm_pos );
+    } else {
+        const auto previous = indexed_vehicles.find( &v );
+        if( previous != indexed_vehicles.end() && owns( previous->second.owner ) ) {
+            index_vehicle( v, previous->second.owner );
+        } else {
+            forget_vehicle( v );
+        }
+    }
 }
 
 bool mapbuffer::add_submap( const tripoint_abs_sm &p, submap *sm )
@@ -127,6 +206,20 @@ submap *mapbuffer::lookup_submap( const tripoint_abs_sm &p )
     }
 
     return iter->second.get();
+}
+
+submap *mapbuffer::lookup_submap_existing( const tripoint_abs_sm &p )
+{
+    const auto iter = submaps.find( p );
+    if( iter != submaps.end() ) {
+        return iter->second.get();
+    }
+    try {
+        return unserialize_submaps( p, false );
+    } catch( const std::exception &err ) {
+        debugmsg( "Failed to load existing submap %s: %s", p.to_string(), err.what() );
+    }
+    return nullptr;
 }
 
 bool mapbuffer::submap_exists( const tripoint_abs_sm &p )
@@ -362,7 +455,7 @@ void mapbuffer::save_quad(
 
 // We're reading in way too many entities here to mess around with creating sub-objects and
 // seeking around in them, so we're using the json streaming API.
-submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p )
+submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p, const bool generate_uniform )
 {
     // Map the tripoint to the submap quad that stores it.
     const tripoint_abs_omt om_addr = project_to<coords::omt>( p );
@@ -393,7 +486,7 @@ submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p )
             std::string_view string_contents{ reinterpret_cast<char *>( contents.data() ), contents.size() };
             JsonValue jsin = json_loader::from_string( std::string( string_contents ) );
             try {
-                deserialize( jsin );
+                deserialize( jsin, true );
             } catch( std::exception &err ) {
                 debugmsg( _( "Failed to read from \"%1$s\": %2$s" ), zzip_name.generic_u8string() + ":" + file_name,
                           err.what() );
@@ -403,7 +496,7 @@ submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p )
         } else
         {
             return read_from_file_optional_json( quad_path, [this]( const JsonValue & jsin ) {
-                deserialize( jsin );
+                deserialize( jsin, true );
             } );
         }
     }();
@@ -412,10 +505,30 @@ submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p )
         return nullptr;
     }
 
+    if( !generate_uniform ) {
+        const auto iter = submaps.find( p );
+        return iter == submaps.end() ? nullptr : iter->second.get();
+    }
+
     // fill in uniform submaps that were not serialized. Note that failure as a result of it
     // not being uniform is OK and results in any missing uniform submaps being generated.
     oter_id const oid = overmap_buffer.ter( om_addr );
-    generate_uniform_omt( project_to<coords::sm>( om_addr ), oid );
+    // This quad has already been read. Complete omitted uniform siblings here;
+    // generate_uniform_omt would recursively ask submap_exists to read this same quad.
+    if( const auto terrain = oid->get_uniform_terrain() ) {
+        const tripoint_abs_sm first = project_to<coords::sm>( om_addr );
+        for( int x = 0; x < 2; ++x ) {
+            for( int y = 0; y < 2; ++y ) {
+                const auto position = first + point_rel_sm( x, y );
+                if( !submaps.count( position ) ) {
+                    auto sm = std::make_unique<submap>();
+                    sm->set_all_ter( *terrain, true );
+                    sm->last_touched = calendar::turn;
+                    add_submap( position, sm );
+                }
+            }
+        }
+    }
     if( submaps.count( p ) == 0 ) {
         debugmsg( "file %s did not contain the expected submap %s for non-uniform terrain %s",
                   quad_path.generic_u8string(), p.to_string(), oid.id().str() );
@@ -424,9 +537,18 @@ submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p )
     return submaps[ p ].get();
 }
 
-void mapbuffer::deserialize( const JsonArray &ja )
+void mapbuffer::deserialize( const JsonArray &ja, const bool skip_existing )
 {
     for( JsonObject submap_json : ja ) {
+        if( skip_existing && submap_json.has_array( "coordinates" ) ) {
+            JsonArray coordinates = submap_json.get_array( "coordinates" );
+            const tripoint_abs_sm position{ coordinates.next_int(), coordinates.next_int(),
+                                           coordinates.next_int() };
+            if( submaps.count( position ) ) {
+                submap_json.allow_omitted_members();
+                continue;
+            }
+        }
         std::unique_ptr<submap> sm = std::make_unique<submap>();
         tripoint_abs_sm submap_coordinates;
         int version = 0;

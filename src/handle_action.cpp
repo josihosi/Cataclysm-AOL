@@ -1392,19 +1392,11 @@ static std::string openclaw_harness_current_site_camp( const avatar &player )
 // the scheduler's durable cursor, never NPC control or a state mutation, so a
 // semantic playtest can distinguish a real local-to-abstract handoff from a
 // fixture declaration or a simultaneous-owner claim.
-static std::string openclaw_harness_structural_outing_owner_snapshot()
+static std::string openclaw_harness_structural_outing_owner_snapshot(
+    const bandit_live_world::site_record *selected, const bool include_body = false )
 {
-    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     std::ostringstream result;
     result << "{\"schema\":\"caol-structural-outing-owner-v1\"";
-    const bandit_live_world::site_record *selected = nullptr;
-    for( const bandit_live_world::site_record &site : state.sites ) {
-        if( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie &&
-            site.active_outing.member_ids.size() == 2 ) {
-            selected = &site;
-            break;
-        }
-    }
     if( selected == nullptr ) {
         result << ",\"present\":false";
     } else {
@@ -1430,25 +1422,21 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
                 result << ',';
             }
             first_member = false;
-            const auto stored = overmap_buffer.find_npc( id );
-            const npc *member = g->find_npc( id );
-            if( member == nullptr ) {
-                member = stored.get();
-            }
-            result << "{\"id\":" << id.get_value() << ",\"found\":" << ( member ? "true" : "false" );
-            if( member ) {
-                const auto ms = member->pos_abs();
-                const auto omt = member->pos_abs_omt();
-                result << ",\"name\":" << openclaw_harness_quote_action_value( member->get_name() )
-                       << ",\"absolute_ms\":[" << ms.x() << ',' << ms.y() << ',' << ms.z() << ']'
-                       << ",\"absolute_omt\":[" << omt.x() << ',' << omt.y() << ',' << omt.z() << ']'
-                       << ",\"active\":" << ( member->is_active() ? "true" : "false" )
-                       << ",\"goal_omt\":[" << member->goal.x() << ',' << member->goal.y() << ','
-                       << member->goal.z() << ']';
-            }
-            result << '}';
+            result << npc_outing_member_diagnostic( id, include_body );
         }
         result << ']';
+        if( include_body ) {
+            std::ostringstream handoff_members;
+            JsonOut handoff_json( handoff_members );
+            handoff_json.start_array();
+            for( const auto &member : outing.local_handoff.members ) {
+                member.serialize( handoff_json );
+            }
+            handoff_json.end_array();
+            result << ",\"handoff_snapshot\":{\"source\":\"durable_local_handoff_snapshot\""
+                   << ",\"committed_minutes\":" << outing.local_handoff.committed_minutes
+                   << ",\"members\":" << handoff_members.str() << '}';
+        }
         result << ",\"local_handoff_active\":" << ( outing.local_handoff.is_active() ? "true" : "false" )
                << ",\"local_handoff_phase\":" << openclaw_harness_quote_action_value(
                    bandit_live_world::to_string( outing.local_handoff.phase ) )
@@ -1483,20 +1471,11 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
 // The structural-outing cursor intentionally excludes hostile reservations.
 // Keep this separate read-only projection so a contact playtest can distinguish
 // a declared committed operation from canonical local creature admission.
-static std::string openclaw_harness_hostile_contact_member_snapshot()
+static std::string openclaw_harness_hostile_contact_member_snapshot(
+    const bandit_live_world::site_record *selected, const bool include_body = false )
 {
-    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     std::ostringstream result;
     result << "{\"schema\":\"caol-hostile-contact-member-ownership-v1\"";
-    const bandit_live_world::site_record *selected = nullptr;
-    for( const bandit_live_world::site_record &site : state.sites ) {
-        if( site.active_hostile_operation.is_active() &&
-            site.active_hostile_operation.phase ==
-            bandit_live_world::hostile_operation_phase::committed_contact ) {
-            selected = &site;
-            break;
-        }
-    }
     if( selected == nullptr ) {
         result << ",\"present\":false";
         result << ",\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}";
@@ -1544,11 +1523,65 @@ static std::string openclaw_harness_hostile_contact_member_snapshot()
             result << ",\"in_reality_bubble\":"
                    << ( active && here.inbounds( persistent_member->pos_bub( here ) ) ? "true" : "false" );
         }
+        if( include_body ) {
+            result << ",\"body\":" << npc_outing_member_diagnostic( member_id, true );
+        }
         result << '}';
     }
     result << "]"
            << ",\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}";
     return result.str();
+}
+
+std::string openclaw_harness_site_outing_snapshot()
+{
+    const auto &sites = overmap_buffer.global_state.bandit_live_world.sites;
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-site-outing-owners-v1\",\"by_site\":{";
+    bool first = true;
+    for( const auto &site : sites ) {
+        if( !first ) {
+            result << ',';
+        }
+        first = false;
+        const bool structural = site.active_outing.kind ==
+                                bandit_live_world::outing_kind::structural_sortie &&
+                                site.active_outing.member_ids.size() == 2;
+        const bool contact = site.active_hostile_operation.is_active() &&
+                             site.active_hostile_operation.phase ==
+                             bandit_live_world::hostile_operation_phase::committed_contact;
+        result << openclaw_harness_quote_action_value( site.site_id ) << ":{\"site_id\":"
+               << openclaw_harness_quote_action_value( site.site_id )
+               << ",\"outing\":" << ( structural ?
+                   openclaw_harness_structural_outing_owner_snapshot( &site, true ) : "{\"present\":false}" )
+               << ",\"contact\":" << ( contact ?
+                   openclaw_harness_hostile_contact_member_snapshot( &site, true ) : "{\"present\":false}" ) << '}';
+    }
+    result << "}}";
+    return result.str();
+}
+
+static std::string openclaw_harness_structural_outing_owner_snapshot()
+{
+    const auto &sites = overmap_buffer.global_state.bandit_live_world.sites;
+    const auto selected = std::find_if( sites.begin(), sites.end(), []( const auto & site ) {
+        return site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+               site.active_outing.member_ids.size() == 2;
+    } );
+    return openclaw_harness_structural_outing_owner_snapshot(
+               selected == sites.end() ? nullptr : &*selected );
+}
+
+static std::string openclaw_harness_hostile_contact_member_snapshot()
+{
+    const auto &sites = overmap_buffer.global_state.bandit_live_world.sites;
+    const auto selected = std::find_if( sites.begin(), sites.end(), []( const auto & site ) {
+        return site.active_hostile_operation.is_active() &&
+               site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::committed_contact;
+    } );
+    return openclaw_harness_hostile_contact_member_snapshot(
+               selected == sites.end() ? nullptr : &*selected );
 }
 
 // Read-only authoritative camp-memory projection for semantic playtests.  This
@@ -2128,6 +2161,7 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "overmap", overmap.str() },
         { "current_site_camp", openclaw_harness_current_site_camp( player ) },
         { "structural_outing_owner", openclaw_harness_structural_outing_owner_snapshot() },
+        { "site_outing_owners", openclaw_harness_site_outing_snapshot() },
         { "hostile_contact_members", openclaw_harness_hostile_contact_member_snapshot() },
         { "staffed_camp_signal_leads", openclaw_harness_staffed_camp_signal_leads_snapshot() },
         { "structural_signal_dispatch", openclaw_harness_structural_signal_dispatch_snapshot() },

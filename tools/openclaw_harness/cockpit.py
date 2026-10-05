@@ -405,7 +405,10 @@ class CockpitRunChannel:
             "run_id": run_id,
             "actions": {action["id"] for action in enabled_actions},
             "action_stable_ids": action_stable_ids,
-            "handles": set(), "used": False, "public_state": result,
+            "handles": set(),
+            "used": previous_record.get("submission_outcome") == "unknown",
+            "submission_outcome": previous_record.get("submission_outcome"),
+            "public_state": result,
             "issuing_frame": dict(issuing_raw), "native_interruption": False,
         }
         self._transcript.append({"kind": "observation", "value": result})
@@ -3046,6 +3049,16 @@ class CockpitRunChannel:
         native = receipt.get("native_receipt")
         next_frame = receipt.get("_next_frame") or receipt.get("next_frame")
         if not isinstance(native, Mapping):
+            if receipt.get("reason") == "native_surface_receipt_timeout":
+                # Missing acknowledgment does not prove rejection: native code
+                # may already have acted. Keep this issuing frame consumed and
+                # require a genuinely fresh owner instead of authorizing replay.
+                observed["submission_outcome"] = "unknown"
+                self._observations[str(observation_id)] = observed
+                return {**self._fail_operation("native_surface_receipt_timeout", {
+                    "action_id": str(action_id), "observation_id": str(observation_id),
+                    "action_outcome": "unknown",
+                }), "receipt": dict(receipt)}
             if receipt.get("accepted") is False:
                 # The transport reached a defined native rejection before a
                 # receipt could exist.  Keep that rejection observable: a

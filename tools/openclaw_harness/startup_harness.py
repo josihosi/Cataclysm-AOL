@@ -33,6 +33,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import sqlite3
 import subprocess
 import sys
@@ -50,6 +51,8 @@ from bandit_live_world_audit import load_special_placements as load_bandit_speci
 from scenario_registry import (
     CHECKPOINT_CHAIN_MANIFEST_VERSION,
     ManifestValidationError,
+    post_relaunch_terminal_label,
+    saved_world_continuation_steps,
     validate_manifest,
 )
 from scenario_registry_store import (
@@ -1776,6 +1779,7 @@ def _product_binary_path(relative: str) -> bool:
 
 
 PRODUCT_BUILD_RECEIPT_SCHEMA = "caol-product-build-receipt-v1"
+SELECTED_PRODUCT_BUILD_SCHEMA = "caol-selected-product-build-v1"
 
 
 def product_source_binding() -> Dict[str, Any]:
@@ -1877,6 +1881,9 @@ def _current_product_build_receipt(
     candidates = sorted(legacy.parent.glob(f"{legacy.stem}-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
     if not candidates:
         return {}, f"product build receipt is unavailable: {legacy}"
+    saw_supported_receipt = False
+    saw_matching_path = False
+    saw_matching_executable = False
     for receipt_path in candidates:
         try:
             payload = json.loads(receipt_path.read_text(encoding="utf-8"))
@@ -1884,20 +1891,104 @@ def _current_product_build_receipt(
             continue
         if not isinstance(payload, dict) or payload.get("schema") != PRODUCT_BUILD_RECEIPT_SCHEMA:
             continue
-        if expected_executable_sha256 and payload.get("executable_sha256") != expected_executable_sha256:
-            continue
-        if expected_product_source_sha256 and payload.get("product_source_sha256") != expected_product_source_sha256:
-            continue
+        saw_supported_receipt = True
         if payload.get("executable_path") != str(Path(executable).resolve()):
             continue
+        saw_matching_path = True
+        if expected_executable_sha256 and payload.get("executable_sha256") != expected_executable_sha256:
+            continue
+        saw_matching_executable = True
+        if expected_product_source_sha256 and payload.get("product_source_sha256") != expected_product_source_sha256:
+            continue
         return payload, ""
-    return {}, "product build receipt is malformed or has an unsupported schema"
+    if not saw_supported_receipt:
+        return {}, "product build receipt is malformed or has an unsupported schema"
+    if not saw_matching_path:
+        return {}, "supported product build receipts do not bind the selected executable path"
+    if expected_executable_sha256 and not saw_matching_executable:
+        return {}, "supported product build receipts do not match the selected executable hash"
+    if expected_product_source_sha256:
+        return {}, "supported product build receipt source does not match the current product source"
+    return {}, "supported product build receipt did not match the selected executable"
+
+
+def validate_selected_product_build(
+    executable: Path, selected_product_build: Any,
+) -> Tuple[Dict[str, Any], str]:
+    """Validate one scenario-declared immutable product publication.
+
+    The selected source identity is independent of today's mutable product
+    worktree.  Authority comes from the scenario bytes, which bind the receipt
+    path and digest; the receipt then binds the exact executable path, binary,
+    product source digest, and compiled Git head.
+    """
+    if not isinstance(selected_product_build, Mapping):
+        return {}, "selected immutable product build declaration is missing"
+    required = {
+        "schema", "receipt_path", "receipt_sha256", "executable_sha256",
+        "product_source_sha256",
+    }
+    if set(selected_product_build) != required:
+        return {}, "selected immutable product build declaration has unsupported fields"
+    if selected_product_build.get("schema") != SELECTED_PRODUCT_BUILD_SCHEMA:
+        return {}, "selected immutable product build schema is unsupported"
+
+    digest_fields = ("receipt_sha256", "executable_sha256", "product_source_sha256")
+    expected: Dict[str, str] = {}
+    for field in digest_fields:
+        value = str(selected_product_build.get(field, "")).strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", value):
+            return {}, f"selected immutable product build {field} is invalid"
+        expected[field] = value
+
+    raw_receipt_path = str(selected_product_build.get("receipt_path", "")).strip()
+    if not raw_receipt_path:
+        return {}, "selected immutable product build receipt path is missing"
+    receipt_relative = Path(raw_receipt_path)
+    if receipt_relative.is_absolute() or ".." in receipt_relative.parts:
+        return {}, "selected immutable product build receipt path must stay within the workspace"
+    root = repo_root().resolve()
+    receipt_path = (root / receipt_relative).resolve()
+    try:
+        receipt_path.relative_to(root)
+    except ValueError:
+        return {}, "selected immutable product build receipt path escaped the workspace"
+
+    actual_receipt_sha256, receipt_error = sha256_file(receipt_path)
+    if receipt_error:
+        return {}, f"selected immutable product build receipt is unavailable: {receipt_error}"
+    if actual_receipt_sha256.lower() != expected["receipt_sha256"]:
+        return {}, "selected immutable product build receipt hash does not match its declaration"
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return {}, f"selected immutable product build receipt is unreadable: {exc}"
+    if not isinstance(receipt, dict) or receipt.get("schema") != PRODUCT_BUILD_RECEIPT_SCHEMA:
+        return {}, "selected immutable product build receipt schema is unsupported"
+
+    executable_path = Path(executable).resolve()
+    actual_executable_sha256, executable_error = sha256_file(executable_path)
+    if executable_error:
+        return {}, f"selected immutable executable is unavailable: {executable_error}"
+    if actual_executable_sha256.lower() != expected["executable_sha256"]:
+        return {}, "selected immutable executable hash does not match its declaration"
+    if receipt.get("executable_path") != str(executable_path):
+        return {}, "selected immutable product build receipt names a different executable path"
+    if receipt.get("executable_sha256") != expected["executable_sha256"]:
+        return {}, "selected immutable product build receipt executable hash does not match its declaration"
+    if receipt.get("product_source_sha256") != expected["product_source_sha256"]:
+        return {}, "selected immutable product build receipt source hash does not match its declaration"
+    captured_head = str(receipt.get("captured_head", "")).strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{10,40}", captured_head):
+        return {}, "selected immutable product build receipt has no supported compiled Git head"
+    return receipt, ""
 
 
 def executable_source_readiness(
     executable: Path,
     *,
     isolated_harness_diagnosis: bool = False,
+    selected_product_build: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Cheaply decide whether a binary can support a current-product run.
 
@@ -1905,7 +1996,9 @@ def executable_source_readiness(
     This preflight compares that baseline with committed and dirty binary inputs
     before registry authority can be issued.  A deliberately isolated harness
     diagnosis may proceed provisionally, but it cannot claim the playtest
-    outcome until a current binary is revalidated.
+    outcome until a current binary is revalidated. A selected immutable build
+    is accepted only when its exact scenario-declared publication receipt binds
+    the executable bytes, product-source digest, and compiled Git head.
     """
     executable_path = Path(executable).resolve()
     version_output = ""
@@ -1963,12 +2056,38 @@ def executable_source_readiness(
         receipt.get("captured_head") == captured_head and
         receipt.get("product_source_sha256") == product_binding.get("sha256")
     )
-    ready = baseline_ready or receipt_ready
+    selected_receipt: Dict[str, Any] = {}
+    selected_receipt_error = ""
+    selected_build_ready = False
+    if selected_product_build is not None:
+        selected_receipt, selected_receipt_error = validate_selected_product_build(
+            executable_path, selected_product_build,
+        )
+        selected_build_ready = bool(
+            captured_head and not version_error and not executable_error and
+            selected_receipt and selected_receipt.get("captured_head") == captured_head
+        )
+        if selected_receipt and selected_receipt.get("captured_head") != captured_head:
+            selected_receipt_error = "selected immutable product build compiled head does not match executable --version"
+    # A scenario-declared immutable publication is the authority for that
+    # selected source.  Do not let a clean ambient baseline or its receipt
+    # make an invalid declaration look ready; those defaults apply only when
+    # the declaration is absent.
+    if selected_product_build is not None:
+        ready = selected_build_ready
+    else:
+        ready = baseline_ready or receipt_ready
     if ready:
         status = "ready"
-        reason = "source_matching_executable" if baseline_ready else "receipt_bound_dirty_product_build"
+        if selected_build_ready:
+            reason = "selected_immutable_product_build"
+        else:
+            reason = "source_matching_executable" if baseline_ready else "receipt_bound_dirty_product_build"
         next_action = "continue with the current registry query"
-        evidence_ceiling = "requested run ceiling"
+        evidence_ceiling = (
+            "selected immutable product source and executable are bound by the declared build receipt"
+            if selected_build_ready else "requested run ceiling"
+        )
     elif isolated_harness_diagnosis:
         status = "provisional_diagnosis_allowed"
         reason = "isolated_harness_diagnosis_does_not_depend_on_current_product_code"
@@ -1979,11 +2098,19 @@ def executable_source_readiness(
         evidence_ceiling = "provisional harness diagnosis only"
     else:
         status = "build_required"
-        reason = "product_binary_source_is_stale_or_unproved"
-        next_action = (
+        reason = (
+            "selected_immutable_product_build_invalid" if selected_product_build is not None
+            else "product_binary_source_is_stale_or_unproved"
+        )
+        next_action = selected_receipt_error or (
             "build or select a source-matching executable, then repeat the same registry query"
         )
         evidence_ceiling = "none until source-matching executable revalidation"
+    effective_receipt_path = (
+        str((repo_root() / str(selected_product_build["receipt_path"])).resolve())
+        if selected_build_ready and selected_product_build is not None
+        else str(product_build_receipt_path(executable_path))
+    )
     return {
         "status": status,
         "reason": reason,
@@ -1998,10 +2125,25 @@ def executable_source_readiness(
         "binary_relevant_worktree_changes": worktree_changes,
         "comparison_error": comparison_error,
         "product_build_receipt": {
-            "path": str(product_build_receipt_path(executable_path)),
-            "status": "matched" if receipt_ready else "not_used" if baseline_ready else "unmatched",
-            "error": receipt_error or str(product_binding.get("error", "")) or executable_error,
+            "path": effective_receipt_path,
+            "status": "matched" if selected_build_ready or receipt_ready else "not_used" if baseline_ready else "unmatched",
+            "error": (
+                "" if selected_build_ready else
+                selected_receipt_error if selected_product_build is not None else
+                receipt_error or str(product_binding.get("error", "")) or executable_error
+            ),
         },
+        "selected_product_build": (
+            {
+                "schema": SELECTED_PRODUCT_BUILD_SCHEMA,
+                "receipt_path": str(selected_product_build.get("receipt_path", "")),
+                "receipt_sha256": str(selected_product_build.get("receipt_sha256", "")),
+                "executable_sha256": str(selected_product_build.get("executable_sha256", "")),
+                "product_source_sha256": str(selected_product_build.get("product_source_sha256", "")),
+                "status": "matched" if selected_build_ready else "unmatched",
+            }
+            if selected_product_build is not None else None
+        ),
     }
 
 
@@ -2027,16 +2169,32 @@ def build_authoritative_identity_binding(**kwargs: Any) -> Dict[str, Any]:
     return authoritative_identity_binding(**kwargs)
 
 
-def build_runtime_binding(executable: Path) -> Dict[str, Any]:
+def build_runtime_binding(
+    executable: Path, *, selected_product_build: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
     """Capture the immutable run inputs used by the changed executable."""
     executable_path = executable.resolve()
     executable_sha256, executable_error = sha256_file(executable_path)
     if executable_error:
         return {"ok": False, "error": f"executable digest failed: {executable_error}"}
+    selected_product_identity: Optional[Dict[str, Any]] = None
+    if selected_product_build is not None:
+        receipt, receipt_error = validate_selected_product_build(
+            executable_path, selected_product_build,
+        )
+        if receipt_error:
+            return {"ok": False, "error": receipt_error}
+        selected_product_identity = {
+            "schema": SELECTED_PRODUCT_BUILD_SCHEMA,
+            "receipt_path": str(selected_product_build["receipt_path"]),
+            "receipt_sha256": str(selected_product_build["receipt_sha256"]).lower(),
+            "executable_sha256": str(selected_product_build["executable_sha256"]).lower(),
+            "product_source_sha256": str(selected_product_build["product_source_sha256"]).lower(),
+        }
     source = runtime_source_binding()
     if not source.get("ok"):
         return {"ok": False, "error": str(source.get("error", "runtime source digest failed"))}
-    return {
+    binding = {
         "ok": True,
         "schema": 1,
         "captured_head": current_head_short(),
@@ -2047,6 +2205,9 @@ def build_runtime_binding(executable: Path) -> Dict[str, Any]:
         "runtime_relevant_worktree_diff": list(source.get("worktree_changes", [])),
         "untracked_runtime_paths": list(source.get("untracked_paths", [])),
     }
+    if selected_product_identity is not None:
+        binding["selected_product_build"] = selected_product_identity
+    return binding
 
 
 def live_witness_source_identity(runtime_binding: Any) -> str:
@@ -2085,6 +2246,21 @@ def compare_runtime_binding(binding: Any) -> Dict[str, Any]:
         mismatches.append(f"runtime_source_digest_error:{source.get('error', 'unknown error')}")
     elif str(source.get("sha256", "")).lower() != expected_source_sha256:
         mismatches.append("runtime_source_sha256")
+    selected_product_build = binding.get("selected_product_build")
+    selected_product_identity: Dict[str, Any] = {}
+    if selected_product_build is not None:
+        receipt, selected_error = validate_selected_product_build(
+            executable_path, selected_product_build,
+        )
+        if selected_error:
+            mismatches.append(f"selected_product_build:{selected_error}")
+        else:
+            selected_product_identity = {
+                "receipt_path": str(selected_product_build.get("receipt_path", "")),
+                "receipt_sha256": str(selected_product_build.get("receipt_sha256", "")),
+                "product_source_sha256": str(selected_product_build.get("product_source_sha256", "")),
+                "captured_head": str(receipt.get("captured_head", "")),
+            }
     return {
         "status": "mismatch" if mismatches else "matched",
         "error": "; ".join(mismatches),
@@ -2092,6 +2268,7 @@ def compare_runtime_binding(binding: Any) -> Dict[str, Any]:
         "executable_sha256": executable_sha256,
         "runtime_source_sha256": str(source.get("sha256", "")),
         "runtime_relevant_worktree_diff": source.get("worktree_changes", []),
+        "selected_product_build": selected_product_identity if selected_product_build is not None else None,
     }
 
 
@@ -2297,7 +2474,10 @@ def validate_registry_launch_receipt_before_launch(
         # R-027 has an intentionally stronger launch boundary.  A receipt for
         # its scenario must retain the registered name/path/digest controls;
         # an otherwise valid token cannot substitute the shared executable.
-        scenario = load_scenario(selection.scenario)
+        scenario = load_scenario(
+            selection.scenario, source_path=selection.source_path,
+            expected_sha256=selection.source_sha256,
+        )
         if "r027_isolated_launch" in scenario:
             from r027_isolated_launch import R027IsolatedLaunchError, select_r027_isolated_executable
             try:
@@ -3194,6 +3374,100 @@ def detect_executable() -> Path:
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _make_profile_tree_owner_writable(root: Path) -> None:
+    """Make a disposable profile copy writable without following symlinks.
+
+    Saved-world snapshots are often intentionally read-only.  ``copytree``
+    preserves those mode bits, but the game and a later replacement need a
+    writable profile copy.  Apply owner access only to the profile tree; the
+    selected source snapshot remains untouched.
+    """
+    root = Path(root)
+
+    def add_owner_access(path: Path, *, directory: bool) -> None:
+        if path.is_symlink():
+            return
+        mode = stat.S_IMODE(path.stat().st_mode)
+        required = stat.S_IRUSR | stat.S_IWUSR
+        if directory:
+            required |= stat.S_IXUSR
+        path.chmod(mode | required)
+
+    def visit(directory: Path) -> None:
+        add_owner_access(directory, directory=True)
+        for entry in directory.iterdir():
+            if entry.is_symlink():
+                continue
+            if entry.is_dir():
+                visit(entry)
+            elif entry.is_file():
+                add_owner_access(entry, directory=False)
+
+    if root.is_symlink():
+        raise ValueError(f"saved-world profile tree may not be a symlink: {root}")
+    visit(root)
+
+
+def install_saved_world_snapshot(profile: str, target_world: str,
+                                 source_path: str | Path, *, replace: bool = False) -> Dict[str, Any]:
+    """Install a byte-verified snapshot without silently replacing a populated world."""
+    source_world = Path(source_path).expanduser().resolve()
+    if not source_world.is_dir():
+        raise SystemExit(f"saved-world snapshot is not a directory: {source_world}")
+    target_world = str(target_world or "").strip()
+    if not target_world:
+        raise SystemExit("saved-world snapshot requires --world")
+    source_hash, source_error = sha256_tree(source_world)
+    if source_error:
+        raise SystemExit(source_error)
+
+    destination = (save_dir_for_profile(profile) / target_world).resolve()
+    save_root = save_dir_for_profile(profile).resolve()
+    try:
+        destination.relative_to(save_root)
+    except ValueError as error:
+        raise SystemExit("saved-world snapshot destination escaped profile save root") from error
+    if destination.exists():
+        installed_hash, installed_error = sha256_tree(destination)
+        if not installed_error and installed_hash == source_hash:
+            return {"status": "green_saved_world_snapshot_reused", "source": str(source_world),
+                    "destination": str(destination), "source_sha256": source_hash,
+                    "installed_sha256": installed_hash, "error": "", "fixture_reseed_skipped": True,
+                    "profile_snapshot_skipped": True, "profile_copy_mode_policy": "existing_bytes_preserved"}
+        if not replace:
+            raise SystemExit(f"saved-world profile already contains different data: {destination}; "
+                             "use a fresh profile or explicit replacement")
+    ensure_dir(save_root)
+    staging = save_root / f".{target_world}.replacement-{uuid.uuid4().hex}.tmp"
+    if staging.exists():
+        _make_profile_tree_owner_writable(staging)
+        shutil.rmtree(staging)
+    shutil.copytree(source_world, staging)
+    _make_profile_tree_owner_writable(staging)
+    staged_hash, staged_error = sha256_tree(staging)
+    if staged_error or staged_hash != source_hash:
+        _make_profile_tree_owner_writable(staging)
+        shutil.rmtree(staging, ignore_errors=True)
+        raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
+    if destination.exists():
+        _make_profile_tree_owner_writable(destination)
+        shutil.rmtree(destination)
+    os.replace(staging, destination)
+    installed_hash, installed_error = sha256_tree(destination)
+    return {
+        "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
+        "source": str(source_world),
+        "destination": str(destination),
+        "source_sha256": source_hash,
+        "installed_sha256": installed_hash,
+        "error": installed_error,
+        "fixture_reseed_skipped": True,
+        "profile_snapshot_skipped": True,
+        "profile_copy_mode_policy": "owner_writable_files_and_directories",
+        "source_mode_bits_changed": False,
+    }
 
 
 def create_run_dir(profile: str) -> Path:
@@ -5161,6 +5435,17 @@ def refresh_semantic_step_trace(
                 event["valid_actions_ref"] = {
                     "path": catalog_path.name, "sha256": digest, "bytes": len(body),
                 }
+            if event.get("event") == "surface_descriptor" and isinstance(event.get("payload"), Mapping):
+                catalog = {key: event.get(key) for key in ("run_id", "surface_id", "frame_id", "kind", "payload")}
+                body = json.dumps(catalog, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+                digest = hashlib.sha256(body).hexdigest()
+                catalog_path = run_dir / ("semantic.payload." + digest + ".json")
+                if not catalog_path.exists():
+                    catalog_path.write_bytes(body)
+                event["payload"] = {}
+                event["payload_ref"] = {
+                    "path": catalog_path.name, "sha256": digest, "bytes": len(body),
+                }
             compact_events.append(event)
         selected = encode(compact_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
@@ -6478,6 +6763,12 @@ def execute_semantic_act(
         delta, status = read_semantic_step_trace(owned, run_dir, run_id)
         if status != "ok":
             return source, [], status
+        # Compaction can serialize a receipt before its earlier named
+        # descriptor. Compare every row against the starting cursor, then
+        # advance once; serialization order must not discard that successor.
+        prior_cursor = transaction_cursor["offset"]
+        next_cursor = prior_cursor
+        delta.sort(key=lambda event: event.get("_source_offset", event.get("_event_offset", 0)))
         for event in delta:
             source_offset = event.get("_source_offset")
             event["_event_offset"] = (
@@ -6486,14 +6777,15 @@ def execute_semantic_act(
             )
             source_end = event.get("_source_end")
             is_new = not isinstance(source_end, int)
-            if isinstance(source_end, int) and source_end > transaction_cursor["offset"]:
-                transaction_cursor["offset"] = source_end
+            if isinstance(source_end, int) and source_end > prior_cursor:
+                next_cursor = max(next_cursor, source_end)
                 is_new = True
             # Mocked/legacy projections predate source offsets.  Retain their
             # current event compatibility path; production records dedupe by
             # their advancing source end above.
             if is_new:
                 transaction_events.append(dict(event))
+        transaction_cursor["offset"] = next_cursor
         return source, list(transaction_events), "ok"
 
     def read_frame() -> Mapping[str, Any]:
@@ -6976,6 +7268,18 @@ def execute_semantic_act(
                         chosen_label == "YES" and isinstance(prompt_payload, Mapping) and \
                         "spotted! Cancel auto move?" in str(prompt_payload.get("text", "")) and \
                         not resulting_frame_id
+                    # Highlighting the already-selected entry is a native
+                    # selection-only result. The exact accepted receipt binds
+                    # this unchanged owner; it does not activate the option.
+                    same_owner_menu_selection = not consuming_mismatch and action_id == "menu.select" and \
+                        resulting_frame_id == str(before.get("frame_id", "")) and \
+                        before.get("kind") == "menu" and isinstance(prompt_payload, Mapping) and \
+                        str(prompt_payload.get("selected_stable_id", "")) == str(stable_id or "") and \
+                        bool(stable_id) and any(
+                            isinstance(action, Mapping) and action.get("id") == "menu.select" and
+                            action.get("enabled") is True and
+                            str(action.get("stable_id", "")) == str(stable_id)
+                            for action in before.get("valid_actions", []))
                     auto_move_resume_event = None
                     # NO reinstates native travel rather than returning a World
                     # owner.  Its accepted selection receipt alone is not
@@ -7014,7 +7318,7 @@ def execute_semantic_act(
                                 "valid_actions": [],
                             }
                     if next_frame is None and (same_owner_overmap_continuation or
-                                               same_owner_auto_move_cancel):
+                                               same_owner_auto_move_cancel or same_owner_menu_selection):
                         next_frame = dict(before)
                     if next_frame is None and not (
                             resulting_frame_id and action_id == "menu.choose" and
@@ -7063,7 +7367,7 @@ def execute_semantic_act(
                     if isinstance(next_frame, Mapping) and (
                             str(next_frame.get("frame_id", "")) == resulting_frame_id or
                             str(next_frame.get("frame_id", "")) != str(before.get("frame_id", "")) or
-                            (same_owner_overmap_continuation or same_owner_auto_move_cancel)):
+                            (same_owner_overmap_continuation or same_owner_auto_move_cancel or same_owner_menu_selection)):
                         bound_surface_receipt = {
                             **native_receipt,
                             "frame_id": str(before.get("frame_id", "")),
@@ -7124,6 +7428,8 @@ def execute_semantic_act(
                             },
                             "native_receipt": durable_native_receipt,
                             "semantic_response": bound_surface_receipt,
+                            **({"selection_only": True, "selection_note": "Highlighted; menu.choose activates the entry."}
+                               if same_owner_menu_selection else {}),
                         }
                         SemanticStepChannel(
                             run_id=run_id,
@@ -7133,7 +7439,9 @@ def execute_semantic_act(
                         )._persist(durable_receipt)
                         return {"accepted": True, "surface_request": request,
                                 "native_receipt": durable_native_receipt, "transition_event": transition_event,
-                                "next_frame": next_frame}
+                                "next_frame": next_frame,
+                                **({"selection_only": True, "selection_note": "Highlighted; menu.choose activates the entry."}
+                                   if same_owner_menu_selection else {})}
             cancelled = cancelled_dispatch()
             if cancelled is not None:
                 return cancelled
@@ -17699,7 +18007,12 @@ def populate_runtime_version_comparison(
             expected_head and captured_head and expected_head.startswith(captured_head)
         )
         executable_path = Path(str(runtime_binding.get("executable_path", "")).strip())
-        source_readiness = executable_source_readiness(executable_path) if executable_path else {}
+        selected_product_build = runtime_binding.get("selected_product_build")
+        source_readiness = executable_source_readiness(
+            executable_path,
+            selected_product_build=selected_product_build
+            if isinstance(selected_product_build, Mapping) else None,
+        ) if executable_path else {}
         summary["source_executable_readiness"] = source_readiness
         summary["version_matches_runtime_paths"] = bool(
             binding_result["status"] == "matched" and
@@ -19764,6 +20077,13 @@ def r014_native_semantic_bootstrap_metadata(
         "frame_run_id": str(frame.get("run_id", "")),
         "frame_event": frame_event,
         "frame_state": frame_state,
+        "frame_breadcrumbs": [str(item) for item in frame.get("breadcrumbs", [])
+                              if str(item).strip()]
+                             if isinstance(frame.get("breadcrumbs", []), list) else [],
+        "frame_title": str(
+            frame.get("payload", {}).get("title", "")
+            if isinstance(frame.get("payload"), Mapping) else ""
+        ),
         "frame_trace_offset": frame_offset,
         "advertised_actions": list(actions),
         "frame_producer": frame_producer,
@@ -20050,6 +20370,76 @@ def cockpit_native_input_owner_ready(
         )
     except (OSError, ValueError) as exc:
         return {"status": "scanned", "reason": "native_frame_unavailable", "error": str(exc)}
+
+
+def recoverable_native_selection_owner(
+    metadata: Mapping[str, Any], *, run_id: str,
+    matching_initial_world_frames: int, foreign_initial_world_frames: int,
+) -> bool:
+    """Recognize a live same-run menu owner that can finish saved-world selection.
+
+    This is a transport handoff only.  It does not satisfy the initial World
+    checkpoint: the exact HUD/world-ready producer is still required after the
+    interactive controller reaches World.
+    """
+    if metadata.get("status") != "required_state_present" or \
+            metadata.get("startup_owner") != "nonworld_native_input_owner" or \
+            metadata.get("frame_run_id") != str(run_id) or \
+            metadata.get("frame_event") != "surface_descriptor" or \
+            metadata.get("frame_state") not in {"main_menu", "menu"} or \
+            not isinstance(metadata.get("frame_trace_offset"), int) or \
+            metadata.get("frame_trace_offset", -1) < 0 or \
+            matching_initial_world_frames != 0 or foreign_initial_world_frames != 0:
+        return False
+    actions = metadata.get("advertised_actions", [])
+    if not isinstance(actions, list):
+        return False
+    if metadata.get("frame_state") == "main_menu":
+        return any(str(action).startswith("main_menu.") for action in actions)
+    menu_context = " ".join([
+        *(str(item) for item in metadata.get("frame_breadcrumbs", [])
+          if isinstance(item, str)),
+        str(metadata.get("frame_title", "")),
+    ]).lower()
+    return "character" in menu_context and any(str(action) in {
+        "menu.choose", "menu.select", "menu.filter", "menu.cancel",
+    } for action in actions)
+
+
+def deferred_native_world_bootstrap_result(
+    pending: Mapping[str, Any], *, profile: str, run_dir: Path, run_id: str,
+    trace_start_offset: int,
+) -> Dict[str, Any]:
+    """Resolve a zero-credit menu handoff against the original strict HUD proof."""
+    checkpoint = pending.get("checkpoint", {})
+    checkpoint = checkpoint if isinstance(checkpoint, Mapping) else {}
+    required_actions = checkpoint.get("required_actions", [])
+    required_actions = [str(action).strip() for action in required_actions
+                        if str(action).strip()] if isinstance(required_actions, list) else []
+    metadata = await_r014_native_semantic_bootstrap(
+        profile=profile, run_dir=run_dir, run_id=run_id,
+        required_state=str(checkpoint.get("required_state", "world")).strip() or "world",
+        required_actions=required_actions,
+        timeout_seconds=0.0, poll_seconds=0.0,
+        trace_start_offset=trace_start_offset,
+        require_initial_hud_world_ready_frame=True,
+    )
+    matching, foreign = initial_hud_world_frame_counts(
+        profile=profile, trace_offset=trace_start_offset, run_id=run_id, run_dir=run_dir,
+    )
+    metadata.update({
+        "matching_initial_hud_world_frame_count": matching,
+        "foreign_frame_count_after_dismissal": foreign,
+        "gameplay_credit": False,
+    })
+    qualified = initial_hud_world_semantic_frame_is_qualified(metadata, run_id=run_id)
+    return {
+        "status": "qualified" if qualified else "not_reached_or_unqualified",
+        "qualified": qualified,
+        "metadata": metadata,
+        "matching_initial_hud_world_frame_count": matching,
+        "foreign_frame_count_after_dismissal": foreign,
+    }
 
 
 def r014_cockpit_observation_metadata(
@@ -21770,14 +22160,19 @@ def capture_certification_inputs(path_text: str) -> Dict[str, Any]:
     return _certification_recheck_producer_inputs(json.dumps(source, ensure_ascii=False))
 
 
-def derive_registry_owned_certification_inputs(scenario_name: str, *, executable: Path | None = None) -> Dict[str, Any]:
+def derive_registry_owned_certification_inputs(
+    scenario_name: str, *, executable: Path | None = None,
+    source_path: Path | str | None = None, expected_sha256: str = "",
+) -> Dict[str, Any]:
     """Derive certification preflight solely from the installed scenario footing.
 
     This runs before the game process exists.  It intentionally reads the
     installed save for player identity and mutation checks, but never asks for
     ecology actors or lifecycle/receipt artifacts; those belong to the run.
     """
-    scenario = load_scenario(scenario_name)
+    scenario = load_scenario(
+        scenario_name, source_path=source_path, expected_sha256=expected_sha256,
+    )
     profile = resolve_startup_config_profile(scenario, str(scenario.get("profile", "")))
     fixture_name = str(scenario.get("fixture", "")).strip()
     fixture_profile = str(scenario.get("fixture_profile", profile)).strip() or profile
@@ -21806,7 +22201,7 @@ def derive_registry_owned_certification_inputs(scenario_name: str, *, executable
     missing = [trait for trait in required if trait not in observed]
     if missing:
         raise CertificationLeaseError("installed player mutations are missing: " + ", ".join(missing))
-    scenario_path_value = scenario_path(scenario_name).resolve()
+    scenario_path_value = Path(scenario["path"]).resolve()
     profile_path = profile_config_path(profile).resolve()
     executable = (executable or detect_executable()).resolve()
     return {
@@ -31193,17 +31588,26 @@ def scenario_path(name: str) -> Path:
     return scenarios_root() / f"{name}.json"
 
 
-def load_scenario(name: str) -> Dict[str, Any]:
-    path = scenario_path(name)
+def load_scenario(name: str, *, source_path: Path | str | None = None,
+                  expected_sha256: str = "") -> Dict[str, Any]:
+    """Load the selected declaration itself when a registry path is supplied."""
+    path = Path(source_path).resolve() if source_path else scenario_path(name)
+    if source_path and path.stem != name:
+        raise SystemExit(f"Selected scenario identity differs from its source path: {path}")
     if not path.exists():
         raise SystemExit(f"Scenario not found: {path}")
-    loaded = json.loads(path.read_text(encoding="utf-8"))
+    source_bytes = path.read_bytes()
+    if expected_sha256 and hashlib.sha256(source_bytes).hexdigest() != expected_sha256:
+        raise SystemExit(f"Selected scenario source changed: {path}")
+    loaded = json.loads(source_bytes.decode("utf-8"))
     if not isinstance(loaded, dict):
         raise SystemExit(f"Invalid scenario config: {path}")
     try:
         registry = validate_manifest(loaded, path=path)
     except ManifestValidationError as exc:
         raise SystemExit(str(exc)) from exc
+    if expected_sha256 and registry["source"]["sha256"] != expected_sha256:
+        raise SystemExit(f"Selected scenario source changed during validation: {path}")
     loaded.setdefault("name", name)
     loaded["path"] = str(path)
     loaded["_scenario_registry"] = registry
@@ -31409,16 +31813,12 @@ def normalize_post_relaunch_contract(
     initial_steps: List[Dict[str, Any]],
 ) -> Optional[Dict[str, Any]]:
     """Validate an opt-in continuation after a saved-world process boundary."""
-    if raw_contract in (None, ""):
+    try:
+        terminal_save_step_label = post_relaunch_terminal_label(raw_contract, initial_steps)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    if terminal_save_step_label is None:
         return None
-    if not isinstance(raw_contract, dict):
-        raise SystemExit("post_relaunch must be an object")
-    terminal_save_step_label = str(raw_contract.get("terminal_save_step_label", "") or "").strip()
-    if not terminal_save_step_label:
-        raise SystemExit("post_relaunch.terminal_save_step_label is required")
-    if terminal_save_step_label not in {
-            str(step.get("label", "") or "").strip() for step in initial_steps}:
-        raise SystemExit("post_relaunch.terminal_save_step_label must name an initial scenario step")
     timeout = raw_contract.get("terminal_exit_timeout_seconds")
     if type(timeout) not in {int, float} or timeout <= 0:
         raise SystemExit("post_relaunch.terminal_exit_timeout_seconds must be a positive number")
@@ -32408,6 +32808,28 @@ def semantic_menu_choose_label(
     }
 
 
+def recoverable_selection_handoff_live_step(
+    steps: Sequence[Mapping[str, Any]], current_step_position: int,
+) -> Mapping[str, Any]:
+    """Find the live session after only passive wall-clock waits.
+
+    A selection handoff must not bypass any intervening probe action.  A
+    declared `wait` step only sleeps the harness process; it sends no native
+    input and does not advance the game, so it is safe between the startup
+    checkpoint and the same controller's live session.
+    """
+    for candidate in steps[current_step_position + 1:]:
+        if not isinstance(candidate, Mapping):
+            return {}
+        kind = str(candidate.get("kind", "")).strip().lower()
+        if kind == "wait":
+            continue
+        if kind == "cockpit_live_session" and candidate.get("bootstrap_only") is not True:
+            return candidate
+        return {}
+    return {}
+
+
 def execute_probe_steps(
     pid: int,
     run_dir: Path,
@@ -32462,6 +32884,7 @@ def execute_probe_steps(
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         semantic_binding = {}
     semantic_run_id = str(semantic_binding.get("run_id", "")).strip()
+    pending_selection_bootstrap: Optional[Dict[str, Any]] = None
     for index, step in enumerate(steps, start=1 + step_index_offset):
         kind = str(step.get("kind", "")).strip().lower()
         label = str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}"
@@ -32524,6 +32947,73 @@ def execute_probe_steps(
             required_actions = checkpoint.get( "required_actions", [] )
             if not isinstance( required_actions, list ):
                 required_actions = []
+            # A saved-world launch can legitimately stop at the native main
+            # menu or character chooser before emitting its first World HUD
+            # frame.  If this checkpoint explicitly permits that recovery and
+            # the next non-wait step owns a live cockpit, keep the same
+            # launcher/controller alive long enough to finish selection.
+            # Scenario `wait` steps here are wall-clock settling only; they do
+            # not send gameplay input or advance the game.  Any other
+            # intervening step keeps the original strict bootstrap behavior.
+            # The pending row is zero-credit; the exact initial HUD proof is
+            # rechecked after the live controller returns.
+            step_position = index - (1 + step_index_offset)
+            next_step = recoverable_selection_handoff_live_step(steps, step_position)
+            selection_handoff_declared = (
+                checkpoint.get("allow_recoverable_native_selection_handoff") is True and
+                str(next_step.get("kind", "")).strip().lower() == "cockpit_live_session" and
+                next_step.get("bootstrap_only") is not True and
+                (checkpoint.get("require_declared_startup_overlay_dismissal") is not True or
+                 declared_startup_overlay_state_is_qualified(startup_overlay_recovery))
+            )
+            if checkpoint.get("require_initial_hud_world_ready_frame") is True and \
+                    selection_handoff_declared:
+                matching_before, foreign_before = initial_hud_world_frame_counts(
+                    profile=profile, trace_offset=semantic_trace_start,
+                    run_id=semantic_run_id, run_dir=run_dir,
+                )
+                owner = cockpit_native_input_owner_ready(
+                    profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start,
+                )
+                if recoverable_native_selection_owner(
+                        owner, run_id=semantic_run_id,
+                        matching_initial_world_frames=matching_before,
+                        foreign_initial_world_frames=foreign_before):
+                    wake_pipe = semantic_wake_pipe_contract(run_dir, semantic_run_id)
+                    report["metadata"] = {
+                        **owner,
+                        "status": "recoverable_native_selection_pending_world",
+                        "matching_initial_hud_world_frame_count": matching_before,
+                        "foreign_frame_count_after_dismissal": foreign_before,
+                        "semantic_wake_pipe": wake_pipe,
+                        "gameplay_credit": False,
+                    }
+                    report["native_selection_handoff"] = {
+                        "status": "pending_live_controller",
+                        "owner_frame_id": owner.get("frame_id"),
+                        "owner_state": owner.get("frame_state"),
+                        "advertised_actions": list(owner.get("advertised_actions", [])),
+                        "live_step_label": str(next_step.get("label", "")).strip(),
+                        "gameplay_credit": False,
+                    }
+                    if wake_pipe.get("status") != "bound":
+                        report["abort"] = {
+                            "guard": "native_semantic_bootstrap",
+                            "status": "blocked_semantic_wake_pipe_unavailable",
+                            "verdict": "yellow_live_bootstrap_unproved",
+                            "reason": "the launch did not publish its inherited anonymous wake-pipe contract",
+                        }
+                        report["stop_after_step"] = True
+                        reports.append(report)
+                        return reports
+                    reports.append(report)
+                    pending_selection_bootstrap = {
+                        "report": report,
+                        "checkpoint": dict(checkpoint),
+                        "label": label,
+                    }
+                    continue
             if checkpoint.get("require_declared_startup_overlay_dismissal") is True and \
                     not declared_startup_overlay_state_is_qualified(startup_overlay_recovery):
                 report["metadata"] = {
@@ -32688,7 +33178,9 @@ def execute_probe_steps(
                 "bridge_binding_id": os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", ""),
                 "step_label": label,
                 "step_index": index,
-                "gameplay_credit": False if step.get( "bootstrap_only" ) is True else grants_gameplay_proof,
+                "gameplay_credit": False if step.get( "bootstrap_only" ) is True or
+                    pending_selection_bootstrap is not None else grants_gameplay_proof,
+                "initial_world_readiness_pending": pending_selection_bootstrap is not None,
                 "objective": str( step.get( "objective", "" ) ).strip(),
                 "proof_targets": list( step.get( "proof_targets", [] ) ),
                 "authority": list( step.get( "authority", [] ) ),
@@ -32761,6 +33253,37 @@ def execute_probe_steps(
                                      binding_id=str(service.run_channel._binding_id), exported_path=final_path)
             else:
                 final = json.loads(final_path.read_text(encoding="utf-8")) if final_path.is_file() else {}
+            selection_world_ready: Optional[bool] = None
+            selection_world_resolution: Dict[str, Any] = {}
+            if pending_selection_bootstrap is not None:
+                selection_world_resolution = deferred_native_world_bootstrap_result(
+                    pending_selection_bootstrap,
+                    profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start,
+                )
+                selection_world_ready = selection_world_resolution["qualified"] is True
+                pending_report = pending_selection_bootstrap["report"]
+                pending_metadata = pending_report.setdefault("metadata", {})
+                pending_metadata.update(selection_world_resolution.get("metadata", {}))
+                pending_metadata["gameplay_credit"] = False
+                pending_metadata["native_selection_handoff_resolution"] = {
+                    key: value for key, value in selection_world_resolution.items()
+                    if key != "metadata"
+                }
+                if selection_world_ready:
+                    pending_report.pop("abort", None)
+                    pending_report.pop("stop_after_step", None)
+                    pending_report["native_selection_handoff"]["status"] = "world_qualified"
+                else:
+                    pending_report["abort"] = {
+                        "guard": "native_semantic_bootstrap",
+                        "status": "blocked_r019_initial_hud_world_frame_unqualified",
+                        "verdict": "yellow_live_bootstrap_unproved",
+                        "reason": "the live native selection session did not yield exactly one fresh current-run world.wait frame",
+                    }
+                    pending_report["stop_after_step"] = True
+                    pending_report["native_selection_handoff"]["status"] = "world_not_qualified"
+                pending_selection_bootstrap = None
             report["cockpit_live_session"] = {
                 "descriptor": descriptor,
                 "final": final,
@@ -32782,6 +33305,20 @@ def execute_probe_steps(
                     "final_report_ref": final_path.name if final_path.is_file() else "",
                     "gameplay_credit": live_status == 0 and grants_gameplay_proof,
                 }
+            if selection_world_ready is not None:
+                report["metadata"]["initial_world_bootstrap"] = {
+                    "status": "qualified" if selection_world_ready else "not_reached_or_unqualified",
+                    "proof": selection_world_resolution.get("metadata", {}),
+                }
+                if not selection_world_ready:
+                    report["metadata"]["gameplay_credit"] = False
+                    report["abort"] = {
+                        "guard": "recoverable_native_selection_handoff",
+                        "status": "blocked_initial_world_not_reached",
+                        "verdict": "yellow_live_bootstrap_unproved",
+                        "reason": "interactive startup ended without the required same-run initial World HUD frame",
+                    }
+                    report["stop_after_step"] = True
             if not final:
                 report["abort"] = {
                     "guard": "cockpit_live_session",
@@ -32791,6 +33328,9 @@ def execute_probe_steps(
                 }
                 report["stop_after_step"] = True
                 reports.append( report )
+                return reports
+            if selection_world_ready is False:
+                reports.append(report)
                 return reports
             if cockpit_step_explicitly_quit(report):
                 # run.quit ends the whole scenario. Do not execute later
@@ -38344,44 +38884,9 @@ def run_startup(args: argparse.Namespace) -> int:
     profile_snapshot_result: Dict[str, Any] = {}
     saved_world_snapshot_result: Dict[str, Any] = {}
     if saved_world_snapshot:
-        source_world = Path(saved_world_snapshot).expanduser().resolve()
-        if not source_world.is_dir():
-            raise SystemExit(f"saved-world snapshot is not a directory: {source_world}")
-        target_world = str(args.world or "").strip()
-        if not target_world:
-            raise SystemExit("saved-world snapshot requires --world")
-        source_hash, source_error = sha256_tree(source_world)
-        if source_error:
-            raise SystemExit(source_error)
-        destination = (save_dir_for_profile(profile) / target_world).resolve()
-        save_root = save_dir_for_profile(profile).resolve()
-        try:
-            destination.relative_to(save_root)
-        except ValueError as error:
-            raise SystemExit("saved-world snapshot destination escaped profile save root") from error
-        ensure_dir(save_root)
-        staging = save_root / f".{target_world}.replacement-{uuid.uuid4().hex}.tmp"
-        if staging.exists():
-            shutil.rmtree(staging)
-        shutil.copytree(source_world, staging)
-        staged_hash, staged_error = sha256_tree(staging)
-        if staged_error or staged_hash != source_hash:
-            shutil.rmtree(staging, ignore_errors=True)
-            raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
-        if destination.exists():
-            shutil.rmtree(destination)
-        os.replace(staging, destination)
-        installed_hash, installed_error = sha256_tree(destination)
-        saved_world_snapshot_result = {
-            "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
-            "source": str(source_world),
-            "destination": str(destination),
-            "source_sha256": source_hash,
-            "installed_sha256": installed_hash,
-            "error": installed_error,
-            "fixture_reseed_skipped": True,
-            "profile_snapshot_skipped": True,
-        }
+        saved_world_snapshot_result = install_saved_world_snapshot(
+            profile, args.world, saved_world_snapshot, replace=args.replace_existing_worlds,
+        )
         profile_snapshot = ""
     elif profile_snapshot:
         profile_snapshot_result = install_profile_snapshot(
@@ -38416,7 +38921,26 @@ def run_startup(args: argparse.Namespace) -> int:
         "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
         **transition_binding,
     })
-    runtime_binding = build_runtime_binding(Path(plan.executable))
+    scenario_contract_path = str(getattr(args, "scenario_contract_path", "") or "").strip()
+    selected_product_build: Optional[Mapping[str, Any]] = None
+    scenario_source_sha256 = str(getattr(args, "scenario_source_sha256", "") or "").strip()
+    if scenario_contract_path and scenario_source_sha256:
+        scenario_name = str(getattr(args, "scenario_identity", "") or Path(scenario_contract_path).stem).strip()
+        try:
+            selected_declaration = load_scenario(
+                scenario_name, source_path=scenario_contract_path,
+                expected_sha256=scenario_source_sha256,
+            )
+        except (OSError, SystemExit, ValueError) as exc:
+            raise SystemExit(f"selected scenario source changed before executable binding: {exc}") from exc
+        selected_runtime_contract = selected_declaration.get("runtime_contract", {})
+        selected_value = selected_runtime_contract.get("selected_product_build") \
+            if isinstance(selected_runtime_contract, Mapping) else None
+        if isinstance(selected_value, Mapping):
+            selected_product_build = selected_value
+    runtime_binding = build_runtime_binding(
+        Path(plan.executable), selected_product_build=selected_product_build,
+    )
     if not runtime_binding.get("ok"):
         raise SystemExit(
             "Could not bind changed executable/runtime source before launch: "
@@ -38424,7 +38948,6 @@ def run_startup(args: argparse.Namespace) -> int:
         )
     write_json(run_dir / RUNTIME_BINDING_FILENAME, runtime_binding)
 
-    scenario_contract_path = str(getattr(args, "scenario_contract_path", "") or "").strip()
     if scenario_contract_path:
         try:
             loaded_contract = load_checkpoint_contract(
@@ -40943,7 +41466,13 @@ def cockpit_step_explicitly_quit(step: Mapping[str, Any]) -> bool:
 
 
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
-    scenario = load_scenario(args.scenario)
+    selected_path = str(getattr(args, "registry_selected_source_path", "") or "")
+    selected_sha256 = str(getattr(args, "registry_selected_source_sha256", "") or "")
+    if bool(selected_path) != bool(selected_sha256):
+        raise SystemExit("Registry selected scenario path and hash must travel together")
+    scenario = load_scenario(
+        args.scenario, source_path=selected_path or None, expected_sha256=selected_sha256,
+    )
     args.terminal_transport = scenario_terminal_transport(scenario)
     if bool(getattr(args, "cockpit_live_session", False)):
         capabilities = scenario.get("capabilities", {})
@@ -41006,28 +41535,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if post_relaunch_continuation:
         if handoff:
             raise SystemExit("post-relaunch continuation cannot use a deferred handoff")
-        if post_relaunch is None:
-            raise SystemExit("post-relaunch continuation requires a declared post_relaunch contract")
-        # This route is only for the durable save left by the selected route's
-        # native exit.  Reinstalling a fixture or replaying initial setup would
-        # replace that footing and invalidate the continuation boundary.
-        bootstrap_steps = [
-            copy.deepcopy(step) for step in steps
-            if str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"
-        ]
-        if not bootstrap_steps:
-            bootstrap_steps = [
-                copy.deepcopy(step) for step in post_relaunch["steps"]
-                if str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"
-            ]
-        if len(bootstrap_steps) != 1:
-            raise SystemExit(
-                "post-relaunch continuation requires exactly one native semantic bootstrap step"
-            )
-        # Recreate the source-bound semantic World owner without replaying any
-        # player action or setup mutation from the initial segment.
-        steps = [*bootstrap_steps,
-                 *normalize_scenario_steps(post_relaunch["steps"], advance_count, settle_seconds)]
+        # A saved task-local World bootstrap/session is already source-bound.
+        # Explicit reentry contracts still skip the initial setup segment.
+        try:
+            steps = saved_world_continuation_steps(steps, post_relaunch)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
         fixture = ""
         fixture_profile = ""
         profile_snapshot = ""
@@ -41218,6 +41731,15 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario_contract_path = str(scenario.get("path", "")).strip()
     if scenario_contract_path:
         start_cmd.extend(["--scenario-contract-path", scenario_contract_path])
+        scenario_registry = scenario.get("_scenario_registry", {})
+        source_identity = scenario_registry.get("source", {}) \
+            if isinstance(scenario_registry, Mapping) else {}
+        scenario_source_sha256 = str(
+            getattr(args, "registry_selected_source_sha256", "") or
+            (source_identity.get("sha256", "") if isinstance(source_identity, Mapping) else "")
+        ).strip()
+        if scenario_source_sha256:
+            start_cmd.extend(["--scenario-source-sha256", scenario_source_sha256])
     if world:
         start_cmd.extend(["--world", world])
     if harness_new_world:
@@ -42623,6 +43145,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--terminal-transport", default="auto", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-contract-path", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--scenario-source-sha256", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--registry-launch-receipt", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--certification-registry", default="", help="Explicit SQLite registry for a bound certification start.")
     start_p.add_argument("--certification-round-manifest", default="", help="Explicit sealed certification round manifest JSON.")

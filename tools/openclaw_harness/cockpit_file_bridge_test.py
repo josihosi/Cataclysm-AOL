@@ -105,6 +105,96 @@ ACTION_SUCCESSOR_OBSERVATION_CHILD = (
 
 
 class CockpitFileBridgeTest(unittest.TestCase):
+    def test_cleanup_during_warning_blocked_reentry_preserves_finish_and_sends_no_input(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            first_input = directory / "first-input.json"
+            reentry_input = directory / "reentry-input.json"
+            warning = directory / "reentry.debug.log"
+            first = (
+                "import json,os,sys; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-first','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); "
+                "request=json.loads(sys.stdin.readline()); "
+                f"open({str(first_input)!r},'w').write(json.dumps(request)); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1',"
+                "'state':'finished','run_id':'run-a','declared_reentry_ready':True,"
+                "'native_save_completion':{'status':'matched','completion':{"
+                "'schema':'caol-native-save-completion-v1','run_id':'run-a',"
+                "'serializer_result':'saved','save_succeeded':True,'request_id':'save-1',"
+                "'requested_surface_id':'world','requested_frame_id':'frame',"
+                "'world_name':'world','player_save_id':'player',"
+                "'artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True)"
+            )
+            replacement = (
+                "import sys; "
+                f"open({str(warning)!r},'w').write('Failed to find item_location owner with character_id 2\\n'); "
+                "request=sys.stdin.readline(); "
+                f"open({str(reentry_input)!r},'w').write(request)"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", first], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+                reentry_command=[sys.executable, "-u", "-c", replacement],
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if (directory / "status.json").is_file() and json.loads(
+                            (directory / "status.json").read_text())["state"] == "ready":
+                        break
+                    time.sleep(0.01)
+                else:
+                    self.fail("first session did not reach ready")
+                (directory / "game-process.json").write_text(json.dumps({
+                    "pid": 999999, "binding_id": "bound-a", "command": "/already/exited/game",
+                }))
+                self.assertTrue(bridge.send_request(
+                    directory, request_id="finish-first", binding_id="bound-a",
+                    request={"action": "run.finish"},
+                )["ok"])
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if warning.is_file() and json.loads((directory / "status.json").read_text()).get(
+                            "phase") == "awaiting_declared_reentry_descriptor":
+                        break
+                    time.sleep(0.01)
+                else:
+                    status = json.loads((directory / "status.json").read_text())
+                    stderr = (directory / "child.stderr.log").read_text()[:400]
+                    self.fail(f"replacement did not reach warning-blocked descriptor wait: {status}; "
+                              f"warning_exists={warning.exists()}; stderr={stderr}")
+                receipt_path = directory / "responses" / "finish-first.receipt.json"
+                original_receipt = receipt_path.read_bytes()
+                self.assertEqual(json.loads(first_input.read_text())["action"], "run.finish")
+                self.assertFalse(bridge.cleanup(directory, "wrong-binding")["ok"])
+                with (directory / "requests.fifo").open("w", encoding="utf-8") as fifo:
+                    fifo.write(json.dumps({"control": "cleanup", "binding_id": "bound-a"}) + "\n")
+                    fifo.flush()
+                self.assertEqual(bridge.cleanup(directory, "bound-a"),
+                                 {"ok": True, "cleanup": "requested"})
+                self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+                thread.join(4)
+                self.assertFalse(thread.is_alive(), "cleanup must interrupt replacement descriptor wait")
+                status = json.loads((directory / "status.json").read_text())
+                self.assertEqual(status["state"], "cleaned")
+                self.assertEqual(status["reason"], "explicit_pre_descriptor_reentry_cleanup")
+                self.assertEqual(status["cleanup"]["status"], "accepted")
+                self.assertEqual(receipt_path.read_bytes(), original_receipt)
+                self.assertIn("character_id 2", warning.read_text())
+                self.assertFalse(reentry_input.exists(), "cleanup must not send gameplay input")
+                self.assertIsNotNone(bridge._child.poll())
+                self.assertEqual(bridge.cleanup(directory, "bound-a"),
+                                 {"ok": True, "cleanup": "already_accepted"})
+            finally:
+                if bridge._child is not None and bridge._child.poll() is None:
+                    bridge._child.terminate()
+                    bridge._child.wait(timeout=3)
+                thread.join(3)
+
     def test_explicit_cleanup_before_first_descriptor_reaps_silent_controller(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"

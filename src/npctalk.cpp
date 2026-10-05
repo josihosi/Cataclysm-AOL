@@ -53,6 +53,7 @@
 #include "dialogue_chatbin.h"
 #include "dialogue_helpers.h"
 #include "dialogue_win.h"
+#include "do_turn.h"
 #include "semantic_surface.h"
 #include "effect_on_condition.h"
 #include "enum_conversions.h"
@@ -2193,6 +2194,9 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
     if( !talk_with->will_talk_to_u( *this, has_mind_control || force_topic ) ) {
         return;
     }
+    // This successful generic conversation is unrelated to the separate
+    // shakedown demand/trade caller. Do not revive its deferred Pay afterward.
+    cancel_bandit_shakedown_pending_pay_on_dialogue();
     // NPC-initiated conversations can open during monmove, after the World
     // action's manager binding has ended. Keep this real owner reachable too.
     std::optional<semantic_surface_manager_session> semantic_session;

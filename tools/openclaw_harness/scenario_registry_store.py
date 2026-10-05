@@ -269,13 +269,14 @@ def _coordinator_authorization(
 
 @dataclass(frozen=True)
 class RegistryLaunchToken:
-    """A token reloaded from current registry owners for one canonical launch."""
+    """A token reloaded from current registry owners for one selected launch."""
 
     token_id: str
     accepted: bool
     reason: str
     scenario: str = ""
     source_path: str = ""
+    source_sha256: str = ""
 
 
 @dataclass(frozen=True)
@@ -288,6 +289,7 @@ class RegistryBootstrapToken:
     scenario: str = ""
     source_path: str = ""
     runtime_binding: Mapping[str, Any] | None = None
+    source_sha256: str = ""
 
 
 @dataclass(frozen=True)
@@ -300,6 +302,7 @@ class RegistryRepairToken:
     scenario: str = ""
     source_path: str = ""
     runtime_binding: Mapping[str, Any] | None = None
+    source_sha256: str = ""
 
 
 @dataclass(frozen=True)
@@ -3305,6 +3308,7 @@ def reload_selection_token_for_launch(
             return RegistryLaunchToken(
                 token_id=token_id, accepted=True, reason=authority_kind,
                 scenario=scenario, source_path=str(source_path.resolve()),
+                source_sha256=expected_sha256,
             )
 
         if authority_kind in {"first_run_certification", "first_run_bootstrap"}:
@@ -3349,6 +3353,7 @@ def reload_selection_token_for_launch(
                 reason=authority_kind,
                 scenario=scenario,
                 source_path=str(source_path.resolve()),
+                source_sha256=expected_sha256,
             )
 
         current_routes = _current_route_evidence(connection, expected_manifest_id)
@@ -3376,6 +3381,7 @@ def reload_selection_token_for_launch(
                 reason="current_bootstrap_authority",
                 scenario=scenario,
                 source_path=str(source_path.resolve()),
+                source_sha256=expected_sha256,
             )
         current_authoritative_route = _authoritative_current_route(current_route)
         if current_authoritative_route is None:
@@ -3410,6 +3416,7 @@ def reload_selection_token_for_launch(
             reason="current",
             scenario=scenario,
             source_path=str(source_path.resolve()),
+            source_sha256=expected_sha256,
         )
 
 
@@ -3420,6 +3427,11 @@ def _bootstrap_runtime_binding(raw: Any) -> Mapping[str, Any]:
     binding = {key: str(raw.get(key, "")).strip() for key in required}
     if not all(binding.values()):
         raise ScenarioRegistryStoreError("bootstrap runtime binding is incomplete")
+    selected_product_build = raw.get("selected_product_build")
+    if selected_product_build is not None:
+        if not isinstance(selected_product_build, Mapping):
+            raise ScenarioRegistryStoreError("bootstrap selected product build binding is invalid")
+        binding["selected_product_build"] = dict(selected_product_build)
     return {"schema": 1, **binding}
 
 
@@ -3503,7 +3515,7 @@ def issue_registry_bootstrap_token(
             )
     return RegistryBootstrapToken(
         token_id, True, "issued", Path(str(manifest["source_path"])).stem,
-        str(manifest["source_path"]), runtime,
+        str(manifest["source_path"]), runtime, manifest_sha256,
     )
 
 
@@ -3596,7 +3608,7 @@ def reload_bootstrap_token_for_launch(
             return reject("compatible_run_evidence_already_exists")
         return RegistryBootstrapToken(
             token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
-            str(manifest["source_path"]), runtime,
+            str(manifest["source_path"]), runtime, expected_sha256,
         )
 
 
@@ -4084,6 +4096,7 @@ def issue_registry_repair_token(
             )
     return RegistryRepairToken(
         token_id, True, "issued", source_path.stem, str(source_path.resolve()), current_binding["runtime"],
+        source_sha256,
     )
 
 
@@ -4195,6 +4208,7 @@ def reload_repair_token_for_launch(
         return RegistryRepairToken(
             token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
             str(Path(str(manifest["source_path"])).resolve()), normalized_expected["runtime"],
+            expected_sha256,
         )
 
 

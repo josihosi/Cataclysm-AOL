@@ -5,6 +5,44 @@ current question; do not read every reference before playing. The original run l
 receipts and code remain the evidence. Add a finding here when it changes how a later test
 should be run or judged. Do not paste a worker transcript or duplicate a run report.
 
+## Start with a story; reuse proven command batches
+
+Before a first run, provide the scenario story, compatible starting state, intended observable
+outcome and relevant known controls. Mark borrowed or untried segments honestly. After a successful
+run, distill its actual command/output transcript into concrete ordered batches alongside that
+story. Preserve CLI syntax and parameter names, not just instructions such as “drop the gold.”
+Use existing supported wait/move/selection mechanisms; a list of commands is not automatically
+an executable batch-file format.
+
+Each reusable segment gives its compatible entry state, exact commands with only live values
+parameterized, the existing query that obtains those values, and its useful endpoint query.
+Late-bind current session/frame/UID/letter/prompt values; never copy historical authority.
+Break at a decision, unexpected prompt, rejection, danger or performance alarm. Preserve pending
+request identity and collect it rather than replaying submitted input. Merge adjacent compatible
+waits with no intervening decision and stop once the outcome is proved.
+
+The actual player's start handoff contains only the selected build/save/scenario, current
+checkpoint and delta, relevant story and command segments, and remaining proof. Link accepted
+history and original receipts for retrieval; omit obsolete builds, superseded diagnosis, completed
+branches and duplicated manuals from the ordinary start. Keep any historical fact that changes
+this run's decision or evidence ceiling. Parent and input helper receive the same current segment.
+Repair a mistaken query against retained evidence; do not replay accepted gameplay to manufacture
+a recipe. Distill other successful arms from their existing logs as their controls are needed.
+
+Batching must retain performance visibility. Existing collection reads run-bound native turn
+telemetry while input is pending and retains alarms and recoveries across internal polls. Examine
+its `turn_assessment`, including transient alarms; an unavailable trace or unconfigured assessment
+is not a clean performance result. Native turn timing, CPU/RSS and command/transport latency are
+different measurements. Preserve scenario-bound thresholds and raw evidence. Report slow turns
+and stalls to the coordinator before blindly extending another batch. Collection now returns a
+new alarm promptly while retaining the pending request; this returns control to the worker, not
+an automatic cancellation of native gameplay. Inspect the evidence and collect that same request.
+The existing waiting alarm checks a 100-turn mean against 100 ms; it is not an individual-turn
+spike alarm. General spike/slow/stall assessment requires the scenario-owned performance config;
+without it, those measurements remain unassessed. Read-only `performance` remains available while
+a request is pending. Monitoring must not require splitting every quiet native wait into short
+gameplay actions.
+
 ## Contents and agent routing
 
 | Current question | Go to |
@@ -39,27 +77,83 @@ Only Luna operates live sessions. Sol can analyze source, logs and saved data or
 
 ## Standardized base orientation
 
-The normalized `TestSetup00` house occupies ground tiles `[3148,3440,0]` through
-`[3163,3455,0]`. Its downstairs brazier is `[3159,3449,0]`; the roof brazier is
-`[3156,3447,1]`. In the R013 terrain-scout copy, `[3158,3449,0]` is a verified safe tile
-adjacent to the downstairs brazier. The [starting-scene record](../../../build_logs/first-smoke-010/starting-scene.json)
-also names the house doors and the roster in one **different** saved checkpoint. Use those
-coordinates when the launched profile's map geometry matches. A matching prepared-save manifest
-lets a worker reuse recorded initial facts; it does not make old actor positions, door states,
-fire or smoke current after play starts.
+### Josef's two-brazier base save
 
-| Situation in this base | Next useful check or action |
-| --- | --- |
-| Need to work at the downstairs brazier | Check player and brazier tiles. Move once to an adjacent safe tile if needed, then use the [fire procedure](#fire-in-a-prepared-brazier). |
-| A signal has just been lit or put out | Inspect `fd_fire`, `fd_smoke` and `fd_hot_air1` on each intended source tile at the current turn. Smoke can outlast fire. |
-| Waiting makes little progress | Compare game turns and exact NPC IDs, tiles, actions and jobs against the expected next stage; inspect a repeated prompt or motion loop before another wait. |
-| A worker returns to base | Check current doors, both braziers, fuel and signals before assuming the departure setup still holds. |
-| A reload opens the known item error | Follow [reload-dialog recovery](#dismiss-the-known-reload-dialog), then verify the native World and effective save. |
+Use a disposable copy of the [verified template](#verified-save-templates). The closed-window
+archive is the basic unlit start; progressed raid saves carry their own fire, knowledge and
+actor history. Match the selected save identity and current World before applying this map.
+The normalized house spans `[3148,3440,0]` through `[3163,3455,0]`. Coordinates below describe
+that geometry, not every procedural house. After play begins, old positions and fields are
+history; check the current player, hazards and pending input before walking.
 
-Use `play`'s plain-text World and menu controls for decisions. Retrieve run IDs, hashes and raw
-transport only when identity or evidence is in doubt. If a needed native control is missing,
-state the exact current surface and absent action; do not substitute an unrelated Inventory
-search or repeat movement between known tiles.
+| Place | Native tile | Use |
+| --- | --- | --- |
+| Ground-floor brazier | `[3159,3449,0]` | Indoor fire; closed windows make outside discovery smoke-only. |
+| Verified downstairs working tile | `[3158,3449,0]` | Brazier is East from here. |
+| Roof ladder, ground endpoint | `[3149,3454,0]` | Walk here to ascend, rather than using a staircase that leads down. |
+| Roof ladder, upper endpoint | `[3149,3454,1]` | Confirm this tile after `world.level_up`. |
+| Roof working/watch tile | `[3155,3448,1]` | Roof brazier is Northeast from here. |
+| Roof brazier | `[3156,3447,1]` | Inspect actual fuel and fire before ignition. |
+
+### Walk upstairs and approach the roof fire
+
+From the current ground-floor tile, inspect native terrain and take a passable local route to
+`[3149,3454,0]`. The recorded successful route does not supply a fixed downstairs walk from
+an arbitrary starting position. At the ladder use `world.level_up`, then check the player is
+on `[3149,3454,1]`. A down staircase elsewhere is not the roof ladder.
+
+From that verified roof endpoint, six East and six North steps reached `[3155,3448,1]` in
+the successful run. Check hazards and passability as you walk; use the coordinates to adapt
+if your position differs. Do not step onto the fire. Native proof is in
+[R040's route checkpoint](../../../build_logs/first-smoke-040/continuation-checkpoint-20260929.md):
+receipt67 ascended at turn5,295,930; receipts75–97 reached the watch tile at turn5,295,951.
+The same ladder supported descent at turn5,295,928. Level-down from roof shingles at the
+watch tile was a no-op and is a recovery note, not a route step.
+
+R051 applied this route on the basic-template continuation: native `world.level_up` reached
+`[3149,3454,1]` at turn5,216,278. From the roof working tile, the current lighter menu opened
+**Light where?**, Northeast began `ACT_START_FIRE`, and turn5,216,353 showed the roof brazier's
+`fd_fire` plus the successful ignition message. The compact
+[native action records](../../../.de67/task-logs/r051-verified-roof-actions-20261002.json)
+retain exact response paths and hashes. That run advertised item-action1 successfully; the
+old downstairs rejection of that ID is not a general ban. Always use the current menu.
+
+### Light, maintain or extinguish the fire
+
+Inspect the intended tile with the [World Look Cursor](#fire-in-a-prepared-brazier), rather
+than searching Inventory for the furniture. Check actual wood/fuel and a charged lighter.
+For an unlit brazier, use the lighter's current **Activate** menu target, then the current
+**Light where?** direction: East from the downstairs working tile, Northeast from the roof
+working tile. Read any firewood-source prompt and confirm the prepared fuel. Verify native
+`fd_fire` at the actual brazier. Historical menu IDs are not reusable controls. The
+[fire procedure](#fire-in-a-prepared-brazier) retains the verified lighter and extinguishing
+receipts, current control pattern and residual-smoke checks.
+
+For a maintained roof fire, retreat safely without stepping on fire and remain near it.
+Check the actual stock, source-zone coverage and whether fuel is replenished as native time
+advances. Josef expects the original templates to contain enough wood and notes that leaving
+for downstairs can prevent nearby auto-refuelling. These are maintenance checks, not proof
+of the exact refuelling radius or a reason to resize zones before a failure is observed.
+If wood remains but replenishment fails, retain the player/fire/source positions and current
+zone facts for diagnosis. Fire presence alone does not prove exterior smoke or light reach;
+follow the [signal visibility checks](references/smoke-light-visibility.md).
+
+To extinguish, stand adjacent and open the brazier's native Examine menu, choose the current
+enabled **Extinguish fire** entry, then verify `fd_fire` is absent. Smoke and heat may remain;
+check their decay before calling the signal off. Do not replace this with an Inventory search.
+
+### Wait, save and return
+
+Use [wait and observe](#wait-and-observe) for the intended next stage and interruption mode.
+Check actual game time, relevant actor IDs and meaningful changes; repeated unchanged motion
+or a rejected route needs inspection. For long disposable roof observations, verify
+`DEBUG_LS` is active as survival setup; do not toggle it off. Keep ordinary vision for ordinary
+detection proof.
+
+Use [Save a checkpoint](references/live-operation.md#save-a-checkpoint) without a movement
+step. A skipped quicksave is not a fresh write: verify the saved turn. On returning from a
+trip, check current doors, both braziers, remaining fuel and actual signals. For loading errors,
+use [the known recovery](#dismiss-the-known-reload-dialog).
 
 ## Assess an observed action
 
@@ -160,6 +254,23 @@ packet is not the mature fire's maximum; compare changed samples before ending a
 
 Choose the existing wait mode for the observation you need. These short CLI examples use a
 five-minute interval only as an illustration; use the interval relevant to the test.
+
+Merge adjacent waits with the same interruption policy when no action, observation or decision is
+needed between them: `play wait 1h safe` twice becomes `play wait 2h safe`. Likewise, use one
+advertised three- or six-hour duration instead of several shorter waits when only the endpoint
+matters. The native duration must be available in this scene (hour choices require a watch);
+use the largest supported duration that fits the intended interval if the exact total is not offered.
+The short CLI maps `2h` to native `wait.2h`; it does not invent arbitrary menu durations.
+A longer wait still uses the chosen interruption policy. Collect a pending request; do not issue
+another wait while it is running. After an interruption, use actual elapsed time to choose the
+remaining interval rather than restart the full duration. Do not merge across a required fuel
+intervention, decision, signal-on/off timing measurement, or unresolved prompt. Safe mode here
+protects the player; it does not promise detection of every distant NPC event.
+
+Read the resulting frame and retained event evidence at the next useful decision. No automatic
+look/save/roster sweep between quiet chunks, and no further wait once the requested outcome is
+established. Use the existing save/finish route at that point. Proven ordinary batching needs no
+separate trial run; new harness execution behavior needs its own affected controls.
 
 - `play wait 5m safe` (`handle_classified_non_dangerous`) handles recognized harmless
   interruptions and returns control on native near-hostile, pain or attack warnings, actual
@@ -330,9 +441,11 @@ failure before changing supplies; do not substitute a smokebomb. Row 03 of
 from the normalized closed-window save, a fire inside the house at z=0 does not expose light
 outside. Do not call its `fd_fire` a valid exterior light packet or switch to a night-light
 conclusion merely because it burns longer. Keep the smoke source burning and advance native
-time in short increments. After each wait, check current `fd_smoke`, the production signal
-packet/admission, concrete cannibal member IDs and the saved turn. Stop at roster initiation
-or a specific observed **smoke** eligibility failure. A fire-only `no_in_range_production_signal`
+time toward the next useful observation. For a smoke-onset/range probe, inspect short intervals
+while the signal question is unresolved. For a known working end-to-end recipe, use longer
+interruptible waits and retrieve signal/admission/member evidence together at the useful endpoint;
+do not make the probe's per-wait checks mandatory for every journey. Stop the narrow probe at
+roster initiation or a specific observed **smoke** eligibility failure; other arms continue to their outcome. A fire-only `no_in_range_production_signal`
 does not settle the smoke test: the source adapter adds `fd_smoke` to strength and gives a
 persistence bonus, which can increase the projected range after smoke appears. In R013 a
 fire-only cap of 6 OMT was one tile short of the target; continue or resume from the saved

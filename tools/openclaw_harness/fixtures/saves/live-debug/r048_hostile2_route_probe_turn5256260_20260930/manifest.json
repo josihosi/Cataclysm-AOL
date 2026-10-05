@@ -1,0 +1,21 @@
+{
+  "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+  "native_saved_turn": 5256260,
+  "note": "Byte-exact continuation of the retained rural-A post-report/pre-divergence state. The run begins with hostile IDs 7 and 5 outbound. No ignition, scout, report, or dispatch is replayed; B fixture and A/B published declarations are untouched.",
+  "operation_id": "overmap_special:cannibal_camp@135,137,0#hostile:2",
+  "profile": "live-debug",
+  "report_generation": 1,
+  "report_revision": 1,
+  "schema": "r048-route-probe-continuation-fixture-v1",
+  "selected_member_ids": [
+    5,
+    7
+  ],
+  "site_id": "overmap_special:cannibal_camp@135,137,0",
+  "source_copy_manifest": "build_logs/first-smoke-048/hostile2-approaching-turn5256260-copy-manifest.json",
+  "source_copy_tree_sha256": "de1c9a02070d6a79574dd172f3cb37efd6f8457c33861dfd624f76582e23b11a",
+  "source_file_count": 55,
+  "source_path": ".userdata/first-smoke-048-hostile2-approaching-turn5256260-20260930/save/TestSetup00",
+  "source_run_id": "d5c6f8915b84e4f1402df4a2a94cf67928d107f8f2c187ee921711fd7212810f",
+  "world": "TestSetup00"
+}

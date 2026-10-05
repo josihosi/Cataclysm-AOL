@@ -430,6 +430,13 @@ class Creature : public viewer
                    int range_mod = 0 ) const override;
         /** Creature visibility with ordinary senses, excluding Character clairvoyance. */
         bool sees_without_clairvoyance( const map &here, const Creature &critter ) const;
+        /** Ordinary perception in a supplied physical scene without an avatar seen cache. */
+        bool sees_without_clairvoyance_physical( const map &here, const Creature &critter ) const;
+        // Explicit optical observation; ordinary combat perception remains unchanged.
+        bool sees_with_optics( const map &here, const Creature &critter, float magnification ) const;
+        bool sees_site_with_optics( const map &here, const Creature &critter, float magnification,
+                                   const std::vector<tripoint_abs_omt> &footprint,
+                                   float observer_light ) const;
         /*@}*/
 
         /**
@@ -1407,7 +1414,11 @@ class Creature : public viewer
 
     private:
         bool sees_impl( const map &here, const Creature &critter,
-                        bool without_clairvoyance ) const;
+                        bool without_clairvoyance, float optics = 0.0f,
+                        const std::vector<tripoint_abs_omt> *footprint = nullptr,
+                        float site_observer_light = 0.0f, bool physical_scene = false ) const;
+        bool sees_location_in_view( const map &here, const tripoint_bub_ms &t,
+                                    bool is_avatar, int range_mod, bool physical_scene ) const;
         int pain;
         // calculate how well the projectile hits
         double accuracy_projectile_attack( const int &speed, const double &missed_by ) const;

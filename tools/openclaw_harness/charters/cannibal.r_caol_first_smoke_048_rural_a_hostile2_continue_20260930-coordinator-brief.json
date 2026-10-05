@@ -1,0 +1,35 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-048",
+  "scenario": "cannibal.r_caol_first_smoke_048_rural_a_hostile2_continue_20260930",
+  "objective": "Continue the exact existing smoke report1/revision1 and hostile:2 IDs5/7 from the preserved R048 turn5241819 checkpoint; test safe real roof ladder/ground/door/stairs/upstairs progression without replaying signal or report setup.",
+  "outcome": "From the exact R048 post-report/pre-harm checkpoint, can the same committed hostile:2 IDs5/7 route through the actual roof ladder, door and stairs to an upstairs search/combat outcome while the player reaches shelter, or where is the first precise native divergence?",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_048_rural_a_hostile2_continue_20260930-witness.json",
+  "constraints": [
+    "Use only the byte-exact 45-file turn5241819 copy (tree SHA f55d9797fa756faeb46eb425163fca3934926f82f4423d43de60aa9524d53fc9) in a distinct disposable profile.",
+    "No ignition/scout/report/dispatch replay; IDs5/7 are already reserved.",
+    "Verify current standard runtime/executable binding and standard registry token.",
+    "Verify same-run operation owner/member IDs, Safe Off, and existing DEBUG_LS without toggling.",
+    "Try actual mapped ladder [3149,3454,1] and sheltered interior only if a currently observed individual-control route is safe.",
+    "Track actor IDs5/7 using dynamic raid_actor_trace; preserve positions, floors, goal/path, actions, health, incoming/outgoing damage and named causes.",
+    "No B, cloak, clairvoyance, teleport, debug power, autoattack, raw Tab, or batching.",
+    "Save meaningful transitions and gracefully close/verify all process identities."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r048_rural_roof",
+        "op": "eq",
+        "value": "post_report_same_id_roof_access_stairs_combat_continuation",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

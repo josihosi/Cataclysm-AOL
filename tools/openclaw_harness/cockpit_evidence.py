@@ -19,9 +19,33 @@ def decode(value: Any) -> Any:
     return value
 
 
+def resolve_surface_selector(value: Any, selector: str) -> dict[str, Any]:
+    """Resolve the opt-in surface path within this response, never another frame."""
+    if selector != "surface" and not selector.startswith("surface."):
+        return {"ok": True, "resolved_selector": selector}
+    candidates = []
+    for prefix in ("", "observation", "result", "terminal_observation",
+                   "observation.terminal_observation", "result.terminal_observation"):
+        node = value
+        try:
+            for part in prefix.split(".") if prefix else ():
+                node = node[part]
+        except (KeyError, TypeError):
+            continue
+        if isinstance(node, dict) and isinstance(node.get("surface"), dict):
+            candidates.append((prefix + "." if prefix else "") + selector)
+    if len(candidates) != 1:
+        return {"ok": False, "reason": "surface_ambiguous" if candidates else "surface_unavailable",
+                "candidate_selectors": candidates}
+    return {"ok": True, "resolved_selector": candidates[0]}
+
+
 def select(value: Any, selector: str) -> Any:
     """Dot fields and numeric array indices; decode native JSON-string facts on demand."""
-    for part in selector.split("."):
+    resolved = resolve_surface_selector(value, selector)
+    if not resolved["ok"]:
+        raise KeyError(resolved["reason"])
+    for part in resolved["resolved_selector"].split("."):
         value = decode(value)
         if isinstance(value, dict):
             value = value[part]
@@ -42,10 +66,15 @@ def select_optional(value: Any, selector: str) -> dict[str, Any]:
     selector = str(selector).strip()
     if not selector:
         return {"selector": selector, "available": False, "reason": "selector_required"}
+    resolved = resolve_surface_selector(value, selector)
+    if not resolved["ok"]:
+        return {"selector": selector, "available": False,
+                "reason": resolved["reason"], "candidate_selectors": resolved["candidate_selectors"]}
+    provenance = {"resolved_selector": resolved["resolved_selector"]} if selector == "surface" or selector.startswith("surface.") else {}
     try:
-        return {"selector": selector, "available": True, "value": select(value, selector)}
+        return {"selector": selector, **provenance, "available": True, "value": select(value, resolved["resolved_selector"])}
     except (KeyError, IndexError, TypeError, ValueError):
-        return {"selector": selector, "available": False, "reason": "field_unavailable"}
+        return {"selector": selector, **provenance, "available": False, "reason": "field_unavailable"}
 
 
 def selected_view(value: Any, selectors: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
@@ -68,6 +97,80 @@ def selected_view(value: Any, selectors: list[str] | tuple[str, ...] = ()) -> di
                            ("turn", "game_minutes", "timestamp")},
             "selectors": {selector: select_optional(value, selector) for selector in normalized},
             "note": "Selected values are from one retained response; absent identity/freshness is unknown."}
+
+
+def recursive_view(value: Any, selector: str, view: str, *, offset: int = 0,
+                   limit: int = 20, contains: str | None = None,
+                   source_role: str = "observation") -> dict[str, Any]:
+    """Bounded rows from one selected serialized tree, including worn pockets.
+
+    Recognition uses actual record keys; labels and unavailable subtrees are
+    never interpreted as items or inventory absence. Pointers address decoded
+    native JSON-string facts as well as ordinary JSON objects.
+    """
+    if view not in {"items", "actors"} or offset < 0 or limit <= 0:
+        return {"ok": False, "error": "invalid_recursive_view_arguments"}
+    root = select_optional(value, selector) if selector else {"available": True, "value": decode(value)}
+    if not root["available"]:
+        return {"ok": True, "available": False, "reason": root["reason"], "selector": selector,
+                **{key: root[key] for key in ("resolved_selector", "candidate_selectors") if key in root}}
+    rows = []
+    fields = ("uid", "type_id", "charges", "owner") if view == "items" else (
+        "id", "name", "location", "attitude", "dead", "mission", "sleep", "narcosis",
+        "fleeing", "current_target")
+    aliases = {"uid": ("uid", "item_uid", "_item_uid"), "type_id": ("typeid", "type_id"),
+               "id": ("npc_id", "actor_id", "id"), "location": ("location", "pos", "absolute_ms")}
+
+    def values(record):
+        result = {}
+        for field in fields:
+            key = next((key for key in aliases.get(field, (field,)) if key in record), None)
+            result[field] = {"available": key is not None}
+            if key is not None:
+                result[field].update({"value": record[key], "source_field": key})
+        return result
+
+    def visit(record, pointer, actor, containers):
+        record = decode(record)
+        if isinstance(record, dict):
+            is_item = (isinstance(record.get("typeid"), str) or
+                       (isinstance(record.get("type_id"), str) and
+                        any(key in record for key in ("uid", "item_uid", "_item_uid"))))
+            is_actor = not is_item and ("npc_id" in record or
+                       (("actor_id" in record or "id" in record) and
+                        any(key in record for key in ("inv", "worn", "attitude", "dead", "mission"))))
+            if is_actor:
+                actor = {"json_pointer": pointer, **{key: record[key] for key in
+                         ("npc_id", "actor_id", "id", "name") if key in record}}
+            if (view == "items" and is_item) or (view == "actors" and is_actor):
+                row = {"json_pointer": pointer, "fields": values(record)}
+                if "json_pointer" in record:
+                    row["retained_source_json_pointer"] = record["json_pointer"]
+                if view == "items":
+                    row.update({"actor": actor, "containers": containers})
+                if not contains or contains in json.dumps(row["fields"], ensure_ascii=False):
+                    rows.append(row)
+            if is_item:
+                containers = [*containers, {"json_pointer": pointer,
+                              **{key: record[key] for key in ("typeid", "type_id", "uid", "item_uid", "_item_uid") if key in record}}]
+            for key, child in record.items():
+                escaped = str(key).replace("~", "~0").replace("/", "~1")
+                visit(child, pointer + "/" + escaped, actor, containers)
+        elif isinstance(record, (list, ArchiveSequence)):
+            for index, child in enumerate(record):
+                visit(child, pointer + "/" + str(index), actor, containers)
+
+    visit(root["value"], "", None, [])
+    end = min(offset + limit, len(rows))
+    return {"ok": True, "schema": "caol-recursive-view-v1", "available": True,
+            "selector": selector, **{key: root[key] for key in ("resolved_selector",) if key in root},
+            "view": view, "source_role": source_role,
+            "source_role_provenance": "caller_label_not_inferred_from_path_or_contents",
+            "identity": observation_binding(value), "matched_rows": len(rows), "offset": offset,
+            "rows": rows[offset:end], "next_offset": end if end < len(rows) else None,
+            "coverage": "Selected tree only; missing fields/subtrees are unavailable, not absent. "
+                        "Item recognition requires typeid/type_id, not a group/container label. "
+                        "Pointers are relative to selector, with JSON-string facts decoded."}
 
 
 _MISSING = object()
@@ -401,7 +504,8 @@ def record_artifact(path: Path, offset: int, length: int, sha256: str,
 
 _TRACE_EVENTS = frozenset({"raid_actor_action", "raid_site_search", "raid_trace_scope",
                            "raid_trace_repeat", "raid_trace_truncated", "raid_actor_damage",
-                           "raid_actor_death", "raid_actor_sleep"})
+                           "raid_actor_death", "raid_actor_sleep", "raid_site_route_probe",
+                           "npc_attack_callback", "bandit_shakedown_contact", "bandit_shakedown_fight_reply"})
 _ATTITUDE_LABELS = ("ignore", "talk", "legacy_1", "follow", "legacy_2", "lead",
                     "wait", "legacy_6", "mug", "wait_for_leave", "kill", "flee",
                     "legacy_3", "heal", "legacy_4", "legacy_5", "activity",
@@ -437,9 +541,9 @@ def _trace_base_key(record: dict[str, Any]) -> str | None:
     if isinstance(operation, str) and operation and isinstance(generation, int):
         if kind == "raid_site_search":
             return f"{operation}#{generation}:search"
-        if kind == "raid_actor_action" and isinstance(record.get("npc_id"), int):
+        if kind in {"raid_actor_action", "raid_site_route_probe"} and isinstance(record.get("npc_id"), int):
             return f"{operation}#{generation}:{record['npc_id']}"
-    if kind == "raid_actor_action" and isinstance(group, str) and group and isinstance(record.get("npc_id"), int):
+    if kind in {"raid_actor_action", "raid_site_route_probe"} and isinstance(group, str) and group and isinstance(record.get("npc_id"), int):
         return f"scenario@{group}:{record['npc_id']}"
     return None
 
@@ -479,11 +583,16 @@ def _trace_matches(record: dict[str, Any], decision: dict[str, Any],
         # A group decision can affect every selected actor, even if a different
         # member triggered it. Keep it beside the individual decisions.
         if decision["actor_ids"]:
-            endpoints = ({record.get("npc_id")} if kind in {"raid_actor_action", "raid_actor_sleep"}
+            endpoints = ({record.get("npc_id")} if kind in {
+                "raid_actor_action", "raid_actor_sleep", "raid_site_route_probe"}
                          else {record.get("selected_source_npc_id"), record.get("selected_victim_npc_id")}
-                         if kind == "raid_actor_damage"
+                         if kind in {"raid_actor_damage", "npc_attack_callback"}
                          else {record.get("selected_killer_npc_id"), record.get("selected_victim_npc_id")}
-                         if kind == "raid_actor_death" else set(decision["actor_ids"]))
+                         if kind == "raid_actor_death"
+                         else {record.get("speaker_id"), record.get("receiver_id")}
+                         if kind == "bandit_shakedown_contact"
+                         else {record.get("receiver_id")} if kind == "bandit_shakedown_fight_reply"
+                         else set(decision["actor_ids"]))
             if not endpoints.intersection(decision["actor_ids"]):
                 return False
         first = last = record.get("game_turn")
@@ -528,6 +637,25 @@ def _trace_project(record: dict[str, Any]) -> dict[str, Any]:
                 "route_waypoint_index": record.get("route_waypoint_index"),
                 "actor_route_waypoint": record.get("actor_route_waypoint"),
                 "site_search_waypoint": record.get("site_search_waypoint")}
+    if kind == "bandit_shakedown_contact":
+        fields = ("operation_id", "generation", "site_id", "speaker_id", "receiver_id",
+                  "receiver_is_avatar", "audible_shout", "unseen_receiver")
+        return {"kind": "shakedown_contact", "turn": record.get("game_turn"),
+                **{field: record.get(field) for field in fields}}
+    if kind == "bandit_shakedown_fight_reply":
+        fields = ("operation_id", "generation", "site_id", "receiver_id", "receiver_is_avatar",
+                  "position_abs", "attempted", "emitted", "native_volume")
+        return {"kind": "fight_reply", "turn": record.get("game_turn"),
+                **{field: record.get(field) for field in fields}}
+    if kind == "npc_attack_callback":
+        fields = ("edge", "source", "victim", "selected_source_npc_id",
+                  "selected_victim_npc_id", "attacker_player_ally", "attitude_before",
+                  "attitude_after", "hit_by_player_before", "hit_by_player_after",
+                  "shakedown_released", "active_covert_scout", "anger_branch",
+                  "alarm_invoked", "alarm_raised", "victim_operation", "source_operation",
+                  "victim_operation_after")
+        return {"kind": "attack_callback", "turn": record.get("game_turn"),
+                **{field: record.get(field) for field in fields}}
     if kind == "raid_actor_damage":
         return {"kind": "damage", "turn": record.get("game_turn"),
                 "source": record.get("source"), "victim": record.get("victim"),
@@ -564,6 +692,30 @@ def _trace_project(record: dict[str, Any]) -> dict[str, Any]:
                 "seen_target": record.get("seen_target"), "waypoint": record.get("waypoint"),
                 "waypoint_attempted": record.get("waypoint_attempted"),
                 "recipients": record.get("recipients")}
+    if kind == "raid_site_route_probe":
+        return {"kind": "route_probe", "turn": record.get("game_turn"),
+                "trace_group_id": record.get("trace_group_id"),
+                "operation_id": record.get("operation_id"),
+                "generation": record.get("generation"), "site_id": record.get("site_id"),
+                "actor_id": record.get("npc_id"), "member_index": record.get("member_index"),
+                "candidate": record.get("candidate"), "purpose": record.get("purpose"),
+                "engaged": record.get("engaged"), "position_abs": record.get("position_abs"),
+                "goal_abs": record.get("goal_abs"), "goal_local": record.get("goal_local"),
+                "already_at_goal": record.get("already_at_goal"),
+                "goal_inbounds": record.get("goal_inbounds"),
+                "goal_passable": record.get("goal_passable"),
+                "route_evaluated": record.get("route_evaluated"),
+                "route_found": record.get("route_found"), "route_length": record.get("route_length"),
+                "diagnosis": record.get("diagnosis"),
+                "avoid_rejected_checks": record.get("avoid_rejected_checks"),
+                "occupied_rejected_checks": record.get("occupied_rejected_checks"),
+                "other_avoid_rejected_checks": record.get("other_avoid_rejected_checks"),
+                "avoid_samples_truncated": record.get("avoid_samples_truncated"),
+                "relaxed_route_evaluated": record.get("relaxed_route_evaluated"),
+                "relaxed_route_found": record.get("relaxed_route_found"),
+                "relaxed_route_length": record.get("relaxed_route_length"),
+                "relaxed_route_basis": record.get("relaxed_route_basis"),
+                "avoid_samples": record.get("avoid_samples")}
     if kind == "raid_trace_repeat":
         scope = _trace_repeat_scope(record)
         return {"kind": "repeat", "base_turn": record.get("base_turn"),

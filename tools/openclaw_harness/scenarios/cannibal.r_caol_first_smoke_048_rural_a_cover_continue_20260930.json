@@ -1,0 +1,188 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_048_rural_a_cover_continue_20260930",
+  "description": "R048 rural-A continuation from the exact 55-file turn5256260 post-report save; follow selected IDs5/7 and take one verified cover move only after native harm interrupts safe observation.",
+  "profile": "first-smoke-048-rural-a-cover-continue-20260930",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "rural_A_cannibal_site_only; inherited_bandit_cabin_separate",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r048_rural_roof": "post_report_selected_id_cover_route_entry_stairs_combat_continuation"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.examine",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:menu.cancel",
+      "semantic:prompt.choose",
+      "semantic:world.wait",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:main_menu.quit",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install",
+      "world.autoattack",
+      "count-repeat"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-048-rural-a-cover-continue-20260930",
+    "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "first-smoke-048-rural-a-cover-continue-20260930",
+      "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native actor and route evidence; ordinary individual controls only"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_r048_turn5256260_predivergence_save",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Install the exact 55-file copy from build_logs/first-smoke-048/hostile2-approaching-turn5256260-copy-manifest.json (tree SHA de1c9a02070d6a79574dd172f3cb37efd6f8457c33861dfd624f76582e23b11a), saved turn5256260, in a distinct disposable profile. At saved game minute8404, native World showed avatar [3151,3454,0], torso86/86; operation overmap_special:cannibal_camp@135,137,0#hostile:2 was approaching with IDs7 and5 outbound. The report generation1/revision1 and signal history are already present. Do not replay ignition, scouting, report, or dispatch."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r048_selected_id_route_probe_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look",
+          "world.examine",
+          "world.debug_menu"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r048_rural_a_selected_cover_continuation",
+      "objective": "Continue only the existing rural-A cannibal site and hostile:2 response from the exact saved turn5256260. Bind the same-run site, report generation1/revision1, operation and IDs5/7. Verify current player coordinate/HP and Safe Off; inspect DEBUG_LS individually and keep active, with no cloak or clairvoyance. Capture selected-ID trace and candidate route/avoid/occupancy rows from the first resumed turn through5256699. Follow actor positions/z, path and local actions to physical entry, real stairs/upstairs search and combat/damage. Keep the player still while safe. If a native pain/attack/damage stop occurs, choose the currently advertised stop response, inspect ID5/7 damage/source and the current visible map, then make at most one individual cover move only if a presently visible, passable door/frame tile increases separation or blocks the observed firing line; save and verify the exact result. Do not resume ignore-through-fire from the prior death branch; do not move if the current geometry does not support the chosen cover step. Preserve the pre-harm copy and first divergence.",
+      "proof_targets": [
+        "exact 55-file checkpoint tree/hash/turn and fresh selected build/runtime binding",
+        "same-run World; actual rural-A cannibal site overmap_special:cannibal_camp@135,137,0 separated from inherited bandit_cabin@103,167,0",
+        "report generation1/revision1 and hostile:2 operation owner/phase/target/member IDs5/7",
+        "Safe Off, DEBUG_LS status, absence of DEBUG_CLOAK and both clairvoyance mutations; weather and current physical fire/smoke continuity if exposed by native state",
+        "bounded selected-ID trace from turn5256260 through5256699 with cap, truncation and original source handles",
+        "per-candidate floor route diagnostics: goal bounds/passability, actual route/length, avoid categories and exact sampled occupant identities/locations, same-settings relaxed control",
+        "actual ID5/7 positions and z, local action/path, house entry, connected stairs/upstairs search/combat/damage or first divergence",
+        "meaningful native save boundaries and graceful game/bridge/launcher OS exit by exact PID/birth",
+        "if a first harm interrupts safe observation, exact selected source/victim/HP delta, same-run before/after turn+position and visible/passable cover decision with its verified result"
+      ],
+      "invariants": [
+        "Use only the exact 55-file turn5256260 continuation; do not substitute the pristine 45-file A start, later damaged saves, advanced profiles, or B.",
+        "Existing fire/report/dispatch are history; do not ignite, scout, report, or dispatch again.",
+        "Bind actual cannibal site ID; keep inherited distant bandit cabin and its old lead distinct.",
+        "Trace only IDs5/7 starting at turn5256260; honor the source recorder cap and any explicit truncation marker.",
+        "DEBUG_LS is survival setup: inspect individually, leave active, never toggle blindly; no cloak or clairvoyance.",
+        "No debug signal/knowledge/actor/route/HP injection, no teleport, no autoattack, raw Tab, or command batching.",
+        "Avoid samples report explored rejected nodes; they are not an exhaustive route or proof of sole causation. Compare route results, exact coordinates and removal/relaxed controls before concluding.",
+        "Do not reposition the player unless current danger requires immediate safety; earlier minute8412 escape moves belong to prior contact, not this stationary route observation.",
+        "A target waypoint is not physical movement; prove real door/stairs/upstairs through saved positions and actor actions.",
+        "Attribute damage/death only from named native source records."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_exact_r048_turn5256260_predivergence_save",
+      "bind_same_run_r048_selected_id_route_probe_world"
+    ],
+    "production_behavior": [
+      "r048_rural_a_selected_cover_continuation"
+    ],
+    "terminal_persistence": [
+      "r048_rural_a_selected_cover_continuation"
+    ],
+    "artifact_verdict": [
+      "r048_rural_a_selected_cover_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "r048_rural_a_selected_cover_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From the exact rural-A turn5256260 post-report checkpoint, can the same committed hostile:2 IDs 5/7 find real passable routes into the house and connected upper floors, and what native candidate-level occupancy/avoid evidence explains any rejection?",
+    "failure_rule": "Distinguish loaded path topology from member-specific avoid/occupancy with same-settings route results, exact actor and candidate coordinates, actual tracker-backed occupant rows, and bounded/truncated sample limits. Keep intended goals separate from physical movement and keep the inherited bandit cabin separate from the cannibal site."
+  },
+  "fixture": "r048_hostile2_route_probe_turn5256260_20260930",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    5,
+    7
+  ],
+  "decision_trace_from_turn": 5256260,
+  "decision_trace_to_turn": 5256699
+}

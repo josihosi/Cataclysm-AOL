@@ -26,7 +26,8 @@ from evidence_display import emit, recover
 from gameplay_display import display, bounded_player_output, plain_player_output, world_look
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
-from startup_dialog import observe_startup_dialog, recover_startup_debug_dialog
+from startup_dialog import (observe_startup_dialog, pre_world_startup_phase,
+                            recover_startup_debug_dialog)
 
 
 def _persistent_result_cache(value: Any) -> Any:
@@ -221,7 +222,7 @@ class PlayerClient:
             "metadata_source": "game-process.json log_paths" if published else "missing_game_process_log_metadata",
             "entries": entries,
             "scope_note": "run_bound files come from the launch producer and belong to this run; profile_shared and repository_shared files can contain other runs. Missing metadata is reported without guessing a path.",
-            "log_query": "Use each entry's query argv when present, then add --event, --contains, --where FIELD=JSON, or --select FIELD. Use record-artifact with a returned artifact handle for exact bytes.",
+            "log_query": "Use each entry's query argv when present, then add --event, --contains, --from-turn/--to-turn, --where FIELD_OPERATOR_JSON, or --select FIELD. Numeric native actor IDs use --where actor_id=4. Use record-artifact with a returned artifact handle for exact bytes.",
         }
 
     def controls(self) -> dict[str, Any]:
@@ -239,7 +240,7 @@ class PlayerClient:
                 }}
 
     def evidence(self, args):
-        from evidence_events import query
+        from evidence_events import query, parse_predicate
         logs = self._evidence_logs()
         if args.decisions:
             from cockpit_evidence import query as log_query
@@ -262,7 +263,7 @@ class PlayerClient:
                         "from_turn": args.from_turn, "to_turn": args.to_turn}
             return log_query([Path(native["path"])], {"run_id": logs["run_id"]}, selectors,
                              args.offset, args.limit, snapshot=args.snapshot, decision=decision)
-        if args.operation_id or args.group_id or args.actor or args.from_turn is not None or args.to_turn is not None or args.offset or args.snapshot:
+        if args.operation_id or args.group_id or args.actor or args.offset or args.snapshot:
             raise ValueError("decision_scope_options_require_decisions")
         sources = [{"path": entry["path"], "producer": entry["name"]}
                    for entry in logs["entries"] if entry.get("path") and logs["identity_status"] == "bound"]
@@ -274,13 +275,12 @@ class PlayerClient:
             value = getattr(args, key)
             if value is not None:
                 filters[key] = value
-        for expression in args.where:
-            key, value = expression.split("=", 1)
-            filters[key] = json.loads(value)
+        predicates = [parse_predicate(expression) for expression in args.where]
         if args.limit < 1:
             raise ValueError("evidence_limit_must_be_positive")
         selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
-        result = query(sources, filters, args.contains, selectors, args.limit)
+        result = query(sources, filters, args.contains, selectors, args.limit,
+                       predicates=predicates, from_turn=args.from_turn, to_turn=args.to_turn)
         result["log_identity_status"] = logs["identity_status"]
         return result
 
@@ -437,6 +437,7 @@ class PlayerClient:
                 complete = state == "safe_to_cleanup"
                 return {"ok": not failed, "state": "finished" if complete else "cleanup_failed" if failed else "finishing",
                         "bridge_state": state, "cleanup": cleanup,
+                        "cleanup_pending": not complete and not failed,
                         "bridge_cleanup": status.get("cleanup"), "terminalization": terminal,
                         "reason": status.get("reason", status.get("error")),
                         **({"reentry_failure": status["reentry_failure"]}
@@ -523,6 +524,14 @@ class PlayerClient:
                         "bridge_state": status.get("state"), "next": "collect",
                         "turn_assessment": assessment,
                         "note": "Cancellation was requested for this submission; collect the original request for its terminal receipt."}
+            if assessment.get("alarms"):
+                # Publish a newly observed simulation alarm promptly. The
+                # request and its frame ownership remain pending, unchanged;
+                # only its authenticated terminal receipt can complete it.
+                return {"ok": True, "state": "pending", "request_id": request_id,
+                        "bridge_state": status.get("state"), "next": "collect",
+                        "turn_assessment": assessment, "performance_alarm": True,
+                        "note": "New simulation alarm; inspect play performance, then collect this same request. No action was replayed or cancelled."}
             if time.monotonic() >= deadline:
                 return {"ok": True, "state": "pending", "request_id": request_id,
                         "bridge_state": status.get("state"), "next": "collect",
@@ -665,6 +674,9 @@ class PlayerClient:
                 "remaining_unknowns": "Optional list of unresolved questions",
                 "evidence_ceiling": "Optional: omit this field to use the sealed journal's evidence_ceiling. If supplied, copy that exact value; this is not a prose explanation.",
             }
+        if terminal_request and confirmed_terminal:
+            output.update(state="finishing", cleanup_pending=True,
+                          note="Finish accepted; collect reports scenario cleanup. Native save/exit evidence remains separate.")
         if terminal_request and not confirmed_terminal:
             output.update(ok=False, state="unconfirmed_terminal_response",
                           error="explicit_finish_or_quit_has_no_terminal_receipt",
@@ -765,6 +777,31 @@ class PlayerClient:
         if parameters:
             request["parameters"] = parameters
         return self.submit(request, wait_seconds, repeat_internal=repeat_internal)
+
+    def trade_letters(self, letters: str, wait_seconds: float):
+        """One native selection batch, authenticated against this current Trade frame."""
+        from cockpit_evidence import decode
+        frame = self.frame()
+        snapshot = self.display_snapshot() or {}
+        current = snapshot.get("current", {})
+        facts = current.get("facts", {})
+        if snapshot.get("owner") != "inventory" or facts.get("selection_source") != "trade_selector::to_use":
+            return {"ok": False, "error": "current_owner_is_not_trade"}
+        if current.get("observation_id") != frame:
+            return {"ok": False, "error": "stale_trade_rows"}
+        rows = decode(facts.get("trade_rows"))
+        if not isinstance(rows, list) or not letters:
+            return {"ok": False, "error": "trade_letters_unavailable"}
+        if len(set(letters)) != len(letters):
+            return {"ok": False, "error": "duplicate_trade_letter"}
+        for letter in letters:
+            matching = [row for row in rows if isinstance(row, dict) and row.get("letter") == letter]
+            if len(matching) != 1 or matching[0].get("enabled") is not True:
+                return {"ok": False, "error": "unavailable_or_ambiguous_trade_letter", "letter": letter}
+            if matching[0].get("party") != facts.get("active_party") or matching[0].get("actor_id") != facts.get("active_actor_id"):
+                return {"ok": False, "error": "foreign_trade_pane"}
+        return self.act("trade.toggle_letters", None, {"letters": letters,
+                        "party": facts["active_party"], "actor_id": facts["active_actor_id"]}, wait_seconds)
 
     @staticmethod
     def _repeat_native_state(snapshot: dict[str, Any] | None) -> dict[str, Any]:
@@ -984,6 +1021,20 @@ class PlayerClient:
                             "stop_reason": reason, "unused_authority": unused}, wait_seconds)
 
     def finish(self, witness: dict[str, Any], wait_seconds: float):
+        if isinstance(witness, dict):
+            statements = [claim.get("statement") for claim in witness.get("claims", [])
+                          if isinstance(claim, dict)] if witness.get("schema") == \
+                "caol-playtest-witness-bundle-v1" else [witness]
+            for statement in statements if isinstance(statements, list) else []:
+                for citation in statement.get("citations", []) if isinstance(statement, dict) else []:
+                    checks = citation.get("checks", {}) if isinstance(citation, dict) else {}
+                    for path, value in checks.items() if isinstance(checks, dict) else []:
+                        if path.endswith(".last_save_checkpoint") and not isinstance(value, str):
+                            return {"ok": False, "error": "witness_checkpoint_requires_string",
+                                    "path": path, "supplied_type": type(value).__name__,
+                                    "expected_shape": {"type": "string", "example":
+                                        json.dumps({"confirmed_turn": 5248280}, separators=(",", ":"))},
+                                    "next": "Copy the exact STRING from the cited journal row; no request submitted."}
         terminal = self.state.get("sealed_terminal")
         if not terminal:
             return {"ok": False, "error": "journal_required_before_finish",
@@ -1006,12 +1057,14 @@ class PlayerClient:
         if not result.get("ok"):
             return result
         response = result["response"]
-        base = "observation" if isinstance(response.get("observation"), dict) else "result"
-        observation = response.get(base, {})
-        if not observation.get("observation_id") and isinstance(observation.get("terminal_observation"), dict):
-            base += ".terminal_observation"
-            observation = observation["terminal_observation"]
-        selector = base + ".surface.facts.messages"
+        from cockpit_evidence import resolve_surface_selector
+        resolved = resolve_surface_selector(response, "surface.facts.messages")
+        if not resolved["ok"]:
+            return {"ok": False, "error": resolved["reason"],
+                    "candidate_selectors": resolved["candidate_selectors"]}
+        selector = resolved["resolved_selector"]
+        base = selector.rsplit(".surface", 1)[0] if ".surface" in selector else ""
+        observation = select(response, base) if base else response
         try:
             messages = select(response, selector)
         except KeyError:
@@ -1029,13 +1082,36 @@ class PlayerClient:
                 "scope": "Native messages in the displayed frame, including any retained fixture history. Compare the time, actor and action before attributing a message."}
 
     def inspect(self, selector: str, offset: int, limit: int | None, contains: str | None,
-                request_id: str | None = None):
+                request_id: str | None = None, selected_fields: list[str] | None = None,
+                view: str | None = None, source_role: str = "observation"):
         request_id = request_id or self.state.get("last_request_id")
         if not request_id:
             return {"ok": False, "error": "no_collected_response", "next": "look or collect"}
         receipt = Bridge.response_status(self.session, request_id, summary=False)
         if receipt.get("ok") and receipt["receipt"].get("binding_id") != self.binding:
             return {"ok": False, "error": "response_binding_mismatch"}
+        if view == "trade":
+            return Bridge.response_slice(self.session, request_id, selector or "surface.facts.trade_rows",
+                                         offset, limit if limit is not None else 8, contains)
+        if selected_fields or view:
+            if not receipt.get("ok"):
+                return receipt
+            verified = Bridge.response_artifact(self.session, request_id, receipt["receipt"]["response_sha256"])
+            if not verified.get("ok"):
+                return verified
+            from cockpit_evidence import recursive_view, selected_view
+            if view:
+                projection = recursive_view(verified["response"], selector, view,
+                                            offset=offset, limit=limit if limit is not None else 20,
+                                            contains=contains, source_role=source_role)
+                return {"ok": projection["ok"], "request_id": request_id,
+                        "response_sha256": receipt["receipt"]["response_sha256"],
+                        "projection": projection}
+            paths = [selector + "." + field if selector else field
+                     for fields in selected_fields for field in fields.split(",") if field]
+            return {"ok": True, "request_id": request_id,
+                    "response_sha256": receipt["receipt"]["response_sha256"],
+                    "projection": selected_view(verified["response"], paths)}
         return Bridge.response_slice(self.session, request_id, selector, offset, limit, contains)
 
     def compare(self, before_request_id: str, after_request_id: str, selectors: list[str]):
@@ -1102,6 +1178,8 @@ def main(argv=None):
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
     act.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
+    trade = commands.add_parser("trade", help="Toggle current Trade item letters together; never commit")
+    trade.add_argument("letters", help="Exact current native letters, e.g. ab; invalid/duplicate letters reject the whole batch")
     repeat = commands.add_parser("repeat", help="Repeat native pause or autoattack by exact receipt count")
     repeat.add_argument("action", nargs="?", help="world.pause or world.autoattack")
     repeat.add_argument("--count", type=int, help="Positive native action budget")
@@ -1159,7 +1237,8 @@ def main(argv=None):
     evidence = commands.add_parser("evidence", help="Query one immutable event snapshot across native, NPC and runner sources")
     for field in ("actor-id", "actor-name", "request-id", "run-id", "event", "process-instance"):
         evidence.add_argument("--" + field)
-    evidence.add_argument("--where", action="append", default=[], metavar="FIELD=JSON")
+    evidence.add_argument("--where", action="append", default=[], metavar="FIELD_OPERATOR_JSON",
+                          help="Exact field predicate: =, !=, >, >=, <, <= and a JSON value; quote shell comparisons")
     evidence.add_argument("--select", action="append", default=[], help="Exact envelope field path; repeat or separate fields with commas")
     evidence.add_argument("--contains")
     evidence.add_argument("--limit", type=int, default=20)
@@ -1183,7 +1262,14 @@ def main(argv=None):
     call.add_argument("--request", type=Path, required=True,
                       help="JSON request object, including action and its existing recipe; no defaults are invented")
     inspect = commands.add_parser("inspect", help="Read a field of the last retained response")
-    inspect.add_argument("selector")
+    inspect.add_argument("selector", nargs="?", default="",
+                         help="surface.facts is relative to the sole retained surface; explicit result/observation paths stay exact")
+    inspect.add_argument("--select", action="append", default=[],
+                         help="Selected subfields of selector (or full response paths); read-only with exact response binding")
+    inspect.add_argument("--view", choices=["items", "actors", "trade"],
+                         help="Compact items/actors, or native Trade groups (default 8 rows); exact source retained")
+    inspect.add_argument("--source-role", choices=["observation", "startup", "final", "unknown"],
+                         default="observation", help="Explicit source label; never inferred as final from a path")
     inspect.add_argument("--offset", type=int, default=0)
     inspect.add_argument("--limit", type=int)
     inspect.add_argument("--contains")
@@ -1229,14 +1315,23 @@ def main(argv=None):
                 result = client.messages(args.offset, args.limit, args.contains)
             else:
                 result = client.inspect(args.selector, args.offset, args.limit,
-                                        args.contains, args.request_id)
+                                        args.contains, args.request_id, args.select, args.view, args.source_role)
         else:
             with session_lock(args.session / "play-client.lock"):
                 client = PlayerClient(args.session)
                 if args.command == "look":
                     if client.state.get("sealed_terminal"):
-                        raise ValueError("journal_is_sealed: submit finish --witness FILE")
-                    result = client.submit({"action": "game.observe"}, args.wait_seconds)
+                        status = json.loads((args.session / "status.json").read_text(encoding="utf-8"))
+                        if (status.get("binding_id") != client.binding or
+                                pre_world_startup_phase(status) != "declared_reentry"):
+                            raise ValueError("journal_is_sealed: submit finish --witness FILE")
+                        # The prior journal stays sealed until a new World owner
+                        # publishes its descriptor. This is a read-only view of
+                        # the replacement process, never a game.observe request.
+                        result = {"ok": False, "state": "startup_awaiting_descriptor",
+                                  "status": status, "next": "look"}
+                    else:
+                        result = client.submit({"action": "game.observe"}, args.wait_seconds)
                 elif args.command == "debug-ignore":
                     result = recover_startup_debug_dialog(args.session, client.binding,
                                                           args.capture, args.note)
@@ -1252,6 +1347,8 @@ def main(argv=None):
                             raise ValueError("parameters_need_unique_KEY=VALUE")
                         params[key] = value
                     result = client.act(args.action, args.target, params, args.wait_seconds)
+                elif args.command == "trade":
+                    result = client.trade_letters(args.letters, args.wait_seconds)
                 elif args.command == "repeat":
                     result = client.repeat(args.action, args.count, args.wait_seconds,
                                            resume=args.resume, abort=args.abort)
@@ -1294,7 +1391,7 @@ def main(argv=None):
         result = {"ok": False, "error": str(error)}
     if args.command == "look" and "client" in locals() and isinstance(result.get("status"), dict):
         status = result["status"]
-        if status.get("state") in {"starting", "preparing", "process_dead", "bridge_failed"}:
+        if pre_world_startup_phase(status) is not None:
             # The bridge cannot publish a native input owner before World.
             # This read-only UI/log view neither submits a game action nor
             # grants recovery input authority.

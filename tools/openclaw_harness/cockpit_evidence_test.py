@@ -58,6 +58,43 @@ class CockpitEvidenceTest(unittest.TestCase):
     def status(self):
         return self.cli("response-status", "--session-dir", self.session, "--request-id", "confirm")
 
+    def test_selected_site_route_probe_keeps_occupancy_and_relaxed_route_fields(self):
+        decision = {"operation_id": "roof-raid", "group_id": None, "actor_ids": [11],
+                    "from_turn": 5256000, "to_turn": 5257000}
+        probe = {"event": "raid_site_route_probe", "run_id": "run-a", "game_turn": 5256697,
+                 "operation_id": "roof-raid", "generation": 2, "site_id": "cannibal-site",
+                 "trace_group_id": "r048-route", "npc_id": 11, "member_index": 0,
+                 "candidate": 27, "purpose": "floor_access", "engaged": False,
+                 "position_abs": [3155, 3448, 1], "goal_abs": [3162, 3450, 1],
+                 "goal_local": [82, 74, 1], "already_at_goal": False,
+                 "goal_inbounds": True, "goal_passable": True, "route_evaluated": True,
+                 "route_found": False, "route_length": 0, "avoid_rejected_checks": 14,
+                 "diagnosis": "member_avoid_blocks_route",
+                 "occupied_rejected_checks": 2, "other_avoid_rejected_checks": 12,
+                 "avoid_samples_truncated": False,
+                 "relaxed_route_evaluated": True, "relaxed_route_found": True,
+                 "relaxed_route_length": 23,
+                 "relaxed_route_basis": "same_settings_without_member_avoid", "avoid_samples": [
+                     {"local": [94, 88, 3], "absolute": [3149, 3454, 1],
+                      "reason": "occupied", "occupant": {"type": "monster", "id": None,
+                                                               "monster_type": "mon_zombie"}}]}
+        self.assertTrue(cockpit_evidence._trace_matches(probe, decision, {}))
+        projected = cockpit_evidence._trace_project(probe)
+        self.assertEqual(projected["kind"], "route_probe")
+        self.assertEqual(projected["actor_id"], 11)
+        self.assertEqual(projected["candidate"], 27)
+        self.assertFalse(projected["route_found"])
+        self.assertEqual(projected["route_length"], 0)
+        self.assertEqual(projected["diagnosis"], "member_avoid_blocks_route")
+        self.assertTrue(projected["relaxed_route_found"])
+        self.assertEqual(projected["relaxed_route_length"], 23)
+        self.assertEqual(projected["relaxed_route_basis"], "same_settings_without_member_avoid")
+        self.assertFalse(projected["avoid_samples_truncated"])
+        self.assertEqual(projected["avoid_samples"][0]["occupant"]["monster_type"], "mon_zombie")
+
+        other_actor = dict(probe, npc_id=10)
+        self.assertFalse(cockpit_evidence._trace_matches(other_actor, decision, {}))
+
     def test_large_action_catalog_keeps_navigation_and_exact_original_rows(self):
         actions = []
         for i in range(12):

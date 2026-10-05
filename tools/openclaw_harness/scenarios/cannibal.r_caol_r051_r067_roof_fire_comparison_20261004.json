@@ -1,0 +1,224 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_r051_r067_roof_fire_comparison_20261004",
+  "description": "Separate R051 clean roof-fire comparison on immutable R067; roof smoke/light signal, same-ID scouting/report and natural physical response.",
+  "profile": "r051-r067-roof-fire-comparison-20261004",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.r051_fresh_ordinary_smoke_raid": "ordinary_view_clean_closed_window_smoke_same_id_report_natural_raid",
+    "capabilities.r_caol.r051_roof_fire_comparison": "ordinary_roof_fire_smoke_light_same_id_report_natural_raid"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-r067-roof-fire-comparison-20261004",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-r067-roof-fire-comparison-20261004",
+      "fixture": "explicit saved-world snapshot",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_clean_roof_pre_signal_checkpoint",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load exact 45-file clean pre-signal snapshot. Verify actual game at minute0/baseline turn5216234 where available, position and current Safe mode Off, no cloak/invulnerability, unlit roof/ground braziers and no prior site knowledge/outing."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_native_roof_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "wait",
+      "label": "roof_source_is_clean_no_fixture_transforms",
+      "seconds": 0.1,
+      "capture_after": false,
+      "expected_visible_fact": "No additional fixture transform is declared; camp geometry is the already-recorded controlled setup in the byte-exact manifest."
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r051_roof_fire_comparison",
+      "objective": "From a separate clean pre-signal snapshot, use ordinary native movement and the actual roof ladder to light/maintain the roof brazier; observe smoke/light packets, same-ID natural scout/watch/report and any natural physical raid response.",
+      "proof_targets": [
+        "45/45 exact original pre-signal saves, effective userdir, same-run World and immutable R067 executable/source/receipt, Safe Off and ordinary view",
+        "current same-run movement from actual start to ladder [3149,3454,0], actual ascent to [3149,3454,1], derived roof route to [3155,3448,1]",
+        "actual roof source at [3156,3447,1], native fd_fire/fd_smoke and any physically qualifying light/smoke packets with weather/time/range/LOS",
+        "natural same-ID scout/watch/return/report and physical natural response; actual attacks/targets/health/damage/death attribution if reached"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Separate arm; do not claim closed-room proof from this roof run or replay closed-room setup",
+        "Do not use the down-stair detour; stop on rejected terrain or danger",
+        "Use actual advertised current lighter/wood-source controls, keep actual roof fire maintained with stock when needed",
+        "No injected signal/report/dispatch/raid/attack/death, no cloak/clairvoyance/invulnerability",
+        "At first harm use safe/stop observation; ignore only deliberately for natural combat-through-outcome",
+        "Wait only useful supported intervals; do not assume safe wait senses distant camp changes"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_clean_roof_pre_signal_checkpoint",
+      "bind_same_run_native_roof_world"
+    ],
+    "production_behavior": [
+      "r051_roof_fire_comparison"
+    ],
+    "terminal_persistence": [
+      "r051_roof_fire_comparison"
+    ],
+    "artifact_verdict": [
+      "r051_roof_fire_comparison"
+    ],
+    "disallowed_shortcuts": [
+      "roof_source_is_clean_no_fixture_transforms"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Separate clean ordinary roof-fire R051 comparison on immutable R067, from exact byte-matching 45-file pre-signal snapshot; only native roof signal, same-ID journey and any natural physical assault count.",
+    "failure_rule": "Separate smoke from light and track actual time/weather/range/LOS. Do not infer combined signal from roof fire alone; preserve the first natural divergence."
+  },
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r051-r067-roof-fire-comparison-20261004/source-snapshot/TestSetup00",
+  "post_relaunch": {
+    "terminal_save_step_label": "bind_same_run_native_roof_world",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "verify_clean_roof_pre_signal_world",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Fresh selected-source process loads the exact byte-matched clean45-file pre-signal snapshot. Verify World/current turn and start tile before movement, ordinary view, Safe mode Off, DEBUG_LS active only, no clairvoyance/cloak/invulnerability."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "r051_roof_fire_comparison_post_relaunch",
+        "objective": "From the clean pre-signal start, route by checked ground walking to actual ladder [3149,3454,0], ascend to [3149,3454,1], then follow the derived roof route to [3155,3448,1]. Use the real roof source [3156,3447,1] only through current advertised lighter/wood controls. Observe actual fire, smoke/light signal, same-ID natural scout/watch/report and any physical raid response.",
+        "proof_targets": [
+          "45/45 exact original pre-signal saves, effective userdir, same-run World and immutable R067 executable/source/receipt, Safe Off and ordinary view",
+          "current same-run movement from actual start to ladder [3149,3454,0], actual ascent to [3149,3454,1], derived roof route to [3155,3448,1]",
+          "actual roof source at [3156,3447,1], native fd_fire/fd_smoke and any physically qualifying light/smoke packets with weather/time/range/LOS",
+          "natural same-ID scout/watch/return/report and physical natural response; actual attacks/targets/health/damage/death attribution if reached"
+        ],
+        "invariants": [
+          "Separate arm; do not claim closed-room proof from this roof run or replay closed-room setup",
+          "Do not use the down-stair detour; stop on rejected terrain or danger",
+          "Use actual advertised current lighter/wood-source controls, keep actual roof fire maintained with stock when needed",
+          "No injected signal/report/dispatch/raid/attack/death, no cloak/clairvoyance/invulnerability",
+          "At first harm use safe/stop observation; ignore only deliberately for natural combat-through-outcome",
+          "Wait only useful supported intervals; do not assume safe wait senses distant camp changes"
+        ],
+        "live_operations": [
+          "game.act",
+          "game.wait",
+          "game.raw_wait"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}

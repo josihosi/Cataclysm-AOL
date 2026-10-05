@@ -1,0 +1,116 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_057_r051_watch5231980",
+  "description": "R057 native continuation of the retained R051 cannibal watch at exact saved turn5231980; same physically arrived assigned pair, no setup replay.",
+  "profile": "first-smoke-057-r051-watch-5231980-working",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "capabilities": {
+    "world.hostile_policy": "rural_A_cannibal_camp_only; inherited_bandit_cabin_separate",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r057_watch_assessment": "r051_saved_turn5231980_validated_pair_arrival_finite_watch_return_report"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "currently advertised native semantic actions",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "debug:inject_actor",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install",
+      "Pay",
+      "Fight"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-057-r051-watch-5231980-working",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-057/immutable-executable/81b7e1a11072bbf219787373ef402efe1a879a853cba9299776fc9bd90606f41/cataclysm-tiles",
+      "profile": "first-smoke-057-r051-watch-5231980-working",
+      "fixture": "none",
+      "helper": "none",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "advertised native cockpit actions"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_saved_turn5231980",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "Use only the retained private R051 profile whose 45-file saved world is independently matched to build_logs/first-smoke-057/save-manifest-before.json. Verify World turn5231980, Safe mode Off, DEBUG_LS if exposed, ordinary visibility, no pending input, same site/activity/gen1 IDs4/5 and their actual positions, waypoint/assessment and source state before advancing."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_turn5231980_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r057_validate_arrival_start_finite_watch_and_return",
+      "cleanup_on_finish": true,
+      "objective": "Continue the same R051 physical scouting journey under immutable R057. No setup, arrival, ignition/fire, sighting, terrain, or player relocation replay. Observe the existing prepare transaction validate both real assigned members and reconcile the watch waypoint at their actual current arrival; initialize the finite assessment once at current validated arrival with no stale elapsed credit. Capture before/after fields and transaction evidence. Continue with bounded safe intervals through the actual 120-minute watch only while state advances; record fresh exact-site light/smoke and visual observations with raw source handles, same-ID physical home receipts and a new delivered report. Stop at first material divergence; save changed turn natively and clean up."
+    }
+  ],
+  "replace_existing_worlds": false,
+  "raid_actor_trace": false,
+  "evidence_contract": {
+    "claim": "Under immutable R057, does an actually arrived same-ID R051 cannibal scout pair reconcile the stale waypoint through the existing prepare transaction, initialize its finite assessment once without backdating, complete a fresh watch, physically return and deliver a new report with populated native performance evidence?",
+    "failure_rule": "Retain the first exact transaction/gate divergence and changed-turn native save. Do not replay setup or infer fresh signal from old smoke; distinguish visual and fresh signal evidence; no Pay/Fight or report/demand injection."
+  },
+  "proof_route": {
+    "precondition": [
+      "load_exact_saved_turn5231980",
+      "bind_same_run_turn5231980_world"
+    ],
+    "production_behavior": [
+      "r057_validate_arrival_start_finite_watch_and_return"
+    ],
+    "terminal_persistence": [
+      "r057_validate_arrival_start_finite_watch_and_return"
+    ],
+    "artifact_verdict": [
+      "r057_validate_arrival_start_finite_watch_and_return"
+    ],
+    "disallowed_shortcuts": [
+      "load_exact_saved_turn5231980"
+    ]
+  }
+}

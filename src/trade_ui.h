@@ -42,6 +42,7 @@ class trade_selector : public inventory_drop_selector
         void execute();
         void on_toggle() override;
         select_t to_trade() const;
+        std::map<std::string, std::string> semantic_payload() const;
         void resize( point const &size, point const &origin );
         shared_ptr_fast<ui_adaptor> get_ui() const;
         input_context const *get_ctxt() const;
@@ -53,6 +54,7 @@ class trade_selector : public inventory_drop_selector
         static constexpr char const *ACTION_TRADE_CANCEL = "QUIT";
 
     private:
+        std::vector<std::pair<inventory_column *, inventory_entry *>> semantic_entries() const;
         trade_ui *_parent;
         shared_ptr_fast<ui_adaptor> _ui;
         input_context _ctxt_trade;
@@ -93,13 +95,16 @@ class trade_ui
 
         trade_ui( party_t &you, npc &trader, currency_t cost = 0, std::string title = _( "Trade" ),
                   int you_nearby_item_radius = 1, int you_nearby_ally_radius = 0,
-                  basecamp *you_basecamp = nullptr );
+                  basecamp *you_basecamp = nullptr, bool encounter_only = false,
+                  bool goods_to_stash = false );
 
         void pushevent( event const &ev );
 
         trade_result_t perform_trade();
         std::map<std::string, std::string> semantic_payload() const;
+        currency_t active_offer_value( const entry_t &entry ) const;
         void recalc_values_cpane();
+        bool can_autobalance() const;
         void autobalance();
         void bank_balance();
         void resize();
@@ -123,6 +128,8 @@ class trade_ui
         panecont_t::size_type _cpane = 0;
         bool _exit = true;
         bool _traded = false;
+        const currency_t _requested_cost;
+        const bool _goods_to_stash;
         currency_t _cost = 0;
         currency_t _balance = 0;
         currency_t _bank = 0;

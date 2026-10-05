@@ -13,6 +13,10 @@ class avatar;
 class npc;
 
 std::string npc_inspection_actor_id( const npc &actor );
+// Read current in-memory overmap and tracker objects without selecting an AI owner.
+std::string npc_outing_member_diagnostic( character_id id, bool include_body = false );
+// Read-only site-ID catalog for harness World facts; grants no inspection authority.
+std::string openclaw_harness_site_outing_snapshot();
 std::vector<semantic_action_descriptor> npc_inspection_world_actions( avatar &viewer );
 std::vector<semantic_action_descriptor> npc_inspection_current_camp_actions( avatar &viewer );
 npc *resolve_npc_inspection_actor( avatar &viewer, const std::string &actor_id );

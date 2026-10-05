@@ -1,0 +1,184 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_048_rural_a_hostile2_continue_20260930",
+  "description": "R048 continuation from the exact pre-harm native save after smoke report generation 1/revision 1 and hostile:2 response reservation for IDs 5/7; continue physical route without replaying the signal or dispatch.",
+  "profile": "first-smoke-048-hostile2-continue-20260930",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp_committed_hostile2_only",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r048_rural_roof": "post_report_same_id_roof_access_stairs_combat_continuation"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.inventory",
+      "semantic:world.pickup",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "semantic:world.examine",
+      "semantic:menu.choose",
+      "semantic:world.debug_menu",
+      "semantic:world.toggle_safemode",
+      "semantic:world.wait",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:main_menu.quit",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install",
+      "world.autoattack",
+      "count-repeat"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-048-hostile2-continue-20260930",
+    "fixture": "r048_hostile2_reserved_turn5241819_20260930",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-040/r040-stage3-current-source/isolated/cataclysm-tiles",
+      "profile": "first-smoke-048-hostile2-continue-20260930",
+      "fixture": "r048_hostile2_reserved_turn5241819_20260930",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native controls; ordinary roof lighter ignition and physical route"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r048_committed_hostile2_checkpoint",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Install the exact 45-file R048 saved checkpoint at turn 5241819 (tree SHA f55d9797fa756faeb46eb425163fca3934926f82f4423d43de60aa9524d53fc9) into a distinct continuation profile. Existing smoke report generation 1/revision 1 and hostile:2 response IDs 5/7 are already committed. Verify them on same-run World; do not relight, repeat scouting, regenerate a report, or redispatch."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r048_continuation_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.level_down",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r048_hostile2_roof_access_continuation",
+      "objective": "Continue only the existing committed hostile:2 operation from the exact turn5241819 checkpoint. Bind same-run operation owner, report generation/revision, member IDs5/7, saved positions/status, Safe Off, DEBUG_LS present, and actual player/roof state. If safely feasible before contact, use individual advertised moves to the mapped real roof ladder [3149,3454,1], descend, and reach a currently observed sheltered interior through actual passable doors. Then track IDs5/7 using run-bound dynamic raid_actor_trace through real route, door/stairs/upstairs, search and combat, or preserve the first exact physical divergence. This segment is post-report safety setup and response continuation; it earns no new ignition/scout/report discovery evidence.",
+      "proof_targets": [
+        "exact source checkpoint tree hash, native saved turn, current immutable executable/runtime binding",
+        "same-run World, Safe Off, mutation/effect state, player position/HP/bleeding, existing report generation1/revision1 and operation hostile:2",
+        "actual selected hostile members 5/7 and scope/cap/truncation for dynamic raid_actor_trace",
+        "every accepted individual movement and current player coordinate/z; real ladder descent and sheltered-door entry if safely reached",
+        "same-ID actors positions/z/goal/path/actions, HP/effects, outgoing attacks, incoming damage/death with named source only",
+        "real house entry, connected stairs/upstairs search/action or first precise divergence",
+        "saved meaningful checkpoints and graceful game/bridge/launcher exit by PID/birth"
+      ],
+      "invariants": [
+        "This is a continuation of already committed report1/revision1 and hostile:2; do not replay ignition, scouts, report, or dispatch.",
+        "Keep the original cannibal site separate from inherited distant bandit cabin.",
+        "No B arm, injected signal/knowledge/report/actors, teleport, clairvoyance, cloak, or other debug power.",
+        "DEBUG_LS already exists in the checkpoint; verify only and do not toggle it.",
+        "Safe mode Off; use advertised individual controls only, no autoattack, raw Tab, or unvalidated batching.",
+        "Use only observed passable routes and actual stairs; a goal/waypoint does not prove physical movement.",
+        "If reaching the ladder/interior is unsafe, stop at the first meaningful contact/harm state and preserve it; do not repeat a lethal route.",
+        "Attribute damage/death only from explicit named native evidence."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r048_committed_hostile2_checkpoint",
+      "bind_r048_continuation_world"
+    ],
+    "production_behavior": [
+      "r048_hostile2_roof_access_continuation"
+    ],
+    "terminal_persistence": [
+      "r048_hostile2_roof_access_continuation"
+    ],
+    "artifact_verdict": [
+      "r048_hostile2_roof_access_continuation"
+    ],
+    "disallowed_shortcuts": [
+      "r048_hostile2_roof_access_continuation"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "From the exact R048 post-report/pre-harm checkpoint, can the same committed hostile:2 IDs5/7 route through the actual roof ladder, door and stairs to an upstairs search/combat outcome while the player reaches shelter, or where is the first precise native divergence?",
+    "failure_rule": "Separate source, observer and turn; cabin lead from cannibal site; future eligibility from rejection; intended routes from physical movement; and actual attack/damage source from inferred attribution."
+  },
+  "fixture": "r048_hostile2_reserved_turn5241819_20260930",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "raid_actor_trace": true
+}

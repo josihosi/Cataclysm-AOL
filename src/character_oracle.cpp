@@ -277,6 +277,11 @@ float character_oracle_t::warmth_urgency( std::string_view ) const
 
 status_t character_oracle_t::can_sleep( std::string_view ) const
 {
+    if( const npc *actor = dynamic_cast<const npc *>( subject );
+        actor && actor->has_active_alarm_response() &&
+        actor->get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS ) {
+        return status_t::failure;
+    }
     // Meth is the only hard blocker in Character::can_sleep().
     // Stim, comfort, insomnia, and rng are soft score modifiers whose
     // net effect depends on location and luck -- the oracle can't

@@ -1,0 +1,184 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_first_smoke_048_rural_a_roof_20260930",
+  "description": "R048 rural A: fresh unlit countryside roof signal, natural cannibal camp admission, scout watch/report, and native hostile response through real access and combat.",
+  "profile": "first-smoke-048-rural-a-roof-20260930",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "cannibal_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r048_rural_roof": "A_fresh_native_roof_light_smoke_response_entry_stairs_combat"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.inventory",
+      "semantic:world.pickup",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "semantic:world.examine",
+      "semantic:menu.choose",
+      "semantic:world.debug_menu",
+      "semantic:world.toggle_safemode",
+      "semantic:world.wait",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:main_menu.quit",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "debug:inject_knowledge",
+      "debug:inject_report",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install",
+      "world.autoattack",
+      "count-repeat"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "first-smoke-048-rural-a-roof-20260930",
+    "fixture": "r042_rural_roof_cannibal_a_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-040/r040-stage3-current-source/isolated/cataclysm-tiles",
+      "profile": "first-smoke-048-rural-a-roof-20260930",
+      "fixture": "r042_rural_roof_cannibal_a_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native controls; ordinary roof lighter ignition and physical route"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r048_original_rural_a",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load the original untouched R042 rural A fixture through its published live-debug source into fresh profile first-smoke-048-rural-a-roof-20260930. Verify 45/45 files and tree SHA 905d53ba497e284d756d6527a402e77f86860c5c3f84820eabf86e1b33b9ae0b; player save SHA 037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247, saved turn 5216234. Verify same-run World, effective relative userdir, actual weather, Safe Off, no DEBUG_CLOAK or either clairvoyance mutation, no pending input, native player position/HP, real roof/ground access, roof brazier fuel/fire/smoke, and bind the actual cannibal site ID separately from inherited bandit_cabin@103,167,0. Add/verify DEBUG_LS alone as survival setup and verify after one real turn."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r048_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r048_rural_a_roof_to_native_response",
+      "objective": "Use ordinary view and native player actions only. Preserve starting source observations before intervention. If roof source is unlit, ignite the prepared roof brazier by ordinary lighter only; do not relight a burning source. Record weather, fuel/fire/smoke and source/observer/turn-bound light and smoke separately. Use actual ladder. Follow the same naturally admitted cannibal IDs through physical scout/watch/return/report and the naturally selected response; then follow hostile actors through approach, real ground door, stairs/upstairs and combat. Keep inherited bandit_cabin and its old lead separate; do not touch B or seed knowledge/report/raid.",
+      "proof_targets": [
+        "fresh 45-file A fixture/profile exact tree and player hashes; same-run World and current source/executable/runtime bindings",
+        "current weather, roof fire/fuel/smoke, native no-clairvoyance/no-cloak and Safe Off; DEBUG_LS alone verified after real turn",
+        "source-/observer-/turn-bound light and smoke evidence and actual cannibal site ID, distinct from cabin",
+        "natural same-ID roster admission, physical scout watch, return/report, assessment and actual selected hostile response",
+        "run-bound dynamic raid_actor_trace true with actual committed response IDs, phase, action/path/position/floor/HP, attack, incoming damage/death attribution and trace cap/repeat/truncation",
+        "actual real door entry, staircase ascent, upstairs search/action and combat outcome or precise divergence",
+        "saved meaningful turns/copies and graceful game, bridge, launcher exit by exact PID/birth"
+      ],
+      "invariants": [
+        "A starts from exact published untouched source; never use advanced A or R044 profiles as start",
+        "No B arm, added bandit camp, signal/report/actor/route/HP injection, clairvoyance, cloak, teleport, autoattack or repeated action batching",
+        "DEBUG_LS alone is survival setup and gets no faction/gameplay credit",
+        "Keep the inherited distant bandit_cabin@103,167,0 and old lead separate from the actual cannibal camp and its site ID",
+        "Resolve actual site and actor IDs from native loaded records; actor ID identities are not assumed from prior runs",
+        "Natural future cooldowns do not prove a response denial and safe waits may stop on actual danger",
+        "Only an actual physical position/z/door/stairs/action proves route; intended waypoint/goal does not",
+        "Attribute damage/death only when native source evidence names cause"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1,
+      "objective_authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ]
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r048_original_rural_a",
+      "bind_same_run_r048_world"
+    ],
+    "production_behavior": [
+      "r048_rural_a_roof_to_native_response"
+    ],
+    "terminal_persistence": [
+      "r048_rural_a_roof_to_native_response"
+    ],
+    "artifact_verdict": [
+      "r048_rural_a_roof_to_native_response"
+    ],
+    "disallowed_shortcuts": [
+      "r048_rural_a_roof_to_native_response"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "On a fresh untouched rural A footing, ordinary roof fire/smoke naturally admits a cannibal response whose same-ID scouts and raiders physically route through real access/stairs into an upstairs search/attack or a precise native divergence.",
+    "failure_rule": "Separate source, observer and turn; cabin lead from cannibal site; future eligibility from rejection; intended routes from physical movement; and actual attack/damage source from inferred attribution."
+  },
+  "fixture": "r042_rural_roof_cannibal_a_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "raid_actor_trace": true
+}

@@ -1,4 +1,6 @@
 #include "melee.h"
+#include "bandit_live_world.h"
+#include "overmapbuffer.h"
 
 #include <algorithm>
 #include <array>
@@ -710,6 +712,13 @@ bool Character::melee_attack_abstract( Creature &t, bool allow_special,
                                  t.times_combatted_player <= 100;
     Character &player_character = get_player_character();
     if( !hits ) {
+        // An avoided attack still breaks this exact peaceful visit. Hits use
+        // Character::on_hit; ordinary unrelated melee policy stays unchanged.
+        if( t.is_npc() && ( is_avatar() || ( is_npc() && as_npc()->is_player_ally() ) ) &&
+            bandit_live_world::is_active_shakedown_parley_member(
+                overmap_buffer.global_state.bandit_live_world, t.as_npc()->getID() ) ) {
+            t.as_npc()->on_attacked( *this );
+        }
         int stumble_pen = stumble( *this, cur_weapon );
         sfx::generate_melee_sound( cur_weap, pos_bub(), t.pos_bub(), false, false );
 

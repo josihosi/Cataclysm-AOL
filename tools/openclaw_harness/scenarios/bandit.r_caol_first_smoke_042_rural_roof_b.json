@@ -73,7 +73,7 @@
     "requirements": {
       "os": "macos",
       "source": "current-worktree",
-      "executable": "build_logs/first-smoke-047/immutable-executable/20588e4d3c13ac4f1c23252f85c6936027ea0fe9ef3d51c6b8c7e8aefaa0a4ee/cataclysm-tiles",
+      "executable": "build_logs/first-smoke-040/r040-stage3-current-source/isolated/cataclysm-tiles",
       "profile": "first-smoke-042-rural-b-20260929",
       "fixture": "r042_rural_roof_dual_faction_b_v1",
       "helper": "none",

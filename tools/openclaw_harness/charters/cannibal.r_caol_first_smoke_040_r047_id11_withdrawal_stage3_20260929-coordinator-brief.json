@@ -1,0 +1,34 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-CAOL-FIRST-SMOKE-exploration-040",
+  "scenario": "cannibal.r_caol_first_smoke_040_r047_id11_withdrawal_stage3_20260929",
+  "objective": "Continue the saved R043 final roof-fight checkpoint under a fresh current-source build with a distinct run-bound trace for actual ID11 from the first resumed turn. Establish whether its persistent flee state takes the real roof ladder to ground and physically routes toward camp, with actor health and source-attributed damage tracked.",
+  "outcome": "R040 selected-ID11 continuation determines whether the saved fleeing actor physically exits the city roof by the real ladder and routes toward camp, preserving actions, health and source-attributed damage.",
+  "witness_charter": "tools/openclaw_harness/charters/cannibal.r_caol_first_smoke_040_r047_id11_withdrawal_stage3_20260929-witness.json",
+  "constraints": [
+    "Use only disposable relative profile first-smoke-040-r047-stage3-id11-20260929 cloned from the exact verified final saved turn5345813 copy; preserve source checkpoint and all prior stage artifacts.",
+    "Use fresh immutable current-source executable e4f1ce1d36b66be4609d022f772dfbc4147d0cf5619c3c03f2757e2de17b204f and frozen runtime hashes verified at launch.",
+    "Verify loaded save identity, same-run hostile:2/member state, actual ID11, position/HP/effects, DEBUG_LS and Safe Off before first advancing action.",
+    "Select ID11 only from first resumed turn5345813 through turn5370000; preserve run/group/scope, raw handles, repeat and truncation markers, keeping this trace separate from earlier runs.",
+    "Use individual currently advertised native actions; no autoattack, count repeat, injection, clairvoyance or synthetic movement/combat.",
+    "Test physical ladder descent at [3149,3454,1] and route only through actual observed passable geometry; distinguish decision intent from physical movement and home arrival.",
+    "Record actor actions, targets, path, HP, applied damage and named attacker only when native evidence names it; save full copies at meaningful changes; graceful close and verify all owned process PID/birth/OS exits."
+  ],
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_caol.r040_r043_roof_response",
+        "op": "eq",
+        "value": "saved5345813_id11_flee_ladder_withdrawal_trace",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

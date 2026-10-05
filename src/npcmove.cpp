@@ -506,13 +506,14 @@ void append_selected_operation( std::ostringstream &out, const int selected_id )
             << ",\"operation_owner\":" << quote( bandit_live_world::to_string( operation.reservation.owner ) )
             << ",\"route_waypoint_index\":" << operation.reservation.waypoint_index
             << ",\"actor_route_waypoint\":" << operation.reservation.actor_route_waypoint
-            << ",\"site_search_waypoint\":" << operation.site_search_waypoint;
+            << ",\"site_search_waypoint\":" << operation.site_search_waypoint
+            << ",\"shakedown_pending_branch\":" << quote( operation.shakedown_pending_branch );
         return;
     }
     out << ",\"site_id\":null,\"operation_id\":null,\"generation\":null"
         << ",\"operation_phase\":null,\"operation_owner\":null"
         << ",\"route_waypoint_index\":null,\"actor_route_waypoint\":null"
-        << ",\"site_search_waypoint\":null";
+        << ",\"site_search_waypoint\":null,\"shakedown_pending_branch\":null";
 }
 
 bool selected_edge( const Creature *source, const Creature &victim,
@@ -528,6 +529,72 @@ bool selected_edge( const Creature *source, const Creature &victim,
     return source_id != 0 || victim_id != 0;
 }
 } // namespace
+
+std::optional<attack_callback_snapshot> record_attack_callback_entry(
+    const npc &victim, const Creature &attacker )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return std::nullopt;
+    }
+    selected_npc_scope scope;
+    int attacker_id = 0;
+    int victim_id = 0;
+    if( !selected_edge( &attacker, victim, scope, attacker_id, victim_id ) ) {
+        return std::nullopt;
+    }
+    std::ostringstream payload;
+    payload << "\"trace_group_id\":" << quote( scope.group_id )
+            << ",\"selected_source_npc_id\":" << ( attacker_id ? std::to_string( attacker_id ) : "null" )
+            << ",\"selected_victim_npc_id\":" << ( victim_id ? std::to_string( victim_id ) : "null" )
+            << ",\"source\":";
+    append_identity( payload, &attacker );
+    payload << ",\"victim\":";
+    append_identity( payload, &victim );
+    payload << ",\"attacker_player_ally\":"
+            << ( attacker.is_npc() && attacker.as_npc()->is_player_ally() ? "true" : "false" )
+            << ",\"attitude_before\":" << static_cast<int>( victim.get_attitude() )
+            << ",\"hit_by_player_before\":" << ( victim.hit_by_player ? "true" : "false" );
+    // Keep both endpoint contexts: a selected guard can attack an unselected
+    // party member, or a selected party member can attack an unselected guard.
+    payload << ",\"victim_operation\":{\"npc_id\":" << victim.getID().get_value();
+    append_selected_operation( payload, victim.getID().get_value() );
+    payload << "},\"source_operation\":{\"npc_id\":";
+    const int actual_attacker_id = attacker.is_npc() ? attacker.as_npc()->getID().get_value() : 0;
+    payload << ( actual_attacker_id ? std::to_string( actual_attacker_id ) : "null" );
+    append_selected_operation( payload, actual_attacker_id );
+    payload << '}';
+    append_selected_operation( payload, victim_id ? victim_id : attacker_id );
+    attack_callback_snapshot result;
+    result.payload = payload.str();
+    trace.record_edge( "npc_attack_callback", to_turns<int>( calendar::turn - calendar::turn_zero ),
+                       result.payload + ",\"edge\":\"entry\"" );
+    return result;
+}
+
+void record_attack_callback_outcome( const std::optional<attack_callback_snapshot> &entry,
+                                    const npc &victim, const bool shakedown_released,
+                                    const bool active_covert_scout, const std::string_view anger_branch,
+                                    const bool alarm_invoked, const bool alarm_raised )
+{
+    if( !entry ) {
+        return;
+    }
+    std::ostringstream payload;
+    payload << entry->payload << ",\"edge\":\"outcome\""
+            << ",\"attitude_after\":" << static_cast<int>( victim.get_attitude() )
+            << ",\"hit_by_player_after\":" << ( victim.hit_by_player ? "true" : "false" )
+            << ",\"shakedown_released\":" << ( shakedown_released ? "true" : "false" )
+            << ",\"active_covert_scout\":" << ( active_covert_scout ? "true" : "false" )
+            << ",\"anger_branch\":" << quote( anger_branch )
+            << ",\"alarm_invoked\":" << ( alarm_invoked ? "true" : "false" )
+            << ",\"alarm_raised\":" << ( alarm_raised ? "true" : "false" )
+            << ",\"victim_operation_after\":{\"npc_id\":" << victim.getID().get_value();
+    append_selected_operation( payload, victim.getID().get_value() );
+    payload << '}';
+    native_recorder().record_edge( "npc_attack_callback",
+                                  to_turns<int>( calendar::turn - calendar::turn_zero ), payload.str() );
+}
 
 void record_applied_damage( const Creature *source, const Creature &victim,
                             const std::string_view body_part, const int hp_before, const int hp_after )
@@ -610,8 +677,38 @@ void record_sleep_edge( const Character &actor, const std::string_view edge,
             << ",\"sleep_effect\":"
             << ( actor.has_effect( efftype_id( "sleep" ) ) ? "true" : "false" )
             << ",\"sleepiness\":" << actor.get_sleepiness();
+    if( const npc *member = dynamic_cast<const npc *>( &actor ) ) {
+        payload << ",\"patrol_order\":" << ( member->has_camp_patrol_order() ? "true" : "false" )
+                << ",\"npc_suspend\":" << ( member->has_effect( efftype_id( "npc_suspend" ) ) ? "true" : "false" );
+    }
     append_selected_operation( payload, id );
     trace.record_edge( "raid_actor_sleep", turn, payload.str() );
+}
+
+void record_alarm_edge( const npc &actor, const npc_alarm &alarm,
+                        const std::string_view reason, bool was_sleeping )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return;
+    }
+    const selected_npc_scope scope = environment_selected_npcs();
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    if( !scope.includes_turn( turn ) || !selected_npc_id( &actor, scope ) ) {
+        return;
+    }
+    std::ostringstream payload;
+    payload << "\"npc_id\":" << actor.getID().get_value()
+            << ",\"source_id\":" << alarm.source_id.get_value()
+            << ",\"group\":" << quote( alarm.group )
+            << ",\"incident\":[" << alarm.incident.x() << ',' << alarm.incident.y() << ','
+            << alarm.incident.z() << "]"
+            << ",\"until\":" << to_turns<int>( alarm.until - calendar::turn_zero )
+            << ",\"reason\":" << quote( reason )
+            << ",\"sleep_before\":" << ( was_sleeping ? "true" : "false" )
+            << ",\"sleep_after\":" << ( actor.in_sleep_state() ? "true" : "false" )
+            << ",\"incapacitated\":" << ( actor.duty_incapacitated() ? "true" : "false" );
+    trace.record_edge( "npc_alarm", turn, payload.str() );
 }
 
 } // namespace raid_decision_trace
@@ -1608,9 +1705,12 @@ void npc::assess_danger() {
       !too_close(pos_bub(), player_character.pos_bub(), follow_distance()) &&
       !is_guarding();
 
-  const auto raise_camp_patrol_alarm = [&]() {
-    if( camp_patrol_response_camp != nullptr ) {
-      camp_patrol_response_camp->raise_patrol_alarm( getID() );
+  const auto raise_camp_patrol_alarm = [&]( const tripoint_abs_ms &incident ) {
+    if( camp_patrol_response_camp != nullptr &&
+        camp_patrol_response_camp->raise_patrol_alarm( getID() ) ) {
+      const npc_alarm alert{ "basecamp:" + assigned_camp->to_string(), getID(), incident,
+                             calendar::turn + 30_minutes };
+      raid_decision_trace::record_alarm_edge( *this, alert, "patrol_perceived_hostile", in_sleep_state() );
     }
   };
 
@@ -1700,7 +1800,8 @@ void npc::assess_danger() {
                        "%s watches active shakedown contact %s without escalating patrol alarm to combat.",
                        name, guy.disp_name() );
       } else {
-        raise_camp_patrol_alarm();
+        raise_camp_patrol_alarm( guy.pos_abs() );
+        raise_faction_alarm( guy.pos_abs() );
         ai_cache.hostile_guys.emplace_back(g->shared_from(guy));
       }
     } else if (has_faction_relationship(guy,
@@ -1738,7 +1839,8 @@ void npc::assess_danger() {
             continue;
         }
 
-        raise_camp_patrol_alarm();
+        raise_camp_patrol_alarm( critter.pos_abs() );
+        raise_faction_alarm( critter.pos_abs() );
         ai_cache.hostile_guys.emplace_back( g->shared_from( critter ) );
         // warn and consider the odds for distant enemies
         int dist = rl_dist( pos_bub(), critter.pos_bub() );
@@ -1973,6 +2075,10 @@ void npc::assess_danger() {
                  NPC_DANGER_VERY_LOW);
     int dist = rl_dist(pos_bub(), player_character.pos_bub());
     if (player_is_hostile) {
+      if( !bandit_live_world::is_active_shakedown_parley_member(
+              overmap_buffer.global_state.bandit_live_world, getID() ) ) {
+        raise_faction_alarm( player_character.pos_abs() );
+      }
       add_msg_debug(debugmode::DF_NPC_COMBATAI,
                     "<color_light_gray>%s identified player as an</color> "
                     "<color_red>enemy</color> <color_light_gray>of threat "
@@ -2767,6 +2873,18 @@ void npc::move() {
   const bandit_live_world::site_record *withdrawal_site =
       bandit_live_world::active_hostile_withdrawal_site_for(
           overmap_buffer.global_state.bandit_live_world, getID() );
+  // An elevated paid visit has an actual local-to-macro return order. Keep
+  // that owned journey ahead of incidental camp pickup, including after its
+  // descent. The existing relationship reader validates the reserved survivor.
+  const bandit_live_world::site_record *paid_return_site = nullptr;
+  const bool paid_departure =
+      bandit_live_world::hostile_operation_player_relationship_for(
+          overmap_buffer.global_state.bandit_live_world, getID(), &paid_return_site ) ==
+      bandit_live_world::hostile_operation_player_relationship::paid_departure;
+  const bool paid_roof_return = paid_departure && paid_return_site != nullptr &&
+      has_omt_destination() && goal == paid_return_site->anchor &&
+      paid_return_site->active_hostile_operation.reservation.target_omt.z() >
+      paid_return_site->anchor.z();
   if( assault_site != nullptr ) {
       const auto &reservation = assault_site->active_hostile_operation.reservation;
       reconcile_active_assault_routine( assault_site->site_id + ":" +
@@ -3122,6 +3240,14 @@ void npc::move() {
   } else if (target != nullptr && ai_cache.danger > 0 &&
              !has_flag(json_flag_CANNOT_ATTACK)) {
     action = method_of_attack();
+  } else if( paid_roof_return && attitude != NPCATT_FLEE && attitude != NPCATT_FLEE_TEMP &&
+             !has_effect( effect_npc_run_away ) && !has_effect( effect_npc_flee_player ) ) {
+    // Fire, explosives, visible combat and flight above retain priority. Urgent
+    // needs remain effective; routine pickup/sleep cannot consume the paid exit.
+    action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );
+    if( action == npc_undecided ) {
+        action = has_flag( json_flag_CANNOT_MOVE ) ? npc_pause : npc_goto_destination;
+    }
   } else if( assault_search ) {
     // With no visible combat target, a committed assault's physical search
     // order owns this turn.  The danger-gated need path retains urgent healing,
@@ -3131,6 +3257,15 @@ void npc::move() {
     if( action == npc_undecided ) {
       action = goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ?
                npc_goto_to_this_pos : npc_pause;
+    }
+  } else if( has_active_faction_alarm() ) {
+    // A heard incident is finite information, not a target pointer. Survival
+    // and visible combat above retain priority, including party separation.
+    action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );
+    if( action == npc_undecided ) {
+        ai_cache.s_abs_pos = faction_alarm->incident;
+        action = sees( here, here.get_bub( faction_alarm->incident ) ) ||
+                 has_flag( json_flag_CANNOT_MOVE ) ? npc_pause : npc_investigate_sound;
     }
   } else if (!ai_cache.sound_alerts.empty() && !is_walking_with() &&
              !has_flag(json_flag_CANNOT_MOVE)) {
@@ -4861,7 +4996,7 @@ npc_action npc::address_needs(float danger) {
 
     const auto could_sleep = [&]() {
         if( danger <= 0.01 ) {
-            if( npc_has_active_camp_patrol_runtime( *this ) &&
+            if( ( npc_has_active_camp_patrol_runtime( *this ) || has_active_alarm_response() ) &&
                 get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS ) {
                 return false;
             }
@@ -9235,22 +9370,37 @@ void npc::reconcile_active_assault_routine( const std::string &operation_key )
     if( activity.id() == ACT_TRY_SLEEP ) {
         activity.set_to_null();
     }
-    const bool incapacitated = has_effect( effect_narcosis ) ||
-                               has_effect( effect_npc_suspend ) ||
-                               has_effect( effect_downed ) ||
-                               has_effect( effect_stunned ) ||
-                               has_effect( effect_psi_stunned ) ||
-                               get_sleepiness() >= sleepiness_levels::MASSIVE_SLEEPINESS;
-    if( !incapacitated && has_effect( effect_sleep ) ) {
+    interrupt_ordinary_sleep_for_duty();
+    set_value( marker, operation_key );
+}
+
+bool npc::duty_incapacitated() const
+{
+    return has_effect( effect_narcosis ) || has_effect( effect_npc_suspend ) ||
+           has_effect( effect_downed ) || has_effect( effect_stunned ) ||
+           has_effect( effect_psi_stunned ) || has_bionic( bionic_id( "bio_sleep_shutdown" ) ) ||
+           get_sleepiness() >= sleepiness_levels::MASSIVE_SLEEPINESS;
+}
+
+void npc::interrupt_ordinary_sleep_for_duty()
+{
+    if( duty_incapacitated() || get_attitude() == NPCATT_FLEE ||
+        get_attitude() == NPCATT_FLEE_TEMP || has_effect( effect_npc_run_away ) ||
+        has_effect( effect_npc_flee_player ) ) {
+        return;
+    }
+    if( get_committed_goal() == "go_to_sleep" ) {
+        clear_committed_goal();
+    }
+    if( activity.id() == ACT_TRY_SLEEP ) {
+        activity.set_to_null();
+    }
+    if( has_effect( effect_sleep ) ) {
         wake_up();
-        // This lifecycle boundary runs outside effect iteration.  Remove the
-        // expired effect now so the saved sleeper can take its next NPC turn.
+        // Called outside effect iteration, before scheduler action admission.
         remove_effect( effect_sleep );
     }
-    if( !incapacitated ) {
-        remove_effect( effect_lying_down );
-    }
-    set_value( marker, operation_key );
+    remove_effect( effect_lying_down );
 }
 
 float npc::current_need_urgency( need_goal_id id ) const

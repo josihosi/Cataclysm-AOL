@@ -75,7 +75,7 @@ class PlayerCliTest(unittest.TestCase):
             "slice": [{"citation_id": "J0008", "kind": "observation", "value": {"game_minutes": 10}}],
             "source_indices": [7], "filter": {"contains": "world"},
             "page": {"offset": 0, "next_offset": 1}}, inspection_request_id="old-request")
-        self.assertIn("INDEX 7; PATH FIELD", text)
+        self.assertIn("INDEX 7; SELECTOR result.evidence_journal.entries.INDEX.value.FIELD", text)
         self.assertIn("--request-id old-request", text)
         self.assertIn("--offset 1 --limit 1 --contains world --request-id old-request", text)
 
@@ -86,7 +86,7 @@ class PlayerCliTest(unittest.TestCase):
                 "surface": {"kind": "world", "facts": {"irrelevant_history": "x" * 100000}}}}],
             "page": {"offset": 0, "total": 1, "next_offset": None}})
         self.assertIn("J0001: observation — world", text)
-        self.assertIn("play inspect result.evidence_journal.entries.INDEX.value.PATH", text)
+        self.assertIn("SELECTOR result.evidence_journal.entries.INDEX.value.surface.facts.FIELD", text)
         self.assertNotIn("x" * 1000, text)
         self.assertLess(len(text), 500)
 
@@ -901,9 +901,22 @@ class PlayerCliTest(unittest.TestCase):
                 patch("process_performance.collect_turn_assessment",
                       side_effect=[first_assessment, final_assessment]), \
                 patch("play_cli.time.sleep"):
-            result = client.collect(wait_seconds=1)
-        self.assertEqual(result["turn_assessment"]["alarms"], first_assessment["alarms"])
-        self.assertEqual(result["turn_assessment"]["recoveries"], final_assessment["recoveries"])
+            before = json.loads((self.session / "play-client.json").read_text())
+            with patch("play_cli.time.sleep") as sleep:
+                result = client.collect(wait_seconds=60)
+                sleep.assert_not_called()
+            self.assertEqual(result["state"], "pending")
+            self.assertTrue(result["performance_alarm"])
+            self.assertEqual(result["request_id"], "pending-1")
+            self.assertEqual(client.state["pending"]["request_id"], "pending-1")
+            self.assertEqual(json.loads((self.session / "play-client.json").read_text()), before)
+            self.assertEqual(result["turn_assessment"]["alarms"], first_assessment["alarms"])
+            self.assertEqual(len(self.requests()), 0)
+            completed = client.collect(wait_seconds=60)
+        self.assertEqual(completed["state"], "collected")
+        self.assertIsNone(client.state.get("pending"))
+        self.assertEqual(completed["turn_assessment"]["recoveries"], final_assessment["recoveries"])
+        self.assertEqual(len(self.requests()), 0)
 
     def test_collect_wakes_on_cancellation_without_resubmitting(self):
         pending = self.cli("look")

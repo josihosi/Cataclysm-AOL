@@ -545,6 +545,70 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
             owned.write_text(SEMANTIC_STEP_PREFIX + json.dumps(compact) + "\n")
             self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1], "escaped_authority")
 
+    def test_original_casey_trade_payload_and_actions_round_trip_bounded(self) -> None:
+        source = Path(__file__).resolve().parents[2] / "build_logs/first-smoke-067/trade-channel-reference/descriptor-791.jsonl"
+        original_bytes = source.read_bytes()
+        import hashlib
+        self.assertEqual(hashlib.sha256(original_bytes).hexdigest(),
+                         "395cd4350e60a4445d12efbe2e47e0096e9bff5ea60fe149cd97ade11beaa39c")
+        original = json.loads(original_bytes[original_bytes.index(b"{"):])
+        run_id = original["run_id"]
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = Path(temporary)
+            with patch("startup_harness.semantic_step_source_trace", return_value=source):
+                _, owned = refresh_semantic_step_trace(profile="casey", run_dir=run_dir,
+                                                       run_id=run_id, start_offset=0)
+                current = current_semantic_step_frame(profile="casey", run_dir=run_dir,
+                                                      run_id=run_id, start_offset=0)
+            self.assertLessEqual(owned.stat().st_size, MAX_EVENT_BYTES)
+            events, status = read_semantic_step_trace(owned, run_dir, run_id)
+            self.assertEqual(status, "ok")
+            self.assertEqual(events[-1]["valid_actions"], original["valid_actions"])
+            self.assertEqual(events[-1]["payload"], original["payload"])
+            self.assertEqual(current["frame_id"], original["frame_id"])
+            self.assertEqual(current["surface_id"], original["surface_id"])
+            coin = next(row for row in json.loads(current["payload"]["trade_rows"])
+                        if row["group_uid"] == "4791147")
+            self.assertEqual((coin["available"], coin["selected"], coin["unit_price"]), (1000, 0, "$7.41"))
+            self.assertTrue(any(action["id"] == "inventory.toggle" and
+                                action["stable_id"] == "4791147" and action["enabled"]
+                                for action in current["valid_actions"]))
+            full = run_dir / "semantic.native.full.log"
+            self.assertEqual(json.loads(full.read_text().split(SEMANTIC_STEP_PREFIX, 1)[1])["payload"], original["payload"])
+            compact = json.loads(owned.read_text().split(SEMANTIC_STEP_PREFIX, 1)[1])
+            reference = compact["payload_ref"]
+            catalog = run_dir / reference["path"]
+            body = catalog.read_bytes()
+            # Tampering, foreign run/frame, path escape and a mixed inline
+            # payload never create current-owner authority.
+            catalog.write_bytes(body.replace(b'Casey Bolton', b'Casey Boltan', 1))
+            self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1], "invalid_surface_payload_reference")
+            catalog.write_bytes(body)
+            for key, value, expected in [("frame_id", "stale-frame", "invalid_surface_payload_reference"),
+                                         ("run_id", "foreign-run", "contamination")]:
+                changed = json.loads(body)
+                changed[key] = value
+                changed_bytes = json.dumps(changed).encode()
+                catalog.write_bytes(changed_bytes)
+                test_event = json.loads(json.dumps(compact))
+                test_event["payload_ref"].update(bytes=len(changed_bytes), sha256=hashlib.sha256(changed_bytes).hexdigest())
+                owned.write_text(SEMANTIC_STEP_PREFIX + json.dumps(test_event) + "\n")
+                self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1], expected)
+            catalog.write_bytes(body)
+            for change, expected in [("escape", "escaped_authority"),
+                                      ("missing", "invalid_surface_payload_reference"),
+                                      ("mixed", "invalid_surface_payload_reference")]:
+                test_event = json.loads(json.dumps(compact))
+                if change == "escape":
+                    test_event["payload_ref"]["path"] = "../descriptor.json"
+                elif change == "missing":
+                    test_event["payload_ref"]["path"] = "missing.json"
+                else:
+                    test_event["payload"] = {"active_actor_id": "character:1"}
+                owned.write_text(SEMANTIC_STEP_PREFIX + json.dumps(test_event) + "\n")
+                self.assertEqual(read_semantic_step_trace(owned, run_dir, run_id)[1], expected)
+            self.assertEqual(source.read_bytes(), original_bytes)
+
     def test_historical_surface_actions_do_not_block_a_current_child_frame( self ) -> None:
         run_id = "r009-current-child"
         actions = [

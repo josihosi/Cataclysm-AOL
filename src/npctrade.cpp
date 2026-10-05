@@ -23,6 +23,9 @@
 #include "item_contents.h"
 #include "item_location.h"
 #include "item_pocket.h"
+#include "map.h"
+#include "mapdata.h"
+#include "output.h"
 #include "npc.h"
 #include "npc_opinion.h"
 #include "npctrade_utils.h"
@@ -31,6 +34,7 @@
 #include "skill.h"
 #include "trade_ui.h"
 #include "type_id.h"
+#include "ui_manager.h"
 #include "units.h"
 
 static const flag_id json_flag_NO_UNWIELD( "NO_UNWIELD" );
@@ -286,25 +290,173 @@ void npc_trading::update_npc_owed( npc &np, int your_balance, int your_sale_valu
 // cost is positive when the player owes the NPC money for a service to be performed
 bool npc_trading::trade( npc &np, int cost, const std::string &deal,
                          const int you_nearby_item_radius, const int you_nearby_ally_radius,
-                         basecamp *you_basecamp )
+                         basecamp *you_basecamp, Character *payer, const bool encounter_only )
 {
     np.shop_restock();
     //np.drop_items( np.weight_carried() - np.weight_capacity(),
     //               np.volume_carried() - np.volume_capacity() );
     np.drop_invalid_inventory();
 
-    std::unique_ptr<trade_ui> tradeui = std::make_unique<trade_ui>( get_avatar(), np, cost, deal,
+    Character &physical_payer = payer != nullptr ? *payer : static_cast<Character &>( get_avatar() );
+    // Cover retained activity popups before constructing both trade panes and
+    // the header.  Nested trade prompts remain above this modal guard.
+    ui_adaptor modal( ui_adaptor::disable_uis_below{} );
+    std::unique_ptr<trade_ui> tradeui = std::make_unique<trade_ui>( physical_payer, np, cost, deal,
                                       you_nearby_item_radius, you_nearby_ally_radius,
-                                      you_basecamp );
+                                      you_basecamp, encounter_only );
     trade_ui::trade_result_t trade_result = tradeui->perform_trade();
+    tradeui.reset();
+    return complete_trade( np, physical_payer, trade_result );
+}
+
+bool npc_trading::trade_to_stash( npc &np, Character &payer, const tripoint_abs_omt &home,
+                                  const int cost, const std::string &deal,
+                                  const int nearby_item_radius, const int nearby_ally_radius,
+                                  basecamp *payer_basecamp, const bool encounter_only )
+{
+    np.shop_restock();
+    np.drop_invalid_inventory();
+    ui_adaptor modal( ui_adaptor::disable_uis_below{} );
+    trade_ui tradeui( payer, np, cost, deal, nearby_item_radius, nearby_ally_radius,
+                      payer_basecamp, encounter_only, true );
+    while( true ) {
+        trade_ui::trade_result_t result = tradeui.perform_trade();
+        if( !result.traded ) {
+            return false;
+        }
+        if( complete_trade_to_stash( np, payer, result, home ) ) {
+            return true;
+        }
+        popup( _( "The bandit home camp cannot store this payment.  No goods changed hands.  Change the offer or cancel." ) );
+        // perform_trade resets only the exit/confirmation flags. It preserves
+        // the offer and publishes a fresh authenticated native selector.
+    }
+}
+
+bool npc_trading::complete_trade_to_stash( npc &np, Character &payer,
+        trade_ui::trade_result_t &result, const tripoint_abs_omt &home )
+{
+    if( !result.traded ) {
+        return false;
+    }
+    // Native selections name each discrete item once (charged items carry a
+    // quantity). Reject stale, duplicate and overlapping parent/child sources
+    // before loading or changing the destination or debiting anything.
+    std::vector<const item *> sources;
+    for( const auto *selection : { &result.items_you, &result.items_trader } ) {
+        for( const auto &entry : *selection ) {
+            if( !entry.first || entry.second <= 0 ||
+                ( entry.first->count_by_charges() ? entry.second > entry.first->charges : entry.second != 1 ) ) {
+                return false;
+            }
+            const item *source = entry.first.get_item();
+            if( std::find( sources.begin(), sources.end(), source ) != sources.end() ) {
+                return false;
+            }
+            for( const item *prior : sources ) {
+                const auto prior_contents = prior->all_items_ptr();
+                const auto contents = source->all_items_ptr();
+                if( std::find( prior_contents.begin(), prior_contents.end(), source ) != prior_contents.end() ||
+                    std::find( contents.begin(), contents.end(), prior ) != contents.end() ) {
+                    return false;
+                }
+            }
+            sources.push_back( source );
+        }
+    }
+
+    const tripoint_abs_ms origin = project_to<coords::ms>( home );
+    const tripoint_abs_ms far_corner = origin + tripoint( SEEX * 2 - 1, SEEY * 2 - 1, 0 );
+    std::unique_ptr<tinymap> remote;
+    map *destination = &get_map();
+    if( !destination->inbounds( origin ) || !destination->inbounds( far_corner ) ) {
+        remote = std::make_unique<tinymap>();
+        remote->load( home, false );
+        destination = remote->cast_to_map();
+    }
+    map &stash = *destination;
+    struct stash_tile {
+        tripoint_bub_ms position;
+        units::volume free_volume;
+        std::size_t slots;
+    };
+    std::vector<stash_tile> tiles;
+    const tripoint_abs_ms centre = origin + tripoint( SEEX, SEEY, 0 );
+    for( const tripoint_abs_ms &absolute : closest_points_first( centre, std::max( SEEX, SEEY ) ) ) {
+        if( project_to<coords::omt>( absolute ) != home ) {
+            continue;
+        }
+        const tripoint_bub_ms tile = stash.get_bub( absolute );
+        if( stash.inbounds( tile ) && stash.passable( tile ) && stash.can_put_items_ter_furn( tile ) &&
+            !stash.has_flag( ter_furn_flag::TFLAG_DESTROY_ITEM, tile ) &&
+            !stash.has_flag( ter_furn_flag::TFLAG_SWIMMABLE, tile ) ) {
+            const auto stack = stash.i_at( tile );
+            tiles.push_back( { tile, stack.free_volume(), stack.size() < MAX_ITEM_IN_SQUARE ? MAX_ITEM_IN_SQUARE - stack.size() : 0 } );
+        }
+    }
+    struct deposit {
+        tripoint_bub_ms position;
+        item goods;
+    };
+    std::vector<deposit> deposits;
+    for( const auto &entry : result.items_you ) {
+        item goods = *entry.first;
+        if( goods.count_by_charges() ) {
+            goods.charges = entry.second;
+        }
+        goods.set_owner( np );
+        const auto available = std::find_if( tiles.begin(), tiles.end(), [&]( const stash_tile & tile ) {
+            return tile.slots > 0 && tile.free_volume >= goods.volume();
+        } );
+        if( available == tiles.end() ) {
+            return false;
+        }
+        available->free_volume -= goods.volume();
+        --available->slots;
+        deposits.push_back( { available->position, std::move( goods ) } );
+    }
+    // Storage insertion intentionally does not invoke drop actions or merge
+    // charges. Every new object has a reversible location until the full basket
+    // is placed; failed insertion removes only these objects, never old stock.
+    std::vector<std::pair<tripoint_bub_ms, item *>> placed;
+    for( deposit &entry : deposits ) {
+        item &added = stash.add_item( entry.position, std::move( entry.goods ) );
+        if( added.is_null() ) {
+            for( const auto &prior : placed ) {
+                stash.i_rem( prior.first, prior.second );
+            }
+            return false;
+        }
+        placed.emplace_back( entry.position, &added );
+    }
+    for( auto &entry : result.items_you ) {
+        if( entry.first->count_by_charges() && entry.second < entry.first->charges ) {
+            entry.first->charges -= entry.second;
+            entry.first.on_contents_changed();
+        } else {
+            entry.first.remove_item();
+        }
+    }
+    result.items_you.clear(); // No collector inventory copy in complete_trade.
+    // Keep the ordinary other-side transfer, bank/debt and speech bookkeeping.
+    const bool completed = complete_trade( np, payer, result );
+    stash.save();
+    DebugLog( D_INFO, DC_ALL ) << "shakedown_stash deposited=" << placed.size()
+                               << " home=" << home.to_string()
+                               << " first_tile=" << ( placed.empty() ? "none" :
+                                       stash.get_abs( placed.front().first ).to_string() );
+    return completed;
+}
+
+bool npc_trading::complete_trade( npc &np, Character &player_character,
+                                trade_ui::trade_result_t &trade_result )
+{
+    const bool traded = trade_result.traded;
 
     if( trade_result.traded ) {
-        tradeui.reset();
-
         std::list<item_location *> from_map;
 
         std::list<item> escrow;
-        avatar &player_character = get_avatar();
         // Movement of items in 3 steps: player to escrow - npc to player - escrow to npc.
         escrow = npc_trading::transfer_items( trade_result.items_you, player_character, np, from_map,
                                               true );
@@ -345,7 +497,8 @@ bool npc_trading::trade( npc &np, int cost, const std::string &deal,
             player_character.practice( skill_speech, trade_result.value_you / 10000 );
         }
     }
-    return trade_result.traded ;
+    trade_result.traded = false;
+    return traded;
 }
 
 // Will the NPC accept the trade that's currently on offer?

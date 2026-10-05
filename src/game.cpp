@@ -1186,74 +1186,18 @@ bool abstract_scout_owns_npc( const character_id id )
 
 void game::load_npcs()
 {
-    map &here = get_map();
-    const int radius = HALF_MAPSIZE - 1;
-    const tripoint_abs_sm abs_sub( here.get_abs_sub() );
-    const half_open_rectangle<point_abs_sm> map_bounds( abs_sub.xy(), abs_sub.xy() + point( MAPSIZE,
-            MAPSIZE ) );
-    // uses submap coordinates
-    std::vector<shared_ptr_fast<npc>> just_added;
-    for( const auto &temp : overmap_buffer.get_npcs_near_player( radius ) ) {
-        const character_id &id = temp->getID();
-        const auto found = std::find_if( critter_tracker->active_npc.begin(),
-                                         critter_tracker->active_npc.end(),
-        [id]( const shared_ptr_fast<npc> &n ) {
-            return n->getID() == id;
-        } );
-        if( found != critter_tracker->active_npc.end() ) {
-            continue;
-        }
-        if( temp->is_active() ) {
-            continue;
-        }
-        if( temp->has_companion_mission() ) {
-            continue;
-        }
-        if( abstract_scout_owns_npc( id ) ) {
-            // Paired handoff admits these identities; generic loading must not
-            // create a second local movement owner.
-            continue;
-        }
-
-
-        const tripoint_abs_sm sm_loc = temp->pos_abs_sm();
-        // NPCs who are out of bounds before placement would be pushed into bounds
-        // This can cause NPCs to teleport around, so we don't want that
-        if( !map_bounds.contains( sm_loc.xy() ) ) {
-            continue;
-        }
-
-        add_msg_debug( debugmode::DF_NPC, "game::load_npcs: Spawning static NPC, %s %s",
-                       abs_sub.to_string_writable(), sm_loc.to_string_writable() );
-        temp->place_on_map( &here );
-        if( !reality_bubble().inbounds( temp->pos_bub() ) ) {
-            continue;
-        }
-        // In the rare case the npc was marked for death while
-        // it was on the overmap. Kill it.
-        if( temp->marked_for_death ) {
-            temp->die( &here, nullptr );
-        } else {
-            critter_tracker->active_npc.push_back( temp );
-            just_added.push_back( temp );
-        }
-    }
-
-    for( const auto &npc : just_added ) {
-        npc->on_load( &here );
-    }
-
-    npcs_dirty = false;
+    load_npcs( &get_map() );
 }
 
 void game::load_npcs( map *here )
 {
     const int mapsize = here->getmapsize();
-    const int radius = mapsize / 2 - 1;
+    // Cover the receiving map, independently of the player's position. The
+    // square query may include one extra submap for even map sizes; the exact
+    // half-open bounds below still exclude it before placement.
+    const int radius = mapsize / 2;
     const tripoint_abs_sm abs_sub( here->get_abs_sub() );
     const tripoint_abs_sm center = abs_sub + point_rel_sm{radius, radius};
-    const half_open_rectangle<point_abs_sm> map_bounds( abs_sub.xy(), abs_sub.xy() + point( mapsize,
-            mapsize ) );
     // uses submap coordinates
     std::vector<shared_ptr_fast<npc>> just_added;
     for( const auto &temp : overmap_buffer.get_npcs_near( center, radius ) ) {
@@ -1281,7 +1225,7 @@ void game::load_npcs( map *here )
         const tripoint_abs_sm sm_loc = temp->pos_abs_sm();
         // NPCs who are out of bounds before placement would be pushed into bounds
         // This can cause NPCs to teleport around, so we don't want that
-        if( !map_bounds.contains( sm_loc.xy() ) ) {
+        if( !here->inbounds( temp->pos_abs() ) ) {
             continue;
         }
 
@@ -4483,7 +4427,7 @@ void game::cleanup_dead()
                     continue;
                 }
                 const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
-                if( cursor && bandit_live_world::record_local_pair_member_death(
+                if( cursor && bandit_live_world::record_live_local_pair_member_death(
                         site, *cursor, snapshot.npc_id, member->pos_abs(),
                         to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) ) ) {
                     DebugLog( D_INFO, DC_ALL ) << "bandit_live_world local_handoff physical death"

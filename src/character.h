@@ -3339,8 +3339,8 @@ class Character : public Creature, public visitable
         virtual void wake_up();
         // how loud a character can shout. based on mutations and clothing
         int get_shout_volume() const;
-        // shouts a message
-        void shout( std::string msg = "", bool order = false );
+        // Shouts a message; returns the emitted native volume, or 0 on refusal.
+        int shout( std::string msg = "", bool order = false );
         //signals player location to nemesis for "Hunted" trait
         void signal_nemesis();
         /** Handles Character vomiting effects */

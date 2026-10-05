@@ -679,7 +679,7 @@ class FileBackedCockpitBridge:
         """Run only the declared zero-credit prefix before admitting public input."""
         prefix_index = 0
         while True:
-            if not self._active_session_descriptor and self._startup_cleanup_requested():
+            if self._startup_cleanup_requested():
                 raise _ExplicitPreDescriptorCleanup()
             assert self._child is not None and self._child.stdout is not None
             # The child may have already persisted the exact bound descriptor
@@ -861,6 +861,8 @@ class FileBackedCockpitBridge:
                         phase="awaiting_declared_reentry_descriptor",
                     )
                     try:
+                        if self._startup_cleanup_requested():
+                            raise _ExplicitPreDescriptorCleanup()
                         if self.reentry_command:
                             if "--post-relaunch-continuation" in self.reentry_command:
                                 self._freeze_saved_world_for_reentry(terminal)
@@ -869,6 +871,19 @@ class FileBackedCockpitBridge:
                         descriptor = self._await_session_descriptor(
                             consume_pre_descriptor_prefix=False,
                         )
+                        if self._startup_cleanup_requested():
+                            raise _ExplicitPreDescriptorCleanup()
+                    except _ExplicitPreDescriptorCleanup:
+                        cleanup = self._emergency_cleanup()
+                        self._write_status(
+                            "cleaned",
+                            reason="explicit_pre_descriptor_reentry_cleanup",
+                            original_finish_request_id=request_id,
+                            last_response=(self.responses_dir / (request_id + ".receipt.json")).name,
+                            child_exit_code=self._child.returncode if self._child else None,
+                            cleanup={"status": "accepted", **cleanup},
+                        )
+                        return True
                     except ValueError as exc:
                         child_exit_code = self._child.poll() if self._child is not None else None
                         game_process = self._owned_game_process_evidence()
@@ -1381,7 +1396,7 @@ class FileBackedCockpitBridge:
             return {"ok": True, "cleanup": "already_accepted"}
         if status.get("state") == "cleaned" and status.get("cleanup", {}).get("status") == "accepted":
             return {"ok": True, "cleanup": "already_accepted"}
-        if status.get("state") in {"starting", "preparing"}:
+        if status.get("state") in {"starting", "preparing", "transitioning"}:
             _atomic_json(Path(session_dir) / "controls" / "pre-descriptor-cleanup.json",
                          {"control": "cleanup", "binding_id": binding_id})
             return {"ok": True, "cleanup": "requested"}
@@ -1419,14 +1434,20 @@ class FileBackedCockpitBridge:
         recovered = FileBackedCockpitBridge.response_artifact(session_dir, request_id, receipt["response_sha256"])
         if not recovered.get("ok"):
             return recovered
+        resolved = cockpit_evidence.resolve_surface_selector(recovered["response"], selector)
+        if not resolved["ok"]:
+            return {"ok": False, "error": resolved["reason"], "selector": selector,
+                    "request_id": request_id, "response_sha256": receipt["response_sha256"],
+                    "candidate_selectors": resolved["candidate_selectors"]}
         try:
-            value = cockpit_evidence.select(recovered["response"], selector)
+            value = cockpit_evidence.select(recovered["response"], resolved["resolved_selector"])
         except (KeyError, IndexError):
             return {"ok": False, "error": "selected_response_slice_is_unavailable",
-                    "selector": selector, "hint": "Inspect a field from the current view." +
+                    "selector": selector, "resolved_selector": resolved["resolved_selector"],
+                    "hint": "Inspect a field from the current view." +
                     (" Use play performance for turn timing." if selector == "performance-turn-state" else "")}
         result = {"ok": True, "request_id": request_id, "response_sha256": receipt["response_sha256"],
-                  "selector": selector}
+                  "selector": selector, "resolved_selector": resolved["resolved_selector"]}
         if isinstance(value, ArchiveSequence):
             if offset < 0 or (limit is not None and limit <= 0):
                 return {"ok": False, "error": "slice_paging_requires_array_and_valid_range"}

@@ -2241,6 +2241,8 @@ void npc::load( const JsonObject &data )
         }
     }
     data.read( "camp_patrol_order_active", camp_patrol_order_active );
+    faction_alarm.reset();
+    data.read( "faction_alarm", faction_alarm );
     if( camp_patrol_order_active &&
         ( !assigned_camp || ( mission != NPC_MISSION_GUARD &&
                               mission != NPC_MISSION_GUARD_PATROL ) ) ) {
@@ -2410,6 +2412,7 @@ void npc::store( JsonOut &json ) const
     json.member( "mission", mission );
     json.member( "previous_mission", previous_mission );
     json.member( "camp_patrol_order_active", camp_patrol_order_active );
+    json.member( "faction_alarm", faction_alarm );
     json.member( "faction_api_ver", faction_api_version );
     if( !fac_id.str().empty() ) { // set in constructor
         json.member( "my_fac", fac_id.c_str() );

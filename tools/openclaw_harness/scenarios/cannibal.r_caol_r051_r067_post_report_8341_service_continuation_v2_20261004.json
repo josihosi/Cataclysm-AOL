@@ -1,0 +1,168 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.r_caol_r051_r067_post_report_8341_service_continuation_v2_20261004",
+  "description": "Same R051 branch continuing from the native post-report saved world at game minute 8341 on immutable R067; inspect one next camp service and, if it advances, continue the natural raid.",
+  "profile": "r051-r067-report-continuation-20261004-r2",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "capabilities.r_caol.first_smoke_020_clean_closed_fire": "ordinary_view_clean_closed_window_smoke_to_cannibal_assault",
+    "world.signal": [
+      "physical_fire",
+      "smoke"
+    ],
+    "world.hostile_policy": "cannibal_camp",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.first_smoke_011_r020_closed_smoke_regression": "r020_repaired_clean_closed_window_smoke_only_regression",
+    "capabilities.r_caol.r051_fresh_ordinary_smoke_raid": "ordinary_view_clean_closed_window_smoke_same_id_report_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid",
+    "capabilities.r_caol.r051_post_report_8341_continuation_v2": "same_r051_branch_native_save_8341_to_next_camp_service_and_natural_raid_v2"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r051-r067-report-continuation-20261004-r2",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build_logs/first-smoke-067/immutable-executable/0bdc3be6e4487dc49cc762aa64a35fb43bbff88862ccd12285cfeb0fcdcefd68/cataclysm-tiles",
+      "profile": "r051-r067-report-continuation-20261004-r2",
+      "fixture": "explicit saved-world snapshot",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_post_report_saved_world_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "verify_post_report_saved_world_reload",
+      "bind_post_report_saved_world_native_world"
+    ],
+    "production_behavior": [
+      "r051_post_report_next_hourly_service"
+    ],
+    "terminal_persistence": [
+      "r051_post_report_next_hourly_service"
+    ],
+    "artifact_verdict": [
+      "r051_post_report_next_hourly_service"
+    ],
+    "disallowed_shortcuts": [
+      "bind_post_report_saved_world_native_world"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Same R051 native post-report save continued at 8341/5252476 through one informative next-service observation with natural progression or exact unchanged assessment gate retained.",
+    "failure_rule": "Do not infer report assessment, hostile operation, actor state, attack or damage from omitted projections; preserve current native row/event handles."
+  },
+  "config_profile": "r051-r067-report-continuation-20261004-r2",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/r051-r067-report-continuation-20261004/source-snapshot/TestSetup00",
+  "post_relaunch": {
+    "terminal_save_step_label": "bind_post_report_saved_world_native_world",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "verify_post_report_saved_world_reload",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "Fresh registry-bootstrap process loads the exact native quicksave snapshot without fixture reinstall; verify current World at minute 8341 / turn 5252476 before any gameplay input."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "r051_post_report_next_hourly_service",
+        "objective": "Continue the same R051 native saved-world state at minute8341. Query only the existing site report/assessment/decision, hostile operation and same camp actors. Advance one interruptible useful interval to the next hourly structural service (nominal minute8400), recording actual target crossing/overshoot. If unchanged report_awaiting_assessment persists after invoked service, save and stop at that exact divergence. If the state progresses, observe before further waiting and follow only natural same-ID contact/attack path. No forced knowledge/report/dispatch/raid/damage/death.",
+        "proof_targets": [
+          "same saved world at8341/5252476 and current-run World",
+          "site-specific camp report/assessment/decision and hostile operation at the post-service boundary",
+          "same IDs4/5 current actor ownership/location and any natural contact/attack/damage attribution",
+          "native save, exact evidence handles and graceful process cleanup"
+        ],
+        "invariants": [
+          "continue from exact native saved-world snapshot; no fixture reinstall or replay",
+          "no injected signal, knowledge, report, roster, dispatch, raid, attack or death",
+          "DEBUG_LS only; Safe Mode Off; no cloak or clairvoyance",
+          "query only useful current site/actor facts and stop repeated waits at unchanged gate",
+          "resolve every actor and operation ID from this run"
+        ],
+        "live_operations": [
+          "game.act",
+          "game.wait",
+          "game.raw_wait"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  }
+}
