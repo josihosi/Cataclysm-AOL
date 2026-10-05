@@ -788,6 +788,9 @@ static std::string openclaw_harness_keep_watch_safety( const std::string &run_id
 }
 
 std::string openclaw_harness_visible_local_facts( const map &here,
+        const tripoint_bub_ms &avatar_pos, int radius, bool include_unknown, bool include_identity );
+
+std::string openclaw_harness_visible_local_facts( const map &here,
         const tripoint_bub_ms &avatar_pos, int radius, bool include_unknown, bool include_identity )
 {
     const visibility_variables &cache = here.get_visibility_variables_cache();

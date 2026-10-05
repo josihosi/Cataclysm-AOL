@@ -23552,7 +23552,7 @@ def launch_game(
             "process_generation": generation, "host": __import__("socket").gethostname(),
             "run_id": binding["run_id"], "userdir": str(userdir_for_profile(profile).resolve()),
             "mode": "terminal", "transport": "windows_conpty"})
-        lease.bind_game(generation)
+        lease.bind_game(generation, native_owner_path=run_dir / "terminal.owner.json")
         try:
             process = WindowsOwnedProcess(generation, cmd)
         except (OSError, RuntimeError) as error:

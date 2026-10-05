@@ -401,6 +401,43 @@ class WindowsWritableRunOwner(WritableRunOwner):
     def inherited_fds(self):
         return ()  # Never represent native HANDLEs as POSIX descriptors.
 
+    def bind_game(self, generation, *, native_owner_path=None):
+        try:
+            return super().bind_game(generation)
+        except WritableRootConflict as error:
+            if error.reason != 'generation_mismatch' or native_owner_path is None:
+                raise
+            observed = self.inspect(int(generation['pid']))
+            if not isinstance(observed, Mapping) or observed.get('alive') is not False:
+                raise
+            path = Path(native_owner_path).resolve()
+            if not path.is_relative_to(self.root):
+                raise
+            # A fast child may exit before this caller acquires a query handle.
+            # The existing broker owns its creation handle and publishes the
+            # exact exit/closed-handles record, never just a sampled dead PID.
+            import time
+            deadline = time.monotonic() + 6.0
+            while True:
+                owner = json.loads(path.read_text())
+                if owner.get('launch_state') == 'exited':
+                    break
+                if time.monotonic() >= deadline:
+                    raise error
+                time.sleep(.05)
+            if owner.get('schema') != 'caol-curses-terminal-owner-v1' \
+                    or owner.get('host') != self.record['host'] \
+                    or owner.get('run_id') != self.run_id \
+                    or owner.get('game_process_generation') != dict(generation) \
+                    or owner.get('native_handles_closed') is not True \
+                    or owner.get('native_lease_handles_closed') is not True \
+                    or 'child_exit_code' not in owner \
+                    or self.inspect(int(generation['pid'])).get('alive') is not False:
+                raise error
+            self.record['game_generation'] = dict(generation)
+            self.record['launch_state'] = 'bound'
+            self._write()
+
     def export_native_lease(self):
         import msvcrt
         if self.record['launch_state'] != 'launching':
