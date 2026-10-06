@@ -45,9 +45,15 @@ class GenericQuitTest(unittest.TestCase):
                     patch.object(harness.os, "kill", side_effect=intercepted) as signal:
                 result = service.call({"action": "run.quit", "abort": True,
                                        "stop_reason": "explicit test abort, never native save"})
-            signal.assert_called_once_with(123, harness.signal.SIGTERM)
+            if harness.os.name == "nt":
+                signal.assert_not_called()
+                self.assertEqual(result["result"]["cleanup"]["status"],
+                                 "graceful_quit_unconfirmed_process_retained")
+                self.assertTrue(result["result"]["cleanup"]["observed_process_generation"]["alive"])
+            else:
+                signal.assert_called_once_with(123, harness.signal.SIGTERM)
+                self.assertEqual(result["result"]["cleanup"]["status"], "terminated")
             self.assertTrue(result["ok"])
-            self.assertEqual(result["result"]["cleanup"]["status"], "terminated")
             report = json.loads((directory / "cockpit.live.final.json").read_text())
             self.assertEqual(report["closure_kind"], "explicit_abort")
             self.assertTrue(report["stop_detail"]["explicit_player_abort"])
