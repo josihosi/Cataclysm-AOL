@@ -1353,6 +1353,11 @@ $(ODIR)/third-party/%.o: $(SRC_DIR)/third-party/%.cc
 $(ODIR)/third-party/%.o: $(SRC_DIR)/third-party/%.c
 	$(COMPILE.c) $(OUTPUT_OPTION) -x c $(CFLAGS) -w -MMD -MP $<
 
+# snmalloc is included through -isystem; retain its headers in allocator deps.
+# Makefile also invalidates old allocator objects when this recipe changes.
+$(ODIR)/cata_allocator.o: $(SRC_DIR)/cata_allocator.cpp $(PCH_P) Makefile
+	$(COMPILE.cc) $(OUTPUT_OPTION) $(PCHFLAGS) -MD -MP $<
+
 $(ODIR)/%.o: $(SRC_DIR)/%.cpp $(PCH_P)
 	$(COMPILE.cc) $(OUTPUT_OPTION) $(PCHFLAGS) -MMD -MP $<
 
