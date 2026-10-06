@@ -11468,7 +11468,90 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
 {
     std::vector<bandit_live_world::structural_signal_read> result;
     const bool request_current_inbounds = get_map().inbounds( request.current_omt );
-    if( !signals.empty() || !sound_events.empty() ) {
+    // This opt-in explanation belongs to this acquisition only. It retains
+    // results from the actual predicates/readers below, never rereads geometry.
+    const bool diagnostic_watch = openclaw_harness_bandit_owner_trace_enabled() &&
+                                  outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                                  outing.phase == bandit_live_world::scout_phase::observing;
+    std::vector<std::pair<character_id, std::string>> watcher_diagnostics;
+    std::vector<std::string> candidate_rejections( diagnostic_watch ? signals.size() : 0 );
+    std::vector<std::vector<std::pair<character_id, scout_observation::visibility_read>>>
+            candidate_readers( diagnostic_watch ? signals.size() : 0 );
+    std::string request_rejection;
+    bool watcher_eligibility_evaluated = false;
+    on_out_of_scope log_request( [&] {
+        // Retain the existing compact request row. Empty opt-in watches also
+        // report zero candidates, rather than making missing emission ambiguous.
+        if( signals.empty() && sound_events.empty() && !diagnostic_watch ) {
+            return;
+        }
+        std::ostringstream detail;
+        if( diagnostic_watch ) {
+            JsonOut json( detail );
+            json.start_object();
+            const char *run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+            json.member( "run_id", run && run[0] ? std::optional<std::string>( run ) : std::nullopt );
+            json.member( "game_turn", to_turns<int>( calendar::turn - calendar::turn_zero ) );
+            json.member( "service_minutes", live_bandit_current_minutes() );
+            json.member( "site_id", site.site_id );
+            json.member( "activity_id", outing.activity_id );
+            json.member( "generation", outing.generation );
+            json.member( "target_lead_id", outing.target_lead_id );
+            json.member( "target_lead_revision", outing.target_lead_revision );
+            json.member( "assessment_pinned_revision", outing.assessment.pinned_target_revision );
+            json.member( "request_rejection", request_rejection );
+            json.member( "watcher_eligibility_evaluated", watcher_eligibility_evaluated );
+            json.member( "watcher_object_lookup", "overmap_buffer.find_npc" );
+            json.member( "watchers" );
+            json.start_array();
+            for( const auto &entry : watcher_diagnostics ) {
+                json.start_object();
+                json.member( "member_id", entry.first.get_value() );
+                json.member( "eligible", entry.second == "eligible" );
+                json.member( "reason", entry.second );
+                json.end_object();
+            }
+            json.end_array();
+            json.member( "candidates" );
+            json.start_array();
+            for( size_t index = 0; index < signals.size(); ++index ) {
+                const auto &signal = signals[index];
+                json.start_object();
+                json.member( "source_id", signal.sample_id.empty() ? signal.mark.mark_id : signal.sample_id );
+                json.member( "source_ms", signal.source_ms );
+                json.member( "source_omt", signal.source_omt );
+                json.member( "channel", signal.mark.kind );
+                json.member( "observed_turn", signal.observed_turn );
+                json.member( "observed_minutes", signal.observed_minutes );
+                json.member( "range_cap_omt", signal.range_cap_omt );
+                json.member( "range_omt", signal.mark.kind == "smoke" ?
+                             rl_dist( request.current_omt.xy(), signal.source_omt.xy() ) :
+                             rl_dist( request.current_omt, signal.source_omt ) );
+                json.member( "associated_with_target_site", scout_observation::associated_with_site(
+                                 signal.source_omt, outing.target_footprint ) );
+                json.member( "smoke_exposed_to_sky", signal.smoke_source_exposed_to_sky );
+                json.member( "light_exposure", signal.has_light_projection ?
+                             std::optional<std::string>( bandit_mark_generation::to_string(
+                                     signal.light_projection.packet.exposure ) ) : std::nullopt );
+                json.member( "adapter_rejection", request_rejection.empty() ?
+                             candidate_rejections[index] : request_rejection );
+                json.member( "reader_evaluated", !candidate_readers[index].empty() );
+                json.member( "readers" );
+                json.start_array();
+                for( const auto &entry : candidate_readers[index] ) {
+                    json.start_object();
+                    json.member( "member_id", entry.first.get_value() );
+                    json.member( "known", entry.second.known );
+                    json.member( "visible", entry.second.visible );
+                    json.member( "reason", entry.second.reason );
+                    json.end_object();
+                }
+                json.end_array();
+                json.end_object();
+            }
+            json.end_array();
+            json.end_object();
+        }
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal_adapter request"
                                    << " current_omt=" << request.current_omt
                                    << " map_origin_omt="
@@ -11477,8 +11560,8 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                                    << " field_signals=" << signals.size()
                                    << " sound_events=" << sound_events.size()
                                    << live_bandit_structural_signal_request_diagnostic( outing, request )
-                                   << '\n';
-    }
+                                   << ( diagnostic_watch ? " diagnostic=" + detail.str() : "" ) << '\n';
+    } );
     const bool local_observer = outing.owner == bandit_live_world::simulation_owner::local &&
                                 outing.phase == bandit_live_world::scout_phase::observing &&
                                 outing.local_handoff.is_active() &&
@@ -11491,13 +11574,20 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                             bandit_live_world::target_footprint_watch_distance(
                                 outing.selected_watch_omt, outing.target_footprint ) == 3 &&
                             outing.selected_watch_omt == request.current_omt;
-    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-        ( outing.owner != bandit_live_world::simulation_owner::abstract && !local_observer ) ||
-        request.party_power <= 0 || request.visible_forward_omts.size() > 3 ||
-        // A real established watch may retain abstract ownership at a loaded
-        // boundary. Its actual capable members are checked below; ordinary
-        // abstract travel still cannot read a loaded local projection.
-        ( request_current_inbounds && !local_observer && !exact_site_watch ) ) {
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ) {
+        request_rejection = "wrong_outing_kind";
+    } else if( outing.owner != bandit_live_world::simulation_owner::abstract && !local_observer ) {
+        request_rejection = "owner_not_available";
+    } else if( request.party_power <= 0 ) {
+        request_rejection = "no_party_power";
+    } else if( request.visible_forward_omts.size() > 3 ) {
+        request_rejection = "forward_footprint_limit";
+    } else if( request_current_inbounds && !local_observer && !exact_site_watch ) {
+        // An established exact watch checks its capable members below; ordinary
+        // abstract travel cannot read a loaded local projection.
+        request_rejection = "loaded_abstract_travel";
+    }
+    if( !request_rejection.empty() ) {
         if( !sound_events.empty() ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sound_adapter rejected_request"
                                        << " current_omt=" << request.current_omt
@@ -11514,9 +11604,16 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
     scout_observation::site_reader optical_geometry;
     std::vector<shared_ptr_fast<npc>> watchers;
     if( exact_site_watch ) {
+        watcher_eligibility_evaluated = true;
         for( const auto id : outing.member_ids ) {
             const auto member = overmap_buffer.find_npc( id );
-            if( member && optical_geometry.watching_member( site, *member ) ) {
+            std::string reason;
+            const bool eligible = member && optical_geometry.watching_member( site, *member,
+                                  diagnostic_watch ? &reason : nullptr );
+            if( diagnostic_watch ) {
+                watcher_diagnostics.emplace_back( id, member ? reason : "actor_unavailable" );
+            }
+            if( eligible ) {
                 watchers.push_back( member );
             }
         }
@@ -11539,10 +11636,17 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         bool physical_pair_can_share = false;
     };
     std::vector<optical_candidate> candidates;
-    for( const live_bandit_signal_observation &signal : signals ) {
+    for( size_t signal_index = 0; signal_index < signals.size(); ++signal_index ) {
+        const auto &signal = signals[signal_index];
+        const auto refuse_candidate = [&]( const char *reason ) {
+            if( diagnostic_watch ) {
+                candidate_rejections[signal_index] = reason;
+            }
+        };
         // An interrupted exact watch cannot acquire optical evidence through
         // the ordinary travel/legacy fallback. No optical mode is persisted.
         if( exact_site_watch && !site_watch ) {
+            refuse_candidate( "no_eligible_watcher" );
             continue;
         }
         const bool supported_kind = signal.mark.kind == "smoke" ||
@@ -11552,32 +11656,53 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
         const bool light_signal = signal.mark.kind == "light" || signal.mark.kind == "searchlight";
         const tripoint_abs_omt source_at_scout_level( signal.source_omt.x(),
                 signal.source_omt.y(), request.current_omt.z() );
-        if( site_watch && ( !supported_kind || !signal.source_ms ||
-            project_to<coords::omt>( *signal.source_ms ) != signal.source_omt ||
-            signal.range_cap_omt <= 0 || signal.range_cap_omt > 40 ||
-            signal_distance( signal ) > signal.range_cap_omt ||
-            !scout_observation::associated_with_site( signal.source_omt, outing.target_footprint ) ) ) {
-            continue;
+        if( site_watch ) {
+            const char *rejection = nullptr;
+            if( !supported_kind ) {
+                rejection = "unsupported_channel";
+            } else if( !signal.source_ms ) {
+                rejection = "source_ms_unavailable";
+            } else if( project_to<coords::omt>( *signal.source_ms ) != signal.source_omt ) {
+                rejection = "source_omt_mismatch";
+            } else if( signal.range_cap_omt <= 0 || signal.range_cap_omt > 40 ) {
+                rejection = "invalid_range_cap";
+            } else if( signal_distance( signal ) > signal.range_cap_omt ) {
+                rejection = "outside_packet_range";
+            } else if( !scout_observation::associated_with_site( signal.source_omt, outing.target_footprint ) ) {
+                rejection = "outside_target_site";
+            }
+            if( rejection ) {
+                refuse_candidate( rejection );
+                continue;
+            }
         }
         std::vector<character_id> actual_observers;
         bool physical_pair_can_share = false;
-        bool line_of_sight = site_watch ?
-                ( signal.source_ms &&
-                  ( !light_signal || ( signal.has_light_projection &&
-                    signal.light_projection.packet.exposure != bandit_mark_generation::light_exposure_band::contained ) ) &&
-                  ( !smoke_signal || signal.source_omt.z() == request.current_omt.z() ||
-                    signal.smoke_source_exposed_to_sky ) &&
-                  scout_observation::associated_with_site( signal.source_omt,
-                    outing.target_footprint ) ) :
-                signal.source_omt == request.current_omt ||
-                                   ( light_signal ?
-                                     live_bandit_overmap_light_los_from( request.current_omt, signal ) :
-                                     live_bandit_overmap_smoke_los_from( request.current_omt, signal ) );
+        bool line_of_sight = true;
+        if( site_watch ) {
+            if( light_signal && ( !signal.has_light_projection ||
+                signal.light_projection.packet.exposure == bandit_mark_generation::light_exposure_band::contained ) ) {
+                line_of_sight = false;
+                refuse_candidate( "light_projection_not_observable" );
+            } else if( smoke_signal && signal.source_omt.z() != request.current_omt.z() &&
+                       !signal.smoke_source_exposed_to_sky ) {
+                line_of_sight = false;
+                refuse_candidate( "cross_level_smoke_not_exposed" );
+            }
+        } else {
+            line_of_sight = signal.source_omt == request.current_omt ||
+                            ( light_signal ? live_bandit_overmap_light_los_from( request.current_omt, signal ) :
+                              live_bandit_overmap_smoke_los_from( request.current_omt, signal ) );
+        }
         if( site_watch && line_of_sight ) {
             size_t visible_watchers = 0;
             for( const auto &member : watchers ) {
-                if( optical_geometry.read_signal( *member, member->pos_abs(), *signal.source_ms,
-                                                 outing.target_footprint ).visible ) {
+                const auto read = optical_geometry.read_signal( *member, member->pos_abs(),
+                                  *signal.source_ms, outing.target_footprint );
+                if( diagnostic_watch ) {
+                    candidate_readers[signal_index].emplace_back( member->getID(), read );
+                }
+                if( read.visible ) {
                     actual_observers.push_back( member->getID() );
                     ++visible_watchers;
                 }
@@ -11585,6 +11710,12 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
             line_of_sight = !actual_observers.empty();
             physical_pair_can_share = visible_watchers == 2 && watchers.size() == 2 &&
                                       rl_dist( watchers[0]->pos_abs(), watchers[1]->pos_abs() ) <= 6;
+        }
+        if( site_watch && !line_of_sight && diagnostic_watch &&
+            !candidate_readers[signal_index].empty() ) {
+            // Preserve each actual first reader refusal; pre-reader projection
+            // refusals have no invented optical result.
+            refuse_candidate( "no_visible_watcher" );
         }
         // Preserve the source's real height.  Only a physically visible
         // cross-level signal above a permitted ground route tile can use its
