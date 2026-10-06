@@ -1,6 +1,12 @@
 """Production startup admission controls for recovered native diagnostics."""
 
 import unittest
+import json
+import os
+import sys
+import tempfile
+import threading
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -221,6 +227,125 @@ class StartupRecoveryTest(unittest.TestCase):
         )
         self.assertEqual(result["status"], "ready")
         self.assertFalse(result["clean_load_proof"])
+
+
+class StartupControllerLifetimeTest(unittest.TestCase):
+    """Only harmless producers; no game, terminal input or registry launch."""
+
+    def await_frame(self, **extra):
+        return harness.await_r014_native_semantic_bootstrap(
+            profile="fixture", run_dir=Path("/fixture"), run_id="run-a",
+            required_state="world", required_actions=["world.wait"],
+            timeout_seconds=0, poll_seconds=0, **extra)
+
+    def readers(self, frames):
+        from contextlib import ExitStack
+        stack = ExitStack()
+        stack.enter_context(patch.object(harness, "semantic_step_source_trace", return_value=Path("/fixture/native")))
+        stack.enter_context(patch.object(harness, "semantic_step_effective_source_offset", return_value=0))
+        stack.enter_context(patch.object(harness, "current_semantic_step_frame", side_effect=frames))
+        stack.enter_context(patch.object(harness, "r014_native_semantic_bootstrap_metadata",
+                                        side_effect=lambda **kw: kw["frame"]))
+        self.addCleanup(stack.close)
+
+    def test_live_warning_waits_past_timeout_for_actual_frame_without_input(self):
+        self.readers([ValueError("warning modal owns startup"),
+                      {"status": "required_state_present", "frame_id": "run-a:frame:1"}])
+        with patch.object(harness, "execute_semantic_act") as dispatch:
+            result = self.await_frame(live_owner_alive=lambda: True)
+        self.assertEqual(result["status"], "required_state_present")
+        self.assertEqual(result["attempts"], 2)
+        self.assertEqual(result["frame_id"], "run-a:frame:1")
+        dispatch.assert_not_called()
+
+    def test_nonlive_timeout_is_unchanged_and_does_not_admit_warning(self):
+        self.readers([ValueError("warning modal owns startup")])
+        result = self.await_frame()
+        self.assertEqual(result["reason"], "first_same_run_semantic_frame_timeout")
+        self.assertEqual(result["attempts"], 1)
+        self.assertNotEqual(result["status"], "required_state_present")
+
+    def test_dead_live_owner_does_not_extend_timeout_or_invent_world(self):
+        self.readers([ValueError("no current frame")])
+        result = self.await_frame(live_owner_alive=lambda: False)
+        self.assertEqual(result["reason"], "first_same_run_semantic_frame_timeout")
+        self.assertEqual(result["attempts"], 1)
+
+    def test_existing_frame_is_accepted_without_extending_wait(self):
+        self.readers([{"status": "required_state_present", "frame_id": "run-a:frame:1"}])
+        alive = unittest.mock.Mock(return_value=True)
+        result = self.await_frame(live_owner_alive=alive)
+        self.assertEqual(result["attempts"], 1)
+        alive.assert_not_called()
+
+    def test_probe_inprocess_start_keeps_live_context_without_second_launch(self):
+        def start(args):
+            print(json.dumps({"ok": True, "live": args.cockpit_live_session}))
+            return 0
+        command = [sys.executable, str(Path(harness.__file__)), "start"]
+        with patch.object(harness, "run_startup", side_effect=start) as caller:
+            live = harness.run_startup_in_process(command, live_session=True)
+            ordinary = harness.run_startup_in_process(command)
+        self.assertEqual(caller.call_count, 2)
+        self.assertTrue(live[1]["live"])
+        self.assertFalse(ordinary[1]["live"])
+
+    def test_real_bridge_retains_fixture_controller_then_serves_same_child(self):
+        from cockpit_file_bridge import FileBackedCockpitBridge
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            release = base / "release-fixture-frame"
+            waited = base / "awaiting-fixture-frame"
+            # Only a fixture frame producer is delayed. Creating release is
+            # not native input and this child cannot launch a game.
+            child = '''import json,os,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+import startup_harness as h
+release,waited=Path(sys.argv[2]),Path(sys.argv[3])
+h.semantic_step_source_trace=lambda *a: Path('/fixture/native')
+h.semantic_step_effective_source_offset=lambda *a: 0
+def frame(**kw):
+    waited.write_text('waiting')
+    if not release.exists(): raise ValueError('fixture warning')
+    return {'status':'required_state_present','frame_id':'run-a:frame:1'}
+h.current_semantic_step_frame=frame
+h.r014_native_semantic_bootstrap_metadata=lambda **kw:kw['frame']
+r=h.await_r014_native_semantic_bootstrap(profile='fixture',run_dir=Path('/fixture'),run_id='run-a',required_state='world',required_actions=['world.wait'],timeout_seconds=.01,poll_seconds=.01,live_owner_alive=lambda:True)
+assert r['status']=='required_state_present'
+print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True)
+for line in sys.stdin: print(json.dumps({'ok':True,'result':json.loads(line)}),flush=True)
+'''
+            session = base / "fixture-session"
+            bridge = FileBackedCockpitBridge(session,
+                [sys.executable, "-u", "-c", child, str(Path(harness.__file__).parent), str(release), str(waited)],
+                binding_id="fixture-bound", require_session_ready=True)
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            try:
+                def until(predicate):
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        if predicate(): return
+                        time.sleep(.01)
+                    self.fail("harmless fixture did not reach expected boundary")
+                until(waited.exists)
+                time.sleep(.08)  # Exceeds the fixture startup timeout.
+                self.assertIsNone(bridge._child.poll())
+                self.assertEqual(json.loads((session / "status.json").read_text())["state"], "starting")
+                original_pid = bridge._child.pid
+                release.write_text("fixture producer now publishes a frame")
+                until(lambda: json.loads((session / "status.json").read_text())["state"] == "ready")
+                self.assertEqual(bridge._child.pid, original_pid)
+                self.assertTrue(bridge.send_request(session, request_id="fixture-observe",
+                    binding_id="fixture-bound", request={"action": "game.observe"})["ok"])
+                until(lambda: (session / "responses/fixture-observe.receipt.json").exists())
+                self.assertEqual(bridge.response_slice(session, "fixture-observe", "result.action")["slice"], "game.observe")
+            finally:
+                bridge.cleanup(session, "fixture-bound")
+                thread.join(4)
+                self.assertFalse(thread.is_alive())
+                self.assertIsNotNone(bridge._child.poll())
 
 
 if __name__ == "__main__":

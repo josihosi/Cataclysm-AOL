@@ -138,7 +138,7 @@ class LiveSessionTest(unittest.TestCase):
         self.assertTrue(service.call({"action": "game.act", "observation_id": fresh["observation_id"],
                                      "action_id": "world.wait"})["ok"])
         self.assertEqual(finals, [])
-        quit_result = service.call({"action": "run.quit", "stop_reason": "player ends recovery trial"})
+        quit_result = service.call({"action": "run.quit", "abort": True, "stop_reason": "player ends recovery trial"})
         self.assertTrue(quit_result["ok"])
         self.assertEqual(len(finals), 1)
         self.assertTrue(finals[0]["stop_detail"]["explicit_player_quit"])
@@ -157,7 +157,7 @@ class LiveSessionTest(unittest.TestCase):
         binding[0] = "binding-a"
         self.assertTrue(service.call({"action": "game.observe"})["ok"])
         binding[0] = "wrong-binding"
-        self.assertTrue(service.call({"action": "run.quit"})["ok"])
+        self.assertTrue(service.call({"action": "run.quit", "abort": True})["ok"])
         self.assertEqual(len(finals), 1)
 
     def test_adapter_exception_is_request_failure_and_next_request_recovers(self):
