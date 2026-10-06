@@ -600,10 +600,10 @@ class TerminalStartupDialogTest(unittest.TestCase):
         self.status["child_exit_code"] = 1
         self._write("status.json", self.status)
         (self.userdir / "config" / "debug.log").write_text("no duplicate ERROR line here")
-        self._frame([self.lines[0], self.lines[1],
+        self._frame([" " + line for line in [self.lines[0], self.lines[1],
                      "REPORTING FUNCTION : " + ERRORS[0][1],
                      "C++ SOURCE FILE : src/item_location.cpp", "LINE : 388",
-                     "VERSION : f4bef7f87e-dirty", *self.lines[-2:]])
+                     "VERSION : f4bef7f87e-dirty", *self.lines[-2:]]])
         original_snapshot = self._snapshot
         self._snapshot = lambda pid: {"pid": pid, "alive": False} if pid == self.bridge["pid"] else original_snapshot(pid)
 

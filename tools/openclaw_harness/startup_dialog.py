@@ -178,10 +178,10 @@ def terminal_debug_provenance(lines: list[str], transcript: Path) -> dict[str, A
     """
     visible, message = _visible_debug_text(lines)
     text = "\n".join(lines)
-    source = re.search(r"^C\+\+ SOURCE FILE\s*:\s*(src/[^\r\n]+)$", text, re.M)
-    number = re.search(r"^LINE\s*:\s*(\d+)\s*$", text, re.M)
-    function = re.search(r"^REPORTING FUNCTION\s*:\s*(.+)$", text, re.M)
-    version = re.search(r"^VERSION\s*:\s*(\S+)", text, re.M)
+    source = re.search(r"^[ \t]*C\+\+ SOURCE FILE\s*:\s*(src/[^\r\n]+)$", text, re.M)
+    number = re.search(r"^[ \t]*LINE\s*:\s*(\d+)\s*$", text, re.M)
+    function = re.search(r"^[ \t]*REPORTING FUNCTION\s*:\s*(.+)$", text, re.M)
+    version = re.search(r"^[ \t]*VERSION\s*:\s*(\S+)", text, re.M)
     advertised = re.search(r"\bPress I\b[^\n]*\bignore\b", text, re.I)
     if not (visible and message and source and number and function and version and advertised):
         return {}
