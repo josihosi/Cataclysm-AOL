@@ -919,7 +919,7 @@ static void eff_fun_hypovolemia( Character &u, effect &it )
                         break;
                     } else {
                         warning = _( "Your mind slips away." );
-                        u.fall_asleep( rng( 2_minutes, 5_minutes ) );
+                        u.fall_asleep_involuntarily( rng( 2_minutes, 5_minutes ) );
                         break;
                     }
             }
@@ -1689,7 +1689,7 @@ void Character::hardcoded_effects( effect &it )
                     schedule_effect( effect_stunned, td );
                     if( one_in( 3 ) ) {
                         add_msg_if_player( m_bad, _( "You lose consciousness!" ) );
-                        fall_asleep( td );
+                        fall_asleep_involuntarily( td );
                     }
                 }
                 mod *= 2;

@@ -40,6 +40,7 @@
 #include "damage.h"
 #include "debug.h"
 #include "do_turn.h"
+#include "effect.h"
 #include "worldfactory.h"
 #include "enums.h"
 #include "faction.h"
@@ -11276,5 +11277,393 @@ TEST_CASE( "perceived patrol threat wakes off shift worker and releases finite d
             rested = off_shift->in_sleep_state();
         }
         CHECK( rested );
+    }
+}
+
+TEST_CASE( "current operation owns voluntary sleep without owning survival or stale actors",
+           "[npc][active_operation_sleep_067]" )
+{
+    using namespace bandit_live_world;
+    clear_map_without_vision();
+    clear_avatar();
+    clear_npcs();
+    override_option food( "NO_NPC_FOOD", "false" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    auto saved_world = overmap_buffer.global_state.bandit_live_world;
+    on_out_of_scope restore( [saved_world = std::move( saved_world )]() mutable {
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        clear_npcs();
+    } );
+    npc &actor = spawn_npc( { 50, 50 }, "test_talker" );
+    clear_character( actor, true );
+    actor.set_attitude( NPCATT_NULL );
+    actor.set_sleepiness( 800 );
+    actor.set_hunger( 0 );
+    actor.set_thirst( 0 );
+    actor.set_stored_kcal( actor.get_healthy_kcal() );
+    actor.set_all_parts_temp_conv( BODYTEMP_NORM );
+    actor.set_all_parts_temp_cur( BODYTEMP_NORM );
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 120, 120, 0 ) );
+
+    site_record site;
+    site.site_id = "ordinary-sleep-duty";
+    site.anchor = actor.pos_abs_omt();
+    member_record member;
+    member.npc_id = actor.getID();
+    member.state = member_state::outbound;
+    site.members = { member };
+    auto &assignment = site.active_outing;
+    assignment.kind = outing_kind::scout_sortie;
+    assignment.activity_id = "current-scout";
+    assignment.camp_id = site.site_id;
+    assignment.generation = 2;
+    assignment.member_ids = { actor.getID() };
+    assignment.started_minutes = 0;
+    assignment.last_advanced_minutes = 0;
+    overmap_buffer.global_state.bandit_live_world.sites = { site };
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto &live = world.sites.front();
+
+    SECTION( "all current scout and hostile phases share the pure decision" ) {
+        for( const scout_phase phase : { scout_phase::assembling, scout_phase::outbound,
+             scout_phase::searching, scout_phase::observing, scout_phase::harvesting,
+             scout_phase::burned_withdrawal, scout_phase::returning_exposed,
+             scout_phase::returning_report, scout_phase::returning_home } ) {
+            live.active_outing.phase = phase;
+            CHECK( actor.has_active_operation_duty() );
+        }
+        live.active_hostile_operation.reservation = live.active_outing;
+        live.active_outing = {};
+        live.active_hostile_operation.reservation.kind = outing_kind::hostile_operation;
+        for( const hostile_operation_kind kind : { hostile_operation_kind::raid,
+             hostile_operation_kind::shakedown } ) {
+            live.active_hostile_operation.operation_kind = kind;
+            for( const hostile_operation_phase phase : { hostile_operation_phase::assembling,
+                 hostile_operation_phase::outbound, hostile_operation_phase::rallying,
+                 hostile_operation_phase::waiting_night, hostile_operation_phase::approaching,
+                 hostile_operation_phase::committed_contact, hostile_operation_phase::returning_home } ) {
+                live.active_hostile_operation.phase = phase;
+                CHECK( actor.has_active_operation_duty() );
+            }
+        }
+    }
+    SECTION( "BT legacy need committed and already-selected entries cannot start bedtime" ) {
+        REQUIRE( actor.has_active_operation_duty() );
+        behavior::character_oracle_t oracle( &actor );
+        CHECK( oracle.can_sleep( "" ) == behavior::status_t::failure );
+        actor.set_moves( 100 );
+        actor.execute_action( actor.address_needs( 0 ) );
+        CHECK_FALSE( actor.in_sleep_state() );
+        actor.set_committed_goal( "go_to_sleep" );
+        actor.activity = player_activity( activity_id( "ACT_TRY_SLEEP" ) );
+        actor.add_effect( effect_lying_down, 1_hours );
+        CHECK( actor.execute_need_goal( "go_to_sleep" ) == npc::need_result::impossible );
+        CHECK( actor.get_committed_goal().empty() );
+        CHECK_FALSE( actor.in_sleep_state() );
+        CHECK_FALSE( actor.activity );
+        // Select the actual legacy bedtime while unaffiliated, then deliver
+        // that already-selected action after the operation takes ownership.
+        const auto active = world.sites;
+        world.sites.clear();
+        const auto stale_bedtime = actor.address_needs( 0 );
+        actor.set_moves( 100 );
+        actor.execute_action( stale_bedtime );
+        REQUIRE( actor.in_sleep_state() );
+        actor.remove_effect( effect_lying_down );
+        world.sites = active;
+        actor.set_moves( 100 );
+        actor.execute_action( stale_bedtime );
+        CHECK_FALSE( actor.in_sleep_state() );
+        CHECK( actor.get_sleepiness() == 800 );
+        CHECK( actor.get_attitude() == NPCATT_NULL );
+        CHECK( actor.mission == NPC_MISSION_NULL );
+    }
+    SECTION( "ordinary sleep wakes before effects consume its scheduler moves" ) {
+        actor.fall_asleep( 1_hours );
+        actor.process_turn();
+        CHECK_FALSE( actor.in_sleep_state() );
+        CHECK( actor.get_moves() > 0 );
+        CHECK( actor.get_sleepiness() == 800 );
+    }
+    SECTION( "actual physiological collapse producer survives duty reconciliation" ) {
+        const bool deprivation = GENERATE( false, true );
+        const auto previous_turn = calendar::turn;
+        on_out_of_scope restore_time( [previous_turn]() { calendar::turn = previous_turn; } );
+        calendar::turn = calendar::turn_zero + 1_days;
+        actor.set_sleepiness( deprivation ? 0 :
+                              static_cast<int>( sleepiness_levels::MASSIVE_SLEEPINESS ) );
+        if( deprivation ) {
+            actor.set_sleep_deprivation( SLEEP_DEPRIVATION_MASSIVE );
+        }
+        actor.check_needs_extremes();
+        REQUIRE( actor.in_sleep_state() );
+        REQUIRE( actor.is_involuntarily_asleep() );
+        const int produced_sleepiness = actor.get_sleepiness();
+        std::cout << "R067_COLLAPSE_PRODUCER deprivation=" << deprivation
+                  << " sleepiness=" << produced_sleepiness
+                  << " duration=" << to_turns<int>( actor.get_effect_dur( effect_sleep ) ) << '\n';
+        actor.reconcile_active_operation_sleep();
+        CHECK( actor.in_sleep_state() );
+        CHECK( actor.get_sleepiness() == produced_sleepiness );
+        const auto position = actor.pos_abs();
+        for( int step = 0; step < 3; ++step ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+            CHECK( actor.is_involuntarily_asleep() );
+            CHECK( actor.in_sleep_state() );
+            CHECK( actor.pos_abs() == position );
+        }
+    }
+    SECTION( "forced sleep episode refresh reload wake refusal removal and replacement" ) {
+        const std::string boundary = GENERATE( std::string( "refresh" ), std::string( "reload" ),
+                std::string( "wake" ), std::string( "narcosis" ), std::string( "remove" ) );
+        actor.set_sleepiness( sleepiness_levels::MASSIVE_SLEEPINESS );
+        actor.check_needs_extremes();
+        REQUIRE( actor.is_involuntarily_asleep() );
+        const auto start = actor.get_effect( effect_sleep ).get_start_time();
+        if( boundary == "refresh" ) {
+            actor.fall_asleep( 1_minutes );
+            CHECK( actor.get_effect( effect_sleep ).get_start_time() == start );
+            CHECK( actor.is_involuntarily_asleep() );
+            actor.reconcile_active_operation_sleep();
+            CHECK( actor.in_sleep_state() );
+        } else if( boundary == "reload" ) {
+            std::ostringstream bytes;
+            JsonOut writer( bytes );
+            actor.serialize( writer );
+            npc loaded;
+            loaded.deserialize( json_loader::from_string( bytes.str() ).get_object() );
+            REQUIRE( loaded.has_active_operation_duty() );
+            REQUIRE( loaded.is_involuntarily_asleep() );
+            CHECK( loaded.get_effect( effect_sleep ).get_start_time() == start );
+            loaded.reconcile_schedule_on_load();
+            loaded.process_turn();
+            CHECK( loaded.is_involuntarily_asleep() );
+            CHECK( loaded.get_sleepiness() == 990 );
+        } else {
+            if( boundary == "remove" ) {
+                actor.remove_effect( effect_sleep );
+            } else {
+                if( boundary == "narcosis" ) {
+                    actor.add_effect( efftype_id( "narcosis" ), 1_hours );
+                    const auto duration = actor.get_effect_dur( effect_sleep );
+                    actor.wake_up();
+                    CHECK( actor.is_involuntarily_asleep() );
+                    CHECK( actor.get_effect_dur( effect_sleep ) == duration );
+                    actor.remove_effect( efftype_id( "narcosis" ) );
+                }
+                actor.wake_up();
+                // Native wake defers removal until outside its effect iterator.
+                CHECK( actor.has_effect( effect_sleep ) );
+                CHECK( actor.get_effect_dur( effect_sleep ) == 0_turns );
+            }
+            CHECK_FALSE( actor.is_involuntarily_asleep() );
+            // Even a same-turn replacement, including deferred duration0, is ordinary.
+            actor.fall_asleep( 1_hours );
+            CHECK_FALSE( actor.is_involuntarily_asleep() );
+            CHECK( actor.get_value( "involuntary_sleep_start_turn" ).is_empty() );
+            actor.reconcile_active_operation_sleep();
+            CHECK_FALSE( actor.in_sleep_state() );
+        }
+    }
+    SECTION( "actual native microsleep expires through scheduler without protecting later bedtime" ) {
+        const auto previous_turn = calendar::turn;
+        on_out_of_scope restore_time( [previous_turn]() { calendar::turn = previous_turn; } );
+        calendar::turn = calendar::turn_zero + 1_days + 1_turns;
+        actor.set_sleepiness( 800 );
+        int attempts = 0;
+        // Bound setup waits only until this real probabilistic producer fires;
+        // no forced flag/duration or physiological stat is fabricated afterward.
+        while( !actor.in_sleep_state() && attempts++ < 500 ) {
+            actor.check_needs_extremes();
+        }
+        REQUIRE( actor.is_involuntarily_asleep() );
+        REQUIRE( actor.get_effect_dur( effect_sleep ) == 30_seconds );
+        std::cout << "R067_MICROSLEEP attempts=" << attempts << '\n';
+        const auto position = actor.pos_abs();
+        for( int step = 0; step < 32; ++step ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+            if( actor.is_involuntarily_asleep() ) {
+                CHECK( actor.pos_abs() == position );
+            }
+        }
+        CHECK_FALSE( actor.has_effect( effect_sleep ) );
+        CHECK_FALSE( actor.is_involuntarily_asleep() );
+        actor.fall_asleep( 1_hours );
+        CHECK_FALSE( actor.is_involuntarily_asleep() );
+        actor.reconcile_active_operation_sleep();
+        CHECK_FALSE( actor.in_sleep_state() );
+    }
+    SECTION( "NPC reachable effect blackouts preserve the actual sleep after source recovery" ) {
+        const std::string producer = GENERATE( std::string( "SLEEP" ),
+                std::string( "blood_loss" ), std::string( "seizure" ) );
+        const auto previous_turn = calendar::turn;
+        const auto previous_rng = rng_get_engine();
+        on_out_of_scope restore_clock_rng( [previous_turn, previous_rng]() {
+            calendar::turn = previous_turn;
+            rng_get_engine() = previous_rng;
+        } );
+        calendar::turn = calendar::turn_zero + 1_days + 1_turns;
+        actor.set_sleepiness( 400 );
+        efftype_id source;
+        if( producer == "SLEEP" ) {
+            load_effect_type( json_loader::from_string(
+                R"({"id":"r067_sleep_producer","name":["blackout"],"desc":["Pass out."],"base_mods":{"sleep_amount":[120]}})" ).get_object(), "test" );
+            source = efftype_id( "r067_sleep_producer" );
+            // Native new-effect delivery invokes actual process_one_effect.
+            actor.add_effect( source, 1_turns );
+        } else if( producer == "blood_loss" ) {
+            source = efftype_id( "hypovolemia" );
+            actor.vitamin_set( vitamin_id( "blood" ), -6000 );
+            actor.add_effect( source, 1_turns, bodypart_str_id::NULL_ID(), false, 4, true, true );
+            // Seeds select the real probabilistic branch using the existing
+            // minstd_rand0/uniform distributions, not a replacement RNG.
+            rng_get_engine().seed( 917 );
+            actor.process_effects();
+        } else {
+            source = efftype_id( "toxin_buildup" );
+            actor.add_effect( source, 1_turns, bodypart_str_id::NULL_ID(), false, 3, true, true );
+            rng_get_engine().seed( 698276 );
+            actor.process_effects();
+        }
+        REQUIRE( actor.has_effect( effect_sleep ) );
+        REQUIRE_FALSE( actor.is_dead() );
+        const auto duration = actor.get_effect_dur( effect_sleep );
+        if( producer == "SLEEP" ) {
+            CHECK( duration == 120_seconds );
+        } else if( producer == "blood_loss" ) {
+            CHECK( duration >= 119_seconds );
+            CHECK( duration <= 5_minutes );
+        } else {
+            REQUIRE( actor.has_effect( efftype_id( "stunned" ) ) );
+            CHECK( duration >= 29_seconds );
+            CHECK( duration <= 4_minutes );
+            // Existing secondary effects can be independently removed. Their
+            // presence is not a lifetime-bound cause of this actual sleep.
+            actor.remove_effect( efftype_id( "stunned" ) );
+            actor.remove_effect( efftype_id( "downed" ) );
+            actor.remove_effect( efftype_id( "motor_seizure" ) );
+        }
+        if( producer == "blood_loss" ) {
+            // Declared recovery through the existing vitamin API prevents
+            // ongoing deficiency from recreating the initiating effect. This
+            // is not proof of native treatment; the sleep itself was native.
+            actor.vitamin_set( vitamin_id( "blood" ), 0 );
+        }
+        CHECK_FALSE( actor.duty_incapacitated() );
+        actor.reconcile_active_operation_sleep();
+        CHECK( actor.in_sleep_state() );
+        CHECK( actor.is_involuntarily_asleep() );
+        const auto position = actor.pos_abs();
+        for( int step = 0; step < 3; ++step ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        // The initiating effect naturally expires; the actual longer sleep
+        // must remain protected without relying on that effect's presence.
+        CHECK_FALSE( actor.has_effect( source ) );
+        CHECK( actor.in_sleep_state() );
+        CHECK( actor.is_involuntarily_asleep() );
+        CHECK( actor.pos_abs() == position );
+        CHECK( actor.get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS );
+        std::cout << "R067_EFFECT_BLACKOUT producer=" << producer
+                  << " duration=" << to_turns<int>( duration )
+                  << " sleepiness=" << actor.get_sleepiness() << '\n';
+    }
+    SECTION( "teleglow NPC early return excludes its avatar-only blackout" ) {
+        actor.add_effect( efftype_id( "teleglow" ), 2_days, bodypart_str_id::NULL_ID(), false, 1, true, true );
+        const auto before_rng = rng_get_engine();
+        const auto position = actor.pos_abs();
+        actor.hardcoded_effects( actor.get_effect( efftype_id( "teleglow" ) ) );
+        CHECK( rng_get_engine() == before_rng );
+        CHECK_FALSE( actor.in_sleep_state() );
+        CHECK_FALSE( actor.is_involuntarily_asleep() );
+        CHECK( actor.pos_abs() == position );
+    }
+    SECTION( "current and stale persisted actor leases keep their identity across reload" ) {
+        const bool stale = GENERATE( false, true );
+        bandit_live_world_projection_lease lease;
+        lease.present = true;
+        lease.site_id = live.site_id;
+        lease.activity_id = live.active_outing.activity_id;
+        lease.owner = "abstract";
+        lease.generation = stale ? 1 : 2;
+        lease.handoff_epoch = 0;
+        lease.last_advanced_minutes = 0;
+        actor.set_bandit_live_world_projection_lease( lease );
+        actor.fall_asleep( 1_hours );
+        std::ostringstream bytes;
+        JsonOut writer( bytes );
+        actor.serialize( writer );
+        npc loaded;
+        loaded.deserialize( json_loader::from_string( bytes.str() ).get_object() );
+        REQUIRE( loaded.in_sleep_state() );
+        CHECK( loaded.has_active_operation_duty() == !stale );
+        loaded.reconcile_schedule_on_load();
+        CHECK( loaded.in_sleep_state() == stale );
+        CHECK( loaded.get_sleepiness() == 800 );
+        CHECK( loaded.get_bandit_live_world_projection_lease().generation == lease.generation );
+    }
+    SECTION( "forced collapse and flight remain distinct" ) {
+        const std::string condition = GENERATE( std::string( "narcosis" ),
+                std::string( "npc_suspend" ), std::string( "stunned" ),
+                std::string( "downed" ), std::string( "collapse" ), std::string( "flight" ),
+                std::string( "cannot_move" ) );
+        actor.fall_asleep( 1_hours );
+        if( condition == "collapse" ) {
+            actor.set_sleepiness( sleepiness_levels::MASSIVE_SLEEPINESS );
+        } else if( condition == "cannot_move" ) {
+            load_effect_type( json_loader::from_string(
+                R"({"id":"r067_forced_incapacity","name":["incapacitated"],"desc":["Cannot move."],"flags":["CANNOT_MOVE"]})" ).get_object(), "test" );
+            actor.add_effect( efftype_id( "r067_forced_incapacity" ), 1_hours );
+        } else if( condition == "flight" ) {
+            actor.set_attitude( NPCATT_FLEE_TEMP );
+            actor.add_effect( efftype_id( "npc_run_away" ), 1_hours );
+        } else {
+            actor.add_effect( efftype_id( condition ), 1_hours );
+        }
+        actor.reconcile_schedule_on_load();
+        actor.reconcile_active_operation_sleep();
+        if( condition == "flight" ) {
+            CHECK_FALSE( actor.in_sleep_state() );
+            CHECK( actor.get_attitude() == NPCATT_FLEE_TEMP );
+            CHECK( actor.has_effect( efftype_id( "npc_run_away" ) ) );
+        } else {
+            CHECK( actor.in_sleep_state() );
+            CHECK( actor.duty_incapacitated() );
+            CHECK( actor.get_sleepiness() == ( condition == "collapse" ?
+                   static_cast<int>( sleepiness_levels::MASSIVE_SLEEPINESS ) : 800 ) );
+        }
+    }
+    SECTION( "released dead stale foreign and ambiguous ownership grant no duty" ) {
+        const std::string condition = GENERATE( std::string( "home" ), std::string( "dead" ),
+            std::string( "resolved" ), std::string( "casualty" ), std::string( "applied" ),
+            std::string( "lost" ), std::string( "foreign" ), std::string( "stale_lease" ),
+            std::string( "two_sites" ), std::string( "cursor_only" ), std::string( "cleared" ) );
+        if( condition == "home" ) { live.members.front().state = member_state::at_home; }
+        if( condition == "dead" ) { live.members.front().state = member_state::dead; }
+        if( condition == "resolved" ) { live.active_outing.resolved_member_ids = { actor.getID() }; }
+        if( condition == "casualty" ) { live.active_outing.casualty_ids = { actor.getID() }; }
+        if( condition == "applied" ) { live.applied_return_generation = 2; }
+        if( condition == "lost" ) { live.active_outing.phase = scout_phase::lost; }
+        if( condition == "foreign" ) { live.active_outing.camp_id = "other-camp"; }
+        if( condition == "stale_lease" ) {
+            bandit_live_world_projection_lease lease;
+            lease.present = true; lease.site_id = live.site_id;
+            lease.activity_id = live.active_outing.activity_id;
+            lease.generation = 1; lease.owner = "abstract"; lease.handoff_epoch = 0;
+            actor.set_bandit_live_world_projection_lease( lease );
+        }
+        if( condition == "two_sites" ) { world.sites.push_back( live ); }
+        if( condition == "cursor_only" ) { live.active_outing.member_ids.clear(); }
+        if( condition == "cleared" ) { live.active_outing = {}; }
+        actor.fall_asleep( 1_hours );
+        REQUIRE_FALSE( actor.has_active_operation_duty() );
+        actor.reconcile_active_operation_sleep();
+        CHECK( actor.in_sleep_state() );
+        // The ordinary needs decision becomes available again on real release.
+        behavior::character_oracle_t oracle( &actor );
+        CHECK( oracle.can_sleep( "" ) == behavior::status_t::running );
     }
 }

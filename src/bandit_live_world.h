@@ -2057,6 +2057,10 @@ int ordinary_scout_sortie_limit_minutes();
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         bool current_exposure, bool recent_exposure,
         const std::vector<sight_avoid_candidate> &candidates, bool current_smoke_obscured = false );
+// Current unresolved member duty, independent of local/abstract motor ownership.
+// A cursor alone, a historical reservation or an arbitrary destination is not duty.
+const site_record *active_operation_duty_site_for( const world_state &state,
+        character_id npc_id );
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
         const site_record &site );
 local_projection_reconciliation_result reconcile_loaded_local_projections(

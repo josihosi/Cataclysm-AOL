@@ -2865,6 +2865,7 @@ bool npc::apply_llm_intent_item_targets() {
 }
 
 void npc::move() {
+  reconcile_active_operation_sleep();
   const map &here = get_map();
 
   const bandit_live_world::site_record *assault_site =
@@ -3887,6 +3888,11 @@ void npc::execute_action(npc_action action) {
   } break;
 
   case npc_sleep: {
+    if( has_active_operation_duty() ) {
+      reconcile_active_operation_sleep();
+      move_pause();
+      break;
+    }
     // TODO: Allow stims when not too tired
             // Find a nice spot to sleep
             tripoint_bub_ms best_spot = pos_bub();
@@ -4995,6 +5001,9 @@ npc_action npc::address_needs(float danger) {
     }
 
     const auto could_sleep = [&]() {
+        if( has_active_operation_duty() ) {
+            return false;
+        }
         if( danger <= 0.01 ) {
             if( ( npc_has_active_camp_patrol_runtime( *this ) || has_active_alarm_response() ) &&
                 get_sleepiness() < sleepiness_levels::MASSIVE_SLEEPINESS ) {
@@ -9370,13 +9379,41 @@ void npc::reconcile_active_assault_routine( const std::string &operation_key )
     if( activity.id() == ACT_TRY_SLEEP ) {
         activity.set_to_null();
     }
-    interrupt_ordinary_sleep_for_duty();
+    reconcile_active_operation_sleep();
     set_value( marker, operation_key );
+}
+
+bool npc::has_active_operation_duty() const
+{
+    if( is_dead() ) {
+        return false;
+    }
+    const auto *site = bandit_live_world::active_operation_duty_site_for(
+                           overmap_buffer.global_state.bandit_live_world, getID() );
+    if( site == nullptr ) {
+        return false;
+    }
+    const auto &lease = get_bandit_live_world_projection_lease();
+    if( !lease.present ) {
+        return true;
+    }
+    const auto &outing = *site->active_external_outing();
+    return lease.site_id == site->site_id && lease.activity_id == outing.activity_id &&
+           lease.generation == outing.generation && lease.handoff_epoch == outing.handoff_epoch &&
+           lease.owner == bandit_live_world::to_string( outing.owner );
+}
+
+void npc::reconcile_active_operation_sleep()
+{
+    if( has_active_operation_duty() && !is_involuntarily_asleep() ) {
+        interrupt_ordinary_sleep_for_duty();
+    }
 }
 
 bool npc::duty_incapacitated() const
 {
-    return has_effect( effect_narcosis ) || has_effect( effect_npc_suspend ) ||
+    return has_flag( json_flag_CANNOT_MOVE ) ||
+           has_effect( effect_narcosis ) || has_effect( effect_npc_suspend ) ||
            has_effect( effect_downed ) || has_effect( effect_stunned ) ||
            has_effect( effect_psi_stunned ) || has_bionic( bionic_id( "bio_sleep_shutdown" ) ) ||
            get_sleepiness() >= sleepiness_levels::MASSIVE_SLEEPINESS;
@@ -9384,9 +9421,13 @@ bool npc::duty_incapacitated() const
 
 void npc::interrupt_ordinary_sleep_for_duty()
 {
-    if( duty_incapacitated() || get_attitude() == NPCATT_FLEE ||
-        get_attitude() == NPCATT_FLEE_TEMP || has_effect( effect_npc_run_away ) ||
-        has_effect( effect_npc_flee_player ) ) {
+    // A current operation wakes voluntary sleep even during flight, without
+    // clearing flight or changing the survival action. Alarm-only wake keeps
+    // its existing flight exclusions.
+    if( duty_incapacitated() ||
+        ( !has_active_operation_duty() && ( get_attitude() == NPCATT_FLEE ||
+          get_attitude() == NPCATT_FLEE_TEMP || has_effect( effect_npc_run_away ) ||
+          has_effect( effect_npc_flee_player ) ) ) ) {
         return;
     }
     if( get_committed_goal() == "go_to_sleep" ) {
@@ -9512,6 +9553,10 @@ std::vector<npc::need_candidate> npc::find_sleep_candidates()
 
 npc::need_result npc::execute_go_to_sleep()
 {
+    if( has_active_operation_duty() ) {
+        reconcile_active_operation_sleep();
+        return need_result::impossible;
+    }
     // Actually asleep: goal accomplished.
     if( has_effect( effect_sleep ) ) {
         return need_result::satisfied;

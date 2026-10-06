@@ -2975,6 +2975,10 @@ const npc &npc::get_trade_delegate() const
 
 void npc::reconcile_schedule()
 {
+    if( has_active_operation_duty() ) {
+        reconcile_active_operation_sleep();
+        return;
+    }
     if( myclass.is_null() ) {
         return;
     }
@@ -3007,7 +3011,7 @@ void npc::reconcile_schedule_on_load()
 {
     reconcile_schedule();
 
-    if( needs_food() || myclass.is_null() ) {
+    if( has_active_operation_duty() || needs_food() || myclass.is_null() ) {
         return;
     }
     const auto &[shift_start, shift_end] = myclass.obj().get_work_hours();
@@ -4567,7 +4571,11 @@ bool npc::dispose_item( item_location &&obj, const std::string & )
 
 void npc::process_turn()
 {
+    reconcile_active_operation_sleep();
     Character::process_turn();
+    // Effects may select sleep. Preserve actual physiological collapse as well
+    // as explicit incapacity; never remove effects while iterating them.
+    reconcile_active_operation_sleep();
 
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
         llm_intent_state &state = llm_intent_state_for( *this );

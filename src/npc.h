@@ -1727,6 +1727,9 @@ class npc : public Character
         bool has_active_faction_alarm() const;
         bool has_active_alarm_response() const;
         void reconcile_alarm_response();
+        bool has_active_operation_duty() const;
+        // Outside effect iteration, before sleep can exclude the actor's motor.
+        void reconcile_active_operation_sleep();
         void interrupt_ordinary_sleep_for_duty();
         bool duty_incapacitated() const;
         std::optional<npc_alarm> faction_alarm;

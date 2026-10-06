@@ -3386,6 +3386,11 @@ class Character : public Creature, public visitable
         /** Adds "sleep" to the player */
         void fall_asleep();
         void fall_asleep( const time_duration &duration );
+        // Physiological producers preserve the origin of the current sleep
+        // episode. This does not change native threat/pain/alarm wake behavior.
+        void fall_asleep_involuntarily();
+        void fall_asleep_involuntarily( const time_duration &duration );
+        bool is_involuntarily_asleep() const;
         /** Checks to see if the player is using floor items to keep warm, and return the name of one such item if so */
         std::string is_snuggling() const;
 

@@ -139,6 +139,8 @@ TEST_CASE( "committed local assault keeps an unseen tired raider on its search o
     operation.phase = bandit_live_world::hostile_operation_phase::committed_contact;
     operation.reservation.kind = bandit_live_world::outing_kind::hostile_operation;
     operation.reservation.activity_id = "assault-routine-raid";
+    operation.reservation.camp_id = site.site_id;
+    operation.reservation.handoff_epoch = 1;
     operation.reservation.generation = 1;
     operation.reservation.owner = bandit_live_world::simulation_owner::local;
     operation.reservation.target_omt = raider.pos_abs_omt();
@@ -227,7 +229,13 @@ TEST_CASE( "committed local assault keeps an unseen tired raider on its search o
     get_avatar().setpos( here, here.get_bub( start + point( 40, 40 ) ) );
     raider.set_attitude( NPCATT_KILL );
 
-    // Releasing the same member restores ordinary choices with its real fatigue.
+    // Return is still active duty. Only actual resolution restores ordinary rest.
+    live_operation.phase = bandit_live_world::hostile_operation_phase::returning_home;
+    REQUIRE( raider.has_active_operation_duty() );
+    CHECK( raider.execute_need_goal( "go_to_sleep" ) == npc::need_result::impossible );
+    live_operation.reservation.resolved_member_ids = { raider.getID() };
+    live_site.members.front().state = bandit_live_world::member_state::at_home;
+    CHECK_FALSE( raider.has_active_operation_duty() );
     overmap_buffer.global_state.bandit_live_world.sites.front().active_hostile_operation.phase =
         bandit_live_world::hostile_operation_phase::returning_home;
     raider.goto_to_this_pos.reset();
@@ -45824,13 +45832,16 @@ TEST_CASE( "saved in-bounds homeward pair moves without player recentering",
 
 
 TEST_CASE( "homeward rest admission preserves native sleep and forced incapacity priorities",
-           "[bandit_live_world][homeward_admission_rest_061]" )
+           "[bandit_live_world][homeward_admission_rest_061][active_operation_sleep_067]" )
 {
     const bool cannibal = GENERATE( false, true );
     const bool forced = GENERATE( false, true );
     r055_scene scene;
     scene.load( cannibal, true, false,
                 "build_logs/first-smoke-061/resumed/native8640-coverage-fixture.json" );
+    overmap_buffer.global_state.bandit_live_world =
+        round_trip_world( overmap_buffer.global_state.bandit_live_world );
+    REQUIRE( scene.actor( 4 ).has_active_operation_duty() );
     while( g->assign_npc_id().get_value() <= 6 ) {}
     const auto player = get_avatar().pos_abs();
     const auto first = scene.actor( 4 ).pos_abs();
@@ -45866,6 +45877,10 @@ TEST_CASE( "homeward rest admission preserves native sleep and forced incapacity
         CHECK( scene.actor( 4 ).in_sleep_state() );
         CHECK( scene.actor( 4 ).has_effect( efftype_id( "narcosis" ) ) );
     }
+    if( !forced ) {
+        CHECK_FALSE( scene.actor( 4 ).in_sleep_state() );
+        CHECK( scene.actor( 4 ).activity.is_null() );
+    }
     std::cout << "R061_REST_LOADED cannibal=" << cannibal << " forced=" << forced
               << " asleep=" << scene.actor( 4 ).in_sleep_state() << '\n';
     for( int turn = 0; turn < 5; ++turn ) {
@@ -45883,6 +45898,10 @@ TEST_CASE( "homeward rest admission preserves native sleep and forced incapacity
         std::cout << "R061_ADMISSION_REST cannibal=" << cannibal << " forced=" << forced
                   << " turn=" << turn << " asleep=" << scene.actor( 4 ).in_sleep_state()
                   << " position=" << scene.actor( 4 ).pos_abs() << '\n';
+    }
+    if( !forced ) {
+        CHECK_FALSE( scene.actor( 4 ).in_sleep_state() );
+        CHECK( scene.actor( 4 ).pos_abs() != first );
     }
     CHECK( scene.site().active_outing.member_return_receipts.empty() );
     CHECK( scene.site().current_scout_report.revision == 0 );

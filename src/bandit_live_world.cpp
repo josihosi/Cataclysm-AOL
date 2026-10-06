@@ -11080,6 +11080,39 @@ const active_outing_state *site_record::active_external_outing() const
     return nullptr;
 }
 
+const site_record *active_operation_duty_site_for( const world_state &state,
+        const character_id npc_id )
+{
+    const site_record *found = nullptr;
+    for( const site_record &site : state.sites ) {
+        const active_outing_state *outing = site.active_external_outing();
+        if( site.site_id.empty() || site.retired_empty_site || outing == nullptr || !outing->is_active() ||
+            outing->camp_id != site.site_id || outing->generation <= site.applied_return_generation ||
+            outing->phase == scout_phase::lost || !current_external_simulation_cursor( site ) ||
+            std::count( outing->member_ids.begin(), outing->member_ids.end(), npc_id ) != 1 ||
+            outing->member_is_resolved( npc_id ) ||
+            std::find( outing->casualty_ids.begin(), outing->casualty_ids.end(), npc_id ) !=
+            outing->casualty_ids.end() ) {
+            continue;
+        }
+        if( outing == &site.active_hostile_operation.reservation &&
+            ( !site.active_hostile_operation.is_active() ||
+              site.active_hostile_operation.phase == hostile_operation_phase::lost ) ) {
+            continue;
+        }
+        const member_record *member = site.find_member( npc_id );
+        if( member == nullptr || ( member->state != member_state::outbound &&
+                                  member->state != member_state::local_contact ) ) {
+            continue;
+        }
+        if( found != nullptr ) {
+            return nullptr;
+        }
+        found = &site;
+    }
+    return found;
+}
+
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
     const site_record &site )
 {

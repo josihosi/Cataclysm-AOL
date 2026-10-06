@@ -14819,6 +14819,12 @@ void monmove()
     // monster::die function is not called.
     g->despawn_nonlocal_monsters();
 
+    // Wake owned ordinary sleep before either pair selection or scheduler
+    // exclusion. Forced incapacity and flight remain native survival facts.
+    for( npc &guy : g->all_npcs() ) {
+        guy.reconcile_active_operation_sleep();
+    }
+
     // Now, do active NPCs.  Cohesion owns the first local cursor advance so
     // evidence recording can never delay an incomplete pair's safety update.
     std::map<character_id, tripoint_abs_ms> pair_assembly_orders;

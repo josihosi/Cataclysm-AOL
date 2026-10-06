@@ -1740,7 +1740,7 @@ void Character::check_needs_extremes()
             add_msg_if_player( m_bad, _( "Survivor sleep now." ) );
             get_event_bus().send<event_type::falls_asleep_from_exhaustion>( getID() );
             mod_sleepiness( -10 );
-            fall_asleep();
+            fall_asleep_involuntarily();
         } else if( get_sleepiness() >= 800 && calendar::once_every( 30_minutes ) ) {
             add_msg_if_player( m_warning, _( "Anywhere would be a good place to sleep…" ) );
         } else if( calendar::once_every( 30_minutes ) ) {
@@ -1759,7 +1759,7 @@ void Character::check_needs_extremes()
             /** @EFFECT_INT slightly decreases occurrence of short naps when dead tired */
             if( one_in( 50 + get_int() ) ) {
                 // Rivet's idea: look out for microsleeps!
-                fall_asleep( 30_seconds );
+                fall_asleep_involuntarily( 30_seconds );
             }
         } else if( get_sleepiness() >= sleepiness_levels::EXHAUSTED ) {
             if( calendar::once_every( 30_minutes ) ) {
@@ -1768,7 +1768,7 @@ void Character::check_needs_extremes()
             }
             /** @EFFECT_INT slightly decreases occurrence of short naps when exhausted */
             if( one_in( 100 + get_int() ) ) {
-                fall_asleep( 30_seconds );
+                fall_asleep_involuntarily( 30_seconds );
             }
         } else if( get_sleepiness() >= sleepiness_levels::DEAD_TIRED &&
                    calendar::once_every( 30_minutes ) ) {
@@ -1816,7 +1816,7 @@ void Character::check_needs_extremes()
             // Note: these can coexist with sleepiness-related microsleeps
             /** @EFFECT_INT slightly decreases occurrence of short naps when sleep deprived */
             if( one_in( static_cast<int>( sleep_deprivation_pct * 75 ) + get_int() ) ) {
-                fall_asleep( 30_seconds );
+                fall_asleep_involuntarily( 30_seconds );
             }
 
             // Stimulants can be used to stay awake a while longer, but after a while you'll just collapse.
@@ -1835,11 +1835,11 @@ void Character::check_needs_extremes()
                     }
 
                     if( sleep_deprivation >= SLEEP_DEPRIVATION_MAJOR ) {
-                        fall_asleep( 20_hours );
+                        fall_asleep_involuntarily( 20_hours );
                     } else if( sleep_deprivation >= SLEEP_DEPRIVATION_SERIOUS ) {
-                        fall_asleep( 16_hours );
+                        fall_asleep_involuntarily( 16_hours );
                     } else {
-                        fall_asleep( 12_hours );
+                        fall_asleep_involuntarily( 12_hours );
                     }
                 }
             }
@@ -2465,6 +2465,8 @@ void Character::wake_up()
     if( has_effect( effect_narcosis ) ) {
         return;
     }
+
+    remove_value( "involuntary_sleep_start_turn" );
 
     // Do not remove effect_sleep or effect_alarm_clock now otherwise it invalidates an effect
     // iterator in player::process_effects().
