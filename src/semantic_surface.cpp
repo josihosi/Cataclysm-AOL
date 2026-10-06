@@ -216,7 +216,7 @@ bool semantic_surface_manager::poll_request_transport()
         return false;
     }
 
-    std::ifstream stream( path_value );
+    std::ifstream stream( path_value, std::ios::binary );
     if( !stream ) {
         return false;
     }

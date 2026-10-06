@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character.h"
 #include "cursesdef.h"
 #include "debug_menu.h"
@@ -395,19 +396,35 @@ TEST_CASE( "a queued semantic request re-wakes its native owner after FIFO wake 
 }
 
 TEST_CASE( "semantic transport records JSONL offsets through a lost FIFO wake",
-           "[semantic_surface]" )
+           "[semantic_surface][semantic_transport_bytes_067]" )
 {
+    const std::string mode = GENERATE( "crlf_successive", "crlf_batch", "lf_successive" );
+    CAPTURE( mode );
+    const bool batch = mode == "crlf_batch";
+    const std::string newline = mode == "lf_successive" ? "\n" : "\r\n";
+    const std::size_t first_end = 477 + newline.size();
+    const std::size_t final_end = first_end + 503 + newline.size();
     const std::filesystem::path transport_path = std::filesystem::temp_directory_path() /
             ( "semantic-surface-transport-" + std::to_string(
                   std::chrono::steady_clock::now().time_since_epoch().count() ) + ".jsonl" );
     const char *const previous_path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH" );
-    const std::string saved_path = previous_path == nullptr ? "" : previous_path;
+    const bool had_previous_path = previous_path != nullptr;
+    const std::string saved_path = had_previous_path ? previous_path : "";
+    on_out_of_scope cleanup( [&] {
+        if( had_previous_path ) {
+            setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", saved_path.c_str(), 1 );
+        } else {
+            unsetenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH" );
+        }
+        std::filesystem::remove( transport_path );
+    } );
     setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport_path.c_str(), 1 );
 
     semantic_surface_manager manager( "transport-run" );
     semantic_surface_manager_session session( manager );
     std::vector<semantic_request_transport_event> transport_events;
     std::vector<semantic_action_receipt> receipts;
+    std::vector<std::string> dispatched;
     manager.set_transport_observer( [&transport_events]( const semantic_request_transport_event &event ) {
         transport_events.push_back( event );
     } );
@@ -416,35 +433,50 @@ TEST_CASE( "semantic transport records JSONL offsets through a lost FIFO wake",
     } );
     semantic_surface_scope overmap( manager, "overmap", "Overmap", {}, {
         { "overmap.choose_destination", "omt:1,1,0", "Choose destination", true }
-    }, []( const semantic_action_request & ) {
+    }, [&dispatched]( const semantic_action_request &request ) {
+        dispatched.push_back( request.request_id );
         return semantic_action_dispatch_result{ true, "", "", false, false };
     } );
     const semantic_surface_descriptor first = *manager.top();
-
-    {
-        std::ofstream stream( transport_path );
-        stream << "{\"run_id\":\"transport-run\",\"surface_id\":\"" << first.surface_id
-               << "\",\"frame_id\":\"" << first.frame_id
-               << "\",\"request_id\":\"first\",\"action_id\":\"overmap.choose_destination\","
-               << "\"stable_id\":\"omt:1,1,0\"}\n";
+    const auto append_record = [&]( const semantic_surface_descriptor &frame,
+                                   const std::string &request_id, std::size_t body_size ) {
+        std::string record = "{\"run_id\":\"transport-run\",\"surface_id\":\"" + frame.surface_id +
+                             "\",\"frame_id\":\"" + frame.frame_id + "\",\"request_id\":\"" + request_id +
+                             "\",\"action_id\":\"overmap.choose_destination\",\"stable_id\":\"omt:1,1,0\"}";
+        REQUIRE( record.size() <= body_size );
+        record.resize( body_size, ' ' );
+        record += newline;
+        std::ofstream stream( transport_path, std::ios::binary | std::ios::app );
+        REQUIRE( stream );
+        stream.write( record.data(), static_cast<std::streamsize>( record.size() ) );
+        REQUIRE( stream );
+    };
+    append_record( first, "first", 477 );
+    if( batch ) {
+        append_record( first, "second", 503 );
     }
     REQUIRE( manager.poll_request_transport() );
-    REQUIRE_FALSE( transport_events.empty() );
     const auto first_record = std::find_if( transport_events.begin(), transport_events.end(),
     []( const semantic_request_transport_event &event ) {
         return event.event == "jsonl_record" && event.request_id == "first";
     } );
     REQUIRE( first_record != transport_events.end() );
     CHECK( first_record->queued );
-    CHECK( first_record->offset_after > first_record->offset_before );
+    CHECK( first_record->offset_before == 0 );
+    CHECK( first_record->offset_after == first_end );
+    CHECK( first_record->transport_end == ( batch ? final_end : first_end ) );
 
-    // The byte that caused the first poll has already been drained by an
-    // inner context.  The queued record must still wake its owning context.
+    // A lost FIFO wake must not hide queued work.  This also polls the empty
+    // tail: a CRLF text reader on Windows used to advance one byte here.
     REQUIRE( poll_active_semantic_surface_request() );
     REQUIRE( take_active_semantic_surface_wake() );
     REQUIRE( overmap.consume_request() );
-    CHECK( receipts.size() == 1 );
+    REQUIRE( receipts.size() == 1 );
     CHECK( receipts.front().request_id == "first" );
+    CHECK( receipts.front().accepted );
+    CHECK( receipts.front().requested_run_id == first.run_id );
+    CHECK( receipts.front().requested_surface_id == first.surface_id );
+    CHECK( receipts.front().requested_frame_id == first.frame_id );
     CHECK( std::any_of( transport_events.begin(), transport_events.end(),
     []( const semantic_request_transport_event &event ) {
         return event.event == "wake_marked";
@@ -454,30 +486,39 @@ TEST_CASE( "semantic transport records JSONL offsets through a lost FIFO wake",
         return event.event == "request_consumed" && event.request_id == "first";
     } ) );
 
-    REQUIRE( overmap.publish( { { "route_destination", "1,1,0" } }, first.valid_actions ) );
-    const semantic_surface_descriptor second = *manager.top();
-    {
-        std::ofstream stream( transport_path, std::ios::app );
-        stream << "{\"run_id\":\"transport-run\",\"surface_id\":\"" << second.surface_id
-               << "\",\"frame_id\":\"" << second.frame_id
-               << "\",\"request_id\":\"second\",\"action_id\":\"overmap.choose_destination\","
-               << "\"stable_id\":\"omt:1,1,0\"}\n";
+    semantic_surface_descriptor second = first;
+    if( !batch ) {
+        CHECK_FALSE( manager.poll_request_transport() );
+        REQUIRE( overmap.publish( { { "route_destination", "1,1,0" } }, first.valid_actions ) );
+        second = *manager.top();
+        append_record( second, "second", 503 );
+        REQUIRE( manager.poll_request_transport() );
     }
-    REQUIRE( manager.poll_request_transport() );
     const auto second_record = std::find_if( transport_events.begin(), transport_events.end(),
     []( const semantic_request_transport_event &event ) {
         return event.event == "jsonl_record" && event.request_id == "second";
     } );
     REQUIRE( second_record != transport_events.end() );
-    CHECK( second_record->offset_before > 0 );
-    CHECK( second_record->offset_after > second_record->offset_before );
-
-    if( saved_path.empty() ) {
-        unsetenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH" );
-    } else {
-        setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", saved_path.c_str(), 1 );
-    }
-    std::filesystem::remove( transport_path );
+    CHECK( second_record->queued );
+    CHECK( second_record->offset_before == ( batch ? 0 : first_end ) );
+    CHECK( second_record->offset_after == final_end );
+    CHECK( second_record->transport_end == final_end );
+    CHECK( std::filesystem::file_size( transport_path ) == final_end );
+    REQUIRE( poll_active_semantic_surface_request() );
+    REQUIRE( take_active_semantic_surface_wake() );
+    REQUIRE( overmap.consume_request() );
+    REQUIRE( receipts.size() == 2 );
+    CHECK( receipts.back().request_id == "second" );
+    CHECK( receipts.back().accepted );
+    CHECK( receipts.back().requested_run_id == second.run_id );
+    CHECK( receipts.back().requested_surface_id == second.surface_id );
+    CHECK( receipts.back().requested_frame_id == second.frame_id );
+    CHECK( ( dispatched == std::vector<std::string>{ "first", "second" } ) );
+    CHECK_FALSE( manager.poll_request_transport() );
+    CHECK_FALSE( poll_active_semantic_surface_request() );
+    CHECK_FALSE( overmap.consume_request() );
+    CHECK( receipts.size() == 2 );
+    CHECK( dispatched.size() == 2 );
 }
 
 TEST_CASE( "item info is a semantic child and restores its selector parent",
