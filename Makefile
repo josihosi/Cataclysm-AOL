@@ -1307,7 +1307,7 @@ $(SRC_DIR)/version.h: version-force
           VERSION_STRING="$$CAOL_RELEASE_VERSION" ; \
         elif [ -e ".git" ]; then \
           GITVERSION=$$( git describe --tags --always --match "[0-9A-Z]*.[0-9A-Z]*" --match "cdda-experimental-*" --exact-match 2>/dev/null || true ) && \
-          GITSHA=$$( git rev-parse --short HEAD ) && \
+          GITSHA=$$( git rev-parse --short=10 HEAD ) && \
           DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false status --porcelain --untracked-files=all -- . ':(exclude)lang/po/**')" ] || echo "-dirty") && \
           VERSION_STRING="$$GITVERSION $$GITSHA$$DIRTYFLAG" && \
           VERSION_STRING="$${VERSION_STRING## }" ; \
