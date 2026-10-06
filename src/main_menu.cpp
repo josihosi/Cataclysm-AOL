@@ -17,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #if defined(EMSCRIPTEN)
 #include <emscripten.h>
@@ -754,13 +755,22 @@ bool main_menu::opening_screen()
         semantic_session.emplace( *semantic_manager );
     }
 
+    // The logical menu owns its callback storage, not an individual input
+    // poll.  ERROR transport wakes, timeouts and redraws leave it current.
+    std::string semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
     while( !start ) {
+        const int previous_sel1 = sel1;
+        const int previous_sel2 = sel2;
+        const int previous_sel_line = sel_line;
         ui_manager::redraw();
-        std::string semantic_action;
-        std::optional<semantic_surface_scope> semantic_scope;
-        if( semantic_manager != nullptr ) {
+        if( semantic_manager != nullptr && !semantic_scope ) {
             semantic_scope.emplace( *semantic_manager, "main_menu", "Main menu",
-            std::map<std::string, std::string>{},
+            std::map<std::string, std::string>{
+                { "selected_menu", std::to_string( sel1 ) },
+                { "selected_item", std::to_string( sel2 ) },
+                { "scroll_offset", std::to_string( sel_line ) }
+            },
             std::vector<semantic_action_descriptor>{
                 { "main_menu.quit", "", _( "Quit" ), true }
             }, [ &semantic_action]( const semantic_action_request &request ) {
@@ -782,6 +792,8 @@ bool main_menu::opening_screen()
                 // successor if the process exits or a host closes the window.
                 return semantic_action_dispatch_result{ true, "", "", false, false };
             } );
+        }
+        if( semantic_scope ) {
             semantic_scope->consume_request();
         }
         bool semantic_action_consumed = !semantic_action.empty();
@@ -794,7 +806,7 @@ bool main_menu::opening_screen()
             // redraw can become the next published frame and prevent the
             // confirmation owner from ever being entered.
             semantic_scope.reset();
-            action = std::move( semantic_action );
+            action = std::exchange( semantic_action, std::string() );
             sInput = ctxt.get_raw_input();
         } else {
             action = ctxt.handle_input();
@@ -807,7 +819,7 @@ bool main_menu::opening_screen()
             semantic_action_consumed = !semantic_action.empty();
             if( semantic_action_consumed ) {
                 semantic_scope.reset();
-                action = std::move( semantic_action );
+                action = std::exchange( semantic_action, std::string() );
             }
         }
 
@@ -897,6 +909,13 @@ bool main_menu::opening_screen()
                     }
                 }
             }
+        }
+
+        // A real child/activation retires the parent before that native owner
+        // runs.  In particular No must recreate a current menu, not restore
+        // the consumed quit callback or publish its old frame.
+        if( action == "QUIT" || action == "CONFIRM" || action == "HELP_KEYBINDINGS" ) {
+            semantic_scope.reset();
         }
 
         // also check special keys
@@ -1065,6 +1084,11 @@ bool main_menu::opening_screen()
                 default:
                     break;
             }
+        }
+        // Native selection/scroll changes invalidate the old grant even when
+        // the advertised Quit action is otherwise unchanged.
+        if( sel1 != previous_sel1 || sel2 != previous_sel2 || sel_line != previous_sel_line ) {
+            semantic_scope.reset();
         }
     }
     if( start && !load_game && get_scenario() ) {
