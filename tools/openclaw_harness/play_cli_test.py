@@ -526,6 +526,8 @@ class PlayerCliTest(unittest.TestCase):
         requests = self.requests()
         result = self.cli("controls")["result"]
         self.assertEqual(result["availability"], {"game.wait": True, "game.move_relative": False})
+        self.assertEqual(result["setup"]["debug_life_support"]["mutation_id"], "DEBUG_LS")
+        self.assertIn("Only if missing", result["setup"]["debug_life_support"]["sequence"])
         self.assertEqual(result["wait"]["manual_start_request"]["action"], "game.act")
         self.assertEqual(result["wait"]["manual_start_request"]["action_id"], "world.wait")
         self.assertEqual((self.session / "play-client.json").read_bytes(), before)

@@ -3927,6 +3927,16 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "game.wait": None, "game.move_relative": None,
         },
         "availability_note": "Session permission only, not current-surface readiness. null means unknown: look and collect first. The service rechecks permission on every call.",
+        "setup": {
+            "debug_life_support": {
+                "mutation_id": "DEBUG_LS",
+                "when": "Before long roof/faction waits when Life Support is the assigned survival setup; inspect at setup or load, not before every wait.",
+                "sequence": "Inspect current avatar mutations. Keep Debug Life Support active if already present. Only if missing, use advertised world.debug_menu, then current Player -> Mutate entries, filter Debug Life Support and select that individual trait. Return to World and verify active; use advertised world.pause only if needed to apply setup.",
+                "owner": "Resolve each current advertised target. This guidance does not dispatch input or grant debug permission; never reuse historical menu IDs, toggle an active trait off, or use the debug mutation bundle.",
+                "scope": "Recorded survival setup, not signal/actor proof or combat immunity. Preserve ordinary vision and actual wounds/incapacity.",
+                "recipe": ".agents/skills/caol-harness/references/setup-and-interactions.md#get-and-verify-debug-life-support",
+            },
+        },
         "danger_handling": {
             "stop_on_interruption": "Default. Stop the macro at a native interruption; movement requires World but does not perform the guarded danger/terrain checks.",
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
