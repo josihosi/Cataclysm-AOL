@@ -41,7 +41,7 @@ class CancellationTest(unittest.TestCase):
             run_id="run-a", trace_start_offset=0, pid=os.getpid(), session_id="test-player", live_session=True, cleanup_on_finish=False,
             transition_timeout_seconds=.1, observe_interval_seconds=.001)
         self.addCleanup(self.service.live_channel.archive.close)
-        self.addCleanup(self.service.call, {"action": "run.quit", "stop_reason": "test_cleanup"})
+        self.addCleanup(self.service.call, {"action": "run.quit", "abort": True, "stop_reason": "test_cleanup"})
         self.observe()
 
     def active(self, request_id):

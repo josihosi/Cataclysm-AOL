@@ -193,7 +193,7 @@ def world_look(snapshot, operation_availability=None, *, show_controls=True, con
         lines.append("Local layout → play look --map (optional current observation).")
 
     if operations.get("game.act") is False:
-        controls = "Observation-only phase.\nplay look — observe · play quit — end playtest"
+        controls = "Observation-only phase.\nplay look — observe; native close requires the current advertised save/menu controls."
         return controls if controls_only else "\n".join(lines) + "\n\n" + controls
     if not show_controls:
         return "\n".join(lines) + "\nControls unchanged → play controls"
@@ -862,9 +862,14 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
     if isinstance(controls, dict) and "danger_handling" in controls and "availability" in controls:
         availability = controls["availability"]
         if availability.get("game.act") is False:
-            return "Observation-only phase.\nplay look — observe · play quit — end playtest"
+            return "Observation-only phase.\nplay look — observe; native close requires the current advertised save/menu controls."
         lines = ["Use only the current menu's actions → play look",
-                 "Pending result → play collect; end playtest → play quit"]
+                 "Pending result → play collect; close through current native SaveQuit/MenuQuit and verify exit."]
+        life_support = controls.get("setup", {}).get("debug_life_support")
+        if isinstance(life_support, dict):
+            lines += ["Roof survival setup → inspect exact DEBUG_LS; keep active, add only if missing.",
+                      "Use current advertised Debug menu → Player → Mutate → Debug Life Support; verify active in World.",
+                      "No active-trait toggle-off/debug bundle. Life Support is not combat immunity."]
         if availability.get("game.wait"):
             lines += ["Wait → play wait 5m [ignore|safe|stop] (example duration)",
                       "ignore: continue through danger (default); safe: inspect danger/damage; stop: each interruption.",

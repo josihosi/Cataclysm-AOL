@@ -106,6 +106,17 @@ class ControlsTest(unittest.TestCase):
         channel._read_native_frame = lambda: self.fail("controls must not read a native frame")
         result = service.call({"action": "game.controls"})
         self.assertTrue(result["ok"])
+        setup = result["result"]["setup"]["debug_life_support"]
+        self.assertEqual(setup["mutation_id"], "DEBUG_LS")
+        self.assertIn("Only if missing", setup["sequence"])
+        self.assertIn("Keep Debug Life Support active", setup["sequence"])
+        self.assertIn("current advertised target", setup["owner"])
+        from gameplay_display import plain_player_output
+        readback = plain_player_output(result)
+        self.assertIn("inspect exact DEBUG_LS", readback)
+        self.assertIn("add only if missing", readback)
+        self.assertIn("not combat immunity", readback)
+        self.assertNotIn("end playtest → play quit", readback)
         self.assertEqual(before, (channel._observations, channel._last_public_state, channel._transcript))
         self.assertFalse(dispatched)
 

@@ -526,6 +526,8 @@ class PlayerCliTest(unittest.TestCase):
         requests = self.requests()
         result = self.cli("controls")["result"]
         self.assertEqual(result["availability"], {"game.wait": True, "game.move_relative": False})
+        self.assertEqual(result["setup"]["debug_life_support"]["mutation_id"], "DEBUG_LS")
+        self.assertIn("Only if missing", result["setup"]["debug_life_support"]["sequence"])
         self.assertEqual(result["wait"]["manual_start_request"]["action"], "game.act")
         self.assertEqual(result["wait"]["manual_start_request"]["action_id"], "world.wait")
         self.assertEqual((self.session / "play-client.json").read_bytes(), before)
@@ -1184,6 +1186,17 @@ class PlayerCliTest(unittest.TestCase):
         self.assertFalse(json.loads((self.session / "play-client.json").read_text()).get("finished"))
         self.assertEqual(self.cli("look")["state"], "pending")
         self.assertEqual(len(self.requests()), 3)
+
+    def test_quit_requires_explicit_abort_flag_in_public_request(self):
+        default = self.cli("quit", "--reason", "graceful close")
+        request = self.requests()[-1]["request"]
+        self.assertFalse(request["abort"])
+        self.reply(default["request_id"], {"ok": False, "error": "native_graceful_close_required"})
+        self.cli("collect", ok=False)
+        explicit = self.cli("quit", "--abort", "--reason", "owner authorized abort")
+        self.assertTrue(self.requests()[-1]["request"]["abort"])
+        self.reply(explicit["request_id"], {"ok": True, "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished", "closure_kind": "explicit_abort", "native_exit_credit": False}})
+        self.cli("collect")
 
     def test_explicit_quit_works_without_a_frame_and_after_journal_sealing(self):
         for structured in (False, True):

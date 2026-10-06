@@ -287,7 +287,11 @@ def _terminal_context(owner: Mapping[str, Any], snapshot: Callable[[int], Mappin
 
 
 def _terminal_permission(context: Mapping[str, Any]) -> dict[str, Any]:
-    """Allow startup Ignore only from the exact selected declaration bytes."""
+    """Bind explicit startup recovery to selected bytes and honor recovery bans.
+
+    The public caller already requires the same current debug dialog with an
+    advertised Ignore. A declaration need not repeat that narrow recovery grant.
+    """
     preflight = _read_object(context["run_dir"] / "contract.preflight.json", 2 * 1024 * 1024)
     try:
         source = preflight["scenario_source"]
@@ -299,7 +303,6 @@ def _terminal_permission(context: Mapping[str, Any]) -> dict[str, Any]:
         contract = declaration["runtime_contract"]
         permitted = contract["permitted_input"]
         if (declaration.get("name") != preflight.get("scenario")
-                or permitted.count("debug:ignore") != 1
                 or "debug:ignore" in contract.get("forbidden_input", [])
                 or "keyboard" not in contract.get("forbidden_input", [])
                 or "keyboard" in permitted or contract.get("setup_only_debug") is not True
