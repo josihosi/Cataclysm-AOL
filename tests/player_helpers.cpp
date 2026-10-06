@@ -81,6 +81,8 @@ void clear_character( Character &dummy, bool skip_nutrition )
 {
     map &here = get_map();
 
+    // A fresh test life must not retain a killer that fixture cleanup can destroy.
+    dummy.clear_killer();
     dummy.set_body();
     dummy.normalize(); // In particular this clears martial arts style
 

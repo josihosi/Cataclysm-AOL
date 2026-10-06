@@ -9,6 +9,11 @@
 #include "character.h"
 #include "coordinates.h"
 #include "creature.h"
+#include "creature_tracker.h"
+#include "map.h"
+#include "map_helpers.h"
+#include "map_helpers_tests.h"
+#include "monster.h"
 #include "enum_traits.h"
 #include "mtype.h"
 #include "npc.h"
@@ -136,4 +141,53 @@ TEST_CASE( "mtype_species_test", "[monster]" )
 
     CHECK_FALSE( mon_zombie->same_species( *mon_fish_rainbow_trout ) );
     CHECK_FALSE( mon_fish_rainbow_trout->same_species( *mon_zombie ) );
+}
+
+TEST_CASE( "character_fixture_reset_releases_previous_life_killer",
+           "[creature][fixture_killer_reset_067]" )
+{
+    clear_map();
+    clear_avatar();
+    Character &dummy = get_player_character();
+    map &here = get_map();
+    const bodypart_id torso( "torso" );
+    const tripoint_bub_ms killer_position( 60, 61, 0 );
+    monster &first_killer = spawn_test_monster( "mon_zombie", killer_position );
+    REQUIRE( dummy.get_killer() == nullptr );
+    REQUIRE_FALSE( dummy.is_dead_state() );
+
+    // Both creatures are still owned and alive when recording this death.
+    dummy.apply_damage( &first_killer, torso, dummy.get_part_hp_cur( torso ) + 1 );
+    REQUIRE( dummy.is_dead_state() );
+    REQUIRE( dummy.get_killer() == &first_killer );
+    dummy.check_dead_state( &here );
+    REQUIRE( dummy.get_killer() == &first_killer );
+
+    SECTION( "shared character reset" ) {
+        clear_character( dummy );
+    }
+    SECTION( "avatar reset wrapper" ) {
+        clear_avatar();
+    }
+    CHECK_FALSE( dummy.is_dead_state() );
+    CHECK( dummy.get_part_hp_cur( torso ) > 0 );
+    CHECK( dummy.get_killer() == nullptr );
+
+    // Keep the fail-before control safe too: never destroy a remembered killer.
+    // The explicit cleanup is redundant once the fixture reset is repaired.
+    dummy.clear_killer();
+    clear_creatures();
+    REQUIRE( get_creature_tracker().size() == 0 );
+    REQUIRE( dummy.get_killer() == nullptr );
+
+    monster &next_killer = spawn_test_monster( "mon_zombie", killer_position );
+    dummy.apply_damage( &next_killer, torso, dummy.get_part_hp_cur( torso ) + 1 );
+    REQUIRE( dummy.is_dead_state() );
+    REQUIRE( dummy.get_killer() == &next_killer );
+    dummy.check_dead_state( &here );
+    CHECK( dummy.get_killer() == &next_killer );
+    // Release the still-valid pointer before the tracker destroys this life's killer.
+    dummy.clear_killer();
+    clear_avatar();
+    clear_creatures();
 }
