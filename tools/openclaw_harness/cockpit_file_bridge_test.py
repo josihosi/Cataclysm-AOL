@@ -105,6 +105,53 @@ ACTION_SUCCESSOR_OBSERVATION_CHILD = (
 
 
 class CockpitFileBridgeTest(unittest.TestCase):
+    def test_launcher_utf8_round_trips_live_unicode_result_and_eof(self):
+        # Exercise the real streaming service and bridge reader in a child pipe,
+        # even when the launch environment requests the Windows legacy codec.
+        payload = "east \u2192 saved; \u65e5\u672c; \U0001f30d"
+        for finished in (True, False):
+            with self.subTest(finished=finished), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp) / "session"
+                directory.mkdir()
+                child = "\n".join([
+                    "import json, sys",
+                    "from types import SimpleNamespace",
+                    "import startup_harness",
+                    "payload = " + ascii(payload),
+                    "channel = SimpleNamespace(archive=None, status=lambda: " +
+                    repr({"state": "finished" if finished else "active"}) +
+                    ", close_unfinished=lambda: {'ok':False,'error':payload})",
+                    "service = SimpleNamespace(run_channel=channel, call=lambda request: "
+                    "{'ok':True,'result':{'text':payload,'request':request,"
+                    "'stdin_encoding':sys.stdin.encoding,'stdout_encoding':sys.stdout.encoding}})",
+                    "sys.exit(startup_harness.serve_cockpit_live(service, sys.stdin, sys.stdout))",
+                ])
+                bridge = FileBackedCockpitBridge(directory, [], binding_id="unicode-control")
+                bridge._child_environment = dict(os.environ, PYTHONIOENCODING="cp1252")
+                try:
+                    bridge._start_child([sys.executable, "-B", "-u", "-c", child],
+                                        append_stderr=False)
+                    bridge._child.stdin.write(json.dumps({"action": "run.witness"}, ensure_ascii=False) + "\n")
+                    bridge._child.stdin.close()
+                    response, encoded = _decode_bridge_response(bridge._read_complete_response(timeout=10))
+                    self.assertEqual(response["result"]["text"], payload)
+                    self.assertEqual(response["result"]["request"], {"action": "run.witness"})
+                    self.assertEqual(response["result"]["stdin_encoding"].lower(), "utf-8")
+                    self.assertEqual(response["result"]["stdout_encoding"].lower(), "utf-8")
+                    self.assertIn(payload.encode("utf-8"), encoded)
+                    if not finished:
+                        eof, _ = _decode_bridge_response(bridge._read_complete_response(timeout=10))
+                        self.assertEqual(eof, {"ok":False,"error":payload})
+                    self.assertEqual(bridge._child.wait(timeout=10), 0 if finished else 1)
+                finally:
+                    if bridge._child is not None:
+                        if bridge._child.poll() is None:
+                            bridge._child.terminate()
+                            bridge._child.wait(timeout=10)
+                        bridge._child.stdout.close()
+                    if bridge._child_stderr is not None:
+                        bridge._child_stderr.close()
+
     def test_cleanup_during_warning_blocked_reentry_preserves_finish_and_sends_no_input(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"

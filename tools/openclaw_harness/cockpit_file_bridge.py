@@ -255,9 +255,14 @@ class FileBackedCockpitBridge:
         self._child_stderr = stderr_path.open("a" if append_stderr else "w", encoding="utf-8")
         self._child_started_ns = time.time_ns()
         self._stdout_pending = b""
+        # The long-lived JSONL owner must encode its pipe before it starts.
+        # Later player CLI environments cannot change this child's stdio.
+        environment = dict(self._child_environment)
+        environment["PYTHONIOENCODING"] = "utf-8"
         self._child = subprocess.Popen(
             list(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=self._child_stderr, text=True, bufsize=1, env=self._child_environment,
+            stderr=self._child_stderr, text=True, encoding="utf-8", bufsize=1,
+            env=environment,
         )
         from startup_harness import process_generation_snapshot
         _atomic_json(self.session_dir / "launcher-process.json", {
