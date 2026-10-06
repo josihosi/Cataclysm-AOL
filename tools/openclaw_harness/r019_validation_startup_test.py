@@ -563,6 +563,49 @@ class R019ValidationStartupTest(unittest.TestCase):
                     startup_harness.semantic_step_source_trace("test", run_dir), native_trace
                 )
 
+    def test_actor_prefixed_native_prompt_owns_quit_confirmation(self) -> None:
+        """Actor capture must not hide the complete native quit owner."""
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "run"
+            run_dir.mkdir()
+            native_trace = run_dir / "semantic.native.events.jsonl"
+            debug_log = Path(directory) / "debug.log"
+            descriptor = {
+                "event": "surface_descriptor", "schema_version": 1,
+                "run_id": "quit-run", "surface_id": "quit-run:surface:78",
+                "frame_id": "quit-run:frame:78", "kind": "prompt", "breadcrumbs": ["YESNO"],
+                "payload": {"text": "Really quit? (Case Sensitive)", "title": "YESNO"},
+                "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:5",
+                                   "label": "YES", "enabled": True}],
+            }
+            record = startup_harness.SEMANTIC_STEP_PREFIX + json.dumps(descriptor)
+            native_trace.write_text('{"event":"raid_actor_action"}\n' * 3000 + record + "\n",
+                                    encoding="utf-8")
+            debug_log.write_text(
+                'openclaw_harness_ui_trace: component=semantic_ui event=open '
+                'instance_id="main-menu-quit-1" run_id="quit-run" '
+                'intent="main_menu_quit_confirmation" valid_actions=["left","enter"] '
+                'postcondition="quit_confirmation_resolved"\n' + record,
+                encoding="utf-8",
+            )
+            with mock.patch.object(startup_harness, "config_dir_for_profile",
+                                   return_value=debug_log.parent):
+                frame = startup_harness.current_semantic_step_frame(
+                    profile="test", run_dir=run_dir, run_id="quit-run", start_offset=0,
+                )
+                self.assertEqual(frame["frame_id"], "quit-run:frame:78")
+                self.assertEqual(frame["valid_actions"][0]["stable_id"], "prompt-option:5")
+                with self.assertRaisesRegex(ValueError, "has not emitted a semantic frame"):
+                    startup_harness.current_semantic_step_frame(
+                        profile="test", run_dir=run_dir, run_id="another-run", start_offset=0,
+                    )
+            native_trace.write_text('{"event":"raid_actor_action"}\n' * 3000,
+                                    encoding="utf-8")
+            with mock.patch.object(startup_harness, "config_dir_for_profile",
+                                   return_value=debug_log.parent):
+                self.assertEqual(startup_harness.semantic_step_source_trace("test", run_dir),
+                                 debug_log)
+
     def test_run_owned_initial_world_frame_beats_oversize_debug_fallback(self) -> None:
         """A frame-only startup stream is the exact cockpit admission source."""
         with tempfile.TemporaryDirectory() as directory:

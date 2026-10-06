@@ -5068,13 +5068,20 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
             # This file grows by one native frame per dispatch.  Reading it
             # wholesale just to establish that it is the run-owned semantic
             # stream made a one-minute (60-action) wait allocate the whole
-            # accumulated action history once per action.  The writer emits
-            # its semantic marker at the beginning of the stream, so probe
-            # only its fixed header.  A nonsemantic or incomplete file still
-            # falls back to the profile debug log as before.
+            # accumulated action history once per action.  Probe bounded
+            # header and suffix windows instead.  A nonsemantic file still
+            # falls back to the profile debug log as before; the event reader
+            # separately rejects incomplete or invalid semantic records.
             try:
                 with native_trace.open("rb") as stream:
                     native_prefix = stream.read(64 * 1024)
+                    # Actor traces share this run-owned file and can precede
+                    # its first semantic record.  Inspect the bounded current
+                    # suffix too; a header-only probe otherwise substitutes
+                    # debug.log for a complete current input owner.
+                    if SEMANTIC_STEP_PREFIX.encode("utf-8") not in native_prefix:
+                        stream.seek(max(0, native_trace.stat().st_size - 64 * 1024))
+                        native_prefix = stream.read(64 * 1024)
                 if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_prefix:
                     return native_trace
             except OSError:
