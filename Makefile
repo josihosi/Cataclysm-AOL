@@ -1292,8 +1292,16 @@ ifeq ($(RELEASE), 1)
   endif
 endif
 
-$(PCH_P): $(PCH_H)
-	-$(COMPILE.cc) $(OUTPUT_OPTION) -MMD -MP -Wno-error $<
+# Native Windows GCC with the forced PCH include can omit project headers
+# from -MMD output.  Keep all headers so changes invalidate their consumers.
+ifeq ($(TARGETSYSTEM),WINDOWS)
+  DEPFLAGS = -MD -MP
+else
+  DEPFLAGS = -MMD -MP
+endif
+
+$(PCH_P): $(PCH_H) Makefile
+	-$(COMPILE.cc) $(OUTPUT_OPTION) $(DEPFLAGS) -Wno-error $<
 
 $(BUILD_PREFIX)$(TARGET_NAME).a: $(OBJS)
 	$(AR) rcs $(AR_FLAGS) $(BUILD_PREFIX)$(TARGET_NAME).a $(filter-out $(ODIR)/main.o $(ODIR)/messages.o,$(OBJS))
@@ -1358,8 +1366,8 @@ $(ODIR)/third-party/%.o: $(SRC_DIR)/third-party/%.c
 $(ODIR)/cata_allocator.o: $(SRC_DIR)/cata_allocator.cpp $(PCH_P) Makefile
 	$(COMPILE.cc) $(OUTPUT_OPTION) $(PCHFLAGS) -MD -MP $<
 
-$(ODIR)/%.o: $(SRC_DIR)/%.cpp $(PCH_P)
-	$(COMPILE.cc) $(OUTPUT_OPTION) $(PCHFLAGS) -MMD -MP $<
+$(ODIR)/%.o: $(SRC_DIR)/%.cpp $(PCH_P) Makefile
+	$(COMPILE.cc) $(OUTPUT_OPTION) $(PCHFLAGS) $(DEPFLAGS) $<
 
 $(ODIR)/%.o: $(SRC_DIR)/%.c
 	$(COMPILE.c) $(OUTPUT_OPTION) -x c $(CFLAGS) -MMD -MP $<

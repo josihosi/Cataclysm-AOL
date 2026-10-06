@@ -70,8 +70,16 @@ tests: $(TEST_TARGET)
 $(TEST_TARGET): $(OBJS) $(CATA_LIB)
 	+$(CXX) $(W32FLAGS) -o $@ $(DEFINES) $(OBJS) $(CATA_LIB) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
-$(PCH_P): $(PCH_H)
-	-$(CXX) $(CPPFLAGS) $(DEFINES) $(CXXFLAGS) -MMD -MP -Wno-error -Wno-non-virtual-dtor -Wno-unused-macros -I. -c $(PCH_H) -o $(PCH_P)
+# Native Windows GCC with the forced PCH include can omit project headers
+# from -MMD output.  Keep all headers so changes invalidate their consumers.
+ifeq ($(TARGETSYSTEM),WINDOWS)
+  DEPFLAGS = -MD -MP
+else
+  DEPFLAGS = -MMD -MP
+endif
+
+$(PCH_P): $(PCH_H) Makefile
+	-$(CXX) $(CPPFLAGS) $(DEFINES) $(CXXFLAGS) $(DEPFLAGS) -Wno-error -Wno-non-virtual-dtor -Wno-unused-macros -I. -c $(PCH_H) -o $(PCH_P)
 
 TEST_BATCHES = "crafting_skill_gain" "[slow]\ ~crafting_skill_gain" "~[slow]\ ~[.]"
 
@@ -92,8 +100,8 @@ clean:
 $(shell mkdir -p $(ODIR) $(dir $(PCH_P)))
 
 # Adding ../tests/ so that the directory appears in __FILE__ for log messages
-$(ODIR)/%.o: %.cpp $(PCH_P)
-	$(CXX) $(CPPFLAGS) $(DEFINES) $(CXXFLAGS) -MMD -MP $(subst main-pch,tests-pch,$(PCHFLAGS)) -c ../tests/$< -o $@
+$(ODIR)/%.o: %.cpp $(PCH_P) Makefile
+	$(CXX) $(CPPFLAGS) $(DEFINES) $(CXXFLAGS) $(DEPFLAGS) $(subst main-pch,tests-pch,$(PCHFLAGS)) -c ../tests/$< -o $@
 
 $(ODIR)/%.inc: %.cpp
 	$(CXX) $(CPPFLAGS) $(DEFINES) $(CXXFLAGS) -H -E $< -o /dev/null 2> $@
