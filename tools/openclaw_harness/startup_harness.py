@@ -5255,6 +5255,7 @@ def refresh_semantic_step_trace(
     marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
     selected_events = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
     latest_duration_receipt: Optional[Dict[str, Any]] = None
+    latest_movement_receipt: Optional[Dict[str, Any]] = None
     latest_surface_receipt: Optional[Dict[str, Any]] = None
     latest_surface_successor: Optional[Dict[str, Any]] = None
     with source.open("rb") as handle:
@@ -5290,6 +5291,10 @@ def refresh_semantic_step_trace(
             if event.get("event") == "receipt" and event.get("accepted") is True and \
                     str(event.get("action_id", "")).startswith("wait."):
                 latest_duration_receipt = dict(event)
+            if event.get("event") == "receipt" and \
+                    str(event.get("action_id", "")).startswith("world.move.") and \
+                    event.get("coordinate_space") == "absolute_ms":
+                latest_movement_receipt = dict(event)
             if event.get("event") == "surface_receipt":
                 latest_surface_receipt = dict(event)
                 resulting_frame_id = str(event.get("resulting_frame_id", ""))
@@ -5299,6 +5304,9 @@ def refresh_semantic_step_trace(
                         if candidate.get("event") == "surface_descriptor" and
                         str(candidate.get("frame_id", "")) == resulting_frame_id
                     ), None)
+            elif event.get("event") == "surface_descriptor" and latest_surface_receipt is not None and \
+                    event.get("frame_id") == latest_surface_receipt.get("resulting_frame_id"):
+                latest_surface_successor = dict(event)
             # Turn boundaries remain in the exact run-owned producer journal
             # for ProcessPerformance.  They are observational and can occur
             # many times during one pending wait, so do not let them evict the
@@ -5333,14 +5341,23 @@ def refresh_semantic_step_trace(
     # semantic request receipt and its named successor together; otherwise
     # the input was accepted but the bridge incorrectly reports a receipt
     # timeout solely because the short correlation cluster fell off the tail.
-    for event in (latest_surface_successor, latest_surface_receipt):
+    # Movement completion is a separate native fact from surface acceptance.
+    # Keep only the coordinate receipt for the latest surface action, alongside
+    # its named successor.  A later redraw remains the active authority.
+    if latest_surface_receipt is not None and latest_movement_receipt is not None and \
+            latest_movement_receipt.get("action_id") != latest_surface_receipt.get("action_id"):
+        latest_movement_receipt = None
+    correlation_events = [event for event in (
+        latest_duration_receipt, latest_movement_receipt,
+        latest_surface_successor, latest_surface_receipt,
+    ) if event is not None]
+    correlation_offsets = {event["_source_offset"] for event in correlation_events}
+    for event in (latest_movement_receipt, latest_surface_successor, latest_surface_receipt):
         if event is None:
             continue
         if not any(
                 candidate.get("event") == event.get("event") and
-                (candidate.get("request_id") == event.get("request_id")
-                 if event.get("event") == "surface_receipt" else
-                 candidate.get("frame_id") == event.get("frame_id"))
+                candidate.get("_source_offset") == event.get("_source_offset")
                 for candidate in [*preserved_events, *selected_events]):
             preserved_events.append(compact_semantic_step_channel_event(event))
     if preserved_events:
@@ -5415,8 +5432,9 @@ def refresh_semantic_step_trace(
         ]
         selected = encode(selected_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
-        # Keep the exact full trace above while reducing only the executable
-        # channel to its latest owner descriptor and receipt.
+        # Reduce render history, keeping the action correlation cluster as
+        # well as the newest owner.  Dropping the coordinate receipt or named
+        # successor here would turn an accepted move into a false timeout.
         latest_descriptor_index = max(
             (index for index, event in enumerate(selected_events)
              if event.get("event") == "surface_descriptor"),
@@ -5424,6 +5442,8 @@ def refresh_semantic_step_trace(
         )
         tail_start = max(0, len(selected_events) - 8)
         keep_indexes = set(range(tail_start, len(selected_events)))
+        keep_indexes.update(index for index, event in enumerate(selected_events)
+                            if event.get("_source_offset") in correlation_offsets)
         if latest_descriptor_index >= 0:
             keep_indexes.add(latest_descriptor_index)
         selected_events = [event for index, event in enumerate(selected_events) if index in keep_indexes]
@@ -5433,14 +5453,18 @@ def refresh_semantic_step_trace(
                            if event.get("event") == "surface_descriptor"), None)
         receipt = next((event for event in reversed(selected_events)
                         if event.get("event") in {"receipt", "surface_receipt"}), None)
-        selected = encode([event for event in (receipt, descriptor) if event is not None])
+        selected_events = ([receipt] if receipt is not None else []) + [
+            event for event in selected_events if event is not receipt and
+            (event.get("_source_offset") in correlation_offsets or event is descriptor)
+        ]
+        selected = encode(selected_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
         # A large native inventory can legitimately advertise thousands of
         # item actions.  Keep every action in a content-addressed run artifact;
         # the channel reader restores it before validating or exposing controls.
         # This bounds the transport, not the set of usable native actions.
         compact_events = []
-        for event in (receipt, descriptor):
+        for event in selected_events:
             if event is None:
                 continue
             event = dict(event)

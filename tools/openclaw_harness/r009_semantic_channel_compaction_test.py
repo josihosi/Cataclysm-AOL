@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 import tempfile
 import tracemalloc
@@ -12,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert( 0, str( Path( __file__ ).resolve().parent ) )
+import startup_harness
 
 from semantic_state import MAX_EVENT_BYTES, MAX_EVENTS, SEMANTIC_STEP_PREFIX, read_semantic_step_trace
 from r008_indoor_channel_observation import (
@@ -653,6 +655,106 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
             events, status = read_semantic_step_trace( owned, run_dir, run_id )
             self.assertEqual( status, "ok" )
             self.assertEqual( [len( event["valid_actions"] ) for event in events], [0, 0, 1000] )
+
+
+class ActionCorrelationCompactionTest(unittest.TestCase):
+    """Real compaction and caller dispatch; the wake transport has no game."""
+
+    def dispatch(self, *, receipt_first=False, coordinate_action="world.move.east",
+                 requested_frame="frame:3", tail_count=1, split_poll=False):
+        run_id, session, action = "compaction-move", "retained", "world.move.east"
+        def descriptor(frame, size=0):
+            return {"event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+                    "surface_id": "surface:" + frame, "frame_id": frame, "kind": "world",
+                    "breadcrumbs": ["World"], "payload": {"facts": "x" * size},
+                    "valid_actions": [{"id": action, "stable_id": action,
+                                       "label": "East", "enabled": True}]}
+        before = descriptor("frame:3")
+        coordinate = {"event": "receipt", "run_id": run_id, "frame_id": "native:turn:4",
+                      "action_id": coordinate_action, "accepted": True, "outcome": "moved",
+                      "coordinate_space": "absolute_ms", "before_absolute_ms": [3156, 3456, 0],
+                      "expected_absolute_ms": [3157, 3456, 0], "after_absolute_ms": [3157, 3456, 0],
+                      "observed_turn": 5274213}
+        identity = hashlib.sha256(b'{"parameters":{},"stable_id":null}').hexdigest()[:16]
+        receipt = {"event": "surface_receipt", "run_id": run_id,
+                   "request_id": f"cockpit:{session}:frame:3:{action}:{identity}",
+                   "requested_run_id": run_id, "requested_surface_id": before["surface_id"],
+                   "requested_frame_id": requested_frame, "consuming_surface_id": before["surface_id"],
+                   "consuming_frame_id": before["frame_id"], "action_id": action, "accepted": True,
+                   "rejection_reason": "", "resulting_frame_id": "frame:4"}
+        successor = descriptor("frame:4", MAX_EVENT_BYTES)
+        middle = [receipt, successor] if receipt_first else [successor, receipt]
+        tail = [descriptor(f"frame:tail:{index}", MAX_EVENT_BYTES) for index in range(tail_count)]
+        render = {"event": "frame", "run_id": run_id, "frame_id": "render:5",
+                  "state": "world", "valid_actions": [], "action_inputs": {},
+                  "observed_turn": 5274214, "padding": "r" * MAX_EVENT_BYTES}
+        def encode(events):
+            return "".join(SEMANTIC_STEP_PREFIX + json.dumps(event) + "\n" for event in events).encode()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); source = root / "source.jsonl"
+            (root / "terminal.owner.json").write_text("{}")  # Offline Windows wake fixture.
+            body = encode([coordinate, *middle, *tail, render]); source.write_bytes(body)
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=source), \
+                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                        "status": "bound", "path": "offline", "contract": {"transport": "offline"}}), \
+                    patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1) as wake:
+                _, owned = refresh_semantic_step_trace(profile="retained", run_dir=root,
+                                                       run_id=run_id, start_offset=0)
+                events, status = read_semantic_step_trace(owned, root, run_id)
+                self.assertEqual(status, "ok")
+                self.assertLessEqual(owned.stat().st_size, MAX_EVENT_BYTES)
+                self.assertLessEqual(len(events), MAX_EVENTS)
+                current = current_semantic_step_frame(profile="retained", run_dir=root,
+                                                       run_id=run_id, start_offset=0)
+                self.assertEqual(current["frame_id"], tail[-1]["frame_id"])
+                self.assertEqual(current["valid_actions"], before["valid_actions"])
+                def call():
+                    return startup_harness.execute_semantic_act(
+                        run_dir=root, profile="retained", run_id=run_id, trace_start_offset=0,
+                        pid=0, session_id=session, frame_id=before["frame_id"], action_id=action,
+                        observed_frame=before, transition_timeout_seconds=.1, observe_interval_seconds=.001)
+                if split_poll:
+                    source.write_bytes(encode([coordinate])); refresh = startup_harness.refresh_semantic_step_trace
+                    calls = []
+                    def advance(**kwargs):
+                        result = refresh(**kwargs); calls.append(kwargs["start_offset"])
+                        source.write_bytes(body)
+                        return result
+                    with patch.object(startup_harness, "refresh_semantic_step_trace", side_effect=advance):
+                        result = call()
+                    self.assertGreater(calls[-1], 0)
+                else:
+                    result = call()
+                self.assertEqual(wake.call_count, 1)
+                self.assertEqual(source.read_bytes(), body)
+                return result, events
+
+    def test_move_keeps_coordinate_named_successor_and_newest_authority(self):
+        for receipt_first in (False, True):
+            with self.subTest(receipt_first=receipt_first):
+                result, _ = self.dispatch(receipt_first=receipt_first)
+                self.assertTrue(result["accepted"], result)
+                self.assertEqual(result["next_frame"]["frame_id"], "frame:4")
+                self.assertEqual(result["native_receipt"]["after_absolute_ms"], [3157, 3456, 0])
+                self.assertEqual(result["native_receipt"]["surface_receipt"]["requested_frame_id"], "frame:3")
+
+    def test_event_tail_and_split_poll_keep_the_same_action_correlation(self):
+        for options in ({"tail_count": MAX_EVENTS}, {"split_poll": True}):
+            with self.subTest(options=options):
+                result, _ = self.dispatch(**options)
+                self.assertTrue(result["accepted"], result)
+                self.assertEqual(result["next_frame"]["frame_id"], "frame:4")
+
+    def test_unrelated_coordinate_receipt_does_not_complete_move(self):
+        result, events = self.dispatch(coordinate_action="world.move.west", tail_count=MAX_EVENTS)
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_successor_timeout")
+        self.assertFalse(any(event.get("coordinate_space") == "absolute_ms" for event in events))
+
+    def test_preserved_receipt_does_not_authorize_a_stale_requested_frame(self):
+        result, _ = self.dispatch(requested_frame="stale")
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_receipt_correlation_mismatch")
 
 
 if __name__ == "__main__":
