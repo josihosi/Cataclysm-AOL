@@ -17031,6 +17031,11 @@ void process_overmap_npc_move_for_test()
     overmap_npc_move();
 }
 
+bool advance_live_bandit_hostile_returns_for_test()
+{
+    return advance_live_bandit_hostile_returns();
+}
+
 bool materialize_committed_bandit_shakedown_for_test( bandit_live_world::site_record &site )
 {
     return materialize_committed_bandit_shakedown( site );

@@ -24476,27 +24476,22 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
         return false;
     }
 
-    world_state state_candidate = state;
-    const hostile_target_claim_result claimed = claim_hostile_target_opportunity( state_candidate,
-            reservation.target_id, reservation.target_omt, reservation.target_lead_revision,
-            expected_activity_id, operation.source_report_application_key, expected_generation );
-    if( claimed == hostile_target_claim_result::already_applied ) {
-        if( terminal_hostile_shakedown_aftermath_was_applied( site, operation,
-                expected_activity_id, expected_generation ) ) {
-            return true;
-        }
-        const hostile_target_opportunity_record *receipt =
-            state_candidate.find_hostile_target_opportunity( reservation.target_id,
-                    reservation.target_omt );
-        if( receipt == nullptr || receipt->consumed_operation_id != expected_activity_id ||
-            receipt->consumed_report_key != operation.source_report_application_key ||
-            receipt->consumed_generation != expected_generation ) {
-            return false;
-        }
-    }
-    if( claimed != hostile_target_claim_result::applied &&
-        claimed != hostile_target_claim_result::already_applied ) {
+    // Dispatch already consumed this exact opportunity before publishing the
+    // operation. Camp intelligence can refresh its own lead revision during
+    // travel; that mutable revision is not the durable opportunity receipt's
+    // revision. Terminal settlement must use the existing consumption, never
+    // claim an unconsumed or successor opportunity on the returning party's behalf.
+    const hostile_target_opportunity_record *receipt = state.find_hostile_target_opportunity(
+                reservation.target_id, reservation.target_omt );
+    if( receipt == nullptr || receipt->revision <= 0 ||
+        receipt->consumed_operation_id != expected_activity_id ||
+        receipt->consumed_report_key != operation.source_report_application_key ||
+        receipt->consumed_generation != expected_generation ) {
         return false;
+    }
+    if( terminal_hostile_shakedown_aftermath_was_applied( site, operation,
+            expected_activity_id, expected_generation ) ) {
+        return true;
     }
 
     site_record site_candidate = site;
@@ -24504,7 +24499,6 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
             expected_generation ) ) {
         return false;
     }
-    state.hostile_target_opportunities = std::move( state_candidate.hostile_target_opportunities );
     site = std::move( site_candidate );
     return true;
 }

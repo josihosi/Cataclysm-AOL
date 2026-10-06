@@ -35694,6 +35694,11 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     const std::string winner_operation = winner.active_hostile_operation.reservation.activity_id;
     const std::string winner_report = winner.active_hostile_operation.source_report_application_key;
     const int winner_generation = winner.active_hostile_operation.reservation.generation;
+    // The production response publisher claims before the party departs.
+    REQUIRE( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target,
+             winner.active_hostile_operation.reservation.target_lead_revision,
+             winner_operation, winner_report, winner_generation ) ==
+             bandit_live_world::hostile_target_claim_result::applied );
     REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, winner,
              winner_operation, winner_generation ) );
     const bandit_live_world::hostile_target_opportunity_record *receipt =
@@ -48610,4 +48615,161 @@ TEST_CASE( "retained Fight motor distinguishes encounter ownership from ordinary
         }
         REQUIRE( actions == 1 );
     }
+}
+
+TEST_CASE( "paid home return settles its exact consumed opportunity despite camp lead refresh",
+           "[bandit_live_world][terminal_claim_return_067][retained_save]" )
+{
+    const std::string condition = GENERATE( std::string( "retained" ), std::string( "normalization" ), std::string( "lead_refresh" ),
+        std::string( "wrong_target" ), std::string( "wrong_omt" ), std::string( "wrong_operation" ),
+        std::string( "wrong_report" ), std::string( "wrong_generation" ), std::string( "unconsumed_stale" ),
+        std::string( "successor_opportunity" ), std::string( "non_home" ) );
+    CAPTURE( condition );
+    const bool accepted = condition == "retained" || condition == "normalization" ||
+                          condition == "lead_refresh";
+    r054_clear_previous_test_projections();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto old_world = world;
+    const auto old_turn = calendar::turn;
+    const auto old_start = calendar::start_of_cataclysm;
+    const auto old_game = calendar::start_of_game;
+    on_out_of_scope restore( [&]() {
+        for( int id : { 4, 6 } ) {
+            g->remove_npc( character_id( id ) );
+            overmap_buffer.remove_npc( character_id( id ) );
+        }
+        world = old_world;
+        calendar::turn = old_turn;
+        calendar::start_of_cataclysm = old_start;
+        calendar::start_of_game = old_game;
+    } );
+    std::ifstream input( "tests/data/r067_terminal_claim_5299263.json" );
+    REQUIRE( input.good() );
+    auto fixture = json_loader::from_string(
+                       std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    fixture.allow_omitted_members();
+    world.deserialize( fixture.get_object( "world" ) );
+    calendar::start_of_cataclysm = time_point::from_turn( fixture.get_int( "start_of_cataclysm" ) );
+    calendar::start_of_game = time_point::from_turn( fixture.get_int( "start_of_game" ) );
+    calendar::turn = time_point::from_turn( fixture.get_int( "saved_turn" ) );
+    for( JsonObject row : fixture.get_array( "actors" ) ) {
+        auto actor = make_shared_fast<npc>();
+        actor->deserialize( row );
+        overmap_buffer.insert_npc( actor );
+    }
+    const std::string site_id = "overmap_special:bandit_camp@129,149,0";
+    auto *site = world.find_site( site_id );
+    REQUIRE( site );
+    auto &reservation = site->active_hostile_operation.reservation;
+    const std::string operation_id = reservation.activity_id;
+    const int generation = reservation.generation;
+    const std::string report_key = site->active_hostile_operation.source_report_application_key;
+    const std::string target_id = reservation.target_id;
+    const auto target_omt = reservation.target_omt;
+    auto claim_iter = std::find_if( world.hostile_target_opportunities.begin(),
+    world.hostile_target_opportunities.end(), [&]( const auto &value ) {
+        return value.target_id == target_id && value.target_omt == target_omt;
+    } );
+    REQUIRE( claim_iter != world.hostile_target_opportunities.end() );
+    auto *claim = &*claim_iter;
+    REQUIRE( claim->revision == 113 );
+    REQUIRE( reservation.target_lead_revision == 171 );
+    REQUIRE( claim->consumed_operation_id == operation_id );
+    REQUIRE( claim->consumed_report_key == report_key );
+    REQUIRE( claim->consumed_generation == generation );
+    const std::string original_claim = r054_actor_bytes( get_avatar() );
+    // Only the world and original NPC bodies are imported. Physical payer/stash
+    // evidence remains bound to the original native save, not synthesized here.
+    for( int id : { 4, 6 } ) {
+        REQUIRE( g->find_npc( character_id( id ) ) );
+        REQUIRE_FALSE( g->find_npc( character_id( id ) )->is_dead() );
+        REQUIRE( g->find_npc( character_id( id ) )->pos_abs_omt() == site->anchor );
+    }
+    if( condition == "normalization" ) {
+        // The real normalizer/load path updates a mutable camp lead reference,
+        // but cannot update the already consumed authoritative opportunity.
+        reservation.target_lead_revision = claim->revision;
+        site->camp_decision.target_lead_revision = claim->revision;
+        bandit_live_world::normalize_camp_intelligence( *site );
+        CHECK( reservation.target_lead_revision == 171 );
+        CHECK( claim->revision == 113 );
+    }
+    if( condition == "lead_refresh" ) {
+        const auto *lead = site->intelligence_map.find_lead( reservation.target_lead_id );
+        REQUIRE( lead );
+        auto refreshed = *lead;
+        refreshed.last_seen_minutes += 5;
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( *site, refreshed ) );
+        CHECK( site->active_hostile_operation.reservation.target_lead_revision == 172 );
+        CHECK( site->camp_decision.target_lead_revision == 172 );
+        CHECK( claim->revision == 113 );
+    }
+    if( condition == "wrong_target" ) { claim->target_id += "-foreign"; }
+    if( condition == "wrong_omt" ) { claim->target_omt += tripoint( 1, 0, 0 ); }
+    if( condition == "wrong_operation" ) { claim->consumed_operation_id += "-foreign"; }
+    if( condition == "wrong_report" ) { claim->consumed_report_key += "-foreign"; }
+    if( condition == "wrong_generation" ) { ++claim->consumed_generation; }
+    if( condition == "unconsumed_stale" || condition == "successor_opportunity" ) {
+        claim->consumed_operation_id.clear();
+        claim->consumed_report_key.clear();
+        claim->consumed_generation = 0;
+        if( condition == "successor_opportunity" ) {
+            REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity(
+                         world, target_id, target_omt, { 1, 1, 1 } ) );
+            // A successor can even coincide with the camp revision; its lack
+            // of this operation's consumed binding still must not settle it.
+            claim->revision = reservation.target_lead_revision;
+        }
+    }
+    if( condition == "non_home" ) {
+        g->find_npc( character_id( 4 ) )->setpos(
+            project_to<coords::ms>( site->anchor + tripoint( 1, 0, 0 ) ), false );
+    }
+    world = round_trip_world( world );
+    site = world.find_site( site_id );
+    REQUIRE( site );
+    const std::string before = serialize_world( world );
+    const int prior_loot = site->shakedown_loot_value;
+    const int paid_value = site->active_hostile_operation.shakedown_pending_surrendered_value;
+    const int prior_bounty = site->remembered_bounty_estimate;
+    calendar::turn = calendar::start_of_cataclysm + 9125_minutes;
+    const bool changed = advance_live_bandit_hostile_returns_for_test();
+    if( condition != "non_home" ) {
+        CHECK( changed == accepted );
+    }
+    site = world.find_site( site_id );
+    REQUIRE( site );
+    if( accepted ) {
+        CHECK_FALSE( site->active_hostile_operation.is_active() );
+        CHECK( site->last_shakedown_outcome == "paid" );
+        CHECK( site->shakedown_loot_value == prior_loot + paid_value );
+        CHECK( site->remembered_bounty_estimate == prior_bounty + std::max( 1, paid_value / 1000 ) );
+        CHECK( site->applied_return_generation == generation );
+        CHECK( site->camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
+        for( int id : { 4, 6 } ) {
+            CHECK( site->find_member( character_id( id ) )->state == bandit_live_world::member_state::at_home );
+        }
+        const auto *settled_claim = world.find_hostile_target_opportunity( target_id, target_omt );
+        REQUIRE( settled_claim );
+        CHECK( settled_claim->revision == 113 );
+        CHECK( settled_claim->consumed_operation_id == operation_id );
+        CHECK( settled_claim->consumed_report_key == report_key );
+        CHECK( settled_claim->consumed_generation == generation );
+        world = round_trip_world( world );
+        const std::string settled = serialize_world( world );
+        calendar::turn += 5_minutes;
+        CHECK_FALSE( advance_live_bandit_hostile_returns_for_test() );
+        CHECK( serialize_world( world ) == settled );
+    } else {
+        CHECK( site->active_hostile_operation.is_active() );
+        CHECK( site->shakedown_loot_value == prior_loot );
+        CHECK( site->last_hostile_shakedown_generation == 0 );
+        for( int id : { 4, 6 } ) {
+            CHECK( site->find_member( character_id( id ) )->state == bandit_live_world::member_state::outbound );
+        }
+        if( condition != "non_home" ) {
+            CHECK( ( serialize_world( world ) == before ) );
+        }
+    }
+    CHECK( r054_actor_bytes( get_avatar() ) == original_claim );
 }
