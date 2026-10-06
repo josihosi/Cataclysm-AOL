@@ -11,10 +11,12 @@
 #include <cstring>
 #include <cwctype>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <stack>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "cached_options.h" // IWYU pragma: keep
@@ -35,6 +37,7 @@
 #include "point.h"
 #include "popup.h"
 #include "rng.h"
+#include "semantic_surface.h"
 #include "sdltiles.h" // IWYU pragma: keep
 #include "string_formatter.h"
 #include "string_input_popup.h"
@@ -488,11 +491,37 @@ void scrollable_text( const std::function<catacurses::window()> &init_window,
         wnoutrefresh( w );
     } );
 
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    std::string semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        // This screen can be an NPC/faction epilogue, not a process exit.
+        // Paging and timeout polls retain the same native close capability.
+        semantic_scope.emplace( *manager, "scrollable_text", title,
+        std::map<std::string, std::string>{ { "native_owner", "SCROLLABLE_TEXT" } },
+        std::vector<semantic_action_descriptor>{
+            { "scrollable_text.close", "", _( "Close" ), true }
+        }, [&semantic_action]( const semantic_action_request &request ) {
+            if( request.action_id != "scrollable_text.close" || request.stable_id.has_value() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = "QUIT";
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+    }
     std::string action;
     do {
         ui_manager::redraw();
-
-        action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        action = semantic_action.empty() ? ctxt.handle_input() : "";
+        if( !semantic_action.empty() ) {
+            action = std::exchange( semantic_action, std::string() );
+        }
         if( action == "UP" || action == "SCROLL_UP" || action == "DOWN" || action == "SCROLL_DOWN" ) {
             beg_line = inc_clamp( beg_line, action == "DOWN" || action == "SCROLL_DOWN", max_beg_line );
         } else if( action == "PAGE_UP" ) {

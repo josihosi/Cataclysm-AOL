@@ -25,6 +25,17 @@ extern "C" int ungetch( int );
 #include "compatibility.h"
 #include "cursesdef.h"
 #include "game.h"
+#include "do_turn.h"
+#include "ui_manager.h"
+#include "faction.h"
+#include "npc.h"
+#include "map_helpers.h"
+#include "options_helpers.h"
+#include "player_helpers.h"
+#include "scores_ui.h"
+#include "output.h"
+#include "input_context.h"
+#include <imgui/imgui.h>
 #include "main_menu.h"
 #include "semantic_surface.h"
 #include "worldfactory.h"
@@ -277,4 +288,241 @@ TEST_CASE( "main menu keeps a logical owner through native polling and retires r
         }
     }
 }
+TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
+           "[semantic_surface][scores_closeout_067]" )
+{
+    const std::string mode = GENERATE( "semantic", "keyboard", "death_chain" );
+    CAPTURE( mode );
+    const std::string run = "scores-" + mode;
+    const std::filesystem::path transport = std::filesystem::temp_directory_path() /
+            ( run + std::to_string( std::chrono::steady_clock::now().time_since_epoch().count() ) +
+              ".jsonl" );
+    std::ofstream( transport, std::ios::binary ).close();
+    scoped_environment run_env( "OPENCLAW_HARNESS_RUN_ID", run );
+    scoped_environment bound_env( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run );
+    scoped_environment transport_env( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport.string() );
+    on_out_of_scope remove_transport( [&] { std::filesystem::remove( transport ); } );
+    semantic_surface_manager &manager = openclaw_harness_semantic_surface_manager();
+    REQUIRE( manager.stack().empty() );
+    semantic_surface_manager_session session( manager );
+    const std::string old_locale = std::setlocale( LC_CTYPE, nullptr );
+    REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) != nullptr );
+    on_out_of_scope restore_locale( [&] { std::setlocale( LC_CTYPE, old_locale.c_str() ); } );
+#if defined(_WIN32)
+    const UINT old_codepage = GetConsoleOutputCP();
+    REQUIRE( SetConsoleOutputCP( CP_UTF8 ) );
+    on_out_of_scope restore_codepage( [&] { SetConsoleOutputCP( old_codepage ); } );
+#endif
+    if( ImGui::GetCurrentContext() == nullptr ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    test_mode = false;
+    const int previous_timeout = inp_mngr.get_timeout();
+    on_out_of_scope cleanup( [&] {
+        manager.set_descriptor_observer( {} );
+        manager.set_receipt_observer( {} );
+        inp_mngr.set_timeout( previous_timeout );
+        catacurses::endwin();
+    } );
+    const auto native_quit = []( const std::string &category ) {
+        const auto &keys = inp_mngr.get_input_for_action( "QUIT", category );
+        const auto key = std::find_if( keys.begin(), keys.end(), []( const input_event &event ) {
+            return event.type == input_event_t::keyboard_char && event.sequence.size() == 1 &&
+                   event.get_first_input() >= 0 && event.get_first_input() < 128;
+        } );
+        REQUIRE( key != keys.end() );
+        REQUIRE( ::ungetch( key->get_first_input() ) != -1 );
+    };
+    const auto append = [&]( const semantic_action_request &request ) {
+        std::ofstream file( transport, std::ios::binary | std::ios::app );
+        file << "{\"run_id\":\"" << request.run_id << "\",\"surface_id\":\"" << request.surface_id
+             << "\",\"frame_id\":\"" << request.frame_id << "\",\"request_id\":\"" << request.request_id
+             << "\",\"action_id\":\"" << request.action_id << "\"}\n";
+    };
+    semantic_surface_descriptor scores;
+    std::vector<semantic_action_receipt> receipts;
+    int score_publications = 0;
+    int epilogues = 0;
+    int rejected = 0;
+    bool duplicate_checked = false;
+    bool stale_successor_sent = false;
+    const auto close_request = [&] ( const std::string &id ) {
+        return semantic_action_request{ run, scores.surface_id, scores.frame_id, id, "scores.close",
+                                        std::nullopt, {} };
+    };
+    const auto reject_request = [&]( int index ) {
+        semantic_action_request request = close_request( "reject-" + std::to_string( index ) );
+        if( index == 0 ) {
+            request.run_id = "foreign-run";
+        } else if( index == 1 ) {
+            request.frame_id = "stale-frame";
+        } else if( index == 2 ) {
+            request.surface_id = "foreign-owner";
+        } else {
+            request.action_id = "unadvertised";
+        }
+        append( request );
+    };
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        if( descriptor.kind == "scores" ) {
+            ++score_publications;
+            scores = descriptor;
+            REQUIRE( descriptor.valid_actions.size() == 1 );
+            CHECK( descriptor.valid_actions.front().id == "scores.close" );
+            CHECK( descriptor.payload.at( "native_owner" ) == "SCORES_UI" );
+            // Actual redraw and native timeout leave the one close capability current.
+            ui_manager::redraw();
+            input_context idle( "SCORES_UI" );
+            CHECK( idle.handle_input( 1 ) == "TIMEOUT" );
+            REQUIRE( manager.top() );
+            CHECK( manager.top()->frame_id == descriptor.frame_id );
+            CHECK( manager.top()->surface_id == descriptor.surface_id );
+            if( mode == "keyboard" ) {
+                native_quit( "SCORES_UI" );
+            } else if( mode == "semantic" ) {
+                reject_request( 0 );
+            } else {
+                append( close_request( "close" ) );
+            }
+        } else if( descriptor.kind == "terminal" ) {
+            CHECK( descriptor.payload.at( "actual_death" ) == "true" );
+            REQUIRE( manager.submit_request( { run, descriptor.surface_id, descriptor.frame_id,
+                                               "end-confirm", "terminal.confirm", std::nullopt, {} } ) );
+        } else if( descriptor.kind == "message_log" ) {
+            append( { run, descriptor.surface_id, descriptor.frame_id, "messages-close",
+                      "message_log.close", std::nullopt, {} } );
+        } else if( descriptor.kind == "prompt" ) {
+            INFO( "Actual prompt: " << descriptor.payload.at( "text" ) );
+            const bool diary = descriptor.payload.at( "text" ).find( "Open diary" ) != std::string::npos;
+            CHECK( ( diary || descriptor.payload.at( "text" ).find( "Really quit?" ) == 0 ) );
+            const auto no = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            [&]( const semantic_action_descriptor &action ) {
+                return action.id == "prompt.choose" && action.label == ( diary ? "NO" : "YES" );
+            } );
+            REQUIRE( no != descriptor.valid_actions.end() );
+            REQUIRE( manager.submit_request( { run, descriptor.surface_id, descriptor.frame_id,
+                                               diary ? "diary-no" : "menu-yes", no->id, no->stable_id, {} } ) );
+        } else if( descriptor.kind == "scrollable_text" ) {
+            CHECK( descriptor.payload.at( "native_owner" ) == "SCROLLABLE_TEXT" );
+            const auto stack = manager.stack();
+            CHECK( std::none_of( stack.begin(), stack.end(),
+            []( const semantic_surface_descriptor &entry ) { return entry.kind == "scores"; } ) );
+            input_context idle( "SCROLLABLE_TEXT" );
+            CHECK( idle.handle_input( 1 ) == "TIMEOUT" );
+            CHECK( manager.top()->frame_id == descriptor.frame_id );
+            if( mode == "keyboard" ) {
+                // Native DOWN then QUIT exercise the unchanged paging route.
+                native_quit( "SCROLLABLE_TEXT" );
+                const auto &keys = inp_mngr.get_input_for_action( "DOWN", "SCROLLABLE_TEXT" );
+                REQUIRE_FALSE( keys.empty() );
+                REQUIRE( ::ungetch( keys.front().get_first_input() ) != -1 );
+            } else {
+                CHECK( mode == "death_chain" );
+                ++epilogues;
+                if( !stale_successor_sent ) {
+                    stale_successor_sent = true;
+                    append( close_request( "stale-successor" ) );
+                }
+                append( { run, descriptor.surface_id, descriptor.frame_id,
+                          "epilogue-" + std::to_string( epilogues ), "scrollable_text.close", std::nullopt, {} } );
+            }
+        } else if( descriptor.kind == "main_menu" ) {
+            CHECK( mode == "death_chain" );
+            append( { run, descriptor.surface_id, descriptor.frame_id, "menu-quit",
+                      "main_menu.quit", std::nullopt, {} } );
+        }
+    } );
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+        if( receipt.request_id.rfind( "reject-", 0 ) == 0 ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.consuming_surface_id == scores.surface_id );
+            CHECK( receipt.consuming_frame_id == scores.frame_id );
+            if( ++rejected < 4 ) {
+                reject_request( rejected );
+            } else {
+                append( close_request( "close" ) );
+            }
+        } else if( receipt.request_id == "close" && !duplicate_checked ) {
+            CHECK( receipt.accepted );
+            duplicate_checked = true;
+            CHECK_FALSE( manager.submit_request( close_request( "close" ) ) );
+        } else if( receipt.request_id == "stale-successor" ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.rejection_reason == "wrong_surface" );
+        }
+    } );
+    if( mode == "death_chain" ) {
+        // Catch has no running game mode.  The real save/load finalization
+        // installs the ordinary mode required by death_screen's first caller.
+        REQUIRE( world_generator->active_world );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        clear_character( get_avatar(), true );
+        clear_map();
+        clear_npcs();
+        npc &follower = spawn_npc( { 60, 60 }, "test_talker" );
+        g->add_npc_follower( follower.getID() );
+        faction *with_epilogue = nullptr;
+        for( const auto &entry : g->faction_manager_ptr->all() ) {
+            faction *fac = g->faction_manager_ptr->get( entry.first );
+            fac->known_by_u = false;
+            if( !with_epilogue && !fac->epilogue().empty() ) {
+                with_epilogue = fac;
+            }
+        }
+        REQUIRE( with_epilogue );
+        with_epilogue->known_by_u = true;
+        override_option retain_world( "WORLD_END", "keep" );
+        override_option deathcam( "DEATHCAM", "never" );
+        restore_on_out_of_scope<quit_status> restore_quit( g->uquit );
+
+        get_avatar().set_part_hp_cur( bodypart_id( "head" ), 0 );
+        REQUIRE( g->do_turn() ); // Actual death producer, last words, and cleanup chain.
+        CHECK( epilogues == 2 );
+        CHECK( stale_successor_sent );
+        // Death cleanup unloaded the map.  Restore only the HP changed by
+        // this fixture, without a full character reset that calls setpos.
+        get_avatar().set_part_hp_cur( bodypart_id( "head" ),
+                                     get_avatar().get_part_hp_max( bodypart_id( "head" ) ) );
+        const auto world_options = world_generator->active_world->WORLD_OPTIONS;
+        const auto world_mods = world_generator->active_world->active_mod_order;
+        avatar previous_avatar = std::move( get_avatar() );
+        on_out_of_scope restore_avatar( [&] { get_avatar() = std::move( previous_avatar ); } );
+        on_out_of_scope restore_world( [&] {
+            WORLD *world = world_generator->get_world( world_name );
+            world->WORLD_OPTIONS = world_options;
+            world->active_mod_order = world_mods;
+            world_generator->set_active_world( world );
+            g->load_world_modfiles();
+        } );
+        main_menu menu;
+        CHECK_FALSE( menu.opening_screen() );
+        CHECK( std::any_of( receipts.begin(), receipts.end(), []( const semantic_action_receipt &receipt ) {
+            return receipt.request_id == "menu-yes" && receipt.accepted;
+        } ) );
+    } else {
+        show_scores_ui();
+        if( mode == "keyboard" ) {
+            std::string long_text;
+            for( int i = 0; i < 100; ++i ) {
+                long_text += "Native scroll line " + std::to_string( i ) + "\n";
+            }
+            scrollable_text( [] { return catacurses::newwin( 10, 40, point::zero ); },
+                             "Paging control", long_text );
+        }
+    }
+    CHECK( score_publications == 1 );
+    CHECK( manager.stack().empty() );
+    CHECK_FALSE( manager.has_pending_request() );
+    CHECK( rejected == ( mode == "semantic" ? 4 : 0 ) );
+    CHECK( duplicate_checked == ( mode != "keyboard" ) );
+    CHECK( active_semantic_surface_manager() == &manager );
+}
+
 #endif

@@ -6,6 +6,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -22,6 +23,7 @@
 #include "localized_comparator.h"
 #include "mtype.h"
 #include "past_games_info.h"
+#include "semantic_surface.h"
 #include "stats_tracker.h"
 #include "string_formatter.h"
 #include "string_id.h"
@@ -115,10 +117,40 @@ void scores_ui::draw_scores_ui()
     // Smooths out our handling, makes tabs load immediately after input instead of waiting for next.
     ctxt.set_timeout( 10 );
 
+    // Keep one logical Scores owner through redraws and timeout polls.  The
+    // callback storage lives until that owner leaves; close follows native QUIT.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    std::string semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "scores", _( "Your scores" ),
+        std::map<std::string, std::string>{ { "native_owner", "SCORES_UI" } },
+        std::vector<semantic_action_descriptor>{
+            { "scores.close", "", _( "Close scores" ), true }
+        }, [&semantic_action]( const semantic_action_request &request ) {
+            if( request.action_id != "scores.close" || request.stable_id.has_value() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = "QUIT";
+            // Leaving Scores does not exit the game: native death cleanup may
+            // still open NPC/faction epilogues, then return to the main menu.
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+    }
+
     while( true ) {
         ui_manager::redraw_invalidated();
-
-        p_impl.last_action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        p_impl.last_action = semantic_action.empty() ? ctxt.handle_input() : "";
+        // Input may consume a request while blocked in handle_input.
+        if( !semantic_action.empty() ) {
+            p_impl.last_action = std::exchange( semantic_action, std::string() );
+        }
 
         if( p_impl.last_action == "QUIT" || !p_impl.get_is_open() ) {
             break;
