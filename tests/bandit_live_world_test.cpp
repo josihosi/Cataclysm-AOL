@@ -46497,10 +46497,10 @@ struct r066_visit_scene {
         get_map().build_map_cache( get_avatar().posz() );
         collector->regen_ai_cache();
     }
-    npc &camp_receiver() {
+    npc &camp_receiver( const std::string &npc_template = "test_talker" ) {
         overmap_buffer.add_camp( basecamp( "R066 receiver camp", target ) );
         camp_added = true;
-        recipient = &spawn_npc( collector->pos_bub().xy() + point( 2, 0 ), "test_talker" );
+        recipient = &spawn_npc( collector->pos_bub().xy() + point( 2, 0 ), npc_template );
         recipient->set_fac( faction_id( "your_followers" ) );
         recipient->set_attitude( NPCATT_NULL );
         recipient->assigned_camp = target;
@@ -46914,7 +46914,15 @@ TEST_CASE( "real local approach establishes communication before the doorstep",
         }
     }
     if( camp_contact || condition == "wrong_camp" ) {
-        scene.camp_receiver();
+        // test_talker is a doctor merchant: on_load restocks nearby tiles,
+        // and ordinary pickup/stow can consume every movement call. This
+        // communication control needs a resident, not a generated shop.
+        scene.camp_receiver( "thug" );
+        REQUIRE_FALSE( scene.recipient->is_shopkeeper() );
+        const auto nearby = get_map().points_in_radius( scene.collector->pos_bub(), 6 );
+        REQUIRE( std::none_of( nearby.begin(), nearby.end(), []( const tripoint_bub_ms &tile ) {
+            return !get_map().i_at( tile ).empty();
+        } ) );
         scene.distant_adjacent_avatar();
         if( condition == "wrong_camp" ) { scene.recipient->assigned_camp = scene.target + point( 0, 3 ); }
         if( condition == "camp_npc_unregistered" ) {
