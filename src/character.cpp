@@ -4602,6 +4602,11 @@ int Character::get_shout_volume() const
 
 int Character::shout( std::string msg, bool order )
 {
+    return shout( std::move( msg ), order, nullptr );
+}
+
+int Character::shout( std::string msg, bool order, const sounds::robbery_demand *demand )
+{
     int base = 10;
     std::string shout;
 
@@ -4658,9 +4663,13 @@ int Character::shout( std::string msg, bool order )
         add_msg_if_player( m_warning, _( "The sound of your voice is significantly muffled!" ) );
     }
 
-    sounds::sound( pos_bub(), noise, order ? sounds::sound_t::order : sounds::sound_t::alert, msg,
-                   false,
-                   "shout", shout );
+    if( demand != nullptr ) {
+        sounds::sound( pos_bub(), noise, order ? sounds::sound_t::order : sounds::sound_t::alert,
+                       msg, *demand, "shout", shout );
+    } else {
+        sounds::sound( pos_bub(), noise, order ? sounds::sound_t::order : sounds::sound_t::alert, msg,
+                       false, "shout", shout );
+    }
     return std::max( 0, noise );
 }
 

@@ -19,6 +19,7 @@
 #include "creature_tracker.h"
 #include "debug.h"
 #include "effect.h"
+#include "do_turn.h"
 #include "enums.h"
 #include "game.h"
 #include "game_constants.h"
@@ -203,6 +204,7 @@ struct sound_event {
     std::string variant;
     std::string season;
     std::optional<npc_alarm> alarm;
+    std::optional<sounds::robbery_demand> robbery;
 };
 
 struct significant_sound_event {
@@ -332,6 +334,31 @@ static int sound_distance( const tripoint_bub_ms &source, const tripoint_bub_ms 
     return rl_dist( source.xy(), sink.xy() ) + vertical_attenuation;
 }
 
+static int sound_heard_volume( int raw_volume, int weather_volume,
+                              float hearing_multiplier, int distance )
+{
+    return static_cast<int>( ( raw_volume - weather_volume ) * hearing_multiplier ) - distance;
+}
+
+bool sounds::can_hear_local_sound( const Character &hearer,
+                                  const tripoint_bub_ms &source, int volume )
+{
+    return !hearer.is_deaf() && ( source == hearer.pos_bub() ||
+           sound_heard_volume( volume, get_weather().weather_id->sound_attn,
+                              hearer.hearing_ability(), sound_distance( hearer.pos_bub(), source ) ) > 0 );
+}
+
+bool sounds::robbery_demand_pending( const robbery_demand &demand )
+{
+    return std::any_of( sounds_since_last_turn.begin(), sounds_since_last_turn.end(),
+    [&demand]( const auto &entry ) {
+        const auto &pending = entry.second.robbery;
+        return pending && pending->site_id == demand.site_id &&
+               pending->operation_id == demand.operation_id && pending->generation == demand.generation &&
+               pending->speaker_id == demand.speaker_id && pending->emitted_turn == demand.emitted_turn;
+    } );
+}
+
 static std::string season_str( const season_type &season )
 {
     switch( season ) {
@@ -408,8 +435,18 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     }
     sounds_since_last_turn.emplace_back( p,
                                          sound_event{ vol, category, description, ambient,
-                                                 false, id, variant, seas_str, std::nullopt } );
+                                                 false, id, variant, seas_str, std::nullopt, std::nullopt } );
     record_significant_sound( p, vol, significant_kind );
+}
+
+void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
+                    const std::string &description, const robbery_demand &demand,
+                    const std::string &id, const std::string &variant )
+{
+    sound( p, vol, category, description, false, id, variant );
+    if( vol > 0 ) {
+        sounds_since_last_turn.back().second.robbery = demand;
+    }
 }
 
 void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
@@ -443,7 +480,7 @@ void sounds::add_footstep( const tripoint_bub_ms &p, int volume, int, monster *,
     const season_type seas = season_of_year( calendar::turn );
     const std::string seas_str = season_str( seas );
     sounds_since_last_turn.emplace_back( p, sound_event { volume,
-                                         sound_t::movement, footstep, false, true, "", "", seas_str, std::nullopt } );
+                                         sound_t::movement, footstep, false, true, "", "", seas_str, std::nullopt, std::nullopt } );
 }
 
 template <typename C>
@@ -657,6 +694,11 @@ static bool describe_sound( sounds::sound_t category, bool from_player_position 
 
 void sounds::process_sound_markers( Character *you )
 {
+    process_sound_markers( you, false );
+}
+
+void sounds::process_sound_markers( Character *you, bool robbery_only )
+{
     const map &here = get_map();
 
     bool is_deaf = you->is_deaf();
@@ -669,6 +711,14 @@ void sounds::process_sound_markers( Character *you )
         // so the references may become invalid after the vector enlarged its internal buffer
         const tripoint_bub_ms pos = tripoint_bub_ms( sounds_since_last_turn[i].first );
         const sound_event sound = sounds_since_last_turn[i].second;
+        if( robbery_only && !sound.robbery ) {
+            continue;
+        }
+        if( sound.robbery && ( you->is_dead_state() || !here.inbounds( pos ) ||
+                              !here.inbounds( you->pos_bub() ) ||
+                              ( you->is_npc() && !you->as_npc()->is_active() ) ) ) {
+            continue;
+        }
         const int distance_to_sound = sound_distance( you->pos_bub(), pos );
         const int raw_volume = sound.volume;
 
@@ -708,8 +758,8 @@ void sounds::process_sound_markers( Character *you )
         }
 
         // The heard volume of a sound is the player heard volume, regardless of true volume level.
-        const int heard_volume = static_cast<int>( ( raw_volume - weather_vol ) *
-                                 volume_multiplier ) - distance_to_sound;
+        const int heard_volume = sound_heard_volume( raw_volume, weather_vol,
+                                 volume_multiplier, distance_to_sound );
 
         if( heard_volume <= 0 && pos != you->pos_bub() ) {
             continue;
@@ -740,8 +790,29 @@ void sounds::process_sound_markers( Character *you )
                 continue;
             }
         }
-        // See if we need to wake someone up
-        if( you->in_sleep_state() ) {
+        // A real heard robbery demand owns deterministic ordinary waking,
+        // independently of faction membership or payment eligibility. Keep
+        // forced episodes intact and let the normal effect/scheduler pass
+        // expire wake_up's zero-duration sleep before admitting a receiver.
+        if( sound.robbery ) {
+            if( you->has_effect( effect_narcosis ) ||
+                you->has_effect( efftype_id( "npc_suspend" ) ) ||
+                you->has_bionic( bio_sleep_shutdown ) || you->is_involuntarily_asleep() ) {
+                continue;
+            }
+            if( you->in_sleep_state() ) {
+                if( !you->has_effect( effect_sleep ) ||
+                    you->get_effect( effect_sleep ).get_duration() > 0_turns ) {
+                    you->wake_up();
+                    if( you->is_avatar() && you->activity && you->activity.is_interruptible() ) {
+                        you->cancel_activity();
+                    }
+                }
+            }
+            hear_bandit_shakedown_demand( *sound.robbery, *you );
+        }
+        // Demand waking does not fall through to the generic heavy-sleeper roll.
+        if( you->in_sleep_state() && !sound.robbery ) {
             if( ( ( !( you->has_trait( trait_HEAVYSLEEPER ) ||
                        you->has_trait( trait_HEAVYSLEEPER2 ) ) && dice( 2, 15 ) < heard_volume ) ||
                   ( you->has_trait( trait_HEAVYSLEEPER ) && dice( 3, 15 ) < heard_volume ) ||
@@ -770,7 +841,7 @@ void sounds::process_sound_markers( Character *you )
 
         // don't print our own noise or things without descriptions
         if( !sound.ambient && ( pos != you->pos_bub() ) && !here.pl_sees( pos, distance_to_sound ) ) {
-            if( uistate.distraction_noise &&
+            if( !sound.robbery && uistate.distraction_noise &&
                 !you->activity.is_distraction_ignored( distraction_type::noise ) &&
                 !get_safemode().is_sound_safe( sound.description, distance_to_sound, you->controlling_vehicle ) ) {
                 const std::string query = string_format( _( "Heard %s!" ),

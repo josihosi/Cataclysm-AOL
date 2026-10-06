@@ -11667,3 +11667,44 @@ TEST_CASE( "current operation owns voluntary sleep without owning survival or st
         CHECK( oracle.can_sleep( "" ) == behavior::status_t::running );
     }
 }
+
+TEST_CASE( "loaded NPC outside avatar sound cutoff still hears a local robbery demand",
+           "[npc][audible_demand_cutoff_067]" )
+{
+    const bool loaded = GENERATE( true, false );
+    INFO( loaded );
+    clear_map();
+    clear_avatar();
+    on_out_of_scope cleanup( []() { sounds::reset_sounds(); clear_npcs(); } );
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 100, 100, 0 ) );
+    npc &speaker = spawn_npc( point_bub_ms( 20, 20 ), "test_talker" );
+    npc &hearer = spawn_npc( point_bub_ms( 21, 20 ), "test_talker" );
+    REQUIRE( rl_dist( hearer.pos_bub(), get_avatar().pos_bub() ) >= MAX_VIEW_DISTANCE );
+    REQUIRE( get_map().inbounds( hearer.pos_bub() ) );
+    REQUIRE( hearer.can_hear( speaker.pos_bub(), speaker.get_shout_volume() ) );
+    hearer.set_mutation( trait_id( "HEAVYSLEEPER2" ) );
+    hearer.fall_asleep( 1_hours );
+    hearer.set_moves( 19 );
+    sounds::reset_sounds();
+    REQUIRE( speaker.shout( "ordinary speech" ) > 2 );
+    sounds::process_sound_markers( &hearer, true );
+    CHECK( hearer.get_effect_dur( efftype_id( "sleep" ) ) == 1_hours );
+    sounds::reset_sounds();
+    // A real native voice event: an unknown operation cannot gain a receiver,
+    // while native audibility still wakes an ordinary sleeping bystander.
+    const sounds::robbery_demand demand{ "unknown-site", "unknown-operation", 1,
+                speaker.getID(), to_turn<int>( calendar::turn ) };
+    REQUIRE( speaker.shout( "We want payment. Pay us, or fight!", false, &demand ) > 2 );
+    if( !loaded ) { g->remove_npc( hearer.getID() ); }
+    sounds::process_sound_markers( &hearer, true );
+    std::cout << "R067_DEMAND_CUTOFF loaded=" << loaded
+              << " speaker=" << speaker.pos_abs() << " volume=" << speaker.get_shout_volume()
+              << " recipient=" << hearer.pos_abs() << " avatar=" << get_avatar().pos_abs()
+              << " avatar_distance=" << rl_dist( hearer.pos_bub(), get_avatar().pos_bub() )
+              << " ordinary_cutoff=" << MAX_VIEW_DISTANCE << '\n';
+    CHECK( hearer.get_effect_dur( efftype_id( "sleep" ) ) == ( loaded ? 0_turns : 1_hours ) );
+    CHECK( hearer.get_moves() == 19 );
+    CHECK( hearer.in_sleep_state() );
+    hearer.Creature::process_effects();
+    CHECK( hearer.in_sleep_state() == !loaded );
+}

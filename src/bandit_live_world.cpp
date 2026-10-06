@@ -9308,6 +9308,9 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "shakedown_pending_surrendered_value", shakedown_pending_surrendered_value );
     json.member( "shakedown_pending_reachable_value", shakedown_pending_reachable_value );
     json.member( "shakedown_pending_basecamp_scene", shakedown_pending_basecamp_scene );
+    json.member( "shakedown_demand_emitted_turn", shakedown_demand_emitted_turn );
+    json.member( "shakedown_demand_volume", shakedown_demand_volume );
+    json.member( "shakedown_demand_speaker_id", shakedown_demand_speaker_id );
     json.member( "shakedown_contact_established", shakedown_contact_established );
     json.member( "shakedown_receiver_id", shakedown_receiver_id );
     json.member( "shakedown_receiver_is_avatar", shakedown_receiver_is_avatar );
@@ -9361,6 +9364,9 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "shakedown_pending_surrendered_value", candidate.shakedown_pending_surrendered_value );
     jo.read( "shakedown_pending_reachable_value", candidate.shakedown_pending_reachable_value );
     jo.read( "shakedown_pending_basecamp_scene", candidate.shakedown_pending_basecamp_scene );
+    jo.read( "shakedown_demand_emitted_turn", candidate.shakedown_demand_emitted_turn );
+    jo.read( "shakedown_demand_volume", candidate.shakedown_demand_volume );
+    jo.read( "shakedown_demand_speaker_id", candidate.shakedown_demand_speaker_id );
     jo.read( "shakedown_contact_established", candidate.shakedown_contact_established );
     jo.read( "shakedown_receiver_id", candidate.shakedown_receiver_id );
     jo.read( "shakedown_receiver_is_avatar", candidate.shakedown_receiver_is_avatar );

@@ -86,6 +86,11 @@ class ui_adaptor;
 class vehicle;
 class vpart_reference;
 
+namespace sounds
+{
+struct robbery_demand;
+}
+
 namespace catacurses
 {
 class window;
@@ -3341,6 +3346,7 @@ class Character : public Creature, public visitable
         int get_shout_volume() const;
         // Shouts a message; returns the emitted native volume, or 0 on refusal.
         int shout( std::string msg = "", bool order = false );
+        int shout( std::string msg, bool order, const sounds::robbery_demand *demand );
         //signals player location to nemesis for "Hunted" trait
         void signal_nemesis();
         /** Handles Character vomiting effects */

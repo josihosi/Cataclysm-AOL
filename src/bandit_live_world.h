@@ -875,6 +875,12 @@ struct hostile_operation_state {
     // Communication belongs to this reservation, not to simulation ownership.
     // A camp receiver authorizes player control of the camp response, never
     // knowledge of a distant avatar or use of that avatar's inventory.
+    // The last successful native emission is bounded to this exact reservation.
+    // The receiver fields below also retain an actually heard, not-yet-awake
+    // recipient while normal sleep effect expiry completes.
+    int shakedown_demand_emitted_turn = -1;
+    int shakedown_demand_volume = 0;
+    character_id shakedown_demand_speaker_id;
     bool shakedown_contact_established = false;
     character_id shakedown_receiver_id;
     bool shakedown_receiver_is_avatar = false;

@@ -34,6 +34,14 @@ struct shakedown_surface;
 struct local_gate_input;
 } // namespace bandit_live_world
 
+namespace sounds
+{
+struct robbery_demand;
+}
+// Called only after the existing sound pipeline establishes actual audibility.
+// It records a candidate in the current operation, never contact or a target.
+void hear_bandit_shakedown_demand( const sounds::robbery_demand &demand, Character &hearer );
+
 void handle_key_blocking_activity();
 // A successful unrelated native conversation cancels only a deferred Pay
 // choice. The demand and its trade successor do not enter avatar::talk_to.

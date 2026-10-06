@@ -1020,6 +1020,23 @@ int live_bandit_nearby_basecamp_defender_count( const Character &u )
     return defenders;
 }
 
+bool live_bandit_shakedown_receiver_eligible( const bandit_live_world::site_record &site,
+        const Character &receiver, bool require_awake )
+{
+    const auto &route = site.active_hostile_operation.reservation.shared_route;
+    if( route.empty() || receiver.is_dead_state() ||
+        receiver.has_effect( effect_narcosis ) || receiver.has_effect( effect_npc_suspend ) ||
+        receiver.has_bionic( bio_sleep_shutdown ) || receiver.is_involuntarily_asleep() ||
+        ( require_awake && receiver.in_sleep_state() ) ||
+        !get_map().inbounds( receiver.pos_bub() ) ) {
+        return false;
+    }
+    const npc *recipient = receiver.as_npc();
+    return receiver.is_avatar() || ( recipient != nullptr && recipient->is_active() &&
+           recipient->is_player_ally() && recipient->assigned_camp &&
+           recipient->assigned_camp->xy() == route.back().xy() );
+}
+
 Character *live_bandit_shakedown_receiver( const bandit_live_world::site_record &site );
 bool live_bandit_shakedown_speaker_ready( const npc &actor );
 
@@ -4501,6 +4518,7 @@ struct shakedown_speaker_readiness {
     int shout_volume;
     bool sleeping;
     bool narcosis;
+    bool suspended;
     bool fleeing;
     bool fleeing_temporary;
     bool runaway;
@@ -4509,7 +4527,7 @@ struct shakedown_speaker_readiness {
     bool hostile_target;
 
     bool ready() const {
-        return shout_volume > 2 && !sleeping && !narcosis && !fleeing &&
+        return shout_volume > 2 && !sleeping && !narcosis && !suspended && !fleeing &&
                !fleeing_temporary && !runaway && !dangerous_field && !hostile_target;
     }
 };
@@ -4520,7 +4538,8 @@ shakedown_speaker_readiness live_bandit_shakedown_speaker_readiness( const npc &
     // indistinct voice at its minimum volume of two. Neither delivers a demand.
     const Creature *const target = actor.current_target();
     return { actor.get_shout_volume(), actor.in_sleep_state(), actor.has_effect( effect_narcosis ),
-             actor.get_attitude() == NPCATT_FLEE, actor.get_attitude() == NPCATT_FLEE_TEMP,
+             actor.has_effect( effect_npc_suspend ), actor.get_attitude() == NPCATT_FLEE,
+             actor.get_attitude() == NPCATT_FLEE_TEMP,
              actor.has_effect( effect_npc_run_away ), get_map().dangerous_field_at( actor.pos_bub() ),
              target, target != nullptr && actor.attitude_to( *target ) == Creature::Attitude::HOSTILE };
 }
@@ -4544,17 +4563,8 @@ Character *live_bandit_shakedown_receiver( const bandit_live_world::site_record 
                           static_cast<Character *>( &get_avatar() ) :
                           static_cast<Character *>( g->find_npc( operation.shakedown_receiver_id ) );
     if( receiver == nullptr || receiver->getID() != operation.shakedown_receiver_id ||
-        receiver->is_dead_state() || receiver->in_sleep_state() || receiver->has_effect( effect_narcosis ) ||
-        !get_map().inbounds( receiver->pos_bub() ) ) {
+        !live_bandit_shakedown_receiver_eligible( site, *receiver, true ) ) {
         return nullptr;
-    }
-    if( receiver->is_npc() ) {
-        const npc &recipient = *receiver->as_npc();
-        if( !recipient.is_active() || !recipient.is_player_ally() ||
-            !recipient.assigned_camp || outing.shared_route.empty() ||
-            recipient.assigned_camp->xy() != outing.shared_route.back().xy() ) {
-            return nullptr;
-        }
     }
     return receiver;
 }
@@ -4597,71 +4607,87 @@ bool live_bandit_establish_shakedown_communication( bandit_live_world::site_reco
         }
         party.push_back( actor );
     }
-    Character *receiver = nullptr;
     npc *speaker = nullptr;
-    bool by_shout = false;
     for( npc *actor : party ) {
-        if( !live_bandit_shakedown_speaker_ready( *actor ) ) {
-            continue;
-        }
-        const auto understands = [&]( Character &recipient ) {
-            return !recipient.is_dead_state() &&
-                   !recipient.has_effect( effect_npc_suspend ) &&
-                   ( !recipient.in_sleep_state() || ( recipient.is_avatar() &&
-                           !recipient.has_bionic( bio_sleep_shutdown ) ) ) &&
-                   !recipient.has_effect( effect_narcosis ) &&
-                   here.inbounds( recipient.pos_bub() ) &&
-                   recipient.can_hear( actor->pos_bub(), actor->get_shout_volume() );
-        };
-        // Hearing uses the game's actual weather/hearing/shout rules. A real
-        // emitted shout below records the communication; visibility alone
-        // never grants an unreachable or unheard receiver a remote demand.
-        if( understands( get_avatar() ) ) {
-            receiver = &get_avatar();
-        } else {
-            // Actual NPC camp assignment is the membership authority. Older
-            // prepared camps need not also have a registry object to receive speech.
-            for( npc &recipient : g->all_npcs() ) {
-                if( recipient.is_active() && recipient.is_player_ally() && recipient.assigned_camp &&
-                    recipient.assigned_camp->xy() == outing.shared_route.back().xy() &&
-                    understands( recipient ) ) {
-                    receiver = &recipient;
-                    break;
-                }
-            }
-        }
-        if( receiver != nullptr ) {
+        if( live_bandit_shakedown_speaker_ready( *actor ) &&
+            actor->getID() == operation.shakedown_demand_speaker_id ) {
             speaker = actor;
-            by_shout = !actor->sees( here, *receiver );
             break;
         }
     }
-    if( receiver == nullptr || speaker == nullptr ) {
+    if( speaker == nullptr ) {
+        for( npc *actor : party ) {
+            if( live_bandit_shakedown_speaker_ready( *actor ) ) {
+                speaker = actor;
+                break;
+            }
+        }
+    }
+    if( speaker == nullptr ) {
         return false;
     }
-    bool shouted = false;
-    if( receiver->is_avatar() && receiver->in_sleep_state() ) {
-        // Hearing was checked against this actual speaker. A directed robbery
-        // shout can interrupt ordinary sleep, but never anesthesia/shutdown.
-        // wake_up expires sleep through the normal effect clock; until then
-        // there is no responsive receiver and no established contact/menu.
-        if( receiver->has_effect( effect_sleep ) &&
-            receiver->get_effect( effect_sleep ).get_duration() <= 0_turns ) {
-            return false;
-        }
-        if( receiver->activity && !receiver->activity.is_interruptible() ) {
-            return false;
-        }
-        speaker->shout( _( "We want payment. Pay us, or fight!" ) );
-        shouted = true;
-        receiver->wake_up();
-        if( receiver->activity ) {
-            receiver->cancel_activity();
-        }
-        if( receiver->in_sleep_state() ) {
-            return false;
-        }
+    Character *receiver = operation.shakedown_receiver_is_avatar ?
+                          static_cast<Character *>( &get_avatar() ) :
+                          static_cast<Character *>( g->find_npc( operation.shakedown_receiver_id ) );
+    const bool heard_current_speaker = operation.shakedown_demand_emitted_turn >= 0 &&
+                                       speaker->getID() == operation.shakedown_demand_speaker_id;
+    const bool current_receipt = heard_current_speaker && receiver != nullptr &&
+                                 receiver->getID() == operation.shakedown_receiver_id &&
+                                 live_bandit_shakedown_receiver_eligible( site, *receiver, false ) &&
+                                 sounds::can_hear_local_sound( *receiver, speaker->pos_bub(),
+                                         operation.shakedown_demand_volume );
+    if( current_receipt && receiver->has_effect( effect_sleep ) &&
+        receiver->get_effect( effect_sleep ).get_duration() <= 0_turns ) {
+        // Actual hearing already requested wake. Wait for normal effect expiry,
+        // rather than repeating the voice or bypassing scheduler exclusion.
+        return false;
     }
+    if( !current_receipt || !live_bandit_shakedown_receiver_eligible( site, *receiver, true ) ) {
+        const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+        const bool emitted = operation.shakedown_demand_emitted_turn >= 0;
+        const sounds::robbery_demand previous{ site.site_id, outing.activity_id, outing.generation,
+                  operation.shakedown_demand_speaker_id, operation.shakedown_demand_emitted_turn };
+        if( emitted && ( turn <= operation.shakedown_demand_emitted_turn ||
+                         sounds::robbery_demand_pending( previous ) ) ) {
+            return false;
+        }
+        // An undelivered/unheard/invalidated receipt is not a permanent lock.
+        // Retry only at an actual new audible opportunity, not each callback
+        // while nobody can hear. This predicate grants no hearing or contact.
+        const auto can_receive = [&]( Character &recipient ) {
+            return live_bandit_shakedown_receiver_eligible( site, recipient, false ) &&
+                   sounds::can_hear_local_sound( recipient, speaker->pos_bub(),
+                                                speaker->get_shout_volume() );
+        };
+        if( emitted && !can_receive( get_avatar() ) ) {
+            bool audible_recipient = false;
+            for( npc &recipient : g->all_npcs() ) {
+                if( can_receive( recipient ) ) {
+                    audible_recipient = true;
+                    break;
+                }
+            }
+            if( !audible_recipient ) {
+                return false;
+            }
+        }
+        const sounds::robbery_demand demand{ site.site_id, outing.activity_id,
+                  outing.generation, speaker->getID(), turn };
+        const int volume = speaker->shout( _( "We want payment. Pay us, or fight!" ), false, &demand );
+        if( volume <= 2 ) {
+            return false;
+        }
+        // Persist the last actual emission on the same reservation. It cannot
+        // be rolled back by a later contact refusal. A new event must earn its
+        // own actual hearing; an old candidate never authenticates this voice.
+        operation.shakedown_demand_emitted_turn = turn;
+        operation.shakedown_demand_volume = volume;
+        operation.shakedown_demand_speaker_id = speaker->getID();
+        operation.shakedown_receiver_id = character_id();
+        operation.shakedown_receiver_is_avatar = false;
+        return false;
+    }
+    const bool by_shout = !speaker->sees( here, *receiver );
     site_record candidate = site;
     if( operation.phase == hostile_operation_phase::approaching ) {
         const auto cursor = current_external_simulation_cursor( site );
@@ -4683,9 +4709,6 @@ bool live_bandit_establish_shakedown_communication( bandit_live_world::site_reco
     }
     site = std::move( candidate );
     const auto &committed_contact = site.active_hostile_operation;
-    if( !shouted ) {
-        speaker->shout( _( "We want payment. Pay us, or fight!" ) );
-    }
     const auto scope = raid_decision_trace::environment_selected_npcs();
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
     if( scope.includes_turn( turn ) &&
@@ -17117,6 +17140,36 @@ bool consume_explicit_bandit_shakedown_fight_for_test( bandit_live_world::site_r
     return live_bandit_consume_explicit_fight( site, surface, activity_id, generation, receiver_id );
 }
 
+void hear_bandit_shakedown_demand( const sounds::robbery_demand &demand, Character &hearer )
+{
+    using namespace bandit_live_world;
+    site_record *site = overmap_buffer.global_state.bandit_live_world.find_site( demand.site_id );
+    if( site == nullptr ) {
+        return;
+    }
+    auto &operation = site->active_hostile_operation;
+    const auto &outing = operation.reservation;
+    if( !operation.is_active() || operation.operation_kind != hostile_operation_kind::shakedown ||
+        ( operation.phase != hostile_operation_phase::approaching &&
+          operation.phase != hostile_operation_phase::committed_contact ) ||
+        operation.shakedown_contact_established || !operation.shakedown_pending_branch.empty() ||
+        outing.activity_id != demand.operation_id || outing.generation != demand.generation ||
+        operation.shakedown_demand_emitted_turn != demand.emitted_turn ||
+        operation.shakedown_demand_speaker_id != demand.speaker_id ||
+        operation.shakedown_demand_volume <= 2 || outing.member_is_resolved( demand.speaker_id ) ||
+        std::find( outing.member_ids.begin(), outing.member_ids.end(), demand.speaker_id ) ==
+        outing.member_ids.end() || !live_bandit_shakedown_receiver_eligible( *site, hearer, false ) ) {
+        return;
+    }
+    // Preserve the existing avatar-first preference. Other audible NPCs still
+    // wake without becoming receivers, targets or operation members.
+    if( operation.shakedown_receiver_id.is_valid() && !hearer.is_avatar() ) {
+        return;
+    }
+    operation.shakedown_receiver_id = hearer.getID();
+    operation.shakedown_receiver_is_avatar = hearer.is_avatar();
+}
+
 bool establish_bandit_shakedown_communication_for_test( bandit_live_world::site_record &site )
 {
     return live_bandit_establish_shakedown_communication( site );
@@ -17163,6 +17216,7 @@ std::string bandit_shakedown_communication_diagnostic( const npc &actor )
         json.member( "shout_volume", readiness.shout_volume );
         json.member( "sleep", readiness.sleeping );
         json.member( "narcosis", readiness.narcosis );
+        json.member( "suspended", readiness.suspended );
         json.member( "flee", readiness.fleeing );
         json.member( "flee_temp", readiness.fleeing_temporary );
         json.member( "runaway", readiness.runaway );
@@ -17202,7 +17256,7 @@ std::string bandit_shakedown_communication_diagnostic( const npc &actor )
         }
     } else {
         const Character *recorded = nullptr;
-        if( site != nullptr && site->active_hostile_operation.shakedown_contact_established ) {
+        if( site != nullptr && site->active_hostile_operation.shakedown_receiver_id.is_valid() ) {
             const auto &operation = site->active_hostile_operation;
             recorded = operation.shakedown_receiver_is_avatar ? static_cast<const Character *>( &get_avatar() ) :
                        static_cast<const Character *>( g->find_npc( operation.shakedown_receiver_id ) );
@@ -17214,7 +17268,9 @@ std::string bandit_shakedown_communication_diagnostic( const npc &actor )
                                        ( !get_map().inbounds( recorded->pos_bub() ) ||
                                          ( recorded->is_npc() && !recorded->as_npc()->is_active() ) );
         json.member( "reason", receiver_unloaded ? "receiver_unloaded" :
-                     recorded == nullptr ? "receiver_absent" : "receiver_not_eligible" );
+                     recorded == nullptr ? "receiver_absent" :
+                     !site->active_hostile_operation.shakedown_contact_established ?
+                     "contact_not_established" : "receiver_not_eligible" );
     }
     json.end_object();
     if( site != nullptr ) {
@@ -17222,6 +17278,9 @@ std::string bandit_shakedown_communication_diagnostic( const npc &actor )
         json.member( "site_id", site->site_id );
         json.member( "operation_id", operation.reservation.activity_id );
         json.member( "generation", operation.reservation.generation );
+        json.member( "demand_emitted_turn", operation.shakedown_demand_emitted_turn );
+        json.member( "demand_volume", operation.shakedown_demand_volume );
+        json.member( "demand_speaker_id", operation.shakedown_demand_speaker_id.get_value() );
         json.member( "contact_established", operation.shakedown_contact_established );
         json.member( "contact_by_shout", operation.shakedown_contact_by_shout );
         json.member( "recorded_receiver_id", operation.shakedown_receiver_id.get_value() );
@@ -17428,6 +17487,8 @@ bool game::do_turn()
     for( npc &guy : all_npcs() ) {
         if( rl_dist( guy.pos_bub(), u.pos_bub() ) < MAX_VIEW_DISTANCE ) {
             sounds::process_sound_markers( &guy );
+        } else {
+            sounds::process_sound_markers( &guy, true );
         }
     }
 

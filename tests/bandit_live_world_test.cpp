@@ -46529,6 +46529,19 @@ struct r066_visit_scene {
         REQUIRE( rl_dist( get_avatar().pos_abs_omt(), target ) == 1 );
         rebuild();
     }
+    void deliver_sound() {
+        for( npc &actor : g->all_npcs() ) {
+            sounds::process_sound_markers( &actor );
+        }
+        sounds::process_sound_markers( &get_avatar() );
+    }
+    bool communicate() {
+        if( establish_bandit_shakedown_communication_for_test( site() ) ) {
+            return true;
+        }
+        deliver_sound();
+        return establish_bandit_shakedown_communication_for_test( site() );
+    }
     bandit_live_world::shakedown_surface surface( Character &receiver ) {
         bandit_live_world::local_gate_input input;
         input.local_contact_established = site().active_hostile_operation.shakedown_contact_established;
@@ -46542,6 +46555,337 @@ struct r066_visit_scene {
                 bandit_encounter_goods_pool_for_test( input, receiver ) );
     }
 };
+}
+
+TEST_CASE( "actual robbery sound wakes all ordinary local hearers before contact",
+           "[bandit_live_world][audible_demand_067]" )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    npc &receiver = scene.camp_receiver();
+    npc &other = spawn_npc( receiver.pos_bub().xy() + point( 0, 1 ), "test_talker" );
+    other.set_fac( faction_id( "your_followers" ) );
+    other.assigned_camp = scene.target;
+    npc &bystander = spawn_npc( receiver.pos_bub().xy() + point( 0, 2 ), "test_talker" );
+    bystander.set_fac( faction_id( "no_faction" ) );
+    scene.distant_adjacent_avatar();
+    receiver.set_mutation( trait_id( "HEAVYSLEEPER2" ) );
+    other.set_mutation( trait_id( "HEAVYSLEEPER" ) );
+    const auto members = scene.site().active_hostile_operation.reservation.member_ids;
+    const auto activity = scene.site().active_hostile_operation.reservation.activity_id;
+    std::map<character_id, int> initial_sleepiness;
+    for( npc *actor : { &receiver, &other, &bystander } ) {
+        actor->set_attitude( NPCATT_NULL );
+        actor->set_sleepiness( 0 );
+        actor->fall_asleep( 1_hours );
+        actor->set_moves( 17 );
+        initial_sleepiness[actor->getID()] = actor->get_sleepiness();
+        REQUIRE( actor->can_hear( scene.collector->pos_bub(), scene.collector->get_shout_volume() ) );
+        CHECK_FALSE( actor->has_active_operation_duty() );
+    }
+    sounds::reset_sounds();
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK( sounds::get_monster_sounds().first.size() == 1 );
+    const auto demand = json_loader::from_string( bandit_shakedown_communication_diagnostic(
+                            *scene.collector ) ).get_object();
+    demand.allow_omitted_members();
+    std::cout << "R067_DEMAND speaker=" << scene.collector->getID().get_value()
+              << " position=" << scene.collector->pos_abs()
+              << " emitted_volume=" << demand.get_int( "demand_volume", -1 )
+              << " emitted_turn=" << demand.get_int( "demand_emitted_turn", -1 )
+              << " receiver=" << receiver.pos_abs() << " other=" << other.pos_abs()
+              << " bystander=" << bystander.pos_abs() << '\n';
+    CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
+    // Duplicate service before actual delivery does not re-emit or invent hearing.
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK( sounds::get_monster_sounds().first.size() == 1 );
+    scene.deliver_sound();
+    for( npc *actor : { &receiver, &other, &bystander } ) {
+        CHECK( actor->get_effect_dur( efftype_id( "sleep" ) ) == 0_turns );
+        CHECK( actor->get_moves() == 17 );
+        CHECK( actor->get_sleepiness() == initial_sleepiness.at( actor->getID() ) );
+        CHECK( actor->get_attitude() == NPCATT_NULL );
+        CHECK( actor->in_sleep_state() ); // normal deferred effect expiry
+    }
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
+    // Real operation and body persistence between hearing and scheduler expiry.
+    overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+    for( npc *actor : { &receiver, &other, &bystander } ) {
+        std::ostringstream bytes; JsonOut writer( bytes ); actor->serialize( writer );
+        actor->setID( character_id(), true );
+        actor->deserialize( json_loader::from_string( bytes.str() ).get_object() );
+    }
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    calendar::turn += 1_turns;
+    process_monsters_and_npcs_turn_for_test();
+    for( npc *actor : { &receiver, &other, &bystander } ) {
+        CHECK_FALSE( actor->in_sleep_state() );
+    }
+    establish_bandit_shakedown_communication_for_test( scene.site() );
+    const auto &op = scene.site().active_hostile_operation;
+    REQUIRE( op.shakedown_contact_established );
+    CHECK( ( op.shakedown_receiver_id == receiver.getID() || op.shakedown_receiver_id == other.getID() ) );
+    CHECK_FALSE( op.shakedown_receiver_is_avatar );
+    CHECK( op.reservation.member_ids == members );
+    CHECK( op.reservation.activity_id == activity );
+    CHECK( op.shakedown_pending_branch.empty() );
+    CHECK( bystander.assigned_camp == std::nullopt );
+    const auto committed = serialize_world( overmap_buffer.global_state.bandit_live_world );
+    sounds::reset_sounds();
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK( sounds::get_monster_sounds().first.empty() );
+    CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == committed );
+}
+
+TEST_CASE( "robbery emission preserves native hearing incapacity and receiver exclusions",
+           "[bandit_live_world][audible_demand_guards_067]" )
+{
+    const std::string mode = GENERATE( std::string( "deaf" ), std::string( "unheard" ), std::string( "vertical_attenuation" ),
+            std::string( "visual_obstruction" ),
+            std::string( "narcosis" ), std::string( "suspension" ), std::string( "collapse" ),
+            std::string( "shutdown" ), std::string( "nonmember" ), std::string( "flight" ),
+            std::string( "muted" ), std::string( "suspended_speakers" ), std::string( "foreign_generation" ),
+            std::string( "released" ), std::string( "reload_before_delivery" ),
+            std::string( "receiver_unassigned" ), std::string( "receiver_unloaded" ),
+            std::string( "receiver_narcosis" ) );
+    INFO( mode );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    npc &receiver = scene.camp_receiver();
+    scene.distant_adjacent_avatar();
+    receiver.set_sleepiness( 0 );
+    receiver.fall_asleep( 1_hours );
+    if( mode == "deaf" ) { receiver.add_effect( efftype_id( "deaf" ), 1_hours ); }
+    if( mode == "unheard" ) {
+        receiver.setpos( get_avatar().pos_abs(), false );
+        REQUIRE_FALSE( receiver.can_hear( scene.collector->pos_bub(), scene.collector->get_shout_volume() ) );
+    }
+    if( mode == "vertical_attenuation" ) {
+        auto below = receiver.pos_abs(); below.z() = -2;
+        receiver.setpos( below, false );
+        REQUIRE( get_map().inbounds( receiver.pos_bub() ) );
+        for( const auto &tile : get_map().points_in_radius( receiver.pos_bub(), 2 ) ) {
+            get_map().ter_set( tile, ter_id( "t_rock_floor" ) );
+            get_map().furn_set( tile, furn_id( "f_null" ) );
+        }
+        // The actual sound pipeline adds underground vertical attenuation;
+        // unlike an optical wall, this can make the real voice inaudible.
+    }
+    if( mode == "visual_obstruction" ) {
+        get_map().ter_set( scene.collector->pos_bub() + point( 1, 0 ), ter_id( "t_rock" ) );
+        scene.rebuild();
+        REQUIRE_FALSE( scene.collector->sees( get_map(), receiver ) );
+    }
+    if( mode == "narcosis" ) { receiver.add_effect( efftype_id( "narcosis" ), 1_hours ); }
+    if( mode == "suspension" ) { receiver.add_effect( efftype_id( "npc_suspend" ), 1_hours ); }
+    if( mode == "collapse" ) { receiver.fall_asleep_involuntarily( 1_hours ); }
+    if( mode == "shutdown" ) { receiver.add_bionic( bionic_id( "bio_sleep_shutdown" ) ); }
+    if( mode == "nonmember" ) { receiver.assigned_camp.reset(); }
+    if( mode == "flight" ) { receiver.set_attitude( NPCATT_FLEE ); }
+    if( mode == "muted" ) {
+        scene.collector->set_mutation( trait_id( "PROF_FOODP" ) );
+        scene.escort->set_mutation( trait_id( "PROF_FOODP" ) );
+    }
+    if( mode == "suspended_speakers" ) {
+        scene.collector->add_effect( efftype_id( "npc_suspend" ), 1_hours );
+        scene.escort->add_effect( efftype_id( "npc_suspend" ), 1_hours );
+    }
+    const auto initial_duration = receiver.get_effect_dur( efftype_id( "sleep" ) );
+    sounds::reset_sounds();
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK( sounds::get_monster_sounds().first.size() ==
+           ( mode == "muted" || mode == "suspended_speakers" ? 0 : 1 ) );
+    if( mode == "foreign_generation" ) { ++scene.site().active_hostile_operation.reservation.generation; }
+    if( mode == "released" ) {
+        const auto &outing = scene.site().active_hostile_operation.reservation;
+        REQUIRE( bandit_live_world::release_matching_external_reservation( scene.site(),
+                 outing.activity_id, outing.generation, "controlled cancellation releases demand" ) == 2 );
+    }
+    if( mode == "reload_before_delivery" ) {
+        overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+        sounds::reset_sounds(); // Saving does not fabricate a delivered sound receipt.
+    }
+    scene.deliver_sound();
+    const auto demand = json_loader::from_string( bandit_shakedown_communication_diagnostic(
+                            *scene.collector ) ).get_object();
+    demand.allow_omitted_members();
+    std::cout << "R067_DEMAND_GUARD mode=" << mode << " speaker=" << scene.collector->pos_abs()
+              << " recipient=" << receiver.pos_abs()
+              << " emitted_volume=" << demand.get_int( "demand_volume", -1 )
+              << " current_can_hear=" << receiver.can_hear( scene.collector->pos_bub(),
+                      scene.collector->get_shout_volume() )
+              << " sleep_duration=" << to_turns<int>( receiver.get_effect_dur( efftype_id( "sleep" ) ) )
+              << '\n';
+    const bool wakes = mode == "nonmember" || mode == "flight" ||
+                       mode == "foreign_generation" || mode == "released" || mode == "visual_obstruction" ||
+                       mode == "receiver_unassigned" || mode == "receiver_unloaded" || mode == "receiver_narcosis";
+    CHECK( receiver.get_effect_dur( efftype_id( "sleep" ) ) == ( wakes ? 0_turns : initial_duration ) );
+    if( mode == "flight" ) {
+        CHECK( ( receiver.get_attitude() == NPCATT_FLEE || receiver.get_attitude() == NPCATT_FLEE_TEMP ) );
+    }
+    if( mode == "collapse" ) { CHECK( receiver.is_involuntarily_asleep() ); }
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    if( mode == "receiver_unassigned" ) { receiver.assigned_camp.reset(); }
+    if( mode == "receiver_unloaded" ) { g->remove_npc( receiver.getID() ); }
+    if( mode == "receiver_narcosis" ) { receiver.add_effect( efftype_id( "narcosis" ), 1_hours ); }
+    if( mode == "foreign_generation" ) {
+        // The old sound cannot authenticate the changed generation. Its
+        // deliberately mismatched component keys also refuse save/load.
+        CHECK_FALSE( scene.site().active_hostile_operation.shakedown_receiver_id.is_valid() );
+        CHECK_THROWS( round_trip_world( overmap_buffer.global_state.bandit_live_world ) );
+        return;
+    }
+    overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+    calendar::turn += 1_turns;
+    process_monsters_and_npcs_turn_for_test();
+    const bool contact = mode == "flight" || mode == "visual_obstruction";
+    establish_bandit_shakedown_communication_for_test( scene.site() );
+    CHECK( scene.site().active_hostile_operation.shakedown_contact_established == contact );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
+    if( mode == "narcosis" || mode == "suspension" || mode == "collapse" || mode == "shutdown" ) {
+        CHECK( receiver.in_sleep_state() );
+        CHECK( receiver.get_effect_dur( efftype_id( "sleep" ) ) > 0_turns );
+    }
+    // Hearing alone never cures forced sleep, creates Pay/Fight or assigns a bystander.
+    const bool heard_before_invalidation = mode == "receiver_unassigned" ||
+                                          mode == "receiver_unloaded" || mode == "receiver_narcosis";
+    CHECK( scene.site().active_hostile_operation.shakedown_receiver_id.is_valid() ==
+           ( contact || heard_before_invalidation ) );
+    if( heard_before_invalidation ) {
+        CHECK( scene.site().active_hostile_operation.shakedown_receiver_id == receiver.getID() );
+    }
+}
+
+TEST_CASE( "same robbery operation recovers real delivery without callback shout spam",
+           "[bandit_live_world][audible_demand_progress_067]" )
+{
+    const std::string mode = GENERATE( std::string( "unheard_approach" ),
+                                      std::string( "load_before_delivery" ),
+                                      std::string( "unassigned_first" ),
+                                      std::string( "unloaded_first" ),
+                                      std::string( "narcotized_first" ),
+                                      std::string( "speaker_incapacitated" ) );
+    INFO( mode );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    npc &receiver = scene.camp_receiver();
+    scene.distant_adjacent_avatar();
+    receiver.set_sleepiness( 0 );
+    receiver.fall_asleep( 1_hours );
+    npc *alternative = nullptr;
+    if( mode == "unassigned_first" || mode == "unloaded_first" || mode == "narcotized_first" ) {
+        alternative = &spawn_npc( receiver.pos_bub().xy() + point( 0, 1 ), "test_talker" );
+        alternative->set_fac( faction_id( "your_followers" ) );
+        alternative->set_attitude( NPCATT_NULL );
+        alternative->assigned_camp = scene.target;
+        alternative->set_sleepiness( 0 );
+        alternative->fall_asleep( 1_hours );
+    }
+    if( mode == "unheard_approach" ) {
+        auto far = scene.collector->pos_bub();
+        while( get_map().inbounds( far + point( 1, 0 ) ) ) { far += point( 1, 0 ); }
+        receiver.setpos( get_map().get_abs( far ), false );
+        REQUIRE_FALSE( receiver.can_hear( scene.collector->pos_bub(), scene.collector->get_shout_volume() ) );
+    }
+    const auto operation_id = scene.site().active_hostile_operation.reservation.activity_id;
+    const int generation = scene.site().active_hostile_operation.reservation.generation;
+    sounds::reset_sounds();
+    REQUIRE_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( sounds::get_monster_sounds().first.size() == 1 );
+    const auto first = json_loader::from_string( bandit_shakedown_communication_diagnostic(
+                           *scene.collector ) ).get_object();
+    first.allow_omitted_members();
+    const int first_turn = first.get_int( "demand_emitted_turn", -1 );
+    REQUIRE( first_turn >= 0 );
+    if( mode == "load_before_delivery" ) {
+        overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+        std::ostringstream bytes; JsonOut writer( bytes ); receiver.serialize( writer );
+        receiver.setID( character_id(), true );
+        receiver.deserialize( json_loader::from_string( bytes.str() ).get_object() );
+        sounds::reset_sounds();
+        // Same saved simulation turn cannot manufacture delivery or re-emit.
+        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK( sounds::get_monster_sounds().first.empty() );
+        CHECK( receiver.get_effect_dur( efftype_id( "sleep" ) ) == 1_hours );
+    } else {
+        scene.deliver_sound();
+        if( alternative != nullptr ) {
+            REQUIRE( receiver.get_effect_dur( efftype_id( "sleep" ) ) == 0_turns );
+            REQUIRE( alternative->get_effect_dur( efftype_id( "sleep" ) ) == 0_turns );
+            REQUIRE( scene.site().active_hostile_operation.shakedown_receiver_id == receiver.getID() );
+            if( mode == "unassigned_first" ) { receiver.assigned_camp.reset(); }
+            if( mode == "unloaded_first" ) { g->remove_npc( receiver.getID() ); }
+            if( mode == "narcotized_first" ) { receiver.add_effect( efftype_id( "narcosis" ), 1_hours ); }
+        }
+        if( mode == "speaker_incapacitated" ) {
+            scene.collector->add_effect( efftype_id( "narcosis" ), 1_hours );
+            scene.collector->fall_asleep( 1_hours );
+        }
+        sounds::reset_sounds();
+    }
+    calendar::turn += 1_turns;
+    if( mode == "unheard_approach" ) {
+        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK( sounds::get_monster_sounds().first.empty() );
+        const auto start = scene.collector->pos_abs();
+        // Real native path/movement: no post-emission teleport or hearing grant.
+        REQUIRE( scene.collector->update_path( receiver.pos_bub() + point( -1, 0 ), true ) );
+        while( rl_dist( receiver.pos_bub(), scene.collector->pos_bub() ) > 1 ) {
+            const auto before = scene.collector->pos_abs();
+            scene.collector->set_moves( 100 );
+            scene.collector->move_to_next();
+            REQUIRE( scene.collector->pos_abs() != before );
+            calendar::turn += 1_turns;
+        }
+        CHECK( scene.collector->pos_abs() != start );
+        CHECK( receiver.get_effect_dur( efftype_id( "sleep" ) ) == 1_hours );
+    }
+    const auto sounds_before_retry = sounds::get_monster_sounds().first.size();
+    REQUIRE_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( sounds::get_monster_sounds().first.size() == sounds_before_retry + 1 );
+    CHECK_FALSE( scene.site().active_hostile_operation.shakedown_receiver_id.is_valid() );
+    const auto retry = json_loader::from_string( bandit_shakedown_communication_diagnostic(
+                           mode == "speaker_incapacitated" ? *scene.escort : *scene.collector ) ).get_object();
+    retry.allow_omitted_members();
+    CHECK( retry.get_int( "demand_emitted_turn", -1 ) > first_turn );
+    CHECK( retry.get_int( "demand_speaker_id", -1 ) ==
+           ( mode == "speaker_incapacitated" ? scene.escort : scene.collector )->getID().get_value() );
+    // Repeated services, including load and a later real turn with the
+    // still-existing queue, cannot duplicate this undelivered actual event.
+    overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+    calendar::turn += 1_turns;
+    for( int callback = 0; callback < 4; ++callback ) {
+        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK( sounds::get_monster_sounds().first.size() == sounds_before_retry + 1 );
+    }
+    scene.deliver_sound();
+    npc &responsive = alternative != nullptr ? *alternative : receiver;
+    CHECK( scene.site().active_hostile_operation.shakedown_receiver_id == responsive.getID() );
+    CHECK( responsive.get_effect_dur( efftype_id( "sleep" ) ) == 0_turns );
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    responsive.Creature::process_effects();
+    REQUIRE_FALSE( responsive.in_sleep_state() );
+    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    const auto &op = scene.site().active_hostile_operation;
+    CHECK( op.shakedown_contact_established );
+    CHECK( op.shakedown_receiver_id == responsive.getID() );
+    CHECK( op.reservation.activity_id == operation_id );
+    CHECK( op.reservation.generation == generation );
+    CHECK( op.shakedown_pending_branch.empty() );
+    sounds::reset_sounds();
+    calendar::turn += 1_turns;
+    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK( sounds::get_monster_sounds().first.empty() );
+    std::cout << "R067_DEMAND_PROGRESS mode=" << mode << " original_turn=" << first_turn
+              << " retry_turn=" << retry.get_int( "demand_emitted_turn", -1 )
+              << " speaker=" << retry.get_int( "demand_speaker_id", -1 )
+              << " source=" << ( mode == "speaker_incapacitated" ? scene.escort : scene.collector )->pos_abs()
+              << " volume=" << retry.get_int( "demand_volume", -1 )
+              << " receiver=" << responsive.getID().get_value()
+              << " recipient=" << responsive.pos_abs() << '\n';
 }
 
 TEST_CASE( "real local approach establishes communication before the doorstep",
@@ -46590,7 +46934,7 @@ TEST_CASE( "real local approach establishes communication before the doorstep",
     REQUIRE_FALSE( scene.collector->is_enemy() );
     CHECK( scene.collector->pos_abs() != before );
     const bool expected = condition == "outdoor" || condition == "indoor" || camp_contact;
-    CHECK( establish_bandit_shakedown_communication_for_test( scene.site() ) == expected );
+    CHECK( scene.communicate() == expected );
     const auto &op = scene.site().active_hostile_operation;
     CHECK( op.shakedown_contact_established == expected );
     if( expected ) {
@@ -46605,10 +46949,10 @@ TEST_CASE( "real local approach establishes communication before the doorstep",
                               static_cast<Character &>( get_avatar() );
         CHECK( scene.surface( receiver ).valid );
         const auto bytes = serialize_world( overmap_buffer.global_state.bandit_live_world );
-        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK_FALSE( scene.communicate() );
         CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == bytes );
         overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
-        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK_FALSE( scene.communicate() );
         CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == bytes );
     } else {
         CHECK( op.phase == bandit_live_world::hostile_operation_phase::approaching );
@@ -46629,7 +46973,7 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
     const auto distant_inventory = r054_actor_bytes( get_avatar() );
     const auto tile = receiver.pos_bub() + point( 1, 0 );
     get_map().add_item_or_charges( tile, item( itype_id( "knife_combat" ), calendar::turn ) );
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     CHECK( scene.collector->attitude_to( receiver ) == Creature::Attitude::NEUTRAL );
     CHECK( receiver.attitude_to( *scene.collector ) == Creature::Attitude::NEUTRAL );
     bandit_live_world::local_gate_input input;
@@ -46666,7 +47010,7 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
     CHECK( scene.collector->goal == scene.site().anchor );
     CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
     overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.communicate() );
     CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
     CHECK( r054_actor_bytes( get_avatar() ) == distant_inventory );
 }
@@ -46684,7 +47028,7 @@ TEST_CASE( "third party interruption preserves camp intent and real attacks rele
     INFO( condition << " handover=" << handover );
     npc &receiver = scene.camp_receiver();
     if( handover || condition == "fight" ) {
-        REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        REQUIRE( scene.communicate() );
     }
     if( condition == "zombie" ) {
         scene.collector->rules.clear_flag( ally_rule::follow_close );
@@ -46797,12 +47141,12 @@ TEST_CASE( "overmap visit waits across serialization until actual local admissio
     REQUIRE( scene.collector->is_active() );
     CHECK( scene.collector->pos_abs() == position );
     scene.rebuild();
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     CHECK( scene.site().active_hostile_operation.reservation.generation == 2 );
     CHECK( scene.site().active_hostile_operation.reservation.activity_id == "r066-visit#hostile:2" );
     CHECK_FALSE( scene.site().active_hostile_operation.shakedown_waiting_local );
     const auto bytes = serialize_world( overmap_buffer.global_state.bandit_live_world );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.communicate() );
     advance_live_bandit_hostile_approaches_for_test();
     CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == bytes );
 }
@@ -46814,7 +47158,7 @@ TEST_CASE( "visit responses reject stale identity and resolved payment across re
     r066_visit_scene scene;
     npc &receiver = scene.camp_receiver();
     scene.distant_adjacent_avatar();
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     const auto id = scene.site().active_hostile_operation.reservation.activity_id;
     const auto recipient = receiver.getID();
     const auto current = [&]() { return bandit_shakedown_response_matches_for_test( scene.site(), id, 2, recipient ); };
@@ -46867,7 +47211,7 @@ TEST_CASE( "interrupted peaceful visit resumes communication when the physical d
         scene.collector->deal_damage( &threat, bodypart_id( "torso" ), damage_instance( damage_type_id( "pure" ), 4 ) );
     }
     scene.rebuild();
-    REQUIRE_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE_FALSE( scene.communicate() );
     CHECK( scene.collector->pos_abs() == original );
     CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
     const auto actor = r054_actor_bytes( *scene.collector );
@@ -46881,11 +47225,11 @@ TEST_CASE( "interrupted peaceful visit resumes communication when the physical d
     scene.escort->remove_effect( efftype_id( "narcosis" ) );
     scene.collector->set_attitude( NPCATT_NULL );
     scene.rebuild();
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     CHECK( scene.site().active_hostile_operation.reservation.generation == 2 );
     CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
     CHECK( scene.surface( get_avatar() ).valid );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.communicate() );
 }
 
 TEST_CASE( "empty locally simulated visit physically searches then returns without refusal",
@@ -46979,7 +47323,7 @@ TEST_CASE( "combat released local visitors and raids use actual combat while pre
         CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
         scene.collector->set_attitude( NPCATT_KILL );
     } else {
-        REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        REQUIRE( scene.communicate() );
         choose_bandit_shakedown_fight_for_test( scene.site(), scene.surface( defender ), defender );
     }
     const auto initial = scene.collector->pos_abs();
@@ -47038,7 +47382,7 @@ TEST_CASE( "a faceless would-be speaker cannot invent an audible threat",
     scene.escort->set_mutation( trait_id( "PROF_FOODP" ) );
     get_avatar().setpos( scene.collector->pos_abs() + point( 1, 0 ), false );
     REQUIRE( get_avatar().can_hear( scene.collector->pos_bub(), scene.collector->get_shout_volume() ) );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.communicate() );
     CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
 }
 
@@ -47062,7 +47406,7 @@ TEST_CASE( "actual game save load preserves encounter contact response and waiti
         advance_live_bandit_hostile_approaches_for_test();
         REQUIRE( scene.site().active_hostile_operation.shakedown_waiting_local );
     } else {
-        REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        REQUIRE( scene.communicate() );
         if( phase == "paid" ) {
             const auto surface = scene.surface( get_avatar() );
             REQUIRE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
@@ -47102,7 +47446,7 @@ TEST_CASE( "actual game save load preserves encounter contact response and waiti
     CHECK( after.shakedown_pending_branch == before.shakedown_pending_branch );
     CHECK( after.shakedown_waiting_local == before.shakedown_waiting_local );
     CHECK( scene.collector->pos_abs() == collector_pos );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    CHECK_FALSE( scene.communicate() );
     if( phase == "contact" ) {
         CHECK( bandit_shakedown_response_matches_for_test( scene.site(), after.reservation.activity_id,
                 after.reservation.generation, get_avatar().getID() ) );
@@ -47157,8 +47501,8 @@ TEST_CASE( "actual shouted contact records once only for selected opt in identit
                                    capture == "other" ? -1 : scene.collector->getID().get_value() ).c_str(), 1 );
     setenv( names[6], std::to_string( turn + ( capture == "outside_turn" ? 1 : 0 ) ).c_str(), 1 );
     unsetenv( names[7] );
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
-    CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
+    CHECK_FALSE( scene.communicate() );
     const bool captured = capture == "speaker" || capture == "receiver";
     CHECK( std::filesystem::exists( path ) == captured );
     int contacts = 0;
@@ -47188,7 +47532,7 @@ TEST_CASE( "paid departure retains each actual survivor flight and forced incapa
 {
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     r066_visit_scene scene;
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     const auto surface = scene.surface( get_avatar() );
     REQUIRE( surface.valid );
     const bool flight = GENERATE( false, true );
@@ -47405,7 +47749,7 @@ TEST_CASE( "shakedown inspection reports current pure speaker and receiver predi
         std::string( "unloaded_target" ), std::string( "saved_flee" ), std::string( "faceless" ),
         std::string( "unheard" ), std::string( "absent_receiver" ), std::string( "unloaded_receiver" ) );
     INFO( condition );
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     npc &actor = *scene.collector;
     if( condition == "sleep" ) { actor.add_effect( efftype_id( "sleep" ), 1_hours ); }
     if( condition == "narcosis" ) { actor.add_effect( efftype_id( "narcosis" ), 1_hours ); }
@@ -47567,7 +47911,7 @@ TEST_CASE( "explicit Fight consumes the physical receiver shout once through the
         receiver = &scene.camp_receiver();
         scene.distant_adjacent_avatar();
     }
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     auto &op = scene.site().active_hostile_operation;
     REQUIRE( op.shakedown_receiver_id == receiver->getID() );
     const auto surface = scene.surface( *receiver );
@@ -47661,7 +48005,7 @@ TEST_CASE( "Fight refusal sound requires current explicit contact and native voc
            "[bandit_live_world][fight_shout_067]" )
 {
     r066_visit_scene scene;
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     auto &op = scene.site().active_hostile_operation;
     const auto activity = op.reservation.activity_id;
     const int generation = op.reservation.generation;
@@ -47716,7 +48060,7 @@ TEST_CASE( "activity demand keeps native semantic ownership through Pay trade su
     const bool complete = response == "pay";
     INFO( mode << " response=" << response );
     r066_visit_scene scene;
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     REQUIRE( scene.surface( get_avatar() ).valid );
     const auto goods_before = r054_actor_bytes( get_avatar() );
     const auto env_value = []( const char *name ) -> std::optional<std::string> {
@@ -47961,7 +48305,7 @@ TEST_CASE( "native roof sender cannot acquire a macro paid return route before l
     r066_visit_scene scene;
     // Establish the controlled reservation before overlaying native route
     // geometry. This test isolates return planning, not acoustic admission.
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     std::ifstream input( "tests/data/r067_native_payment_route.json" );
     REQUIRE( input.good() );
     const auto fixture = json_loader::from_string(
@@ -48042,7 +48386,7 @@ TEST_CASE( "paid return relationship identifies its validated reservation amid f
 {
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     r066_visit_scene scene;
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     const auto surface = scene.surface( get_avatar() );
     REQUIRE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
     auto &state = overmap_buffer.global_state.bandit_live_world;
@@ -48284,14 +48628,17 @@ TEST_CASE( "delivered player robbery interrupts existing work without losing pro
     const auto id = scene.site().active_hostile_operation.reservation.activity_id;
     const int knife_count = you.amount_of( itype_id( "knife_combat" ) );
     if( mode == "narcosis" || mode == "deaf_sleep" || mode == "suspended_sleep" ) {
-        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK_FALSE( scene.communicate() );
         CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
         CHECK( you.get_effect( efftype_id( "sleep" ) ).get_duration() == 1_hours );
         CHECK( serialize_activity( you.activity ) == serialize_activity( initial ) );
-        CHECK( sounds::get_monster_sounds().first.empty() );
+        CHECK_FALSE( sounds::get_monster_sounds().first.empty() );
         return;
     }
     if( mode == "sleep" ) {
+        CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+        CHECK( you.get_effect( efftype_id( "sleep" ) ).get_duration() == 1_hours );
+        scene.deliver_sound();
         CHECK_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
         CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
         CHECK_FALSE( you.activity );
@@ -48301,7 +48648,7 @@ TEST_CASE( "delivered player robbery interrupts existing work without losing pro
         you.Creature::process_effects();
         REQUIRE_FALSE( you.in_sleep_state() );
     }
-    REQUIRE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( scene.communicate() );
     CHECK( scene.site().active_hostile_operation.shakedown_receiver_is_avatar ==
            ( mode != "camp_receiver" ) );
     if( mode == "try_sleep" ) { CHECK_FALSE( you.in_sleep_state() ); }
