@@ -5821,8 +5821,11 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
                 return local_handoff_commit_result::rejected;
             }
         }
-        next.actor_route_waypoint = destination_waypoint;
     }
+    // The same validated physical pair arrival completes this route leg for
+    // either owner. Preserve it when a local watch later dematerializes;
+    // the abstract service must not wait for an already-completed motor step.
+    next.actor_route_waypoint = destination_waypoint;
     // A real arrival is independent of the scheduler's elapsed-time/contact
     // promotion. Observation writers can already have consumed this minute.
     // Start at the first validated current arrival, never at old signal/sighting times.
