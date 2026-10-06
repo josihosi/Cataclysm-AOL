@@ -418,7 +418,7 @@ TEST_CASE( "semantic transport records JSONL offsets through a lost FIFO wake",
         }
         std::filesystem::remove( transport_path );
     } );
-    setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport_path.c_str(), 1 );
+    setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport_path.string().c_str(), 1 );
 
     semantic_surface_manager manager( "transport-run" );
     semantic_surface_manager_session session( manager );
