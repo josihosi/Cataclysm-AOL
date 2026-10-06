@@ -39,6 +39,9 @@ class site_reader
                                      const tripoint_abs_ms &target,
                                      const std::vector<tripoint_abs_omt> &footprint );
         bool watching_member( const bandit_live_world::site_record &site, const npc &observer );
+        // Optional first refusal from the actual decision; no additional geometry read.
+        bool watching_member( const bandit_live_world::site_record &site, const npc &observer,
+                              std::string *reason );
         size_t cached_view_count() const;
         // Decision-local work counts, not native simulation timing.
         size_t cached_vehicle_scan_count() const;

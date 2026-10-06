@@ -455,42 +455,106 @@ size_t site_reader::cached_view_count() const
 }
 static bool watching_member_impl( const bandit_live_world::site_record &site, const npc &observer,
                                   vehicle_footprint_index &vehicles,
-                                  std::vector<std::unique_ptr<existing_view>> &lighting_views )
+                                  std::vector<std::unique_ptr<existing_view>> &lighting_views,
+                                  std::string *reason = nullptr )
 {
+    // Optional explanation of this same acquisition decision, not another
+    // eligibility read or a persisted watcher mode.
+    const auto refuse = [reason]( const char *why ) {
+        if( reason ) {
+            *reason = why;
+        }
+        return false;
+    };
     const auto &outing = site.active_outing;
-    if( site.retired_empty_site || outing.local_projection_reconciliation_rejected ||
-        outing.schema_version < 8 || outing.kind != bandit_live_world::outing_kind::structural_sortie ||
-        outing.phase != bandit_live_world::scout_phase::observing ||
-        outing.selected_watch_kind != bandit_live_world::structural_watch_kind::exact ||
-        bandit_live_world::target_footprint_watch_distance( outing.selected_watch_omt,
-                outing.target_footprint ) != 3 ||
-        outing.alternate_watch_reposition_pending || outing.member_is_resolved( observer.getID() ) ||
-        std::find( outing.member_ids.begin(), outing.member_ids.end(), observer.getID() ) ==
-        outing.member_ids.end() || observer.pos_abs_omt() != outing.selected_watch_omt ||
-        ( outing.owner == bandit_live_world::simulation_owner::local &&
+    if( site.retired_empty_site ) {
+        return refuse( "site_retired" );
+    }
+    if( outing.local_projection_reconciliation_rejected ) {
+        return refuse( "projection_rejected" );
+    }
+    if( outing.schema_version < 8 ) {
+        return refuse( "legacy_assignment" );
+    }
+    if( outing.kind != bandit_live_world::outing_kind::structural_sortie ) {
+        return refuse( "wrong_outing_kind" );
+    }
+    if( outing.phase != bandit_live_world::scout_phase::observing ) {
+        return refuse( "not_observing" );
+    }
+    if( outing.selected_watch_kind != bandit_live_world::structural_watch_kind::exact ) {
+        return refuse( "not_exact_watch" );
+    }
+    if( bandit_live_world::target_footprint_watch_distance( outing.selected_watch_omt,
+            outing.target_footprint ) != 3 ) {
+        return refuse( "watch_distance" );
+    }
+    if( outing.alternate_watch_reposition_pending ) {
+        return refuse( "reposition_pending" );
+    }
+    if( outing.member_is_resolved( observer.getID() ) ) {
+        return refuse( "member_resolved" );
+    }
+    if( std::find( outing.member_ids.begin(), outing.member_ids.end(), observer.getID() ) ==
+        outing.member_ids.end() ) {
+        return refuse( "member_unassigned" );
+    }
+    if( observer.pos_abs_omt() != outing.selected_watch_omt ) {
+        return refuse( "not_at_watch" );
+    }
+    if( ( outing.owner == bandit_live_world::simulation_owner::local &&
           ( !outing.local_handoff.is_active() || outing.local_handoff.phase != outing.phase ||
             !outing.local_handoff.cohesion_assembled || outing.local_handoff.cohesion_abort_return ) ) ) {
-        return false;
+        return refuse( "local_handoff_not_ready" );
     }
-    // Read native state each acquisition. This never adds a vision effect, cached mode, or
-    // persistent eligibility flag, and does not suppress any movement or survival decision.
-    if( observer.is_dead_state() || observer.is_blind() || observer.in_sleep_state() ||
-        observer.has_flag( json_character_flag( "CANNOT_MOVE" ) ) ||
-        !observer.path.empty() || !observer.omt_path.empty() || observer.goto_to_this_pos ||
-        observer.mission == NPC_MISSION_TRAVELLING ||
-        ( observer.goal != npc::no_goal_point && observer.goal != outing.selected_watch_omt ) ||
-        observer.get_attitude() == NPCATT_FLEE || observer.get_attitude() == NPCATT_FLEE_TEMP ||
-        observer.get_attitude() == NPCATT_KILL ||
-        observer.get_ai_danger() > 0 || observer.get_ai_target().lock() ||
-        observer.get_current_attack() ) {
-        return false;
+    if( observer.is_dead_state() ) {
+        return refuse( "dead" );
+    }
+    if( observer.is_blind() ) {
+        return refuse( "blind" );
+    }
+    if( observer.in_sleep_state() ) {
+        return refuse( "sleeping" );
+    }
+    if( observer.has_flag( json_character_flag( "CANNOT_MOVE" ) ) ) {
+        return refuse( "cannot_move" );
+    }
+    if( !observer.path.empty() ) {
+        return refuse( "local_path_pending" );
+    }
+    if( !observer.omt_path.empty() ) {
+        return refuse( "overmap_path_pending" );
+    }
+    if( observer.goto_to_this_pos ) {
+        return refuse( "local_destination_pending" );
+    }
+    if( observer.mission == NPC_MISSION_TRAVELLING ) {
+        return refuse( "travelling" );
+    }
+    if( ( observer.goal != npc::no_goal_point && observer.goal != outing.selected_watch_omt ) ) {
+        return refuse( "other_goal" );
+    }
+    if( observer.get_attitude() == NPCATT_FLEE || observer.get_attitude() == NPCATT_FLEE_TEMP ) {
+        return refuse( "flight" );
+    }
+    if( observer.get_attitude() == NPCATT_KILL ) {
+        return refuse( "combat_attitude" );
+    }
+    if( observer.get_ai_danger() > 0 ) {
+        return refuse( "ai_danger" );
+    }
+    if( observer.get_ai_target().lock() ) {
+        return refuse( "ai_target" );
+    }
+    if( observer.get_current_attack() ) {
+        return refuse( "attack_pending" );
     }
     for( const char *effect : {
              "narcosis", "stunned", "downed", "psi_stunned",
              "npc_flee_player", "npc_run_away", "npc_fire_bad", "onfire"
          } ) {
         if( observer.has_effect( efftype_id( effect ) ) ) {
-            return false;
+            return refuse( effect );
         }
     }
     const map &here = get_map();
@@ -551,14 +615,14 @@ static bool watching_member_impl( const bandit_live_world::site_record &site, co
                               ( view && view->has_geometry( observer.pos_abs() ) );
     if( origin_known && observer.is_dangerous_fields(
             origin_map.field_at( origin_map.get_bub( observer.pos_abs() ) ) ) ) {
-        return false;
+        return refuse( "dangerous_field" );
     }
     // The AI cache is transient across reload. Read available actual threats with
     // ordinary physical range for loaded and abstract observers, never magnified.
     for( const Creature *enemy : threats ) {
         if( here.inbounds( observer.pos_abs() ) && here.inbounds( enemy->pos_abs() ) ) {
             if( observer.sees_without_clairvoyance( here, *enemy ) ) {
-                return false;
+                return refuse( "visible_hostile" );
             }
         } else if( view->has_ray( observer.pos_abs(), enemy->pos_abs() ) ) {
             const auto observer_light = existing_ambient( observer.pos_abs(), lighting_views, vehicles );
@@ -575,9 +639,12 @@ static bool watching_member_impl( const bandit_live_world::site_record &site, co
                               observer.sees_without_clairvoyance_physical( *view, *enemy ) :
                               observer.sees_without_clairvoyance( *view, *enemy );
             if( seen ) {
-                return false;
+                return refuse( "visible_hostile" );
             }
         }
+    }
+    if( reason ) {
+        *reason = "eligible";
     }
     return true;
 }
@@ -589,7 +656,12 @@ bool watching_member( const bandit_live_world::site_record &site, const npc &obs
 }
 bool site_reader::watching_member( const bandit_live_world::site_record &site, const npc &observer )
 {
-    return watching_member_impl( site, observer, impl->vehicles, impl->views );
+    return watching_member( site, observer, nullptr );
+}
+bool site_reader::watching_member( const bandit_live_world::site_record &site, const npc &observer,
+                                  std::string *reason )
+{
+    return watching_member_impl( site, observer, impl->vehicles, impl->views, reason );
 }
 size_t site_reader::cached_vehicle_scan_count() const
 {

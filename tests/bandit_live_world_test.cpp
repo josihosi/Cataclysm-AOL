@@ -1,6 +1,7 @@
 #include "bandit_live_world.h"
 #include "bandit_live_world_probe.h"
 #include "scout_observation.h"
+#include "physical_light.h"
 
 #include <algorithm>
 #include <array>
@@ -49127,4 +49128,264 @@ TEST_CASE( "paid home return settles its exact consumed opportunity despite camp
         }
     }
     CHECK( r054_actor_bytes( get_avatar() ) == original_claim );
+}
+
+
+TEST_CASE( "opt-in signal adapter explains actual watcher and producer-reader refusals",
+           "[bandit][signal_adapter_diagnostic_067]" )
+{
+    clear_npcs();
+    clear_avatar();
+    clear_map_with_vision( -1, 4, false );
+    set_time( calendar::start_of_cataclysm + 240_minutes );
+    set_time_to_day();
+    auto saved_world = overmap_buffer.global_state.bandit_live_world;
+    const auto saved_position = get_avatar().pos_abs();
+    on_out_of_scope restore( [&]() {
+        clear_npcs();
+        g->clear_zombies();
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        get_avatar().setpos( saved_position, false );
+    } );
+    map &here = get_map();
+    auto world = make_structural_signal_test_world( true, 956100 );
+    auto &site = world.sites.front();
+    auto &outing = site.active_outing;
+    outing.schema_version = 10;
+    get_avatar().setpos( here, tripoint_bub_ms( 84, 66, 0 ), false );
+    outing.target_omt = get_avatar().pos_abs_omt();
+    site.intelligence_map.find_lead( outing.target_lead_id )->omt = outing.target_omt;
+    outing.target_footprint = { outing.target_omt };
+    outing.selected_watch_omt = project_to<coords::omt>( here.get_abs( tripoint_bub_ms( 12, 66, 0 ) ) );
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_route_cost = 8;
+    const auto approach = outing.selected_watch_omt + tripoint( -1, 0, 0 );
+    outing.shared_route = { site.anchor, approach, outing.selected_watch_omt, approach, site.anchor };
+    outing.waypoint_index = 2;
+    // Keep the controlled watch geometry consistent with the production return clock.
+    const int distance_home = std::max( std::abs( site.anchor.x() - outing.selected_watch_omt.x() ),
+                                        std::abs( site.anchor.y() - outing.selected_watch_omt.y() ) );
+    outing.expected_return_minutes = outing.started_minutes +
+                                     std::clamp( distance_home * 15, 30, 240 ) +
+                                     2 * std::clamp( distance_home * 10, 30, 180 );
+    outing.missing_deadline_minutes = outing.expected_return_minutes + 1440;
+    outing.assessment.observation_started_minutes = 720;
+    outing.assessment.last_progress_minutes = 720;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    std::vector<shared_ptr_fast<npc>> members;
+    // clear_npcs only removes loaded actors; repeated sections must also retire
+    // their prior abstract fixture identities before inserting the same saved IDs.
+    for( const auto id : outing.member_ids ) {
+        g->remove_npc( id );
+        while( overmap_buffer.find_npc( id ) ) {
+            overmap_buffer.remove_npc( id );
+        }
+        auto actor = make_shared_fast<npc>();
+        actor->normalize();
+        actor->recalc_sight_limits();
+        actor->setID( id, true );
+        actor->spawn_at_omt( outing.selected_watch_omt );
+        overmap_buffer.insert_npc( actor );
+        actor->setpos( here, tripoint_bub_ms( 12 + static_cast<int>( members.size() ), 66, 0 ), false );
+        members.push_back( actor );
+    }
+    on_out_of_scope remove_abstract_fixtures( [&]() {
+        for( const auto &member : members ) {
+            g->remove_npc( member->getID() );
+            if( overmap_buffer.find_npc( member->getID() ) ) {
+                overmap_buffer.remove_npc( member->getID() );
+            }
+        }
+    } );
+    auto &observer = *members.front();
+    REQUIRE( overmap_buffer.find_npc( observer.getID() ).get() == &observer );
+    here.build_map_cache( 0 );
+    overmap_buffer.global_state.bandit_live_world = world;
+
+    const char *names[] = { "OPENCLAW_HARNESS_UI_TRACE", "OPENCLAW_HARNESS_RUN_ID" };
+    std::optional<std::string> old[2];
+    for( int i = 0; i < 2; ++i ) {
+        if( const char *value = std::getenv( names[i] ) ) {
+            old[i] = value;
+        }
+    }
+    on_out_of_scope restore_environment( [&] {
+        for( int i = 0; i < 2; ++i ) {
+            if( old[i] ) {
+                setenv( names[i], old[i]->c_str(), 1 );
+            } else {
+                unsetenv( names[i] );
+            }
+        }
+        reset_live_light_sample_cache();
+    } );
+    setenv( names[0], "1", 1 );
+    setenv( names[1], "signal-diagnostic-control", 1 );
+    REQUIRE( debug_log_enabled( D_INFO, DC_ALL ) ); // No debug-level override is needed.
+    bandit_live_world::structural_threat_observer_request request;
+    request.current_omt = outing.selected_watch_omt;
+    request.visible_forward_omts = outing.target_footprint;
+    request.party_power = 4;
+    const tripoint_bub_ms source( 84, 66, 0 );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    here.add_field( source, field_type_id( "fd_smoke" ), 1 );
+    // Call the actual staggered producer on this source's discovery phase.
+    const auto abs_source = here.get_abs( source );
+    constexpr int interval = physical_light::loaded_source_sampler::discovery_interval_turns;
+    const int width = SEEX * MAPSIZE;
+    const int phase = ( abs_source.x() + abs_source.y() * width ) % interval;
+    const int now = to_turns<int>( calendar::turn - calendar::turn_zero );
+    set_time( calendar::turn + time_duration::from_turns( ( phase - now % interval + interval ) % interval ) );
+    reset_live_light_sample_cache();
+    run_live_light_delivery_for_test();
+    const auto &packets = live_light::samples_for_turn( calendar::turn );
+    const auto found = std::find_if( packets.begin(), packets.end(), [&]( const auto &signal ) {
+        return signal.mark.kind == "smoke" && signal.source_ms == abs_source;
+    } );
+    REQUIRE( found != packets.end() );
+    const auto packet = *found;
+    REQUIRE( packet.range_cap_omt >= 3 );
+    const auto world_bytes = [&] {
+        std::ostringstream out;
+        JsonOut json( out );
+        world.serialize( json );
+        return out.str();
+    };
+    const auto acquire = [&]( const std::vector<live_bandit_signal_observation> &signals ) {
+        std::ostringstream capture;
+        auto *previous = std::cerr.rdbuf( capture.rdbuf() );
+        on_out_of_scope restore_stderr( [&] { std::cerr.rdbuf( previous ); } );
+        const auto time_before = calendar::turn;
+        const auto site_before = world_bytes();
+        const auto actor_before = r054_actor_bytes( *members.front() );
+        auto reads = live_bandit_structural_signal_reads_for_test( signals, site, outing, request );
+        CHECK( calendar::turn == time_before );
+        CHECK( world_bytes() == site_before );
+        CHECK( r054_actor_bytes( *members.front() ) == actor_before );
+        if( capture.str().find( "ERROR" ) != std::string::npos ) {
+            FAIL_CHECK( "Captured production diagnostic error: " << capture.str() );
+        }
+        return std::make_pair( reads, capture.str() );
+    };
+    const auto diagnostic = [&]( const std::string &line ) {
+        const auto start = line.find( " diagnostic=" );
+        REQUIRE( start != std::string::npos );
+        auto object = json_loader::from_string( line.substr( start + 12 ) ).get_object();
+        object.allow_omitted_members();
+        return object;
+    };
+    const auto object_at = []( const JsonArray &array, size_t index ) {
+        auto object = array.get_object( index );
+        object.allow_omitted_members();
+        return object;
+    };
+    const auto initial_rng = rng_get_engine();
+    const auto acquired = acquire( { packet } );
+    const auto acquired_rng = rng_get_engine();
+    REQUIRE_FALSE( acquired.first.empty() );
+    const auto row = diagnostic( acquired.second );
+    CHECK( row.get_string( "run_id" ) == "signal-diagnostic-control" );
+    CHECK( row.get_int( "game_turn" ) == to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    CHECK( row.get_string( "site_id" ) == site.site_id );
+    CHECK( row.get_string( "activity_id" ) == outing.activity_id );
+    CHECK( row.get_int( "generation" ) == outing.generation );
+    CHECK( row.get_int( "assessment_pinned_revision" ) == outing.assessment.pinned_target_revision );
+    REQUIRE( row.get_array( "watchers" ).size() == 2 );
+    for( const JsonObject &member : row.get_array( "watchers" ) ) {
+        member.allow_omitted_members();
+        CHECK( member.get_bool( "eligible" ) );
+        CHECK( member.get_string( "reason" ) == "eligible" );
+    }
+    const auto candidate = object_at( row.get_array( "candidates" ), 0 );
+    CHECK( candidate.get_string( "source_id" ) == packet.sample_id );
+    CHECK( candidate.get_int( "observed_turn" ) == packet.observed_turn );
+    CHECK( candidate.get_bool( "reader_evaluated" ) );
+    CHECK( candidate.get_string( "adapter_rejection" ).empty() );
+    REQUIRE( candidate.get_array( "readers" ).size() == 2 );
+    CHECK( object_at( candidate.get_array( "readers" ), 0 ).get_bool( "visible" ) );
+
+    SECTION( "opt-in off preserves acquisition and compact ordinary row" ) {
+        setenv( names[0], "0", 1 );
+        rng_get_engine() = initial_rng;
+        const auto quiet = acquire( { packet } );
+        CHECK( rng_get_engine() == acquired_rng );
+        REQUIRE( quiet.first.size() == acquired.first.size() );
+        CHECK( quiet.first.front().source_id == acquired.first.front().source_id );
+        CHECK( quiet.first.front().observer_id == acquired.first.front().observer_id );
+        CHECK( quiet.second.find( " diagnostic=" ) == std::string::npos );
+        CHECK( acquire( {} ).second.empty() );
+    }
+    SECTION( "interior source retains generic reader refusal" ) {
+        here.ter_set( source, ter_str_id( "t_floor" ) );
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        reset_live_light_sample_cache();
+        run_live_light_delivery_for_test();
+        const auto &inside = live_light::samples_for_turn( calendar::turn );
+        const auto smoke = std::find_if( inside.begin(), inside.end(), [&]( const auto &signal ) {
+            return signal.mark.kind == "smoke" && signal.source_ms == abs_source;
+        } );
+        REQUIRE( smoke != inside.end() );
+        const auto rejected = acquire( { *smoke } );
+        CHECK( rejected.first.empty() );
+        const auto refused = object_at( diagnostic( rejected.second ).get_array( "candidates" ), 0 );
+        CHECK( refused.get_string( "adapter_rejection" ) == "no_visible_watcher" );
+        for( const JsonObject &reader : refused.get_array( "readers" ) ) {
+            reader.allow_omitted_members();
+            CHECK( reader.get_bool( "known" ) );
+            CHECK_FALSE( reader.get_bool( "visible" ) );
+            CHECK( reader.get_string( "reason" ) == "interior_unknown" );
+        }
+    }
+    SECTION( "actual target-local occlusion reports the first reader refusal" ) {
+        here.ter_set( source + point( -1, 0 ), ter_str_id( "t_wall" ) );
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        const auto rejected = acquire( { packet } );
+        CHECK( rejected.first.empty() );
+        const auto refused = object_at( diagnostic( rejected.second ).get_array( "candidates" ), 0 );
+        CHECK( refused.get_bool( "reader_evaluated" ) );
+        for( const JsonObject &reader : refused.get_array( "readers" ) ) {
+            reader.allow_omitted_members();
+            CHECK_FALSE( reader.get_bool( "visible" ) );
+            CHECK( reader.get_string( "reason" ) == "target_local_occlusion_or_attenuation" );
+        }
+    }
+    SECTION( "first adapter guard is not invented optical refusal" ) {
+        auto absent = packet;
+        absent.source_ms.reset();
+        auto foreign = packet;
+        foreign.source_omt += point( 10, 0 );
+        foreign.source_ms = project_to<coords::ms>( foreign.source_omt );
+        foreign.range_cap_omt = 40;
+        const auto rejected = acquire( { absent, foreign } );
+        CHECK( rejected.first.empty() );
+        const auto candidates = diagnostic( rejected.second ).get_array( "candidates" );
+        CHECK( object_at( candidates, 0 ).get_string( "adapter_rejection" ) == "source_ms_unavailable" );
+        CHECK_FALSE( object_at( candidates, 0 ).get_bool( "reader_evaluated" ) );
+        CHECK( object_at( candidates, 0 ).get_array( "readers" ).empty() );
+        CHECK( object_at( candidates, 1 ).get_string( "adapter_rejection" ) == "outside_target_site" );
+    }
+    SECTION( "actual sleeping and unavailable actors distinguish zero candidates" ) {
+        members.front()->add_effect( efftype_id( "sleep" ), 10_minutes );
+        overmap_buffer.remove_npc( members.back()->getID() );
+        const auto rejected = acquire( { packet } );
+        CHECK( rejected.first.empty() );
+        const auto blocked = diagnostic( rejected.second );
+        CHECK( object_at( blocked.get_array( "watchers" ), 0 ).get_string( "reason" ) == "sleeping" );
+        CHECK( object_at( blocked.get_array( "watchers" ), 1 ).get_string( "reason" ) == "actor_unavailable" );
+        CHECK( object_at( blocked.get_array( "candidates" ), 0 ).get_string( "adapter_rejection" ) ==
+               "no_eligible_watcher" );
+        const auto empty = acquire( {} );
+        CHECK( diagnostic( empty.second ).get_array( "candidates" ).empty() );
+    }
+    SECTION( "refused request has no eligibility or reader inference" ) {
+        request.party_power = 0;
+        const auto rejected = acquire( { packet } );
+        CHECK( rejected.first.empty() );
+        const auto blocked = diagnostic( rejected.second );
+        CHECK( blocked.get_string( "request_rejection" ) == "no_party_power" );
+        CHECK_FALSE( blocked.get_bool( "watcher_eligibility_evaluated" ) );
+        CHECK( blocked.get_array( "watchers" ).empty() );
+    }
 }
