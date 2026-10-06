@@ -44120,6 +44120,7 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
 {
     const bool bandit = GENERATE( false, true );
     const bool local = GENERATE( false, true );
+    const bool elevated_target = GENERATE( false, true );
     std::ifstream input( "tests/data/r057_actual_watch_arrival.json" );
     REQUIRE( input.good() );
     auto fixture = json_loader::from_string(
@@ -44133,9 +44134,18 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
         site.profile = bandit_live_world::hostile_site_profile::camp_style;
         site.source_id = "bandit_camp";
     }
+    if( !elevated_target ) {
+        site.active_outing.target_omt = tripoint_abs_omt( site.active_outing.target_omt.xy(), 0 );
+        auto *lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+        REQUIRE( lead );
+        lead->omt = site.active_outing.target_omt;
+    }
     const auto ids = site.active_outing.member_ids;
     const auto approach_origin = project_to<coords::ms>( site.active_outing.shared_route[1] );
     if( local ) {
+        // The physical local motor, not the abstract travel service, completes
+        // the last leg. Arrival must retain that proof for the next owner.
+        site.active_outing.actor_route_waypoint = 1;
         std::vector<bandit_live_world::local_handoff_member_read> reads;
         for( std::size_t i = 0; i < ids.size(); ++i ) {
             const auto position = approach_origin + tripoint_rel_ms( 10 + static_cast<int>( i ), 10, 0 );
@@ -44172,6 +44182,7 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
                      site, cursor, arrived, reads ) ==
                  bandit_live_world::local_handoff_commit_result::applied );
         CHECK( site.active_outing.waypoint_index == 2 );
+        CHECK( site.active_outing.actor_route_waypoint == 2 );
         CHECK( site.active_outing.assessment.observation_started_minutes == arrived );
         CHECK( site.active_outing.local_contact_minutes == contact );
         CHECK( site.active_outing.observations.size() == observations.size() );
@@ -44209,10 +44220,26 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
             CHECK( reloaded.active_outing.owner == bandit_live_world::simulation_owner::abstract );
             CHECK( reloaded.active_outing.assessment.observation_started_minutes == arrived );
             CHECK( reloaded.active_outing.waypoint_index == 2 );
-            CHECK( bandit_live_world::advance_structural_scout_assessment( reloaded,
-                   reloaded.active_outing.activity_id, reloaded.active_outing.generation,
-                   reloaded.active_outing.target_lead_revision, arrived + 1 ) !=
-                   bandit_live_world::scout_assessment_result::rejected );
+            CHECK( reloaded.active_outing.actor_route_waypoint == 2 );
+            int provider_calls = 0;
+            const auto provider = [&]( const bandit_live_world::site_record &candidate,
+                                       const bandit_live_world::active_outing_state &outing,
+                                       const bandit_live_world::structural_threat_observer_request &request ) {
+                if( candidate.site_id == reloaded.site_id ) {
+                    ++provider_calls;
+                    CHECK( outing.owner == bandit_live_world::simulation_owner::abstract );
+                    CHECK( request.current_omt == outing.selected_watch_omt );
+                }
+                return std::vector<bandit_live_world::structural_signal_read>{};
+            };
+            // Use the production service; directly advancing assessment would
+            // bypass its physical actor-waypoint gate and hide a lost handoff.
+            bandit_live_world::advance_structural_bounty_outings(
+                world, arrived + 2, {}, {}, provider );
+            CHECK( provider_calls == 1 );
+            CHECK( reloaded.active_outing.last_advanced_minutes == arrived + 2 );
+            CHECK( reloaded.active_outing.assessment.observation_started_minutes == arrived );
+            CHECK( reloaded.active_outing.observations.size() == observations.size() );
         }
         CHECK_FALSE( reloaded.current_scout_report.is_present() );
     }
