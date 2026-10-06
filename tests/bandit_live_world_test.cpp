@@ -49253,8 +49253,11 @@ TEST_CASE( "opt-in signal adapter explains actual watcher and producer-reader re
     };
     const auto acquire = [&]( const std::vector<live_bandit_signal_observation> &signals ) {
         std::ostringstream capture;
-        auto *previous = std::cerr.rdbuf( capture.rdbuf() );
-        on_out_of_scope restore_stderr( [&] { std::cerr.rdbuf( previous ); } );
+        // Windows DebugLog wraps the original stderr buffer; capture its
+        // actual ostream rather than redirecting stderr behind that wrapper.
+        std::ostream &log_output = DebugLog( D_INFO, DC_ALL );
+        auto *previous = log_output.rdbuf( capture.rdbuf() );
+        on_out_of_scope restore_log( [&] { log_output.rdbuf( previous ); } );
         const auto time_before = calendar::turn;
         const auto site_before = world_bytes();
         const auto actor_before = r054_actor_bytes( *members.front() );
