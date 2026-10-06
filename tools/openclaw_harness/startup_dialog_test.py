@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -548,7 +549,7 @@ class TerminalStartupDialogTest(unittest.TestCase):
                    str(self.transcript), "--endpoint", str(self.endpoint), "--owner",
                    str(self.endpoint.parent / "owner.json"), "--run-owner", str(self.run / "terminal.owner.json")]
         self.broker = {"pid": 70000, "alive": True, "birth_identity": "broker-birth",
-                       "command": " ".join(command)}
+                       "command": shlex.join(command)}
         self.terminal = {"schema": "caol-curses-terminal-owner-v1", "host": host,
                          "run_id": self.owner["run_id"], "game_pid": self.generation["pid"],
                          "game_process_generation": self.generation,
