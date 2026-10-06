@@ -16,6 +16,7 @@ extern "C" int ungetch( int );
 #include <fstream>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "cached_options.h"
@@ -39,6 +40,9 @@ extern "C" int ungetch( int );
 #include "main_menu.h"
 #include "semantic_surface.h"
 #include "worldfactory.h"
+#include "json.h"
+#include "json_loader.h"
+#include "mutation.h"
 
 namespace
 {
@@ -62,6 +66,21 @@ class scoped_environment
         std::string name;
         std::optional<std::string> previous;
 };
+// MainMenu reloads definition storage. A moved avatar retains raw variant/type
+// pointers into that old storage, so restore through native deserialization.
+std::string snapshot_avatar()
+{
+    std::ostringstream out;
+    JsonOut json( out );
+    get_avatar().serialize( json );
+    return out.str();
+}
+
+void restore_avatar_snapshot( const std::string &snapshot )
+{
+    get_avatar() = avatar();
+    get_avatar().deserialize( json_loader::from_string( snapshot ).get_object() );
+}
 } // namespace
 
 TEST_CASE( "main menu keeps a logical owner through native polling and retires real transitions",
@@ -87,8 +106,7 @@ TEST_CASE( "main menu keeps a logical owner through native polling and retires r
 
         // Menu entry resets the player as well as world metadata.  Keep the
         // actual test avatar alive and restore it before Catch weather cleanup.
-        avatar previous_avatar = std::move( get_avatar() );
-        on_out_of_scope restore_avatar( [&] { get_avatar() = std::move( previous_avatar ); } );
+        const std::string previous_avatar = snapshot_avatar();
 
         // opening_screen deliberately releases and reloads world metadata.
         // Restore the test world/options before Catch's weather cleanup runs.
@@ -104,6 +122,7 @@ TEST_CASE( "main menu keeps a logical owner through native polling and retires r
             // init_strings loads core data only.  Restore the test world's
             // finalized mod data (including regional/weather definitions).
             g->load_world_modfiles();
+            restore_avatar_snapshot( previous_avatar );
         } );
 
         // Catch initializes gameplay data in the C locale; this renderer fixture
@@ -320,6 +339,9 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     restore_on_out_of_scope<bool> restore_test_mode( test_mode );
     test_mode = false;
     const int previous_timeout = inp_mngr.get_timeout();
+    // This direct JSONL fixture has no broker wake source. Use the same
+    // bounded native polling as the MainMenu fixture, including epilogues.
+    inp_mngr.set_timeout( 1 );
     on_out_of_scope cleanup( [&] {
         manager.set_descriptor_observer( {} );
         manager.set_receipt_observer( {} );
@@ -492,14 +514,14 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                                      get_avatar().get_part_hp_max( bodypart_id( "head" ) ) );
         const auto world_options = world_generator->active_world->WORLD_OPTIONS;
         const auto world_mods = world_generator->active_world->active_mod_order;
-        avatar previous_avatar = std::move( get_avatar() );
-        on_out_of_scope restore_avatar( [&] { get_avatar() = std::move( previous_avatar ); } );
+        const std::string previous_avatar = snapshot_avatar();
         on_out_of_scope restore_world( [&] {
             WORLD *world = world_generator->get_world( world_name );
             world->WORLD_OPTIONS = world_options;
             world->active_mod_order = world_mods;
             world_generator->set_active_world( world );
             g->load_world_modfiles();
+            restore_avatar_snapshot( previous_avatar );
         } );
         main_menu menu;
         CHECK_FALSE( menu.opening_screen() );
@@ -523,6 +545,46 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     CHECK( rejected == ( mode == "semantic" ? 4 : 0 ) );
     CHECK( duplicate_checked == ( mode != "keyboard" ) );
     CHECK( active_semantic_surface_manager() == &manager );
+}
+
+TEST_CASE( "menu fixture restores avatar variant identity after real definition reload",
+           "[semantic_surface][main_menu_avatar_reload_067]" )
+{
+    REQUIRE( world_generator->active_world );
+    const auto original = snapshot_avatar();
+    on_out_of_scope restore( [&] { restore_avatar_snapshot( original ); } );
+    trait_id selected;
+    std::string variant_id;
+    for( const auto &trait : mutation_branch::get_all() ) {
+        if( !trait.variants.empty() ) {
+            selected = trait.id;
+            variant_id = trait.variants.begin()->first;
+            break;
+        }
+    }
+    REQUIRE( selected.is_valid() );
+    REQUIRE_FALSE( variant_id.empty() );
+    get_avatar().set_mutation( selected, selected->variant( variant_id ) );
+    const auto snapshot = snapshot_avatar();
+    // This is MainMenu's actual definition reload, followed by the fixture's
+    // real mod restoration. Do not read the old avatar's variant afterward.
+    g->load_core_data();
+    g->load_world_modfiles();
+    restore_avatar_snapshot( snapshot );
+    const auto restored = get_avatar().get_mutations_variants();
+    CHECK( std::any_of( restored.begin(), restored.end(), [&]( const trait_and_var &entry ) {
+        return entry.trait == selected && entry.variant == variant_id;
+    } ) );
+    // Exercise the serialization caller that faulted on Windows, with current
+    // registry-owned variants rather than a stale-pointer probe.
+    const auto saved = json_loader::from_string( snapshot_avatar() ).get_object();
+    saved.allow_omitted_members();
+    const auto mutations = saved.get_object( "mutations" );
+    mutations.allow_omitted_members();
+    const auto mutation = mutations.get_object( selected.str() );
+    mutation.allow_omitted_members();
+    CHECK( mutation.get_string( "variant-id" ) == variant_id );
+    CHECK( mutation.get_string( "variant-parent" ) == selected.str() );
 }
 
 #endif
