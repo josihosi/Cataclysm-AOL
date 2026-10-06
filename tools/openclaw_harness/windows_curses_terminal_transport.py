@@ -491,7 +491,8 @@ def _broker(config_path):
             # existing bridge closeout receipt as well as the native handles.
             from startup_harness import record_bridge_game_exit, append_semantic_wake_observation
             from types import SimpleNamespace
-            record_bridge_game_exit(SimpleNamespace(pid=owner['game_pid']), os.environ, owner['child_exit_code'])
+            record_bridge_game_exit(SimpleNamespace(pid=owner['game_pid'],
+                _bridge_exit_generation=owner['game_process_generation']), os.environ, owner['child_exit_code'])
             append_semantic_wake_observation(Path(owner['transcript']).parent, {
                 'schema': 'caol-semantic-wake-observation-v1', 'event': 'child_exit',
                 'run_id': owner['run_id'], 'transport': 'windows_event',
