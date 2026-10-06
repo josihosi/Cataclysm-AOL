@@ -899,9 +899,10 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
         entries = journal.get("entries", [])
         request_option = (" --request-id " + shlex.quote(str(result["request_id"]))
                           if result.get("request_id") else "")
-        return (f"Journal ready: {len(entries)} entries.\n"
+        return (f"Terminal journal sealed: {len(entries)} entries.\n"
+                "Reporting requires current native exit. A seal alone proves neither exit nor save.\n"
                 f"Read entries → play inspect result.evidence_journal.entries --limit 10{request_option}\n"
-                "Finish → play finish --witness FILE\n"
+                "Report after native exit → play finish --witness FILE\n"
                 "FILE is JSON with these existing fields:\n"
                 "verdict: proved | contradicted | inconclusive\n"
                 "smallest_supported_claim, causal_account: your conclusion and why\n"
@@ -1332,7 +1333,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
                     continue
                 if key == "performance" and item == {"status": "retained_by_public_collect"}:
                     continue
-                if key == "next" and item == "act, look, inspect, or journal":
+                if key == "next" and item == "act, look, inspect, evidence, messages, or status":
                     continue
                 if key == "next" and isinstance(item, str) and item in {"look", "collect"}:
                     hint = "Next: play " + item

@@ -52,12 +52,13 @@ class CockpitWitnessTest(unittest.TestCase):
     def test_witness_seals_input_then_finish_validates_citations(self) -> None:
         service = self.service()
         observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._read_process_state = lambda: {"run_id": "run-a", "pid": 123, "alive": False}
         sealed = service.call({
             "action": "run.witness", "observation_id": observed["observation_id"],
             "stop_reason": "claim_settled", "unused_authority": "none",
         })
         self.assertTrue(sealed["ok"])
-        self.assertEqual(sealed["result"]["action"], "WITNESS / FINISH")
+        self.assertEqual(sealed["result"]["action"], "TERMINAL SEAL / REPORT")
         self.assertEqual(service.call({
             "action": "game.act", "observation_id": observed["observation_id"],
             "action_id": "world.wait",
@@ -88,6 +89,7 @@ class CockpitWitnessTest(unittest.TestCase):
     def test_finish_cannot_skip_or_rewrite_the_sealed_witness(self) -> None:
         service = self.service()
         observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._read_process_state = lambda: {"run_id": "run-a", "pid": 123, "alive": False}
         missing = service.call({
             "action": "run.finish", "observation_id": observed["observation_id"],
             "stop_reason": "claim_settled", "unused_authority": "none",
@@ -106,6 +108,7 @@ class CockpitWitnessTest(unittest.TestCase):
     def test_finish_accepts_documented_witness_statement_alias(self) -> None:
         service = self.service()
         observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._read_process_state = lambda: {"run_id": "run-a", "pid": 123, "alive": False}
         service.call({
             "action": "run.witness", "observation_id": observed["observation_id"],
             "stop_reason": "claim_settled", "unused_authority": "none",
@@ -182,6 +185,7 @@ class CockpitWitnessTest(unittest.TestCase):
     def test_finish_accepts_claim_scoped_bundle_and_routes_finding(self) -> None:
         service = self.service()
         observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._read_process_state = lambda: {"run_id": "run-a", "pid": 123, "alive": False}
         service.call({
             "action": "run.witness", "observation_id": observed["observation_id"],
             "stop_reason": "mixed_claims_settled", "unused_authority": "none",

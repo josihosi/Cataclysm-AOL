@@ -33,6 +33,57 @@ class ProcessExitTest(unittest.TestCase):
                                     witness_evidence_ceiling="zero-credit")
         return channel, process, read, dispatch
 
+    def test_live_seal_and_finish_refuse_without_mutation_and_save_quit_still_works(self):
+        channel, process, _, dispatch = self.channel()
+        observed = channel.observe()
+        before = list(channel._transcript)
+        finalizer = Mock()
+        channel._finalize_session = finalizer
+        args = dict(observation_id=observed["observation_id"], stop_reason="done", unused_authority="released")
+        self.assertEqual(channel.seal_witness_journal(**args)["error"], "native_exit_required_before_reporting")
+        self.assertEqual(channel.finish(**args)["error"], "native_exit_required_before_reporting")
+        self.assertEqual(list(channel._transcript), before)
+        self.assertEqual(channel._state, "active")
+        self.assertIsNone(channel._sealed_journal)
+        finalizer.assert_not_called()
+        def save(frame, action):
+            self.assertEqual(action, "world.save_quit")
+            process.update(alive=False, exit_code=0)
+            return {"native_receipt": {"run_id": "run-a", "requested_run_id": "run-a",
+                    "requested_frame_id": frame["frame_id"], "action_id": action, "accepted": True,
+                    "requested_surface_id": "world-1", "consuming_surface_id": "world-1",
+                    "consuming_frame_id": frame["frame_id"]}}
+        channel._dispatch_advertised_action = save
+        result = channel.act(observation_id=observed["observation_id"], action_id="world.save_quit")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["observation"]["surface"]["kind"], "process_exited")
+
+    def test_wrong_identity_or_unknown_liveness_cannot_seal_or_finish(self):
+        for change in ({"run_id": "other"}, {"pid": 0}, {"alive": None},
+                       {"identity_status": "identity_changed"}, {"identity_status": "identity_unavailable"}):
+            with self.subTest(change=change):
+                channel, process, _, _ = self.channel()
+                observed = channel.observe()
+                process.update(alive=False)
+                process.update(change)
+                args = dict(observation_id=observed["observation_id"], stop_reason="done", unused_authority="none")
+                self.assertFalse(channel.seal_witness_journal(**args)["ok"])
+                self.assertFalse(channel.finish(**args)["ok"])
+                self.assertEqual(channel._state, "active")
+
+    def test_crash_can_seal_but_live_replacement_blocks_reporting(self):
+        channel, process, _, _ = self.channel(alive=False, exit_code=7)
+        observed = channel.observe()
+        args = dict(observation_id=observed["observation_id"], stop_reason="crashed", unused_authority="released")
+        self.assertTrue(channel.seal_witness_journal(**args)["ok"])
+        retained = channel._sealed_journal
+        process.update(alive=True)
+        finalizer = Mock()
+        channel._finalize_session = finalizer
+        self.assertFalse(channel.finish(**args, witness={})["ok"])
+        self.assertIs(channel._sealed_journal, retained)
+        finalizer.assert_not_called()
+
     def test_dead_process_replaces_cached_world_without_native_frame_or_actions(self):
         channel, process, read, dispatch = self.channel()
         old = channel.observe()

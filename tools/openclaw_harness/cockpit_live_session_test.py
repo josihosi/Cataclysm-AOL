@@ -235,7 +235,19 @@ class LiveSessionTest(unittest.TestCase):
             r019_timed_entry=r019_timed_entry,
             diagnostic_terminal=diagnostic_terminal,
         )
-        service = cockpit.CockpitService(run_channel=channel)
+        class ReportingFixture(cockpit.CockpitService):
+            def call(self, request):
+                # These model-only tests exercise report semantics. Supply an
+                # ended process at reporting; explicit liveness tests below
+                # retain their own process state and exercise the real guard.
+                previous = channel._read_process_state
+                if process_state is None and request.get("action") == "run.finish":
+                    channel._read_process_state = lambda: {"run_id": channel._run_id, "pid": 42, "alive": False}
+                try:
+                    return super().call(request)
+                finally:
+                    channel._read_process_state = previous
+        service = ReportingFixture(run_channel=channel)
         service._test_frame_index = index
         return service, finals
 
@@ -243,7 +255,7 @@ class LiveSessionTest(unittest.TestCase):
         """A saved but still-open main menu must not make the bridge reenter."""
         for alive, expected in ((True, False), (False, True)):
             with self.subTest(alive=alive):
-                process_state = {"alive": True, "pid": 42}
+                process_state = {"alive": True, "pid": 42, "run_id": "live-proof"}
                 service, finals = self.service(
                     [frame(1, 100)], process_state=process_state,
                 )
@@ -277,8 +289,12 @@ class LiveSessionTest(unittest.TestCase):
                     "action": "run.finish", "observation_id": observed["observation_id"],
                     "stop_reason": "native save boundary", "unused_authority": "released",
                 })
-                self.assertTrue(finished["ok"])
-                self.assertEqual(finals[0]["declared_reentry_ready"], expected)
+                if alive:
+                    self.assertEqual(finished["error"], "native_exit_required_before_reporting")
+                    self.assertEqual(finals, [])
+                else:
+                    self.assertTrue(finished["ok"])
+                    self.assertEqual(finals[0]["declared_reentry_ready"], expected)
 
     def test_progressing_observation_stays_live_and_worker_explicitly_finishes(self) -> None:
         service, finals = self.service([frame(1, 100), frame(2, 101), frame(3, 102, entity_dx=3)])

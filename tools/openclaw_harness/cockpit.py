@@ -3647,10 +3647,29 @@ class CockpitRunChannel:
             "gameplay_credit": False,
         }
 
+    def _reporting_exit_refusal(self) -> Optional[Dict[str, Any]]:
+        # Reporting is not native termination. Recheck even after sealing: an
+        # old exit observation cannot authorize finalizing a replacement game.
+        # Pure in-memory channels have neither a native reader nor a process finalizer.
+        if self._read_process_state is None and self._finalize_session is None:
+            return None
+        process = dict(self._read_process_state()) if self._read_process_state else {}
+        if (process.get("alive") is False and process.get("run_id") == self._run_id
+                and isinstance(process.get("pid"), int) and process["pid"] > 0
+                and process.get("identity_status") not in {"identity_changed", "identity_unavailable"}
+                and self._binding_matches()):
+            return None
+        return {"ok": False, "error": "native_exit_required_before_reporting",
+                "native_process": process or {"alive": "unknown"},
+                "next": "Keep the game and save intact. Use the currently advertised native save/quit action when authorized; then look to observe exit. Live evidence remains available through inspect, evidence, messages and status. A historical sealed journal stays immutable; return that exact held state to its owner."}
+
     def seal_witness_journal(
         self, *, observation_id: str, stop_reason: str, unused_authority: str,
     ) -> Dict[str, Any]:
-        """Stop gameplay input and expose the immutable facts the worker may cite."""
+        """Seal immutable evidence after the bound native game has exited."""
+        refusal = self._reporting_exit_refusal()
+        if refusal is not None:
+            return refusal
         if self._witness_charter is None:
             return {"ok": False, "error": "playtest_has_no_witness_charter"}
         if self._state != "active":
@@ -3694,7 +3713,9 @@ class CockpitRunChannel:
         return {
             "ok": True,
             "result": {
-                "action": "WITNESS / FINISH",
+                "action": "TERMINAL SEAL / REPORT",
+                "native_process": dict(self._read_process_state()) if self._read_process_state else {"owned_native_process": False},
+                "save_evidence": "Use retained native save facts; exit alone does not establish a save.",
                 "charter": dict(self._witness_charter),
                 "evidence_journal": dict(self._sealed_journal),
                 "next_calls": ["run.finish"],
@@ -3706,6 +3727,9 @@ class CockpitRunChannel:
         r019_acceptance_matrix: Optional[Mapping[str, Any]] = None,
         witness: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
+        refusal = self._reporting_exit_refusal()
+        if refusal is not None:
+            return refusal
         if self._state not in {"active", "witnessing"}:
             return {"ok": False, "error": "live_session_finished", "final": self._final_report}
         observed = self._observations.get(str(observation_id))
@@ -3898,7 +3922,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
-        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit or run.finish ends the session.",
+        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit requests termination. Reporting run.finish requires the bound native game already exited.",
         "speech": {
             "sequence": "Submit free text through the current native prompt. Correlate the utterance/hearer and prompt request ID with llm_request_started, then llm_response_emitted in the runner log. The response event proves calculation ended and was emitted, not that the game applied it. Once completion is evidenced, choose world.pause from the current World owner and inspect the reply/action and game-time change. Advance further turns only as the behavior requires.",
             "launch": "The current npctalk free-text route enqueues the first hearer immediately; later serial hearers can require a turn to apply the prior response and dispatch the next. If no matching request started, inspect launch/queue evidence before waiting.",

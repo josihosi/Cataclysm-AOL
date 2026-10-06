@@ -655,9 +655,10 @@ class PlayerClient:
                   "turn_assessment": assessment,
                   "state": "collected" if response.get("ok") else "rejected", "request_id": request_id,
                   "next": "collect" if self.state.get("finished") else
-                          "finish --witness FILE" if self.state.get("sealed_terminal") else
+                          ("finish --witness FILE" if self.state.get("process_exited") else
+                           "status; preserve the sealed journal and live game; native exit is unverified") if self.state.get("sealed_terminal") else
                           "journal --reason REASON" if self.state.get("process_exited") else
-                          "act, look, inspect, or journal" if self.state.get("observation_id") else "look"}
+                          "act, look, inspect, evidence, messages, or status" if self.state.get("observation_id") else "look"}
         if self.state.get("process_exited") and not self.state.get("finished"):
             output["state"] = "process_exited"
         if self.state.get("sealed_terminal") and not self.state.get("finished"):
@@ -736,7 +737,7 @@ class PlayerClient:
         if self.state.get("pending"):
             raise ValueError("request_in_flight: use collect")
         if self.state.get("sealed_terminal"):
-            raise ValueError("journal_is_sealed: submit finish --witness FILE")
+            raise ValueError("journal_is_sealed: immutable historical seal; verify native exit before reporting; preserve any live game and consult its owner")
         frame = self.state.get("terminal_observation_id") if terminal else self.state.get("observation_id")
         if terminal:
             if not frame or not self.state.get("process_exited"):
@@ -981,7 +982,7 @@ class PlayerClient:
         if not isinstance(request, dict) or not isinstance(request.get("action"), str) or not request["action"].strip().lower().startswith("game."):
             raise ValueError("call_requires_a_structured_game_request")
         if self.state.get("sealed_terminal"):
-            raise ValueError("journal_is_sealed: submit finish --witness FILE")
+            raise ValueError("journal_is_sealed: immutable historical seal; verify native exit before reporting; preserve any live game and consult its owner")
         if self.state.get("process_exited") and request["action"].strip().lower() not in {"game.observe", "game.look"}:
             return {"ok": False, "error": "game_process_exited", "next": "journal --reason REASON"}
         # Keep recipes and their types intact. The service owns operation
@@ -1016,11 +1017,23 @@ class PlayerClient:
                       "unit": "steps", "maximum": bound_maximum},
         }}, wait_seconds)
 
+    def _reporting_exit_refusal(self):
+        if not self.state.get("process_exited"):
+            return {"ok": False, "error": "native_exit_required_before_reporting",
+                    "next": "Use inspect/evidence/messages/status for live evidence. When authorized, use the current advertised native save/quit action and look to observe exit. No reporting request submitted."}
+        return None
+
     def journal(self, reason: str, unused: str, wait_seconds: float):
+        refusal = self._reporting_exit_refusal()
+        if refusal is not None:
+            return refusal
         return self.submit({"action": "run.witness", "observation_id": self.frame(terminal=self.state.get("process_exited", False)),
                             "stop_reason": reason, "unused_authority": unused}, wait_seconds)
 
     def finish(self, witness: dict[str, Any], wait_seconds: float):
+        refusal = self._reporting_exit_refusal()
+        if refusal is not None:
+            return refusal
         if isinstance(witness, dict):
             statements = [claim.get("statement") for claim in witness.get("claims", [])
                           if isinstance(claim, dict)] if witness.get("schema") == \
@@ -1274,7 +1287,7 @@ def main(argv=None):
     inspect.add_argument("--limit", type=int)
     inspect.add_argument("--contains")
     inspect.add_argument("--request-id", help="Inspect an earlier retained response without sending input")
-    journal = commands.add_parser("journal", help="Seal immutable evidence before writing the witness; ends play")
+    journal = commands.add_parser("journal", help="Terminal seal after native exit; live evidence uses inspect/evidence/messages/status")
     journal.add_argument("--reason", required=True)
     journal.add_argument("--unused-authority", default="released")
     finish = commands.add_parser("finish", help="Submit your witness against the sealed journal")
@@ -1324,7 +1337,7 @@ def main(argv=None):
                         status = json.loads((args.session / "status.json").read_text(encoding="utf-8"))
                         if (status.get("binding_id") != client.binding or
                                 pre_world_startup_phase(status) != "declared_reentry"):
-                            raise ValueError("journal_is_sealed: submit finish --witness FILE")
+                            raise ValueError("journal_is_sealed: immutable historical seal; verify native exit before reporting; preserve any live game and consult its owner")
                         # The prior journal stays sealed until a new World owner
                         # publishes its descriptor. This is a read-only view of
                         # the replacement process, never a game.observe request.

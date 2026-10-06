@@ -433,11 +433,11 @@ class PlayerCliTest(unittest.TestCase):
             "response_sha256": hashlib.sha256(raw).hexdigest(), "response_artifact": path,
         })
 
-    def observe(self, frame="frame-1"):
+    def observe(self, frame="frame-1", exited=False):
         pending = self.cli("look")
         self.reply(pending["request_id"], {"ok": True, "result": {
             "observation_id": frame, "run_id": "run-a",
-            "surface": {"kind": "world", "facts": {"last_save_result": "unattempted"},
+            "surface": {"kind": "process_exited" if exited else "world", "facts": {"last_save_result": "unattempted"},
                         "actions": [{"id": "world.wait", "enabled": True}]},
         }})
         self.cli("collect")
@@ -767,8 +767,22 @@ class PlayerCliTest(unittest.TestCase):
                     self.assertEqual(result["next"], "look")
                     self.assertIn("look_required", self.cli("act", "shakedown.fight", ok=False)["error"])
 
-    def test_journal_finish_preserves_sealed_terminal_and_requires_witness(self):
+    def test_live_reporting_refusal_writes_neither_queue_nor_client_state(self):
         self.observe()
+        before = (self.session / "play-client.json").read_bytes()
+        requests = self.requests()
+        witness = self.session / "witness.json"
+        witness.write_text('{"verdict":"inconclusive"}')
+        for args in (("journal", "--reason", "evidence"), ("finish", "--witness", str(witness))):
+            result = self.cli(*args, ok=False)
+            self.assertEqual(result["error"], "native_exit_required_before_reporting")
+            self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+            self.assertEqual(self.requests(), requests)
+        self.cli("act", "world.wait")
+        self.assertEqual(len(self.requests()), len(requests) + 1)
+
+    def test_journal_finish_preserves_sealed_terminal_and_requires_witness(self):
+        self.observe(exited=True)
         witness_path = self.session / "witness.json"
         witness_path.write_text(json.dumps({"verdict": "inconclusive"}))
         self.cli("finish", "--witness", str(witness_path), ok=False)
@@ -789,7 +803,7 @@ class PlayerCliTest(unittest.TestCase):
 
     def test_public_journal_and_finish_serialize_archived_replies(self):
         """The real CLI must cache lazy terminal evidence as references."""
-        self.observe()
+        self.observe(exited=True)
         archive = Archive(self.session / "cockpit-evidence.sqlite", run_id="run-a", binding_id="bound-a")
         self.addCleanup(archive.close)
 

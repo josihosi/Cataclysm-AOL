@@ -211,7 +211,7 @@ class TerminalModeIsolationTest(unittest.TestCase):
 
     @unittest.skipUnless(os.name == 'posix', 'POSIX adapter')
     def test_actual_launch_pair_retains_lease_and_routes_only_its_input(self):
-        code = 'import os,sys,tty; tty.setraw(0);\nwhile True:\n c=os.read(0,1); os.write(1,b"echo:"+c);\n if c==b"q": break\n'
+        code = 'import os,sys,tty; assert os.environ["TERM"] == "xterm-256color"; tty.setraw(0);\nwhile True:\n c=os.read(0,1); os.write(1,b"echo:"+c);\n if c==b"q": break\n'
         children = []
         observations = []
         with tempfile.TemporaryDirectory() as raw:
@@ -224,8 +224,9 @@ class TerminalModeIsolationTest(unittest.TestCase):
                         run = base/name/'harness_runs'/('run-'+name)
                         run.mkdir(parents=True)
                         with own_writable_root(base/name, 'run-'+name, harness.process_generation_snapshot, harness.process_generation_matches):
-                            child = harness.launch_game(name, 'world', run, executable=sys.executable, terminal_transport='pty', transition_event_run_id='run-'+name, child_environment=dict(os.environ))
+                            child = harness.launch_game(name, 'world', run, executable=sys.executable, terminal_transport='pty', transition_event_run_id='run-'+name, child_environment={**os.environ, "TERM": "dumb"})
                         children.append((name, run, child))
+                        self.assertEqual(json.loads((run/'process.json').read_text())['TERM'], 'xterm-256color')
                         owner = json.loads((run/'terminal.owner.json').read_text())
                         self.assertEqual(owner['host'], socket.gethostname())
                         self.assertTrue(owner['game_process_generation']['birth_identity'])

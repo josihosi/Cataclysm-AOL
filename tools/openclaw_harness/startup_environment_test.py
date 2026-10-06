@@ -11,6 +11,40 @@ import startup_harness as harness
 
 
 class StartupEnvironmentTest(unittest.TestCase):
+    def test_reporting_process_reader_rejects_stale_exit_and_generation(self):
+        # Execute the actual closure, with its existing OS identity probe supplied.
+        import ast
+        source = ast.parse(Path(harness.__file__).read_text())
+        nodes = [n for n in ast.walk(source) if isinstance(n, ast.FunctionDef) and n.name == "read_process_state"]
+        node = next(n for n in nodes if "current_owned_process_generation" in ast.unparse(n))
+        expected = {"pid": 42, "birth_identity": "birth-new", "command": "game"}
+        with tempfile.TemporaryDirectory() as raw, mock.patch.dict(os.environ, {
+                "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": raw,
+                "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "binding-a"}):
+            path = Path(raw) / "game-process-exit.json"
+            stale = {"pid": 42, "run_id": "run-a", "binding_id": "binding-a", "alive": False,
+                     "exit_code": 0, "process_generation": {**expected, "birth_identity": "old"}}
+            path.write_text(json.dumps(stale))
+            probe = mock.Mock(return_value={"pid": 42, "status": "alive", "expected": expected})
+            scope = dict(harness.__dict__, pid=42, run_id="run-a", run_dir=raw, performance=None,
+                         current_owned_process_generation=probe, original_process_generation=expected)
+            exec(compile(ast.Module(body=[node], type_ignores=[]), harness.__file__, "exec"), scope)
+            read = scope["read_process_state"]
+            self.assertTrue(read()["alive"])
+            self.assertIsNone(read()["exit_code"])
+            for status in ("identity_changed", "identity_unavailable"):
+                probe.return_value = {"pid": 42, "status": status, "expected": expected}
+                self.assertIsNone(read()["alive"])
+            probe.return_value = {"pid": 42, "status": "exited", "expected": expected}
+            self.assertFalse(read()["alive"])
+            self.assertIsNone(read()["exit_code"])
+            path.write_text(json.dumps({**stale, "process_generation": expected, "exit_code": 7}))
+            self.assertEqual(read()["exit_code"], 7)
+            probe.return_value = {"pid": 43, "status": "exited", "expected": expected}
+            self.assertIsNone(read()["alive"])
+            probe.return_value = {"pid": 42, "status": "exited", "expected": {**expected, "birth_identity": "another"}}
+            self.assertIsNone(read()["alive"])
+
     def test_fresh_profile_inherits_config_before_overrides_without_mutating_source(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

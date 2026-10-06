@@ -6233,13 +6233,17 @@ def open_cockpit_game_service(
                 final_path=final_path,
             )
 
-    original_process_command = pid_command(pid) if pid else ""
+    original_process_generation = current_owned_process_generation(Path(run_dir)).get("expected", {})
 
     def read_process_state() -> Mapping[str, Any]:
-        alive = pid_is_alive(pid) if pid else False
-        if alive and original_process_command and pid_command(pid) != original_process_command:
-            alive = False
-        state: Dict[str, Any] = {"run_id": run_id, "pid": pid, "alive": alive,
+        owned = current_owned_process_generation(Path(run_dir))
+        expected = owned.get("expected", {})
+        identity_ok = (owned.get("pid") == pid
+                       and process_generation_matches(original_process_generation, expected))
+        status = owned.get("status") if identity_ok else "identity_unavailable"
+        state: Dict[str, Any] = {"run_id": run_id, "pid": pid,
+                                 "alive": False if status == "exited" else True if status == "alive" else None,
+                                 "identity_status": status, "process_generation": expected,
                                  "exit_code": None}
         session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
         if session:
@@ -6248,7 +6252,11 @@ def open_cockpit_game_service(
                 recorded = json.loads(path.read_text(encoding="utf-8"))
                 if recorded.get("pid") == pid and recorded.get("run_id") == run_id and \
                         recorded.get("binding_id") == os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID"):
-                    state.update(recorded, evidence_ref=str(path))
+                    # Exit records supply metadata, never override fresh liveness/identity.
+                    if (status == "exited" and isinstance(recorded.get("process_generation"), Mapping)
+                            and process_generation_matches(expected, recorded["process_generation"])):
+                        state.update(exit_code=recorded.get("exit_code"),
+                                     exit_observed_at=recorded.get("exit_observed_at"), evidence_ref=str(path))
             except (OSError, ValueError):
                 pass
         if state.get("alive") is False and performance is not None:
@@ -23497,6 +23505,7 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
             "path": str(config_dir_for_profile(profile) / "debug.log"), "scope": "profile_shared",
         }
     generation = process_generation_snapshot(process.pid)
+    process._bridge_exit_generation = generation
     value = {"binding_id": bridge, "pid": process.pid,
              "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
              "command": generation["command"], "process_generation": generation,
@@ -23538,6 +23547,7 @@ def record_bridge_game_exit(process: subprocess.Popen, env: Mapping[str, str], e
         "binding_id": bridge, "pid": process.pid,
         "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
         "exit_code": exit_code, "exit_observed_at": _utc_timestamp(time.time()),
+        "process_generation": getattr(process, "_bridge_exit_generation", {}),
     }), encoding="utf-8")
     os.replace(temporary, target)
 
@@ -23637,7 +23647,7 @@ def launch_game(
         transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
         read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
         env.update(wake_environment)
-        env.setdefault("TERM", "xterm-256color")
+        env["TERM"] = "xterm-256color"  # PTY renderer requires cursor-addressable output.
         try:
             if lease is not None:
                 lease.begin_launch()
@@ -23651,7 +23661,7 @@ def launch_game(
             write_json(run_dir / "process.json", {"pid": process.pid,
                 "command": cmd, "process_generation": generation,
                 "host": __import__("socket").gethostname(), "run_id": binding["run_id"],
-                "userdir": str(userdir_for_profile(profile).resolve()), "mode": "terminal"})
+                "userdir": str(userdir_for_profile(profile).resolve()), "mode": "terminal", "TERM": env["TERM"]})
             if lease is not None:
                 lease.bind_game(generation)
             record_bridge_game_process(process, env)

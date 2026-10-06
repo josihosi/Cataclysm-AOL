@@ -325,7 +325,7 @@ class ProcessOwnershipTest(unittest.TestCase):
 
     def test_exit_receipt_binds_observed_return_code_to_owned_run(self):
         with tempfile.TemporaryDirectory() as tmp:
-            harness.record_bridge_game_exit(Mock(pid=123), {
+            harness.record_bridge_game_exit(Mock(pid=123, _bridge_exit_generation={"pid": 123, "birth_identity": "birth", "command": "game"}), {
                 "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": tmp,
                 "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound",
                 "OPENCLAW_HARNESS_RUN_ID": "run"}, 0)
