@@ -32,6 +32,47 @@ class CursesTerminalTransportTest(unittest.TestCase):
         raw = "Old modal\x1b[2d\rGold coins\x1b[1d\r\x1b[9XDebt $4"
         self.assertEqual(render_curses_terminal_screen(raw), ["Debt $4", "Gold coins"])
 
+    def test_terminal_owned_viewport_recovers_wrapped_current_warning(self) -> None:
+        from startup_harness import render_curses_terminal_screen
+        owner = {"transport": "windows_conpty", "terminal_size": {"columns": 100, "rows": 30}}
+        # Same cursor-overflow / long-blank-row pattern as the retained native
+        # ConPTY warning; it must not disappear behind the old loading label.
+        raw = "\x1b[30;32HLoading the save Character save\x1b[H" + " " * 100
+        raw += "\x1b[1;201H\r\n" + " " * 100
+        for line in ["An error has occurred! Written below is the error report:",
+                     "DEBUG : Failed to find item_location owner with character_id 2",
+                     "REPORTING FUNCTION : native function", "C++ SOURCE FILE : src/item_location.cpp",
+                     "LINE : 388", "Press I (or i) to also ignore this particular message in the future."]:
+            raw += " " + line + " " * (99 - len(line))
+        # The modal paints blank rows through the bottom of the native window.
+        raw += " " * 2200 + "\x1b[30;201H"
+        rows = render_curses_terminal_screen(raw, terminal_owner=owner)
+        self.assertTrue(any("DEBUG : Failed" in line for line in rows))
+        self.assertTrue(any("Press I" in line for line in rows))
+        self.assertFalse(any("Loading" in line for line in rows))
+        self.assertEqual(render_curses_terminal_screen(raw + "\x1b[2J\x1b[HWorld", terminal_owner=owner), ["World"])
+
+    def test_terminal_legacy_owner_uses_original_conhost_size(self) -> None:
+        from startup_harness import render_curses_terminal_screen
+        old = {"transport": "windows_conpty", "conhost_process_generations": [
+            {"command": "conhost.exe --headless --width 4 --height 2 --signal 1"}]}
+        new = {"transport": "windows_conpty", "terminal_size": {"columns": 4, "rows": 2}}
+        for owner in [old, new]:
+            self.assertEqual(render_curses_terminal_screen("123456789", terminal_owner=owner), ["5678", "9"])
+            self.assertEqual(render_curses_terminal_screen("\x1b[999;999HX", terminal_owner=owner), ["   X"])
+            self.assertEqual(render_curses_terminal_screen("1234\rZ", terminal_owner=owner), ["Z234"])
+            self.assertEqual(render_curses_terminal_screen("1234\nZ", terminal_owner=owner), ["1234", "   Z"])
+
+    def test_terminal_viewport_unknown_invalid_or_ambiguous_is_explicit(self) -> None:
+        from startup_harness import render_curses_terminal_screen
+        for fields in [{}, {"terminal_size": {"columns": True, "rows": 30}},
+                       {"terminal_size": {"columns": 0, "rows": 30}},
+                       {"conhost_process_generations": [
+                           {"command": "conhost.exe --width 4 --height 2"},
+                           {"command": "conhost.exe --width 5 --height 2"}]}]:
+            with self.assertRaises(ValueError):
+                render_curses_terminal_screen("DEBUG", terminal_owner={"transport": "windows_conpty", **fields})
+
     def test_text_reaches_bound_terminal_instead_of_gui(self) -> None:
         import startup_harness as harness
         generation = {"pid": 123, "birth_identity": "birth", "command": "owned game"}

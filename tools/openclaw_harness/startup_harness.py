@@ -150,7 +150,13 @@ BENIGN_DEBUG_LOG_PREFIX_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+CANONICAL_KEYBINDINGS_PATH = (
+    "tools/openclaw_harness/fixtures/profiles/live-debug/"
+    "mcwilliams_live_debug_2026-04-07/config/keybindings.json"
+)
+
 RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
+    CANONICAL_KEYBINDINGS_PATH,
     "src",
     "data",
     "lang",
@@ -19106,7 +19112,9 @@ def capture_terminal_transcript_text_artifact(
             "error": "run-bound terminal transcript is unavailable",
         }
     raw = transcript_path.read_bytes().decode("utf-8", errors="replace")
-    lines = render_curses_terminal_screen(raw)
+    owner_path = run_dir / "terminal.owner.json"
+    terminal_owner = json.loads(owner_path.read_text(encoding="utf-8")) if owner_path.is_file() else None
+    lines = render_curses_terminal_screen(raw, terminal_owner=terminal_owner)
     # These lines are one current frame, not a history.  Keep its HUD and
     # modal regions together; the map-bottom tail alone omits `Move:`.
     tail = lines
@@ -19128,7 +19136,7 @@ def capture_terminal_transcript_text_artifact(
     return payload
 
 
-def render_curses_terminal_screen(raw: str) -> List[str]:
+def render_curses_terminal_screen(raw: str, *, terminal_owner: Optional[Mapping[str, Any]] = None) -> List[str]:
     """Render the current Curses frame, rather than concatenating its history.
 
     PTY logs are an append-only stream: stripping control sequences turns old
@@ -19137,6 +19145,29 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
     xterm PTY and preserves only the final painted cells.
     """
     rows, columns = 60, 200
+    if terminal_owner and terminal_owner.get("transport") == "windows_conpty":
+        dimensions = terminal_owner.get("terminal_size")
+        if dimensions is not None:
+            if (not isinstance(dimensions, Mapping)
+                    or type(dimensions.get("rows")) is not int
+                    or type(dimensions.get("columns")) is not int):
+                raise ValueError("owned ConPTY viewport invalid")
+            rows, columns = dimensions["rows"], dimensions["columns"]
+        else:
+            # Legacy immutable owners predate terminal_size. Their original
+            # conhost generation already records the actual native viewport.
+            # Do not relabel it using a fresh PID lookup or today's defaults.
+            sizes = set()
+            for generation in terminal_owner.get("conhost_process_generations", []):
+                match = re.search(r"--width (\d+) --height (\d+)(?:\s|$)",
+                                  str(generation.get("command", "")))
+                if match:
+                    sizes.add((int(match.group(2)), int(match.group(1))))
+            if len(sizes) != 1:
+                raise ValueError("owned ConPTY viewport unavailable or ambiguous")
+            rows, columns = sizes.pop()
+    if rows <= 0 or columns <= 0:
+        raise ValueError("terminal dimensions must be positive")
     screen = [[" "] * columns for _ in range(rows)]
     row = col = 0
     index = 0
@@ -19160,8 +19191,8 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
                           for value in params.lstrip("?").split(";")]
                 first = values[0] if values and values[0] else 1
                 if command in "Hf":
-                    row = max(0, (values[0] if values and values[0] else 1) - 1)
-                    col = max(0, (values[1] if len(values) > 1 and values[1] else 1) - 1)
+                    row = min(rows - 1, max(0, (values[0] if values and values[0] else 1) - 1))
+                    col = min(columns - 1, max(0, (values[1] if len(values) > 1 and values[1] else 1) - 1))
                 elif command == "A": row = max(0, row - first)
                 elif command in "Be": row = min(rows - 1, row + first)
                 elif command in "Ca": col = min(columns - 1, col + first)
@@ -19176,6 +19207,8 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
                     for cursor in range(start, stop): screen[row][cursor] = " "
                 elif command == "X":
                     for cursor in range(col, min(columns, col + first)): screen[row][cursor] = " "
+                if command in "HfABeCaDG`d":
+                    col = min(columns - 1, col)
                 index = end + 1
                 continue
             if raw[index + 1] == "]":
@@ -19185,11 +19218,24 @@ def render_curses_terminal_screen(raw: str) -> List[str]:
             index += 2
             continue
         if character == "\r": col = 0
-        elif character == "\n": row = min(rows - 1, row + 1)
+        elif character == "\n":
+            col = min(columns - 1, col)
+            row += 1
+            if row == rows:
+                screen.pop(0)
+                screen.append([" "] * columns)
+                row -= 1
         elif character == "\b": col = max(0, col - 1)
         elif ord(character) >= 32:
-            if row < rows and col < columns: screen[row][col] = character
-            col = min(columns - 1, col + 1)
+            if col == columns:
+                col = 0
+                row += 1
+                if row == rows:
+                    screen.pop(0)
+                    screen.append([" "] * columns)
+                    row -= 1
+            screen[row][col] = character
+            col += 1
         index += 1
     return ["".join(line).rstrip() for line in screen if "".join(line).strip()]
 
@@ -22967,6 +23013,47 @@ def validate_enabled_api_runtime(options: Dict[str, str]) -> None:
         )
 
 
+def canonical_harness_keybindings() -> Tuple[bytes, Dict[str, Any]]:
+    """Load the one runtime control file, including a sparse source export.
+
+    The live worktree is authoritative when present. Source-only/sparse
+    checkouts can omit this tracked fixture, so export its exact HEAD blob
+    directly into the owned profile instead of requiring manual restoration.
+    No save/profile snapshot or source worktree is modified.
+    """
+    root = repo_root()
+    source = root / CANONICAL_KEYBINDINGS_PATH
+    origin = "worktree"
+    try:
+        raw = source.read_bytes()
+    except FileNotFoundError:
+        result = subprocess.run(
+            ["git", "-C", str(root), "show", "HEAD:" + CANONICAL_KEYBINDINGS_PATH],
+            capture_output=True, check=False,
+        )
+        if result.returncode:
+            raise RuntimeError("canonical harness keybindings unavailable: " + str(source))
+        raw = result.stdout
+        origin = "git:HEAD"
+    try:
+        if not isinstance(json.loads(raw), list):
+            raise ValueError("expected keybinding array")
+    except (ValueError, UnicodeError) as error:
+        raise RuntimeError("canonical harness keybindings invalid: " + str(source)) from error
+    return raw, {"path": str(source), "relative_path": CANONICAL_KEYBINDINGS_PATH,
+                 "source": origin, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+
+
+def harness_runtime_dependency_readiness() -> Dict[str, Any]:
+    """Use the actual child loader for selection and launch readiness."""
+    try:
+        _, controls = canonical_harness_keybindings()
+        return {"status": "ready", "keybindings": controls}
+    except (OSError, RuntimeError) as error:
+        return {"status": "unavailable", "reason": str(error),
+                "path": str(repo_root() / CANONICAL_KEYBINDINGS_PATH)}
+
+
 def game_child_environment(profile: str) -> Dict[str, str]:
     options = load_game_options(profile)
     validate_enabled_api_runtime(options)
@@ -22982,11 +23069,11 @@ def game_child_environment(profile: str) -> Dict[str, str]:
     env.update(child_overlay)
     # Native setup keystrokes require the same controls in every harness profile,
     # including profiles restored from older snapshots or created from scratch.
-    controls = profile_snapshots_root() / "live-debug" / "mcwilliams_live_debug_2026-04-07" / "config" / "keybindings.json"
+    controls, _ = canonical_harness_keybindings()
     target = config_dir_for_profile(profile) / "keybindings.json"
     target.parent.mkdir(parents=True, exist_ok=True)
-    if not target.exists() or target.read_bytes() != controls.read_bytes():
-        shutil.copyfile(controls, target)
+    if not target.exists() or target.read_bytes() != controls:
+        target.write_bytes(controls)
     env["OPENCLAW_HARNESS_UI_TRACE"] = "1"
     return env
 

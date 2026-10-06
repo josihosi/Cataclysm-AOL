@@ -1,8 +1,8 @@
 """PID-bound observation and explicit recovery of a pre-World native debug dialog.
 
 This is a player accessibility path, not a startup admission or gameplay proof
-path.  A current window or owned terminal frame identifies the UI; a matching profile debug-log line
-supplies exact diagnostic text.  Recovery is a separate, current-capture-bound
+path.  A current window needs matching profile diagnostic text; an owned
+terminal frame carries exact native diagnostic provenance directly.  Recovery is a separate, current-capture-bound
 player command; observation alone never sends input.
 """
 from __future__ import annotations
@@ -169,6 +169,29 @@ def correlate_visible_dialog(lines: list[str], clues: list[dict[str, Any]]) -> d
     return result
 
 
+def terminal_debug_provenance(lines: list[str], transcript: Path) -> dict[str, Any]:
+    """Native cells carry diagnostic provenance directly; OCR still needs a log.
+
+    A partial or erased warning cannot grant input. Require the currently
+    painted DEBUG block and its native source/function/version/footer rather
+    than an optional duplicate in profile-shared debug.log.
+    """
+    visible, message = _visible_debug_text(lines)
+    text = "\n".join(lines)
+    source = re.search(r"^C\+\+ SOURCE FILE\s*:\s*(src/[^\r\n]+)$", text, re.M)
+    number = re.search(r"^LINE\s*:\s*(\d+)\s*$", text, re.M)
+    function = re.search(r"^REPORTING FUNCTION\s*:\s*(.+)$", text, re.M)
+    version = re.search(r"^VERSION\s*:\s*(\S+)", text, re.M)
+    advertised = re.search(r"\bPress I\b[^\n]*\bignore\b", text, re.I)
+    if not (visible and message and source and number and function and version and advertised):
+        return {}
+    return {"state": "confirmed_debug_dialog", "message": message,
+            "source_file": source[1].strip(), "source_line": int(number[1]),
+            "reporting_function": function[1].strip(), "version": version[1],
+            "log_path": str(transcript), "log_byte_offset": None,
+            "message_source": "current_run_owned_terminal_frame"}
+
+
 def _command(args: list[str], *, timeout: float,
              runner: Callable[..., Any]) -> dict[str, Any]:
     try:
@@ -298,12 +321,20 @@ def _observe_terminal_dialog(session: Path, binding_id: str, status: Mapping[str
                              snapshot: Callable[[int], Mapping[str, Any]]) -> dict[str, Any]:
     from startup_harness import render_curses_terminal_screen, process_generation_matches
     try:
-        if status.get("state") not in {"starting", "preparing", "transitioning"}:
-            raise ValueError("terminal_recovery_requires_live_startup")
+        retained = status.get("state") in {"process_dead", "bridge_failed"}
+        if status.get("state") not in {"starting", "preparing", "transitioning", "process_dead", "bridge_failed"}:
+            raise ValueError("terminal_recovery_requires_pre_world_startup")
         bridge = status.get("bridge_process_generation", {})
         observed_bridge = snapshot(int(bridge.get("pid", 0))) if bridge.get("pid") else {}
-        if (status.get("bridge_pid") != bridge.get("pid") or not bridge.get("pid")
-                or not bridge.get("alive") or not observed_bridge.get("alive")
+        if status.get("bridge_pid") != bridge.get("pid") or not bridge.get("birth_identity"):
+            raise ValueError("startup_bridge_identity_unavailable_or_changed")
+        if retained:
+            # The reporter may have ended after bootstrap while its exact
+            # broker-owned native child remains retained. Never relabel or
+            # replace that reporter, and never compete with a live controller.
+            if observed_bridge.get("alive") is not False:
+                raise ValueError("retained_startup_reporter_absence_unconfirmed")
+        elif (not bridge.get("alive") or not observed_bridge.get("alive")
                 or not process_generation_matches(bridge, observed_bridge)):
             raise ValueError("startup_bridge_identity_unavailable_or_changed")
         context = _terminal_context(owner, snapshot)
@@ -317,7 +348,8 @@ def _observe_terminal_dialog(session: Path, binding_id: str, status: Mapping[str
         if (identity.st_dev, identity.st_ino, identity.st_size) != \
                 (current.st_dev, current.st_ino, current.st_size) or path.stat().st_ino != identity.st_ino:
             raise ValueError("terminal_transcript_changed_during_capture")
-        lines = render_curses_terminal_screen(raw.decode("utf-8", errors="replace"))
+        lines = render_curses_terminal_screen(raw.decode("utf-8", errors="replace"),
+                                              terminal_owner=context["owner"])
         terminal = context["owner"]
         frame = {"binding_id": binding_id, "run_id": owner["run_id"],
                  "process_generation": owner["process_generation"],
@@ -331,15 +363,22 @@ def _observe_terminal_dialog(session: Path, binding_id: str, status: Mapping[str
                 or _terminal_context(owner, snapshot)["owner"] != terminal):
             raise ValueError("terminal_owner_changed_during_capture")
         current_status = _read_object(session / "status.json")
+        current_bridge = snapshot(int(bridge["pid"]))
+        bridge_unchanged = (current_bridge.get("alive") is False if retained
+                            else process_generation_matches(bridge, current_bridge))
         if (current_status.get("binding_id") != binding_id
                 or pre_world_startup_phase(current_status) != result["startup_phase"]
                 or current_status.get("session_generation", 0) != status.get("session_generation", 0)
                 or current_status.get("state") != status.get("state")
                 or current_status.get("bridge_pid") != status.get("bridge_pid")
                 or current_status.get("bridge_process_generation") != bridge
-                or not snapshot(int(bridge["pid"])).get("alive")):
+                or not bridge_unchanged):
             raise ValueError("startup_status_changed_during_capture")
         result.update(correlate_visible_dialog(lines, result["log_clues"]))
+        native_warning = terminal_debug_provenance(lines, path)
+        if native_warning:
+            result.update(native_warning)
+            result.pop("reason", None)
         # Terminal text has no OCR uncertainty: demand the exact message as
         # well as the existing unique log correlation.
         if result.get("state") == "confirmed_debug_dialog" and \
@@ -355,7 +394,9 @@ def _observe_terminal_dialog(session: Path, binding_id: str, status: Mapping[str
             _record_recovery(artifact, frame)
         result.update(capture_kind="terminal", capture_sha256=digest, capture_path=str(artifact),
                       terminal_frame=frame, ignore_advertised=advertised,
-                      message_source="current_terminal_frame_matched_to_exact_profile_debug_log")
+                      retained_startup=retained)
+        if not native_warning:
+            result["message_source"] = "current_terminal_frame_matched_to_exact_profile_debug_log"
         return result
     except (ValueError, OSError) as error:
         return {**result, "state": "unavailable", "reason": str(error)}

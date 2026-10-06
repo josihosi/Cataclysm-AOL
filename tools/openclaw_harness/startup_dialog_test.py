@@ -594,6 +594,61 @@ class TerminalStartupDialogTest(unittest.TestCase):
                 "process_generation": self.generation, "owner": "run_bound_pty",
                 "payload_sha256": sha256(b"i").hexdigest()}
 
+    def _retained_native_warning(self):
+        self.status["state"] = "process_dead"
+        self.status["child_exit_code"] = 1
+        self._write("status.json", self.status)
+        (self.userdir / "config" / "debug.log").write_text("no duplicate ERROR line here")
+        self._frame([self.lines[0], self.lines[1],
+                     "REPORTING FUNCTION : " + ERRORS[0][1],
+                     "C++ SOURCE FILE : src/item_location.cpp", "LINE : 388",
+                     "VERSION : f4bef7f87e-dirty", *self.lines[-2:]])
+        original_snapshot = self._snapshot
+        self._snapshot = lambda pid: {"pid": pid, "alive": False} if pid == self.bridge["pid"] else original_snapshot(pid)
+
+    def test_retained_native_warning_without_profile_duplicate_uses_existing_transaction(self):
+        self._retained_native_warning()
+        seen = self._observe()
+        self.assertEqual(seen["state"], "confirmed_debug_dialog")
+        self.assertEqual(seen["source_file"], "src/item_location.cpp")
+        self.assertEqual(seen["source_line"], 388)
+        self.assertEqual(seen["message_source"], "current_run_owned_terminal_frame")
+        self.assertTrue(seen["retained_startup"])
+        with patch("curses_terminal_transport.dispatch_input", side_effect=self._receipt) as send:
+            result = self._recover(seen["capture_sha256"])
+        self.assertTrue(result["ok"])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.kwargs["process_generation"], self.generation)
+        attempt = json.loads(Path(result["attempt_path"]).read_text())
+        self.assertEqual(attempt["birth_identity"], self.generation["birth_identity"])
+        self.assertEqual(attempt["current_dialog"]["capture_sha256"], seen["capture_sha256"])
+        self.assertTrue(Path(result["result_path"]).exists())
+
+    def test_retained_recovery_refuses_changed_capture_owner_and_unknown_reporter(self):
+        self._retained_native_warning()
+        capture = self._observe()["capture_sha256"]
+        original_snapshot = self._snapshot
+        for changed_pid in (self.generation["pid"], self.broker["pid"], self.bridge["pid"]):
+            self._snapshot = lambda pid: ({**original_snapshot(pid), "birth_identity": "other"} if pid == changed_pid else original_snapshot(pid)) if changed_pid != self.bridge["pid"] else ({"pid":pid,"alive":True} if pid == changed_pid else original_snapshot(pid))
+            with patch("curses_terminal_transport.dispatch_input") as send:
+                result = self._recover(capture)
+            self.assertFalse(result["ok"])
+            send.assert_not_called()
+        self._snapshot = original_snapshot
+        self._frame(["\x1b[2J", "Loading character save"])
+        with patch("curses_terminal_transport.dispatch_input") as send:
+            result = self._recover(capture)
+        self.assertFalse(result["ok"])
+        send.assert_not_called()
+
+    def test_native_provenance_requires_complete_current_block(self):
+        self._retained_native_warning()
+        original = self.transcript.read_text()
+        for field in ("C++ SOURCE FILE : src/item_location.cpp", "LINE : 388",
+                      "VERSION : f4bef7f87e-dirty", self.lines[-1]):
+            self.transcript.write_text(original.replace(field, ""))
+            self.assertNotEqual(self._observe()["state"], "confirmed_debug_dialog")
+
     def test_valid_terminal_warning_single_dispatch_and_attempt(self):
         seen = self._observe()
         self.assertEqual(seen["state"], "confirmed_debug_dialog")

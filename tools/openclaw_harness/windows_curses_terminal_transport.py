@@ -399,6 +399,7 @@ def _broker(config_path):
         listener = Listener(owner['pipe_name'], family='AF_PIPE', authkey=bytes.fromhex(owner['auth_key']))
         journal = DeliveryJournal(owner['request_journal'])
         native = NativeConPTY(Path(owner['transcript']))
+        owner['terminal_size'] = {'columns': native.size[0], 'rows': native.size[1]}
         owner['conhost_process_generations'] = _conhosts(os.getpid())
         if not owner['conhost_process_generations'] or not all(_same_generation(row, row) for row in owner['conhost_process_generations']):
             raise RuntimeError('ConPTY host identity incomplete')

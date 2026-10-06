@@ -187,6 +187,7 @@ class NativeConPTY:
     """Owns one exact native child handle, HPCON and drained VT transcript."""
     def __init__(self, transcript_path: Path, size=(100, 30)):
         self.k = kernel()
+        self.size = tuple(size)
         self.transcript_path = Path(transcript_path)
         self.ir, self.iw, self.orr, self.ow, self.pc = [w.HANDLE() for _ in range(5)]
         self.pi = PI()
@@ -336,6 +337,7 @@ class NativeConPTY:
         hr = self.k.ResizePseudoConsole(self.pc, COORD(*size))
         if hr < 0:
             raise OSError('ResizePseudoConsole HRESULT ' + str(hr))
+        self.size = tuple(size)
 
     def exit_code(self):
         if self.alive():

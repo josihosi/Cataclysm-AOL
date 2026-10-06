@@ -526,6 +526,11 @@ def _current_source_executable_readiness(
         if mode_readiness["status"] != "ready":
             readiness.update(status="unsupported_terminal_mode", reason=mode_readiness["reason"],
                              next_action="Select a supported source-bound curses scenario/build; no GUI substitution.")
+    dependencies = startup_harness.harness_runtime_dependency_readiness()
+    readiness["runtime_dependencies"] = dependencies
+    if readiness.get("status") == "ready" and dependencies["status"] != "ready":
+        readiness.update(status="runtime_dependency_unavailable", reason=dependencies["reason"],
+                         next_action="Export the selected tracked canonical keybindings into this source checkout.")
     return _with_build_entrypoint(readiness)
 
 
