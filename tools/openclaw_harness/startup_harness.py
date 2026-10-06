@@ -23552,6 +23552,15 @@ def record_bridge_game_exit(process: subprocess.Popen, env: Mapping[str, str], e
     os.replace(temporary, target)
 
 
+def write_startup_process_record(run_dir: Path, process: Any, metadata: Dict[str, Any]) -> None:
+    """Keep the exact PTY launch environment when the outer probe adds facts."""
+    record = dict(metadata)
+    term = getattr(process, "_openclaw_launch_term", None)
+    if term is not None:
+        record["TERM"] = term
+    write_json(run_dir / "process.json", record)
+
+
 def launch_game(
     profile: str,
     target_world: str,
@@ -23657,6 +23666,7 @@ def launch_game(
                 preexec_fn=CursesTerminalTransport.make_controlling_terminal,
                 pass_fds=(read_fd, *inherited_lease),
             )
+            process._openclaw_launch_term = env["TERM"]
             generation = stable_terminal_process_generation(process.pid) if isinstance(process.pid, int) else {}
             write_json(run_dir / "process.json", {"pid": process.pid,
                 "command": cmd, "process_generation": generation,
@@ -39526,7 +39536,7 @@ def _run_startup(args: argparse.Namespace) -> int:
                 f"no process was signalled: {exc}"
             ) from exc
     process_generation = process_generation_snapshot(proc.pid)
-    write_json(run_dir / "process.json", {
+    write_startup_process_record(run_dir, proc, {
         "pid": proc.pid,
         "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
         "process_generation": process_generation,

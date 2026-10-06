@@ -199,6 +199,44 @@ class TerminalModeIsolationTest(unittest.TestCase):
             cli._preflight_selected_save_setup(object(), explicit)
             self.assertEqual(explicit.profile, 'selected-owned-root')
 
+    def test_outer_startup_record_retains_exact_term_without_inheriting_stale_record(self):
+        import ast
+        import inspect
+        from types import SimpleNamespace
+        tree = ast.parse(inspect.getsource(harness._run_startup))
+        # Execute the actual outer metadata publication without launching a game.
+        statement = next(node for node in ast.walk(tree) if isinstance(node, ast.Expr)
+                         and isinstance(node.value, ast.Call)
+                         and any(isinstance(arg, ast.Dict) and any(
+                             isinstance(key, ast.Constant) and key.value == 'semantic_step_trace_start_offset'
+                             for key in arg.keys) for arg in node.value.args))
+        module = ast.fix_missing_locations(ast.Module(body=[statement], type_ignores=[]))
+        with tempfile.TemporaryDirectory() as raw:
+            run = Path(raw)
+            for selected_term in ('xterm-256color', None):
+                (run/'process.json').write_text('{"pid": 99, "TERM": "stale"}')
+                process = SimpleNamespace(pid=100, args=['bound-process'])
+                if selected_term is not None:
+                    process._openclaw_launch_term = selected_term
+                generation = {'pid': 100, 'birth_identity': 'current'}
+                context = dict(vars(harness), run_dir=run, proc=process,
+                    process_generation=generation,
+                    transition_binding={'run_id': 'current-run', 'event_path': 'events'},
+                    userdir_for_profile=lambda _: run, profile='current',
+                    terminal_native_transport=selected_term is not None,
+                    plan=SimpleNamespace(harness_new_world=False, harness_raw_seed=False,
+                                         harness_bandit_feasibility=False),
+                    child_environment={}, wait_diagnostic=False, debug_size=123,
+                    killed_pids=[], certification_lease=None)
+                exec(compile(module, 'production-outer-process-writer', 'exec'), context)
+                record = json.loads((run/'process.json').read_text())
+                self.assertEqual(record.get('TERM'), selected_term)
+                self.assertEqual(record['pid'], 100)
+                self.assertEqual(record['run_id'], 'current-run')
+                self.assertEqual(record['process_generation'], generation)
+                self.assertEqual(record['semantic_step_trace_start_offset'], 123)
+                self.assertEqual(record['mode'], 'terminal' if selected_term else 'tiles')
+
     def test_startup_identity_rejects_missing_or_wrong_birth(self):
         observed = {'pid': 42, 'alive': True, 'birth_identity': 'actual', 'command': '/bin/game'}
         with patch.object(harness, 'process_generation_snapshot', return_value=observed), \
@@ -227,6 +265,14 @@ class TerminalModeIsolationTest(unittest.TestCase):
                             child = harness.launch_game(name, 'world', run, executable=sys.executable, terminal_transport='pty', transition_event_run_id='run-'+name, child_environment={**os.environ, "TERM": "dumb"})
                         children.append((name, run, child))
                         self.assertEqual(json.loads((run/'process.json').read_text())['TERM'], 'xterm-256color')
+                        initial = json.loads((run/'process.json').read_text())
+                        # The production outer probe supplies additional facts after launch.
+                        outer = {key: value for key, value in initial.items() if key != 'TERM'}
+                        outer['harness_raw_seed'] = False
+                        harness.write_startup_process_record(run, child, outer)
+                        updated = json.loads((run/'process.json').read_text())
+                        self.assertEqual(updated, {**outer, 'TERM': 'xterm-256color'})
+                        self.assertNotIn('TERM', outer)
                         owner = json.loads((run/'terminal.owner.json').read_text())
                         self.assertEqual(owner['host'], socket.gethostname())
                         self.assertTrue(owner['game_process_generation']['birth_identity'])
