@@ -585,10 +585,15 @@ namespace snmalloc
   };
 
   /**
-   * This will be destroyed last of all of the
-   * statics and globals due to init_seg
+   * Initialize before ordinary statics and globals so reservation cleanup runs
+   * after their destructors.  MSVC uses init_seg above; MinGW needs an explicit
+   * GNU initialization priority instead.
    */
+#  if defined(__GNUC__) && !defined(_MSC_VER)
+  static inline VirtualVector reservations __attribute__((init_priority(101)));
+#  else
   static inline VirtualVector reservations;
+#  endif
 
 #  ifdef PLATFORM_HAS_VIRTUALALLOC2
   template<bool state_using>
