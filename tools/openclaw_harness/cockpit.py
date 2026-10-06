@@ -3049,13 +3049,13 @@ class CockpitRunChannel:
         native = receipt.get("native_receipt")
         next_frame = receipt.get("_next_frame") or receipt.get("next_frame")
         if not isinstance(native, Mapping):
-            if receipt.get("reason") == "native_surface_receipt_timeout":
+            if receipt.get("reason") == "native_surface_receipt_timeout" or receipt.get("action_outcome") == "unknown":
                 # Missing acknowledgment does not prove rejection: native code
                 # may already have acted. Keep this issuing frame consumed and
                 # require a genuinely fresh owner instead of authorizing replay.
                 observed["submission_outcome"] = "unknown"
                 self._observations[str(observation_id)] = observed
-                return {**self._fail_operation("native_surface_receipt_timeout", {
+                return {**self._fail_operation(str(receipt.get("reason") or "native_receipt_missing"), {
                     "action_id": str(action_id), "observation_id": str(observation_id),
                     "action_outcome": "unknown",
                 }), "receipt": dict(receipt)}

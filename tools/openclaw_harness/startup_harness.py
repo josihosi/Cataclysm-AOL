@@ -102,6 +102,7 @@ from semantic_state import (
     latest_semantic_game_minutes,
     latest_semantic_step_frame,
     read_semantic_step_trace,
+    semantic_catalog_io_path,
 )
 from r009_technical_witness import (
     complete_child_resource_interval,
@@ -5476,8 +5477,9 @@ def refresh_semantic_step_trace(
                 body = json.dumps(catalog, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
                 digest = hashlib.sha256(body).hexdigest()
                 catalog_path = run_dir / ("semantic.actions." + digest + ".json")
-                if not catalog_path.exists():
-                    catalog_path.write_bytes(body)
+                catalog_io_path = semantic_catalog_io_path(catalog_path)
+                if not catalog_io_path.exists():
+                    catalog_io_path.write_bytes(body)
                 event["valid_actions"] = []
                 event["valid_actions_ref"] = {
                     "path": catalog_path.name, "sha256": digest, "bytes": len(body),
@@ -5487,8 +5489,9 @@ def refresh_semantic_step_trace(
                 body = json.dumps(catalog, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
                 digest = hashlib.sha256(body).hexdigest()
                 catalog_path = run_dir / ("semantic.payload." + digest + ".json")
-                if not catalog_path.exists():
-                    catalog_path.write_bytes(body)
+                catalog_io_path = semantic_catalog_io_path(catalog_path)
+                if not catalog_io_path.exists():
+                    catalog_io_path.write_bytes(body)
                 event["payload"] = {}
                 event["payload_ref"] = {
                     "path": catalog_path.name, "sha256": digest, "bytes": len(body),
@@ -6931,11 +6934,14 @@ def execute_semantic_act(
                     "action_outcome": "not_dispatched", "cancellation": dict(cancellation),
                     "surface_request": request, "native_receipt": None, "next_frame": None}
         request_path = run_dir / "semantic.requests.jsonl"
+        request_durably_queued = False
+        transport_failure: Optional[Dict[str, Any]] = None
         try:
             with request_path.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n")
                 stream.flush()
                 os.fsync(stream.fileno())
+            request_durably_queued = True
             if os.name != "nt" or (run_dir / "terminal.owner.json").is_file():
                 pipe_contract = semantic_wake_pipe_contract(run_dir, run_id)
                 if pipe_contract["status"] != "bound":
@@ -6966,8 +6972,20 @@ def execute_semantic_act(
                 "writer_pid": os.getpid(),
                 "error": str(exc),
             })
-            return {"accepted": False, "reason": "native_surface_transport_failed",
-                    "surface_request": request, "detail": str(exc)}
+            transport_failure = {
+                "accepted": False, "reason": "native_surface_transport_failed",
+                "surface_request": request, "detail": str(exc),
+                "request_durably_queued": request_durably_queued,
+                "action_outcome": "unknown",
+            }
+            process = read_process_state() if request_durably_queued and \
+                read_process_state is not None else {}
+            if not (process.get("alive") is False and process.get("run_id") == run_id
+                    and process.get("pid") == pid):
+                return transport_failure
+            # Native polling can consume the durable request and exit before
+            # the wake writer's live-generation check. Reuse receipt/terminal
+            # reconciliation below; never enqueue or signal this request again.
 
         deadline = time.monotonic() + transition_timeout_seconds
         transition_event: Optional[Dict[str, Any]] = None
@@ -6999,9 +7017,14 @@ def execute_semantic_act(
                 time.sleep(min(observe_interval_seconds, remaining))
                 continue
             if status == "ok":
-                native_receipt = next((event for event in events if
-                                       event.get("event") == "surface_receipt" and
-                                       event.get("request_id") == request_id), None)
+                matching_receipts = [event for event in events if
+                                     event.get("event") == "surface_receipt" and
+                                     event.get("request_id") == request_id]
+                if transport_failure is not None and len(matching_receipts) > 1:
+                    return {**transport_failure,
+                            "reason": "native_surface_receipt_ambiguous",
+                            "native_receipts": matching_receipts, "next_frame": None}
+                native_receipt = next(iter(matching_receipts), None)
                 native_receipt_event = native_receipt
                 # Duration menus are older native owners: their accepted
                 # semantic-step receipt names the internal turn-frame rather
@@ -7385,6 +7408,9 @@ def execute_semantic_act(
                             # without publishing a successor. The last cached
                             # descriptor cannot restore authority after death.
                             next_frame = None
+                    if transport_failure is not None and not process_ended:
+                        return {**transport_failure, "native_receipt": native_receipt,
+                                "next_frame": None}
                     if next_frame is None and (allow_terminal_exit or process_ended):
                         durable_receipt = {
                             "schema": "caol-semantic-step-receipt-v1",
@@ -7401,6 +7427,8 @@ def execute_semantic_act(
                             },
                             "next_frame": None,
                             "native_receipt": native_receipt,
+                            **({"transport_failure": transport_failure}
+                               if transport_failure is not None else {}),
                         }
                         SemanticStepChannel(
                             run_id=run_id,
@@ -7410,7 +7438,9 @@ def execute_semantic_act(
                         )._persist(durable_receipt)
                         return {"accepted": True, "surface_request": request,
                                 "native_receipt": native_receipt,
-                                "transition_event": transition_event, "next_frame": None}
+                                "transition_event": transition_event, "next_frame": None,
+                                **({"transport_failure": transport_failure}
+                                   if transport_failure is not None else {})}
                     if isinstance(next_frame, Mapping) and (
                             str(next_frame.get("frame_id", "")) == resulting_frame_id or
                             str(next_frame.get("frame_id", "")) != str(before.get("frame_id", "")) or
@@ -7496,6 +7526,9 @@ def execute_semantic_act(
             if remaining <= 0:
                 break
             time.sleep(min(observe_interval_seconds, remaining))
+        if transport_failure is not None:
+            return {**transport_failure, "native_receipt": last_native_receipt,
+                    "next_frame": None}
         if isinstance(last_native_receipt, Mapping) and last_native_receipt.get("accepted") is True:
             # The native owner accepted the request, but its semantic successor
             # never appeared before the observation deadline. Preserve that

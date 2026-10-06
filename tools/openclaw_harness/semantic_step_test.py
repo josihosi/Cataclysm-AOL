@@ -1855,7 +1855,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                 (True, False, True, False), (True, False, False, True)):
             with self.subTest(present=present, alive=alive, wrong_run=wrong_run, wrong_receipt=wrong_receipt), \
                     tempfile.TemporaryDirectory() as temp, \
-                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={"status": "bound", "path": "pipe-contract"}), \
+                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={"status": "bound", "path": "pipe-contract", "contract": {"transport": "named_fifo"}}), \
                     patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
                 root = Path(temp)
                 trace = root / "semantic.native.log"
@@ -1882,6 +1882,120 @@ class SemanticStepChannelTest(unittest.TestCase):
                     self.assertIsNone(result["native_receipt"])
                 elif wrong_receipt:
                     self.assertEqual(result["reason"], "native_surface_receipt_correlation_mismatch")
+
+    def test_post_enqueue_exit_reconciles_without_another_wake(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "quit-prompt", "frame_id": "quit-frame", "kind": "prompt",
+            "breadcrumbs": ["Main menu", "Quit?"], "payload": {}, "valid_actions": [{
+                "id": "prompt.choose", "stable_id": "prompt-option:3", "label": "YES", "enabled": True,
+            }],
+        }
+        identity = json.dumps({"stable_id": "prompt-option:3", "parameters": {}},
+                              sort_keys=True, separators=(",", ":"))
+        request_id = "cockpit:worker:quit-frame:prompt.choose:" + hashlib.sha256(
+            identity.encode()).hexdigest()[:16]
+        native = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "quit-prompt",
+            "requested_frame_id": "quit-frame", "consuming_surface_id": "quit-prompt",
+            "consuming_frame_id": "quit-frame", "action_id": "prompt.choose",
+            "accepted": True, "rejection_reason": "", "resulting_frame_id": "",
+        }
+        cases = ("matched", "missing", "other_request", "stale", "ambiguous",
+                 "wrong_frame", "rejected", "alive", "wrong_run", "wrong_pid",
+                 "unknown_process", "write_failed")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                trace = root / "native.log"
+                (root / "terminal.owner.json").write_text("{}")
+                encode = lambda event: "openclaw_harness_semantic_step: " + json.dumps(event) + "\n"
+                trace.write_text(encode(descriptor) + (encode(native) if case == "stale" else ""))
+                issuing_cursor = trace.stat().st_size
+                rows = [] if case in {"missing", "stale"} else [dict(native)]
+                if case == "other_request":
+                    rows[0]["request_id"] = "earlier-other-request"
+                if case == "wrong_frame":
+                    rows[0]["requested_frame_id"] = "older-frame"
+                if case == "rejected":
+                    rows[0].update(accepted=False, rejection_reason="wrong_surface")
+                if case == "ambiguous":
+                    rows.append(dict(native))
+                def consume_before_wake_check(*_args):
+                    # Exercise the real append/fsync before native consumption
+                    # and the failed wake guard; there is no second delivery.
+                    queued = json.loads((root / "semantic.requests.jsonl").read_text())
+                    self.assertEqual(queued["request_id"], request_id)
+                    with trace.open("a") as stream:
+                        stream.write("".join(encode(row) for row in rows))
+                    return {"status": "unavailable", "path": "original-contract"}
+                process = {"alive": case == "alive", "run_id": self.run_id,
+                           "pid": 17, "exit_code": 0}
+                if case == "wrong_run":
+                    process["run_id"] = "other-run"
+                if case == "wrong_pid":
+                    process["pid"] = 18
+                if case == "unknown_process":
+                    process = {}
+                with patch.object(startup_harness, "semantic_step_source_trace", return_value=trace), \
+                        patch.object(startup_harness, "semantic_wake_pipe_contract",
+                                     side_effect=consume_before_wake_check) as contract, \
+                        patch.object(startup_harness, "write_semantic_wake_pipe") as wake, \
+                        patch.object(startup_harness.os, "fsync", side_effect=
+                                     [OSError("fsync failed"), None] if case == "write_failed" else None):
+                    result = execute_semantic_act(
+                        run_dir=root, profile="ignored", run_id=self.run_id,
+                        trace_start_offset=issuing_cursor, pid=17, session_id="worker",
+                        frame_id="quit-frame", action_id="prompt.choose", stable_id="prompt-option:3",
+                        observed_frame=descriptor, transition_timeout_seconds=.01,
+                        observe_interval_seconds=.001, allow_terminal_exit=True,
+                        read_process_state=lambda: process,
+                    )
+                self.assertEqual(wake.call_count, 0)
+                self.assertEqual(contract.call_count, 0 if case == "write_failed" else 1)
+                self.assertEqual(len((root / "semantic.requests.jsonl").read_text().splitlines()), 1)
+                self.assertEqual(result["accepted"], case == "matched", result)
+                if case == "matched":
+                    self.assertEqual(result["native_receipt"]["request_id"], request_id)
+                    self.assertIsNone(result["next_frame"])
+                    self.assertEqual(result["transport_failure"]["action_outcome"], "unknown")
+                    durable = json.loads((root / "semantic.steps.jsonl").read_text())
+                    self.assertEqual(durable["transport_failure"]["reason"], "native_surface_transport_failed")
+                elif case == "ambiguous":
+                    self.assertEqual(result["reason"], "native_surface_receipt_ambiguous")
+                elif case == "wrong_frame":
+                    self.assertEqual(result["reason"], "native_surface_receipt_correlation_mismatch")
+                elif case == "rejected":
+                    self.assertEqual(result["reason"], "wrong_surface")
+                else:
+                    self.assertEqual(result["reason"], "native_surface_transport_failed")
+
+    def test_unknown_surface_transport_outcome_keeps_frame_consumed(self) -> None:
+        from cockpit import CockpitRunChannel
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "quit-prompt", "frame_id": "quit-frame", "kind": "prompt",
+            "breadcrumbs": ["Main menu", "Quit?"], "payload": {}, "valid_actions": [{
+                "id": "prompt.choose", "stable_id": "prompt-option:3", "label": "YES", "enabled": True,
+            }],
+        }
+        dispatches = []
+        def uncertain(*args):
+            dispatches.append(args)
+            return {"accepted": False, "reason": "native_surface_transport_failed",
+                    "action_outcome": "unknown", "request_durably_queued": True}
+        channel = CockpitRunChannel(lambda: descriptor, uncertain)
+        observed = channel.observe()
+        result = channel.act(observation_id=observed["observation_id"],
+                             action_id="prompt.choose", stable_id="prompt-option:3")
+        self.assertEqual(result["error"], "native_surface_transport_failed")
+        self.assertEqual(result["failure"]["detail"]["action_outcome"], "unknown")
+        for observation in (observed, channel.observe()):
+            replay = channel.act(observation_id=observation["observation_id"],
+                                 action_id="prompt.choose", stable_id="prompt-option:3")
+            self.assertEqual(replay["error"], "duplicate_submission")
+        self.assertEqual(len(dispatches), 1)
 
     def test_surface_descriptor_serializes_the_advertised_stable_id(self) -> None:
         descriptor = {

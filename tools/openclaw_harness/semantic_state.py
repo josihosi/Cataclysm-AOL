@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Set
 
@@ -26,6 +27,23 @@ def _owned_path(path: Path, run_dir: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def semantic_catalog_io_path(path: Path) -> Path:
+    """Use Windows extended I/O syntax after callers validate catalog ownership.
+
+    The digest and relative reference stay unchanged. POSIX paths are unchanged;
+    this only avoids the Windows filename-length limit for run-owned catalogs.
+    """
+    path = Path(path)
+    if os.name != "nt":
+        return path
+    absolute = str(path.resolve())
+    if absolute.startswith("\\\\?\\"):
+        return Path(absolute)
+    if absolute.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + absolute[2:])
+    return Path("\\\\?\\" + absolute)
 
 
 def read_bounded_transition_facts(path: Path, run_dir: Path, run_id: str) -> tuple[list[dict[str, Any]], str]:
@@ -138,10 +156,11 @@ def read_semantic_step_trace(
                 catalog_path = Path(run_dir) / relative
                 if not _owned_path(catalog_path, Path(run_dir)):
                     return [], "escaped_authority"
+                catalog_io_path = semantic_catalog_io_path(catalog_path)
                 try:
-                    if catalog_path.stat().st_size != reference.get("bytes"):
+                    if catalog_io_path.stat().st_size != reference.get("bytes"):
                         return [], "invalid_surface_actions_reference"
-                    catalog_bytes = catalog_path.read_bytes()
+                    catalog_bytes = catalog_io_path.read_bytes()
                     if hashlib.sha256(catalog_bytes).hexdigest() != reference.get("sha256"):
                         return [], "invalid_surface_actions_reference"
                     catalog = json.loads(catalog_bytes)
@@ -162,10 +181,11 @@ def read_semantic_step_trace(
                 catalog_path = Path(run_dir) / relative
                 if not _owned_path(catalog_path, Path(run_dir)):
                     return [], "escaped_authority"
+                catalog_io_path = semantic_catalog_io_path(catalog_path)
                 try:
-                    if catalog_path.stat().st_size != reference.get("bytes"):
+                    if catalog_io_path.stat().st_size != reference.get("bytes"):
                         return [], "invalid_surface_payload_reference"
-                    catalog_bytes = catalog_path.read_bytes()
+                    catalog_bytes = catalog_io_path.read_bytes()
                     if hashlib.sha256(catalog_bytes).hexdigest() != reference.get("sha256"):
                         return [], "invalid_surface_payload_reference"
                     catalog = json.loads(catalog_bytes)
