@@ -43,14 +43,14 @@ class HarnessLogWindowTest(unittest.TestCase):
             (session / "game-process.json").write_text(json.dumps(process))
             self.assertEqual(roll_bound_session_logs(session, "other", maximum=20, keep=18), [])
             self.assertEqual(len(roll_bound_session_logs(session, "owned", maximum=20,
-                                                         keep=18)), 2)
-            self.assertEqual(native.read_bytes(), b"recent-a\nrecent-b\n")
+                                                         keep=18)), 1)
+            self.assertEqual(native.read_bytes(), b"old-a\nold-b\nrecent-a\nrecent-b\n")
             self.assertEqual(debug.read_bytes(), b"recent-a\nrecent-b\n")
             self.assertEqual(receipts.read_bytes(), b"old-a\nold-b\nrecent-a\nrecent-b\n")
             events = (session / "log-window.events.jsonl").read_text().splitlines()
-            self.assertEqual(len(events), 2)
+            self.assertEqual(len(events), 1)
 
-    def test_bound_semantic_trace_survives_two_rollovers_and_closeout_with_raw_handles(self):
+    def test_native_trace_keeps_raw_handles_across_responses_and_closeout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             session = root / "session"
@@ -74,10 +74,9 @@ class HarnessLogWindowTest(unittest.TestCase):
                 "run_id": run_id, "log_paths": {"native_semantic_events": {
                     "path": str(native), "scope": "run_bound"}}}))
             inode = native.stat().st_ino
-            first = roll_bound_session_logs(session, run_id, maximum=1800, keep=300)
-            self.assertEqual(first[0]["preserved_trace_rows"], 3)
-            self.assertFalse(first[0]["trace_preservation_incomplete"])
-            self.assertLessEqual(first[0]["after_bytes"], 1800)
+            original_bytes = native.read_bytes()
+            self.assertEqual(roll_bound_session_logs(session, run_id, maximum=1800, keep=300), [])
+            self.assertEqual(native.read_bytes(), original_bytes)
             self.assertEqual(native.stat().st_ino, inode)
             with native.open("ab") as stream:
                 stream.write(b"noise\n" * 450)
@@ -87,9 +86,9 @@ class HarnessLogWindowTest(unittest.TestCase):
                 stream.write(encoded({"event": "raid_trace_repeat", "run_id": run_id,
                                       "key": operation + "#2:search", "of_event": "raid_site_search",
                                       "count": 449, "first_turn": 14, "last_turn": 462}))
-            second = roll_bound_session_logs(session, run_id, maximum=1800, keep=300)
-            self.assertEqual(second[0]["preserved_trace_rows"], 3)
-            self.assertLessEqual(second[0]["after_bytes"], 1800)
+            appended_bytes = native.read_bytes()
+            self.assertEqual(roll_bound_session_logs(session, run_id, maximum=1800, keep=300), [])
+            self.assertEqual(native.read_bytes(), appended_bytes)
             self.assertEqual(native.stat().st_ino, inode)
             with native.open("ab") as stream:
                 stream.write(encoded({"event": "raid_trace_truncated", "run_id": run_id,

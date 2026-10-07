@@ -899,9 +899,9 @@ class FileBackedCockpitBridge:
             memory_snapshot("file_bridge", "after_response_persist",
                             response_bytes=len(response_line.encode("utf-8")))
             self.active_request_path.unlink(missing_ok=True)
-            # Native input is paused at a completed response.  Keep only the
-            # recent debug/semantic producer window before the next request.
-            # Immutable receipts and transition evidence remain untouched.
+            # Observation responses can return while a native activity is
+            # still advancing. Window only disposable diagnostic logs; never
+            # rewrite the append-only native authority/receipt stream.
             roll_bound_session_logs(
                 self.session_dir,
                 str(self._active_session_descriptor.get("run_id", "")),

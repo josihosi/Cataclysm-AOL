@@ -1,8 +1,9 @@
-"""Bound noisy, disposable logs for a live harness session.
+"""Bound disposable diagnostic logs without rewriting native authority.
 
-The bridge calls this only between completed native requests.  It keeps the
-same inode so Cataclysm's already-open debug.log stream can keep appending.
-Receipts, transitions, and saved worlds are deliberately outside this window.
+A completed bridge response can observe an activity still advancing natively.
+In-place compaction can then truncate receipts or successors appended during
+the copy.  Keep the run-owned native event stream append-only; its readers
+already bound their projections.  The profile debug log remains disposable.
 """
 from __future__ import annotations
 
@@ -16,7 +17,6 @@ from typing import Any
 MAX_LOG_BYTES = 24 * 1024 * 1024
 KEEP_LOG_BYTES = 12 * 1024 * 1024
 WINDOWED_LOGS = {
-    "native_semantic_events": "semantic.native.events.jsonl",
     "profile_diagnostic_debug": "debug.log",
 }
 _DECISION_TRACE_EVENTS = frozenset({
@@ -136,13 +136,10 @@ def roll_bound_session_logs(session_dir: Path, run_id: str, *,
         if not isinstance(declared, dict):
             continue
         path = Path(str(declared.get("path", "")))
-        expected_scope = "run_bound" if key == "native_semantic_events" else "profile_shared"
-        if path.name != basename or declared.get("scope") != expected_scope or not path.is_file():
+        if path.name != basename or declared.get("scope") != "profile_shared" or not path.is_file():
             continue
         try:
-            result = roll_complete_lines(path, maximum=maximum, keep=keep,
-                                         preserve_decisions=key == "native_semantic_events",
-                                         trace_run_id=run_id)
+            result = roll_complete_lines(path, maximum=maximum, keep=keep)
         except OSError:
             continue
         if result is not None:
