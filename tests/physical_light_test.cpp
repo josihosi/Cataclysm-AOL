@@ -572,7 +572,7 @@ TEST_CASE( "live_light_routes_smoke_to_cannibals_but_keeps_optics_light_only",
     CHECK( optical_packets.size() == 6 );
 }
 
-TEST_CASE( "production_smoke_signal_admits_cannibal_dispatch_once_and_keeps_failures",
+TEST_CASE( "production_smoke_signal_records_staffed_camp_leads_once_and_keeps_failures",
            "[physical_light][smoke_first][dispatch]" )
 {
     restore_on_out_of_scope restore_turn( calendar::turn );
@@ -672,6 +672,7 @@ TEST_CASE( "production_smoke_signal_admits_cannibal_dispatch_once_and_keeps_fail
 
     const std::filesystem::path event_path = std::filesystem::absolute(
                 "build_logs/first-smoke-001/adapter-events.jsonl" );
+    std::filesystem::create_directories( event_path.parent_path() );
     std::filesystem::remove( event_path );
     const char *const previous_event_path = std::getenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH" );
     const char *const previous_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
@@ -719,50 +720,71 @@ TEST_CASE( "production_smoke_signal_admits_cannibal_dispatch_once_and_keeps_fail
     const auto find_site = []( const std::string &id ) -> const bandit_live_world::site_record * {
         return overmap_buffer.global_state.bandit_live_world.find_site( id );
     };
-    const bandit_live_world::site_record *dispatched_site = find_site( "test:smoke_dispatchable" );
-    REQUIRE( dispatched_site != nullptr );
-    CHECK( dispatched_site->active_outing.is_active() );
-    REQUIRE( dispatched_site->active_outing.member_ids.size() == 2 );
-    const std::string first_activity = dispatched_site->active_outing.activity_id;
-    const int first_generation = dispatched_site->active_outing.generation;
-    const bandit_live_world::site_record *abstract_site = find_site( abstract_site_id );
-    REQUIRE( abstract_site != nullptr );
+    // Physical discovery records a staffed observer's real signal lead; it
+    // cannot bypass the ordinary structural assignment/watch/return owner.
+    const live_bandit_signal_observation original_smoke = *smoke;
+    const auto check_observed_lead = [&original_smoke, &camp_omt](
+    const bandit_live_world::site_record *site ) {
+        REQUIRE( site != nullptr );
+        CHECK_FALSE( site->active_outing.is_active() );
+        CHECK( site->active_outing.member_ids.empty() );
+        REQUIRE( site->intelligence_map.leads.size() == 1 );
+        const auto &lead = site->intelligence_map.leads.front();
+        CHECK( lead.kind == bandit_live_world::camp_lead_kind::smoke_signal );
+        CHECK( lead.origin == bandit_live_world::camp_lead_origin::signal );
+        CHECK( lead.omt == camp_omt );
+        CHECK( lead.source_sample_id == original_smoke.sample_id );
+        CHECK( lead.first_seen_minutes == original_smoke.observed_minutes );
+        CHECK( lead.last_seen_minutes == original_smoke.observed_minutes );
+        CHECK( lead.last_checked_minutes == -1 );
+        for( const auto &member : site->members ) {
+            CHECK( member.state == bandit_live_world::member_state::at_home );
+        }
+    };
+    const auto *observed_site = find_site( "test:smoke_dispatchable" );
+    check_observed_lead( observed_site );
+    const auto first_lead = observed_site->intelligence_map.leads.front();
+    const auto *abstract_site = find_site( abstract_site_id );
+    check_observed_lead( abstract_site );
     CHECK( abstract_site->members.size() == 3 );
-    CHECK( abstract_site->active_outing.is_active() );
-    REQUIRE( abstract_site->active_outing.member_ids.size() == 2 );
-    for( const bandit_live_world::member_record &member : abstract_site->members ) {
+    const auto first_abstract_lead = abstract_site->intelligence_map.leads.front();
+    for( const auto &member : abstract_site->members ) {
         transient_npcs.push_back( member.npc_id );
     }
+    for( const std::string &id : { "test:smoke_failed_route", "test:smoke_out_of_range" } ) {
+        const auto *refused_site = find_site( id );
+        REQUIRE( refused_site != nullptr );
+        CHECK( refused_site->intelligence_map.leads.empty() );
+        CHECK_FALSE( refused_site->active_outing.is_active() );
+    }
 
-    std::string transition_stream = read_transition_stream();
+    const std::string transition_stream = read_transition_stream();
     CAPTURE( transition_stream );
-    CHECK( transition_stream.find( "production_signal_admitted" ) != std::string::npos );
-    CHECK( transition_stream.find( "unavailable_members=2" ) != std::string::npos );
+    CHECK( transition_stream.find( "staffed_camp_signal_read" ) != std::string::npos );
+    CHECK( transition_stream.find( "home_sensor_missing" ) != std::string::npos );
     CHECK( transition_stream.find( "no_in_range_production_signal" ) != std::string::npos );
     CHECK( transition_stream.find( std::string( "\"site_id\":\"" ) + abstract_site_id + "\"" ) !=
            std::string::npos );
     CHECK( transition_stream.find( "production_lazy_materialization=3" ) != std::string::npos );
     CHECK( transition_stream.find( "concrete_roster_ready" ) != std::string::npos );
-    CHECK( transition_stream.find( "routed_members=2 unavailable_members=0" ) !=
-           std::string::npos );
 
-    // Same-turn replay cannot re-run the producer or allocate another party.
+    // Same-turn replay cannot rerun the producer, refresh knowledge or allocate
+    // another roster. A later packet in this same observation minute likewise
+    // cannot manufacture a new lead revision or a sortie.
     run_live_light_delivery_for_test();
-    dispatched_site = find_site( "test:smoke_dispatchable" );
-    REQUIRE( dispatched_site != nullptr );
-    CHECK( dispatched_site->active_outing.activity_id == first_activity );
-    CHECK( dispatched_site->active_outing.generation == first_generation );
     CHECK( read_transition_stream() == transition_stream );
-
-    // A later observation sees active pressure and preserves the first sortie.
     calendar::turn += 1_turns;
     run_live_light_delivery_for_test();
-    dispatched_site = find_site( "test:smoke_dispatchable" );
-    REQUIRE( dispatched_site != nullptr );
-    CHECK( dispatched_site->active_outing.activity_id == first_activity );
-    CHECK( dispatched_site->active_outing.generation == first_generation );
-    transition_stream = read_transition_stream();
-    CHECK( transition_stream.find( "active_outside_pressure" ) != std::string::npos );
+    observed_site = find_site( "test:smoke_dispatchable" );
+    check_observed_lead( observed_site );
+    CHECK( observed_site->intelligence_map.leads.front().revision == first_lead.revision );
+    CHECK( observed_site->intelligence_map.leads.front().source_sample_id == first_lead.source_sample_id );
+    abstract_site = find_site( abstract_site_id );
+    check_observed_lead( abstract_site );
+    CHECK( abstract_site->members.size() == 3 );
+    CHECK( abstract_site->intelligence_map.leads.front().revision == first_abstract_lead.revision );
+    CHECK( abstract_site->intelligence_map.leads.front().source_sample_id ==
+           first_abstract_lead.source_sample_id );
 }
 
 TEST_CASE( "physical_light_respects_depletion_and_movement", "[physical_light]" )
