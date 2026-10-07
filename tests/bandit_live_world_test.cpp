@@ -49736,3 +49736,347 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
         }
     }
 }
+
+TEST_CASE( "a dispatched watched report retains its operation revision after real lead refresh",
+           "[bandit][paid_revision_writer_067][save]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    auto world = make_structural_signal_test_world( cannibal, 967000 );
+    if( cannibal ) {
+        // The native cannibal planner retains two home members. Supply its
+        // actual reserve through the existing tracked-roster fixture producer.
+        add_cannibal_camp_member( world, 3, 967000 );
+    }
+    auto &site = world.sites.front();
+    auto &outing = site.active_outing;
+    outing.schema_version = 10;
+    outing.target_footprint = { outing.target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = outing.target_omt + tripoint( 0, 3, 0 );
+    const auto approach = outing.target_omt + tripoint( 0, 4, 0 );
+    outing.shared_route = { site.anchor, approach, outing.selected_watch_omt, approach, site.anchor };
+    outing.waypoint_index = 2;
+    outing.selected_watch_route_cost = 8;
+    outing.assessment.observation_started_minutes = 220;
+    outing.assessment.last_progress_minutes = 220;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    const int watched_revision = outing.target_lead_revision;
+    const std::string lead_id = outing.target_lead_id;
+    const auto target = outing.target_omt;
+    const auto watch = outing.selected_watch_omt;
+    const auto ids = outing.member_ids;
+    for( int minute : { 221, 251, 281, 311, 341 } ) {
+        outing.last_advanced_minutes = minute - 1;
+        REQUIRE( bandit_live_world::record_structural_signal_observations( world, minute,
+        [&]( const auto &, const auto &, const auto & ) {
+            auto read = make_structural_signal_read(
+                            bandit_live_world::sortie_observation_sense::smoke,
+                            target + tripoint( 0, 0, 1 ), 4, 60, 1 );
+            read.line_of_sight = true;
+            read.observed_minutes = minute;
+            return std::vector<bandit_live_world::structural_signal_read>{ read };
+        } ).facts_recorded > 0 );
+        outing.last_advanced_minutes = minute;
+    }
+    const auto original_records = outing.observations;
+    const auto refresh = [&]( const int minute ) {
+        auto lead = *site.intelligence_map.find_lead( lead_id );
+        const int previous = lead.revision;
+        lead.last_seen_minutes = minute;
+        lead.source_summary = "newer physical camp observation";
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+        REQUIRE( site.intelligence_map.find_lead( lead_id )->revision > previous );
+    };
+    refresh( 350 );
+    REQUIRE( outing.target_lead_revision == watched_revision );
+    REQUIRE( bandit_live_world::advance_structural_scout_assessment( site, outing.activity_id,
+             outing.generation, watched_revision, 461 ) ==
+             bandit_live_world::scout_assessment_result::normal_success );
+    REQUIRE( outing.phase == bandit_live_world::scout_phase::returning_report );
+    // This is the first destructive old caller: a real phase transition made
+    // normalization stop protecting the already observed revision.
+    bandit_live_world::normalize_camp_intelligence( site );
+    CHECK( outing.target_lead_revision == watched_revision );
+    CHECK( outing.assessment.pinned_target_revision == watched_revision );
+    refresh( 462 );
+    CHECK( outing.target_lead_revision == watched_revision );
+    CHECK( outing.assessment.pinned_target_revision == watched_revision );
+    world = round_trip_world( world );
+    auto &loaded = world.sites.front();
+    REQUIRE( loaded.active_outing.target_lead_revision == watched_revision );
+    REQUIRE( loaded.active_outing.assessment.pinned_target_revision == watched_revision );
+    REQUIRE( loaded.active_outing.selected_watch_omt == watch );
+    REQUIRE( loaded.active_outing.member_ids == ids );
+    REQUIRE( loaded.active_outing.observations.size() == original_records.size() );
+    const bool invalid = false;
+    bandit_live_world::advance_structural_bounty_outings( world, 463, {} );
+    REQUIRE( loaded.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    // Controlled physical arrivals use the production identity/cursor receipt
+    // writer. This is not a native replay or proof of travel across a saved map.
+    loaded.active_outing.actor_departure_observed = true;
+    loaded.active_outing.actor_route_waypoint =
+        static_cast<int>( loaded.active_outing.shared_route.size() ) - 1;
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( loaded,
+             require_current_simulation_cursor( loaded ), ids.front(), loaded.anchor, 464 ) );
+    world = round_trip_world( world );
+    auto &returned = world.sites.front();
+    REQUIRE_FALSE( returned.current_scout_report.is_present() );
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( returned,
+             require_current_simulation_cursor( returned ), ids.back(), returned.anchor, 465 ) );
+    bandit_live_world::advance_structural_bounty_outings( world, 466, {} );
+    REQUIRE( returned.current_scout_report.is_present() );
+    if( returned.active_outing.is_active() ) {
+        bandit_live_world::advance_structural_bounty_outings( world,
+                returned.active_outing.expected_return_minutes, {} );
+    }
+    REQUIRE_FALSE( returned.active_outing.is_active() );
+    auto &report = returned.current_scout_report;
+    CHECK( report.target_lead_revision == watched_revision );
+    CHECK( report.assessment.pinned_target_revision == watched_revision );
+    CHECK( report.carrier_ids == ids );
+    for( const auto &record : report.observations ) {
+        CHECK( record.observed_minutes <= 341 );
+        CHECK( record.source_omt == target + tripoint( 0, 0, 1 ) );
+        CHECK( record.receiver_omt == watch );
+    }
+    auto newer = *returned.intelligence_map.find_lead( lead_id );
+    newer.last_seen_minutes = report.delivered_minutes + 1;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( returned, newer ) );
+    world = round_trip_world( world );
+    const auto &final_site = world.sites.front();
+    std::vector<bandit_live_world::response_member_power_read> reads;
+    for( const auto &member : final_site.members ) {
+        reads.push_back( { member.npc_id, true,
+                          member.state == bandit_live_world::member_state::at_home, true, 10 } );
+    }
+    const auto selection = bandit_live_world::select_capable_response_party( final_site,
+                           final_site.current_scout_report.action_policy,
+                           final_site.current_scout_report.assessment.danger_high, reads );
+    const int now = final_site.current_scout_report.delivered_minutes + 1;
+    const auto authorization = bandit_live_world::evaluate_response_authorization(
+                                   final_site, now, selection, reads );
+    INFO( authorization.rejection_reason );
+    CHECK( authorization.report_current );
+    CHECK( authorization.report_unexpired );
+    CHECK( authorization.assessment_ready == !invalid );
+    if( !invalid ) {
+        auto contradicted = final_site;
+        auto contradiction = contradicted.current_scout_report.observations.front();
+        contradiction.kind = bandit_live_world::sortie_observation_kind::contradiction;
+        contradiction.source_omt = contradicted.current_scout_report.target_omt;
+        contradicted.current_scout_report.observations.push_back( contradiction );
+        CHECK_FALSE( bandit_live_world::evaluate_response_authorization(
+                         contradicted, now, selection, reads ).assessment_ready );
+    }
+
+    auto &dispatched = world.sites.front();
+    const auto &watched_report = dispatched.current_scout_report;
+    REQUIRE( bandit_live_world::transition_camp_decision_state( dispatched,
+             bandit_live_world::camp_decision_state::report_awaiting_assessment,
+             bandit_live_world::camp_decision_state::preparing_follow_on,
+             watched_report.revision, watched_report.source_generation, now, now,
+             "current watched report authorized" ) ==
+             bandit_live_world::camp_decision_transition_result::applied );
+    INFO( selection.rejection_reason );
+    REQUIRE( selection.eligible );
+    const auto plan = bandit_live_world::plan_hostile_operation_with_authorized_response(
+                          dispatched, cannibal ? bandit_live_world::hostile_operation_kind::raid :
+                          bandit_live_world::hostile_operation_kind::shakedown, selection,
+                          { dispatched.anchor, target }, dispatched.anchor, now );
+    REQUIRE( plan.plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan_with_authorized_response(
+                 dispatched, plan ) );
+    auto &reservation = dispatched.active_hostile_operation.reservation;
+    REQUIRE( reservation.target_lead_revision == watched_revision );
+    REQUIRE( watched_report.target_lead_revision == watched_revision );
+    REQUIRE( dispatched.camp_decision.target_lead_revision == watched_revision );
+    const std::string writer = GENERATE( std::string( "normalization" ),
+                                       std::string( "lead_refresh" ), std::string( "snapshot" ) );
+    CAPTURE( cannibal, writer, watched_revision );
+    if( writer == "normalization" ) {
+        bandit_live_world::normalize_camp_intelligence( dispatched );
+    } else if( writer == "lead_refresh" ) {
+        auto refreshed = *dispatched.intelligence_map.find_lead( lead_id );
+        ++refreshed.last_seen_minutes;
+        REQUIRE( bandit_live_world::upsert_camp_map_lead( dispatched, refreshed ) );
+    }
+    CHECK( reservation.target_lead_revision == watched_revision );
+    const std::string serialized = serialize_world( world );
+    auto saved = json_loader::from_string( serialized ).get_object();
+    saved.allow_omitted_members();
+    auto saved_site = saved.get_array( "sites" ).get_object( 0 );
+    saved_site.allow_omitted_members();
+    auto saved_operation = saved_site.get_object( "active_hostile_operation" );
+    saved_operation.allow_omitted_members();
+    auto saved_reservation = saved_operation.get_object( "reservation" );
+    saved_reservation.allow_omitted_members();
+    CHECK( saved_reservation.get_int( "target_lead_revision" ) == watched_revision );
+    bandit_live_world::world_state restored;
+    CHECK_NOTHROW( restored.deserialize( saved ) );
+}
+
+TEST_CASE( "unchanged paid return save recovers only its validated consumed watch binding",
+           "[bandit][paid_revision_load_067][retained_save]" )
+{
+    // Byte-identical original5272550 dimension_data.gsav, SHA256
+    // ead15cd65b128ff474a4b73d3ebc6240a9bcf0c321a606147a743e56c00bdf66.
+    std::ifstream input( "tests/data/r067_paid_return_5272550.gsav", std::ios::binary );
+    REQUIRE( input.good() );
+    const std::string native_bytes( std::istreambuf_iterator<char>( input ), {} );
+    const auto begin = native_bytes.find( '{' );
+    REQUIRE( begin != std::string::npos );
+    auto dimension = json_loader::from_string( native_bytes.substr( begin ) ).get_object();
+    dimension.allow_omitted_members();
+    auto buffer = dimension.get_object( "overmapbuffer" );
+    buffer.allow_omitted_members();
+    auto original = buffer.get_object( "bandit_live_world" );
+    original.allow_omitted_members();
+    auto original_site = original.get_array( "sites" ).get_object( 1 );
+    original_site.allow_omitted_members();
+    REQUIRE( original_site.get_string( "site_id" ) == "overmap_special:bandit_camp@129,149,0" );
+    auto operation_json = original_site.get_object( "active_hostile_operation" );
+    auto report_json = original_site.get_object( "current_scout_report" );
+    auto decision_json = original_site.get_object( "camp_decision" );
+    auto map_json = original_site.get_object( "intelligence_map" );
+    bandit_live_world::hostile_operation_state operation;
+    operation.deserialize( operation_json );
+    bandit_live_world::scout_report_record report;
+    report.deserialize( report_json );
+    bandit_live_world::camp_decision_record decision;
+    decision.deserialize( decision_json );
+    bandit_live_world::camp_intelligence_map intelligence;
+    intelligence.deserialize( map_json );
+    std::vector<bandit_live_world::hostile_target_opportunity_record> claims;
+    original.read( "hostile_target_opportunities", claims );
+    const auto claim_iter = std::find_if( claims.begin(), claims.end(), [&]( const auto &claim ) {
+        return claim.target_id == report.target_id && claim.target_omt == report.target_omt;
+    } );
+    REQUIRE( claim_iter != claims.end() );
+    const auto claim_index = static_cast<std::size_t>( std::distance( claims.begin(), claim_iter ) );
+    REQUIRE( report.target_lead_revision == 81 );
+    REQUIRE( operation.reservation.target_lead_revision == 232 );
+    REQUIRE( claim_iter->revision == 81 );
+    const auto record_bytes = []( const auto &record ) {
+        std::ostringstream out;
+        JsonOut json( out );
+        json.write( record );
+        return out.str();
+    };
+    const std::string expected_report = record_bytes( report );
+    const std::string expected_decision = record_bytes( decision );
+    const std::string expected_claims = record_bytes( claims );
+    const std::string condition = GENERATE( std::string( "original" ), std::string( "standalone" ),
+        std::string( "missing_claim" ), std::string( "unconsumed" ), std::string( "successor" ),
+        std::string( "duplicate_claim" ), std::string( "malformed_claim" ), std::string( "wrong_target" ),
+        std::string( "wrong_omt" ), std::string( "wrong_operation" ), std::string( "wrong_report" ),
+        std::string( "wrong_generation" ), std::string( "wrong_owner" ), std::string( "corrupt_member" ),
+        std::string( "corrupt_route" ), std::string( "corrupt_source" ), std::string( "corrupt_pin" ),
+        std::string( "unbound_lead" ), std::string( "unmatched_new_revision" ) );
+    CAPTURE( condition );
+    if( condition == "original" ) {
+        bandit_live_world::world_state loaded;
+        // The positive route passes the untouched original object, not a
+        // normalized fixture, JSON rewrite, or a reconstructed motor shell.
+        REQUIRE_NOTHROW( loaded.deserialize( original ) );
+        auto *site = loaded.find_site( original_site.get_string( "site_id" ) );
+        REQUIRE( site );
+        auto expected_operation = operation;
+        expected_operation.reservation.target_lead_revision = 81;
+        CHECK( record_bytes( site->active_hostile_operation ) == record_bytes( expected_operation ) );
+        CHECK( record_bytes( site->current_scout_report ) == expected_report );
+        CHECK( record_bytes( site->camp_decision ) == expected_decision );
+        CHECK( record_bytes( loaded.hostile_target_opportunities ) == expected_claims );
+        CHECK( site->intelligence_map.find_lead( report.target_lead_id )->revision == 232 );
+        CHECK( site->shakedown_loot_value == original_site.get_int( "shakedown_loot_value" ) );
+        CHECK( site->active_hostile_operation.shakedown_pending_surrendered_value ==
+               operation.shakedown_pending_surrendered_value );
+        const std::string once = serialize_world( loaded );
+        loaded = round_trip_world( loaded );
+        loaded = round_trip_world( loaded );
+        CHECK( serialize_world( loaded ) == once );
+        CHECK( record_bytes( loaded.hostile_target_opportunities ) == expected_claims );
+        CHECK( loaded.find_site( original_site.get_string( "site_id" ) )->
+               active_hostile_operation.reservation.target_lead_revision == 81 );
+        return;
+    }
+    if( condition == "standalone" ) {
+        bandit_live_world::site_record strict_site;
+        CHECK_THROWS( strict_site.deserialize( original_site ) );
+        return;
+    }
+    // Negative inputs are separate in-memory copies. They never modify the
+    // byte-preserved positive save or grant recovery to a different owner.
+    const auto replace_fragment = []( std::string &bytes, const std::string &before,
+    const std::string &after ) {
+        // TextJsonIn consumes the following separator into its span. Replace
+        // only the complete value and keep the original comma/whitespace.
+        const auto end = before.find_last_of( "}]" );
+        REQUIRE( end != std::string::npos );
+        const std::string value = before.substr( 0, end + 1 );
+        const auto offset = bytes.find( value );
+        REQUIRE( offset != std::string::npos );
+        bytes.replace( offset, value.size(), after );
+    };
+    // TextJsonIn retains each member's original byte spelling. Flexbuffer
+    // str() pretty-prints objects at different depths, so substring replacement
+    // must not use independently reformatted nested objects.
+    std::istringstream source( native_bytes.substr( begin ) );
+    TextJsonIn text( source );
+    auto raw_dimension = text.get_object();
+    raw_dimension.allow_omitted_members();
+    auto raw_buffer = raw_dimension.get_object( "overmapbuffer" );
+    raw_buffer.allow_omitted_members();
+    auto raw_world = raw_buffer.get_object( "bandit_live_world" );
+    raw_world.allow_omitted_members();
+    auto raw_site = raw_world.get_array( "sites" ).get_object( 1 );
+    raw_site.allow_omitted_members();
+    std::string negative = raw_world.str();
+    negative.erase( negative.find_last_of( '}' ) + 1 );
+    if( condition == "missing_claim" ) { claims.erase( claim_iter ); }
+    if( condition == "unconsumed" ) {
+        claims[claim_index].consumed_operation_id.clear();
+        claims[claim_index].consumed_report_key.clear();
+        claims[claim_index].consumed_generation = 0;
+    }
+    if( condition == "successor" ) { claims[claim_index].revision = 232; }
+    if( condition == "duplicate_claim" ) { claims.push_back( claims[claim_index] ); }
+    if( condition == "malformed_claim" ) { claims[claim_index].consumed_generation = -1; }
+    if( condition == "wrong_target" ) { claims[claim_index].target_id += "-foreign"; }
+    if( condition == "wrong_omt" ) { claims[claim_index].target_omt += tripoint( 1, 0, 0 ); }
+    if( condition == "wrong_operation" ) { claims[claim_index].consumed_operation_id += "-foreign"; }
+    if( condition == "wrong_report" ) { claims[claim_index].consumed_report_key += "-foreign"; }
+    if( condition == "wrong_generation" ) { ++claims[claim_index].consumed_generation; }
+    if( condition == "wrong_owner" ) { operation.reservation.camp_id += "-foreign"; }
+    if( condition == "corrupt_member" ) {
+        operation.reservation.member_ids.front() = character_id( 999999 );
+        operation.reservation.leader_id = character_id( 999999 );
+    }
+    if( condition == "corrupt_route" ) { operation.reservation.shared_route.erase(
+            operation.reservation.shared_route.begin() ); }
+    if( condition == "corrupt_source" ) { ++operation.source_report_generation; }
+    if( condition == "corrupt_pin" ) { ++report.assessment.pinned_target_revision; }
+    if( condition == "unbound_lead" ) {
+        intelligence.find_lead( report.target_lead_id )->target_id += "-foreign";
+    }
+    if( condition == "unmatched_new_revision" ) {
+        ++operation.reservation.target_lead_revision;
+    }
+    replace_fragment( negative, raw_world.get_array( "hostile_target_opportunities" ).str(),
+                      record_bytes( claims ) );
+    replace_fragment( negative, raw_site.get_object( "active_hostile_operation" ).str(),
+                      record_bytes( operation ) );
+    replace_fragment( negative, raw_site.get_object( "current_scout_report" ).str(),
+                      record_bytes( report ) );
+    replace_fragment( negative, raw_site.get_object( "camp_decision" ).str(), record_bytes( decision ) );
+    replace_fragment( negative, raw_site.get_object( "intelligence_map" ).str(),
+                      record_bytes( intelligence ) );
+    bandit_live_world::world_state refused;
+    const std::string prior = serialize_world( refused );
+    const auto negative_json = json_loader::from_string( negative ).get_object();
+    // The intended validation error stops before later root members are read.
+    // Parsing remains outside CHECK_THROWS; unread-member diagnostics are not
+    // another loader refusal and must not make the expected-error test fail.
+    negative_json.allow_omitted_members();
+    CHECK_THROWS( refused.deserialize( negative_json ) );
+    CHECK( serialize_world( refused ) == prior );
+}

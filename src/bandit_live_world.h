@@ -1167,6 +1167,12 @@ struct site_record {
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 
+    private:
+        friend struct world_state;
+        void deserialize( const JsonObject &jo,
+                          const std::vector<hostile_target_opportunity_record> &claims );
+
+    public:
     bool has_member( character_id npc_id ) const;
     member_record *find_member( character_id npc_id );
     const member_record *find_member( character_id npc_id ) const;
