@@ -1308,6 +1308,46 @@ struct live_bandit_paid_return_plan {
     bandit_live_world::simulation_advance_cursor cursor;
 };
 
+// One physical-to-macro planner serves both payment preflight and a paid
+// survivor whose persisted order still names the inaccessible ground OMT
+// below its roof. It never changes the actor or reservation.
+std::optional<live_bandit_paid_return_travel_order> live_bandit_paid_return_order(
+    npc *member_npc, const bandit_live_world::site_record &site,
+    const bool allow_local_descent )
+{
+    const tripoint_abs_omt start = member_npc->pos_abs_omt();
+    bool local_descent = false;
+    std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                start, site.anchor, overmap_path_params::for_npc() ).points;
+    if( route.empty() && allow_local_descent && start.z() > site.anchor.z() && member_npc->is_active() ) {
+        // The macro map does not represent local roof ladders/stairs.
+        // Compose its ground route only if the ordinary NPC motor can
+        // physically reach that route's first onward waypoint, at its
+        // real height. Do not order an unreachable indoor OMT centre.
+        const tripoint_abs_omt ground( start.xy(), site.anchor.z() );
+        route = overmap_buffer.get_travel_path( ground, site.anchor,
+                                              overmap_path_params::for_npc() ).points;
+        if( route.size() < 2 || route.front() != site.anchor || route.back() != ground ) {
+            return std::nullopt;
+        }
+        route.pop_back();
+        local_descent = true;
+        const tripoint_bub_ms next = get_map().get_bub(
+                                        project_to<coords::ms>( route.back() ) + point( SEEX, SEEY ) );
+        if( !get_map().inbounds( next ) ) {
+            return std::nullopt;
+        }
+        const auto connector = get_map().route( *member_npc,
+                               pathfinding_target::radius( next, 2 ) );
+        if( connector.empty() || !pathfinding_target::radius( next, 2 ).contains( connector.back() ) ) {
+            return std::nullopt;
+        }
+    } else if( route.empty() || route.front() != site.anchor || route.back() != start ) {
+        return std::nullopt;
+    }
+    return live_bandit_paid_return_travel_order{ member_npc, std::move( route ), local_descent };
+}
+
 std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
     const bandit_live_world::site_record &site, const bool allow_local_descent = false )
 {
@@ -1339,37 +1379,11 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
             member_npc == nullptr || member_npc->is_dead() ) {
             return std::nullopt;
         }
-        const tripoint_abs_omt start = member_npc->pos_abs_omt();
-        bool local_descent = false;
-        std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
-                    start, site.anchor, overmap_path_params::for_npc() ).points;
-        if( route.empty() && allow_local_descent && start.z() > site.anchor.z() && member_npc->is_active() ) {
-            // The macro map does not represent local roof ladders/stairs.
-            // Compose its ground route only if the ordinary NPC motor can
-            // physically reach that route's first onward waypoint, at its
-            // real height. Do not order an unreachable indoor OMT centre.
-            const tripoint_abs_omt ground( start.xy(), site.anchor.z() );
-            route = overmap_buffer.get_travel_path( ground, site.anchor,
-                                                  overmap_path_params::for_npc() ).points;
-            if( route.size() < 2 || route.front() != site.anchor || route.back() != ground ) {
-                return std::nullopt;
-            }
-            route.pop_back();
-            local_descent = true;
-            const tripoint_bub_ms next = get_map().get_bub(
-                                            project_to<coords::ms>( route.back() ) + point( SEEX, SEEY ) );
-            if( !get_map().inbounds( next ) ) {
-                return std::nullopt;
-            }
-            const auto connector = get_map().route( *member_npc,
-                                   pathfinding_target::radius( next, 2 ) );
-            if( connector.empty() || !pathfinding_target::radius( next, 2 ).contains( connector.back() ) ) {
-                return std::nullopt;
-            }
-        } else if( route.empty() || route.front() != site.anchor || route.back() != start ) {
+        auto order = live_bandit_paid_return_order( member_npc, site, allow_local_descent );
+        if( !order ) {
             return std::nullopt;
         }
-        plan.travel_orders.push_back( { member_npc, std::move( route ), local_descent } );
+        plan.travel_orders.push_back( std::move( *order ) );
     }
     return plan;
 }
@@ -2641,6 +2655,7 @@ bool advance_live_bandit_hostile_returns()
         struct hostile_return_travel_order {
             npc *member_npc;
             std::vector<tripoint_abs_omt> route;
+            bool repaired_descent = false;
         };
         std::vector<hostile_return_travel_order> travel_orders;
         bool valid_party = true;
@@ -2690,6 +2705,30 @@ bool advance_live_bandit_hostile_returns()
             all_home = false;
             if( member_npc->goal == site.anchor && !member_npc->omt_path.empty() &&
                 member_npc->is_travelling() ) {
+                const tripoint_abs_omt start = member_npc->pos_abs_omt();
+                const tripoint_abs_omt ground( start.xy(), site.anchor.z() );
+                const bandit_live_world::site_record *paid_site = nullptr;
+                if( member_npc->is_active() && start.z() > site.anchor.z() &&
+                    member_npc->omt_path.front() == site.anchor &&
+                    member_npc->omt_path.back() == ground &&
+                    bandit_live_world::hostile_operation_player_relationship_for(
+                        state, member_id, &paid_site ) ==
+                    bandit_live_world::hostile_operation_player_relationship::paid_departure &&
+                    paid_site == &site ) {
+                    const tripoint_bub_ms next = get_map().get_bub(
+                        project_to<coords::ms>( ground ) + point( SEEX, SEEY ) );
+                    if( get_map().inbounds( next ) && get_map().route( *member_npc,
+                            pathfinding_target::radius( next, 2 ) ).empty() ) {
+                        // An existing nonempty macro order is not proof that
+                        // its first local waypoint is physically reachable.
+                        auto repaired = live_bandit_paid_return_order( member_npc, site, true );
+                        if( !repaired ) {
+                            valid_party = false;
+                            break;
+                        }
+                        travel_orders.push_back( { member_npc, std::move( repaired->route ), true } );
+                    }
+                }
                 continue;
             }
             const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
@@ -2720,9 +2759,22 @@ bool advance_live_bandit_hostile_returns()
         }
         if( !all_home ) {
             for( hostile_return_travel_order &order : travel_orders ) {
+                for( const shared_ptr_fast<npc> &persistent : overmap_buffer.get_overmap_npcs() ) {
+                    if( order.repaired_descent && persistent &&
+                        persistent->getID() == order.member_npc->getID() &&
+                        persistent.get() != order.member_npc ) {
+                        persistent->goal = site.anchor;
+                        persistent->omt_path = order.route;
+                        if( !persistent->is_travelling() ) {
+                            persistent->set_mission( NPC_MISSION_TRAVELLING );
+                        }
+                    }
+                }
                 order.member_npc->goal = site.anchor;
                 order.member_npc->omt_path = std::move( order.route );
-                order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                if( !order.repaired_descent ) {
+                    order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                }
                 changed = true;
             }
             if( openclaw_harness_bandit_owner_trace_enabled() ) {

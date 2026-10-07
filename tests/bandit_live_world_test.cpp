@@ -50632,3 +50632,114 @@ TEST_CASE( "retained ordinary ignition and gas propagation feed stationary watch
         CHECK( record.target_revision == watched_revision );
     }
 }
+
+TEST_CASE( "paid roof return reconciles an unreachable persisted ground entry",
+           "[bandit_live_world][paid_roof_connector_067]" )
+{
+    const std::string condition = GENERATE( std::string( "original_motor" ),
+        std::string( "reload" ), std::string( "blocked" ), std::string( "foreign" ),
+        std::string( "stale_clock" ), std::string( "released" ),
+        std::string( "valid_order" ), std::string( "ground_order" ) );
+    CAPTURE( condition );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    // Earlier cases can leave inactive generated copies of these low IDs
+    // outside their bubbles. The retained fixture owns precisely IDs2..13.
+    clear_npcs();
+    for( const auto &prior : overmap_buffer.get_overmap_npcs() ) {
+        if( prior && prior->getID().get_value() >= 2 && prior->getID().get_value() <= 13 ) {
+            overmap_buffer.remove_npc( prior->getID() );
+        }
+    }
+    // Original master.gsav reserves imported character IDs through13
+    // (next_npc_id14). Do not let generated off-map NPCs reuse those IDs
+    // when the real macro planner requests neighboring overmaps.
+    while( g->assign_npc_id().get_value() < 14 ) {}
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r067_roof_paid_return_8560.json" );
+    npc &member = scene.actor( 5 );
+    map &here = get_map();
+    REQUIRE( member.pos_abs() == tripoint_abs_ms( 3156, 3444, 1 ) );
+    REQUIRE_FALSE( member.is_dead() );
+    REQUIRE( scene.actor( 7 ).pos_abs() == tripoint_abs_ms( 3103, 3596, 0 ) );
+    REQUIRE( member.omt_path.back() == tripoint_abs_omt( 131, 143, 0 ) );
+    const auto guard = member.guard_pos;
+    const auto home_member = r054_actor_bytes( scene.actor( 7 ) );
+    const auto original_route = member.omt_path;
+    const auto first = here.get_bub( project_to<coords::ms>( original_route.back() ) + point( SEEX, SEEY ) );
+    const auto onward = here.get_bub( project_to<coords::ms>( original_route[original_route.size() - 2] ) + point( SEEX, SEEY ) );
+    CHECK( here.route( member, pathfinding_target::radius( first, 2 ) ).empty() );
+    REQUIRE_FALSE( here.route( member, pathfinding_target::radius( onward, 2 ) ).empty() );
+    const auto paid_value = scene.site().shakedown_loot_value;
+    const auto original_cursor = bandit_live_world::current_external_simulation_cursor( scene.site() );
+    REQUIRE( original_cursor );
+    if( condition == "reload" ) {
+        const auto body = r054_actor_bytes( member );
+        overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+        member.setID( character_id(), true );
+        member.deserialize( json_loader::from_string( body ).get_object() );
+    }
+    auto &site = scene.site();
+    if( condition == "blocked" ) {
+        // Remove the actual retained ladder connection in this negative only.
+        here.ter_set( here.get_bub( tripoint_abs_ms( 3149, 3454, 1 ) ), ter_id( "t_shingle_flat_roof" ) );
+        here.invalidate_map_cache( 1 ); here.build_map_cache( 1 );
+        REQUIRE( here.route( member, pathfinding_target::radius( onward, 2 ) ).empty() );
+    }
+    if( condition == "foreign" ) { site.active_hostile_operation.reservation.camp_id = "foreign-camp"; }
+    if( condition == "stale_clock" ) {
+        site.active_hostile_operation.reservation.last_advanced_minutes =
+            to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    }
+    if( condition == "released" ) { site.active_hostile_operation.clear(); }
+    if( condition == "valid_order" ) {
+        // A previously composed reachable order must not be replaced again.
+        member.omt_path.pop_back();
+    }
+    if( condition == "ground_order" ) {
+        // Explicit countercontrol, not a reconstruction of the roof journey.
+        member.setpos( tripoint_abs_ms( 3156, 3444, 0 ), false );
+    }
+    const auto before_body = r054_actor_bytes( member );
+    const auto before_world = serialize_world( overmap_buffer.global_state.bandit_live_world );
+    const bool repairs = condition == "original_motor" || condition == "reload";
+    CHECK( advance_live_bandit_hostile_returns_for_test() == repairs );
+    CHECK( member.guard_pos == guard );
+    CHECK( r054_actor_bytes( scene.actor( 7 ) ) == home_member );
+    CHECK( scene.site().shakedown_loot_value == paid_value );
+    if( !repairs ) {
+        CHECK( r054_actor_bytes( member ) == before_body );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before_world );
+        return;
+    }
+    auto expected = original_route; expected.pop_back();
+    REQUIRE( member.omt_path == expected );
+    CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before_world );
+    CHECK_FALSE( advance_live_bandit_hostile_returns_for_test() );
+    CHECK( member.omt_path == expected );
+    if( condition == "reload" ) {
+        const auto repaired_body = r054_actor_bytes( member );
+        overmap_buffer.global_state.bandit_live_world = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+        member.setID( character_id(), true );
+        member.deserialize( json_loader::from_string( repaired_body ).get_object() );
+        CHECK_FALSE( advance_live_bandit_hostile_returns_for_test() );
+        CHECK( member.omt_path == expected );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before_world );
+    }
+    const auto start = member.pos_abs();
+    int calls = 0;
+    while( member.pos_abs().z() > 0 && calls < 50 ) {
+        member.set_moves( 100 );
+        member.move();
+        calendar::turn += 1_turns;
+        ++calls;
+    }
+    std::cout << "R067_ROOF_CONNECTOR condition=" << condition << " calls=" << calls
+              << " from=" << start << " to=" << member.pos_abs() << '\n';
+    CHECK( member.pos_abs() != start );
+    CHECK( member.pos_abs().z() == 0 );
+    CHECK( member.guard_pos == guard );
+    CHECK( member.goal == scene.site().anchor );
+    CHECK_FALSE( member.is_dead() );
+    CHECK( r054_actor_bytes( scene.actor( 7 ) ) == home_member );
+    CHECK( scene.site().shakedown_loot_value == paid_value );
+}
