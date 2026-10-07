@@ -2009,6 +2009,19 @@ bool report_matches_camp_decision( const bandit_live_world::scout_report_record 
 }
 
 
+bool report_matches_hostile_operation( const bandit_live_world::scout_report_record &report,
+                                       const bandit_live_world::hostile_operation_state &operation );
+
+bool hostile_watch_revision_is_pinned( const bandit_live_world::site_record &site )
+{
+    return site.active_hostile_operation.is_active() &&
+           watch_revision_is_pinned( site.current_scout_report ) &&
+           report_matches_camp_decision( site.current_scout_report, site.camp_decision ) &&
+           report_matches_hostile_operation( site.current_scout_report,
+                                             site.active_hostile_operation );
+}
+
+
 void update_target_lead_reference( bandit_live_world::active_outing_state &outing,
                                    const std::string &lead_id, const int old_revision,
                                    const int new_revision )
@@ -2049,9 +2062,12 @@ void update_target_lead_references( bandit_live_world::site_record &site,
                                     const std::string &lead_id, const int old_revision,
                                     const int new_revision )
 {
+    const bool pinned_hostile = hostile_watch_revision_is_pinned( site );
     update_target_lead_reference( site.active_outing, lead_id, old_revision, new_revision );
-    update_target_lead_reference( site.active_hostile_operation.reservation, lead_id,
-                                  old_revision, new_revision );
+    if( !pinned_hostile ) {
+        update_target_lead_reference( site.active_hostile_operation.reservation, lead_id,
+                                      old_revision, new_revision );
+    }
     const bool pinned_decision = watch_revision_is_pinned( site.current_scout_report ) &&
                                  report_matches_camp_decision( site.current_scout_report, site.camp_decision );
     update_target_lead_reference( site.current_scout_report, lead_id, old_revision, new_revision );
@@ -2848,6 +2864,50 @@ bool report_matches_hostile_operation( const bandit_live_world::scout_report_rec
            operation.reservation.target_omt == report.target_omt &&
            lead_id_matches &&
            operation.reservation.target_lead_revision == report.target_lead_revision;
+}
+
+// Older snapshot normalization advanced only the hostile reservation after a
+// completed watch. Recover that reference only from the world's exact consumed
+// opportunity; standalone site loading has no authority to repair it.
+void restore_consumed_hostile_watch_revision( bandit_live_world::site_record &site,
+        const std::vector<bandit_live_world::hostile_target_opportunity_record> &claims )
+{
+    auto &operation = site.active_hostile_operation;
+    auto &reservation = operation.reservation;
+    const auto &report = site.current_scout_report;
+    if( !operation.is_active() || operation.legacy_unpinned ||
+        !watch_revision_is_pinned( report ) ||
+        !report_matches_camp_decision( report, site.camp_decision ) ||
+        report.target_lead_id.empty() || reservation.camp_id != site.site_id ||
+        reservation.target_lead_id != report.target_lead_id ||
+        reservation.target_lead_revision <= report.target_lead_revision ) {
+        return;
+    }
+    const auto *lead = site.intelligence_map.find_lead( report.target_lead_id );
+    if( lead == nullptr || lead->target_id != report.target_id || lead->omt != report.target_omt ||
+        lead->revision != reservation.target_lead_revision ) {
+        return;
+    }
+    const bandit_live_world::hostile_target_opportunity_record *claim = nullptr;
+    for( const auto &candidate : claims ) {
+        if( candidate.target_id == report.target_id && candidate.target_omt == report.target_omt ) {
+            if( claim != nullptr ) {
+                return;
+            }
+            claim = &candidate;
+        }
+    }
+    if( claim == nullptr || claim->revision != report.target_lead_revision ||
+        claim->consumed_operation_id != reservation.activity_id ||
+        claim->consumed_report_key != report.application_key ||
+        claim->consumed_generation != reservation.generation || claim->consumed_generation <= 0 ) {
+        return;
+    }
+    auto recovered = operation;
+    recovered.reservation.target_lead_revision = claim->revision;
+    if( report_matches_hostile_operation( report, recovered ) ) {
+        reservation.target_lead_revision = claim->revision;
+    }
 }
 
 bool hostile_operation_phase_matches_reservation(
@@ -7661,6 +7721,7 @@ static void resolve_camp_lead_reference( Reference &reference,
 void normalize_camp_intelligence( site_record &site )
 {
     const bool pinned_outing = watch_revision_is_pinned( site.active_outing );
+    const bool pinned_hostile = hostile_watch_revision_is_pinned( site );
     const bool pinned_report = watch_revision_is_pinned( site.current_scout_report );
     const bool pinned_decision = pinned_report &&
                                  report_matches_camp_decision( site.current_scout_report, site.camp_decision );
@@ -7702,8 +7763,10 @@ void normalize_camp_intelligence( site_record &site )
     if( !pinned_outing ) {
         resolve_camp_lead_reference( site.active_outing, site.intelligence_map.leads );
     }
-    resolve_camp_lead_reference( site.active_hostile_operation.reservation,
-                                 site.intelligence_map.leads );
+    if( !pinned_hostile ) {
+        resolve_camp_lead_reference( site.active_hostile_operation.reservation,
+                                     site.intelligence_map.leads );
+    }
     if( !pinned_report ) {
         resolve_camp_lead_reference( site.current_scout_report, site.intelligence_map.leads );
     }
@@ -9490,6 +9553,12 @@ void site_record::serialize( JsonOut &json ) const
 
 void site_record::deserialize( const JsonObject &jo )
 {
+    deserialize( jo, {} );
+}
+
+void site_record::deserialize( const JsonObject &jo,
+                               const std::vector<hostile_target_opportunity_record> &claims )
+{
     schema_version = 5;
     living_total = 0;
     supply_units = 0;
@@ -10323,6 +10392,9 @@ void site_record::deserialize( const JsonObject &jo )
             }
         }
         active_outing.clear();
+    }
+    if( loaded_schema_version >= 10 ) {
+        restore_consumed_hostile_watch_revision( *this, claims );
     }
     active_outing_state &hostile_reservation = active_hostile_operation.reservation;
     const bool legacy_withdrawal_only = active_hostile_operation.legacy_unpinned &&
@@ -11711,7 +11783,27 @@ void world_state::deserialize( const JsonObject &jo )
         jo.throw_error( "hostile live-world schema version is unsupported" );
     }
     jo.read( "owner_id", candidate.owner_id );
-    jo.read( "sites", candidate.sites );
+    if( jo.has_member( "hostile_target_opportunities" ) ) {
+        if( loaded_schema_version < 7 ) {
+            jo.throw_error( "pre-v7 world cannot contain hostile target opportunities" );
+        }
+        jo.read( "hostile_target_opportunities", candidate.hostile_target_opportunities );
+    } else if( loaded_schema_version >= 7 ) {
+        jo.throw_error( "v7 world is missing hostile target opportunities" );
+    }
+    std::set<std::pair<std::string, tripoint_abs_omt>> claim_keys;
+    for( const auto &claim : candidate.hostile_target_opportunities ) {
+        if( !claim_keys.emplace( claim.target_id, claim.target_omt ).second ) {
+            jo.throw_error( "hostile target opportunity is duplicated" );
+        }
+    }
+    if( jo.has_member( "sites" ) ) {
+        for( JsonObject site_json : jo.get_array( "sites" ) ) {
+            site_record site;
+            site.deserialize( site_json, candidate.hostile_target_opportunities );
+            candidate.sites.push_back( std::move( site ) );
+        }
+    }
     const bool any_scheduler_field = jo.has_member( "routine_scheduler_cursor" ) ||
                                      jo.has_member( "routine_terrain_scan_cursor" ) ||
                                      jo.has_member( "routine_scheduler_last_hour" );
@@ -11788,14 +11880,6 @@ void world_state::deserialize( const JsonObject &jo )
                 }
             }
         }
-    }
-    if( jo.has_member( "hostile_target_opportunities" ) ) {
-        if( loaded_schema_version < 7 ) {
-            jo.throw_error( "pre-v7 world cannot contain hostile target opportunities" );
-        }
-        jo.read( "hostile_target_opportunities", candidate.hostile_target_opportunities );
-    } else if( loaded_schema_version >= 7 ) {
-        jo.throw_error( "v7 world is missing hostile target opportunities" );
     }
     candidate.schema_version = 7;
     *this = std::move( candidate );
