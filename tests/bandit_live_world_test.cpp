@@ -49627,19 +49627,22 @@ TEST_CASE( "opt-in signal adapter explains actual watcher and producer-reader re
     }
 }
 
-TEST_CASE( "paid roof return does not repeatedly complete an incidental guard order",
+TEST_CASE( "paid home return does not repeatedly complete an incidental guard order",
            "[bandit_live_world][paid_guard_return_067]" )
 {
     const std::string condition = GENERATE( std::string( "retained_navigation" ),
         std::string( "retained_motor" ), std::string( "producer" ), std::string( "reload" ),
         std::string( "foreign" ), std::string( "stale_lease" ), std::string( "resolved" ), std::string( "wrong_home" ),
-        std::string( "ordinary" ), std::string( "ground_visit" ),
+        std::string( "ordinary" ), std::string( "ground_visit" ), std::string( "no_order" ),
+        std::string( "stale_generation" ),
         std::string( "narcosis" ), std::string( "flight" ), std::string( "blocked" ) );
     CAPTURE( condition );
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     r055_scene scene;
-    scene.load( false, true, false, "tests/data/r067_roof_paid_return.json" );
-    std::ifstream input( "tests/data/r067_paid_guard_return.json" );
+    scene.load( false, true, false, condition == "ground_visit" ?
+                "tests/data/r067_paid_darell_guard.json" : "tests/data/r067_roof_paid_return.json" );
+    std::ifstream input( condition == "ground_visit" ? "tests/data/r067_paid_darell_guard.json" :
+                         "tests/data/r067_paid_guard_return.json" );
     REQUIRE( input.good() );
     JsonObject fixture = json_loader::from_string(
                              std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
@@ -49662,7 +49665,8 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
     }
     here.load( here.get_abs_sub(), true );
     for( int z : { 0, 1 } ) { here.invalidate_map_cache( z ); here.build_map_cache( z ); }
-    const bool retained = condition == "retained_navigation" || condition == "retained_motor";
+    const bool retained = condition == "retained_navigation" || condition == "retained_motor" ||
+                          condition == "ground_visit";
     npc &member = scene.actor( 6 );
     const auto accepted_lease = member.get_bandit_live_world_projection_lease();
     member.setID( character_id(), true );
@@ -49672,7 +49676,7 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
     member.clear_ai_guard_pos(); // Historical transient cache is unavailable.
     auto &site = scene.site();
     if( retained ) {
-        calendar::turn = time_point::from_turn( 5272550 );
+        calendar::turn = time_point::from_turn( condition == "ground_visit" ? 5274604 : 5272550 );
         // The original whole world fails strict owner deserialization. Bind
         // its exact runtime operation/member records only for this motor seam;
         // do not normalize or repair saved report/lead receipts in the fixture.
@@ -49725,7 +49729,13 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
     if( condition == "resolved" ) { operation.reservation.resolved_member_ids.push_back( member.getID() ); }
     if( condition == "wrong_home" ) { member.goal += point( 1, 0 ); }
     if( condition == "ordinary" ) { operation.clear(); }
-    if( condition == "ground_visit" ) { operation.reservation.target_omt = tripoint_abs_omt( 131, 143, 0 ); }
+    if( condition == "ground_visit" ) {
+        // Genuine smoke-ground identity with roof receiver, not an isolated
+        // target-z mutation that disagrees with its report/lead/claim.
+        REQUIRE( operation.reservation.target_omt == tripoint_abs_omt( 131, 143, 0 ) );
+    }
+    if( condition == "no_order" ) { member.omt_path.clear(); }
+    if( condition == "stale_generation" ) { current_site.applied_return_generation = operation.reservation.generation; }
     if( condition == "narcosis" ) {
         member.add_effect( efftype_id( "sleep" ), 1_days );
         member.add_effect( efftype_id( "narcosis" ), 1_days );
@@ -49741,7 +49751,7 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
     const auto start = member.pos_abs();
     const auto guard = member.guard_pos;
     const bool native_motor = condition == "retained_motor" || condition == "producer" ||
-                              condition == "reload" || condition == "narcosis" || condition == "flight";
+                              condition == "reload" || condition == "ground_visit" || condition == "narcosis" || condition == "flight";
     for( int call = 0; call < 4; ++call ) {
         member.set_moves( 100 );
         if( condition == "narcosis" ) {
@@ -49756,7 +49766,8 @@ TEST_CASE( "paid roof return does not repeatedly complete an incidental guard or
               << " to=" << member.pos_abs() << " guard=" << *guard
               << " path=" << member.path.size() << " omt_path=" << member.omt_path.size() << '\n';
     CHECK( member.guard_pos == guard ); // No persistent guard mutation/reconstruction.
-    const bool progresses = retained || condition == "producer" || condition == "reload";
+    const bool progresses = retained || condition == "producer" || condition == "reload" ||
+                            condition == "ground_visit";
     if( progresses ) {
         CHECK( member.pos_abs() != start );
         CHECK( member.goal == current_site.anchor );
@@ -50922,4 +50933,100 @@ TEST_CASE( "paid roof return reconciles an unreachable persisted ground entry",
     CHECK_FALSE( member.is_dead() );
     CHECK( r054_actor_bytes( scene.actor( 7 ) ) == home_member );
     CHECK( scene.site().shakedown_loot_value == paid_value );
+}
+
+TEST_CASE( "retained Darell paid home order meets persistent guard after smoke contact",
+           "[bandit_live_world][paid_darell_guard_diagnostic_067]" )
+{
+    const std::string ownership = GENERATE( std::string( "paid" ), std::string( "foreign" ),
+                                          std::string( "absent" ) );
+    const bool native_motor = GENERATE( false, true );
+    CAPTURE( ownership, native_motor );
+    // No broker/oracle work in this offline caller discriminator; historical
+    // transient AI target/cache/intent is unavailable, not reconstructed as fact.
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r055_scene scene;
+    scene.load( false, true, false,
+        "tests/data/r067_paid_darell_guard.json" );
+    npc &member = scene.actor( 6 );
+    // Native admission services an unloaded body. Restore its original saved
+    // bytes after installing terrain/tracker; this control starts at the exact
+    // saved physiology rather than attributing fixture aging to the native run.
+    std::ifstream retained( "tests/data/r067_paid_darell_guard.json" );
+    auto snapshot = json_loader::from_string( std::string( std::istreambuf_iterator<char>( retained ), {} ) ).get_object();
+    snapshot.allow_omitted_members();
+    for( JsonObject record : snapshot.get_array( "actors" ) ) {
+        record.allow_omitted_members();
+        if( record.get_int( "id" ) == 6 ) {
+            npc restored;
+            restored.deserialize( record );
+            member = std::move( restored );
+            member.recalc_sight_limits();
+        }
+    }
+    auto &site = scene.site();
+    REQUIRE( member.pos_abs() == tripoint_abs_ms( 3156, 3455, 0 ) );
+    REQUIRE( member.guard_pos == member.pos_abs() );
+    REQUIRE( member.goal == site.anchor );
+    REQUIRE( member.is_travelling() );
+    REQUIRE_FALSE( member.omt_path.empty() );
+    REQUIRE_FALSE( member.get_bandit_live_world_projection_lease().present );
+    REQUIRE( site.active_hostile_operation.reservation.target_omt == tripoint_abs_omt( 131, 143, 0 ) );
+    REQUIRE( site.active_hostile_operation.shakedown_pending_branch == "paid" );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor( site ) );
+    REQUIRE( bandit_live_world::hostile_operation_player_relationship_for(
+                 overmap_buffer.global_state.bandit_live_world, member.getID() ) ==
+             bandit_live_world::hostile_operation_player_relationship::paid_departure );
+    if( ownership == "foreign" ) {
+        site.active_hostile_operation.reservation.camp_id = "foreign-camp";
+    } else if( ownership == "absent" ) {
+        site.active_hostile_operation.clear();
+    }
+    r067_reply_capture trace( "r067-darell-" + ownership + ( native_motor ? "-motor" : "-navigation" ), true, 6 );
+    REQUIRE( raid_decision_trace::native_recorder().enabled() );
+    const auto start = member.pos_abs();
+    const auto guard = member.guard_pos;
+    const auto route = member.omt_path;
+    for( int call = 0; call < 4; ++call ) {
+        member.set_moves( 100 );
+        member.regen_ai_cache();
+        REQUIRE( member.get_ai_guard_pos() == guard );
+        std::cout << "R067_DARELL before ownership=" << ownership << " motor=" << native_motor
+                  << " call=" << call << " pos=" << member.pos_abs()
+                  << " danger=" << member.get_ai_danger()
+                  << " target=" << ( member.get_ai_target().lock() ? "present" : "none" )
+                  << " sound=" << member.has_ai_sound_alerts()
+                  << " guard=" << *member.get_ai_guard_pos() << '\n';
+        if( native_motor ) {
+            member.move();
+        } else {
+            member.go_to_omt_destination();
+        }
+        std::cout << "R067_DARELL after ownership=" << ownership << " motor=" << native_motor
+                  << " call=" << call << " pos=" << member.pos_abs()
+                  << " moves=" << member.get_moves() << " path=" << member.path.size()
+                  << " cached_guard=" << ( member.get_ai_guard_pos() ? "present" : "none" )
+                  << " sleep=" << member.in_sleep_state() << '\n';
+        CHECK( member.guard_pos == guard );
+        if( ownership != "paid" ) {
+            CHECK( member.pos_abs() == start );
+            CHECK( member.omt_path == route );
+        } else {
+            CHECK( member.goal == site.anchor );
+            REQUIRE_FALSE( member.omt_path.empty() );
+            CHECK( member.omt_path.front() == site.anchor );
+        }
+    }
+    if( ownership == "paid" ) { CHECK( member.pos_abs() != start ); }
+    raid_decision_trace::native_recorder().closeout();
+    std::ifstream trace_input( std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" ) );
+    std::string row;
+    while( std::getline( trace_input, row ) ) {
+        JsonObject record = json_loader::from_string( row ).get_object();
+        record.allow_omitted_members();
+        if( record.get_string( "event", "" ) == "raid_actor_action" ) {
+            std::cout << "R067_DARELL_TRACE ownership=" << ownership << " motor=" << native_motor
+                      << " row=" << row << '\n';
+        }
+    }
 }

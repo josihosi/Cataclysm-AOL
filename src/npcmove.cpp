@@ -878,16 +878,20 @@ const std::vector<bionic_id> weapon_cbms = {
 
 const int avoidance_vehicles_radius = 5;
 
-// Reuse the same exact reservation for action selection and navigation. A
-// camp guard point is incidental to this already committed physical return.
-bool has_paid_roof_return_order( const npc &who )
+// The exact current paid home order owns action selection and navigation.
+// Its smoke/light target describes knowledge, not the payment/contact height;
+// an incidental camp guard point cannot supersede this physical return.
+bool has_paid_home_return_order( const npc &who )
 {
+    const auto &world = overmap_buffer.global_state.bandit_live_world;
     const bandit_live_world::site_record *site = nullptr;
-    return bandit_live_world::hostile_operation_player_relationship_for(
-               overmap_buffer.global_state.bandit_live_world, who.getID(), &site ) ==
+    return !who.is_dead() && bandit_live_world::hostile_operation_player_relationship_for(
+               world, who.getID(), &site ) ==
            bandit_live_world::hostile_operation_player_relationship::paid_departure &&
-           site != nullptr && who.has_omt_destination() && who.goal == site->anchor &&
-           site->active_hostile_operation.reservation.target_omt.z() > site->anchor.z();
+           site != nullptr && bandit_live_world::active_operation_duty_site_for(
+               world, who.getID() ) == site && who.is_travelling() &&
+           who.has_omt_destination() && who.goal == site->anchor &&
+           !who.omt_path.empty() && who.omt_path.front() == site->anchor;
 }
 
 bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
@@ -2886,10 +2890,10 @@ void npc::move() {
   const bandit_live_world::site_record *withdrawal_site =
       bandit_live_world::active_hostile_withdrawal_site_for(
           overmap_buffer.global_state.bandit_live_world, getID() );
-  // An elevated paid visit has an actual local-to-macro return order. Keep
-  // that owned journey ahead of incidental camp pickup, including after its
-  // descent. The existing relationship reader validates the reserved survivor.
-  const bool paid_roof_return = has_paid_roof_return_order( *this );
+  // An authenticated paid home return owns its actual travel order ahead of
+  // incidental camp pickup and guarding, independently of the signal target's
+  // altitude. The shared predicate validates the current reserved survivor.
+  const bool paid_home_return = has_paid_home_return_order( *this );
   if( assault_site != nullptr ) {
       const auto &reservation = assault_site->active_hostile_operation.reservation;
       reconcile_active_assault_routine( assault_site->site_id + ":" +
@@ -3245,7 +3249,7 @@ void npc::move() {
   } else if (target != nullptr && ai_cache.danger > 0 &&
              !has_flag(json_flag_CANNOT_ATTACK)) {
     action = method_of_attack();
-  } else if( paid_roof_return && attitude != NPCATT_FLEE && attitude != NPCATT_FLEE_TEMP &&
+  } else if( paid_home_return && attitude != NPCATT_FLEE && attitude != NPCATT_FLEE_TEMP &&
              !has_effect( effect_npc_run_away ) && !has_effect( effect_npc_flee_player ) ) {
     // Fire, explosives, visible combat and flight above retain priority. Urgent
     // needs remain effective; routine pickup/sleep cannot consume the paid exit.
@@ -7901,7 +7905,7 @@ void npc::go_to_omt_destination( const std::function<bool(
                                      const std::vector<tripoint_bub_ms> & )> &path_validator ) {
   map &here = get_map();
     if( ai_cache.guard_pos && pos_abs() == *ai_cache.guard_pos &&
-        !has_paid_roof_return_order( *this ) ) {
+        !has_paid_home_return_order( *this ) ) {
         path.clear();
         ai_cache.guard_pos = std::nullopt;
         move_pause();
