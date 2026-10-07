@@ -1379,3 +1379,78 @@ TEST_CASE( "physical_light_stationary_excludes_stale_and_hallucinated_sources", 
         return e.kind == physical_light::source_kind::luminous_monster;
     } ) );
 }
+
+TEST_CASE( "current smoke support follows actual building roof geometry", "[physical_light][smoke_support_067]" )
+{
+    clear_avatar();
+    clear_map_with_vision( -1, 4, false );
+    map &here = get_map();
+    const tripoint_bub_ms source( 40, 40, 0 );
+    const auto rebuild = [&]() {
+        for( int z = -1; z <= 4; ++z ) {
+            here.invalidate_map_cache( z );
+            here.build_map_cache( z );
+        }
+    };
+    const auto support = [&]() { rebuild(); return physical_light::evaluate_smoke_support( here, source ); };
+    const auto air = [&]( const int z ) { return here.get_abs( tripoint_bub_ms( 40, 40, z ) ); };
+    CHECK( support().position == here.get_abs( source ) );
+    CHECK( support().reason == "exposed_emitter" );
+    here.ter_set( source, ter_str_id( "t_floor" ) );
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_shingle_flat_roof" ) );
+    rebuild();
+    CHECK_FALSE( physical_light::evaluate_escape( here, source ).exposed_to_sky );
+    REQUIRE( support().position );
+    CHECK( support().position == air( 2 ) );
+    CHECK( support().reason == "above_building_roof" );
+    // The same column, with a real second floor/roof, moves support to z3.
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_floor" ) );
+    here.ter_set( tripoint_bub_ms( 40, 40, 2 ), ter_str_id( "t_shingle_flat_roof" ) );
+    CHECK( support().position == air( 3 ) );
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_rock" ) );
+    CHECK_FALSE( support().position );
+    CHECK( support().reason == "unsupported_roof_geometry" );
+    // No favorable offset or alternate bearing is searched around a blocker.
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_shingle_flat_roof" ) );
+    here.ter_set( tripoint_bub_ms( 40, 40, 2 ), ter_str_id( "t_wall" ) );
+    CHECK_FALSE( support().position );
+    CHECK( support().reason == "exterior_air_unavailable" );
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id::NULL_ID() );
+    CHECK_FALSE( support().position );
+    CHECK( support().reason == "roof_geometry_unavailable" );
+    const tripoint_bub_ms roof( 42, 40, 1 );
+    here.ter_set( roof, ter_str_id( "t_flat_roof" ) );
+    CHECK( physical_light::evaluate_smoke_support( here, roof ).position == here.get_abs( roof ) );
+    const tripoint_bub_ms unknown( 40, 40, OVERMAP_HEIGHT );
+    here.ter_set( unknown, ter_str_id( "t_floor" ) );
+    here.invalidate_map_cache( unknown.z() );
+    here.build_map_cache( unknown.z() );
+    CHECK_FALSE( physical_light::evaluate_smoke_support( here, unknown ).position );
+    CHECK_FALSE( physical_light::evaluate_smoke_support( here, tripoint_bub_ms( -1, 40, 0 ) ).position );
+}
+
+TEST_CASE( "underground or smoke-suppressing sources need an actual outlet", "[physical_light][smoke_support_067]" )
+{
+    clear_avatar();
+    clear_map_with_vision( -1, 3, false );
+    map &here = get_map();
+    const tripoint_bub_ms below( 40, 40, -1 );
+    const tripoint_bub_ms ground( 40, 40, 0 );
+    here.ter_set( below, ter_str_id( "t_floor" ) );
+    here.ter_set( ground, ter_str_id( "t_floor" ) );
+    CHECK_FALSE( physical_light::evaluate_smoke_support( here, below ).position );
+    CHECK( physical_light::evaluate_smoke_support( here, below ).reason == "no_supported_outlet" );
+    here.ter_set( ground, ter_str_id( "t_open_air" ) );
+    REQUIRE( here.valid_move( below, ground, false, true ) );
+    CHECK( physical_light::evaluate_smoke_support( here, below ).position == here.get_abs( ground ) );
+    CHECK( physical_light::evaluate_smoke_support( here, below ).reason == "open_outlet" );
+    here.ter_set( ground, ter_str_id( "t_floor" ) );
+    here.furn_set( ground, furn_str_id( "f_woodstove" ) );
+    here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_flat_roof" ) );
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0 );
+    here.invalidate_map_cache( 1 );
+    here.build_map_cache( 1 );
+    REQUIRE( here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, ground ) );
+    CHECK_FALSE( physical_light::evaluate_smoke_support( here, ground ).position );
+}

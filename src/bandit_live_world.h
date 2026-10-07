@@ -399,6 +399,10 @@ struct sortie_observation {
     sortie_observation_sense sense = sortie_observation_sense::visual;
     character_id observer_id;
     tripoint_abs_omt source_omt;
+    // Optional actual smoke geometry; old records remain unavailable. The
+    // exterior component never replaces emitter/site identity or sample time.
+    std::optional<tripoint_abs_ms> emitter_ms;
+    std::optional<tripoint_abs_ms> observable_ms;
     tripoint_abs_omt receiver_omt;
     int bucket_start_minutes = -1;
     int strength = 0;
@@ -1540,6 +1544,10 @@ struct structural_signal_read {
     sortie_observation_sense sense = sortie_observation_sense::smoke;
     structural_sound_kind sound_kind = structural_sound_kind::none;
     tripoint_abs_omt source_omt;
+    // Optional actual smoke geometry; old records remain unavailable. The
+    // exterior component never replaces emitter/site identity or sample time.
+    std::optional<tripoint_abs_ms> emitter_ms;
+    std::optional<tripoint_abs_ms> observable_ms;
     // A physical stationary watch reader supplies the actual capable member.
     // Unset preserves the ordinary travel/camp reader's existing leader basis.
     character_id observer_id;

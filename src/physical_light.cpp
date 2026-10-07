@@ -7,6 +7,7 @@
 #include "item_pocket.h"
 #include "itype.h"
 #include "map.h"
+#include "mapbuffer.h"
 #include "mapdata.h"
 #include "game.h"
 #include "monster.h"
@@ -379,6 +380,64 @@ escape evaluate_escape( map &here, const tripoint_bub_ms &source )
     result.elevated_exposed = result.exposed_to_sky && source.z() > 0 &&
                               ( terrain == ter_t_flat_roof || terrain == ter_t_tile_flat_roof );
     return result;
+}
+
+smoke_support evaluate_smoke_support( map &here, const tripoint_bub_ms &source )
+{
+    const auto known = [&here]( const tripoint_bub_ms &p ) {
+        return here.inbounds( p ) &&
+               MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( here.get_abs( p ) ) ) &&
+               here.ter( p ) != ter_str_id::NULL_ID();
+    };
+    if( !known( source ) ) {
+        return { std::nullopt, "source_geometry_unavailable" };
+    }
+    if( source.z() >= 0 && here.is_outside( source ) ) {
+        return { here.get_abs( source ), "exposed_emitter" };
+    }
+    // The native smoke-suppressing appliance is not evidence of an outlet.
+    // Underground and such sources require a real open vertical connection.
+    // SEALED is an item-access flag, not an airtight-building classification.
+    const bool building_plume = source.z() >= 0 &&
+                                !here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, source ) &&
+                                here.ter( source )->roof && here.move_cost( source ) > 0;
+    tripoint_bub_ms below = source;
+    for( int z = source.z() + 1; z <= OVERMAP_HEIGHT; ++z ) {
+        const tripoint_bub_ms above( source.x(), source.y(), z );
+        if( !known( above ) ) {
+            return { std::nullopt, "roof_geometry_unavailable" };
+        }
+        if( !building_plume && !here.valid_move( below, above, false, true ) ) {
+            return { std::nullopt, "no_supported_outlet" };
+        }
+        const bool exterior = z >= 0 && here.is_outside( above );
+        if( exterior && here.has_flag( ter_furn_flag::TFLAG_NO_FLOOR, above ) &&
+            here.move_cost( above ) > 0 ) {
+            return { here.get_abs( above ), building_plume ? "above_building_roof" : "open_outlet" };
+        }
+        // Follow only the actual building column. A roof variant need not
+        // equal the lower terrain's default roof, but solid rock/walls are not
+        // ordinary building floors or roof decks. Never search for a LOS win.
+        if( building_plume && ( !here.ter( below )->roof ||
+                               here.move_cost( above ) <= 0 || !here.is_transparent( above ) ) ) {
+            return { std::nullopt, "unsupported_roof_geometry" };
+        }
+        if( building_plume && exterior ) {
+            // The first actual roof deck terminates the building: the next
+            // cell must be exterior air, not another unrelated enclosure.
+            const tripoint_bub_ms air( source.x(), source.y(), z + 1 );
+            if( !known( air ) ) {
+                return { std::nullopt, "roof_geometry_unavailable" };
+            }
+            if( here.is_outside( air ) && here.has_flag( ter_furn_flag::TFLAG_NO_FLOOR, air ) &&
+                here.move_cost( air ) > 0 ) {
+                return { here.get_abs( air ), "above_building_roof" };
+            }
+            return { std::nullopt, "exterior_air_unavailable" };
+        }
+        below = above;
+    }
+    return { std::nullopt, "roof_geometry_unavailable" };
 }
 
 detection detect( const route &path )

@@ -2,6 +2,7 @@
 
 #include "coordinates.h"
 
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -62,6 +63,15 @@ struct escape {
     int side_leakage = 0;
     bool elevated_exposed = false;
 };
+
+// Current smoke support, separate from its emitter. Building smoke may rise
+// through an ordinary above-ground roof under the smoke abstraction; this is
+// not an optical ray through the room or a simulated gas field.
+struct smoke_support {
+    std::optional<tripoint_abs_ms> position;
+    std::string reason;
+};
+smoke_support evaluate_smoke_support( map &here, const tripoint_bub_ms &source );
 
 /** A cache-free optical route supplied by the overmap observer. */
 struct route {

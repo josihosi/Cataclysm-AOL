@@ -928,11 +928,28 @@ bool sortie_observation_identity_matches(
            lhs.fact_key == rhs.fact_key;
 }
 
+bool smoke_geometry_is_valid( const sortie_observation_sense sense,
+                              const tripoint_abs_omt &source_omt,
+                              const std::optional<tripoint_abs_ms> &emitter,
+                              const std::optional<tripoint_abs_ms> &observable )
+{
+    // Optional historical fields do not manufacture unavailable geometry.
+    if( !emitter && !observable ) {
+        return true;
+    }
+    return sense == sortie_observation_sense::smoke && emitter && observable &&
+           !emitter->is_invalid() && !observable->is_invalid() &&
+           project_to<coords::omt>( *emitter ) == source_omt &&
+           emitter->xy() == observable->xy() && observable->z() >= emitter->z();
+}
+
 bool typed_sortie_observation_is_valid(
     const bandit_live_world::sortie_observation &observation )
 {
     const int defender_count = sortie_observation_defender_count( observation );
-    if( observation.record_schema_version != 1 || observation.fact_key.empty() ||
+    if( !smoke_geometry_is_valid( observation.sense, observation.source_omt,
+                                   observation.emitter_ms, observation.observable_ms ) ||
+        observation.record_schema_version != 1 || observation.fact_key.empty() ||
         observation.fact_key.size() > max_sortie_fact_key_length ||
         observation.summary.size() > max_sortie_summary_length ||
         observation.confidence < 0 || observation.confidence > 100 ||
@@ -7991,6 +8008,12 @@ void sortie_observation::serialize( JsonOut &json ) const
         json.member( "sense", sortie_observation_sense_to_string( sense ) );
         json.member( "observer_id", observer_id.get_value() );
         json.member( "source_omt", source_omt );
+        if( emitter_ms ) {
+            json.member( "emitter_ms", *emitter_ms );
+        }
+        if( observable_ms ) {
+            json.member( "observable_ms", *observable_ms );
+        }
         json.member( "receiver_omt", receiver_omt );
         json.member( "bucket_start_minutes", bucket_start_minutes );
         json.member( "strength", strength );
@@ -8070,6 +8093,8 @@ void sortie_observation::deserialize( const JsonObject &jo )
         jo.read( "observer_id", raw_observer_id );
         candidate.observer_id.deserialize( raw_observer_id );
         jo.read( "source_omt", candidate.source_omt );
+        jo.read( "emitter_ms", candidate.emitter_ms );
+        jo.read( "observable_ms", candidate.observable_ms );
         jo.read( "receiver_omt", candidate.receiver_omt );
         jo.read( "bucket_start_minutes", candidate.bucket_start_minutes );
         jo.read( "strength", candidate.strength );
@@ -14823,7 +14848,8 @@ bool structural_signal_reads_are_valid( const structural_threat_observer_request
                                       read.emitted_minutes >= request.observation_window_start_minutes &&
                                       read.emitted_minutes <= now_minutes &&
                                       now_minutes - read.emitted_minutes <= 180;
-        if( structural_signal_sense_name( read.sense ).empty() ||
+        if( !smoke_geometry_is_valid( read.sense, read.source_omt, read.emitter_ms, read.observable_ms ) ||
+            structural_signal_sense_name( read.sense ).empty() ||
             ( sound_read ? ( !sound_kind_valid || !sound_time_valid ) :
               ( read.sound_kind != structural_sound_kind::none || read.emitted_minutes != -1 ) ) ||
             ( timed_light_read && ( read.observed_minutes > now_minutes ||
@@ -14894,6 +14920,8 @@ sortie_observation make_structural_signal_observation( const site_record &site,
     observation.sense = read.sense;
     observation.observer_id = read.observer_id.is_valid() ? read.observer_id : outing.leader_id;
     observation.source_omt = read.source_omt;
+    observation.emitter_ms = read.emitter_ms;
+    observation.observable_ms = read.observable_ms;
     observation.receiver_omt = request.current_omt;
     observation.bucket_start_minutes = observed_minutes - observed_minutes % 30;
     observation.strength = read.strength;

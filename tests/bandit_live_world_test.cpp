@@ -28,6 +28,7 @@
 #include "event_bus.h"
 #include "avatar.h"
 #include "activity_actor_definitions.h"
+#include "activity_item_handling.h"
 #include "recipe.h"
 #include "basecamp.h"
 #include "do_turn.h"
@@ -50212,5 +50213,422 @@ TEST_CASE( "paid home release retains consumed watch identity across newer camp 
         for( int id : { 5, 6 } ) {
             CHECK( site->find_member( character_id( id ) )->state == bandit_live_world::member_state::outbound );
         }
+    }
+}
+
+TEST_CASE( "retained ordinary ignition and gas propagation feed stationary watch",
+           "[bandit][rising_plume_chain_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    CAPTURE( cannibal );
+    std::ifstream input( "tests/data/r067_indoor_fire_geometry.json" );
+    REQUIRE( input.good() );
+    const auto fixture = json_loader::from_string(
+                             std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    fixture.allow_omitted_members();
+    std::ostringstream evidence;
+    clear_npcs(); clear_avatar(); g->clear_zombies();
+    auto previous_world = overmap_buffer.global_state.bandit_live_world;
+    map &here = get_map();
+    const auto previous_origin = here.get_abs_sub();
+    const auto previous_avatar = get_avatar().pos_abs();
+    const auto previous_turn = calendar::turn;
+    const auto previous_start = calendar::start_of_cataclysm;
+    const auto previous_game = calendar::start_of_game;
+    auto &zones = zone_manager::get_manager();
+    auto previous_zones = zones;
+    on_out_of_scope restore( [&]() {
+        for( const int id : { 5, 6 } ) {
+            g->remove_npc( character_id( id ) );
+            while( overmap_buffer.find_npc( character_id( id ) ) ) {
+                overmap_buffer.remove_npc( character_id( id ) );
+            }
+        }
+        get_avatar().cancel_activity();
+        overmap_buffer.global_state.bandit_live_world = std::move( previous_world );
+        zones = std::move( previous_zones );
+        reset_live_light_sample_cache();
+        here.load( previous_origin, false );
+        get_avatar().setpos( previous_avatar, false );
+        calendar::start_of_cataclysm = previous_start;
+        calendar::start_of_game = previous_game;
+        set_time( previous_turn );
+    } );
+    here.load( tripoint_abs_sm( 258, 282, 0 ), false );
+    clear_map_with_vision( -1, 4, false );
+    // Native deserialization expands colony RLE; no manually seeded fire/gas.
+    int copied = 0;
+    for( const JsonObject &row : fixture.get_array( "submaps" ) ) {
+        const auto coord = row.get_array( "coordinates" );
+        const tripoint_abs_ms origin( coord.get_int( 0 ) * SEEX, coord.get_int( 1 ) * SEEY,
+                                      coord.get_int( 2 ) );
+        submap retained;
+        for( const JsonMember &member : row ) {
+            if( member.name() != "coordinates" ) {
+                retained.load( member, member.name(), row.get_int( "version" ) );
+            }
+        }
+        for( int x = 0; x < SEEX; ++x ) for( int y = 0; y < SEEY; ++y ) {
+            const point_sm_ms tile( x, y );
+            const auto p = here.get_bub( origin + point( x, y ) );
+            REQUIRE( here.inbounds( p ) );
+            here.ter_set( p, retained.get_ter( tile ) );
+            here.furn_set( p, retained.get_furn( tile ) );
+            for( const item &it : retained.get_items( tile ) ) here.add_item( p, it );
+            for( const auto &entry : retained.get_field( tile ) ) {
+                here.add_field( p, entry.first, entry.second.get_field_intensity(),
+                                entry.second.get_field_age() );
+            }
+        }
+        ++copied;
+    }
+    zones.clear(); zones.deserialize( fixture.get_member( "zones" ) ); zones.cache_data();
+    const tripoint_abs_ms source( 3159, 3449, 0 );
+    const tripoint_abs_omt target( 131, 143, 0 ), watch( 134, 141, 0 );
+    auto &u = get_avatar();
+    u.setpos( source + point( -1, 0 ), false );
+    calendar::start_of_cataclysm = time_point::from_turn( 4752000 );
+    calendar::start_of_game = time_point::from_turn( 5212800 );
+    set_time( time_point::from_turn( 5216236 ) );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    here.invalidate_map_cache( 0 ); here.build_map_cache( 0 );
+    REQUIRE( here.ter( here.get_bub( source ) ) == ter_str_id( "t_floor" ) );
+    REQUIRE( here.furn( here.get_bub( source ) ) == furn_str_id( "f_brazier" ) );
+    REQUIRE_FALSE( here.is_outside( here.get_bub( source ) ) );
+    REQUIRE_FALSE( here.get_field( here.get_bub( source ), field_type_id( "fd_fire" ) ) );
+    // Use the retained physical tool through the established ordinary completion.
+    item_location lighter;
+    for( item &it : here.i_at( u.pos_bub() ) ) if( it.typeId() == itype_id( "lighter" ) ) {
+        lighter = item_location( map_cursor( u.pos_bub() ), &it ); break;
+    }
+    REQUIRE( lighter );
+    const auto fuel_pile = here.get_bub( source + point( 0, -1 ) );
+    int fuel_transfers = 0;
+    const auto transfer_one_retained_plank = [&]() {
+        auto stack = here.i_at( fuel_pile );
+        auto it = std::find_if( stack.begin(), stack.end(), []( const item &value ) {
+            return value.typeId() == itype_id( "2x4" );
+        } );
+        REQUIRE( it != stack.end() );
+        const auto before = stack.size();
+        int processed = 1;
+        zone_sorting::move_item( u, std::nullopt, fuel_pile, { source }, *it, processed );
+        REQUIRE( here.i_at( fuel_pile ).size() + 1 == before );
+        ++fuel_transfers;
+    };
+    // Ordinary transfer of an existing physical plank, not spawned fuel or gas.
+    // The earlier empty-brazier ignition refusal remains separately retained.
+    transfer_one_retained_plank();
+    u.assign_activity( fire_start_activity_actor( source, lighter, 0, 100 ) );
+    int ignition_ticks = 0;
+    while( u.activity && ignition_ticks < 180 ) {
+        u.set_moves( u.get_speed() ); u.activity.do_turn( u );
+        here.process_fields(); calendar::turn += 1_seconds; ++ignition_ticks;
+    }
+    const bool ignited = here.get_field_intensity( here.get_bub( source ), field_type_id( "fd_fire" ) ) > 0;
+    { JsonOut out( evidence ); out.start_object(); out.member( "stage", "ignition" );
+      out.member( "turn", to_turn<int>( calendar::turn ) ); out.member( "copied_submaps", copied );
+      out.member( "activity_ticks", ignition_ticks ); out.member( "ignited", ignited );
+      out.member( "source_items", here.i_at( here.get_bub( source ) ).size() ); out.end_object(); evidence << '\n'; evidence.flush(); }
+    REQUIRE( ignited );
+    auto world = make_structural_signal_test_world( cannibal, 5 );
+    if( cannibal ) {
+        add_cannibal_camp_member( world, 3, 5 );
+    }
+    auto &site = world.sites.front(); auto &outing = site.active_outing;
+    outing.schema_version = 10; outing.target_omt = target;
+    site.intelligence_map.find_lead( outing.target_lead_id )->omt = target;
+    outing.target_footprint = { target }; outing.selected_watch_omt = watch;
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_route_cost = 8;
+    const auto approach = watch + point( -1, 0 );
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    outing.waypoint_index = 2; outing.started_minutes = 7800;
+    outing.local_contact_minutes = 7860;
+    const int home_distance = rl_dist( site.anchor.xy(), watch.xy() );
+    outing.expected_return_minutes = outing.started_minutes +
+                                    std::clamp( home_distance * 15, 30, 240 ) +
+                                    2 * std::clamp( home_distance * 10, 30, 180 );
+    outing.missing_deadline_minutes = outing.expected_return_minutes + 1440;
+    outing.assessment.observation_started_minutes = 7860;
+    outing.assessment.last_progress_minutes = 7860;
+    outing.assessment.pinned_target_revision = outing.target_lead_revision;
+    const int watched_revision = outing.target_lead_revision;
+    std::vector<shared_ptr_fast<npc>> members;
+    for( const JsonObject &body : fixture.get_array( "actors" ) ) {
+        auto member = make_shared_fast<npc>(); member->deserialize( body );
+        member->setpos( tripoint_abs_ms( 3228 + static_cast<int>( members.size() ), 3396, 0 ), false );
+        member->recalc_sight_limits(); overmap_buffer.insert_npc( member ); members.push_back( member );
+        REQUIRE( scout_observation::watching_member( site, *member ) );
+    }
+    overmap_buffer.global_state.bandit_live_world.clear();
+    reset_live_light_sample_cache(); scout_observation::site_reader reader;
+    bandit_live_world::structural_threat_observer_request request;
+    request.current_omt = watch; request.visible_forward_omts = { target }; request.party_power = 4;
+    const int end_turn = 4752000 + 7980 * 60;
+    int first_smoke = -1, first_outside = -1, first_read = -1, first_typed = -1;
+    bool checked_readers = false;
+    std::vector<live_bandit_signal_observation> last_watch_samples;
+    std::map<tripoint_abs_ms, std::string> seen;
+    while( to_turn<int>( calendar::turn ) <= end_turn ) {
+        // Existing ordinary refuel owner; no added plank/gas/escape source.
+        if( calendar::once_every( 5_minutes ) ) {
+            // Same native burn estimate/threshold used by try_fuel_fire, with
+            // an ordinary transfer from the retained adjacent physical pile.
+            fire_data fuel( 1, true );
+            for( const item &it : here.i_at( here.get_bub( source ) ) ) it.simulate_burn( fuel );
+            if( fuel.fuel_produced < 1.0f ) transfer_one_retained_plank();
+        }
+        try_fuel_fire( u ); here.process_fields();
+        here.invalidate_map_cache( 0 ); here.build_map_cache( 0 );
+        run_live_light_delivery_for_test();
+        const int turn = to_turn<int>( calendar::turn );
+        const int minute = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+        outing.last_advanced_minutes = minute;
+        const auto &packets = live_light::samples_for_turn( calendar::turn );
+        std::vector<live_bandit_signal_observation> scoped;
+        for( const auto &packet : packets ) {
+            if( packet.mark.kind != "smoke" || !packet.source_ms ||
+                !scout_observation::associated_with_site( packet.source_omt, outing.target_footprint ) ) continue;
+            scoped.push_back( packet ); if( first_smoke < 0 ) first_smoke = turn;
+            const auto p = here.get_bub( *packet.source_ms );
+            const bool outside = here.inbounds( p ) && here.is_outside( p );
+            if( outside && first_outside < 0 ) first_outside = turn;
+            if( turn % 300 != 0 && seen.count( *packet.source_ms ) != 0 ) continue;
+            const auto visibility = reader.read_signal( *members.front(), members.front()->pos_abs(),
+                                    packet.smoke_observable_ms.value_or( *packet.source_ms ), outing.target_footprint );
+            if( visibility.visible && first_read < 0 ) first_read = turn;
+            const std::string signature = std::to_string( outside ) + visibility.reason;
+            if( seen[*packet.source_ms] != signature || turn % 900 == 0 ) {
+                JsonOut out( evidence ); out.start_object(); out.member( "stage", "native_candidate" );
+                out.member( "turn", turn ); out.member( "minute", minute );
+                out.member( "source_ms", *packet.source_ms ); out.member( "mark_id", packet.mark.mark_id );
+                out.member( "observed_turn", packet.observed_turn );
+                out.member( "fd_fire", here.get_field_intensity( p, field_type_id( "fd_fire" ) ) );
+                out.member( "fd_smoke", here.get_field_intensity( p, field_type_id( "fd_smoke" ) ) );
+                out.member( "outside", outside ); out.member( "cap", packet.range_cap_omt );
+                out.member( "known", visibility.known ); out.member( "visible", visibility.visible );
+                out.member( "reader_reason", visibility.reason ); out.end_object(); evidence << '\n';
+                seen[*packet.source_ms] = signature;
+            }
+        }
+        if( minute >= 7860 && turn % 300 == 0 ) {
+            const int typed = record_live_bandit_stationary_watch_signals_for_test( world, scoped, true );
+            last_watch_samples = scoped;
+            if( typed > 0 && first_typed < 0 ) first_typed = turn;
+            if( typed > 0 && !checked_readers ) {
+                checked_readers = true;
+                REQUIRE_FALSE( scoped.empty() );
+                const auto &packet = scoped.front();
+                REQUIRE( packet.source_ms );
+                REQUIRE( packet.smoke_observable_ms );
+                CHECK( packet.source_ms->z() == 0 );
+                CHECK( packet.smoke_observable_ms->z() == 2 );
+                CHECK( packet.source_ms->xy() == packet.smoke_observable_ms->xy() );
+                CHECK_FALSE( packet.smoke_source_exposed_to_sky );
+                CHECK( packet.observed_turn == turn );
+                CHECK( packet.observed_minutes == minute );
+                CHECK( reader.read_signal( *members.front(), members.front()->pos_abs(),
+                                          *packet.source_ms, outing.target_footprint ).reason == "interior_unknown" );
+                CHECK_FALSE( reader.read_character( *members.front(), u, outing.target_footprint ).visible );
+                // Travel and camp keep the ordinary full overmap route.
+                // Controlled caller positions/terrain are not historical home
+                // observer evidence; stationary acquisition above is retained.
+                {
+                    const auto position = members.front()->pos_abs();
+                    const auto travel_omt = target + point( 0, -3 );
+                    const auto camp_omt = target + point( 0, 3 );
+                    std::vector<std::pair<tripoint_abs_omt, oter_id>> terrain;
+                    on_out_of_scope restore_route( [&]() {
+                        for( auto it = terrain.rbegin(); it != terrain.rend(); ++it ) {
+                            overmap_buffer.ter_set( it->first, it->second );
+                        }
+                        members.front()->setpos( position, false );
+                    } );
+                    for( const auto &origin : { travel_omt, camp_omt } ) {
+                        for( const auto &omt : line_to( origin, project_to<coords::omt>( *packet.smoke_observable_ms ) ) ) {
+                            terrain.emplace_back( omt, overmap_buffer.ter( omt ) );
+                            overmap_buffer.ter_set( omt, oter_id( "field" ) );
+                        }
+                    }
+                    auto travel = outing;
+                    travel.selected_watch_kind = bandit_live_world::structural_watch_kind::none;
+                    CHECK( live_bandit_structural_signal_reads_for_test( scoped, site, travel, request ).empty() );
+                    members.front()->setpos( project_to<coords::ms>( site.anchor ) + point( 12, 12 ), false );
+                    const auto distant_home = live_bandit_staffed_camp_signal_reads_for_test( scoped, site, members.front()->getID() );
+                    CHECK( std::none_of( distant_home.begin(), distant_home.end(), []( const auto &read ) {
+                        return !read.rejected;
+                    } ) );
+                    auto travel_request = request;
+                    travel_request.current_omt = travel_omt;
+                    REQUIRE_FALSE( here.inbounds( travel_omt ) );
+                    members.front()->setpos( project_to<coords::ms>( travel_omt ) + point( 12, 12 ), false );
+                    auto travel_reads = live_bandit_structural_signal_reads_for_test( scoped, site, travel, travel_request );
+                    const auto acquired_smoke = [&]( const auto &reads ) {
+                        return std::any_of( reads.begin(), reads.end(), [&]( const auto &read ) {
+                            return !read.rejected && read.line_of_sight &&
+                                   read.sense == bandit_live_world::sortie_observation_sense::smoke &&
+                                   read.source_id == packet.sample_id && read.source_omt == packet.source_omt &&
+                                   read.emitter_ms == packet.source_ms &&
+                                   read.observable_ms == packet.smoke_observable_ms;
+                        } );
+                    };
+                    REQUIRE( acquired_smoke( travel_reads ) );
+                    // Use the actual derived z2 ray, not the legacy source-z ray.
+                    const auto ray = line_to( travel_omt, project_to<coords::omt>( *packet.smoke_observable_ms ) );
+                    REQUIRE_FALSE( ray.empty() );
+                    {
+                        const auto blocked = ray.front();
+                        const auto previous = overmap_buffer.ter( blocked );
+                        on_out_of_scope restore_blocker( [&]() { overmap_buffer.ter_set( blocked, previous ); } );
+                        overmap_buffer.ter_set( blocked, oter_id( "solid_earth" ) );
+                        CHECK_FALSE( acquired_smoke( live_bandit_structural_signal_reads_for_test(
+                                                       scoped, site, travel, travel_request ) ) );
+                        // The stationary target-local corridor does not borrow
+                        // the abstract travel ray's intervening terrain.
+                        const auto travelling_position = members.front()->pos_abs();
+                        on_out_of_scope restore_observer( [&]() { members.front()->setpos( travelling_position, false ); } );
+                        members.front()->setpos( position, false );
+                        CHECK( acquired_smoke( live_bandit_structural_signal_reads_for_test(
+                                                   scoped, site, outing, request ) ) );
+                    }
+                    CHECK( acquired_smoke( live_bandit_structural_signal_reads_for_test(
+                                               scoped, site, travel, travel_request ) ) );
+                    auto range_boundary = scoped;
+                    const int distance = rl_dist( travel_omt.xy(), packet.source_omt.xy() );
+                    REQUIRE( distance > 0 );
+                    for( auto &value : range_boundary ) value.range_cap_omt = distance;
+                    CHECK( acquired_smoke( live_bandit_structural_signal_reads_for_test(
+                                               range_boundary, site, travel, travel_request ) ) );
+                    for( auto &value : range_boundary ) --value.range_cap_omt;
+                    CHECK_FALSE( acquired_smoke( live_bandit_structural_signal_reads_for_test(
+                                                   range_boundary, site, travel, travel_request ) ) );
+                    auto home_site = site;
+                    home_site.anchor = camp_omt;
+                    home_site.footprint = { camp_omt };
+                    members.front()->setpos( project_to<coords::ms>( camp_omt ) + point( 12, 12 ), false );
+                    auto camp_reads = live_bandit_staffed_camp_signal_reads_for_test( scoped, home_site, members.front()->getID() );
+                    CHECK( acquired_smoke( camp_reads ) );
+                }
+                const auto saved = serialize_world( world );
+                CHECK( record_live_bandit_stationary_watch_signals_for_test( world, scoped, true ) == 0 );
+                CHECK( serialize_world( world ) == saved );
+                auto loaded = round_trip_world( world );
+                const auto &record = loaded.sites.front().active_outing.observations.front();
+                CHECK( record.emitter_ms == packet.source_ms );
+                CHECK( record.observable_ms == packet.smoke_observable_ms );
+                CHECK( record.source_omt == packet.source_omt );
+                CHECK( record.observed_minutes == minute );
+                CHECK( record.receiver_omt == watch );
+                CHECK( record.target_revision == watched_revision );
+                // No substitute receipt from missing support, stale emission,
+                // incapable members or a target-local wall around the plume.
+                auto absent = scoped;
+                for( auto &value : absent ) value.smoke_observable_ms.reset();
+                CHECK( live_bandit_structural_signal_reads_for_test( absent, site, outing, request ).empty() );
+                for( auto &member : members ) member->add_effect( efftype_id( "narcosis" ), 1_hours );
+                CHECK( live_bandit_structural_signal_reads_for_test( scoped, site, outing, request ).empty() );
+                for( auto &member : members ) member->remove_effect( efftype_id( "narcosis" ) );
+                std::vector<std::pair<tripoint_bub_ms, ter_id>> wall;
+                for( int z = 0; z <= 3; ++z ) for( int y = 3432; y < 3456; ++y ) {
+                    const auto p = here.get_bub( tripoint_abs_ms( 3167, y, z ) );
+                    wall.emplace_back( p, here.ter( p ) );
+                    here.ter_set( p, ter_str_id( "t_wall" ) );
+                }
+                for( int z = 0; z <= 3; ++z ) {
+                    here.invalidate_map_cache( z );
+                    here.build_map_cache( z );
+                }
+                scout_observation::site_reader blocked;
+                CHECK_FALSE( blocked.read_signal( *members.front(), members.front()->pos_abs(),
+                             *packet.smoke_observable_ms, outing.target_footprint ).visible );
+                CHECK( live_bandit_structural_signal_reads_for_test( scoped, site, outing, request ).empty() );
+                for( const auto &tile : wall ) here.ter_set( tile.first, tile.second );
+                for( int z = 0; z <= 3; ++z ) {
+                    here.invalidate_map_cache( z );
+                    here.build_map_cache( z );
+                }
+            }
+        }
+        if( turn % 900 == 0 ) {
+            JsonOut out( evidence ); out.start_object(); out.member( "stage", "checkpoint" );
+            out.member( "turn", turn ); out.member( "minute", minute );
+            out.member( "fire", here.get_field_intensity( here.get_bub( source ), field_type_id( "fd_fire" ) ) );
+            out.member( "typed_records", outing.observations.size() ); out.end_object(); evidence << '\n'; evidence.flush();
+        }
+        if( first_smoke >= 0 && !here.get_field( here.get_bub( source ), field_type_id( "fd_fire" ) ) ) break;
+        calendar::turn += 1_seconds;
+    }
+    JsonOut out( evidence ); out.start_object(); out.member( "stage", "summary" );
+    out.member( "end_turn", to_turn<int>( calendar::turn ) ); out.member( "first_smoke", first_smoke );
+    out.member( "first_outside", first_outside ); out.member( "first_visible_read", first_read );
+    out.member( "first_typed", first_typed ); out.member( "records", outing.observations.size() ); out.member( "fuel_transfers", fuel_transfers );
+    out.member( "remaining_fire", here.get_field_intensity( here.get_bub( source ), field_type_id( "fd_fire" ) ) );
+    out.end_object(); evidence << '\n'; evidence.flush();
+    INFO( evidence.str() );
+    REQUIRE( evidence.good() );
+    REQUIRE( first_typed >= 0 );
+    REQUIRE( checked_readers );
+    REQUIRE( first_outside == -1 );
+    REQUIRE( first_read >= 0 );
+    REQUIRE( outing.observations.size() >= 5 );
+    auto stale = last_watch_samples;
+    for( auto &packet : stale ) packet.observed_minutes -= 60;
+    auto stale_world = world;
+    CHECK( record_live_bandit_stationary_watch_signals_for_test( stale_world, stale, true ) == 0 );
+    const auto records = outing.observations;
+    // Remove the real native emission only after the completed watch. The
+    // current sampler must not lend its prior cached plume to a new bucket.
+    for( int x = 3144; x < 3168; ++x ) for( int y = 3432; y < 3456; ++y ) {
+        const auto p = here.get_bub( tripoint_abs_ms( x, y, 0 ) );
+        here.remove_field( p, field_type_id( "fd_fire" ) );
+        here.remove_field( p, field_type_id( "fd_smoke" ) );
+    }
+    reset_live_light_sample_cache();
+    run_live_light_delivery_for_test();
+    const auto &extinguished = live_light::samples_for_turn( calendar::turn );
+    CHECK( std::none_of( extinguished.begin(), extinguished.end(), [&]( const auto &packet ) {
+        return packet.mark.kind == "smoke" && scout_observation::associated_with_site( packet.source_omt, { target } );
+    } ) );
+    CHECK( record_live_bandit_stationary_watch_signals_for_test( world, extinguished, true ) == 0 );
+    world = round_trip_world( world );
+    auto &watched = world.sites.front();
+    const auto assessment = bandit_live_world::advance_structural_scout_assessment( watched,
+                            watched.active_outing.activity_id, watched.active_outing.generation, watched_revision, 7981 );
+    CAPTURE( assessment, watched.active_outing.assessment.exit_reason,
+             watched.active_outing.observations.front().share_state );
+    // The actual retained scouts need not both see/share this plume. A finite
+    // private watch can return evidence through its real surviving carrier.
+    REQUIRE( ( assessment == bandit_live_world::scout_assessment_result::normal_success ||
+               assessment == bandit_live_world::scout_assessment_result::inconclusive ) );
+    REQUIRE( watched.active_outing.phase == bandit_live_world::scout_phase::returning_report );
+    bandit_live_world::advance_structural_bounty_outings( world, 7982, {} );
+    REQUIRE( watched.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    // Production receipt/consumer control, not native journey/motor credit.
+    watched.active_outing.actor_departure_observed = true;
+    watched.active_outing.actor_route_waypoint = watched.active_outing.shared_route.size() - 1;
+    const auto ids = watched.active_outing.member_ids;
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( watched,
+             require_current_simulation_cursor( watched ), ids.front(), watched.anchor, 7983 ) );
+    world = round_trip_world( world );
+    auto &returned = world.sites.front();
+    REQUIRE_FALSE( returned.current_scout_report.is_present() );
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( returned,
+             require_current_simulation_cursor( returned ), ids.back(), returned.anchor, 7984 ) );
+    bandit_live_world::advance_structural_bounty_outings( world, 7985, {} );
+    REQUIRE( returned.current_scout_report.is_present() );
+    CHECK( returned.current_scout_report.observations.size() == records.size() );
+    CHECK( returned.current_scout_report.assessment.habitation_certainty >= 20 );
+    CHECK( returned.current_scout_report.assessment.readiness_latched );
+    CHECK( returned.current_scout_report.assessment.threshold_class == bandit_live_world::scout_assessment_threshold_class::site_signal );
+    for( const auto &record : returned.current_scout_report.observations ) {
+        CHECK( record.emitter_ms );
+        CHECK( record.observable_ms );
+        CHECK( record.emitter_ms->z() == 0 );
+        CHECK( record.observable_ms->z() == 2 );
+        CHECK( record.source_omt.z() == 0 );
+        CHECK( record.observed_minutes >= 7860 );
+        CHECK( record.observed_minutes <= 7980 );
+        CHECK( record.target_revision == watched_revision );
     }
 }

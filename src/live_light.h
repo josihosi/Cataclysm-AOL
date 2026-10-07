@@ -23,6 +23,10 @@ struct live_bandit_signal_observation {
     // A smoke source may be seen across levels only after local geometry
     // established that its plume escaped into open air.
     bool smoke_source_exposed_to_sky = false;
+    // Derived once from current source geometry, never a second emitter or
+    // independent observation. Source identity/site/time remain above.
+    std::optional<tripoint_abs_ms> smoke_observable_ms;
+    std::string smoke_support_reason;
     bool has_light_projection = false;
     bandit_mark_generation::light_projection light_projection;
     std::string sample_id;

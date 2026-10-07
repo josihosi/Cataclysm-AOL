@@ -9848,7 +9848,13 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
             observation.source_ms = source_pos;
             observation.range_cap_omt = projection.projected_range_omt;
             observation.weather_summary = projection.weather_effect.summary;
-            observation.smoke_source_exposed_to_sky = reading.outside;
+            const auto support = physical_light::evaluate_smoke_support( here,
+                                 here.get_bub( source_pos ) );
+            // An unavailable geometry result cannot borrow the legacy exposed
+            // flag to become observable. The flag still describes the emitter.
+            observation.smoke_source_exposed_to_sky = reading.outside && support.position.has_value();
+            observation.smoke_observable_ms = support.position;
+            observation.smoke_support_reason = support.reason;
             observation.mark.mark_id = projection.packet.id;
             observation.mark.kind = "smoke";
             observation.mark.source_omt = source_omt;
@@ -10670,18 +10676,26 @@ bool live_bandit_overmap_los_from( const tripoint_abs_omt &origin,
 bool live_bandit_overmap_smoke_los_from( const tripoint_abs_omt &origin,
                                         const live_bandit_signal_observation &smoke )
 {
-    if( smoke.source_omt.z() == origin.z() ) {
-        return live_bandit_overmap_los_from( origin, smoke.source_omt, smoke.range_cap_omt );
+    // Legacy abstract packets without a map-square emitter retain their
+    // existing exposed-source contract. Every current loaded packet supplies
+    // explicit support, including a truthful unavailable result.
+    if( smoke.source_ms && !smoke.smoke_observable_ms && !smoke.smoke_source_exposed_to_sky ) {
+        return false;
+    }
+    const tripoint_abs_omt visible_omt = smoke.smoke_observable_ms ?
+                                        project_to<coords::omt>( *smoke.smoke_observable_ms ) : smoke.source_omt;
+    if( visible_omt.z() == origin.z() ) {
+        return live_bandit_overmap_los_from( origin, visible_omt, smoke.range_cap_omt );
     }
     // An open-air plume can be viewed across levels in either direction.
     // The generic terrain/actor LOS remains same-level; this smoke ray still
     // pays every intervening terrain cost.
-    if( !smoke.smoke_source_exposed_to_sky || smoke.range_cap_omt <= 0 ||
+    if( ( !smoke.smoke_observable_ms && !smoke.smoke_source_exposed_to_sky ) || smoke.range_cap_omt <= 0 ||
         rl_dist( origin.xy(), smoke.source_omt.xy() ) > smoke.range_cap_omt ) {
         return false;
     }
     std::vector<int> terrain_see_costs;
-    for( const tripoint_abs_omt &omt : line_to( origin, smoke.source_omt ) ) {
+    for( const tripoint_abs_omt &omt : line_to( origin, visible_omt ) ) {
         terrain_see_costs.push_back(
             static_cast<int>( overmap_buffer.ter( omt )->get_see_cost() ) );
     }
@@ -11542,6 +11556,10 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                 json.member( "associated_with_target_site", scout_observation::associated_with_site(
                                  signal.source_omt, outing.target_footprint ) );
                 json.member( "smoke_exposed_to_sky", signal.smoke_source_exposed_to_sky );
+                if( signal.mark.kind == "smoke" ) {
+                    json.member( "smoke_observable_ms", signal.smoke_observable_ms );
+                    json.member( "smoke_support_reason", signal.smoke_support_reason );
+                }
                 json.member( "light_exposure", signal.has_light_projection ?
                              std::optional<std::string>( bandit_mark_generation::to_string(
                                      signal.light_projection.packet.exposure ) ) : std::nullopt );
@@ -11696,21 +11714,22 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                 signal.light_projection.packet.exposure == bandit_mark_generation::light_exposure_band::contained ) ) {
                 line_of_sight = false;
                 refuse_candidate( "light_projection_not_observable" );
-            } else if( smoke_signal && signal.source_omt.z() != request.current_omt.z() &&
-                       !signal.smoke_source_exposed_to_sky ) {
+            } else if( smoke_signal && !signal.smoke_observable_ms && !signal.smoke_source_exposed_to_sky ) {
                 line_of_sight = false;
-                refuse_candidate( "cross_level_smoke_not_exposed" );
+                refuse_candidate( "smoke_support_unavailable" );
             }
         } else {
-            line_of_sight = signal.source_omt == request.current_omt ||
-                            ( light_signal ? live_bandit_overmap_light_los_from( request.current_omt, signal ) :
-                              live_bandit_overmap_smoke_los_from( request.current_omt, signal ) );
+            line_of_sight = light_signal ?
+                            ( signal.source_omt == request.current_omt ||
+                              live_bandit_overmap_light_los_from( request.current_omt, signal ) ) :
+                            live_bandit_overmap_smoke_los_from( request.current_omt, signal );
         }
         if( site_watch && line_of_sight ) {
             size_t visible_watchers = 0;
             for( const auto &member : watchers ) {
                 const auto read = optical_geometry.read_signal( *member, member->pos_abs(),
-                                  *signal.source_ms, outing.target_footprint );
+                                  smoke_signal ? signal.smoke_observable_ms.value_or( *signal.source_ms ) : *signal.source_ms,
+                                  outing.target_footprint );
                 if( diagnostic_watch ) {
                     candidate_readers[signal_index].emplace_back( member->getID(), read );
                 }
@@ -11792,6 +11811,10 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
             read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
                          bandit_live_world::sortie_observation_sense::light;
             read.source_omt = signal.source_omt;
+            if( select_smoke ) {
+                read.emitter_ms = signal.source_ms;
+                read.observable_ms = signal.smoke_observable_ms ? signal.smoke_observable_ms : signal.source_ms;
+            }
             read.observer_id = candidate.observer_id;
             read.physical_pair_can_share = candidate.physical_pair_can_share;
             read.source_id = signal.sample_id.empty() ? signal.mark.mark_id : signal.sample_id;
@@ -12034,6 +12057,10 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
         read.sense = select_smoke ? bandit_live_world::sortie_observation_sense::smoke :
                      bandit_live_world::sortie_observation_sense::light;
         read.source_omt = found->source_omt;
+        if( select_smoke ) {
+            read.emitter_ms = found->source_ms;
+            read.observable_ms = found->smoke_observable_ms ? found->smoke_observable_ms : found->source_ms;
+        }
         // Preserve the immutable physical sample identity through the staffed
         // observer handoff.  Legacy callers may not provide one, so retain the
         // stable mark id as a bounded fallback.
