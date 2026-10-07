@@ -41,7 +41,7 @@ from playtest_witness import (
 )
 
 _FORBIDDEN = {"token", "tokens", "token_id", "query_sha256", "offset", "offsets", "candidate_offsets", "pid", "pids", "ocr", "logs", "raw_logs", "physical_key", "physical_keys", "source_path", "draft_path", "manual", "full_manual", "executable", "executables", "executable_path", "manifest_sha256", "hash", "hashes", "sha256", "path", "paths", "key", "subprocess"}
-_ALLOWED = {"action", "frontier", "capability", "scenario", "requirements", "preferences", "id", "name", "detail", "declaration", "world", "required_typeid", "candidate_offsets", "player_save", "handle", "observation_id", "action_id", "stable_id", "parameters", "recovery", "run_id", "scenario_id", "selection_id", "binding_id", "blocked_intent", "missing_kind", "evidence", "reusable_outcome", "affected_scenarios", "expected_signal", "bound", "stop_reason", "unused_authority", "wait", "keep_watch", "raw_wait", "move_relative", "raw_move_relative", "guarded_move_relative", "player_fire_setup", "r019_acceptance_matrix", "witness", "witness_statement", "target_delta_game_minutes"}
+_ALLOWED = {"action", "frontier", "capability", "scenario", "requirements", "preferences", "id", "name", "detail", "declaration", "world", "required_typeid", "candidate_offsets", "player_save", "handle", "observation_id", "action_id", "stable_id", "parameters", "recovery", "run_id", "scenario_id", "selection_id", "binding_id", "blocked_intent", "missing_kind", "evidence", "reusable_outcome", "affected_scenarios", "expected_signal", "bound", "stop_reason", "unused_authority", "wait", "keep_watch", "raw_wait", "move_relative", "raw_move_relative", "guarded_move_relative", "player_fire_setup", "r019_acceptance_matrix", "witness", "witness_statement", "target_delta_game_minutes", "abort"}
 
 _DANGER_HANDLING_MODES = {
     "stop_on_interruption",
@@ -798,6 +798,12 @@ class CockpitRunChannel:
             "declared_reentry_ready": declared_reentry_ready,
             "native_save_completion": native_save_completion,
         }
+        if detail.get("explicit_player_abort") is True:
+            # An authenticated abort is process termination, never a native
+            # save/menu quit receipt or a saved-world reentry authorization.
+            report.update(closure_kind="explicit_abort", native_save_credit=False,
+                          native_exit_credit=False, normal_exit_credit=False,
+                          declared_reentry_ready=False)
         if self._finalize_session is not None:
             finalized = self._finalize_session(report)
             if not isinstance(finalized, Mapping):
@@ -847,7 +853,7 @@ class CockpitRunChannel:
         self._transcript.append({"kind": "operation_failure", "value": failure})
         return {"ok": False, "error": reason, "failure": failure,
                 "session_state": self._state,
-                "next_action": "Observe the current game before choosing another action, or use run.quit to end the session. Do not replay the failed operation automatically."}
+                "next_action": "Observe the current game before choosing another action, or use the current native close controls. An explicitly authorized abort is run.quit with abort=true. Do not replay the failed operation automatically."}
 
     def _native_receipt_run_matches(
         self, native: Mapping[str, Any], run_id: str, *, surface_owned: bool,
@@ -3874,11 +3880,15 @@ class CockpitRunChannel:
                if witness_validation is not None else {}),
         })}
 
-    def quit(self, reason: str = "player_quit") -> Dict[str, Any]:
-        """Explicitly end the owned session without requiring a gameplay claim."""
-        return {"ok": True, "result": self._stop(reason or "player_quit", {
+    def quit(self, reason: str = "player_quit", *, abort: bool = False) -> Dict[str, Any]:
+        """Never translate an ordinary quit request into process termination."""
+        if abort is not True:
+            return {"ok": False, "error": "native_graceful_close_required",
+                    "termination_requested": False,
+                    "next_action": "Use current native SaveQuit/YES, verify the serializer, then current MainMenuQuit/YES and actual process exit before reporting. An explicitly authorized abort uses abort=true and earns no save or normal-exit credit."}
+        return {"ok": True, "result": self._stop(reason or "player_abort", {
             "unused_authority": "released", "explicit_player_quit": True,
-            "gameplay_credit": False,
+            "explicit_player_abort": True, "gameplay_credit": False,
         })}
 
     def close_unfinished(self) -> Dict[str, Any]:
@@ -3917,12 +3927,22 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "game.wait": None, "game.move_relative": None,
         },
         "availability_note": "Session permission only, not current-surface readiness. null means unknown: look and collect first. The service rechecks permission on every call.",
+        "setup": {
+            "debug_life_support": {
+                "mutation_id": "DEBUG_LS",
+                "when": "Before long roof/faction waits when Life Support is the assigned survival setup; inspect at setup or load, not before every wait.",
+                "sequence": "Inspect current avatar mutations. Keep Debug Life Support active if already present. Only if missing, use advertised world.debug_menu, then current Player -> Mutate entries, filter Debug Life Support and select that individual trait. Return to World and verify active; use advertised world.pause only if needed to apply setup.",
+                "owner": "Resolve each current advertised target. This guidance does not dispatch input or grant debug permission; never reuse historical menu IDs, toggle an active trait off, or use the debug mutation bundle.",
+                "scope": "Recorded survival setup, not signal/actor proof or combat immunity. Preserve ordinary vision and actual wounds/incapacity.",
+                "recipe": ".agents/skills/caol-harness/references/setup-and-interactions.md#get-and-verify-debug-life-support",
+            },
+        },
         "danger_handling": {
             "stop_on_interruption": "Default. Stop the macro at a native interruption; movement requires World but does not perform the guarded danger/terrain checks.",
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
-        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit requests termination. Reporting run.finish requires the bound native game already exited.",
+        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit with abort=true requests termination; ordinary quit never signals the native process. Reporting run.finish requires the bound native game already exited.",
         "speech": {
             "sequence": "Submit free text through the current native prompt. Correlate the utterance/hearer and prompt request ID with llm_request_started, then llm_response_emitted in the runner log. The response event proves calculation ended and was emitted, not that the game applied it. Once completion is evidenced, choose world.pause from the current World owner and inspect the reply/action and game-time change. Advance further turns only as the behavior requires.",
             "launch": "The current npctalk free-text route enqueues the first hearer immediately; later serial hearers can require a turn to apply the prior response and dispatch the next. If no matching request started, inspect launch/queue evidence before waiting.",
@@ -4115,7 +4135,8 @@ class CockpitService:
                 r019_acceptance_matrix=matrix,
             )
         if action == "run.quit" and self.run_channel is not None:
-            return self.run_channel.quit(str(request.get("stop_reason", "player_quit")))
+            return self.run_channel.quit(str(request.get("stop_reason", "player_quit")),
+                                         abort=request.get("abort") is True)
         if action == "run.status" and self.run_channel is not None:
             return {"ok": True, "result": self.run_channel.status()}
         if action == "run.witness" and self.run_channel is not None:

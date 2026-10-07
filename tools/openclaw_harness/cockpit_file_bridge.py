@@ -815,8 +815,8 @@ class FileBackedCockpitBridge:
                     # Cleanup is an explicit player decision, unlike losing
                     # a client connection. Send that decision as a real request.
                     assert self._child is not None and self._child.stdin is not None
-                    self._child.stdin.write(json.dumps({"action": "run.quit",
-                        "stop_reason": "explicit_bridge_cleanup"}) + "\n")
+                    self._child.stdin.write(json.dumps({"action": "run.quit", "abort": True,
+                        "stop_reason": "explicit_bridge_abort_cleanup"}) + "\n")
                     self._child.stdin.flush()
                     terminal_line = self._read_complete_response()
                     terminal = json.loads(terminal_line) if terminal_line else {}
@@ -899,9 +899,9 @@ class FileBackedCockpitBridge:
             memory_snapshot("file_bridge", "after_response_persist",
                             response_bytes=len(response_line.encode("utf-8")))
             self.active_request_path.unlink(missing_ok=True)
-            # Native input is paused at a completed response.  Keep only the
-            # recent debug/semantic producer window before the next request.
-            # Immutable receipts and transition evidence remain untouched.
+            # Observation responses can return while a native activity is
+            # still advancing. Window only disposable diagnostic logs; never
+            # rewrite the append-only native authority/receipt stream.
             roll_bound_session_logs(
                 self.session_dir,
                 str(self._active_session_descriptor.get("run_id", "")),
@@ -1216,6 +1216,13 @@ class FileBackedCockpitBridge:
         status = json.loads((session_dir / "status.json").read_text(encoding="utf-8"))
         identity_error = _bridge_identity_error(status)
         if identity_error:
+            # A retained native startup may outlive its failed reporter. Let
+            # the existing read-only look projection authenticate that native
+            # owner; this is not a request delivered to the dead bridge.
+            if (identity_error == "bridge_process_exited"
+                    and status.get("binding_id") == binding_id
+                    and request.get("action") == "game.observe"):
+                return {"ok": False, "error": identity_error, "status": status}
             return {"ok": False, "error": identity_error}
         if status.get("state") != "ready" or status.get("binding_id") != binding_id:
             return {"ok": False, "status": status}

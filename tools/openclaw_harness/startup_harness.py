@@ -5055,6 +5055,33 @@ def read_latest_activity_query_trace(
     return latest
 
 
+def latest_semantic_source_descriptor(path: Path) -> Optional[Mapping[str, Any]]:
+    """Inspect a bounded complete suffix for the native input owner."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as stream:
+            start = max(0, size - SEMANTIC_STEP_MAX_BYTES * 16)
+            stream.seek(start)
+            if start:
+                stream.readline()  # discard a possibly partial first record
+            latest = None
+            for raw in iter_bounded_semantic_trace_lines(
+                    stream, size, SEMANTIC_STEP_MAX_BYTES * 16):
+                marker = raw.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
+                if marker < 0:
+                    continue
+                try:
+                    event = decode_semantic_step_event(
+                        raw[marker + len(SEMANTIC_STEP_PREFIX):].strip())
+                except (ValueError, UnicodeError):
+                    continue
+                if event.get("event") == "surface_descriptor":
+                    latest = event
+            return latest
+    except OSError:
+        return None
+
+
 def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> Path:
     if run_dir is not None:
         native_trace = Path(run_dir) / "semantic.native.events.jsonl"
@@ -5089,6 +5116,25 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
                         stream.seek(max(0, native_trace.stat().st_size - 64 * 1024))
                         native_prefix = stream.read(64 * 1024)
                 if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_prefix:
+                    # The same producer mirrors descriptors to debug.log. A
+                    # historical live roll could erase its current successor
+                    # from the primary stream. Prefer that exact newer mirror,
+                    # never another run/process or an older observational frame.
+                    debug_trace = config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
+                    native_owner = latest_semantic_source_descriptor(native_trace)
+                    mirrored_owner = latest_semantic_source_descriptor(debug_trace)
+                    if native_owner and mirrored_owner and \
+                            native_owner.get("run_id") and \
+                            native_owner.get("run_id") == mirrored_owner.get("run_id") and \
+                            native_owner.get("process_instance") and \
+                            native_owner.get("process_instance") == mirrored_owner.get("process_instance"):
+                        try:
+                            newer = int(mirrored_owner["sequence"]) > int(native_owner["sequence"]) and \
+                                int(mirrored_owner["game_turn"]) >= int(native_owner["game_turn"])
+                        except (KeyError, TypeError, ValueError):
+                            newer = False
+                        if newer:
+                            return debug_trace
                     return native_trace
             except OSError:
                 pass
@@ -6014,7 +6060,7 @@ def open_cockpit_game_service(
     # frame and only its unconsumed successors, rather than re-materializing
     # the whole current-run history on every observation.  The existing cap
     # still rejects an overfull unconsumed window.
-    semantic_cursor = {"offset": trace_start_offset}
+    semantic_cursor = {"offset": trace_start_offset, "source": None}
     semantic_history: Dict[str, Any] = {}
     latest_frame: Dict[str, Mapping[str, Any]] = {}
     performance = None
@@ -6022,6 +6068,12 @@ def open_cockpit_game_service(
 
     def read_frame() -> Mapping[str, Any]:
         source = semantic_step_source_trace(profile, run_dir)
+        source_identity = str(source.resolve())
+        if semantic_cursor["source"] not in {None, source_identity}:
+            # Byte cursors belong to one physical producer file. The mirrored
+            # descriptor keeps its native identity, never the other file's offset.
+            semantic_cursor["offset"] = 0
+        semantic_cursor["source"] = source_identity
         cursor = semantic_step_effective_source_offset(
             source, int(semantic_cursor["offset"]),
         )
@@ -20438,6 +20490,7 @@ def await_r014_native_semantic_bootstrap(
     required_actions: Sequence[str], timeout_seconds: float, poll_seconds: float,
     trace_start_offset: int = 0, require_initial_hud_world_ready_frame: bool = False,
     allow_any_native_input_owner: bool = False,
+    live_owner_alive: Optional[Callable[[], bool]] = None,
 ) -> Dict[str, Any]:
     """Await the launcher's first same-run semantic frame without sending input.
 
@@ -20482,6 +20535,13 @@ def await_r014_native_semantic_bootstrap(
             }
         remaining = deadline - time.monotonic()
         if remaining <= 0:
+            # A live terminal controller must outlive a startup modal. Its
+            # original owner can inspect/recover through the startup route;
+            # a wall timeout is neither a World frame nor a reason to orphan
+            # the still-owned game. No dismissal or input occurs here.
+            if live_owner_alive is not None and live_owner_alive():
+                time.sleep(max(poll_seconds, 0.05))
+                continue
             return {
                 **last_metadata,
                 "bootstrap": "launcher_first_same_run_semantic_frame",
@@ -39708,7 +39768,14 @@ def _run_startup(args: argparse.Namespace) -> int:
     deadline = time.monotonic() + timeout_seconds
     expected_world = plan.target_world
 
-    while time.monotonic() < deadline:
+    live_terminal_startup = bool(
+        getattr(args, "cockpit_live_session", False) and terminal_native_transport
+        and terminal_identity and terminal_identity.get("ok")
+        and os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR")
+        and os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID")
+    )
+
+    while time.monotonic() < deadline or (live_terminal_startup and proc.poll() is None):
         code = proc.poll()
         if code is not None:
             if plan.strategy == "harness_new_world":
@@ -40043,6 +40110,7 @@ def _run_startup(args: argparse.Namespace) -> int:
                     allow_any_native_input_owner=( semantic_only_startup or bool(
                         getattr(args, "cockpit_live_session", False)
                     ) ),
+                    live_owner_alive=(lambda: proc.poll() is None) if live_terminal_startup else None,
                 )
                 screen_summary["native_semantic_startup"] = native_semantic_startup
                 # A GUI-backed startup capture can legitimately precede the
@@ -40381,7 +40449,7 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
     return proc.returncode, payload, proc.stdout, proc.stderr
 
 
-def run_startup_in_process(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
+def run_startup_in_process(cmd: List[str], *, live_session: bool = False) -> Tuple[int, Dict[str, Any], str, str]:
     """Run a constructed ``start`` command without losing anonymous wake FDs.
 
     A probe must own both ends of its launch-bound anonymous pipe: startup
@@ -40395,6 +40463,9 @@ def run_startup_in_process(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, st
     stdout_capture = io.StringIO()
     stderr_capture = io.StringIO()
     start_args = build_parser().parse_args(cmd[2:])
+    # This in-process start belongs to the probe's live controller. Preserve
+    # that context without adding a second launch or a new public CLI mode.
+    start_args.cockpit_live_session = live_session
     with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
         returncode = run_startup(start_args)
     stdout = stdout_capture.getvalue()
@@ -42284,7 +42355,9 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
 
     # Keep the anonymous semantic wake writer in this probe process.  The
     # child only inherits its nonblocking read end during launch.
-    start_rc, start_result, start_stdout, start_stderr = run_startup_in_process(start_cmd)
+    start_rc, start_result, start_stdout, start_stderr = run_startup_in_process(
+        start_cmd, live_session=bool(getattr(args, "cockpit_live_session", False)),
+    )
     if args.dry_run:
         print(json.dumps({
             "mode": mode,

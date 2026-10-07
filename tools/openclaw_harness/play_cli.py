@@ -1181,8 +1181,10 @@ def main(argv=None):
     resume.add_argument("--request-id", help="Required when no active/last request identity is retained")
     cancel = commands.add_parser("cancel", help="Request cooperative cancellation of the outstanding request")
     cancel.add_argument("--reason", default="player_cancelled")
-    quit_command = commands.add_parser("quit", help="Explicitly end the owned run without a gameplay claim")
+    quit_command = commands.add_parser("quit", help="Native close guidance; process termination requires explicit --abort")
     quit_command.add_argument("--reason", default="player requested quit")
+    quit_command.add_argument("--abort", action="store_true",
+                              help="Explicitly terminate the owned process; no native save or normal-exit credit")
     messages = commands.add_parser("messages", help="Read native messages from the displayed observation; latest matching page by default")
     messages.add_argument("--contains")
     messages.add_argument("--offset", type=int)
@@ -1393,7 +1395,8 @@ def main(argv=None):
                                                   danger_handling=args.danger_handling,
                                                   wait_seconds=args.wait_seconds)
                 elif args.command == "quit":
-                    result = client.submit({"action": "run.quit", "stop_reason": args.reason}, args.wait_seconds)
+                    result = client.submit({"action": "run.quit", "stop_reason": args.reason,
+                                            "abort": args.abort}, args.wait_seconds)
                 elif args.command == "call":
                     result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
                 elif args.command == "journal":
