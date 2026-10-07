@@ -49589,3 +49589,150 @@ TEST_CASE( "opt-in signal adapter explains actual watcher and producer-reader re
         CHECK( blocked.get_array( "watchers" ).empty() );
     }
 }
+
+TEST_CASE( "paid roof return does not repeatedly complete an incidental guard order",
+           "[bandit_live_world][paid_guard_return_067]" )
+{
+    const std::string condition = GENERATE( std::string( "retained_navigation" ),
+        std::string( "retained_motor" ), std::string( "producer" ), std::string( "reload" ),
+        std::string( "foreign" ), std::string( "stale_lease" ), std::string( "resolved" ), std::string( "wrong_home" ),
+        std::string( "ordinary" ), std::string( "ground_visit" ),
+        std::string( "narcosis" ), std::string( "flight" ), std::string( "blocked" ) );
+    CAPTURE( condition );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r067_roof_paid_return.json" );
+    std::ifstream input( "tests/data/r067_paid_guard_return.json" );
+    REQUIRE( input.good() );
+    JsonObject fixture = json_loader::from_string(
+                             std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    fixture.allow_omitted_members();
+    map &here = get_map();
+    // Actual ground bytes at5269204, not a cleared/capable replacement scene.
+    // r055_scene already owns snapshots of these same buffered submaps.
+    for( JsonObject record : fixture.get_array( "submaps" ) ) {
+        const JsonArray coordinate = record.get_array( "coordinates" );
+        submap *sm = MAPBUFFER.lookup_submap( tripoint_abs_sm( coordinate.get_int( 0 ),
+                     coordinate.get_int( 1 ), coordinate.get_int( 2 ) ) );
+        REQUIRE( sm != nullptr );
+        for( const auto &vehicle : sm->vehicles ) { here.remove_vehicle_from_cache( vehicle.get() ); }
+        *sm = submap();
+        for( JsonMember field : record ) {
+            if( field.name() != "coordinates" && field.name() != "version" ) {
+                sm->load( field, field.name(), record.get_int( "version" ) );
+            }
+        }
+    }
+    here.load( here.get_abs_sub(), true );
+    for( int z : { 0, 1 } ) { here.invalidate_map_cache( z ); here.build_map_cache( z ); }
+    const bool retained = condition == "retained_navigation" || condition == "retained_motor";
+    npc &member = scene.actor( 6 );
+    const auto accepted_lease = member.get_bandit_live_world_projection_lease();
+    member.setID( character_id(), true );
+    JsonObject body = fixture.get_object( "actor" );
+    body.allow_omitted_members();
+    member.deserialize( body );
+    member.clear_ai_guard_pos(); // Historical transient cache is unavailable.
+    auto &site = scene.site();
+    if( retained ) {
+        calendar::turn = time_point::from_turn( 5272550 );
+        // The original whole world fails strict owner deserialization. Bind
+        // its exact runtime operation/member records only for this motor seam;
+        // do not normalize or repair saved report/lead receipts in the fixture.
+        site.active_outing.clear();
+        site.active_hostile_operation.deserialize( fixture.get_object( "operation" ) );
+        site.members.clear();
+        for( JsonObject record : fixture.get_array( "members" ) ) {
+            bandit_live_world::member_record saved_member;
+            saved_member.deserialize( record );
+            site.members.push_back( saved_member );
+        }
+    } else {
+        // Original Carlos is already abstract-owned. The independent producer
+        // control retains this shell's actual pre-Pay local lease, rather than
+        // attributing its changed ownership to the historical Carlos state.
+        if( condition != "stale_lease" ) {
+            sync_bandit_live_world_projection_lease_copies( member, accepted_lease );
+        }
+        // The real payment commit must not depend on a guard-free body.
+        bandit_live_world::shakedown_surface surface;
+        surface.valid = true;
+        surface.demanded_value = 100;
+        surface.reachable_goods_value = 100;
+        if( condition == "stale_lease" ) {
+            const auto before = serialize_world( overmap_buffer.global_state.bandit_live_world );
+            CHECK_FALSE( commit_bandit_shakedown_payment_for_test( site, surface, 100 ) );
+            CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
+            CHECK( member.pos_abs() == tripoint_abs_ms( 3156, 3455, 0 ) );
+            return;
+        }
+        REQUIRE( commit_bandit_shakedown_payment_for_test( site, surface, 100 ) );
+        CHECK_FALSE( commit_bandit_shakedown_payment_for_test( site, surface, 100 ) );
+    }
+    REQUIRE( member.pos_abs() == tripoint_abs_ms( 3156, 3455, 0 ) );
+    REQUIRE( member.guard_pos == member.pos_abs() );
+    REQUIRE( member.goal == site.anchor );
+    REQUIRE_FALSE( member.omt_path.empty() );
+    if( condition == "reload" ) {
+        const auto saved_body = r054_actor_bytes( member );
+        overmap_buffer.global_state.bandit_live_world = round_trip_world(
+                    overmap_buffer.global_state.bandit_live_world );
+        member.setID( character_id(), true );
+        member.deserialize( json_loader::from_string( saved_body ).get_object() );
+        member.path.clear();
+        member.clear_ai_guard_pos();
+    }
+    auto &current_site = scene.site(); // round_trip_world can replace the vector.
+    auto &operation = current_site.active_hostile_operation;
+    if( condition == "foreign" ) { operation.reservation.camp_id = "another-camp"; }
+    if( condition == "resolved" ) { operation.reservation.resolved_member_ids.push_back( member.getID() ); }
+    if( condition == "wrong_home" ) { member.goal += point( 1, 0 ); }
+    if( condition == "ordinary" ) { operation.clear(); }
+    if( condition == "ground_visit" ) { operation.reservation.target_omt = tripoint_abs_omt( 131, 143, 0 ); }
+    if( condition == "narcosis" ) {
+        member.add_effect( efftype_id( "sleep" ), 1_days );
+        member.add_effect( efftype_id( "narcosis" ), 1_days );
+    }
+    if( condition == "flight" ) { member.set_attitude( NPCATT_FLEE_TEMP ); }
+    if( condition == "blocked" ) {
+        // A genuine impassable connector remains a refusal, not relocation.
+        for( const auto &point : closest_points_first( member.pos_bub(), 1 ) ) {
+            if( point != member.pos_bub() ) { here.ter_set( point, ter_id( "t_rock" ) ); }
+        }
+        here.invalidate_map_cache( 0 ); here.build_map_cache( 0 );
+    }
+    const auto start = member.pos_abs();
+    const auto guard = member.guard_pos;
+    const bool native_motor = condition == "retained_motor" || condition == "producer" ||
+                              condition == "reload" || condition == "narcosis" || condition == "flight";
+    for( int call = 0; call < 4; ++call ) {
+        member.set_moves( 100 );
+        if( condition == "narcosis" ) {
+            // Forced sleep excludes the actor in the actual scheduler, before
+            // npc::move; calling move directly would bypass that contract.
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        } else if( native_motor ) { member.move(); }
+        else { member.regen_ai_cache(); member.go_to_omt_destination(); }
+    }
+    std::cout << "R067_PAID_GUARD condition=" << condition << " from=" << start
+              << " to=" << member.pos_abs() << " guard=" << *guard
+              << " path=" << member.path.size() << " omt_path=" << member.omt_path.size() << '\n';
+    CHECK( member.guard_pos == guard ); // No persistent guard mutation/reconstruction.
+    const bool progresses = retained || condition == "producer" || condition == "reload";
+    if( progresses ) {
+        CHECK( member.pos_abs() != start );
+        CHECK( member.goal == current_site.anchor );
+        REQUIRE_FALSE( member.omt_path.empty() );
+        CHECK( member.omt_path.front() == current_site.anchor );
+    } else if( condition == "flight" ) {
+        CHECK( member.get_attitude() == NPCATT_FLEE_TEMP );
+        CHECK( operation.phase == bandit_live_world::hostile_operation_phase::returning_home );
+    } else {
+        CHECK( member.pos_abs() == start );
+        if( condition == "narcosis" ) {
+            CHECK( member.has_effect( efftype_id( "narcosis" ) ) );
+            CHECK( member.has_effect( efftype_id( "sleep" ) ) );
+        }
+    }
+}

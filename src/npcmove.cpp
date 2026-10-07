@@ -878,6 +878,18 @@ const std::vector<bionic_id> weapon_cbms = {
 
 const int avoidance_vehicles_radius = 5;
 
+// Reuse the same exact reservation for action selection and navigation. A
+// camp guard point is incidental to this already committed physical return.
+bool has_paid_roof_return_order( const npc &who )
+{
+    const bandit_live_world::site_record *site = nullptr;
+    return bandit_live_world::hostile_operation_player_relationship_for(
+               overmap_buffer.global_state.bandit_live_world, who.getID(), &site ) ==
+           bandit_live_world::hostile_operation_player_relationship::paid_departure &&
+           site != nullptr && who.has_omt_destination() && who.goal == site->anchor &&
+           site->active_hostile_operation.reservation.target_omt.z() > site->anchor.z();
+}
+
 bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
 {
     if( who.is_player_ally() || who.is_dead() ) {
@@ -2877,15 +2889,7 @@ void npc::move() {
   // An elevated paid visit has an actual local-to-macro return order. Keep
   // that owned journey ahead of incidental camp pickup, including after its
   // descent. The existing relationship reader validates the reserved survivor.
-  const bandit_live_world::site_record *paid_return_site = nullptr;
-  const bool paid_departure =
-      bandit_live_world::hostile_operation_player_relationship_for(
-          overmap_buffer.global_state.bandit_live_world, getID(), &paid_return_site ) ==
-      bandit_live_world::hostile_operation_player_relationship::paid_departure;
-  const bool paid_roof_return = paid_departure && paid_return_site != nullptr &&
-      has_omt_destination() && goal == paid_return_site->anchor &&
-      paid_return_site->active_hostile_operation.reservation.target_omt.z() >
-      paid_return_site->anchor.z();
+  const bool paid_roof_return = has_paid_roof_return_order( *this );
   if( assault_site != nullptr ) {
       const auto &reservation = assault_site->active_hostile_operation.reservation;
       reconcile_active_assault_routine( assault_site->site_id + ":" +
@@ -7896,13 +7900,12 @@ void npc::set_omt_destination() {
 void npc::go_to_omt_destination( const std::function<bool(
                                      const std::vector<tripoint_bub_ms> & )> &path_validator ) {
   map &here = get_map();
-  if (ai_cache.guard_pos) {
-    if (pos_abs() == *ai_cache.guard_pos) {
-            path.clear();
-            ai_cache.guard_pos = std::nullopt;
-            move_pause();
-            return;
-        }
+    if( ai_cache.guard_pos && pos_abs() == *ai_cache.guard_pos &&
+        !has_paid_roof_return_order( *this ) ) {
+        path.clear();
+        ai_cache.guard_pos = std::nullopt;
+        move_pause();
+        return;
     }
     if( goal == no_goal_point || omt_path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "npc::go_to_destination with no goal" );
