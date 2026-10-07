@@ -20,6 +20,9 @@ DIRECT_INPUT = re.compile( r"(?:\.|->)\s*(?:handle_input|get_input_event)\s*\(" 
 # cannot stand in for the owning loop's actual semantic boundary.
 SUPPORTED = {
     "src/game.cpp",
+    # Global distraction configuration retains native settings/keyboard input;
+    # its focused semantic owner advertises only ordinary QUIT.
+    "src/distraction_manager.cpp",
     # Scores has one focused ordinary QUIT owner; death epilogues remain separate.
     "src/scores_ui.cpp",
     "src/inventory_ui.cpp",
@@ -47,7 +50,7 @@ HARD_STOP = {
     "src/advanced_inv.cpp", "src/armor_layers.cpp", "src/auto_note.cpp",
     "src/auto_pickup.cpp", "src/bionics_ui.cpp", "src/bodygraph.cpp", "src/character_health.cpp",
     "src/color.cpp", "src/computer_session.cpp", "src/construction.cpp", "src/crafting_gui.cpp",
-    "src/debug_console.cpp", "src/diary_ui.cpp", "src/distraction_manager.cpp",
+    "src/debug_console.cpp", "src/diary_ui.cpp",
     "src/do_turn.cpp", "src/end_screen.cpp", "src/faction_camp.cpp",
     "src/faction_ui.cpp", "src/game_inventory.cpp", "src/help.cpp", "src/iexamine.cpp",
     "src/imgui_demo.cpp", "src/input_popup.cpp", "src/iuse.cpp", "src/iuse_software_kitten.cpp",

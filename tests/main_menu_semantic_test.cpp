@@ -21,6 +21,10 @@ extern "C" int ungetch( int );
 #include <vector>
 
 #include "cached_options.h"
+#include "enums.h"
+#include "activity_actor_definitions.h"
+#include "player_activity.h"
+#include "uistate.h"
 #include "avatar.h"
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
@@ -700,6 +704,213 @@ TEST_CASE( "menu fixture restores avatar variant identity after real definition 
     mutation.allow_omitted_members();
     CHECK( mutation.get_string( "variant-id" ) == variant_id );
     CHECK( mutation.get_string( "variant-parent" ) == selected.str() );
+}
+
+TEST_CASE( "public activity Manager closes through native QUIT and returns to its actual caller",
+           "[semantic_surface][distraction_manager_close_067]" )
+{
+    const std::string mode = GENERATE( "semantic", "keyboard", "direct_manage", "no", "ignore" );
+    DYNAMIC_SECTION( mode ) {
+        CAPTURE( mode );
+        const bool manages = mode != "no" && mode != "ignore";
+        const std::string run = "distraction-manager-" + mode;
+        const auto transport = std::filesystem::temp_directory_path() /
+                               ( run + std::to_string( std::chrono::steady_clock::now().time_since_epoch().count() ) + ".jsonl" );
+        std::ofstream( transport, std::ios::binary ).close();
+        scoped_environment run_env( "OPENCLAW_HARNESS_RUN_ID", run );
+        scoped_environment bound_env( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run );
+        scoped_environment transport_env( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport.string() );
+        on_out_of_scope remove_transport( [&] { std::filesystem::remove( transport ); } );
+        semantic_surface_manager &manager = openclaw_harness_semantic_surface_manager();
+        REQUIRE( manager.stack().empty() );
+        semantic_surface_manager outer( "unrelated-outer" );
+        semantic_surface_manager_session outer_session( outer );
+        const std::string old_locale = std::setlocale( LC_CTYPE, nullptr );
+        REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) != nullptr );
+        on_out_of_scope restore_locale( [&] { std::setlocale( LC_CTYPE, old_locale.c_str() ); } );
+    #if defined(_WIN32)
+        const UINT old_codepage = GetConsoleOutputCP();
+        REQUIRE( SetConsoleOutputCP( CP_UTF8 ) );
+        on_out_of_scope restore_codepage( [&] { SetConsoleOutputCP( old_codepage ); } );
+    #endif
+        if( ImGui::GetCurrentContext() == nullptr ) {
+            catacurses::init_interface();
+            catacurses::resizeterm();
+        }
+        restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+        test_mode = true;
+        const int previous_timeout = inp_mngr.get_timeout();
+        inp_mngr.set_timeout( 125 );
+        const bool previous_noise = uistate.distraction_noise;
+        on_out_of_scope cleanup( [&] {
+            manager.set_descriptor_observer( {} );
+            manager.set_receipt_observer( {} );
+            manager.set_transport_observer( {} );
+            inp_mngr.set_timeout( previous_timeout );
+            uistate.distraction_noise = previous_noise;
+            catacurses::endwin();
+        } );
+        clear_map();
+        clear_avatar();
+        // Catch has no running game mode; native save/load installs the ordinary
+        // mode needed by the real caller's next do_turn/World action.
+        REQUIRE( world_generator->active_world );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        clear_avatar();
+        clear_map();
+        override_option llm( "LLM_INTENT_ENABLE", "false" );
+        avatar &u = get_avatar();
+        u.assign_activity( wait_activity_actor( 1_minutes ) );
+        const int activity_moves = u.activity.moves_left;
+        test_mode = false;
+        restore_on_out_of_scope<time_point> restore_turn( calendar::turn );
+        g->uquit = QUIT_NO;
+        uistate.distraction_noise = true;
+        std::vector<semantic_surface_descriptor> descriptors;
+        std::vector<semantic_action_receipt> receipts;
+        std::optional<semantic_action_request> close_request;
+        std::thread sender;
+        on_out_of_scope join_sender( [&] { if( sender.joinable() ) { sender.join(); } } );
+        const auto append = [&]( const semantic_action_request &request ) {
+            std::ofstream file( transport, std::ios::binary | std::ios::app );
+            file << "{\"run_id\":\"" << request.run_id << "\",\"surface_id\":\"" << request.surface_id
+                 << "\",\"frame_id\":\"" << request.frame_id << "\",\"request_id\":\"" << request.request_id
+                 << "\",\"action_id\":\"" << request.action_id << "\"";
+            if( request.stable_id ) { file << ",\"stable_id\":\"" << *request.stable_id << "\""; }
+            file << "}\n";
+        };
+        const auto native_key = []( const std::string &action ) {
+            const auto &keys = inp_mngr.get_input_for_action( action, "DISTRACTION_MANAGER" );
+            const auto key = std::find_if( keys.begin(), keys.end(), []( const input_event &event ) {
+                return event.type == input_event_t::keyboard_char && event.sequence.size() == 1 &&
+                       event.get_first_input() >= 0 && event.get_first_input() < 128;
+            } );
+            REQUIRE( key != keys.end() );
+            REQUIRE( ::ungetch( key->get_first_input() ) != -1 );
+        };
+        bool manager_seen = false;
+        bool consumed_blocked = false;
+        bool world_seen = false;
+        bool world_consumed = false;
+        bool send_world = false;
+        bool duplicate_checked = false;
+        bool manage_requested = false;
+        manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+            receipts.push_back( receipt );
+            if( receipt.action_id == "distraction_manager.close" && receipt.accepted && !duplicate_checked ) {
+                duplicate_checked = true;
+                CHECK_FALSE( manager.submit_request( *close_request ) );
+            }
+        } );
+        manager.set_transport_observer( [&]( const semantic_request_transport_event &event ) {
+            if( event.event == "request_consumed" && event.request_id == "close-current" ) {
+                consumed_blocked = true;
+                CHECK_FALSE( u.activity ); // MANAGER cancelled before entering global configuration.
+                CHECK( inp_mngr.get_timeout() == 125 );
+            }
+            if( event.event == "request_consumed" && event.request_id == "caller-world-pause" ) {
+                world_consumed = true;
+            }
+        } );
+        manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+            descriptors.push_back( descriptor );
+            if( descriptor.kind == "activity_distraction" && mode == "direct_manage" && !manage_requested ) {
+                manage_requested = true;
+                REQUIRE( manager.submit_request( { run, descriptor.surface_id, descriptor.frame_id,
+                         "manage-direct", "activity.manage", std::nullopt, {} } ) );
+            } else if( descriptor.kind == "prompt" && descriptor.payload.count( "title" ) &&
+                       descriptor.payload.at( "title" ) == "CANCEL_ACTIVITY_OR_IGNORE_QUERY" ) {
+                const std::string choice = manages ? "MANAGER" : mode == "no" ? "NO" : "IGNORE";
+                const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+                [&]( const semantic_action_descriptor &item ) { return item.label == choice; } );
+                REQUIRE( action != descriptor.valid_actions.end() );
+                append( { run, descriptor.surface_id, descriptor.frame_id, "prompt-" + choice,
+                          action->id, action->stable_id, {} } );
+            } else if( descriptor.kind == "unsupported" && descriptor.payload.count( "owner" ) &&
+                       descriptor.payload.at( "owner" ) == "DISTRACTION_MANAGER" ) {
+                // Bounded old-source control exits through native keyboard QUIT;
+                // an unsupported owner is still an assertion failure, never a pass.
+                CHECK( descriptor.kind == "distraction_manager" );
+                native_key( "QUIT" );
+            } else if( descriptor.kind == "distraction_manager" && !manager_seen ) {
+                manager_seen = true;
+                CHECK_FALSE( u.activity );
+                REQUIRE( descriptor.valid_actions.size() == 1 );
+                CHECK( descriptor.valid_actions.front().id == "distraction_manager.close" );
+                CHECK( descriptor.payload.at( "native_owner" ) == "DISTRACTION_MANAGER" );
+                CHECK( descriptor.payload.at( "configuration_scope" ) == "global" );
+                ui_manager::redraw();
+                input_context poll( "DISTRACTION_MANAGER" ); poll.register_action( "QUIT" );
+                CHECK( poll.handle_input( 1 ) == "TIMEOUT" );
+                REQUIRE( manager.top() );
+                CHECK( manager.top()->frame_id == descriptor.frame_id );
+                CHECK( manager.top()->surface_id == descriptor.surface_id );
+                if( mode == "keyboard" ) {
+                    // LIFO native keys: toggle the selected Noise setting, then QUIT.
+                    native_key( "QUIT" ); native_key( "CONFIRM" );
+                } else {
+                    close_request = semantic_action_request{ run, descriptor.surface_id, descriptor.frame_id,
+                                      "close-current", "distraction_manager.close", std::nullopt, {} };
+                    for( int i = 0; i < 4; ++i ) {
+                        auto bad = *close_request; bad.request_id = "bad-" + std::to_string( i );
+                        if( i == 0 ) { bad.run_id = "wrong-run"; }
+                        if( i == 1 ) { bad.frame_id = "stale-frame"; }
+                        if( i == 2 ) { bad.surface_id = "foreign-owner"; }
+                        if( i == 3 ) { bad.action_id = "not-advertised"; }
+                        REQUIRE( manager.submit_request( bad ) );
+                        CHECK_FALSE( manager.consume_top_request() );
+                    }
+                    CHECK( uistate.distraction_noise );
+                    sender = std::thread( [&, request = *close_request] {
+                        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+                        append( request );
+                    } );
+                }
+            } else if( descriptor.kind == "world" && send_world && !world_seen ) {
+                world_seen = true;
+                if( close_request ) {
+                    auto stale = *close_request; stale.request_id = "close-after-return";
+                    REQUIRE( manager.submit_request( stale ) );
+                    CHECK_FALSE( manager.consume_top_request() );
+                }
+                append( { run, descriptor.surface_id, descriptor.frame_id, "caller-world-pause",
+                          "world.pause", std::nullopt, {} } );
+            }
+        } );
+        CHECK( g->cancel_activity_or_ignore_query( distraction_type::noise, "Actual test noise" ) == manages );
+        CHECK( active_semantic_surface_manager() == &outer );
+        CHECK( manager.stack().empty() );
+        CHECK( manager_seen == manages );
+        CHECK( static_cast<bool>( u.activity ) == !manages );
+        CHECK( uistate.distraction_noise == ( mode != "keyboard" ) );
+        if( manages ) {
+            if( sender.joinable() ) { sender.join(); }
+            CHECK( consumed_blocked == ( mode != "keyboard" ) );
+            CHECK( duplicate_checked == ( mode != "keyboard" ) );
+            send_world = true;
+            u.set_moves( 100 );
+            CHECK_FALSE( g->do_turn() );
+            CHECK( world_seen );
+            CHECK( active_semantic_surface_manager() == &outer );
+            CHECK( manager.stack().empty() );
+            CHECK_FALSE( manager.has_pending_request() );
+            if( close_request ) {
+                CHECK( std::any_of( receipts.begin(), receipts.end(), []( const semantic_action_receipt &r ) {
+                    return r.request_id == "close-after-return" && !r.accepted && r.rejection_reason == "wrong_surface";
+                } ) );
+            }
+            // Native World dispatch happened; its successor-bound receipt needs
+            // a subsequent ordinary frame, not a synthetic fixture publication.
+            CHECK( world_consumed );
+        } else {
+            CHECK( u.activity.moves_left == activity_moves );
+            CHECK( u.activity.is_distraction_ignored( distraction_type::noise ) == ( mode == "ignore" ) );
+        }
+    }
 }
 
 #endif
