@@ -278,9 +278,8 @@ class SemanticStepChannelTest(unittest.TestCase):
             run_dir.mkdir()
             event = self.frame("frame-current", "world", {"world.wait": "|"}, 100)
             prefix = "activity query output omitted from semantic copy\n"
-            source.write_text(
-                prefix + "openclaw_harness_semantic_step: " + json.dumps(event) + "\n",
-                encoding="utf-8",
+            source.write_bytes(
+                (prefix + "openclaw_harness_semantic_step: " + json.dumps(event) + "\n").encode("utf-8")
             )
 
             with patch("startup_harness.semantic_step_source_trace", return_value=source):
