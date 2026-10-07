@@ -1987,14 +1987,67 @@ static std::string camp_map_lead_payload_diff( const camp_map_lead &lhs,
     return out.str().empty() ? " none" : out.str();
 }
 
+// Once acquisition starts, preserve even a malformed identity for strict
+// validation. Normalization must not heal a wrong pin by rebinding its revision.
+bool structural_watch_has_started( const bandit_live_world::active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie &&
+           outing.assessment.observation_started_minutes >= 0;
+}
+
 // A completed watch still owns the revision it actually observed while it
 // returns and reports. New camp knowledge may advance the lead, not this receipt.
 bool watch_revision_is_pinned( const bandit_live_world::active_outing_state &outing )
 {
-    return outing.kind == outing_kind::structural_sortie &&
-           outing.assessment.observation_started_minutes >= 0 &&
+    return structural_watch_has_started( outing ) &&
            outing.target_lead_revision > 0 &&
            outing.assessment.pinned_target_revision == outing.target_lead_revision;
+}
+
+// Home knowledge can refresh while the pair owns an unconsumed watch. The
+// producer's stable ID binds its site, source class and target geometry; the
+// watch's revision still binds every private observation and returned receipt.
+bool structural_watch_lead_is_current( const bandit_live_world::site_record &site,
+        const bandit_live_world::active_outing_state &outing,
+        const bandit_live_world::camp_map_lead &lead )
+{
+    if( lead.lead_id != outing.target_lead_id || outing.target_id != lead.lead_id ||
+        lead.omt != outing.target_omt || lead.status == camp_lead_status::invalidated ||
+        ( structural_watch_has_started( outing ) && !watch_revision_is_pinned( outing ) ) ) {
+        return false;
+    }
+    if( lead.revision == outing.target_lead_revision ) {
+        return true;
+    }
+    if( !watch_revision_is_pinned( outing ) || outing.schema_version < 8 ||
+        lead.revision < outing.target_lead_revision || lead.first_seen_minutes < 0 ||
+        lead.first_seen_minutes > outing.started_minutes ||
+        lead.last_seen_minutes < lead.first_seen_minutes ||
+        outing.camp_id != site.site_id || outing.target_footprint.empty() ) {
+        return false;
+    }
+    if( lead.kind == camp_lead_kind::structural_bounty ) {
+        return lead.origin == camp_lead_origin::structural_routine &&
+               lead.lead_id == bandit_live_world::make_structural_bounty_lead_id(
+                   site.site_id, lead.omt, lead.target_id ) &&
+               lead.source_key.rfind( "structural_bounty:" + lead.target_id + ":terrain_fit:", 0 ) == 0;
+    }
+    if( lead.kind == camp_lead_kind::terrain_opportunity ) {
+        return lead.origin == camp_lead_origin::structural_routine &&
+               lead.lead_id == bandit_live_world::make_terrain_opportunity_lead_id(
+                   site.site_id, lead.omt, lead.target_id ) &&
+               lead.source_key == "terrain_opportunity:terrain_fit:" + lead.target_id;
+    }
+    if( !returned_structural_signal_lead( lead ) ||
+        lead.lead_id != camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt ) ) {
+        return false;
+    }
+    // These are the two existing physical signal producers. Their source key
+    // is derived from the same source identity, never from the newest sample.
+    return ( lead.origin == camp_lead_origin::signal &&
+             lead.source_key == "camp-signal:" + lead.target_id ) ||
+           ( lead.origin == camp_lead_origin::returned_report &&
+             lead.source_key == "structural-signal:" + lead.target_id );
 }
 
 bool watch_revision_is_pinned( const bandit_live_world::scout_report_record &report )
@@ -2045,7 +2098,7 @@ void update_target_lead_reference( bandit_live_world::active_outing_state &outin
 {
     if( outing.target_lead_id == lead_id &&
         ( outing.target_lead_revision == old_revision || outing.target_lead_revision <= 0 ) ) {
-        if( watch_revision_is_pinned( outing ) ) {
+        if( structural_watch_has_started( outing ) ) {
             return;
         }
         outing.target_lead_revision = new_revision;
@@ -7737,7 +7790,7 @@ static void resolve_camp_lead_reference( Reference &reference,
 
 void normalize_camp_intelligence( site_record &site )
 {
-    const bool pinned_outing = watch_revision_is_pinned( site.active_outing );
+    const bool pinned_outing = structural_watch_has_started( site.active_outing );
     const bool pinned_hostile = hostile_watch_revision_is_pinned( site );
     const bool pinned_report = watch_revision_is_pinned( site.current_scout_report );
     const bool pinned_decision = pinned_report &&
@@ -10329,7 +10382,7 @@ void site_record::deserialize( const JsonObject &jo,
             ( returned_structural_signal_lead( *structural_lead ) &&
               active_outing.job_type == "scout" ) ||
             ( structural_frontier_sector && active_outing.job_type == "scout" ) ) &&
-          structural_lead->omt == active_outing.target_omt &&
+          structural_watch_lead_is_current( *this, active_outing, *structural_lead ) &&
           structural_route_is_canonical_for_outing( active_outing, anchor,
                   *structural_lead ) &&
           structural_expected_return_is_consistent( active_outing, anchor ) &&
@@ -16588,7 +16641,7 @@ bool make_static_structural_observer_request( const site_record &site,
         ( lead->kind != camp_lead_kind::structural_bounty &&
           lead->kind != camp_lead_kind::terrain_opportunity &&
           !returned_structural_signal_lead( *lead ) && !frontier_sector ) ||
-        lead->revision != outing.target_lead_revision ||
+        !structural_watch_lead_is_current( site, outing, *lead ) ||
         !structural_route_is_canonical_for_outing( outing, site.anchor, *lead ) ) {
         return false;
     }
@@ -17265,8 +17318,8 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     }
     const std::optional<int> revision = next_scout_report_revision( site );
     const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
-    if( !revision || lead == nullptr || lead->omt != outing.target_omt ||
-        lead->target_id.empty() ) {
+    if( !revision || lead == nullptr ||
+        !structural_watch_lead_is_current( site, outing, *lead ) || lead->target_id.empty() ) {
         return false;
     }
     const sortie_observation *player_observation = nullptr;
@@ -17494,7 +17547,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                   ( current_frontier_sector && site.active_outing.job_type == "scout" ) );
         if( current_lead_kind_is_supported &&
             ( !current_job_is_consistent ||
-              current_lead->omt != site.active_outing.target_omt ||
+              !structural_watch_lead_is_current( site, site.active_outing, *current_lead ) ||
               !structural_route_is_canonical_for_outing( site.active_outing,
                       site.anchor, *current_lead ) ||
               ( current_frontier_sector &&
