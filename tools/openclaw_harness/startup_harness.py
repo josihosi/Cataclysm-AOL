@@ -5055,6 +5055,33 @@ def read_latest_activity_query_trace(
     return latest
 
 
+def latest_semantic_source_descriptor(path: Path) -> Optional[Mapping[str, Any]]:
+    """Inspect a bounded complete suffix for the native input owner."""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as stream:
+            start = max(0, size - SEMANTIC_STEP_MAX_BYTES * 16)
+            stream.seek(start)
+            if start:
+                stream.readline()  # discard a possibly partial first record
+            latest = None
+            for raw in iter_bounded_semantic_trace_lines(
+                    stream, size, SEMANTIC_STEP_MAX_BYTES * 16):
+                marker = raw.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
+                if marker < 0:
+                    continue
+                try:
+                    event = decode_semantic_step_event(
+                        raw[marker + len(SEMANTIC_STEP_PREFIX):].strip())
+                except (ValueError, UnicodeError):
+                    continue
+                if event.get("event") == "surface_descriptor":
+                    latest = event
+            return latest
+    except OSError:
+        return None
+
+
 def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> Path:
     if run_dir is not None:
         native_trace = Path(run_dir) / "semantic.native.events.jsonl"
@@ -5089,6 +5116,25 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
                         stream.seek(max(0, native_trace.stat().st_size - 64 * 1024))
                         native_prefix = stream.read(64 * 1024)
                 if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_prefix:
+                    # The same producer mirrors descriptors to debug.log. A
+                    # historical live roll could erase its current successor
+                    # from the primary stream. Prefer that exact newer mirror,
+                    # never another run/process or an older observational frame.
+                    debug_trace = config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
+                    native_owner = latest_semantic_source_descriptor(native_trace)
+                    mirrored_owner = latest_semantic_source_descriptor(debug_trace)
+                    if native_owner and mirrored_owner and \
+                            native_owner.get("run_id") and \
+                            native_owner.get("run_id") == mirrored_owner.get("run_id") and \
+                            native_owner.get("process_instance") and \
+                            native_owner.get("process_instance") == mirrored_owner.get("process_instance"):
+                        try:
+                            newer = int(mirrored_owner["sequence"]) > int(native_owner["sequence"]) and \
+                                int(mirrored_owner["game_turn"]) >= int(native_owner["game_turn"])
+                        except (KeyError, TypeError, ValueError):
+                            newer = False
+                        if newer:
+                            return debug_trace
                     return native_trace
             except OSError:
                 pass
@@ -6014,7 +6060,7 @@ def open_cockpit_game_service(
     # frame and only its unconsumed successors, rather than re-materializing
     # the whole current-run history on every observation.  The existing cap
     # still rejects an overfull unconsumed window.
-    semantic_cursor = {"offset": trace_start_offset}
+    semantic_cursor = {"offset": trace_start_offset, "source": None}
     semantic_history: Dict[str, Any] = {}
     latest_frame: Dict[str, Mapping[str, Any]] = {}
     performance = None
@@ -6022,6 +6068,12 @@ def open_cockpit_game_service(
 
     def read_frame() -> Mapping[str, Any]:
         source = semantic_step_source_trace(profile, run_dir)
+        source_identity = str(source.resolve())
+        if semantic_cursor["source"] not in {None, source_identity}:
+            # Byte cursors belong to one physical producer file. The mirrored
+            # descriptor keeps its native identity, never the other file's offset.
+            semantic_cursor["offset"] = 0
+        semantic_cursor["source"] = source_identity
         cursor = semantic_step_effective_source_offset(
             source, int(semantic_cursor["offset"]),
         )

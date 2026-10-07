@@ -2190,5 +2190,76 @@ class SemanticStepChannelTest(unittest.TestCase):
             self.assertEqual(read_offsets, [0, 300])
 
 
+
+class SemanticSourceMirrorTest(unittest.TestCase):
+    def test_same_observer_keeps_identity_when_source_cursor_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            config = run / "config"
+            config.mkdir()
+            native = run / "semantic.native.events.jsonl"
+            debug = config / "debug.log"
+            def descriptor(number, kind):
+                return {"event": "surface_descriptor", "schema_version": 1,
+                        "run_id": "run", "process_instance": "process", "sequence": number,
+                        "game_turn": 100 + number, "game_minutes": number,
+                        "frame_id": f"run:frame:{number}", "surface_id": f"run:surface:{number}",
+                        "kind": kind, "breadcrumbs": [kind], "payload": {},
+                        "valid_actions": [{"id": "activity.pause" if kind == "activity_wait" else "world.wait",
+                                           "stable_id": "", "label": "action", "enabled": True}]}
+            encode = lambda row: ("openclaw_harness_semantic_step: " + json.dumps(row) + "\n").encode()
+            native.write_bytes(encode({"event": "turn", "run_id": "run"}) +
+                               b"noise\n" * 25000 + encode(descriptor(10, "activity_wait")))
+            debug.write_bytes(b"")
+            with patch.object(startup_harness, "config_dir_for_profile", return_value=config), \
+                    patch.object(startup_harness, "resolve_profile_name", return_value="owned"):
+                service = startup_harness.open_cockpit_game_service(
+                    profile="owned", run_dir=run, run_id="run", trace_start_offset=0,
+                    live_session=False, cleanup_on_finish=False)
+                channel = service.live_channel
+                before = service.call({"action": "game.observe"})["result"]
+                # The fresh mirror lies below the old file's byte cursor, but
+                # its file is larger: an EOF-only cursor reset cannot recover it.
+                debug.write_bytes(encode(descriptor(11, "world")) + b"noise\n" * 35000)
+                after = service.call({"action": "game.observe"})["result"]
+                self.assertIs(service.live_channel, channel)
+                self.assertEqual(before["observation_id"], "run:frame:10")
+                self.assertEqual(after["observation_id"], "run:frame:11")
+                self.assertEqual(after["surface"]["kind"], "world")
+                self.assertIn(before["observation_id"], channel._observations)
+                self.assertIn(after["observation_id"], channel._observations)
+
+    def test_newer_same_process_native_mirror_and_refusal_controls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / "run"
+            run.mkdir()
+            config = root / "config"
+            config.mkdir()
+            native = run / "semantic.native.events.jsonl"
+            debug = config / "debug.log"
+            owner = {"event": "surface_descriptor", "run_id": "run", "process_instance": "process",
+                     "sequence": 10, "game_turn": 100, "frame_id": "run:frame:10"}
+            encode = lambda row: ("openclaw_harness_semantic_step: " + json.dumps(row) + "\n").encode()
+            native.write_bytes(encode(owner))
+            cases = [
+                ({"sequence": 11, "game_turn": 101}, debug),
+                ({"sequence": 9}, native),
+                ({"sequence": 11, "run_id": "other"}, native),
+                ({"sequence": 11, "process_instance": "other"}, native),
+                ({"sequence": 11, "game_turn": 99}, native),
+                ({"sequence": "invalid"}, native),
+            ]
+            with patch.object(startup_harness, "config_dir_for_profile", return_value=config), \
+                    patch.object(startup_harness, "resolve_profile_name", return_value="owned"):
+                for delta, expected in cases:
+                    with self.subTest(delta=delta):
+                        debug.write_bytes(encode({**owner, **delta}))
+                        self.assertEqual(startup_harness.semantic_step_source_trace("owned", run), expected)
+                debug.write_bytes(encode({**owner, "sequence": 11})[:-1])
+                self.assertEqual(startup_harness.semantic_step_source_trace("owned", run), native)
+                debug.unlink()
+                self.assertEqual(startup_harness.semantic_step_source_trace("owned", run), native)
+
 if __name__ == "__main__":
     unittest.main()
