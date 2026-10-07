@@ -16,6 +16,7 @@ extern "C" int ungetch( int );
 #include <fstream>
 #include <optional>
 #include <string>
+#include <thread>
 #include <sstream>
 #include <vector>
 
@@ -31,6 +32,7 @@ extern "C" int ungetch( int );
 #include "faction.h"
 #include "npc.h"
 #include "map_helpers.h"
+#include "map.h"
 #include "options_helpers.h"
 #include "player_helpers.h"
 #include "scores_ui.h"
@@ -38,6 +40,7 @@ extern "C" int ungetch( int );
 #include "input_context.h"
 #include <imgui/imgui.h>
 #include "main_menu.h"
+#include "loading_ui.h"
 #include "semantic_surface.h"
 #include "worldfactory.h"
 #include "json.h"
@@ -310,7 +313,10 @@ TEST_CASE( "main menu keeps a logical owner through native polling and retires r
 TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
            "[semantic_surface][scores_closeout_067]" )
 {
-    const std::string mode = GENERATE( "semantic", "keyboard", "death_chain" );
+    const std::string mode = GENERATE( "semantic", "keyboard", "death_chain", "death_no",
+                                      "watch_semantic", "watch_keyboard" );
+    const bool watching = mode == "watch_semantic" || mode == "watch_keyboard";
+    const bool death_chain = mode != "semantic" && mode != "keyboard";
     CAPTURE( mode );
     const std::string run = "scores-" + mode;
     const std::filesystem::path transport = std::filesystem::temp_directory_path() /
@@ -345,6 +351,7 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     on_out_of_scope cleanup( [&] {
         manager.set_descriptor_observer( {} );
         manager.set_receipt_observer( {} );
+        manager.set_transport_observer( {} );
         inp_mngr.set_timeout( previous_timeout );
         catacurses::endwin();
     } );
@@ -366,6 +373,35 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     semantic_surface_descriptor scores;
     std::vector<semantic_action_receipt> receipts;
     int score_publications = 0;
+    int camera_publications = 0;
+    int camera_rejections = 0;
+    bool camera_duplicate_checked = false;
+    bool camera_blocked_dispatch = false;
+    semantic_surface_descriptor camera;
+    std::optional<std::thread> camera_delivery;
+    on_out_of_scope join_camera_delivery( [&] {
+        if( camera_delivery ) {
+            camera_delivery->join();
+        }
+    } );
+    const auto camera_request = [&]( const std::string &id ) {
+        return semantic_action_request{ run, camera.surface_id, camera.frame_id, id,
+                                        "death_camera.close", std::nullopt, {} };
+    };
+    const auto reject_camera = [&]( int index ) {
+        auto request = camera_request( "camera-reject-" + std::to_string( index ) );
+        if( index == 0 ) {
+            request.run_id = "foreign-run";
+        } else if( index == 1 ) {
+            request.frame_id = "stale-frame";
+        } else if( index == 2 ) {
+            request.surface_id = "foreign-owner";
+        } else {
+            request.action_id = "world.pause";
+        }
+        REQUIRE( manager.submit_request( request ) );
+        CHECK_FALSE( manager.consume_top_request() );
+    };
     int epilogues = 0;
     int rejected = 0;
     bool duplicate_checked = false;
@@ -388,7 +424,39 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         append( request );
     };
     manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
-        if( descriptor.kind == "scores" ) {
+        if( !descriptor.breadcrumbs.empty() && descriptor.breadcrumbs.back() == "Death camera" ) {
+            ++camera_publications;
+            camera = descriptor;
+            REQUIRE( watching );
+            CHECK( descriptor.kind == "death_camera" );
+            if( descriptor.kind != "death_camera" ) {
+                // Keep the before-repair control bounded: the missing semantic
+                // capability fails, then ordinary native QUIT closes the fixture.
+                native_quit( "DEFAULTMODE" );
+                return;
+            }
+            REQUIRE( descriptor.valid_actions.size() == 1 );
+            CHECK( descriptor.valid_actions.front().id == "death_camera.close" );
+            CHECK( descriptor.payload.at( "native_owner" ) == "DEFAULTMODE" );
+            ui_manager::redraw();
+            input_context idle( "DEFAULTMODE" );
+            CHECK( idle.handle_input( 1 ) == "TIMEOUT" );
+            REQUIRE( manager.top() );
+            CHECK( manager.top()->frame_id == camera.frame_id );
+            CHECK( manager.top()->surface_id == camera.surface_id );
+            if( mode == "watch_keyboard" ) {
+                native_quit( "DEFAULTMODE" );
+            } else {
+                for( int index = 0; index < 4; ++index ) {
+                    reject_camera( index );
+                }
+                const auto request = camera_request( "camera-close" );
+                camera_delivery.emplace( [&, request] {
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+                    append( request );
+                } );
+            }
+        } else if( descriptor.kind == "scores" ) {
             ++score_publications;
             scores = descriptor;
             REQUIRE( descriptor.valid_actions.size() == 1 );
@@ -406,6 +474,9 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
             } else if( mode == "semantic" ) {
                 reject_request( 0 );
             } else {
+                if( watching ) {
+                    append( camera_request( "stale-camera-successor" ) );
+                }
                 append( close_request( "close" ) );
             }
         } else if( descriptor.kind == "terminal" ) {
@@ -418,14 +489,18 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         } else if( descriptor.kind == "prompt" ) {
             INFO( "Actual prompt: " << descriptor.payload.at( "text" ) );
             const bool diary = descriptor.payload.at( "text" ).find( "Open diary" ) != std::string::npos;
-            CHECK( ( diary || descriptor.payload.at( "text" ).find( "Really quit?" ) == 0 ) );
+            const bool watch = descriptor.payload.at( "text" ).find( "Watch the last moments" ) == 0;
+            const bool switch_character = descriptor.payload.at( "text" ).find(
+                                              "You have died.  Continue as one of your followers?" ) == 0;
+            CHECK( ( diary || watch || switch_character ||
+                     descriptor.payload.at( "text" ).find( "Really quit?" ) == 0 ) );
             const auto no = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
             [&]( const semantic_action_descriptor &action ) {
-                return action.id == "prompt.choose" && action.label == ( diary ? "NO" : "YES" );
+                return action.id == "prompt.choose" && action.label == ( diary || switch_character || ( watch && !watching ) ? "NO" : "YES" );
             } );
             REQUIRE( no != descriptor.valid_actions.end() );
             REQUIRE( manager.submit_request( { run, descriptor.surface_id, descriptor.frame_id,
-                                               diary ? "diary-no" : "menu-yes", no->id, no->stable_id, {} } ) );
+                                               diary ? "diary-no" : switch_character ? "death-followers-no" : watch ? "watch-choice" : "menu-yes", no->id, no->stable_id, {} } ) );
         } else if( descriptor.kind == "scrollable_text" ) {
             CHECK( descriptor.payload.at( "native_owner" ) == "SCROLLABLE_TEXT" );
             const auto stack = manager.stack();
@@ -441,7 +516,7 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                 REQUIRE_FALSE( keys.empty() );
                 REQUIRE( ::ungetch( keys.front().get_first_input() ) != -1 );
             } else {
-                CHECK( mode == "death_chain" );
+                CHECK( death_chain );
                 ++epilogues;
                 if( !stale_successor_sent ) {
                     stale_successor_sent = true;
@@ -451,14 +526,37 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                           "epilogue-" + std::to_string( epilogues ), "scrollable_text.close", std::nullopt, {} } );
             }
         } else if( descriptor.kind == "main_menu" ) {
-            CHECK( mode == "death_chain" );
+            CHECK( death_chain );
             append( { run, descriptor.surface_id, descriptor.frame_id, "menu-quit",
                       "main_menu.quit", std::nullopt, {} } );
         }
     } );
+    manager.set_transport_observer( [&]( const semantic_request_transport_event &event ) {
+        if( event.event == "request_consumed" && event.request_id == "camera-close" ) {
+            camera_blocked_dispatch = true;
+            CHECK( g->uquit == QUIT_WATCH );
+            CHECK( inp_mngr.get_timeout() == 125 );
+            std::cout << "R067_CAMERA_NATIVE_CONSUME watch=" << ( g->uquit == QUIT_WATCH )
+                      << " timeout=" << inp_mngr.get_timeout() << '\n';
+        }
+    } );
     manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
         receipts.push_back( receipt );
-        if( receipt.request_id.rfind( "reject-", 0 ) == 0 ) {
+        if( receipt.request_id.rfind( "camera-reject-", 0 ) == 0 ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.consuming_surface_id == camera.surface_id );
+            ++camera_rejections;
+        } else if( receipt.request_id == "camera-close" && !camera_duplicate_checked ) {
+            camera_duplicate_checked = true;
+            CHECK( receipt.accepted );
+            // The deferred receipt is published on the actual successor,
+            // after ordinary QUIT has committed and input timeout was restored.
+            CHECK( g->uquit == QUIT_DIED );
+            CHECK_FALSE( manager.submit_request( camera_request( "camera-close" ) ) );
+        } else if( receipt.request_id == "stale-camera-successor" ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.rejection_reason == "wrong_surface" );
+        } else if( receipt.request_id.rfind( "reject-", 0 ) == 0 ) {
             CHECK_FALSE( receipt.accepted );
             CHECK( receipt.consuming_surface_id == scores.surface_id );
             CHECK( receipt.consuming_frame_id == scores.frame_id );
@@ -476,7 +574,7 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
             CHECK( receipt.rejection_reason == "wrong_surface" );
         }
     } );
-    if( mode == "death_chain" ) {
+    if( death_chain ) {
         // Catch has no running game mode.  The real save/load finalization
         // installs the ordinary mode required by death_screen's first caller.
         REQUIRE( world_generator->active_world );
@@ -501,11 +599,20 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         REQUIRE( with_epilogue );
         with_epilogue->known_by_u = true;
         override_option retain_world( "WORLD_END", "keep" );
-        override_option deathcam( "DEATHCAM", "never" );
+        override_option animations( "ANIMATIONS", "false" );
+        override_option deathcam( "DEATHCAM", mode == "death_chain" ? "never" : "ask" );
         restore_on_out_of_scope<quit_status> restore_quit( g->uquit );
 
+        const tripoint_abs_sm previous_map_origin = get_map().get_abs_sub();
         get_avatar().set_part_hp_cur( bodypart_id( "head" ), 0 );
-        REQUIRE( g->do_turn() ); // Actual death producer, last words, and cleanup chain.
+        on_out_of_scope restore_head( [&] {
+            get_avatar().set_part_hp_cur( bodypart_id( "head" ),
+                                         get_avatar().get_part_hp_max( bodypart_id( "head" ) ) );
+        } );
+        REQUIRE( g->do_turn() ); // Actual Watch choice, input, and death cleanup chain.
+        CHECK( g->uquit == QUIT_DIED );
+        CHECK( camera_publications == ( watching ? 1 : 0 ) );
+        CHECK( camera_rejections == ( mode == "watch_semantic" ? 4 : 0 ) );
         CHECK( epilogues == 2 );
         CHECK( stale_successor_sent );
         // Death cleanup unloaded the map.  Restore only the HP changed by
@@ -520,8 +627,13 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
             world->WORLD_OPTIONS = world_options;
             world->active_mod_order = world_mods;
             world_generator->set_active_world( world );
-            g->load_world_modfiles();
+            // Restore the whole unloaded test world, including tracker/map
+            // ownership, before another generator saves. The dead save itself
+            // was moved to the graveyard by the real cleanup chain.
+            g->setup();
             restore_avatar_snapshot( previous_avatar );
+            g->load_map( previous_map_origin );
+            loading_ui::done();
         } );
         main_menu menu;
         CHECK_FALSE( menu.opening_screen() );
@@ -540,6 +652,9 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         }
     }
     CHECK( score_publications == 1 );
+    CHECK( camera_publications == ( watching ? 1 : 0 ) );
+    CHECK( camera_duplicate_checked == ( mode == "watch_semantic" ) );
+    CHECK( camera_blocked_dispatch == ( mode == "watch_semantic" ) );
     CHECK( manager.stack().empty() );
     CHECK_FALSE( manager.has_pending_request() );
     CHECK( rejected == ( mode == "semantic" ? 4 : 0 ) );
