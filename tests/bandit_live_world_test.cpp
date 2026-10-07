@@ -47556,11 +47556,181 @@ TEST_CASE( "actual shouted contact records once only for selected opt in identit
         CHECK_FALSE( row.get_bool( "receiver_is_avatar" ) );
         CHECK( row.get_bool( "audible_shout" ) );
         CHECK( row.get_int( "game_turn" ) == turn );
+        CHECK( row.get_int( "emitted_turn" ) == scene.site().active_hostile_operation.shakedown_demand_emitted_turn );
+        CHECK( row.get_int( "emitted_volume" ) == scene.site().active_hostile_operation.shakedown_demand_volume );
+        tripoint_abs_ms speaker_current, avatar_current, receiver_current;
+        row.read( "speaker_current_ms", speaker_current );
+        row.read( "avatar_current_ms", avatar_current );
+        row.read( "receiver_current_ms", receiver_current );
+        CHECK( speaker_current == scene.collector->pos_abs() );
+        CHECK( avatar_current == get_avatar().pos_abs() );
+        CHECK( receiver_current == receiver.pos_abs() );
         std::cout << "R066_CONTACT " << line << '\n';
     }
     CHECK( contacts == ( captured ? 1 : 0 ) );
     CHECK( scene.collector->attitude_to( receiver ) == Creature::Attitude::NEUTRAL );
     CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
+}
+
+TEST_CASE( "robbery delivery trace uses actual native operands without changing delivery",
+           "[bandit_live_world][delivery_trace_067]" )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const std::string mode = GENERATE( std::string( "heard" ), std::string( "avatar_preferred" ),
+                                      std::string( "deaf" ), std::string( "unheard" ),
+                                      std::string( "vertical" ), std::string( "narcosis" ),
+                                      std::string( "collapse" ), std::string( "inactive" ),
+                                      std::string( "dead" ) );
+    INFO( mode );
+    const std::array<const char *, 8> names = {{
+            "OPENCLAW_HARNESS_RAID_ACTOR_TRACE", "OPENCLAW_HARNESS_RUN_ID",
+            "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH",
+            "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS",
+            "OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN", "OPENCLAW_HARNESS_DECISION_TRACE_TO_TURN"
+        }};
+    std::array<std::optional<std::string>, 8> previous;
+    for( size_t i = 0; i < names.size(); ++i ) {
+        if( const char *value = std::getenv( names[i] ) ) { previous[i] = value; }
+    }
+    const auto path = std::filesystem::temp_directory_path() / "caol-r067-delivery.jsonl";
+    on_out_of_scope restore( [=]() {
+        for( size_t i = 0; i < names.size(); ++i ) {
+            if( previous[i] ) { setenv( names[i], previous[i]->c_str(), 1 ); }
+            else { unsetenv( names[i] ); }
+        }
+        std::filesystem::remove( path );
+    } );
+    r066_visit_scene scene;
+    npc &receiver = scene.camp_receiver();
+    if( mode != "avatar_preferred" ) { scene.distant_adjacent_avatar(); }
+    receiver.set_sleepiness( 0 );
+    receiver.fall_asleep( 1_hours );
+    if( mode == "deaf" ) { receiver.add_effect( efftype_id( "deaf" ), 1_hours ); }
+    if( mode == "unheard" ) { receiver.setpos( get_avatar().pos_abs(), false ); }
+    if( mode == "vertical" ) {
+        auto below = receiver.pos_abs(); below.z() = -2;
+        receiver.setpos( below, false );
+        REQUIRE( get_map().inbounds( receiver.pos_bub() ) );
+    }
+    if( mode == "narcosis" ) { receiver.add_effect( efftype_id( "narcosis" ), 1_hours ); }
+    if( mode == "collapse" ) { receiver.fall_asleep_involuntarily( 1_hours ); }
+    const std::string run = "r067-delivery-" + mode;
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    for( size_t i : { size_t( 0 ), size_t( 1 ), size_t( 2 ) } ) { setenv( names[i], run.c_str(), 1 ); }
+    setenv( names[3], path.string().c_str(), 1 );
+    setenv( names[4], "r067-delivery", 1 );
+    setenv( names[5], std::to_string( scene.collector->getID().get_value() ).c_str(), 1 );
+    setenv( names[6], std::to_string( turn ).c_str(), 1 );
+    unsetenv( names[7] );
+    std::filesystem::remove( path );
+    sounds::reset_sounds();
+    REQUIRE_FALSE( establish_bandit_shakedown_communication_for_test( scene.site() ) );
+    REQUIRE( sounds::get_monster_sounds().first.size() == 1 );
+    const auto &operation = scene.site().active_hostile_operation;
+    const sounds::robbery_demand demand{ scene.site().site_id, operation.reservation.activity_id,
+                                        operation.reservation.generation, operation.shakedown_demand_speaker_id,
+                                        operation.shakedown_demand_emitted_turn };
+    const int volume = operation.shakedown_demand_volume;
+    const auto source = scene.collector->pos_bub();
+    const auto emission_source = scene.collector->pos_abs();
+    if( mode == "inactive" ) { g->remove_npc( receiver.getID() ); }
+    if( mode == "dead" ) { receiver.set_part_hp_cur( bodypart_id( "head" ), 0 ); }
+
+    // The actual DebugLog ostream is intentionally separate from the bound
+    // recorder file. Capturing stderr would not capture this native JSONL row.
+    std::ostringstream capture;
+    std::ostream &log_output = DebugLog( D_INFO, DC_ALL );
+    auto *previous_buffer = log_output.rdbuf( capture.rdbuf() );
+    on_out_of_scope restore_log( [&] { log_output.rdbuf( previous_buffer ); } );
+    if( mode == "heard" ) {
+        const auto actor_before = r054_actor_bytes( receiver );
+        const auto world_before = overmap_buffer.global_state.bandit_live_world;
+        const auto engine_before = rng_get_engine();
+        unsetenv( names[0] );
+        sounds::process_sound_markers( &receiver );
+        const auto actor_after = r054_actor_bytes( receiver );
+        const auto world_after = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        const auto engine_after = rng_get_engine();
+        const std::string off_output = capture.str();
+        // Native wake changes this ordinary sleep episode's duration. Restore
+        // that controlled effect in place: deserialize also initializes items,
+        // temperatures and EOCs, so it is not an equivalent delivery baseline.
+        receiver.get_effect( efftype_id( "sleep" ) ).set_duration( 1_hours );
+        receiver.recalc_sight_limits();
+        REQUIRE( r054_actor_bytes( receiver ) == actor_before );
+        overmap_buffer.global_state.bandit_live_world = world_before;
+        rng_get_engine() = engine_before;
+        sounds::reset_sounds();
+        capture.str( "" ); capture.clear();
+        setenv( names[0], run.c_str(), 1 );
+        sounds::sound( source, volume, sounds::sound_t::alert,
+                       "We want payment. Pay us, or fight!", demand, "", "" );
+        sounds::process_sound_markers( &receiver );
+        CHECK( r054_actor_bytes( receiver ) == actor_after );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == world_after );
+        CHECK( rng_get_engine() == engine_after );
+        CHECK( capture.str() == off_output );
+        CHECK( to_turns<int>( calendar::turn - calendar::turn_zero ) == turn );
+    } else {
+        sounds::process_sound_markers( &receiver );
+    }
+    if( mode == "avatar_preferred" ) {
+        REQUIRE( scene.site().active_hostile_operation.shakedown_receiver_id == receiver.getID() );
+        sounds::process_sound_markers( &get_avatar() );
+        CHECK( scene.site().active_hostile_operation.shakedown_receiver_id == get_avatar().getID() );
+    }
+    std::ifstream input( path );
+    std::string line;
+    int deliveries = 0;
+    int emissions = 0;
+    while( std::getline( input, line ) ) {
+        auto row = json_loader::from_string( line ).get_object();
+        row.allow_omitted_members();
+        if( row.get_string( "event" ) == "bandit_shakedown_emission" ) {
+            ++emissions;
+            tripoint_abs_ms recorded;
+            row.read( "emission_source_ms", recorded );
+            CHECK( recorded == emission_source );
+            CHECK( row.get_int( "emitted_volume" ) == volume );
+            continue;
+        }
+        if( row.get_string( "event" ) != "bandit_shakedown_delivery" ||
+            row.get_int( "hearer_id" ) != receiver.getID().get_value() ) { continue; }
+        ++deliveries;
+        CHECK( row.get_string( "run_id" ) == run );
+        CHECK( row.get_string( "operation_id" ) == demand.operation_id );
+        CHECK( row.get_string( "site_id" ) == demand.site_id );
+        CHECK( row.get_int( "generation" ) == demand.generation );
+        CHECK( row.get_int( "speaker_id" ) == demand.speaker_id.get_value() );
+        CHECK( row.get_int( "emitted_turn" ) == demand.emitted_turn );
+        CHECK( row.get_int( "game_turn" ) == turn );
+        tripoint_abs_ms recorded_source, recorded_hearer;
+        row.read( "delivery_source_ms", recorded_source ); row.read( "hearer_ms", recorded_hearer );
+        CHECK( recorded_source == emission_source );
+        CHECK( recorded_hearer == receiver.pos_abs() );
+        CHECK( row.get_int( "raw_volume" ) == volume );
+        // Native is_deaf includes narcosis: its first rejection precedes
+        // the later forced-incapacity guard and heard-volume computation.
+        const std::string reason = mode == "deaf" || mode == "narcosis" ? "deaf" :
+                                   mode == "unheard" || mode == "vertical" ? "inaudible" :
+                                   mode == "collapse" ? "involuntary_sleep" :
+                                   mode == "inactive" ? "inactive_hearer" :
+                                   mode == "dead" ? "dead_hearer" : "heard";
+        CHECK( row.get_string( "delivery_result" ) == reason );
+        CHECK( row.get_bool( "encounter_callback_invoked" ) == ( reason == "heard" ) );
+        std::optional<int> distance, heard;
+        row.read( "sound_distance", distance ); row.read( "heard_volume", heard );
+        CHECK( distance.has_value() == ( mode != "inactive" && mode != "dead" ) );
+        CHECK( heard.has_value() == ( mode != "inactive" && mode != "dead" && mode != "deaf" && mode != "narcosis" ) );
+        if( heard ) {
+            CHECK( *heard == static_cast<int>( ( row.get_int( "raw_volume" ) -
+                    row.get_int( "weather_attenuation" ) ) * row.get_float( "hearing_multiplier" ) ) - *distance );
+        }
+        std::cout << "R067_DELIVERY " << line << '\n';
+    }
+    CHECK( emissions == ( mode == "heard" ? 2 : 1 ) );
+    CHECK( deliveries == 1 );
+    CHECK( capture.str().find( "bandit_shakedown_delivery" ) == std::string::npos );
 }
 
 TEST_CASE( "paid departure retains each actual survivor flight and forced incapacity",

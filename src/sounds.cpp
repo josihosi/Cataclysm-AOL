@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -25,6 +26,7 @@
 #include "game_constants.h"
 #include "itype.h" // IWYU pragma: keep
 #include "line.h"
+#include "json.h"
 #include "map.h"
 #include "map_iterator.h"
 #include "messages.h"
@@ -36,6 +38,7 @@
 #include "player_activity.h"
 #include "point.h"
 #include "rng.h"
+#include "raid_decision_trace.h"
 #include "safemode_ui.h"
 #include "string_formatter.h"
 #include "translations.h"
@@ -446,6 +449,25 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     sound( p, vol, category, description, false, id, variant );
     if( vol > 0 ) {
         sounds_since_last_turn.back().second.robbery = demand;
+        const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+        const auto scope = raid_decision_trace::environment_selected_npcs();
+        if( scope.includes_turn( turn ) && scope.includes( demand.speaker_id.get_value() ) ) {
+            std::ostringstream stream;
+            JsonOut json( stream );
+            json.start_object();
+            json.member( "trace_group_id", scope.group_id );
+            json.member( "site_id", demand.site_id );
+            json.member( "operation_id", demand.operation_id );
+            json.member( "generation", demand.generation );
+            json.member( "speaker_id", demand.speaker_id.get_value() );
+            json.member( "emitted_turn", demand.emitted_turn );
+            json.member( "emission_source_ms", get_map().get_abs( p ) );
+            json.member( "emitted_volume", vol );
+            json.end_object();
+            const std::string payload = stream.str();
+            raid_decision_trace::native_recorder().record_edge( "bandit_shakedown_emission", turn,
+                    payload.substr( 1, payload.size() - 2 ) );
+        }
     }
 }
 
@@ -714,10 +736,56 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
         if( robbery_only && !sound.robbery ) {
             continue;
         }
-        if( sound.robbery && ( you->is_dead_state() || !here.inbounds( pos ) ||
-                              !here.inbounds( you->pos_bub() ) ||
-                              ( you->is_npc() && !you->as_npc()->is_active() ) ) ) {
-            continue;
+        // This row observes the real queued event and this delivery pass, not a
+        // later can_hear recheck or the speaker's current contact position.
+        const auto record_robbery_delivery = [&]( const char *reason,
+        const std::optional<int> distance = std::nullopt,
+        const std::optional<int> heard = std::nullopt ) {
+            if( !sound.robbery ) { return; }
+            const auto &demand = *sound.robbery;
+            const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+            const auto scope = raid_decision_trace::environment_selected_npcs();
+            if( !scope.includes_turn( turn ) ||
+                !( scope.includes( demand.speaker_id.get_value() ) ||
+                   scope.includes( you->getID().get_value() ) ) ) { return; }
+            std::ostringstream stream;
+            JsonOut json( stream );
+            json.start_object();
+            json.member( "trace_group_id", scope.group_id );
+            json.member( "site_id", demand.site_id );
+            json.member( "operation_id", demand.operation_id );
+            json.member( "generation", demand.generation );
+            json.member( "speaker_id", demand.speaker_id.get_value() );
+            json.member( "emitted_turn", demand.emitted_turn );
+            json.member( "hearer_id", you->getID().get_value() );
+            json.member( "hearer_is_avatar", you->is_avatar() );
+            // Bubble coordinates belong to the actual queued event. Absolute
+            // conversion uses the delivery map; enqueue records emission separately.
+            json.member( "queued_source_bub", pos );
+            json.member( "delivery_source_ms", here.get_abs( pos ) );
+            json.member( "hearer_ms", you->pos_abs() );
+            json.member( "raw_volume", sound.volume );
+            json.member( "weather_attenuation", weather_vol );
+            json.member( "hearing_multiplier", volume_multiplier );
+            json.member( "deaf_at_branch", is_deaf );
+            json.member( "sound_distance", distance );
+            json.member( "heard_volume", heard );
+            json.member( "delivery_result", reason );
+            json.member( "encounter_callback_invoked", std::string_view( reason ) == "heard" );
+            json.end_object();
+            const std::string payload = stream.str();
+            raid_decision_trace::native_recorder().record_edge( "bandit_shakedown_delivery", turn,
+                    payload.substr( 1, payload.size() - 2 ) );
+        };
+        if( sound.robbery ) {
+            const char *rejection = you->is_dead_state() ? "dead_hearer" :
+                                    !here.inbounds( pos ) ? "source_outside_map" :
+                                    !here.inbounds( you->pos_bub() ) ? "hearer_outside_map" :
+                                    ( you->is_npc() && !you->as_npc()->is_active() ) ? "inactive_hearer" : nullptr;
+            if( rejection != nullptr ) {
+                record_robbery_delivery( rejection );
+                continue;
+            }
         }
         const int distance_to_sound = sound_distance( you->pos_bub(), pos );
         const int raw_volume = sound.volume;
@@ -745,6 +813,7 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
                     }
                 }
             }
+            record_robbery_delivery( "deaf", distance_to_sound );
             continue;
         }
 
@@ -753,6 +822,7 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
             you->add_effect( effect_deaf, deafness_duration );
             if( you->is_deaf() && !is_deaf ) {
                 is_deaf = true;
+                record_robbery_delivery( "deafened_by_sound", distance_to_sound );
                 continue;
             }
         }
@@ -762,6 +832,7 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
                                  volume_multiplier, distance_to_sound );
 
         if( heard_volume <= 0 && pos != you->pos_bub() ) {
+            record_robbery_delivery( "inaudible", distance_to_sound, heard_volume );
             continue;
         }
 
@@ -795,9 +866,12 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
         // forced episodes intact and let the normal effect/scheduler pass
         // expire wake_up's zero-duration sleep before admitting a receiver.
         if( sound.robbery ) {
-            if( you->has_effect( effect_narcosis ) ||
-                you->has_effect( efftype_id( "npc_suspend" ) ) ||
-                you->has_bionic( bio_sleep_shutdown ) || you->is_involuntarily_asleep() ) {
+            const char *rejection = you->has_effect( effect_narcosis ) ? "narcosis" :
+                                    you->has_effect( efftype_id( "npc_suspend" ) ) ? "npc_suspend" :
+                                    you->has_bionic( bio_sleep_shutdown ) ? "sleep_shutdown" :
+                                    you->is_involuntarily_asleep() ? "involuntary_sleep" : nullptr;
+            if( rejection != nullptr ) {
+                record_robbery_delivery( rejection, distance_to_sound, heard_volume );
                 continue;
             }
             if( you->in_sleep_state() ) {
@@ -810,6 +884,9 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
                 }
             }
             hear_bandit_shakedown_demand( *sound.robbery, *you );
+            // The encounter callback can still reject identity or eligibility.
+            // Heard is not a claim that this character became the receiver.
+            record_robbery_delivery( "heard", distance_to_sound, heard_volume );
         }
         // Demand waking does not fall through to the generic heavy-sleeper roll.
         if( you->in_sleep_state() && !sound.robbery ) {
