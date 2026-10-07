@@ -4713,15 +4713,27 @@ bool live_bandit_establish_shakedown_communication( bandit_live_world::site_reco
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
     if( scope.includes_turn( turn ) &&
         ( scope.includes( speaker->getID().get_value() ) || scope.includes( receiver->getID().get_value() ) ) ) {
+        std::ostringstream stream;
+        JsonOut json( stream );
+        json.start_object();
+        json.member( "trace_group_id", scope.group_id );
+        json.member( "operation_id", committed_contact.reservation.activity_id );
+        json.member( "generation", committed_contact.reservation.generation );
+        json.member( "site_id", site.site_id );
+        json.member( "speaker_id", speaker->getID().get_value() );
+        json.member( "receiver_id", receiver->getID().get_value() );
+        json.member( "receiver_is_avatar", receiver->is_avatar() );
+        json.member( "audible_shout", true );
+        json.member( "unseen_receiver", by_shout );
+        json.member( "emitted_turn", committed_contact.shakedown_demand_emitted_turn );
+        json.member( "emitted_volume", committed_contact.shakedown_demand_volume );
+        json.member( "speaker_current_ms", speaker->pos_abs() );
+        json.member( "avatar_current_ms", get_avatar().pos_abs() );
+        json.member( "receiver_current_ms", receiver->pos_abs() );
+        json.end_object();
+        const std::string payload = stream.str();
         raid_decision_trace::native_recorder().record_edge( "bandit_shakedown_contact", turn,
-                "\"trace_group_id\":" + raid_decision_trace::quote( scope.group_id ) +
-                ",\"operation_id\":" + raid_decision_trace::quote( committed_contact.reservation.activity_id ) +
-                ",\"generation\":" + std::to_string( committed_contact.reservation.generation ) +
-                ",\"site_id\":" + raid_decision_trace::quote( site.site_id ) +
-                ",\"speaker_id\":" + std::to_string( speaker->getID().get_value() ) +
-                ",\"receiver_id\":" + std::to_string( receiver->getID().get_value() ) +
-                ",\"receiver_is_avatar\":" + ( receiver->is_avatar() ? "true" : "false" ) +
-                ",\"audible_shout\":true,\"unseen_receiver\":" + ( by_shout ? "true" : "false" ) );
+                payload.substr( 1, payload.size() - 2 ) );
     }
     return true;
 }
