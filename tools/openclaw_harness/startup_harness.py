@@ -5297,11 +5297,12 @@ def compact_current_surface_descriptor_payload(event: Mapping[str, Any]) -> Dict
 
 def refresh_semantic_step_trace(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
-    event_filter: Optional[Set[str]] = None,
+    event_filter: Optional[Set[str]] = None, source_trace: Optional[Path] = None,
 ) -> tuple[Path, Path]:
     """Copy only the current run's bounded native trace into its owned artifact."""
     run_dir = Path(run_dir).resolve()
-    source = semantic_step_source_trace(profile, run_dir).resolve()
+    source = (source_trace if source_trace is not None else
+              semantic_step_source_trace(profile, run_dir)).resolve()
     size = source.stat().st_size
     if start_offset < 0 or start_offset > size:
         # The game can truncate debug.log after the startup readiness sample,
@@ -5343,6 +5344,7 @@ def refresh_semantic_step_trace(
             # and splitting the complete source log to rediscover one frame.
             event["_source_offset"] = handle.tell() - len(raw_line) + marker_offset
             event["_source_end"] = handle.tell()
+            event["_source_path"] = str(source)
             # Legacy duration selections publish a semantic ``receipt`` and
             # then an actionless wait_activity frame.  The bounded suffix can
             # otherwise evict that only correlation record before the adapter
@@ -5635,10 +5637,12 @@ def semantic_step_frame_source_offset(
 def current_semantic_step_frame(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
     history: Optional[MutableMapping[str, Any]] = None,
+    source_trace: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Return the newest native wait or activity-query frame for adaptive play."""
     source, owned = refresh_semantic_step_trace(
         profile=profile, run_dir=run_dir, run_id=run_id, start_offset=start_offset,
+        source_trace=source_trace,
     )
     effective_source_offset = semantic_step_effective_source_offset(source, start_offset)
     events, status = read_semantic_step_trace(owned, Path(run_dir), run_id)
@@ -5758,7 +5762,7 @@ def current_semantic_step_frame(
             complete_events, complete_status = context_events, "ok"
         else:
             _, complete_owned = refresh_semantic_step_trace(
-                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0, source_trace=source,
             )
             complete_events, complete_status = read_semantic_step_trace(
                 complete_owned, Path(run_dir), run_id)
@@ -5824,7 +5828,7 @@ def current_semantic_step_frame(
             complete_events, complete_status = context_events, "ok"
         else:
             _, complete_owned = refresh_semantic_step_trace(
-                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0, source_trace=source,
             )
             complete_events, complete_status = read_semantic_step_trace(
                 complete_owned, Path(run_dir), run_id)
@@ -5992,7 +5996,7 @@ def current_semantic_step_frame(
             else:
                 _, complete_owned = refresh_semantic_step_trace(
                                         profile=profile, run_dir=run_dir,
-                                        run_id=run_id, start_offset=0 )
+                                        run_id=run_id, start_offset=0, source_trace=source )
                 complete_events, complete_status = read_semantic_step_trace(
                                                     complete_owned, Path( run_dir ), run_id )
             if complete_status == "ok":
@@ -6080,7 +6084,7 @@ def open_cockpit_game_service(
         try:
             frame = current_semantic_step_frame(
                 profile=profile, run_dir=run_dir, run_id=run_id,
-                start_offset=cursor, history=semantic_history,
+                start_offset=cursor, history=semantic_history, source_trace=source,
             )
         except ValueError as exc:
             # A recipe may take its initial safety frame and then immediately
@@ -6098,20 +6102,13 @@ def open_cockpit_game_service(
         # synthetic descriptor-required error.
         if frame.get("event") != "surface_descriptor" and latest_frame:
             return dict(latest_frame["value"])
-        frame_offset = frame.get("_event_offset")
-        if isinstance(frame_offset, int) and frame_offset >= 0:
-            # ``current_semantic_step_frame`` locates a frame at the byte that
-            # starts its marker.  Resume after the complete native log line:
-            # starting within the marker would make the trace reader discard
-            # the partial line, while restarting at the marker rematerializes
-            # the consumed frame and hides its successor.
-            try:
-                with source.open("rb") as source_file:
-                    source_file.seek(frame_offset)
-                    semantic_cursor["offset"] = frame_offset + len(source_file.readline())
-            except OSError:
-                semantic_cursor["offset"] = frame_offset + 1
+        frame_end = frame.get("_source_end")
+        if frame.get("_source_path") == source_identity and isinstance(frame_end, int):
+            semantic_cursor["offset"] = frame_end
         else:
+            # Legacy projections have no physical coordinate identity. Retain
+            # the current cursor rather than applying their offset to a file
+            # selected after the observation.
             semantic_cursor["offset"] = cursor
         latest_frame["value"] = dict(frame)
         return frame
@@ -6156,6 +6153,7 @@ def open_cockpit_game_service(
                     trace_start_offset=int(frame.get(
                         "dispatch_descriptor_event_offset", semantic_cursor["offset"]
                     )), pid=pid, session_id=session_id,
+                    trace_source=Path(semantic_cursor["source"]) if semantic_cursor["source"] else None,
                     frame_id=str(frame.get("frame_id", "")), action_id=action_id,
                     transition_timeout_seconds=transition_timeout_seconds,
                     observe_interval_seconds=observe_interval_seconds, observed_frame=frame,
@@ -6174,15 +6172,14 @@ def open_cockpit_game_service(
                 # later empty trace window cannot fall back to the consumed
                 # parent descriptor.
                 latest_frame["value"] = dict(successor)
-                successor_offset = successor.get("_event_offset")
-                if isinstance(successor_offset, int) and successor_offset >= 0:
-                    source = semantic_step_source_trace(profile, run_dir)
-                    try:
-                        with source.open("rb") as source_file:
-                            source_file.seek(successor_offset)
-                            semantic_cursor["offset"] = successor_offset + len(source_file.readline())
-                    except OSError:
-                        semantic_cursor["offset"] = successor_offset + 1
+                successor_source = successor.get("_source_path")
+                successor_end = successor.get("_source_end")
+                if isinstance(successor_source, str) and successor_source and \
+                        isinstance(successor_end, int) and successor_end >= 0:
+                    # The accepted successor carries coordinates in the file
+                    # that produced it. Do not reselect the mirror and seek a
+                    # native offset into that different physical stream.
+                    semantic_cursor.update(source=successor_source, offset=successor_end)
             return outcome
 
     player_fire_setup = None
@@ -6832,6 +6829,7 @@ def execute_semantic_act(
     pid: int, session_id: str, frame_id: str, action_id: str,
     transition_timeout_seconds: float, observe_interval_seconds: float,
     observed_frame: Optional[Mapping[str, Any]] = None,
+    trace_source: Optional[Path] = None,
     stable_id: Optional[str] = None,
     parameters: Optional[Mapping[str, str]] = None,
     delay_ms: int = 200,
@@ -6873,15 +6871,28 @@ def execute_semantic_act(
     # One dispatch can poll several times before its receipt and successor
     # arrive.  Keep its source cursor and correlation window local to this
     # transaction rather than replaying the run from its launch cursor.
-    transaction_cursor: Dict[str, int] = {"offset": trace_start_offset}
+    transaction_cursor: Dict[str, Any] = {
+        "offset": trace_start_offset,
+        "source": (observed_frame.get("_source_path") if observed_frame is not None else None)
+        or (str(trace_source.resolve()) if trace_source is not None else None),
+    }
+
+    def transaction_source() -> Path:
+        source = semantic_step_source_trace(profile, run_dir).resolve()
+        identity = str(source)
+        if transaction_cursor["source"] != identity:
+            transaction_cursor["offset"] = 0
+        transaction_cursor["source"] = identity
+        return source
     transaction_history: Dict[str, Any] = {}
     transaction_events: deque[Dict[str, Any]] = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
 
     def consume_transaction_trace() -> tuple[Path, list[Dict[str, Any]], str]:
-        source = semantic_step_source_trace(profile, run_dir)
+        source = transaction_source()
         cursor = semantic_step_effective_source_offset(source, transaction_cursor["offset"])
         source, owned = refresh_semantic_step_trace(
             profile=profile, run_dir=run_dir, run_id=run_id, start_offset=cursor,
+            source_trace=source,
         )
         delta, status = read_semantic_step_trace(owned, run_dir, run_id)
         if status != "ok":
@@ -6913,11 +6924,11 @@ def execute_semantic_act(
 
     def read_frame() -> Mapping[str, Any]:
         try:
-            source = semantic_step_source_trace(profile, run_dir)
+            source = transaction_source()
             cursor = semantic_step_effective_source_offset(source, transaction_cursor["offset"])
             frame = current_semantic_step_frame(
                 profile=profile, run_dir=run_dir, run_id=run_id,
-                start_offset=cursor, history=transaction_history,
+                start_offset=cursor, history=transaction_history, source_trace=source,
             )
         except ValueError as exc:
             # Native input can be accepted before the trace writer publishes
@@ -6928,7 +6939,8 @@ def execute_semantic_act(
                 return dict(latest_frame["value"])
             raise
         frame_end = frame.get("_source_end")
-        if isinstance(frame_end, int) and frame_end > transaction_cursor["offset"]:
+        if frame.get("_source_path") == str(source) and isinstance(frame_end, int) and \
+                frame_end > transaction_cursor["offset"]:
             transaction_cursor["offset"] = frame_end
         latest_frame["value"] = dict(frame)
         return frame
