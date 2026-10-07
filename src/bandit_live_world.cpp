@@ -24471,7 +24471,8 @@ bool terminal_hostile_shakedown_aftermath_was_applied( const site_record &site,
 }
 
 bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
-        const std::string &expected_activity_id, const int expected_generation )
+        const std::string &expected_activity_id, const int expected_generation,
+        const hostile_target_opportunity_record &consumed_opportunity )
 {
     hostile_operation_state &operation = site.active_hostile_operation;
     active_outing_state &reservation = operation.reservation;
@@ -24494,6 +24495,18 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
             expected_activity_id, expected_generation ) ) {
         return true;
     }
+    // A completed watch and its consumed opportunity keep their observation
+    // revision while the same camp lead can receive newer physical findings.
+    // Settlement annotates that current lead; it does not dispatch from it or
+    // rebind the report/operation to its newer revision.
+    const bool pinned_consumption = hostile_watch_revision_is_pinned( site ) &&
+                                    consumed_opportunity.revision == reservation.target_lead_revision;
+    const auto matches_current_lead = [&]( const camp_map_lead *lead ) {
+        return lead != nullptr && lead->target_id == reservation.target_id &&
+               lead->omt == reservation.target_omt &&
+               ( lead->revision == reservation.target_lead_revision ||
+                 ( pinned_consumption && lead->revision > reservation.target_lead_revision ) );
+    };
     shakedown_outcome outcome;
     outcome.paid = operation.shakedown_pending_branch == "paid";
     outcome.fought = operation.shakedown_pending_branch == "fight";
@@ -24524,8 +24537,7 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
         return false;
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( reservation.target_lead_id );
-    if( lead == nullptr || lead->revision != reservation.target_lead_revision ||
-        lead->target_id != reservation.target_id || lead->omt != reservation.target_omt ) {
+    if( !matches_current_lead( lead ) ) {
         return false;
     }
     const int current_minutes = reservation.last_advanced_minutes;
@@ -24541,7 +24553,7 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
         return false;
     }
     lead = site.intelligence_map.find_lead( reservation.target_lead_id );
-    if( lead == nullptr || lead->revision != reservation.target_lead_revision ) {
+    if( !matches_current_lead( lead ) ) {
         return false;
     }
     lead->target_alert = true;
@@ -24589,7 +24601,7 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
 
     site_record site_candidate = site;
     if( !apply_terminal_hostile_shakedown_aftermath_local( site_candidate, expected_activity_id,
-            expected_generation ) ) {
+            expected_generation, *receipt ) ) {
         return false;
     }
     site = std::move( site_candidate );
