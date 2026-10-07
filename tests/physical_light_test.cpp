@@ -691,7 +691,7 @@ TEST_CASE( "production_smoke_signal_admits_cannibal_dispatch_once_and_keeps_fail
             unsetenv( "OPENCLAW_HARNESS_RUN_ID" );
         }
     } );
-    setenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", event_path.c_str(), 1 );
+    setenv( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", event_path.string().c_str(), 1 );
     setenv( "OPENCLAW_HARNESS_RUN_ID", "smoke-adapter-test", 1 );
     const auto read_transition_stream = [&event_path]() {
         std::ifstream input( event_path );

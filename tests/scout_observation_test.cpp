@@ -9,6 +9,7 @@
 #include "cata_catch.h"
 #include "cata_path.h"
 #include "json.h"
+#include "json_loader.h"
 #include "mapbuffer.h"
 #include "overmapbuffer.h"
 #include "path_info.h"
