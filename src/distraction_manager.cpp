@@ -1,6 +1,8 @@
 #include "distraction_manager.h"
 
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "color.h"
@@ -8,6 +10,7 @@
 #include "input_context.h"
 #include "output.h"
 #include "point.h"
+#include "semantic_surface.h"
 #include "translations.h"
 #include "ui_helpers.h"
 #include "ui_manager.h"
@@ -131,10 +134,39 @@ void distraction_manager_gui::show()
         wnoutrefresh( w );
     } );
 
+    // One logical owner survives redraws and input polls.  Closing follows
+    // native QUIT; configuration changes remain on the ordinary keyboard path.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    std::string semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "distraction_manager", _( "Distractions manager" ),
+        std::map<std::string, std::string>{
+            { "native_owner", "DISTRACTION_MANAGER" }, { "configuration_scope", "global" }
+        }, std::vector<semantic_action_descriptor>{
+            { "distraction_manager.close", "", _( "Close distractions manager" ), true }
+        }, [&semantic_action]( const semantic_action_request &request ) {
+            if( request.action_id != "distraction_manager.close" || request.stable_id.has_value() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = "QUIT";
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+    }
+
     while( true ) {
         ui_manager::redraw();
-
-        const std::string action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        std::string action = semantic_action.empty() ? ctxt.handle_input() : "";
+        // A transport wake may consume close while handle_input is blocked.
+        if( !semantic_action.empty() ) {
+            action = std::exchange( semantic_action, std::string() );
+        }
 
         if( action == "QUIT" ) {
             break;
