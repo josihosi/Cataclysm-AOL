@@ -144,6 +144,54 @@ class CockpitRunChannel:
         self._active_operation: Optional[Dict[str, Any]] = None
 
     @staticmethod
+    def _stopped_wait_operation( operation, prompt, request, receipt, successor):
+        """Native stop semantics require the whole consumed owner/receipt chain.
+
+        Stable IDs are generated per owner. YES means stop only in the native
+        CANCEL_ACTIVITY_OR_IGNORE_QUERY producer, not an arbitrary yes/no menu.
+        """
+        duration, start, now = (operation.get("requested_duration_game_minutes"),
+                                operation.get("start_game_minutes"), successor.get("game_minutes"))
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (duration, start, now)):
+            return None  # A non-scalar operation does not inherit a scalar-wait stop.
+        elapsed = now - start
+        if not 0 <= elapsed < duration:
+            return None  # A later unrelated stop cannot cancel an already elapsed wait.
+        options = [a for a in prompt.get("valid_actions", [])
+                   if a.get("id") == request.get("action_id")
+                   and a.get("stable_id") == request.get("stable_id")]
+        payload = prompt.get("payload", {})
+        run, process = operation["run_id"], prompt.get("process_instance")
+        if (request.get("action") != "game.act" or request.get("action_id") != "prompt.choose"
+                or prompt.get("kind") != "prompt" or payload.get("title") != "CANCEL_ACTIVITY_OR_IGNORE_QUERY"
+                or len(options) != 1 or options[0].get("enabled") is not True or options[0].get("label") != "YES"
+                or prompt.get("run_id") != run or successor.get("run_id") != run
+                or not process or receipt.get("process_instance") != process or successor.get("process_instance") != process
+                or request.get("observation_id") != prompt.get("frame_id")
+                or receipt.get("accepted") is not True or receipt.get("action_id") != request["action_id"]
+                or receipt.get("requested_run_id") != run or receipt.get("run_id") != run
+                or receipt.get("requested_surface_id") != prompt.get("surface_id")
+                or receipt.get("consuming_surface_id") != prompt.get("surface_id")
+                or receipt.get("requested_frame_id") != prompt.get("frame_id")
+                or receipt.get("consuming_frame_id") != prompt.get("frame_id")
+                or receipt.get("resulting_frame_id") != successor.get("frame_id")
+                or successor.get("kind") != "world"
+                or prompt.get("sequence", -1) <= operation["accepted_receipt"]["sequence"]
+                or successor.get("sequence", -1) <= prompt.get("sequence", -1)
+                or receipt.get("sequence", -1) <= prompt.get("sequence", -1)
+                or successor.get("game_minutes") != receipt.get("game_minutes")
+                or successor.get("game_turn") != receipt.get("game_turn")):
+            raise ValueError("wait_stop_owner_or_receipt_unproved")
+        result = dict(operation)
+        result.update(state="cancelled", blocker=None, completed_progress_game_minutes=elapsed,
+                      termination={"reason": "native_activity_stopped", "receipt": dict(receipt),
+                                   "prompt_frame_id": prompt["frame_id"], "stable_id": request["stable_id"],
+                                   "world_frame_id": successor["frame_id"], "world_sequence": successor["sequence"],
+                                   "game_minutes": successor["game_minutes"], "duration_fulfilled": False})
+        return result
+
+
+    @staticmethod
     def _duration_from_action(action_id: str) -> Optional[float]:
         """Decode only the public native wait-duration action vocabulary."""
         return {
@@ -166,7 +214,7 @@ class CockpitRunChannel:
         result = dict(operation)
         if isinstance(observed, Mapping):
             current = self._signal_value(observed, "game_minutes")
-            if current is not None:
+            if current is not None and result.get("state") != "cancelled":
                 result["completed_progress_game_minutes"] = max(
                     0.0, current - float(result.get("start_game_minutes", current)),
                 )
@@ -245,6 +293,8 @@ class CockpitRunChannel:
             operation["state"] = "outcome_unknown"
             operation["blocker"] = "run_or_binding_changed"
             return "unknown", None
+        if operation.get("state") == "cancelled":
+            return "cancelled", None
         projection = self._operation_projection(observed)
         if projection is not None:
             operation.update(projection)
@@ -3307,6 +3357,28 @@ class CockpitRunChannel:
                 "observation_id": str(observation_id), "result": result,
             })
             return result
+        operation = self._active_operation
+        if (isinstance(operation, Mapping) and operation.get("state") not in
+                {"cancelled", "completed", "outcome_unknown"} and
+                issuing_raw.get("payload", {}).get("title") == "CANCEL_ACTIVITY_OR_IGNORE_QUERY" and
+                next_frame.get("kind") == "world"):
+            selected = [a for a in issuing_raw.get("valid_actions", [])
+                        if a.get("id") == action_id and a.get("stable_id") == stable_id]
+            if len(selected) == 1 and selected[0].get("label") == "YES":
+                # A native acknowledged stop settles this wait, not its duration.
+                # It uses the same consumed owner/receipt as the ordinary action.
+                try:
+                    operation = self._stopped_wait_operation(operation, issuing_raw,
+                        {"action": "game.act", "action_id": action_id,
+                         "stable_id": stable_id, "observation_id": issuing_raw["frame_id"]},
+                        native, next_frame)
+                except ValueError as exc:
+                    return {**self._fail_operation(str(exc), {"exception_type": type(exc).__name__}),
+                            "receipt": dict(receipt)}
+                if operation is not None:
+                    self._active_operation = operation
+                    self._transcript.append({"kind": "operation_collection", "operation": dict(operation),
+                                             "action_outcome": "accepted", "native_receipt": dict(native)})
         try:
             # A semantic menu selection changes the native highlight but does
             # not leave its owner.  Its same-frame receipt is therefore the

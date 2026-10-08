@@ -6747,9 +6747,14 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
     return 0
 
 
-def run_cockpit_live(args: argparse.Namespace) -> int:
+def run_cockpit_live(args: argparse.Namespace, *, input_stream=None, output_stream=None) -> int:
     """Serve one live worker-owned JSONL session until explicit finish or client disconnect."""
     run_dir = Path( args.run_dir )
+    charter_path = getattr(args, "witness_charter", None)
+    scenario_id = str(getattr(args, "scenario_id", "") or "").strip()
+    if charter_path and not scenario_id:
+        raise ValueError("witness_charter_requires_scenario_identity")
+    runtime = json.loads((run_dir / RUNTIME_BINDING_FILENAME).read_text()) if charter_path else {}
     service = open_cockpit_game_service(
         profile=args.profile,
         run_dir=run_dir,
@@ -6760,8 +6765,16 @@ def run_cockpit_live(args: argparse.Namespace) -> int:
         transition_timeout_seconds=args.transition_timeout_seconds,
         observe_interval_seconds=args.observe_interval_seconds,
         live_session=True,
+        witness_charter=json.loads(Path(charter_path).read_text()) if charter_path else None,
+        witness_identity={"scenario_id": scenario_id,
+                          "source_identity": live_witness_source_identity(runtime),
+                          "executable_identity": runtime.get("executable_sha256", "")} if charter_path else None,
     )
-    return serve_cockpit_live( service, sys.stdin, sys.stdout )
+    try:
+        return serve_cockpit_live(service, sys.stdin if input_stream is None else input_stream,
+                                 sys.stdout if output_stream is None else output_stream)
+    finally:
+        service.run_channel.archive.close()
 
 
 def cockpit_observation_advertises_action(
@@ -43842,6 +43855,8 @@ def build_parser() -> argparse.ArgumentParser:
         "cockpit-live",
         help="Serve one worker-controlled native cockpit session over JSON lines until run.finish.",
     )
+    cockpit_live_p.add_argument("--witness-charter", type=Path, help="Existing source-bound witness charter, not gameplay credit")
+    cockpit_live_p.add_argument("--scenario-id", default="", help="Scenario identity for the witness charter")
     cockpit_live_p.add_argument("--run-dir", required=True)
     cockpit_live_p.add_argument("--profile", required=True)
     cockpit_live_p.add_argument("--run-id", required=True)

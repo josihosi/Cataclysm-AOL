@@ -98,7 +98,12 @@ def store_journal_reference(journal):
         finally:
             storage.close()
     _, _, existing = load_report(path)
-    if value_digest("stored-journal", existing) != value_digest("stored-journal", journal):
-        raise ValueError("stored_journal_existing_artifact_mismatch")
+    try:
+        if value_digest("stored-journal", existing) != value_digest("stored-journal", journal):
+            raise ValueError("stored_journal_existing_artifact_mismatch")
+    finally:
+        existing_archive = find_archive(existing)
+        if existing_archive is not None:
+            existing_archive.close()
     return journal_reference(report_path=path, report_sha256=file_identity(path)["sha256"],
                              selector=[], journal=journal)

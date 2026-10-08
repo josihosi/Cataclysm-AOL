@@ -167,6 +167,7 @@ class Archive:
         connection = getattr(self, "connection", None)
         if connection is not None:
             connection.close()
+            self.connection = None
         snapshot = getattr(self, "_readonly_snapshot", None)
         if snapshot is not None:
             self._snapshot_cleanup()
