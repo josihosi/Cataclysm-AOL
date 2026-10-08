@@ -3332,6 +3332,15 @@ std::vector<tripoint_abs_omt> canonical_structural_target_footprint(
     return footprint;
 }
 
+bool scout_alternate_attempt_available( const bandit_live_world::active_outing_state &outing )
+{
+    // The ordinary no-progress limit is outing-wide; a new, known interruption
+    // is a different recovery episode and may use a currently qualified route.
+    return !outing.alternate_watch_attempted ||
+           ( outing.assessment.interruption && outing.assessment.interruption->pending() &&
+             outing.assessment.interruption->lookout == outing.selected_watch_omt );
+}
+
 bool structural_watch_route_state_is_consistent(
     const bandit_live_world::active_outing_state &outing )
 {
@@ -3389,10 +3398,17 @@ bool structural_watch_route_state_is_consistent(
         return false;
     }
     if( outing.alternate_watch_kind == structural_watch_kind::none ) {
+        // Fresh interrupted-watch recovery may retire a no-longer-qualified
+        // alternate without resetting the ordinary outing-wide attempt limit.
+        const bool retired_after_recovery = outing.assessment.interruption &&
+                                            !outing.assessment.interruption->pending() &&
+                                            outing.assessment.interruption->lookout == outing.selected_watch_omt &&
+                                            outing.assessment.interruption->resumed_minutes ==
+                                            outing.assessment.observation_started_minutes;
         return outing.alternate_watch_omt == tripoint_abs_omt() &&
                outing.alternate_watch_route_cost == -1 &&
                outing.alternate_watch_shared_route.empty() &&
-               !outing.alternate_watch_attempted &&
+               ( !outing.alternate_watch_attempted || retired_after_recovery ) &&
                !outing.alternate_watch_reposition_pending;
     }
     const std::optional<int> alternate_distance = target_footprint_watch_distance(
@@ -3412,7 +3428,7 @@ bool structural_watch_route_state_is_consistent(
     if( !route_is_valid || !outing.alternate_watch_reposition_pending ) {
         return route_is_valid;
     }
-    return outing.schema_version >= 10 && !outing.alternate_watch_attempted &&
+    return outing.schema_version >= 10 && scout_alternate_attempt_available( outing ) &&
            outing.owner == simulation_owner::local &&
            outing.phase == scout_phase::observing &&
            outing.waypoint_index == structural_outing_destination_waypoint( outing ) &&
@@ -5288,6 +5304,53 @@ bool record_local_pair_abstract_resume_progress( site_record &site,
     return true;
 }
 
+namespace
+{
+void remember_current_scout_interruption( active_outing_state &outing,
+        const std::string &cause, const int minutes )
+{
+    if( outing.assessment.interruption && outing.assessment.interruption->pending() ) {
+        return; // Repeated callbacks preserve this pending episode's first cause.
+    }
+    scout_watch_interruption interruption;
+    interruption.lookout = outing.selected_watch_omt;
+    interruption.minutes = minutes;
+    interruption.cause = cause;
+    interruption.watch_started_minutes = outing.assessment.observation_started_minutes;
+    outing.assessment.interruption = std::move( interruption );
+    outing.assessment.readiness_latched = false;
+    outing.assessment.threshold_class = scout_assessment_threshold_class::none;
+    outing.assessment.exit_reason = "scouting interrupted: " + cause;
+}
+
+bool interrupted_reposition_pin_is_current( const active_outing_state &outing )
+{
+    return outing.assessment.pinned_target_revision == outing.target_lead_revision ||
+           ( outing.assessment.pinned_target_revision == 0 &&
+             outing.assessment.observation_started_minutes < 0 &&
+             outing.assessment.interruption && outing.assessment.interruption->pending() );
+}
+
+void resume_interrupted_watch( active_outing_state &outing, const int minutes )
+{
+    scout_assessment_state &assessment = outing.assessment;
+    if( !assessment.interruption || !assessment.interruption->pending() ) {
+        return;
+    }
+    if( assessment.pinned_target_revision == 0 && assessment.observation_started_minutes < 0 ) {
+        assessment.pinned_target_revision = outing.target_lead_revision;
+    }
+    assessment.interruption->resumed_minutes = minutes;
+    assessment.observation_started_minutes = minutes;
+    assessment.last_progress_minutes = minutes;
+    assessment.readiness_latched = false;
+    assessment.threshold_class = scout_assessment_threshold_class::none;
+    assessment.site_signal_observed_minutes = -1;
+    assessment.site_signal_source_id.clear();
+    assessment.exit_reason.clear();
+}
+} // namespace
+
 local_handoff_commit_result start_local_pair_alternate_watch_reposition(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const int current_minutes )
@@ -5309,14 +5372,14 @@ local_handoff_commit_result start_local_pair_alternate_watch_reposition(
         !outing.local_handoff.cohesion_assembled ||
         outing.local_handoff.cohesion_abort_return ||
         outing.local_handoff.route_position != outing.selected_watch_omt ||
-        outing.alternate_watch_attempted ||
+        !scout_alternate_attempt_available( outing ) ||
         outing.alternate_watch_kind == structural_watch_kind::none ||
         outing.alternate_watch_shared_route.empty() ||
-        outing.assessment.observation_started_minutes < 0 ||
-        outing.assessment.last_progress_minutes <
-        outing.assessment.observation_started_minutes ||
-        current_minutes - outing.assessment.last_progress_minutes < 2 * 60 ||
-        outing.assessment.pinned_target_revision != outing.target_lead_revision ||
+        ( !( outing.assessment.interruption && outing.assessment.interruption->pending() ) &&
+          ( outing.assessment.observation_started_minutes < 0 ||
+            outing.assessment.last_progress_minutes < outing.assessment.observation_started_minutes ||
+            current_minutes - outing.assessment.last_progress_minutes < 2 * 60 ) ) ||
+        !interrupted_reposition_pin_is_current( outing ) ||
         outing.casualty_ids.size() > 0 || outing.resolved_member_ids.size() > 0 ) {
         return local_handoff_commit_result::rejected;
     }
@@ -5360,21 +5423,25 @@ local_handoff_commit_result abort_local_pair_alternate_watch_reposition(
             outing.schema_version >= 10 && outing.owner == simulation_owner::local &&
             simulation_cursor_matches( outing, expected_cursor ) &&
             outing.phase == scout_phase::observing &&
-            current_minutes >= 0 && current_minutes == outing.last_advanced_minutes &&
+            current_minutes >= 0 &&
+            ( current_minutes == outing.last_advanced_minutes ||
+              ( outing.assessment.interruption && outing.assessment.interruption->pending() &&
+                current_minutes >= outing.last_advanced_minutes ) ) &&
             outing.waypoint_index == structural_outing_destination_waypoint( outing ) &&
             outing.local_handoff.is_active() &&
             outing.local_handoff.cohesion_assembled &&
             !outing.local_handoff.cohesion_abort_return &&
             outing.local_handoff.route_position == outing.selected_watch_omt &&
-            !outing.alternate_watch_attempted &&
-            outing.alternate_watch_kind != structural_watch_kind::none &&
-            !outing.alternate_watch_shared_route.empty() &&
-            outing.assessment.observation_started_minutes >= 0 &&
-            outing.assessment.last_progress_minutes >=
-            outing.assessment.observation_started_minutes &&
-            outing.assessment.pinned_target_revision == outing.target_lead_revision &&
-            outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
-            current_minutes - outing.assessment.last_progress_minutes >= 2 * 60;
+            scout_alternate_attempt_available( outing ) &&
+            ( ( outing.assessment.interruption && outing.assessment.interruption->pending() ) ||
+              ( outing.alternate_watch_kind != structural_watch_kind::none &&
+                !outing.alternate_watch_shared_route.empty() ) ) &&
+            ( ( outing.assessment.interruption && outing.assessment.interruption->pending() ) ||
+              ( outing.assessment.observation_started_minutes >= 0 &&
+                outing.assessment.last_progress_minutes >= outing.assessment.observation_started_minutes &&
+                current_minutes - outing.assessment.last_progress_minutes >= 2 * 60 ) ) &&
+            interrupted_reposition_pin_is_current( outing ) &&
+            outing.casualty_ids.empty() && outing.resolved_member_ids.empty();
         if( !eligible_start_failed ) {
             return local_handoff_commit_result::rejected;
         }
@@ -5422,7 +5489,7 @@ local_alternate_watch_reposition_plan plan_local_pair_alternate_watch_reposition
     if( outing.kind != outing_kind::structural_sortie || outing.schema_version < 10 ||
         outing.owner != simulation_owner::local ||
         !simulation_cursor_matches( outing, expected_cursor ) ||
-        !outing.alternate_watch_reposition_pending || outing.alternate_watch_attempted ||
+        !outing.alternate_watch_reposition_pending || !scout_alternate_attempt_available( outing ) ||
         outing.phase != scout_phase::observing ||
         !outing.local_handoff.is_active() ||
         !outing.local_handoff.cohesion_assembled ||
@@ -5560,7 +5627,7 @@ local_handoff_commit_result commit_local_pair_alternate_watch_reposition(
     }
     if( current.kind != outing_kind::structural_sortie || current.schema_version < 10 ||
         !simulation_cursor_matches( current, plan.expected_cursor ) ||
-        !current.alternate_watch_reposition_pending || current.alternate_watch_attempted ||
+        !current.alternate_watch_reposition_pending || !scout_alternate_attempt_available( current ) ||
         current.target_lead_revision != plan.expected_target_revision ||
         current.member_ids != plan.expected_member_ids ||
         current.selected_watch_kind != plan.expected_selected_watch_kind ||
@@ -5591,6 +5658,7 @@ local_handoff_commit_result commit_local_pair_alternate_watch_reposition(
     next.last_advanced_minutes = plan.resume_snapshot.committed_minutes;
     next.last_progress_minutes = plan.resume_snapshot.committed_minutes;
     next.assessment.last_progress_minutes = plan.resume_snapshot.committed_minutes;
+    resume_interrupted_watch( next, plan.resume_snapshot.committed_minutes );
     next.expected_return_minutes = structural_expected_return_minutes(
                                        next.started_minutes, candidate.anchor,
                                        next.selected_watch_omt );
@@ -5656,7 +5724,7 @@ local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     if( current.kind != outing_kind::structural_sortie || current.schema_version < 10 ||
         current.owner != simulation_owner::local ||
         !simulation_cursor_matches( current, plan.expected_cursor ) ||
-        !current.alternate_watch_reposition_pending || current.alternate_watch_attempted ||
+        !current.alternate_watch_reposition_pending || !scout_alternate_attempt_available( current ) ||
         current.handoff_epoch > std::numeric_limits<int>::max() - 2 ||
         current.target_lead_revision != plan.expected_target_revision ||
         current.member_ids != plan.expected_member_ids ||
@@ -5686,6 +5754,7 @@ local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     next.last_advanced_minutes = plan.resume_snapshot.committed_minutes;
     next.last_progress_minutes = plan.resume_snapshot.committed_minutes;
     next.assessment.last_progress_minutes = plan.resume_snapshot.committed_minutes;
+    resume_interrupted_watch( next, plan.resume_snapshot.committed_minutes );
     next.expected_return_minutes = structural_expected_return_minutes(
                                        next.started_minutes, candidate.anchor,
                                        next.selected_watch_omt );
@@ -6571,6 +6640,12 @@ bool commit_local_pair_cohesion( site_record &site, const local_cohesion_plan &p
         }
     }
     if( plan.abort_return || next.local_handoff.cohesion_abort_return ) {
+        if( next.kind == outing_kind::structural_sortie && next.job_type == "scout" &&
+            next.selected_watch_kind != structural_watch_kind::none ) {
+            remember_current_scout_interruption( next,
+                    "pair cohesion could not safely complete its route",
+                    next.local_handoff.committed_minutes );
+        }
         next.phase = scout_phase::returning_home;
         next.local_handoff.phase = scout_phase::returning_home;
         next.local_handoff.cohesion_assembled = false;
@@ -8731,6 +8806,34 @@ void camp_decision_record::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void scout_watch_interruption::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "lookout", lookout );
+    json.member( "minutes", minutes );
+    json.member( "cause", cause );
+    json.member( "watch_started_minutes", watch_started_minutes );
+    json.member( "resumed_minutes", resumed_minutes );
+    json.end_object();
+}
+
+void scout_watch_interruption::deserialize( const JsonObject &jo )
+{
+    scout_watch_interruption candidate;
+    jo.read( "lookout", candidate.lookout );
+    jo.read( "minutes", candidate.minutes );
+    jo.read( "cause", candidate.cause );
+    jo.read( "watch_started_minutes", candidate.watch_started_minutes );
+    jo.read( "resumed_minutes", candidate.resumed_minutes );
+    if( candidate.lookout.is_invalid() || candidate.minutes < 0 || candidate.cause.empty() ||
+        candidate.cause.size() > max_sortie_summary_length || candidate.watch_started_minutes < -1 ||
+        candidate.watch_started_minutes > candidate.minutes || candidate.resumed_minutes < -1 ||
+        ( candidate.resumed_minutes >= 0 && candidate.resumed_minutes < candidate.minutes ) ) {
+        jo.throw_error( "scout interruption has malformed bounded route experience" );
+    }
+    *this = std::move( candidate );
+}
+
 void scout_assessment_state::clear()
 {
     *this = scout_assessment_state();
@@ -8764,6 +8867,9 @@ void scout_assessment_state::serialize( JsonOut &json ) const
     json.member( "pinned_target_revision", pinned_target_revision );
     json.member( "next_eligible_minutes", next_eligible_minutes );
     json.member( "exit_reason", exit_reason.substr( 0, max_sortie_summary_length ) );
+    if( interruption ) {
+        json.member( "interruption", *interruption );
+    }
     json.end_object();
 }
 
@@ -8815,6 +8921,7 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     jo.read( "pinned_target_revision", candidate.pinned_target_revision );
     jo.read( "next_eligible_minutes", candidate.next_eligible_minutes );
     jo.read( "exit_reason", candidate.exit_reason );
+    jo.read( "interruption", candidate.interruption );
     const bool valid = candidate.observation_started_minutes >= -1 &&
                        candidate.last_progress_minutes >= -1 &&
                        candidate.burned_minutes >= -1 &&
@@ -13745,14 +13852,26 @@ response_denial_resolution resolve_response_authorization_denial(
     if( !authorization.valid || authorization.authorized ) {
         return response_denial_resolution::rejected;
     }
-    if( !authorization.report_unexpired ) {
-        const int expiry_minutes = minutes_after_saturated(
-                                       report.delivered_minutes, 48 * 60 );
+    const bool incomplete_watch = report.schema_version >= 5 &&
+            !authorization.assessment_ready &&
+            ( report.assessment.observation_started_minutes < 0 ||
+              ( report.assessment.interruption && report.assessment.interruption->pending() ) );
+    const scout_report_effective_state effective = evaluate_scout_report_at( report, current_minutes );
+    const bool interrupted_routine_due = incomplete_watch &&
+            select_routine_scout_pair( site ).eligible &&
+            report.casualty_ids.empty() && effective.valid &&
+            !hostile_camp_routine_risk_blocked( effective.normalized_risk ) &&
+            site.next_routine_dispatch_eligible_minutes >= report.delivered_minutes &&
+            current_minutes >= site.next_routine_dispatch_eligible_minutes;
+    if( !authorization.report_unexpired || interrupted_routine_due ) {
+        const int expiry_minutes = interrupted_routine_due ? current_minutes :
+                                  minutes_after_saturated( report.delivered_minutes, 48 * 60 );
         site_record candidate = site;
         const camp_decision_transition_result cooldown = transition_camp_decision_state(
                     candidate, camp_decision_state::report_awaiting_assessment,
                     camp_decision_state::cooldown, decision.source_report_revision,
                     decision.source_report_generation, expiry_minutes, expiry_minutes,
+                    interrupted_routine_due ? "interrupted watch returned; ordinary scouting cooldown elapsed" :
                     "response report expired; rescout cooldown elapsed" );
         if( cooldown != camp_decision_transition_result::applied ) {
             return response_denial_resolution::rejected;
@@ -13760,7 +13879,9 @@ response_denial_resolution resolve_response_authorization_denial(
         const camp_decision_transition_result idle = transition_camp_decision_state(
                     candidate, camp_decision_state::cooldown, camp_decision_state::idle,
                     decision.source_report_revision, decision.source_report_generation,
-                    expiry_minutes, -1, "expired response report released for rescout" );
+                    expiry_minutes, -1, interrupted_routine_due ?
+                    "interrupted watch released for ordinary rescout" :
+                    "expired response report released for rescout" );
         if( idle != camp_decision_transition_result::applied ) {
             return response_denial_resolution::rejected;
         }
@@ -16047,8 +16168,8 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
             structural_watch_physical_target( site, plan );
         const std::vector<tripoint_abs_omt> canonical_footprint =
             canonical_structural_target_footprint( read.target_footprint );
-        const watch_selection_result watch_selection = select_watch_ring_candidate(
-                    canonical_footprint, read.watch_candidates );
+        const watch_selection_result watch_selection = select_scout_watch_candidate(
+                    site, plan.lead_id, canonical_footprint, read.watch_candidates, now_minutes );
         const watch_selection_result alternate_selection =
             select_alternate_watch_ring_candidate(
                 canonical_footprint, read.watch_candidates, watch_selection.omt );
@@ -16235,7 +16356,8 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                                  structural_signal_strength( *lead, now_minutes ) > 0;
     const bool frontier_plan = plan.frontier_sector >= 0;
     const watch_selection_result watch_selection = plan.watch_geography_supplied ?
-            select_watch_ring_candidate( plan.target_footprint, plan.watch_candidates ) :
+            select_scout_watch_candidate( site, plan.lead_id, plan.target_footprint,
+                    plan.watch_candidates, now_minutes ) :
             watch_selection_result();
     const bool has_watch_route = plan.watch_geography_supplied && watch_selection.valid;
     const bool route_is_canonical = has_watch_route ?
@@ -20997,6 +21119,114 @@ structural_watch_geography_read read_structural_watch_geography(
     return read;
 }
 
+bool remember_scout_watch_interruption( site_record &site,
+        const simulation_advance_cursor &cursor, const std::string &cause,
+        const int current_minutes )
+{
+    active_outing_state &outing = site.active_outing;
+    const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    if( outing.kind != outing_kind::structural_sortie || outing.job_type != "scout" ||
+        !simulation_cursor_matches( outing, cursor ) || !site.roster().valid ||
+        lead == nullptr || !structural_watch_lead_is_current( site, outing, *lead ) ||
+        ( outing.phase != scout_phase::outbound && outing.phase != scout_phase::searching &&
+          outing.phase != scout_phase::observing ) ||
+        outing.selected_watch_kind == structural_watch_kind::none ||
+        outing.selected_watch_omt.is_invalid() || cause.empty() ||
+        cause.size() > max_sortie_summary_length || current_minutes < outing.last_advanced_minutes ||
+        current_minutes < 0 || !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ) {
+        return false;
+    }
+    remember_current_scout_interruption( outing, cause, current_minutes );
+    // This is route experience, not evidence or progress: no observation,
+    // acquisition clock, route cursor or no-progress clock is advanced here.
+    return true;
+}
+
+bool refresh_interrupted_scout_watch_route( site_record &site,
+        const simulation_advance_cursor &cursor, const structural_route_read &read,
+        const int current_minutes )
+{
+    const auto &outing = site.active_outing;
+    const auto *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    if( !simulation_cursor_matches( outing, cursor ) || !site.roster().valid ||
+        outing.kind != outing_kind::structural_sortie || outing.job_type != "scout" ||
+        outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+        !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
+        outing.local_handoff.cohesion_abort_return || outing.alternate_watch_reposition_pending ||
+        !outing.assessment.interruption || !outing.assessment.interruption->pending() ||
+        outing.assessment.interruption->lookout != outing.selected_watch_omt ||
+        lead == nullptr || !structural_watch_lead_is_current( site, outing, *lead ) ||
+        !interrupted_reposition_pin_is_current( outing ) ||
+        !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ||
+        current_minutes < outing.last_advanced_minutes ||
+        current_minutes < outing.assessment.interruption->minutes ||
+        !read.reachable || !read.watch_geography_supplied ||
+        read.complete_route_cost < 0 ||
+        read.complete_route_cost > hostile_camp_routine_route_budget_omt( site, current_minutes ) ||
+        !hostile_camp_routine_route_risk_eligible( 0, read.max_segment_risk ) ||
+        read.target_footprint != outing.target_footprint ||
+        read.watch_candidates.empty() || read.watch_candidates.size() > max_structural_watch_candidates ) {
+        return false;
+    }
+    const auto different = select_alternate_watch_ring_candidate(
+                               read.target_footprint, read.watch_candidates, outing.selected_watch_omt );
+    site_record candidate = site;
+    auto &next = candidate.active_outing;
+    if( different.valid ) {
+        if( !structural_watch_shared_route_is_canonical( read.watch_shared_route,
+                site.anchor, different.omt, read.target_footprint ) ) {
+            return false;
+        }
+        next.alternate_watch_kind = different.outcome == watch_selection_outcome::selected_exact ?
+                                    structural_watch_kind::exact : structural_watch_kind::fallback;
+        next.alternate_watch_omt = different.omt;
+        next.alternate_watch_route_cost = different.route_cost;
+        next.alternate_watch_shared_route = read.watch_shared_route;
+    } else {
+        const auto current = select_watch_ring_candidate( read.target_footprint, read.watch_candidates );
+        if( !current.valid || current.omt != outing.selected_watch_omt ) {
+            return false; // No safe, currently qualified lookout has been established.
+        }
+        next.alternate_watch_kind = structural_watch_kind::none;
+        next.alternate_watch_omt = tripoint_abs_omt();
+        next.alternate_watch_route_cost = -1;
+        next.alternate_watch_shared_route.clear();
+        resume_interrupted_watch( next, current_minutes );
+    }
+    next.last_advanced_minutes = current_minutes;
+    if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
+watch_selection_result select_scout_watch_candidate( const site_record &site,
+        const std::string &lead_id, const std::vector<tripoint_abs_omt> &footprint,
+        const std::vector<watch_selection_candidate> &candidates, const int current_minutes )
+{
+    const scout_report_record &report = site.current_scout_report;
+    const camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    const acted_report_summary *accepted = find_acted_report( site, report );
+    if( lead != nullptr && lead->status != camp_lead_status::invalidated &&
+        report.is_present() && !report.provisional && report.target_lead_id == lead_id &&
+        report.target_omt == lead->omt && accepted != nullptr &&
+        accepted->report_revision == report.revision &&
+        accepted->source_generation == report.source_generation &&
+        accepted->acted_minutes == report.delivered_minutes &&
+        evaluate_scout_report_at( report, current_minutes ).attack_authorization_usable &&
+        report.assessment.interruption && report.assessment.interruption->pending() &&
+        report.assessment.interruption->minutes <= report.delivered_minutes &&
+        report.source_job_type == "scout" && !report.carrier_ids.empty() ) {
+        const watch_selection_result different = select_alternate_watch_ring_candidate(
+                    footprint, candidates, report.assessment.interruption->lookout );
+        if( different.valid ) {
+            return different;
+        }
+    }
+    return select_watch_ring_candidate( footprint, candidates );
+}
+
 structural_watch_route_apply_result apply_structural_watch_route_selection(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const std::vector<tripoint_abs_omt> &target_footprint,
@@ -21032,8 +21262,9 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
     } ) ) {
         return structural_watch_route_apply_result::rejected;
     }
-    const watch_selection_result selection = select_watch_ring_candidate(
-                canonical_footprint, candidates );
+    const watch_selection_result selection = select_scout_watch_candidate(
+                site, current.target_lead_id, canonical_footprint, candidates,
+                current.last_advanced_minutes );
     if( !selection.valid || selection.route_cost < 0 ||
         ( selection.outcome != watch_selection_outcome::selected_exact &&
           selection.outcome != watch_selection_outcome::selected_fallback ) ) {
@@ -22397,7 +22628,14 @@ bool scout_assessment_states_equal( const scout_assessment_state &lhs,
            lhs.target_alert == rhs.target_alert &&
            lhs.pinned_target_revision == rhs.pinned_target_revision &&
            lhs.next_eligible_minutes == rhs.next_eligible_minutes &&
-           lhs.exit_reason == rhs.exit_reason;
+           lhs.exit_reason == rhs.exit_reason &&
+           ( ( !lhs.interruption && !rhs.interruption ) ||
+             ( lhs.interruption && rhs.interruption &&
+               lhs.interruption->lookout == rhs.interruption->lookout &&
+               lhs.interruption->minutes == rhs.interruption->minutes &&
+               lhs.interruption->cause == rhs.interruption->cause &&
+               lhs.interruption->watch_started_minutes == rhs.interruption->watch_started_minutes &&
+               lhs.interruption->resumed_minutes == rhs.interruption->resumed_minutes ) );
 }
 
 } // namespace
@@ -22705,6 +22943,26 @@ scout_assessment_result advance_structural_scout_assessment(
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
     const bool clock_advanced = next.last_advanced_minutes < current_minutes;
+    const bool interrupted = next.assessment.interruption && next.assessment.interruption->pending();
+    if( interrupted && next.alternate_watch_reposition_pending ) {
+        next.last_advanced_minutes = current_minutes;
+        site = std::move( candidate );
+        return clock_advanced ? scout_assessment_result::updated : scout_assessment_result::unchanged;
+    }
+    const bool different_watch_available = interrupted && scout_alternate_attempt_available( next ) &&
+            next.alternate_watch_kind != structural_watch_kind::none &&
+            !next.alternate_watch_shared_route.empty();
+    if( different_watch_available && next.owner == simulation_owner::local &&
+        next.local_handoff.is_active() ) {
+        next.last_advanced_minutes = current_minutes;
+        site = std::move( candidate );
+        return scout_assessment_result::alternate_watch_reposition_required;
+    }
+    if( interrupted && !different_watch_available ) {
+        // The loaded caller has just rechecked both actors' current safety.
+        // Old observations stay reportable, but this segment starts now.
+        resume_interrupted_watch( next, current_minutes );
+    }
     const bool assessment_initialized =
         next.assessment.observation_started_minutes < 0;
     next.last_advanced_minutes = current_minutes;
@@ -22790,14 +23048,13 @@ scout_assessment_result advance_structural_scout_assessment(
                                              current_minutes );
         return scout_assessment_result::normal_success;
     }
-    const int no_progress_deadline = minutes_after_saturated(
-                                         next.assessment.last_progress_minutes,
-                                         2 * 60 );
+    const int no_progress_deadline = different_watch_available ? current_minutes :
+            minutes_after_saturated( next.assessment.last_progress_minutes, 2 * 60 );
     const bool no_progress_window_elapsed =
-        current_minutes >= no_progress_deadline;
+        current_minutes >= no_progress_deadline || different_watch_available;
     const bool local_alternate_reposition_required = no_progress_window_elapsed &&
             !next.alternate_watch_reposition_pending &&
-            !next.alternate_watch_attempted &&
+            scout_alternate_attempt_available( next ) &&
             next.alternate_watch_kind != structural_watch_kind::none &&
             !next.alternate_watch_shared_route.empty() &&
             next.owner == simulation_owner::local &&
@@ -22811,7 +23068,7 @@ scout_assessment_result advance_structural_scout_assessment(
         return scout_assessment_result::alternate_watch_reposition_required;
     }
     const bool can_start_abstract_alternate = no_progress_window_elapsed &&
-            !next.alternate_watch_attempted &&
+            scout_alternate_attempt_available( next ) &&
             next.alternate_watch_kind != structural_watch_kind::none &&
             !next.alternate_watch_shared_route.empty() &&
             next.owner == simulation_owner::abstract &&
@@ -22824,6 +23081,7 @@ scout_assessment_result advance_structural_scout_assessment(
         std::swap( next.selected_watch_route_cost,
                    next.alternate_watch_route_cost );
         next.alternate_watch_attempted = true;
+        resume_interrupted_watch( next, current_minutes );
         next.waypoint_index = structural_outing_destination_waypoint( next );
         next.last_progress_minutes = no_progress_deadline;
         next.assessment.last_progress_minutes = no_progress_deadline;

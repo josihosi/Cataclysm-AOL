@@ -2419,7 +2419,8 @@ bandit_live_world::sortie_observation make_typed_visual_observation(
 }
 
 bandit_live_world::world_state make_abstract_threat_test_world( const bool cannibal,
-        const int id_base, const int target_distance_omt = 4 )
+        const int id_base, const int target_distance_omt = 4,
+        const std::string &terrain = "forest" )
 {
     bandit_live_world::world_state world;
     for( int index = 0; index < 3; ++index ) {
@@ -2433,10 +2434,10 @@ bandit_live_world::world_state make_abstract_threat_test_world( const bool canni
     const tripoint_abs_omt target( site.anchor.x() + target_distance_omt,
                                    site.anchor.y(), site.anchor.z() );
     const bandit_live_world::structural_bounty_read read =
-        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+        bandit_live_world::classify_structural_bounty_terrain( terrain );
     REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, 0 ) );
     const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
-                                    site.site_id, target, "forest" );
+                                    site.site_id, target, read.terrain_class );
     const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
     REQUIRE( lead != nullptr );
     const bandit_live_world::structural_outing_plan plan =
@@ -2518,10 +2519,10 @@ bandit_live_world::world_state make_structural_signal_test_world( const bool can
 }
 
 bandit_live_world::world_state make_structural_local_zombie_test_world( const bool cannibal,
-        const int id_base )
+        const int id_base, const int target_distance_omt = 4 )
 {
     bandit_live_world::world_state world = make_abstract_threat_test_world(
-                cannibal, id_base, 4 );
+                cannibal, id_base, target_distance_omt );
     bandit_live_world::site_record &site = world.sites.front();
     const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
         bandit_live_world::current_external_simulation_cursor( site );
@@ -26272,8 +26273,12 @@ TEST_CASE( "bandit_live_world_route_qualified_alternate_watch_persists_once",
 TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomically",
            "[bandit][live_world][alternate_watch][local_handoff][save]" )
 {
+    const bool cannibal = GENERATE( false, true );
+    const std::string interruption = GENERATE( std::string( "none" ), std::string( "before" ),
+                                    std::string( "during" ) );
+    CAPTURE( cannibal, interruption );
     bandit_live_world::world_state world = make_abstract_threat_test_world(
-            false, 893550, 6 );
+            cannibal, 893550, 6, "shelter" );
     bandit_live_world::site_record &site = world.sites.front();
     bandit_live_world::active_outing_state &outing = site.active_outing;
     const tripoint_abs_omt target = outing.target_omt;
@@ -26327,6 +26332,7 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     outing.local_handoff.cohesion_leader_id = outing.leader_id;
     outing.local_handoff.cohesion_assembled = true;
     outing.local_handoff.committed_minutes = 200;
+    outing.local_handoff.cohesion_best_staging_distances = { 0, 0 };
     const tripoint_abs_ms primary_origin = project_to<coords::ms>( primary );
     const tripoint_abs_ms first_primary( primary_origin.x() + 8,
                                          primary_origin.y() + 8,
@@ -26356,10 +26362,109 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     preserved_evidence.source_omt = target;
     preserved_evidence.receiver_omt = primary;
     outing.observations.push_back( preserved_evidence );
+    if( interruption == "during" ) {
+        const auto acquired = bandit_live_world::record_local_structural_signal_observations(
+                                  world, 200, []( const auto &, const auto &current, const auto & ) {
+            auto read = make_structural_signal_read( bandit_live_world::sortie_observation_sense::smoke,
+                        current.target_omt, 3, 80, 1 );
+            read.line_of_sight = true;
+            read.physical_pair_can_share = true;
+            read.observer_id = current.leader_id;
+            read.observed_minutes = 200;
+            return std::vector<bandit_live_world::structural_signal_read>{ read };
+        } );
+        REQUIRE( acquired.facts_recorded == 1 );
+        const std::vector<bandit_live_world::local_cohesion_member_read> together = {
+            { outing.member_ids[0], true, false, first_primary },
+            { outing.member_ids[1], true, false, second_primary }
+        };
+        const auto sharing = bandit_live_world::plan_local_pair_cohesion(
+                                 site, require_current_simulation_cursor( site ), 200, together );
+        REQUIRE( sharing.valid );
+        REQUIRE( sharing.share_private_observations );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion( site, sharing, false, false ) );
+        REQUIRE( bandit_live_world::summarize_normal_scout_assessment( outing ).habitation_certainty > 0 );
+    }
+    if( interruption != "none" ) {
+        if( interruption == "before" ) {
+            outing.assessment.observation_started_minutes = -1;
+        }
+        REQUIRE( bandit_live_world::remember_scout_watch_interruption( site,
+                     require_current_simulation_cursor( site ), "current received danger", 201 ) );
+        CHECK( outing.last_progress_minutes == 200 );
+        CHECK( outing.assessment.last_progress_minutes == 200 );
+    }
     const std::string target_id = outing.target_id;
     const int target_revision = outing.target_lead_revision;
     const std::string evidence_fact_key = outing.observations.front().fact_key;
     const std::size_t evidence_count = outing.observations.size();
+    if( interruption != "none" ) {
+        // On the first interruption, a passable cached alternate can lose its
+        // optical qualification. Safe original-watch recovery must retire that
+        // cache before the later ordinary no-progress consumer sees it.
+        auto fallback_world = round_trip_world( world );
+        auto &fallback_site = fallback_world.sites.front();
+        auto &fallback = fallback_site.active_outing;
+        REQUIRE_FALSE( fallback.alternate_watch_attempted );
+        REQUIRE( fallback.alternate_watch_omt == alternate );
+        const auto passable_route = []( const tripoint_abs_omt & ) {
+            return bandit_live_world::structural_watch_route_read{ true, 1 };
+        };
+        REQUIRE( passable_route( alternate ).reachable );
+        const int opaque_cost = oter_str_id( "forest" )->get_see_cost();
+        REQUIRE( opaque_cost == 4 );
+        const auto geography = bandit_live_world::read_structural_watch_geography(
+                                   fallback.target_footprint, fallback_site.anchor,
+        [primary, alternate, opaque_cost]( const tripoint_abs_omt &candidate,
+        const std::vector<tripoint_abs_omt> & ) {
+            if( candidate == primary ) {
+                return bandit_live_world::structural_watch_terrain_read{ true, true, { 0, 0 } };
+            }
+            if( candidate == alternate ) {
+                return bandit_live_world::structural_watch_terrain_read{ true, true, { opaque_cost, opaque_cost } };
+            }
+            return bandit_live_world::structural_watch_terrain_read{};
+        }, passable_route );
+        REQUIRE( geography.selection.valid );
+        REQUIRE( geography.selection.omt == primary );
+        CHECK( geography.clear_intervening_candidates == 2 );
+        CHECK( geography.visible_intervening_candidates == 1 );
+        CHECK( geography.routed_candidates.size() == 1 );
+        bandit_live_world::structural_route_read fresh;
+        fresh.reachable = true;
+        fresh.complete_route_cost = 1;
+        fresh.watch_geography_supplied = true;
+        fresh.target_footprint = geography.target_footprint;
+        fresh.watch_candidates = geography.routed_candidates;
+        fresh.watch_shared_route = primary_route;
+        REQUIRE( bandit_live_world::refresh_interrupted_scout_watch_route( fallback_site,
+                     require_current_simulation_cursor( fallback_site ), fresh, 202 ) );
+        CHECK_FALSE( fallback.alternate_watch_attempted );
+        CHECK( fallback.alternate_watch_kind == bandit_live_world::structural_watch_kind::none );
+        CHECK( fallback.alternate_watch_omt == tripoint_abs_omt() );
+        CHECK( fallback.alternate_watch_route_cost == -1 );
+        CHECK( fallback.alternate_watch_shared_route.empty() );
+        CHECK( fallback.observations.size() == evidence_count );
+        CHECK( fallback.assessment.observation_started_minutes == 202 );
+        REQUIRE( serialize_world( round_trip_world( fallback_world ) ) == serialize_world( fallback_world ) );
+        CHECK( bandit_live_world::advance_structural_scout_assessment( fallback_site,
+                   fallback.activity_id, fallback.generation, target_revision, 321 ) ==
+               bandit_live_world::scout_assessment_result::updated );
+        CHECK( fallback.phase == bandit_live_world::scout_phase::observing );
+        CHECK( bandit_live_world::advance_structural_scout_assessment( fallback_site,
+                   fallback.activity_id, fallback.generation, target_revision, 322 ) ==
+               bandit_live_world::scout_assessment_result::inconclusive );
+        CHECK( fallback.phase == bandit_live_world::scout_phase::returning_report );
+        CHECK_FALSE( fallback.alternate_watch_attempted );
+        CHECK_FALSE( fallback.alternate_watch_reposition_pending );
+        CHECK_FALSE( fallback.assessment.readiness_latched );
+        CHECK( fallback.observations.size() == evidence_count );
+        CHECK( bandit_live_world::local_pair_alternate_watch_travel_destinations( fallback_world ).empty() );
+        CHECK( bandit_live_world::start_local_pair_alternate_watch_reposition( fallback_site,
+                   require_current_simulation_cursor( fallback_site ), 322 ) ==
+               bandit_live_world::local_handoff_commit_result::rejected );
+        CHECK( serialize_world( round_trip_world( fallback_world ) ) == serialize_world( fallback_world ) );
+    }
     const bandit_live_world::simulation_advance_cursor stale_cursor =
         require_current_simulation_cursor( site );
 
@@ -26525,6 +26630,185 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     CHECK( serialize_world( round_trip_world( loaded_arrival_world ) ) ==
            serialize_world( loaded_arrival_world ) );
 
+    if( interruption == "during" ) {
+        // A new recovery episode may choose the currently qualified different
+        // lookout even though the ordinary no-progress attempt was already used.
+        auto repeated_world = round_trip_world( loaded_arrival_world );
+        auto &repeated_site = repeated_world.sites.front();
+        auto &repeated = repeated_site.active_outing;
+        REQUIRE( repeated.alternate_watch_attempted );
+        REQUIRE( bandit_live_world::remember_scout_watch_interruption( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), "new actual danger", 341 ) );
+        bandit_live_world::structural_route_read fresh;
+        fresh.reachable = true;
+        fresh.complete_route_cost = 1;
+        fresh.watch_geography_supplied = true;
+        fresh.target_footprint = repeated.target_footprint;
+        fresh.watch_candidates = { { primary, true, true, true, 1 },
+                                  { alternate, true, true, true, 2 } };
+        fresh.watch_shared_route = repeated.alternate_watch_shared_route;
+        const auto pending = serialize_world( repeated_world );
+        CHECK_FALSE( bandit_live_world::refresh_interrupted_scout_watch_route( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), fresh, 340 ) );
+        CHECK( serialize_world( repeated_world ) == pending );
+        auto bad = fresh;
+        bad.target_footprint = { primary };
+        CHECK_FALSE( bandit_live_world::refresh_interrupted_scout_watch_route( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), bad, 341 ) );
+        CHECK( serialize_world( repeated_world ) == pending );
+        bad = fresh;
+        bad.max_segment_risk = 1001;
+        CHECK_FALSE( bandit_live_world::refresh_interrupted_scout_watch_route( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), bad, 341 ) );
+        CHECK( serialize_world( repeated_world ) == pending );
+        auto blocked = fresh;
+        blocked.watch_candidates.front().reachable = false;
+        auto fallback_world = repeated_world;
+        auto &fallback_site = fallback_world.sites.front();
+        REQUIRE( bandit_live_world::refresh_interrupted_scout_watch_route( fallback_site,
+                     require_current_simulation_cursor( fallback_site ), blocked, 341 ) );
+        CHECK_FALSE( fallback_site.active_outing.assessment.interruption->pending() );
+        CHECK( fallback_site.active_outing.selected_watch_omt == alternate );
+        CHECK( fallback_site.active_outing.assessment.observation_started_minutes == 341 );
+        blocked.watch_candidates.back().two_intervening_omts_clear = false;
+        CHECK_FALSE( bandit_live_world::refresh_interrupted_scout_watch_route( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), blocked, 341 ) );
+        CHECK( serialize_world( repeated_world ) == pending );
+        REQUIRE( bandit_live_world::refresh_interrupted_scout_watch_route( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), fresh, 341 ) );
+        REQUIRE( bandit_live_world::advance_structural_scout_assessment( repeated_site,
+                     repeated.activity_id, repeated.generation, repeated.target_lead_revision, 341 ) ==
+                 bandit_live_world::scout_assessment_result::alternate_watch_reposition_required );
+        REQUIRE( bandit_live_world::start_local_pair_alternate_watch_reposition( repeated_site,
+                     require_current_simulation_cursor( repeated_site ), 341 ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( serialize_world( round_trip_world( repeated_world ) ) == serialize_world( repeated_world ) );
+        const auto primary_origin = project_to<coords::ms>( primary );
+        const auto next_arrival = bandit_live_world::plan_local_pair_alternate_watch_reposition(
+                                      repeated_site, require_current_simulation_cursor( repeated_site ), 342,
+        { { repeated.member_ids[0], true, false, true, 90, primary_origin + point( 8, 8 ) },
+          { repeated.member_ids[1], true, false, true, 75, primary_origin + point( 9, 8 ) } } );
+        REQUIRE( next_arrival.valid );
+        REQUIRE( bandit_live_world::commit_loaded_local_pair_alternate_watch_reposition(
+                     repeated_site, next_arrival ) == bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( repeated.selected_watch_omt == primary );
+        CHECK_FALSE( repeated.assessment.interruption->pending() );
+        CHECK( repeated.assessment.observation_started_minutes == 342 );
+        CHECK( repeated.observations.size() == evidence_count );
+        CHECK_FALSE( repeated.assessment.readiness_latched );
+        CHECK( serialize_world( round_trip_world( repeated_world ) ) == serialize_world( repeated_world ) );
+    }
+
+    if( interruption == "during" ) {
+        // The first interruption recovered at the alternate. A later real
+        // cohesion timeout must replace that recovered slot, not lose pending
+        // status because an earlier episode is still retained.
+        auto second_world = round_trip_world( loaded_arrival_world );
+        auto &second_site = second_world.sites.front();
+        auto &second = second_site.active_outing;
+        REQUIRE( second.assessment.interruption->resumed_minutes == 340 );
+        const std::vector<bandit_live_world::local_cohesion_member_read> separated = {
+            { second.member_ids[0], true, false, first_arrival },
+            { second.member_ids[1], true, false,
+              tripoint_abs_ms( alternate_origin.x() + 22, alternate_origin.y() + 8,
+                               alternate_origin.z() ) }
+        };
+        const auto rendezvous = bandit_live_world::plan_local_pair_cohesion(
+                                    second_site, require_current_simulation_cursor( second_site ),
+                                    341, separated );
+        REQUIRE( rendezvous.valid );
+        REQUIRE_FALSE( rendezvous.abort_return );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     second_site, rendezvous, false, false ) );
+        const int timeout = second.local_handoff.cohesion_deadline_minutes;
+        REQUIRE( timeout > 341 );
+        const auto abort = bandit_live_world::plan_local_pair_cohesion(
+                               second_site, require_current_simulation_cursor( second_site ),
+                               timeout, separated );
+        REQUIRE( abort.valid );
+        REQUIRE( abort.abort_return );
+        REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                     second_site, abort, false, false ) );
+        REQUIRE( second.assessment.interruption );
+        CHECK( second.assessment.interruption->pending() );
+        CHECK( second.assessment.interruption->lookout == alternate );
+        CHECK( second.assessment.interruption->watch_started_minutes == 340 );
+        CHECK( second.assessment.interruption->minutes == timeout );
+        const std::string cause = second.assessment.interruption->cause;
+        CHECK( cause == "pair cohesion could not safely complete its route" );
+        CHECK_FALSE( second.assessment.readiness_latched );
+        const auto repeated = bandit_live_world::plan_local_pair_cohesion(
+                                  second_site, require_current_simulation_cursor( second_site ),
+                                  timeout + 1, separated );
+        REQUIRE( repeated.valid );
+        REQUIRE( repeated.abort_return );
+        const std::string before_duplicate = serialize_world( second_world );
+        CHECK_FALSE( bandit_live_world::commit_local_pair_cohesion(
+                         second_site, repeated, false, false ) );
+        CHECK( serialize_world( second_world ) == before_duplicate );
+        CHECK( second.assessment.interruption->minutes == timeout );
+        CHECK( second.assessment.interruption->cause == cause );
+        CHECK( serialize_world( round_trip_world( second_world ) ) == serialize_world( second_world ) );
+        const auto members = second.member_ids;
+        const auto retained_footprint = second.target_footprint;
+        for( std::size_t index = 0; index < members.size(); ++index ) {
+            REQUIRE( bandit_live_world::record_structural_member_physical_return(
+                         second_site, require_current_simulation_cursor( second_site ),
+                         members[index], second_site.anchor, timeout + 10 + index ) );
+        }
+        // Physical receipts publish a report, while ordinary homeward
+        // service still owns the reservation's existing return clock.
+        const int delivered = std::max( timeout + 12, second.expected_return_minutes );
+        bandit_live_world::advance_structural_bounty_outings( second_world, delivered, {} );
+        REQUIRE( second_site.current_scout_report.is_present() );
+        REQUIRE_FALSE( second_site.active_outing.is_active() );
+        const auto &report = second_site.current_scout_report;
+        REQUIRE( report.assessment.interruption );
+        CHECK( report.assessment.interruption->pending() );
+        CHECK( report.assessment.interruption->minutes == timeout );
+        CHECK( report.assessment.interruption->watch_started_minutes == 340 );
+        CHECK( report.assessment.interruption->cause == cause );
+        CHECK_FALSE( report.assessment.readiness_latched );
+        CHECK( report.observations.size() == evidence_count );
+        std::vector<bandit_live_world::response_member_power_read> powers;
+        for( const auto id : second_site.roster().physically_present_ids ) {
+            powers.push_back( { id, true, true, true, 10 } );
+        }
+        const int due = second_site.next_routine_dispatch_eligible_minutes;
+        const auto effective = bandit_live_world::evaluate_scout_report_at( report, due );
+        REQUIRE( effective.valid );
+        const std::vector<bandit_live_world::watch_selection_candidate> next_watches = {
+            { alternate, true, true, true, 1 }, { primary, true, true, true, 2 }
+        };
+        const auto preferred = bandit_live_world::select_scout_watch_candidate(
+                                   second_site, report.target_lead_id, retained_footprint,
+                                   next_watches, due );
+        REQUIRE( preferred.valid );
+        CHECK( preferred.omt == primary );
+        auto blocked = next_watches;
+        blocked.back().reachable = false;
+        const auto fallback = bandit_live_world::select_scout_watch_candidate(
+                                  second_site, report.target_lead_id, retained_footprint, blocked, due );
+        REQUIRE( fallback.valid );
+        CHECK( fallback.omt == alternate );
+        blocked.front().two_intervening_omts_clear = false;
+        CHECK_FALSE( bandit_live_world::select_scout_watch_candidate(
+                         second_site, report.target_lead_id, retained_footprint, blocked, due ).valid );
+        auto foreign = second_site;
+        foreign.current_scout_report.source_generation++;
+        const auto unbound = bandit_live_world::select_scout_watch_candidate(
+                                 foreign, report.target_lead_id, retained_footprint, next_watches, due );
+        REQUIRE( unbound.valid );
+        CHECK( unbound.omt == alternate );
+        const auto party = bandit_live_world::select_capable_response_party(
+                               second_site, report.action_policy, effective.danger_high, powers );
+        REQUIRE( bandit_live_world::resolve_response_authorization_denial(
+                     second_site, due, party, powers ) ==
+                 bandit_live_world::response_denial_resolution::rescout_ready );
+        CHECK( second_site.camp_decision.state == bandit_live_world::camp_decision_state::idle );
+        CHECK( serialize_world( round_trip_world( second_world ) ) == serialize_world( second_world ) );
+    }
+
     int failed_quiesces = 0;
     int rollbacks = 0;
     CHECK( bandit_live_world::commit_local_pair_alternate_watch_reposition(
@@ -26557,6 +26841,26 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     CHECK( outing.alternate_watch_shared_route == primary_route );
     CHECK( outing.last_progress_minutes == 340 );
     CHECK( outing.assessment.last_progress_minutes == 340 );
+    if( interruption != "none" ) {
+        REQUIRE( outing.assessment.interruption );
+        CHECK( outing.assessment.interruption->lookout == primary );
+        CHECK( outing.assessment.interruption->resumed_minutes == 340 );
+        CHECK( outing.assessment.observation_started_minutes == 340 );
+        CHECK_FALSE( outing.assessment.readiness_latched );
+        CHECK( loaded_arrival_site.active_outing.assessment.interruption->resumed_minutes == 340 );
+        CHECK( loaded_arrival_site.active_outing.assessment.observation_started_minutes == 340 );
+        const auto summary = bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( summary.habitation_certainty == 0 );
+        CHECK( summary.last_progress_minutes == 340 );
+        CHECK_FALSE( summary.readiness_latched );
+        auto recovered = loaded_arrival_site;
+        REQUIRE( bandit_live_world::advance_structural_scout_assessment( recovered,
+                     recovered.active_outing.activity_id, recovered.active_outing.generation,
+                     recovered.active_outing.target_lead_revision, 460 ) ==
+                 bandit_live_world::scout_assessment_result::inconclusive );
+        CHECK_FALSE( recovered.active_outing.assessment.readiness_latched );
+        CHECK( recovered.active_outing.observations.size() == evidence_count );
+    }
     CHECK( outing.target_id == target_id );
     CHECK( outing.target_lead_revision == target_revision );
     REQUIRE( outing.observations.size() == evidence_count );
@@ -36654,6 +36958,719 @@ TEST_CASE( "bandit_live_world_response_denial_holds_then_releases_for_rescout",
                response_denial_resolution::rejected );
         CHECK( serialize_world( malformed ) == abandoned );
     }
+}
+
+TEST_CASE( "unstarted_watch_returns_to_routine_eligibility_without_a_completed_empty_hold",
+           "[bandit][live_world][interrupted_watch_report_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const bool completed = GENERATE( false, true );
+    CAPTURE( cannibal, completed );
+    std::ifstream input( "tests/data/r067_unstarted_watch_reports.json" );
+    REQUIRE( input.good() );
+    JsonObject original = json_loader::from_string(
+                              std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    original.allow_omitted_members();
+    JsonObject retained = original.get_object( completed ? "completed_empty_report" :
+                          "unstarted_report" );
+    retained.allow_omitted_members();
+    scout_assessment_state retained_assessment;
+    retained_assessment.deserialize( retained.get_object( "assessment" ) );
+    const int delivered = retained.get_int( "delivered_minutes" );
+    REQUIRE_FALSE( retained_assessment.readiness_latched );
+    REQUIRE( retained.get_array( "observations" ).empty() );
+
+    // Keep the actual retained assessment and clocks.  The surrounding valid
+    // assignment/return geometry is the existing production fixture, not an
+    // invented reconstruction of the unavailable 7930 abort writer.
+    world_state world = make_structural_local_zombie_test_world( cannibal, 976100, 6 );
+    site_record &site = world.sites.front();
+    active_outing_state &outing = site.active_outing;
+    outing.schema_version = 10;
+    camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    REQUIRE( lead != nullptr );
+    lead->revision = retained_assessment.pinned_target_revision;
+    outing.target_lead_revision = lead->revision;
+    const tripoint_abs_omt watch( outing.target_omt.x() - 3,
+                                outing.target_omt.y(), outing.target_omt.z() );
+    const tripoint_abs_omt approach( watch.x() - 1, watch.y(), watch.z() );
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    outing.local_handoff.egress_omt = approach;
+    REQUIRE( structural_watch_shared_route_is_canonical( outing.shared_route,
+                 site.anchor, watch, { outing.target_omt } ) );
+    REQUIRE( apply_structural_watch_route_selection( site,
+                 *current_external_simulation_cursor( site ), { outing.target_omt },
+                 { { watch, true, true, true, 1 } }, {} ) ==
+             structural_watch_route_apply_result::applied );
+    outing.waypoint_index = 2;
+    outing.local_handoff.waypoint_index = 2;
+    outing.local_handoff.route_position = outing.shared_route[2];
+    outing.local_handoff.approach_from = approach;
+    outing.local_handoff.egress_omt = approach;
+    const tripoint_abs_ms watch_origin = project_to<coords::ms>( outing.selected_watch_omt );
+    for( std::size_t index = 0; index < outing.local_handoff.members.size(); ++index ) {
+        auto &member = outing.local_handoff.members[index];
+        member.entry_position = tripoint_abs_ms( watch_origin.x() + static_cast<int>( index ),
+                                watch_origin.y(), watch_origin.z() );
+        member.staging_position = tripoint_abs_ms( member.entry_position.x(),
+                                  member.entry_position.y() + 4, member.entry_position.z() );
+        member.exit_position = member.entry_position;
+    }
+    outing.phase = scout_phase::observing;
+    outing.local_handoff.phase = outing.phase;
+    outing.local_contact_minutes = 100;
+    outing.expected_return_minutes = delivered;
+    outing.missing_deadline_minutes = delivered + 24 * 60;
+    if( completed ) {
+        // Empty records alone cannot distinguish an interruption: this paired
+        // case actually starts and completes the native finite watch reducer.
+        REQUIRE( advance_structural_scout_assessment( site, outing.activity_id,
+                     outing.generation, outing.target_lead_revision,
+                     retained_assessment.observation_started_minutes ) ==
+                 scout_assessment_result::updated );
+        REQUIRE( advance_structural_scout_assessment( site, outing.activity_id,
+                     outing.generation, outing.target_lead_revision,
+                     retained_assessment.last_progress_minutes ) ==
+                 scout_assessment_result::inconclusive );
+        CHECK( outing.assessment.observation_started_minutes == 11280 );
+        CHECK( outing.assessment.last_progress_minutes == 11400 );
+        CHECK( outing.assessment.exit_reason == retained_assessment.exit_reason );
+    } else {
+        outing.assessment = retained_assessment;
+        CHECK( outing.assessment.observation_started_minutes == -1 );
+    }
+    outing.phase = scout_phase::returning_home;
+    outing.local_handoff.phase = outing.phase;
+    outing.waypoint_index = static_cast<int>( outing.shared_route.size() ) - 2;
+    outing.local_handoff.waypoint_index = outing.waypoint_index;
+    outing.local_handoff.route_position = outing.shared_route[outing.waypoint_index];
+    outing.local_handoff.approach_from = outing.shared_route[outing.waypoint_index - 1];
+    outing.local_handoff.egress_omt = site.anchor;
+    const tripoint_abs_ms route_origin = project_to<coords::ms>(
+                outing.local_handoff.route_position );
+    for( std::size_t index = 0; index < outing.local_handoff.members.size(); ++index ) {
+        auto &member = outing.local_handoff.members[index];
+        member.entry_position = tripoint_abs_ms( route_origin.x() + static_cast<int>( index ),
+                                route_origin.y(), route_origin.z() );
+        member.staging_position = tripoint_abs_ms( member.entry_position.x(),
+                                  member.entry_position.y() + 4, member.entry_position.z() );
+        member.exit_position = member.entry_position;
+    }
+    REQUIRE( current_external_simulation_cursor( site ) );
+    const std::vector<character_id> members = outing.member_ids;
+    REQUIRE( members.size() == 2 );
+    const auto return_member = [&site]( const character_id id, const int minutes ) {
+        const auto cursor = current_external_simulation_cursor( site );
+        REQUIRE( cursor );
+        REQUIRE( record_structural_member_physical_return( site, *cursor,
+                 id, site.anchor, minutes ) );
+    };
+    // Neither a partial return nor an invalid cursor can manufacture a report.
+    auto invalid_cursor = *current_external_simulation_cursor( site );
+    invalid_cursor.generation++;
+    const std::string before_invalid = serialize_world( world );
+    CHECK_FALSE( record_structural_member_physical_return( site, invalid_cursor,
+                 members.front(), site.anchor, delivered - 2 ) );
+    CHECK( serialize_world( world ) == before_invalid );
+    return_member( members.front(), delivered - 2 );
+    advance_structural_bounty_outings( world, delivered - 2, {} );
+    REQUIRE_FALSE( site.current_scout_report.is_present() );
+    REQUIRE( site.active_outing.is_active() );
+    return_member( members.back(), delivered - 1 );
+    CHECK( site.active_outing.member_return_receipts.size() == 2 );
+    REQUIRE( site.active_outing.owner == simulation_owner::abstract );
+    advance_structural_bounty_outings( world, delivered, {} );
+    REQUIRE( site.current_scout_report.is_present() );
+    CHECK_FALSE( site.current_scout_report.provisional );
+    CHECK_FALSE( site.active_outing.is_active() );
+    CHECK_FALSE( site.has_active_outside_pressure() );
+    CHECK( site.current_scout_report.carrier_ids == members );
+    CHECK( site.current_scout_report.observations.empty() );
+    CHECK( site.current_scout_report.assessment.observation_started_minutes ==
+           retained_assessment.observation_started_minutes );
+    CHECK( site.current_scout_report.assessment.exit_reason == retained_assessment.exit_reason );
+    CHECK_FALSE( site.current_scout_report.assessment.readiness_latched );
+    CHECK( site.camp_decision.state == camp_decision_state::report_awaiting_assessment );
+    REQUIRE( site.acted_reports.size() == 1 );
+    const std::string returned = serialize_world( world );
+    advance_structural_bounty_outings( world, delivered, {} );
+    CHECK( serialize_world( world ) == returned );
+    CHECK( serialize_world( round_trip_world( world ) ) == returned );
+
+    std::vector<response_member_power_read> reads;
+    for( const character_id id : site.roster().physically_present_ids ) {
+        reads.push_back( { id, true, true, true, 10 } );
+    }
+    const auto select = [&reads]( const site_record &s, const int now ) {
+        const auto effective = evaluate_scout_report_at( s.current_scout_report, now );
+        REQUIRE( effective.valid );
+        return select_capable_response_party( s, s.current_scout_report.action_policy,
+                                              effective.danger_high, reads );
+    };
+    const auto party = select( site, delivered + 1 );
+    const auto authorization = evaluate_response_authorization( site, delivered + 1, party, reads );
+    CAPTURE( authorization.rejection_reason );
+    REQUIRE( authorization.valid );
+    CHECK( authorization.report_current );
+    CHECK( authorization.report_unexpired );
+    CHECK_FALSE( authorization.assessment_ready );
+    CHECK_FALSE( authorization.authorized );
+    CHECK( resolve_response_authorization_denial( site, delivered + 1, party, reads ) ==
+           response_denial_resolution::held );
+    const int routine_due = site.next_routine_dispatch_eligible_minutes;
+    CHECK( routine_due >= delivered + 18 * 60 );
+    CHECK( routine_due <= delivered + 24 * 60 );
+    const camp_map_lead *returned_lead = site.intelligence_map.find_lead(
+                                           site.current_scout_report.target_lead_id );
+    REQUIRE( returned_lead != nullptr );
+    CHECK_FALSE( plan_structural_bounty_outing( site, *returned_lead, routine_due ).valid );
+    world_state routine = round_trip_world( world );
+    auto &routine_site = routine.sites.front();
+    CHECK( resolve_response_authorization_denial( routine_site, routine_due,
+               select( routine_site, routine_due ), reads ) ==
+           ( completed ? response_denial_resolution::held : response_denial_resolution::rescout_ready ) );
+    CHECK( routine_site.camp_decision.state == ( completed ?
+               camp_decision_state::report_awaiting_assessment : camp_decision_state::idle ) );
+    CHECK_FALSE( routine_site.current_scout_report.assessment.readiness_latched );
+    CHECK( routine_site.current_scout_report.observations.empty() );
+    CHECK( routine_site.current_scout_report.application_key == site.current_scout_report.application_key );
+    const std::string routine_after = serialize_world( routine );
+    CHECK( resolve_response_authorization_denial( routine_site, routine_due,
+               select( routine_site, routine_due ), reads ) ==
+           ( completed ? response_denial_resolution::held : response_denial_resolution::rejected ) );
+    CHECK( serialize_world( routine ) == routine_after );
+    CHECK( serialize_world( round_trip_world( routine ) ) == routine_after );
+
+    // The production denial caller supplies hostile response selection. A
+    // healthy two-member camp can scout with zero reserve, but cannot deploy
+    // that hostile response; it still regains ordinary scouting eligibility.
+    auto small = round_trip_world( world );
+    auto &small_site = small.sites.front();
+    small_site.members.erase( std::remove_if( small_site.members.begin(), small_site.members.end(),
+    [&members]( const member_record &member ) {
+        return std::find( members.begin(), members.end(), member.npc_id ) == members.end();
+    } ), small_site.members.end() );
+    small_site.living_total = 2;
+    small_site.supply_accounted_living_total = 2;
+    small_site.spawn_tiles.resize( 2 );
+    std::vector<response_member_power_read> small_reads;
+    for( const auto &read : reads ) {
+        if( small_site.find_member( read.npc_id ) ) {
+            small_reads.push_back( read );
+        }
+    }
+    REQUIRE( small_site.roster().valid );
+    REQUIRE( routine_scout_policy( small_site ).eligible );
+    REQUIRE( select_routine_scout_pair( small_site ).eligible );
+    const auto small_response = select_capable_response_party( small_site,
+                                    small_site.current_scout_report.action_policy,
+                                    evaluate_scout_report_at( small_site.current_scout_report, routine_due ).danger_high,
+                                    small_reads );
+    REQUIRE_FALSE( small_response.eligible );
+    REQUIRE_FALSE( evaluate_response_authorization( small_site, routine_due,
+                   small_response, small_reads ).authorized );
+    CHECK( resolve_response_authorization_denial( small_site, routine_due,
+               small_response, small_reads ) == ( completed ? response_denial_resolution::held :
+                       response_denial_resolution::rescout_ready ) );
+    CHECK( small_site.camp_decision.state == ( completed ?
+               camp_decision_state::report_awaiting_assessment : camp_decision_state::idle ) );
+    CHECK( serialize_world( round_trip_world( small ) ) == serialize_world( small ) );
+
+    // Demonstrate independent safety/identity gates, without weakening them to
+    // obtain a retry. An unstarted report must not authorize hostile action.
+    world_state pressure = world;
+    pressure.sites.front().members.front().state = member_state::outbound;
+    const std::string pressure_before = serialize_world( pressure );
+    CHECK( resolve_response_authorization_denial( pressure.sites.front(),
+               delivered + 48 * 60, party, reads ) == response_denial_resolution::held );
+    CHECK( serialize_world( pressure ) == pressure_before );
+    world_state wrong_report = world;
+    wrong_report.sites.front().current_scout_report.source_generation++;
+    CHECK( resolve_response_authorization_denial( wrong_report.sites.front(),
+               delivered + 1, party, reads ) == response_denial_resolution::abandoned );
+    world_state dangerous = world;
+    auto &danger_site = dangerous.sites.front();
+    danger_site.current_scout_report.assessment.danger_high = 200;
+    const auto danger_party = select( danger_site, delivered + 1 );
+    const auto danger_authorization = evaluate_response_authorization(
+                                          danger_site, delivered + 1, danger_party, reads );
+    REQUIRE( danger_authorization.valid );
+    CHECK_FALSE( danger_authorization.authorized );
+    CHECK( resolve_response_authorization_denial( danger_site, delivered + 1,
+               danger_party, reads ) == response_denial_resolution::held );
+
+    std::cout << "r067_watch_report completed=" << completed << " cannibal=" << cannibal
+              << " started=" << site.current_scout_report.assessment.observation_started_minutes
+              << " delivered=" << delivered << " routine_due=" << routine_due
+              << " baseline_hold_until=" << delivered + 48 * 60 << '\n';
+    CHECK( resolve_response_authorization_denial( site, delivered + 48 * 60 - 1,
+               select( site, delivered + 48 * 60 - 1 ), reads ) ==
+           ( completed ? response_denial_resolution::held : response_denial_resolution::rescout_ready ) );
+    CHECK( resolve_response_authorization_denial( site, delivered + 48 * 60,
+               select( site, delivered + 48 * 60 ), reads ) ==
+           ( completed ? response_denial_resolution::rescout_ready : response_denial_resolution::rejected ) );
+    CHECK( site.camp_decision.state == camp_decision_state::idle );
+    CHECK( site.current_scout_report.observations.empty() );
+    CHECK_FALSE( site.current_scout_report.assessment.readiness_latched );
+    const std::string released = serialize_world( world );
+    CHECK( resolve_response_authorization_denial( site, delivered + 48 * 60,
+               party, reads ) == response_denial_resolution::rejected );
+    CHECK( serialize_world( world ) == released );
+}
+
+TEST_CASE( "scout_interruption_is_route_history_not_an_optical_observation",
+           "[bandit][live_world][interrupted_watch_report_067][interruption_representation_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const bool started = GENERATE( false, true );
+    world_state world = make_abstract_threat_test_world( cannibal, 976200, 6, "shelter" );
+    site_record &site = world.sites.front();
+    active_outing_state &outing = site.active_outing;
+    outing.schema_version = 10;
+    const tripoint_abs_omt watch( outing.target_omt.x() - 3, outing.target_omt.y(), 0 );
+    const tripoint_abs_omt approach( watch.x() - 1, watch.y(), 0 );
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    REQUIRE( apply_structural_watch_route_selection( site,
+                 *current_external_simulation_cursor( site ), { outing.target_omt },
+                 { { watch, true, true, true, 1 } } ) == structural_watch_route_apply_result::applied );
+    outing.phase = scout_phase::observing;
+    outing.waypoint_index = 2;
+    outing.local_contact_minutes = 100;
+    // The admitted lookout is three OMT from home: the existing outward,
+    // watch and homeward estimate is 45 + 30 + 30 minutes.
+    outing.expected_return_minutes = 205;
+    outing.missing_deadline_minutes = 205 + 24 * 60;
+    if( started ) {
+        REQUIRE( advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                     outing.target_lead_revision, 100 ) == scout_assessment_result::updated );
+        const auto acquired = record_structural_signal_observations( world, 100,
+        []( const auto &, const auto &current, const auto & ) {
+            auto read = make_structural_signal_read( sortie_observation_sense::smoke,
+                        current.target_omt, 3, 80, 1 );
+            read.line_of_sight = true;
+            read.physical_pair_can_share = true;
+            read.observer_id = current.leader_id;
+            read.observed_minutes = 100;
+            return std::vector<structural_signal_read>{ read };
+        } );
+        REQUIRE( acquired.facts_recorded == 1 );
+        REQUIRE( summarize_normal_scout_assessment( outing ).habitation_certainty > 0 );
+    }
+    const int progress = outing.last_progress_minutes;
+    const int assessment_progress = outing.assessment.last_progress_minutes;
+    const auto cursor = current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    REQUIRE( remember_scout_watch_interruption( site, *cursor, "received danger", 101 ) );
+    REQUIRE( outing.assessment.interruption );
+    CHECK( outing.assessment.interruption->lookout == watch );
+    CHECK( outing.assessment.interruption->watch_started_minutes == ( started ? 100 : -1 ) );
+    CHECK( outing.assessment.interruption->pending() );
+    CHECK( outing.last_progress_minutes == progress );
+    CHECK( outing.assessment.last_progress_minutes == assessment_progress );
+    CHECK( outing.observations.size() == ( started ? 1 : 0 ) );
+    CHECK( current_external_simulation_cursor( site )->generation == cursor->generation );
+    const auto summary = summarize_normal_scout_assessment( outing );
+    CHECK( summary.last_progress_minutes == assessment_progress );
+    CHECK( summary.certainty == ( started ? 5 : 0 ) );
+    CHECK( summary.habitation_certainty == ( started ? 5 : 0 ) );
+    CHECK( summary.strong_visual_windows == 0 );
+    CHECK_FALSE( summary.readiness_latched );
+    CHECK( summary.site_signal_observed_minutes == -1 );
+    const std::string recorded = serialize_world( world );
+    REQUIRE( remember_scout_watch_interruption( site, *cursor, "repeated callback", 102 ) );
+    CHECK( serialize_world( world ) == recorded );
+    CHECK( serialize_world( round_trip_world( world ) ) == recorded );
+    auto stale = *cursor;
+    stale.generation++;
+    CHECK_FALSE( remember_scout_watch_interruption( site, stale, "wrong owner", 103 ) );
+    CHECK( serialize_world( world ) == recorded );
+    // Marker validation uses real route/time metadata, never synthetic visual
+    // sense, simultaneity or bucket fields. No ledger entry can be retained,
+    // shared, turned into a report fact, or suppress no-progress via this API.
+    std::ostringstream out;
+    JsonOut json( out );
+    outing.assessment.serialize( json );
+    const std::string assessment = out.str();
+    CHECK( assessment.find( "bucket_start_minutes" ) == std::string::npos );
+    CHECK( assessment.find( "sense" ) == std::string::npos );
+    REQUIRE( advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                 outing.target_lead_revision, 200 ) == scout_assessment_result::updated );
+    CHECK( outing.assessment.interruption->resumed_minutes == 200 );
+    CHECK( outing.assessment.observation_started_minutes == 200 );
+    CHECK( outing.observations.size() == ( started ? 1 : 0 ) );
+    CHECK( outing.assessment.habitation_certainty == 0 );
+    CHECK( outing.assessment.last_progress_minutes == 200 );
+    CHECK_FALSE( outing.assessment.readiness_latched );
+    CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+    REQUIRE( advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                 outing.target_lead_revision, 320 ) == scout_assessment_result::inconclusive );
+    CHECK_FALSE( outing.assessment.readiness_latched );
+    CHECK( outing.observations.size() == ( started ? 1 : 0 ) );
+    CHECK( outing.assessment.habitation_certainty == 0 );
+
+}
+
+TEST_CASE( "scouting_alarm_recovery_uses_actual_source_perception_and_received_danger",
+           "[bandit][npc][interrupted_scout_alarm_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const std::string condition = GENERATE( std::string( "clear" ), std::string( "harmless" ),
+                                    std::string( "hostile" ),
+                                    std::string( "hidden" ), std::string( "incapacity" ),
+                                    std::string( "flight" ) );
+    CAPTURE( cannibal, condition );
+    auto previous_world = overmap_buffer.global_state.bandit_live_world;
+    const auto previous_turn = calendar::turn;
+    clear_npcs();
+    clear_avatar();
+    clear_map();
+    sounds::reset_sounds();
+    on_out_of_scope restore( [&previous_world, previous_turn]() {
+        clear_npcs();
+        g->clear_zombies();
+        sounds::reset_sounds();
+        overmap_buffer.global_state.bandit_live_world = std::move( previous_world );
+        calendar::turn = previous_turn;
+    } );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    set_time_to_day();
+    map &here = get_map();
+    npc &source = spawn_npc( { 50, 50 }, "test_talker" );
+    npc &recipient = spawn_npc( { 50, 55 }, "test_talker" );
+    for( npc *actor : { &source, &recipient } ) {
+        clear_character( *actor, true );
+        actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
+        actor->set_attitude( NPCATT_NULL );
+        actor->op_of_u.fear = 0;
+    }
+    // clear_character restores the standard test position; establish the
+    // actual source/receiver geometry after that reset.
+    source.setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    recipient.setpos( here, tripoint_bub_ms( 50, 55, 0 ) );
+    get_avatar().setpos( here, tripoint_bub_ms( 100, 100, -2 ) );
+    // The existing production planner admits the same current unit. This
+    // controlled local hearing scene is not a replay of the original incident.
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world = make_abstract_threat_test_world( cannibal, source.getID().get_value(), 6, "shelter" );
+    REQUIRE( world.sites.front().active_outing.member_ids ==
+             std::vector<character_id>{ source.getID(), recipient.getID() } );
+    REQUIRE( source.has_active_operation_duty() );
+    REQUIRE( recipient.has_active_operation_duty() );
+    for( int x = 45; x <= 55; ++x ) {
+        here.ter_set( tripoint_bub_ms( x, 53, 0 ), ter_id( "t_wall" ) );
+    }
+    const tripoint_bub_ms incident( 52, 50, 0 );
+    if( condition == "harmless" ) {
+        monster &passing = spawn_test_monster( "mon_deer", incident );
+        REQUIRE( source.attitude_to( passing ) != Creature::Attitude::HOSTILE );
+        REQUIRE( source.sees( here, passing ) );
+        source.regen_ai_cache();
+        CHECK_FALSE( source.has_active_faction_alarm() );
+    } else if( condition == "hostile" ) {
+        monster &threat = spawn_test_monster( "mon_zombie", incident );
+        REQUIRE( source.attitude_to( threat ) == Creature::Attitude::HOSTILE );
+    } else if( condition == "hidden" ) {
+        here.ter_set( tripoint_bub_ms( 51, 50, 0 ), ter_id( "t_wall" ) );
+    } else if( condition == "incapacity" ) {
+        source.add_effect( efftype_id( "narcosis" ), 1_hours );
+        source.add_effect( efftype_id( "sleep" ), 1_hours );
+    } else if( condition == "flight" ) {
+        source.set_attitude( NPCATT_FLEE );
+    }
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0 );
+    REQUIRE_FALSE( recipient.sees( here, incident ) );
+    if( condition == "incapacity" ) {
+        // A real incapacity need not be able to raise an alarm. Deliver the
+        // already-emitted episode before applying incapacity instead.
+        source.remove_effect( efftype_id( "narcosis" ) );
+        source.remove_effect( efftype_id( "sleep" ) );
+    }
+    REQUIRE( source.raise_faction_alarm( here.get_abs( incident ) ) );
+    sounds::process_sound_markers( &recipient );
+    REQUIRE( recipient.has_active_faction_alarm() );
+    REQUIRE( recipient.faction_alarm );
+    CHECK( recipient.faction_alarm->source_id == source.getID() );
+    if( condition == "incapacity" ) {
+        source.add_effect( efftype_id( "narcosis" ), 1_hours );
+        source.add_effect( efftype_id( "sleep" ), 1_hours );
+    }
+    const auto until = recipient.faction_alarm->until;
+    const bool danger_remains = condition != "clear" && condition != "harmless";
+    CHECK( source.faction_alarm_requires_response() == danger_remains );
+    CHECK( recipient.faction_alarm_requires_response() == danger_remains );
+    CHECK( recipient.has_active_faction_alarm() );
+    CHECK( recipient.faction_alarm->until == until );
+    CHECK_FALSE( recipient.sees( here, incident ) );
+    // Unavailable current source cannot certify a cleared received incident.
+    g->remove_npc( source.getID() );
+    REQUIRE_FALSE( source.is_active() );
+    REQUIRE( overmap_buffer.find_npc( source.getID() ) );
+    CHECK( recipient.faction_alarm_requires_response() );
+}
+
+TEST_CASE( "loaded interrupted watch resumes only after current survival permits it",
+           "[bandit][npc][interrupted_scout_alarm_067][interrupted_watch_report_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const bool forced_sleep = GENERATE( false, true );
+    const std::string recovery = GENERATE( "same", "blocked", "missing", "none" );
+    const bool different = recovery == "blocked" || recovery == "missing";
+    CAPTURE( cannibal, forced_sleep, recovery );
+    auto previous_world = overmap_buffer.global_state.bandit_live_world;
+    const auto previous_turn = calendar::turn;
+    const auto previous_player = get_avatar().pos_abs_omt();
+    clear_npcs();
+    clear_avatar();
+    sounds::reset_sounds();
+    std::vector<shared_ptr_fast<npc>> actors;
+    on_out_of_scope restore( [&]() {
+        // Test cleanup is not another outing death/casualty service.
+        overmap_buffer.global_state.bandit_live_world.clear();
+        clear_npcs();
+        for( const auto &actor : actors ) {
+            if( overmap_buffer.find_npc( actor->getID() ) ) {
+                overmap_buffer.remove_npc( actor->getID() );
+            }
+        }
+        g->clear_zombies();
+        sounds::reset_sounds();
+        overmap_buffer.global_state.bandit_live_world = std::move( previous_world );
+        calendar::turn = previous_turn;
+        g->place_player_overmap( previous_player );
+    } );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world.clear();
+    auto controlled = make_abstract_threat_test_world( cannibal, 976400, 6, "shelter" );
+    auto &site = controlled.sites.front();
+    auto &outing = site.active_outing;
+    const auto watch = outing.target_omt + point( -3, 0 );
+    const auto approach = watch + point( -1, 0 );
+    const auto alternate = outing.target_omt + point( 3, 0 );
+    const auto alternate_approach = alternate + point( 1, 0 );
+    const auto route_cursor = require_current_simulation_cursor( site );
+    outing.schema_version = 10;
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    REQUIRE( apply_structural_watch_route_selection( site,
+                 route_cursor, { outing.target_omt },
+                 { { watch, true, true, true, 1 }, { alternate, true, true, true, 2 } },
+                 { site.anchor, alternate_approach, alternate, alternate_approach, site.anchor } ) ==
+             structural_watch_route_apply_result::applied );
+    outing.phase = scout_phase::observing;
+    outing.waypoint_index = 2;
+    // This controlled completed route mirror requires its existing departure
+    // fact; it is not a reconstruction of the historical first abort.
+    outing.actor_departure_observed = true;
+    outing.actor_route_waypoint = 2;
+    outing.local_contact_minutes = 100;
+    outing.expected_return_minutes = 205;
+    outing.missing_deadline_minutes = 205 + 1440;
+    REQUIRE( advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                 outing.target_lead_revision, 100 ) == scout_assessment_result::updated );
+    // Deliberately exercise the fallback after an already attempted alternate;
+    // that flag must never substitute for current survival checks.
+    if( recovery == "missing" ) {
+        outing.alternate_watch_kind = structural_watch_kind::none;
+        outing.alternate_watch_omt = {};
+        outing.alternate_watch_route_cost = -1;
+        outing.alternate_watch_shared_route.clear();
+    } else {
+        outing.alternate_watch_attempted = true;
+    }
+    g->place_player_overmap( watch );
+    clear_map_with_vision( -1, 1, false );
+    set_time_to_day();
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> terrain;
+    on_out_of_scope restore_terrain( [&]() {
+        for( auto it = terrain.rbegin(); it != terrain.rend(); ++it ) {
+            overmap_buffer.ter_set( it->first, it->second );
+        }
+    } );
+    for( int x = -5; x <= 5; ++x ) for( int y = -5; y <= 5; ++y ) {
+        const auto point = outing.target_omt + tripoint( x, y, 0 );
+        terrain.emplace_back( point, overmap_buffer.ter( point ) );
+        overmap_buffer.ter_set( point, oter_id( "solid_earth" ) );
+    }
+    const auto new_watch = outing.target_omt + point( 0, -3 );
+    for( const auto point : { outing.target_omt, watch, approach, site.anchor,
+                            outing.target_omt + tripoint( -1, 0, 0 ),
+                            outing.target_omt + tripoint( -2, 0, 0 ) } ) {
+        overmap_buffer.ter_set( point, oter_id( "field" ) );
+    }
+    if( recovery != "none" ) {
+        overmap_buffer.ter_set( site.anchor + tripoint( 1, 0, 0 ), oter_id( "field" ) );
+    }
+    if( different ) {
+        for( int offset = 1; offset <= 3; ++offset ) {
+            overmap_buffer.ter_set( watch + tripoint( 0, -offset, 0 ), oter_id( "field" ) );
+            overmap_buffer.ter_set( new_watch + tripoint( -offset, 0, 0 ), oter_id( "field" ) );
+            overmap_buffer.ter_set( outing.target_omt + tripoint( 0, -offset, 0 ), oter_id( "field" ) );
+        }
+        overmap_buffer.ter_set( new_watch, oter_id( "forest" ) );
+    }
+    // These are real stored target cells for geometry qualification, not a
+    // signal/readiness certificate. The interrupted watch still has no records.
+    tinymap target_map;
+    target_map.load( outing.target_omt, false, false );
+    std::vector<std::tuple<tripoint_omt_ms, ter_id, furn_id>> previous_cells;
+    on_out_of_scope restore_target( [&]() {
+        for( const auto &[point, terrain, furniture] : previous_cells ) {
+            target_map.ter_set( point, terrain );
+            target_map.furn_set( point, furniture );
+        }
+        target_map.save();
+    } );
+    for( int z : { 0, 1, 2 } ) for( const auto &point : target_map.points_on_zlevel( z ) ) {
+        previous_cells.emplace_back( point, target_map.ter( point ), target_map.furn( point ) );
+        target_map.ter_set( point, ter_id( z == 0 ? "t_grass" : "t_open_air" ) );
+        target_map.furn_set( point, furn_id( "f_null" ) );
+    }
+    target_map.save();
+    const auto watch_origin = project_to<coords::ms>( watch );
+    std::vector<local_handoff_member_read> handoff_reads;
+    for( std::size_t index = 0; index < outing.member_ids.size(); ++index ) {
+        auto actor = make_shared_fast<npc>();
+        actor->normalize();
+        actor->load_npc_template( npc_template_id( "test_talker" ) );
+        clear_character( *actor, true );
+        actor->setID( outing.member_ids[index], true );
+        actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
+        actor->set_attitude( NPCATT_NULL );
+        const auto position = watch_origin + point( 8 + index, 8 );
+        actor->spawn_at_precise( position );
+        overmap_buffer.insert_npc( actor );
+        actors.push_back( actor );
+        handoff_reads.push_back( { actor->getID(), true, false, 100, position,
+                                  position + point( 0, -1 ), position } );
+    }
+    g->load_npcs();
+    world = std::move( controlled );
+    INFO( "native handoff admission after map loading" );
+    CAPTURE( outing.phase, outing.expected_return_minutes, outing.selected_watch_omt,
+             outing.shared_route, outing.last_advanced_minutes );
+    const auto handoff = plan_local_pair_handoff( site, require_current_simulation_cursor( site ),
+                         100, handoff_reads );
+    CAPTURE( handoff.notes );
+    REQUIRE( handoff.valid );
+    REQUIRE( commit_local_pair_handoff( site, handoff, []( const auto & ) { return true; },
+                                      []( const auto & ) {} ) == local_handoff_commit_result::applied );
+    std::vector<local_cohesion_member_read> together;
+    for( const auto &actor : actors ) {
+        REQUIRE( actor->is_active() );
+        together.push_back( { actor->getID(), true, false, actor->pos_abs() } );
+    }
+    const auto assembly = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ),
+                          100, together );
+    REQUIRE( assembly.valid );
+    REQUIRE( assembly.snapshot.cohesion_assembled );
+    REQUIRE( commit_local_pair_cohesion( site, assembly, false, false ) );
+    REQUIRE( persist_live_bandit_local_projection_leases_for_test( site ) );
+    world.acknowledge_persisted_crossings();
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 110, 110, -2 ) );
+    get_map().invalidate_map_cache( 0 );
+    get_map().build_map_cache( 0 );
+    if( forced_sleep ) {
+        actors[0]->add_effect( efftype_id( "narcosis" ), 1_hours );
+        actors[0]->add_effect( efftype_id( "sleep" ), 1_hours );
+    } else {
+        const auto incident = get_map().get_bub( actors[0]->pos_abs() + point( 3, 0 ) );
+        monster &threat = spawn_test_monster( "mon_zombie", incident );
+        REQUIRE( actors[0]->attitude_to( threat ) == Creature::Attitude::HOSTILE );
+        REQUIRE( actors[0]->sees( get_map(), threat ) );
+        actors[0]->regen_ai_cache();
+        REQUIRE( actors[0]->has_active_faction_alarm() );
+        REQUIRE( actors[0]->faction_alarm_requires_response() );
+    }
+    const int current = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    calendar::turn += 1_minutes;
+    advance_live_bandit_local_scout_assessments_for_test();
+    REQUIRE( outing.assessment.interruption );
+    CHECK( outing.assessment.interruption->pending() );
+    CHECK( outing.assessment.observation_started_minutes == 100 );
+    const int interrupted_at = outing.assessment.interruption->minutes;
+    calendar::turn += 1_minutes;
+    advance_live_bandit_local_scout_assessments_for_test();
+    CHECK( outing.assessment.interruption->pending() );
+    CHECK( outing.assessment.interruption->minutes == interrupted_at );
+    CHECK( outing.assessment.observation_started_minutes == 100 );
+    if( forced_sleep ) {
+        CHECK( actors[0]->in_sleep_state() );
+        actors[0]->remove_effect( efftype_id( "narcosis" ) );
+        actors[0]->wake_up();
+        CHECK( actors[0]->get_effect_dur( efftype_id( "sleep" ) ) == 0_turns );
+        // Ordinary wake defers zero-duration sleep removal; finish the native
+        // effect pass rather than treating an outstanding effect as clearance.
+        actors[0]->process_effects();
+        REQUIRE_FALSE( actors[0]->in_sleep_state() );
+    } else {
+        g->clear_zombies();
+        for( const auto &actor : actors ) {
+            actor->regen_ai_cache();
+        }
+        REQUIRE( actors[0]->has_active_faction_alarm() );
+        REQUIRE_FALSE( actors[0]->faction_alarm_requires_response() );
+    }
+    calendar::turn += 1_minutes;
+    advance_live_bandit_local_scout_assessments_for_test();
+    if( recovery == "none" ) {
+        REQUIRE( outing.assessment.interruption->pending() );
+        CHECK( outing.phase == scout_phase::returning_report );
+        CHECK_FALSE( outing.alternate_watch_reposition_pending );
+        CHECK_FALSE( outing.assessment.readiness_latched );
+        CHECK( outing.assessment.observation_started_minutes == 100 );
+        CHECK( outing.observations.empty() );
+        CHECK( outing.assessment.exit_reason == "no currently safe reachable watch" );
+        // The deliberately blocked home boundary is not made passable by
+        // deciding to return: no forced order, movement or arrival is minted.
+        for( const auto &actor : actors ) { CHECK( actor->omt_path.empty() ); }
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+        return;
+    }
+    if( different ) {
+        REQUIRE( outing.assessment.interruption->pending() );
+        REQUIRE( outing.alternate_watch_reposition_pending );
+        const auto chosen = outing.alternate_watch_omt;
+        CHECK( chosen != watch );
+        CHECK( chosen != alternate );
+        structural_outing_plan qualified_plan;
+        qualified_plan.lead_id = outing.target_lead_id;
+        qualified_plan.target_omt = outing.target_omt;
+        qualified_plan.job = bandit_dry_run::job_template::scout;
+        int qualified_budget = 8;
+        const auto qualified = live_bandit_structural_route_read_for_test(
+                                   site, qualified_plan, qualified_budget );
+        const auto actual_candidate = std::find_if( qualified.watch_candidates.begin(),
+                                      qualified.watch_candidates.end(),
+        [chosen]( const auto &candidate ) { return candidate.omt == chosen; } );
+        REQUIRE( actual_candidate != qualified.watch_candidates.end() );
+        CHECK( actual_candidate->reachable );
+        CHECK( actual_candidate->two_intervening_omts_clear );
+        CHECK( outing.alternate_watch_attempted == ( recovery != "missing" ) );
+        for( const auto &actor : actors ) {
+            CHECK( actor->goal == chosen );
+            CHECK_FALSE( actor->omt_path.empty() );
+        }
+        CHECK( outing.assessment.observation_started_minutes == 100 );
+        CHECK_FALSE( outing.assessment.readiness_latched );
+        CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+        return;
+    }
+    REQUIRE_FALSE( outing.assessment.interruption->pending() );
+    CHECK( outing.assessment.interruption->resumed_minutes > interrupted_at );
+    CHECK( outing.assessment.observation_started_minutes ==
+           outing.assessment.interruption->resumed_minutes );
+    CHECK_FALSE( outing.assessment.readiness_latched );
+    CHECK( outing.observations.empty() );
+    CHECK( current >= 100 );
+    CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
 }
 
 TEST_CASE( "hostile_camp_routed_dispatch_uses_exact_drive_score_and_risk_boundaries",

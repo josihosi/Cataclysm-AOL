@@ -1835,8 +1835,14 @@ void npc::assess_danger() {
         ai_cache.hostile_guys.emplace_back( g->shared_from( player_character ) );
     }
 
+    const auto &live_world = overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::site_record *duty_site =
+        bandit_live_world::active_operation_duty_site_for( live_world, getID() );
     const bool camp_member = bandit_live_world::active_local_camp_member_profile(
-                                 overmap_buffer.global_state.bandit_live_world, getID() ).has_value();
+                                 live_world, getID() ).has_value() ||
+                             ( duty_site != nullptr &&
+                               duty_site->active_outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                               duty_site->active_outing.job_type == "scout" );
     for( const monster &critter : g->all_monsters() ) {
         if( !clairvoyant && !here.has_potential_los( pos_bub(), critter.pos_bub() ) ) {
             continue;
@@ -3267,7 +3273,7 @@ void npc::move() {
       action = goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ?
                npc_goto_to_this_pos : npc_pause;
     }
-  } else if( has_active_faction_alarm() ) {
+  } else if( faction_alarm_requires_response() ) {
     // A heard incident is finite information, not a target pointer. Survival
     // and visible combat above retain priority, including party separation.
     action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );

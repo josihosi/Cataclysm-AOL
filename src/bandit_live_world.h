@@ -631,6 +631,20 @@ enum class local_handoff_commit_result {
     rolled_back,
 };
 
+// Route experience belongs to the assessment, not its optical fact ledger.
+// A recovery time closes this interruption without erasing where/why it happened.
+struct scout_watch_interruption {
+    tripoint_abs_omt lookout;
+    int minutes = -1;
+    std::string cause;
+    int watch_started_minutes = -1;
+    int resumed_minutes = -1;
+
+    bool pending() const { return resumed_minutes < 0; }
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct scout_assessment_state {
     int schema_version = 3;
     int observation_started_minutes = -1;
@@ -658,6 +672,7 @@ struct scout_assessment_state {
     int pinned_target_revision = 0;
     int next_eligible_minutes = -1;
     std::string exit_reason;
+    std::optional<scout_watch_interruption> interruption;
 
     void clear();
     void serialize( JsonOut &json ) const;
@@ -2060,6 +2075,16 @@ structural_watch_route_apply_result apply_structural_watch_route_selection(
     const std::vector<tripoint_abs_omt> &target_footprint,
     const std::vector<watch_selection_candidate> &candidates,
     const std::vector<tripoint_abs_omt> &alternate_watch_shared_route = {} );
+bool remember_scout_watch_interruption(
+    site_record &site, const simulation_advance_cursor &cursor,
+    const std::string &cause, int current_minutes );
+bool refresh_interrupted_scout_watch_route(
+    site_record &site, const simulation_advance_cursor &cursor,
+    const structural_route_read &read, int current_minutes );
+watch_selection_result select_scout_watch_candidate(
+    const site_record &site, const std::string &lead_id,
+    const std::vector<tripoint_abs_omt> &footprint,
+    const std::vector<watch_selection_candidate> &candidates, int current_minutes );
 bool local_elevated_signal_watch_recovery_needed( const site_record &site );
 structural_watch_route_apply_result recover_local_elevated_signal_watch(
     site_record &site, const simulation_advance_cursor &expected_cursor,

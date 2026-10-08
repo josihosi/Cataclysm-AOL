@@ -1,0 +1,119 @@
+{
+  "sources": [
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-MAINT-SCENARIO-CONSOLIDATION-mac-capacity-001/bulky-m240-fixed-cursor-restart1-native/saved-report-8407-readback.json",
+      "sha256": "46032fcfe66f9ef23cfc09378acb342d2691e3635bbaa2711113ac3b6086871f"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-MAINT-SCENARIO-CONSOLIDATION-mac-capacity-001/bulky-m240-fixed-cursor-restart1-native/pre14340-saved-smoke-history-readback.json",
+      "sha256": "2f7a5a4c14b130356804a913b3e7b99c1a6de38cf140a79168b4bdcd5d7cd6cd"
+    }
+  ],
+  "unstarted_report": {
+    "schema_version": 5,
+    "revision": 1,
+    "action_policy": "bandit_shakedown",
+    "source_activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+    "source_generation": 1,
+    "source_job_type": "scout",
+    "target_id": "camp-smoke@(131,143,0)",
+    "target_omt": [
+      131,
+      143,
+      0
+    ],
+    "target_lead_id": "overmap_special:bandit_camp@129,149,0#lead:smoke_signal:camp-smoke@(131,143,0)@131,143,0",
+    "target_lead_revision": 281,
+    "application_key": "overmap_special:bandit_camp@129,149,0#structural:report:1",
+    "carrier_ids": [
+      5,
+      6
+    ],
+    "observations": [],
+    "assessment": {
+      "schema_version": 3,
+      "observation_started_minutes": -1,
+      "last_progress_minutes": 8280,
+      "burned_minutes": -1,
+      "burn_origin_omt": [
+        0,
+        0,
+        0
+      ],
+      "certainty": 0,
+      "habitation_certainty": 0,
+      "readiness_latched": false,
+      "threshold_class": "none",
+      "strong_visual_windows": 0,
+      "defenders_low": 0,
+      "defenders_high": 0,
+      "danger_low": 0,
+      "danger_high": 0,
+      "bounty_estimate": 0,
+      "route_danger_high": 0,
+      "site_signal_observed_minutes": -1,
+      "site_signal_source_id": "",
+      "target_alert": 0,
+      "pinned_target_revision": 154,
+      "next_eligible_minutes": 8280,
+      "exit_reason": "structural outing completed its shared route home"
+    },
+    "casualty_ids": [],
+    "delivered_minutes": 8280,
+    "provisional": false
+  },
+  "completed_empty_report": {
+    "schema_version": 5,
+    "revision": 1,
+    "action_policy": "bandit_shakedown",
+    "source_activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+    "source_generation": 2,
+    "source_job_type": "scout",
+    "target_id": "field",
+    "target_omt": [
+      129,
+      145,
+      0
+    ],
+    "target_lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,145,0:field",
+    "target_lead_revision": 3,
+    "application_key": "overmap_special:bandit_camp@129,149,0#structural:report:2",
+    "carrier_ids": [
+      5,
+      6
+    ],
+    "observations": [],
+    "assessment": {
+      "schema_version": 3,
+      "observation_started_minutes": 11280,
+      "last_progress_minutes": 11400,
+      "burned_minutes": -1,
+      "burn_origin_omt": [
+        0,
+        0,
+        0
+      ],
+      "certainty": 0,
+      "habitation_certainty": 0,
+      "readiness_latched": false,
+      "threshold_class": "none",
+      "strong_visual_windows": 0,
+      "defenders_low": 0,
+      "defenders_high": 3,
+      "danger_low": 0,
+      "danger_high": 9,
+      "bounty_estimate": 0,
+      "route_danger_high": 0,
+      "site_signal_observed_minutes": -1,
+      "site_signal_source_id": "",
+      "target_alert": 0,
+      "pinned_target_revision": 3,
+      "next_eligible_minutes": 12120,
+      "exit_reason": "selected watch made no assessment progress and no alternate was available"
+    },
+    "casualty_ids": [],
+    "delivered_minutes": 11460,
+    "provisional": false
+  },
+  "limits": "Reports are native originals; controlled return owner/geometry below uses the existing valid test factory, not a recovered historical abort writer or historical pre-return world."
+}

@@ -2479,6 +2479,43 @@ bool npc::has_active_faction_alarm() const
            is_ally( *source );
 }
 
+bool npc::faction_alarm_requires_response() const
+{
+    if( !has_active_faction_alarm() ) {
+        return false;
+    }
+    const bandit_live_world::site_record *site = bandit_live_world::active_operation_duty_site_for(
+                overmap_buffer.global_state.bandit_live_world, getID() );
+    if( site == nullptr || site->active_outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        site->active_outing.job_type != "scout" ) {
+        return true;
+    }
+    const npc *source = g->find_npc( faction_alarm->source_id );
+    map &here = get_map();
+    // A receiver need not see the incident. An unavailable source or hidden
+    // incident cannot certify that its authenticated warning is now clear.
+    if( source == nullptr || !source->is_active() || source->is_dead() ||
+        !here.inbounds( source->pos_abs() ) ||
+        !here.inbounds( faction_alarm->incident ) || source->duty_incapacitated() ||
+        source->get_attitude() == NPCATT_FLEE || source->get_attitude() == NPCATT_FLEE_TEMP ||
+        source->has_effect( effect_npc_flee_player ) ||
+        source->has_effect( efftype_id( "npc_run_away" ) ) ||
+        !source->sees( here, here.get_bub( faction_alarm->incident ) ) ||
+        source->sees_dangerous_field( here.get_bub( faction_alarm->incident ) ) ||
+        source->sees_dangerous_field( source->pos_bub() ) ) {
+        return true;
+    }
+    for( const Creature *creature : source->get_visible_creatures( MAX_VIEW_DISTANCE ) ) {
+        if( creature != source && !creature->is_dead_state() &&
+            source->attitude_to( *creature ) == Creature::Attitude::HOSTILE ) {
+            return true;
+        }
+    }
+    // Actual current source perception cleared the visible incident, not merely
+    // a null target, zero danger or absence of an attack. Keep the alert itself.
+    return false;
+}
+
 bool npc::raise_faction_alarm( const tripoint_abs_ms &incident )
 {
     const std::string group = faction_alarm_group();
