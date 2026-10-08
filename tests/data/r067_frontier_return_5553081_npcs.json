@@ -1,0 +1,4273 @@
+[
+  {
+    "location": [
+      3143,
+      3458,
+      0
+    ],
+    "moves": 0,
+    "pain": 0,
+    "effects": {},
+    "damage_over_time_map": [],
+    "values": {
+      "was_sleeping": {
+        "str": "false"
+      },
+      "sleep_health_mult": 1.0,
+      "THIEF_MODE": {
+        "str": "THIEF_ASK"
+      }
+    },
+    "blocks_left": 1,
+    "dodges_left": 1,
+    "num_blocks_bonus": 0,
+    "num_dodges_bonus": 0,
+    "armor_bonus": {},
+    "speed": 100,
+    "speed_bonus": 0,
+    "dodge_bonus": 0.0,
+    "block_bonus": 0,
+    "hit_bonus": 0.0,
+    "bash_bonus": 0,
+    "cut_bonus": 0,
+    "bash_mult": 1.0,
+    "cut_mult": 1.0,
+    "melee_quiet": false,
+    "throw_resist": 0,
+    "archery_aim_counter": 0,
+    "last_updated": 5553080,
+    "body": {
+      "foot_l": {
+        "id": "foot_l",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "foot_r": {
+        "id": "foot_r",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "hand_l": {
+        "id": "hand_l",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "hand_r": {
+        "id": "hand_r",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "head": {
+        "id": "head",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "mouth": {
+        "id": "mouth",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "arm_l": {
+        "id": "arm_l",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "arm_r": {
+        "id": "arm_r",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "eyes": {
+        "id": "eyes",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "leg_l": {
+        "id": "leg_l",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "leg_r": {
+        "id": "leg_r",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "torso": {
+        "id": "torso",
+        "hp_cur": 88,
+        "hp_max": 88,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      }
+    },
+    "lifespan_end": null,
+    "weapon": {
+      "typeid": "walther_p22",
+      "uid": 4298876,
+      "bday": 5216400,
+      "item_vars": {
+        "magazine_converted": 1.0,
+        "dirt": 33.0
+      },
+      "owner": "hells_raiders",
+      "last_temp_check": 0,
+      "faults": [
+        "fault_gun_dirt"
+      ],
+      "template_traits": [],
+      "variant": "walther_p22",
+      "contents": {
+        "contents": [
+          {
+            "pocket_type": 2,
+            "contents": [
+              {
+                "typeid": "wp22mag",
+                "uid": 4614644,
+                "bday": 5216400,
+                "owner": "hells_raiders",
+                "last_temp_check": 0,
+                "template_traits": [],
+                "variant": "wp22mag",
+                "contents": {
+                  "contents": [
+                    {
+                      "pocket_type": 1,
+                      "contents": [
+                        {
+                          "typeid": "22_lr",
+                          "uid": 4614643,
+                          "charges": 10,
+                          "bday": 5216400,
+                          "owner": "hells_raiders",
+                          "last_temp_check": 0,
+                          "template_traits": []
+                        }
+                      ],
+                      "_sealed": false,
+                      "no_rigid": [],
+                      "favorite_settings": {
+                        "name": null,
+                        "priority": 0,
+                        "item_whitelist": [],
+                        "item_blacklist": [],
+                        "category_whitelist": [],
+                        "category_blacklist": [],
+                        "collapsed": true,
+                        "disabled": false,
+                        "unload": true,
+                        "player_edited": false
+                      }
+                    },
+                    {
+                      "pocket_type": 8,
+                      "contents": [],
+                      "_sealed": false,
+                      "no_rigid": []
+                    }
+                  ],
+                  "additional_pockets": []
+                }
+              }
+            ],
+            "_sealed": false,
+            "no_rigid": [],
+            "favorite_settings": {
+              "name": null,
+              "priority": 0,
+              "item_whitelist": [],
+              "item_blacklist": [],
+              "category_whitelist": [],
+              "category_blacklist": [],
+              "collapsed": true,
+              "disabled": false,
+              "unload": true,
+              "player_edited": false
+            }
+          },
+          {
+            "pocket_type": 3,
+            "contents": [],
+            "_sealed": false,
+            "no_rigid": []
+          },
+          {
+            "pocket_type": 8,
+            "contents": [],
+            "_sealed": false,
+            "no_rigid": []
+          }
+        ],
+        "additional_pockets": []
+      }
+    },
+    "str_max": 9,
+    "dex_max": 5,
+    "int_max": 8,
+    "per_max": 8,
+    "str_bonus": 0,
+    "dex_bonus": 0,
+    "per_bonus": 0,
+    "int_bonus": 0,
+    "name": "Selena Spence",
+    "play_name": null,
+    "base_age": 41,
+    "base_height": 164,
+    "blood_type": "O",
+    "blood_rh_factor": true,
+    "avg_nat_bpm": 1919251298,
+    "custom_profession": "",
+    "healthy": 0,
+    "healthy_mod": 0,
+    "health_tally": 0,
+    "daily_sleep": 0,
+    "continuous_sleep": 0,
+    "thirst": 0,
+    "hunger": 0,
+    "sleepiness": 191,
+    "cardio_acc": 1000,
+    "activity_history": {
+      "current_activity": 1.0,
+      "accumulated_activity": 44424356.0,
+      "previous_activity": 161032624.0,
+      "previous_turn_activity": 1.0,
+      "current_turn": 0,
+      "activity_reset": false,
+      "num_events": 44424361,
+      "tracker": 0,
+      "intake": 0,
+      "low_activity_ticks": 0.0
+    },
+    "sleep_deprivation": 0,
+    "stored_calories": 103767000,
+    "radiation": 0,
+    "stamina": 10000,
+    "vitamin_levels": {
+      "iron": -444,
+      "blood": 0,
+      "calcium": -444,
+      "bread_allergen": 0,
+      "egg_allergen": 0,
+      "fruit_allergen": 0,
+      "human_flesh_vitamin": 0,
+      "junk_allergen": 0,
+      "meat_allergen": 0,
+      "milk_allergen": 0,
+      "nut_allergen": 0,
+      "veggy_allergen": 0,
+      "wheat_allergen": 0,
+      "redcells": 0,
+      "mutagen": 0,
+      "vitC": -444,
+      "bad_food": 0,
+      "mutagenic_slurry": 0,
+      "mutagen_chelator": 0,
+      "mutagen_alpha": 0,
+      "mutagen_batrachian": 0,
+      "mutagen_beast": 0,
+      "mutagen_bird": 0,
+      "mutagen_cattle": 0,
+      "mutagen_cephalopod": 0,
+      "mutagen_chimera": 0,
+      "mutagen_elfa": 0,
+      "mutagen_feline": 0,
+      "mutagen_fish": 0,
+      "mutagen_gastropod": 0,
+      "mutagen_human": 0,
+      "mutagen_insect": 0,
+      "mutagen_lizard": 0,
+      "mutagen_lupine": 0,
+      "mutagen_medical": 0,
+      "mutagen_mouse": 0,
+      "mutagen_plant": 0,
+      "mutagen_raptor": 0,
+      "mutagen_rabbit": 0,
+      "mutagen_rat": 0,
+      "mutagen_chiropteran": 0,
+      "mutagen_slime": 0,
+      "mutagen_spider": 0,
+      "mutagen_troglobite": 0,
+      "mutagen_ursine": 0,
+      "mutagen_crustacean": 0,
+      "mutagen_interstice": 0,
+      "dermatik_larva_size": 0,
+      "mutant_toxin": 0,
+      "vit_betablocker": 0,
+      "vit_bloodthinner": 0,
+      "vit_ibuprofen": 0,
+      "vit_mme": 0,
+      "triffid_fiber": 0,
+      "ethanol": 0,
+      "BAC": 0,
+      "water_clean_scarlet_toxin": 0,
+      "instability": 0
+    },
+    "daily_vitamins": {
+      "iron": [
+        0,
+        0
+      ],
+      "blood": [
+        0,
+        66451
+      ],
+      "calcium": [
+        0,
+        0
+      ],
+      "bread_allergen": [
+        0,
+        0
+      ],
+      "egg_allergen": [
+        0,
+        0
+      ],
+      "fruit_allergen": [
+        0,
+        0
+      ],
+      "human_flesh_vitamin": [
+        0,
+        0
+      ],
+      "junk_allergen": [
+        0,
+        0
+      ],
+      "meat_allergen": [
+        0,
+        0
+      ],
+      "milk_allergen": [
+        0,
+        0
+      ],
+      "nut_allergen": [
+        0,
+        0
+      ],
+      "veggy_allergen": [
+        0,
+        0
+      ],
+      "wheat_allergen": [
+        0,
+        0
+      ],
+      "redcells": [
+        0,
+        33225
+      ],
+      "mutagen": [
+        0,
+        0
+      ],
+      "vitC": [
+        0,
+        0
+      ],
+      "bad_food": [
+        0,
+        0
+      ],
+      "mutagenic_slurry": [
+        0,
+        0
+      ],
+      "mutagen_chelator": [
+        0,
+        0
+      ],
+      "mutagen_alpha": [
+        0,
+        0
+      ],
+      "mutagen_batrachian": [
+        0,
+        0
+      ],
+      "mutagen_beast": [
+        0,
+        0
+      ],
+      "mutagen_bird": [
+        0,
+        0
+      ],
+      "mutagen_cattle": [
+        0,
+        0
+      ],
+      "mutagen_cephalopod": [
+        0,
+        0
+      ],
+      "mutagen_chimera": [
+        0,
+        0
+      ],
+      "mutagen_elfa": [
+        0,
+        0
+      ],
+      "mutagen_feline": [
+        0,
+        0
+      ],
+      "mutagen_fish": [
+        0,
+        0
+      ],
+      "mutagen_gastropod": [
+        0,
+        0
+      ],
+      "mutagen_human": [
+        0,
+        0
+      ],
+      "mutagen_insect": [
+        0,
+        0
+      ],
+      "mutagen_lizard": [
+        0,
+        0
+      ],
+      "mutagen_lupine": [
+        0,
+        0
+      ],
+      "mutagen_medical": [
+        0,
+        0
+      ],
+      "mutagen_mouse": [
+        0,
+        0
+      ],
+      "mutagen_plant": [
+        0,
+        0
+      ],
+      "mutagen_raptor": [
+        0,
+        0
+      ],
+      "mutagen_rabbit": [
+        0,
+        0
+      ],
+      "mutagen_rat": [
+        0,
+        0
+      ],
+      "mutagen_chiropteran": [
+        0,
+        0
+      ],
+      "mutagen_slime": [
+        0,
+        0
+      ],
+      "mutagen_spider": [
+        0,
+        0
+      ],
+      "mutagen_troglobite": [
+        0,
+        0
+      ],
+      "mutagen_ursine": [
+        0,
+        0
+      ],
+      "mutagen_crustacean": [
+        0,
+        0
+      ],
+      "mutagen_interstice": [
+        0,
+        0
+      ],
+      "dermatik_larva_size": [
+        0,
+        0
+      ],
+      "mutant_toxin": [
+        0,
+        0
+      ],
+      "vit_betablocker": [
+        0,
+        0
+      ],
+      "vit_bloodthinner": [
+        0,
+        0
+      ],
+      "vit_ibuprofen": [
+        0,
+        0
+      ],
+      "vit_mme": [
+        0,
+        0
+      ],
+      "triffid_fiber": [
+        0,
+        0
+      ],
+      "ethanol": [
+        0,
+        0
+      ],
+      "BAC": [
+        0,
+        0
+      ],
+      "water_clean_scarlet_toxin": [
+        0,
+        0
+      ],
+      "instability": [
+        0,
+        0
+      ]
+    },
+    "pkill": 0,
+    "omt_path": [
+      [
+        129,
+        149,
+        0
+      ],
+      [
+        130,
+        148,
+        0
+      ],
+      [
+        131,
+        147,
+        0
+      ],
+      [
+        131,
+        146,
+        0
+      ],
+      [
+        131,
+        145,
+        0
+      ],
+      [
+        131,
+        144,
+        0
+      ],
+      [
+        131,
+        143,
+        0
+      ],
+      [
+        131,
+        142,
+        0
+      ],
+      [
+        130,
+        141,
+        0
+      ]
+    ],
+    "consumption_history": [],
+    "destination_activity": {
+      "type": "ACT_NULL"
+    },
+    "activity": {
+      "type": "ACT_NULL"
+    },
+    "stashed_outbounds_activity": {
+      "type": "ACT_NULL"
+    },
+    "stashed_outbounds_backlog": {
+      "type": "ACT_NULL"
+    },
+    "backlog": [],
+    "activity_vehicle_part_index": -1,
+    "stim": 0,
+    "type_of_scent": "sc_human",
+    "focus_pool": 80000,
+    "kill_xp": 0,
+    "underwater": false,
+    "oxygen": 48,
+    "traits": [
+      "NPC_STATIC_NPC"
+    ],
+    "mutations": {
+      "personality_collector_plus": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_brave": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_neg_aggressive": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "hair_buzzcut": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "hair_buzzcut",
+        "variant-id": "red"
+      },
+      "eye_color": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "eye_color",
+        "variant-id": "green"
+      },
+      "VEGETARIAN": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SLOWHEALER": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SKIN_LIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BADCARDIO": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "LIGHTWEIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "INFRESIST": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BGSS_Evacuee_4": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "NPC_STATIC_NPC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      }
+    },
+    "cached_mutations": {
+      "personality_collector_plus": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_brave": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_neg_aggressive": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "hair_buzzcut": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "hair_buzzcut",
+        "variant-id": "red"
+      },
+      "eye_color": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "eye_color",
+        "variant-id": "green"
+      },
+      "VEGETARIAN": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SLOWHEALER": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SKIN_LIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BADCARDIO": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "LIGHTWEIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "INFRESIST": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BGSS_Evacuee_4": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "NPC_STATIC_NPC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      }
+    },
+    "moncams": {},
+    "magic": {
+      "mana": 1000,
+      "spellbook": [],
+      "invlets": {},
+      "favorites": []
+    },
+    "martial_arts_data": {
+      "ma_styles": [
+        "style_none",
+        "style_kicks",
+        "style_brawling"
+      ],
+      "keep_hands_free": false,
+      "style_selected": "style_none"
+    },
+    "my_bionics": [],
+    "move_mode": "walk",
+    "known_monsters": [],
+    "morale": [],
+    "skills": {
+      "computer": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "electronics": {
+        "level": 0,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 0,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "fabrication": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "gun": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "mechanics": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "survival": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "swimming": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "traps": {
+        "level": 1,
+        "exercise": 8000,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 8000,
+        "rustaccumulator": 0
+      },
+      "firstaid": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "archery": {
+        "level": 4,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 4,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "bashing": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "cutting": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "dodge": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "launcher": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "melee": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "pistol": {
+        "level": 6,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 6,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "rifle": {
+        "level": 4,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 4,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "shotgun": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "smg": {
+        "level": 3,
+        "exercise": 10100,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 10100,
+        "rustaccumulator": 0
+      },
+      "stabbing": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "throw": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "unarmed": {
+        "level": 3,
+        "exercise": 9500,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 9500,
+        "rustaccumulator": 0
+      },
+      "driving": {
+        "level": 0,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 0,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "speech": {
+        "level": 2,
+        "exercise": 12300,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 12300,
+        "rustaccumulator": 0
+      },
+      "cooking": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "tailor": {
+        "level": 1,
+        "exercise": 8400,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 8400,
+        "rustaccumulator": 0
+      },
+      "chemistry": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216400,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      }
+    },
+    "proficiencies": {
+      "known": [
+        "prof_driver",
+        "prof_food_prep"
+      ],
+      "learning": []
+    },
+    "power_level": "0 kJ",
+    "max_power_level_modifier": "0 kJ",
+    "stomach": {
+      "vitamins": {},
+      "calories": 0,
+      "water": "0_ml",
+      "max_volume": "2500_ml",
+      "contents": "0_ml",
+      "last_ate": -1
+    },
+    "guts": {
+      "vitamins": {},
+      "calories": 0,
+      "water": "0_ml",
+      "max_volume": "24000_ml",
+      "contents": "0_ml",
+      "last_ate": 5553000
+    },
+    "automoveroute": [],
+    "known_traps": [],
+    "last_sleep_check": 0,
+    "slow_rad": 0,
+    "scent": 500,
+    "male": false,
+    "free_dodges_left": 0,
+    "cash": 0,
+    "recoil": 3000.0,
+    "book_chapters": {},
+    "in_vehicle": false,
+    "id": 5,
+    "addictions": [],
+    "death_eocs": [],
+    "worn": {
+      "worn": [
+        {
+          "typeid": "camisole",
+          "uid": 4298919,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "bra",
+          "uid": 4298920,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "panties",
+          "uid": 4298921,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "socks",
+          "uid": 4298922,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "shorts_denim",
+          "uid": 4298918,
+          "snip_id": "denim_shorts3",
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "boots_combat",
+          "uid": 4298923,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "gloves_work",
+          "uid": 4298924,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "mask_filter",
+          "uid": 4298927,
+          "bday": 5216400,
+          "item_vars": {
+            "magazine_converted": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": [],
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 2,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": [],
+                "favorite_settings": {
+                  "name": null,
+                  "priority": 0,
+                  "item_whitelist": [],
+                  "item_blacklist": [],
+                  "category_whitelist": [],
+                  "category_blacklist": [],
+                  "collapsed": true,
+                  "disabled": false,
+                  "unload": true,
+                  "player_edited": false
+                }
+              },
+              {
+                "pocket_type": 3,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 8,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        },
+        {
+          "typeid": "hat_ball",
+          "uid": 4298928,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": [],
+          "variant": "generic_hatball"
+        },
+        {
+          "typeid": "jacket_leather_mod",
+          "uid": 4298925,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 0,
+                "contents": [
+                  {
+                    "typeid": "wp22mag",
+                    "uid": 4614621,
+                    "bday": 5216400,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "variant": "wp22mag",
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 1,
+                          "contents": [
+                            {
+                              "typeid": "22_lr",
+                              "uid": 4614620,
+                              "charges": 10,
+                              "bday": 5216400,
+                              "owner": "hells_raiders",
+                              "last_temp_check": 0,
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 0,
+                            "item_whitelist": [],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 0,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 8,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        },
+        {
+          "typeid": "scarf",
+          "uid": 4298929,
+          "bday": 5216400,
+          "item_vars": {
+            "magazine_converted": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "vest",
+          "uid": 4298926,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "dive_bag",
+          "uid": 4298930,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": [],
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 0,
+                "contents": [
+                  {
+                    "typeid": "jug_plastic",
+                    "uid": 4614632,
+                    "bday": 5216400,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "vinegar",
+                              "uid": 4614631,
+                              "charges": 240,
+                              "bday": 5216400,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "977.593384",
+                              "temperature": "15 C 441 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "vinegar"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "bottle_plastic",
+                    "uid": 4614634,
+                    "bday": 5216400,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "water_clean",
+                              "uid": 4614633,
+                              "charges": 2,
+                              "bday": 5216400,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "967.820374",
+                              "temperature": "14 C 99 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": true,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "water_clean"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 8,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        },
+        {
+          "typeid": "leather_belt",
+          "uid": 4298931,
+          "bday": 5216400,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "wristwatch",
+          "uid": 4298932,
+          "bday": 5216400,
+          "item_vars": {
+            "lateral": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "silver_bracelet",
+          "uid": 4298933,
+          "bday": 5216400,
+          "item_vars": {
+            "lateral": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        }
+      ]
+    },
+    "inv": [],
+    "last_target_pos": null,
+    "last_magic_target_pos": null,
+    "destination_point": null,
+    "faction_warnings": [],
+    "camps": [],
+    "hauling": false,
+    "autohaul": false,
+    "hauling_filter": "",
+    "haul_list": [],
+    "suppress_autohaul": false,
+    "queued_effect_on_conditions": [
+      {
+        "time": 5553081,
+        "eoc": "EOC_social_reset_drugs",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "isherwood_mission_large_damage_retreat",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "vitrified_bleed_check",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "EOC_nether_glass_event",
+        "context": {}
+      },
+      {
+        "time": 5553086,
+        "eoc": "eoc_asocial_satisfied",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "godco_place_trader",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "godco_change_trader",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "EOC_BARRY_CHECK_IF_HOME",
+        "context": {}
+      },
+      {
+        "time": 5553112,
+        "eoc": "EOC_godco_hate_u_mutant",
+        "context": {}
+      },
+      {
+        "time": 5553153,
+        "eoc": "EOC_DERMATIK_BIRTH_INIT",
+        "context": {}
+      },
+      {
+        "time": 5553197,
+        "eoc": "eoc_social_satisfied",
+        "context": {}
+      },
+      {
+        "time": 5553233,
+        "eoc": "EOC_social2_bonus",
+        "context": {}
+      },
+      {
+        "time": 5553298,
+        "eoc": "eoc_social_dissatisfied",
+        "context": {}
+      },
+      {
+        "time": 5553318,
+        "eoc": "eoc_asocial_dissatisfied",
+        "context": {}
+      },
+      {
+        "time": 5553478,
+        "eoc": "changing_initiate_check",
+        "context": {}
+      },
+      {
+        "time": 5554018,
+        "eoc": "EOC_ink_gland_recharge_timer",
+        "context": {}
+      },
+      {
+        "time": 5554162,
+        "eoc": "eoc_conjunctivitis_sting",
+        "context": {}
+      },
+      {
+        "time": 5554354,
+        "eoc": "EOC_social_reset_sleep",
+        "context": {}
+      },
+      {
+        "time": 5554363,
+        "eoc": "EOC_asocial2_bonus",
+        "context": {}
+      },
+      {
+        "time": 5554427,
+        "eoc": "sneeze",
+        "context": {}
+      },
+      {
+        "time": 5554500,
+        "eoc": "EOC_social1_bonus",
+        "context": {}
+      },
+      {
+        "time": 5554609,
+        "eoc": "EOC_asocial1_bonus",
+        "context": {}
+      },
+      {
+        "time": 5554628,
+        "eoc": "EOC_asocial2_penalty",
+        "context": {}
+      },
+      {
+        "time": 5554869,
+        "eoc": "sewer_morale_debuff",
+        "context": {}
+      },
+      {
+        "time": 5557208,
+        "eoc": "EOC_RANDOM_HALLUCINATIONS",
+        "context": {}
+      },
+      {
+        "time": 5557503,
+        "eoc": "chitin2_molt_timer_3",
+        "context": {}
+      },
+      {
+        "time": 5557824,
+        "eoc": "bad_food_mood_debuff",
+        "context": {}
+      },
+      {
+        "time": 5558121,
+        "eoc": "EOC_social2_penalty",
+        "context": {}
+      },
+      {
+        "time": 5559671,
+        "eoc": "chitin3_molt_timer3",
+        "context": {}
+      },
+      {
+        "time": 5560846,
+        "eoc": "chitin_carapace_molt_timer3",
+        "context": {}
+      },
+      {
+        "time": 5561543,
+        "eoc": "hallucinate_effect",
+        "context": {}
+      },
+      {
+        "time": 5569456,
+        "eoc": "rashy_skin",
+        "context": {}
+      },
+      {
+        "time": 5574283,
+        "eoc": "chitin2_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5577056,
+        "eoc": "chitin_carapace_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5577660,
+        "eoc": "EOC_scenario_eldritch_ire",
+        "context": {}
+      },
+      {
+        "time": 5578534,
+        "eoc": "chitin3_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5583601,
+        "eoc": "scenario_trapped_in_labyrinth_recurring",
+        "context": {}
+      },
+      {
+        "time": 5664790,
+        "eoc": "chitin2_molt_timer2",
+        "context": {}
+      },
+      {
+        "time": 5685396,
+        "eoc": "chitin3_molt_timer2",
+        "context": {}
+      },
+      {
+        "time": 5786252,
+        "eoc": "hay_fever_spring_fall",
+        "context": {}
+      },
+      {
+        "time": 5800106,
+        "eoc": "shed_summer_timer_lupine",
+        "context": {}
+      },
+      {
+        "time": 5819943,
+        "eoc": "hay_fever_summer",
+        "context": {}
+      },
+      {
+        "time": 5855173,
+        "eoc": "seasonal_affective_winter",
+        "context": {}
+      },
+      {
+        "time": 6038186,
+        "eoc": "regrow_timer_ursine",
+        "context": {}
+      },
+      {
+        "time": 6134421,
+        "eoc": "shed_summer_timer_ursine",
+        "context": {}
+      },
+      {
+        "time": 6223735,
+        "eoc": "regrow_timer_lupine",
+        "context": {}
+      },
+      {
+        "time": 6360282,
+        "eoc": "seasonal_affective_fall",
+        "context": {}
+      },
+      {
+        "time": 6426000,
+        "eoc": "EOC_beard_growth_tracking",
+        "context": {}
+      },
+      {
+        "time": 6944400,
+        "eoc": "EOC_hair_growth_tracking",
+        "context": {}
+      },
+      {
+        "time": 8147812,
+        "eoc": "chitin2_molt_timer1",
+        "context": {}
+      },
+      {
+        "time": 8355237,
+        "eoc": "chitin3_molt_timer1",
+        "context": {}
+      }
+    ],
+    "inactive_eocs": [
+      "PAINREC3_EOC",
+      "PAINREC1_EOC",
+      "PAINREC2_EOC",
+      "bio_leaky",
+      "EOC_PORTAL_DEPENDENT_EFFECTS_ACCEPTANCE",
+      "bio_itchy",
+      "bio_drain",
+      "bio_sleepy",
+      "bio_trip",
+      "bio_noise",
+      "bio_glowy",
+      "EOC_PORTAL_DEPENDENT_EFFECTS_REJECTION",
+      "bio_shakes",
+      "changing_mutate",
+      "bio_spasm",
+      "mut_eyestalk"
+    ],
+    "marked_for_death": false,
+    "dead": false,
+    "patience": 0,
+    "myclass": "NC_SCAVENGER",
+    "idz": "bandit",
+    "known_to_u": false,
+    "personality": {
+      "aggression": -3,
+      "bravery": 6,
+      "collector": 9,
+      "altruism": 0
+    },
+    "last_player_seen_pos": null,
+    "goalx": 129,
+    "goaly": 149,
+    "goalz": 0,
+    "guard_pos": null,
+    "current_activity_id": "ACT_NULL",
+    "pulp_location": null,
+    "assigned_camp": null,
+    "chair_pos": null,
+    "wander_pos": null,
+    "job": {
+      "task_priorities": {
+        "ACT_MOVE_LOOT": 0,
+        "ACT_MULTIPLE_BUTCHER": 0,
+        "ACT_MULTIPLE_CHOP_PLANKS": 0,
+        "ACT_MULTIPLE_CHOP_TREES": 0,
+        "ACT_MULTIPLE_CONSTRUCTION": 0,
+        "ACT_MULTIPLE_DIS": 0,
+        "ACT_MULTIPLE_FARM": 0,
+        "ACT_MULTIPLE_FISH": 0,
+        "ACT_VEHICLE_DECONSTRUCTION": 0,
+        "ACT_VEHICLE_REPAIR": 0,
+        "ACT_CAMP_PATROL": 0
+      },
+      "fetch_history": {},
+      "activity_cooldowns": {}
+    },
+    "bandit_live_world_projection_lease": {
+      "site_id": "overmap_special:bandit_camp@129,149,0",
+      "activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+      "owner": "local",
+      "generation": 3,
+      "handoff_epoch": 3,
+      "last_advanced_minutes": 13215
+    },
+    "mission": 10,
+    "previous_mission": 0,
+    "camp_patrol_order_active": false,
+    "faction_alarm": null,
+    "faction_api_ver": 2,
+    "my_fac": "hells_raiders",
+    "attitude": 0,
+    "previous_attitude": 0,
+    "op_of_u": {
+      "trust": 0,
+      "fear": 0,
+      "value": 0,
+      "anger": 0,
+      "owed": 0,
+      "sold": 0
+    },
+    "faction_representative": false,
+    "chatbin": {
+      "first_topic": "TALK_DONE",
+      "talk_radio": "TALK_RADIO",
+      "talk_leader": "TALK_LEADER",
+      "talk_friend": "TALK_FRIEND",
+      "talk_stole_item": "TALK_STOLE_ITEM",
+      "talk_wake_up": "TALK_WAKE_UP",
+      "talk_mug": "TALK_MUG",
+      "talk_stranger_aggressive": "TALK_STRANGER_AGGRESSIVE",
+      "talk_stranger_scared": "TALK_STRANGER_SCARED",
+      "talk_stranger_wary": "TALK_STRANGER_WARY",
+      "talk_stranger_friendly": "TALK_STRANGER_FRIENDLY",
+      "talk_stranger_neutral": "TALK_STRANGER_NEUTRAL",
+      "talk_friend_guard": "TALK_FRIEND_GUARD",
+      "talk_mission_inquire": "TALK_MISSION_INQUIRE",
+      "talk_mission_describe_urgent": "TALK_MISSION_DESCRIBE_URGENT",
+      "skill": "",
+      "style": "",
+      "dialogue_spell": "",
+      "proficiency": "",
+      "missions": [],
+      "missions_assigned": []
+    },
+    "rules": {
+      "engagement": 1,
+      "aim": 0,
+      "cbm_reserve": 50,
+      "cbm_recharge": 50,
+      "rule_follow_distance_2": false,
+      "rule_forbid_engage": false,
+      "rule_ignore_noise": true,
+      "rule_hold_the_line": false,
+      "rule_avoid_doors": false,
+      "rule_follow_close": true,
+      "rule_avoid_friendly_fire": true,
+      "rule_lock_doors": false,
+      "rule_close_doors": true,
+      "rule_allow_complain": true,
+      "rule_avoid_locks": false,
+      "rule_allow_pulp": true,
+      "rule_allow_sleep": false,
+      "rule_allow_pick_up": false,
+      "rule_use_silent": true,
+      "rule_use_grenades": false,
+      "rule_allow_bash": false,
+      "rule_use_guns": true,
+      "override_enable_follow_distance_2": false,
+      "override_enable_forbid_engage": false,
+      "override_enable_ignore_noise": false,
+      "override_enable_hold_the_line": false,
+      "override_enable_avoid_doors": false,
+      "override_enable_follow_close": false,
+      "override_enable_avoid_friendly_fire": false,
+      "override_enable_lock_doors": false,
+      "override_enable_close_doors": false,
+      "override_enable_allow_complain": false,
+      "override_enable_avoid_locks": false,
+      "override_enable_allow_pulp": false,
+      "override_enable_allow_sleep": false,
+      "override_enable_allow_pick_up": false,
+      "override_enable_use_silent": false,
+      "override_enable_use_grenades": false,
+      "override_enable_allow_bash": false,
+      "override_enable_use_guns": false,
+      "override_follow_distance_2": false,
+      "override_forbid_engage": false,
+      "override_ignore_noise": false,
+      "override_hold_the_line": false,
+      "override_avoid_doors": false,
+      "override_follow_close": false,
+      "override_avoid_friendly_fire": false,
+      "override_lock_doors": false,
+      "override_close_doors": false,
+      "override_allow_complain": false,
+      "override_avoid_locks": false,
+      "override_allow_pulp": false,
+      "override_allow_sleep": false,
+      "override_allow_pick_up": false,
+      "override_use_silent": false,
+      "override_use_grenades": false,
+      "override_allow_bash": false,
+      "override_use_guns": false,
+      "pickup_whitelist": []
+    },
+    "comp_mission_id": {
+      "id": "No_Mission",
+      "parameters": "",
+      "mapgen_args": {},
+      "dir": null
+    },
+    "comp_mission_pt": [
+      0,
+      0,
+      0
+    ],
+    "comp_mission_role": "",
+    "companion_mission_role_id": "",
+    "companion_mission_points": [],
+    "companion_mission_time": -1,
+    "companion_mission_time_ret": -1,
+    "companion_mission_exertion": 1.0,
+    "companion_mission_travel_time": 0,
+    "companion_mission_inv": [],
+    "restock": 0,
+    "complaints": {
+      "warning_combat_noise": 5542508
+    },
+    "unique_id": "",
+    "may_activity_occupancy_after_end_items_loc": []
+  },
+  {
+    "location": [
+      3137,
+      3461,
+      0
+    ],
+    "moves": 0,
+    "pain": 0,
+    "effects": {},
+    "damage_over_time_map": [],
+    "values": {
+      "was_sleeping": {
+        "str": "false"
+      },
+      "sleep_health_mult": 1.0,
+      "THIEF_MODE": {
+        "str": "THIEF_ASK"
+      }
+    },
+    "blocks_left": 1,
+    "dodges_left": 1,
+    "num_blocks_bonus": 0,
+    "num_dodges_bonus": 0,
+    "armor_bonus": {},
+    "speed": 100,
+    "speed_bonus": 0,
+    "dodge_bonus": 0.0,
+    "block_bonus": 0,
+    "hit_bonus": 0.0,
+    "bash_bonus": 0,
+    "cut_bonus": 0,
+    "bash_mult": 1.0,
+    "cut_mult": 1.0,
+    "melee_quiet": false,
+    "throw_resist": 0,
+    "archery_aim_counter": 0,
+    "last_updated": 5553080,
+    "body": {
+      "foot_l": {
+        "id": "foot_l",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "foot_r": {
+        "id": "foot_r",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "hand_l": {
+        "id": "hand_l",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "hand_r": {
+        "id": "hand_r",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "head": {
+        "id": "head",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "mouth": {
+        "id": "mouth",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "arm_l": {
+        "id": "arm_l",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "arm_r": {
+        "id": "arm_r",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "eyes": {
+        "id": "eyes",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 5000,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "leg_l": {
+        "id": "leg_l",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "leg_r": {
+        "id": "leg_r",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      },
+      "torso": {
+        "id": "torso",
+        "hp_cur": 85,
+        "hp_max": 85,
+        "healed_total": 0,
+        "damage_bandaged": 0,
+        "damage_disinfected": 0,
+        "wetness": 0,
+        "temp_cur": 6500,
+        "temp_conv": 5000,
+        "frostbite_timer": 0,
+        "wounds": []
+      }
+    },
+    "lifespan_end": null,
+    "weapon": {
+      "typeid": "swbodyguard",
+      "uid": 4306760,
+      "bday": 5216727,
+      "item_vars": {
+        "magazine_converted": 1.0,
+        "dirt": 240.0
+      },
+      "owner": "hells_raiders",
+      "last_temp_check": 0,
+      "faults": [
+        "fault_gun_dirt"
+      ],
+      "template_traits": [],
+      "variant": "swbodyguard",
+      "contents": {
+        "contents": [
+          {
+            "pocket_type": 2,
+            "contents": [
+              {
+                "typeid": "swbodyguard_mag",
+                "uid": 4614700,
+                "bday": 5216727,
+                "owner": "hells_raiders",
+                "last_temp_check": 0,
+                "template_traits": [],
+                "variant": "swbodyguard",
+                "contents": {
+                  "contents": [
+                    {
+                      "pocket_type": 1,
+                      "contents": [
+                        {
+                          "typeid": "380_JHP",
+                          "uid": 4614699,
+                          "charges": 6,
+                          "bday": 5216727,
+                          "owner": "hells_raiders",
+                          "last_temp_check": 0,
+                          "template_traits": []
+                        }
+                      ],
+                      "_sealed": false,
+                      "no_rigid": [],
+                      "favorite_settings": {
+                        "name": null,
+                        "priority": 0,
+                        "item_whitelist": [],
+                        "item_blacklist": [],
+                        "category_whitelist": [],
+                        "category_blacklist": [],
+                        "collapsed": true,
+                        "disabled": false,
+                        "unload": true,
+                        "player_edited": false
+                      }
+                    },
+                    {
+                      "pocket_type": 8,
+                      "contents": [],
+                      "_sealed": false,
+                      "no_rigid": []
+                    }
+                  ],
+                  "additional_pockets": []
+                }
+              }
+            ],
+            "_sealed": false,
+            "no_rigid": [],
+            "favorite_settings": {
+              "name": null,
+              "priority": 0,
+              "item_whitelist": [],
+              "item_blacklist": [],
+              "category_whitelist": [],
+              "category_blacklist": [],
+              "collapsed": true,
+              "disabled": false,
+              "unload": true,
+              "player_edited": false
+            }
+          },
+          {
+            "pocket_type": 3,
+            "contents": [],
+            "_sealed": false,
+            "no_rigid": []
+          },
+          {
+            "pocket_type": 8,
+            "contents": [],
+            "_sealed": false,
+            "no_rigid": []
+          }
+        ],
+        "additional_pockets": []
+      }
+    },
+    "str_max": 8,
+    "dex_max": 8,
+    "int_max": 8,
+    "per_max": 8,
+    "str_bonus": 0,
+    "dex_bonus": 0,
+    "per_bonus": 0,
+    "int_bonus": 0,
+    "name": "Gaye Caldwell",
+    "play_name": null,
+    "base_age": 36,
+    "base_height": 159,
+    "blood_type": "O",
+    "blood_rh_factor": true,
+    "avg_nat_bpm": 0,
+    "custom_profession": "",
+    "healthy": 0,
+    "healthy_mod": 0,
+    "health_tally": 0,
+    "daily_sleep": 0,
+    "continuous_sleep": 0,
+    "thirst": 0,
+    "hunger": 0,
+    "sleepiness": 191,
+    "cardio_acc": 1000,
+    "activity_history": {
+      "current_activity": 1.0,
+      "accumulated_activity": 44424356.0,
+      "previous_activity": 161032624.0,
+      "previous_turn_activity": 1.0,
+      "current_turn": 0,
+      "activity_reset": false,
+      "num_events": 44424361,
+      "tracker": 0,
+      "intake": 0,
+      "low_activity_ticks": 0.0
+    },
+    "sleep_deprivation": 0,
+    "stored_calories": 97536000,
+    "radiation": 0,
+    "stamina": 10000,
+    "vitamin_levels": {
+      "iron": -444,
+      "blood": 0,
+      "calcium": -444,
+      "bread_allergen": 0,
+      "egg_allergen": 0,
+      "fruit_allergen": 0,
+      "human_flesh_vitamin": 0,
+      "junk_allergen": 0,
+      "meat_allergen": 0,
+      "milk_allergen": 0,
+      "nut_allergen": 0,
+      "veggy_allergen": 0,
+      "wheat_allergen": 0,
+      "redcells": 0,
+      "mutagen": 0,
+      "vitC": -444,
+      "bad_food": 0,
+      "mutagenic_slurry": 0,
+      "mutagen_chelator": 0,
+      "mutagen_alpha": 0,
+      "mutagen_batrachian": 0,
+      "mutagen_beast": 0,
+      "mutagen_bird": 0,
+      "mutagen_cattle": 0,
+      "mutagen_cephalopod": 0,
+      "mutagen_chimera": 0,
+      "mutagen_elfa": 0,
+      "mutagen_feline": 0,
+      "mutagen_fish": 0,
+      "mutagen_gastropod": 0,
+      "mutagen_human": 0,
+      "mutagen_insect": 0,
+      "mutagen_lizard": 0,
+      "mutagen_lupine": 0,
+      "mutagen_medical": 0,
+      "mutagen_mouse": 0,
+      "mutagen_plant": 0,
+      "mutagen_raptor": 0,
+      "mutagen_rabbit": 0,
+      "mutagen_rat": 0,
+      "mutagen_chiropteran": 0,
+      "mutagen_slime": 0,
+      "mutagen_spider": 0,
+      "mutagen_troglobite": 0,
+      "mutagen_ursine": 0,
+      "mutagen_crustacean": 0,
+      "mutagen_interstice": 0,
+      "dermatik_larva_size": 0,
+      "mutant_toxin": 0,
+      "vit_betablocker": 0,
+      "vit_bloodthinner": 0,
+      "vit_ibuprofen": 0,
+      "vit_mme": 0,
+      "triffid_fiber": 0,
+      "ethanol": 0,
+      "BAC": 0,
+      "water_clean_scarlet_toxin": 0,
+      "instability": 0
+    },
+    "daily_vitamins": {
+      "iron": [
+        0,
+        0
+      ],
+      "blood": [
+        0,
+        66342
+      ],
+      "calcium": [
+        0,
+        0
+      ],
+      "bread_allergen": [
+        0,
+        0
+      ],
+      "egg_allergen": [
+        0,
+        0
+      ],
+      "fruit_allergen": [
+        0,
+        0
+      ],
+      "human_flesh_vitamin": [
+        0,
+        0
+      ],
+      "junk_allergen": [
+        0,
+        0
+      ],
+      "meat_allergen": [
+        0,
+        0
+      ],
+      "milk_allergen": [
+        0,
+        0
+      ],
+      "nut_allergen": [
+        0,
+        0
+      ],
+      "veggy_allergen": [
+        0,
+        0
+      ],
+      "wheat_allergen": [
+        0,
+        0
+      ],
+      "redcells": [
+        0,
+        33170
+      ],
+      "mutagen": [
+        0,
+        0
+      ],
+      "vitC": [
+        0,
+        0
+      ],
+      "bad_food": [
+        0,
+        0
+      ],
+      "mutagenic_slurry": [
+        0,
+        0
+      ],
+      "mutagen_chelator": [
+        0,
+        0
+      ],
+      "mutagen_alpha": [
+        0,
+        0
+      ],
+      "mutagen_batrachian": [
+        0,
+        0
+      ],
+      "mutagen_beast": [
+        0,
+        0
+      ],
+      "mutagen_bird": [
+        0,
+        0
+      ],
+      "mutagen_cattle": [
+        0,
+        0
+      ],
+      "mutagen_cephalopod": [
+        0,
+        0
+      ],
+      "mutagen_chimera": [
+        0,
+        0
+      ],
+      "mutagen_elfa": [
+        0,
+        0
+      ],
+      "mutagen_feline": [
+        0,
+        0
+      ],
+      "mutagen_fish": [
+        0,
+        0
+      ],
+      "mutagen_gastropod": [
+        0,
+        0
+      ],
+      "mutagen_human": [
+        0,
+        0
+      ],
+      "mutagen_insect": [
+        0,
+        0
+      ],
+      "mutagen_lizard": [
+        0,
+        0
+      ],
+      "mutagen_lupine": [
+        0,
+        0
+      ],
+      "mutagen_medical": [
+        0,
+        0
+      ],
+      "mutagen_mouse": [
+        0,
+        0
+      ],
+      "mutagen_plant": [
+        0,
+        0
+      ],
+      "mutagen_raptor": [
+        0,
+        0
+      ],
+      "mutagen_rabbit": [
+        0,
+        0
+      ],
+      "mutagen_rat": [
+        0,
+        0
+      ],
+      "mutagen_chiropteran": [
+        0,
+        0
+      ],
+      "mutagen_slime": [
+        0,
+        0
+      ],
+      "mutagen_spider": [
+        0,
+        0
+      ],
+      "mutagen_troglobite": [
+        0,
+        0
+      ],
+      "mutagen_ursine": [
+        0,
+        0
+      ],
+      "mutagen_crustacean": [
+        0,
+        0
+      ],
+      "mutagen_interstice": [
+        0,
+        0
+      ],
+      "dermatik_larva_size": [
+        0,
+        0
+      ],
+      "mutant_toxin": [
+        0,
+        0
+      ],
+      "vit_betablocker": [
+        0,
+        0
+      ],
+      "vit_bloodthinner": [
+        0,
+        0
+      ],
+      "vit_ibuprofen": [
+        0,
+        0
+      ],
+      "vit_mme": [
+        0,
+        0
+      ],
+      "triffid_fiber": [
+        0,
+        0
+      ],
+      "ethanol": [
+        0,
+        0
+      ],
+      "BAC": [
+        0,
+        0
+      ],
+      "water_clean_scarlet_toxin": [
+        0,
+        0
+      ],
+      "instability": [
+        0,
+        0
+      ]
+    },
+    "pkill": 0,
+    "omt_path": [
+      [
+        129,
+        149,
+        0
+      ],
+      [
+        130,
+        148,
+        0
+      ],
+      [
+        131,
+        147,
+        0
+      ],
+      [
+        131,
+        146,
+        0
+      ],
+      [
+        131,
+        145,
+        0
+      ],
+      [
+        131,
+        144,
+        0
+      ],
+      [
+        131,
+        143,
+        0
+      ],
+      [
+        131,
+        142,
+        0
+      ],
+      [
+        130,
+        141,
+        0
+      ]
+    ],
+    "consumption_history": [],
+    "destination_activity": {
+      "type": "ACT_NULL"
+    },
+    "activity": {
+      "type": "ACT_NULL"
+    },
+    "stashed_outbounds_activity": {
+      "type": "ACT_NULL"
+    },
+    "stashed_outbounds_backlog": {
+      "type": "ACT_NULL"
+    },
+    "backlog": [],
+    "activity_vehicle_part_index": -1,
+    "stim": 0,
+    "type_of_scent": "sc_human",
+    "focus_pool": 80000,
+    "kill_xp": 0,
+    "underwater": false,
+    "oxygen": 46,
+    "traits": [
+      "NPC_STATIC_NPC"
+    ],
+    "mutations": {
+      "personality_collector_plus": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "hair_short": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "hair_short",
+        "variant-id": "black"
+      },
+      "SKIN_LIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SEASONAL_AFFECTIVE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "HYPEROPIC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "FASTREADER": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "NPC_STATIC_NPC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_brave": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "FLEET": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "DISRESISTANT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "CHEMIMBALANCE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "LACTOSE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "eye_color": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "eye_color",
+        "variant-id": "brown"
+      },
+      "BADHEARING": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BGSS_Evacuee_3": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "ASTHMA": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      }
+    },
+    "cached_mutations": {
+      "personality_collector_plus": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "hair_short": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "hair_short",
+        "variant-id": "black"
+      },
+      "SKIN_LIGHT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "SEASONAL_AFFECTIVE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "HYPEROPIC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "FASTREADER": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "NPC_STATIC_NPC": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "personality_brave": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "FLEET": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "DISRESISTANT": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "CHEMIMBALANCE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "LACTOSE": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "eye_color": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true,
+        "variant-parent": "eye_color",
+        "variant-id": "brown"
+      },
+      "BADHEARING": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "BGSS_Evacuee_3": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      },
+      "ASTHMA": {
+        "corrupted": 0,
+        "key": 32,
+        "charge": 0,
+        "powered": false,
+        "show_sprite": true
+      }
+    },
+    "moncams": {},
+    "magic": {
+      "mana": 1000,
+      "spellbook": [],
+      "invlets": {},
+      "favorites": []
+    },
+    "martial_arts_data": {
+      "ma_styles": [
+        "style_none",
+        "style_kicks",
+        "style_brawling"
+      ],
+      "keep_hands_free": false,
+      "style_selected": "style_none"
+    },
+    "my_bionics": [],
+    "move_mode": "walk",
+    "known_monsters": [],
+    "morale": [],
+    "skills": {
+      "computer": {
+        "level": 1,
+        "exercise": 8500,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 8500,
+        "rustaccumulator": 0
+      },
+      "electronics": {
+        "level": 1,
+        "exercise": 8200,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 8200,
+        "rustaccumulator": 0
+      },
+      "fabrication": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "gun": {
+        "level": 5,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 5,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "mechanics": {
+        "level": 2,
+        "exercise": 9200,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 9200,
+        "rustaccumulator": 0
+      },
+      "survival": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "swimming": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "traps": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "firstaid": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "archery": {
+        "level": 4,
+        "exercise": 10800,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 4,
+        "knowledgeExperience": 10800,
+        "rustaccumulator": 0
+      },
+      "bashing": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "cutting": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "dodge": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "launcher": {
+        "level": 0,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 0,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "melee": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "pistol": {
+        "level": 5,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 5,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "rifle": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "shotgun": {
+        "level": 1,
+        "exercise": 10800,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 10800,
+        "rustaccumulator": 0
+      },
+      "smg": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "stabbing": {
+        "level": 0,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 0,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "throw": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "unarmed": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "driving": {
+        "level": 2,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 2,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "speech": {
+        "level": 3,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 3,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "cooking": {
+        "level": 0,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 0,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "tailor": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      },
+      "chemistry": {
+        "level": 1,
+        "exercise": 0,
+        "lastpracticed": 5216727,
+        "knowledgeLevel": 1,
+        "knowledgeExperience": 0,
+        "rustaccumulator": 0
+      }
+    },
+    "proficiencies": {
+      "known": [
+        "prof_driver",
+        "prof_food_prep"
+      ],
+      "learning": []
+    },
+    "power_level": "0 kJ",
+    "max_power_level_modifier": "0 kJ",
+    "stomach": {
+      "vitamins": {},
+      "calories": 0,
+      "water": "0_ml",
+      "max_volume": "2500_ml",
+      "contents": "0_ml",
+      "last_ate": -1
+    },
+    "guts": {
+      "vitamins": {},
+      "calories": 0,
+      "water": "0_ml",
+      "max_volume": "24000_ml",
+      "contents": "0_ml",
+      "last_ate": 5553000
+    },
+    "automoveroute": [],
+    "known_traps": [],
+    "last_sleep_check": 0,
+    "slow_rad": 0,
+    "scent": 500,
+    "male": false,
+    "free_dodges_left": 0,
+    "cash": 0,
+    "recoil": 3000.0,
+    "book_chapters": {},
+    "in_vehicle": false,
+    "id": 6,
+    "addictions": [],
+    "death_eocs": [],
+    "worn": {
+      "worn": [
+        {
+          "typeid": "camisole",
+          "uid": 4306804,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "boy_shorts",
+          "uid": 4306805,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "variant": "generic_boy_shorts"
+        },
+        {
+          "typeid": "socks",
+          "uid": 4306806,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "sunglasses",
+          "uid": 4306810,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": [],
+          "variant": "sunglasses_round"
+        },
+        {
+          "typeid": "shorts",
+          "uid": 4306802,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 0,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 0,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 0,
+                "contents": [
+                  {
+                    "typeid": "swbodyguard_mag",
+                    "uid": 4614666,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "variant": "swbodyguard",
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 1,
+                          "contents": [
+                            {
+                              "typeid": "380_JHP",
+                              "uid": 4614665,
+                              "charges": 6,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "last_temp_check": 0,
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 0,
+                            "item_whitelist": [],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "swbodyguard_mag",
+                    "uid": 4614668,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "variant": "swbodyguard",
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 1,
+                          "contents": [
+                            {
+                              "typeid": "380_JHP",
+                              "uid": 4614667,
+                              "charges": 6,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "last_temp_check": 0,
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 0,
+                            "item_whitelist": [],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "can_medium",
+                    "uid": 4614670,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "can_corn",
+                              "uid": 4614669,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "862.511902",
+                              "temperature": "13 C 724 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": true,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "can_corn"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "bag_plastic_small",
+                    "uid": 4614672,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "cracklins",
+                              "uid": 4614671,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "rot": 340658,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "897.909363",
+                              "temperature": "13 C 685 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "cracklins"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "bag_plastic_small",
+                    "uid": 4614674,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "salt",
+                              "uid": 4614673,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "262.090759",
+                              "temperature": "13 C 355 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "salt"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 0,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 8,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        },
+        {
+          "typeid": "long_dress",
+          "uid": 4306803,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "variant": "white"
+        },
+        {
+          "typeid": "boots_hiking",
+          "uid": 4306807,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "gloves_fingerless_mod",
+          "uid": 4306808,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": []
+        },
+        {
+          "typeid": "cowboy_hat",
+          "uid": 4306811,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "variant": "generic_cowboy_hat"
+        },
+        {
+          "typeid": "wool_hoodie",
+          "uid": 4306809,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "item_tags": [
+            "FIT"
+          ],
+          "template_traits": [],
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 0,
+                "contents": [
+                  {
+                    "typeid": "bottle_plastic",
+                    "uid": 4614687,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "water_clean",
+                              "uid": 4614686,
+                              "charges": 2,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "967.822266",
+                              "temperature": "14 C 99 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": true,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "water_clean"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  },
+                  {
+                    "typeid": "bottle_plastic",
+                    "uid": 4614689,
+                    "bday": 5216727,
+                    "owner": "hells_raiders",
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 0,
+                          "contents": [
+                            {
+                              "typeid": "water_clean",
+                              "uid": 4614688,
+                              "charges": 2,
+                              "bday": 5216727,
+                              "owner": "hells_raiders",
+                              "active": true,
+                              "last_temp_check": 5552713,
+                              "specific_energy": "967.822266",
+                              "temperature": "14 C 99 mC",
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": true,
+                          "no_rigid": [],
+                          "favorite_settings": {
+                            "name": null,
+                            "priority": 100,
+                            "item_whitelist": [
+                              "water_clean"
+                            ],
+                            "item_blacklist": [],
+                            "category_whitelist": [],
+                            "category_blacklist": [],
+                            "collapsed": true,
+                            "disabled": false,
+                            "unload": true,
+                            "player_edited": false
+                          }
+                        },
+                        {
+                          "pocket_type": 8,
+                          "contents": [],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              },
+              {
+                "pocket_type": 8,
+                "contents": [],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        },
+        {
+          "typeid": "scarf",
+          "uid": 4306812,
+          "bday": 5216727,
+          "item_vars": {
+            "magazine_converted": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "backpack",
+          "uid": 4306813,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "leather_belt",
+          "uid": 4306814,
+          "bday": 5216727,
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        },
+        {
+          "typeid": "sf_watch",
+          "uid": 4306815,
+          "bday": 5216727,
+          "item_vars": {
+            "lateral": 1.0
+          },
+          "owner": "hells_raiders",
+          "last_temp_check": 0,
+          "template_traits": []
+        }
+      ]
+    },
+    "inv": [],
+    "last_target_pos": null,
+    "last_magic_target_pos": null,
+    "destination_point": null,
+    "faction_warnings": [],
+    "camps": [],
+    "hauling": false,
+    "autohaul": false,
+    "hauling_filter": "",
+    "haul_list": [],
+    "suppress_autohaul": false,
+    "queued_effect_on_conditions": [
+      {
+        "time": 5553081,
+        "eoc": "isherwood_mission_large_damage_retreat",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "EOC_social_reset_drugs",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "vitrified_bleed_check",
+        "context": {}
+      },
+      {
+        "time": 5553081,
+        "eoc": "EOC_nether_glass_event",
+        "context": {}
+      },
+      {
+        "time": 5553090,
+        "eoc": "EOC_godco_hate_u_mutant",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "godco_place_trader",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "EOC_BARRY_CHECK_IF_HOME",
+        "context": {}
+      },
+      {
+        "time": 5553101,
+        "eoc": "godco_change_trader",
+        "context": {}
+      },
+      {
+        "time": 5553132,
+        "eoc": "eoc_social_satisfied",
+        "context": {}
+      },
+      {
+        "time": 5553150,
+        "eoc": "EOC_social2_penalty",
+        "context": {}
+      },
+      {
+        "time": 5553154,
+        "eoc": "eoc_asocial_dissatisfied",
+        "context": {}
+      },
+      {
+        "time": 5553216,
+        "eoc": "eoc_asocial_satisfied",
+        "context": {}
+      },
+      {
+        "time": 5553231,
+        "eoc": "EOC_asocial2_bonus",
+        "context": {}
+      },
+      {
+        "time": 5553261,
+        "eoc": "eoc_social_dissatisfied",
+        "context": {}
+      },
+      {
+        "time": 5553455,
+        "eoc": "EOC_ink_gland_recharge_timer",
+        "context": {}
+      },
+      {
+        "time": 5553522,
+        "eoc": "EOC_social2_bonus",
+        "context": {}
+      },
+      {
+        "time": 5553541,
+        "eoc": "EOC_DERMATIK_BIRTH_INIT",
+        "context": {}
+      },
+      {
+        "time": 5553604,
+        "eoc": "EOC_asocial1_bonus",
+        "context": {}
+      },
+      {
+        "time": 5553632,
+        "eoc": "EOC_social1_bonus",
+        "context": {}
+      },
+      {
+        "time": 5553725,
+        "eoc": "sneeze",
+        "context": {}
+      },
+      {
+        "time": 5553741,
+        "eoc": "EOC_asocial2_penalty",
+        "context": {}
+      },
+      {
+        "time": 5554088,
+        "eoc": "eoc_conjunctivitis_sting",
+        "context": {}
+      },
+      {
+        "time": 5554165,
+        "eoc": "changing_initiate_check",
+        "context": {}
+      },
+      {
+        "time": 5554683,
+        "eoc": "EOC_social_reset_sleep",
+        "context": {}
+      },
+      {
+        "time": 5554685,
+        "eoc": "chitin_carapace_molt_timer3",
+        "context": {}
+      },
+      {
+        "time": 5555130,
+        "eoc": "sewer_morale_debuff",
+        "context": {}
+      },
+      {
+        "time": 5555975,
+        "eoc": "chitin3_molt_timer3",
+        "context": {}
+      },
+      {
+        "time": 5556410,
+        "eoc": "EOC_RANDOM_HALLUCINATIONS",
+        "context": {}
+      },
+      {
+        "time": 5557229,
+        "eoc": "chitin2_molt_timer_3",
+        "context": {}
+      },
+      {
+        "time": 5558128,
+        "eoc": "hallucinate_effect",
+        "context": {}
+      },
+      {
+        "time": 5558246,
+        "eoc": "bad_food_mood_debuff",
+        "context": {}
+      },
+      {
+        "time": 5566661,
+        "eoc": "EOC_scenario_eldritch_ire",
+        "context": {}
+      },
+      {
+        "time": 5569806,
+        "eoc": "chitin2_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5572787,
+        "eoc": "hay_fever_spring_fall",
+        "context": {}
+      },
+      {
+        "time": 5577587,
+        "eoc": "chitin3_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5583258,
+        "eoc": "chitin_carapace_molt_timer4",
+        "context": {}
+      },
+      {
+        "time": 5583601,
+        "eoc": "scenario_trapped_in_labyrinth_recurring",
+        "context": {}
+      },
+      {
+        "time": 5623724,
+        "eoc": "rashy_skin",
+        "context": {}
+      },
+      {
+        "time": 5662522,
+        "eoc": "chitin3_molt_timer2",
+        "context": {}
+      },
+      {
+        "time": 5688909,
+        "eoc": "chitin2_molt_timer2",
+        "context": {}
+      },
+      {
+        "time": 5768603,
+        "eoc": "seasonal_affective_winter",
+        "context": {}
+      },
+      {
+        "time": 5804911,
+        "eoc": "shed_summer_timer_lupine",
+        "context": {}
+      },
+      {
+        "time": 5839627,
+        "eoc": "shed_summer_timer_ursine",
+        "context": {}
+      },
+      {
+        "time": 5989690,
+        "eoc": "regrow_timer_lupine",
+        "context": {}
+      },
+      {
+        "time": 6067971,
+        "eoc": "hay_fever_summer",
+        "context": {}
+      },
+      {
+        "time": 6340106,
+        "eoc": "regrow_timer_ursine",
+        "context": {}
+      },
+      {
+        "time": 6426327,
+        "eoc": "EOC_beard_growth_tracking",
+        "context": {}
+      },
+      {
+        "time": 6786264,
+        "eoc": "seasonal_affective_fall",
+        "context": {}
+      },
+      {
+        "time": 6944727,
+        "eoc": "EOC_hair_growth_tracking",
+        "context": {}
+      },
+      {
+        "time": 8282856,
+        "eoc": "chitin3_molt_timer1",
+        "context": {}
+      },
+      {
+        "time": 8609616,
+        "eoc": "chitin2_molt_timer1",
+        "context": {}
+      }
+    ],
+    "inactive_eocs": [
+      "PAINREC3_EOC",
+      "PAINREC1_EOC",
+      "PAINREC2_EOC",
+      "bio_leaky",
+      "EOC_PORTAL_DEPENDENT_EFFECTS_ACCEPTANCE",
+      "bio_glowy",
+      "bio_sleepy",
+      "bio_trip",
+      "bio_itchy",
+      "bio_drain",
+      "bio_noise",
+      "EOC_PORTAL_DEPENDENT_EFFECTS_REJECTION",
+      "changing_mutate",
+      "bio_shakes",
+      "bio_spasm",
+      "mut_eyestalk"
+    ],
+    "marked_for_death": false,
+    "dead": false,
+    "patience": 0,
+    "myclass": "NC_SCAVENGER",
+    "idz": "bandit",
+    "known_to_u": false,
+    "personality": {
+      "aggression": 3,
+      "bravery": 10,
+      "collector": 9,
+      "altruism": 0
+    },
+    "last_player_seen_pos": null,
+    "goalx": 129,
+    "goaly": 149,
+    "goalz": 0,
+    "guard_pos": null,
+    "current_activity_id": "ACT_NULL",
+    "pulp_location": null,
+    "assigned_camp": null,
+    "chair_pos": null,
+    "wander_pos": null,
+    "job": {
+      "task_priorities": {
+        "ACT_MOVE_LOOT": 0,
+        "ACT_MULTIPLE_BUTCHER": 0,
+        "ACT_MULTIPLE_CHOP_PLANKS": 0,
+        "ACT_MULTIPLE_CHOP_TREES": 0,
+        "ACT_MULTIPLE_CONSTRUCTION": 0,
+        "ACT_MULTIPLE_DIS": 0,
+        "ACT_MULTIPLE_FARM": 0,
+        "ACT_MULTIPLE_FISH": 0,
+        "ACT_VEHICLE_DECONSTRUCTION": 0,
+        "ACT_VEHICLE_REPAIR": 0,
+        "ACT_CAMP_PATROL": 0
+      },
+      "fetch_history": {},
+      "activity_cooldowns": {}
+    },
+    "bandit_live_world_projection_lease": {
+      "site_id": "overmap_special:bandit_camp@129,149,0",
+      "activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+      "owner": "local",
+      "generation": 3,
+      "handoff_epoch": 3,
+      "last_advanced_minutes": 13215
+    },
+    "mission": 10,
+    "previous_mission": 0,
+    "camp_patrol_order_active": false,
+    "faction_alarm": null,
+    "faction_api_ver": 2,
+    "my_fac": "hells_raiders",
+    "attitude": 0,
+    "previous_attitude": 0,
+    "op_of_u": {
+      "trust": 0,
+      "fear": 0,
+      "value": 0,
+      "anger": 0,
+      "owed": 0,
+      "sold": 0
+    },
+    "faction_representative": false,
+    "chatbin": {
+      "first_topic": "TALK_DONE",
+      "talk_radio": "TALK_RADIO",
+      "talk_leader": "TALK_LEADER",
+      "talk_friend": "TALK_FRIEND",
+      "talk_stole_item": "TALK_STOLE_ITEM",
+      "talk_wake_up": "TALK_WAKE_UP",
+      "talk_mug": "TALK_MUG",
+      "talk_stranger_aggressive": "TALK_STRANGER_AGGRESSIVE",
+      "talk_stranger_scared": "TALK_STRANGER_SCARED",
+      "talk_stranger_wary": "TALK_STRANGER_WARY",
+      "talk_stranger_friendly": "TALK_STRANGER_FRIENDLY",
+      "talk_stranger_neutral": "TALK_STRANGER_NEUTRAL",
+      "talk_friend_guard": "TALK_FRIEND_GUARD",
+      "talk_mission_inquire": "TALK_MISSION_INQUIRE",
+      "talk_mission_describe_urgent": "TALK_MISSION_DESCRIBE_URGENT",
+      "skill": "",
+      "style": "",
+      "dialogue_spell": "",
+      "proficiency": "",
+      "missions": [],
+      "missions_assigned": []
+    },
+    "rules": {
+      "engagement": 1,
+      "aim": 0,
+      "cbm_reserve": 50,
+      "cbm_recharge": 50,
+      "rule_follow_distance_2": false,
+      "rule_forbid_engage": false,
+      "rule_ignore_noise": true,
+      "rule_hold_the_line": false,
+      "rule_avoid_doors": false,
+      "rule_follow_close": true,
+      "rule_avoid_friendly_fire": true,
+      "rule_lock_doors": false,
+      "rule_close_doors": true,
+      "rule_allow_complain": true,
+      "rule_avoid_locks": false,
+      "rule_allow_pulp": true,
+      "rule_allow_sleep": false,
+      "rule_allow_pick_up": false,
+      "rule_use_silent": true,
+      "rule_use_grenades": false,
+      "rule_allow_bash": false,
+      "rule_use_guns": true,
+      "override_enable_follow_distance_2": false,
+      "override_enable_forbid_engage": false,
+      "override_enable_ignore_noise": false,
+      "override_enable_hold_the_line": false,
+      "override_enable_avoid_doors": false,
+      "override_enable_follow_close": false,
+      "override_enable_avoid_friendly_fire": false,
+      "override_enable_lock_doors": false,
+      "override_enable_close_doors": false,
+      "override_enable_allow_complain": false,
+      "override_enable_avoid_locks": false,
+      "override_enable_allow_pulp": false,
+      "override_enable_allow_sleep": false,
+      "override_enable_allow_pick_up": false,
+      "override_enable_use_silent": false,
+      "override_enable_use_grenades": false,
+      "override_enable_allow_bash": false,
+      "override_enable_use_guns": false,
+      "override_follow_distance_2": false,
+      "override_forbid_engage": false,
+      "override_ignore_noise": false,
+      "override_hold_the_line": false,
+      "override_avoid_doors": false,
+      "override_follow_close": false,
+      "override_avoid_friendly_fire": false,
+      "override_lock_doors": false,
+      "override_close_doors": false,
+      "override_allow_complain": false,
+      "override_avoid_locks": false,
+      "override_allow_pulp": false,
+      "override_allow_sleep": false,
+      "override_allow_pick_up": false,
+      "override_use_silent": false,
+      "override_use_grenades": false,
+      "override_allow_bash": false,
+      "override_use_guns": false,
+      "pickup_whitelist": []
+    },
+    "comp_mission_id": {
+      "id": "No_Mission",
+      "parameters": "",
+      "mapgen_args": {},
+      "dir": null
+    },
+    "comp_mission_pt": [
+      0,
+      0,
+      0
+    ],
+    "comp_mission_role": "",
+    "companion_mission_role_id": "",
+    "companion_mission_points": [],
+    "companion_mission_time": -1,
+    "companion_mission_time_ret": -1,
+    "companion_mission_exertion": 1.0,
+    "companion_mission_travel_time": 0,
+    "companion_mission_inv": [],
+    "restock": 0,
+    "complaints": {},
+    "unique_id": "",
+    "may_activity_occupancy_after_end_items_loc": []
+  }
+]

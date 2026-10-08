@@ -654,6 +654,17 @@ int structural_expected_return_minutes( const int started_minutes,
                                     structural_return_delay_minutes( anchor, target ) );
 }
 
+bool structural_assessment_owns_homeward_clock(
+    const bandit_live_world::active_outing_state &outing )
+{
+    return ( outing.schema_version >= 10 ||
+             bandit_live_world::structural_outing_uses_frontier_route( outing ) ) &&
+           outing.phase == scout_phase::returning_home &&
+           !outing.assessment.exit_reason.empty() && outing.last_progress_minutes >= 0 &&
+           outing.shared_route.size() >= 2 &&
+           outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2;
+}
+
 int structural_expected_return_for_state(
         const bandit_live_world::active_outing_state &outing,
         const tripoint_abs_omt &anchor )
@@ -661,13 +672,7 @@ int structural_expected_return_for_state(
     int expected = structural_expected_return_minutes(
                        outing.started_minutes, anchor,
                        structural_outing_travel_destination( outing ) );
-    const bool assessment_homeward_leg = ( outing.schema_version >= 10 ||
-            bandit_live_world::structural_outing_uses_frontier_route( outing ) ) &&
-            outing.phase == scout_phase::returning_home &&
-            !outing.assessment.exit_reason.empty() && outing.last_progress_minutes >= 0 &&
-            outing.shared_route.size() >= 2 &&
-            outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2;
-    if( assessment_homeward_leg ) {
+    if( structural_assessment_owns_homeward_clock( outing ) ) {
         expected = minutes_after_saturated(
                        outing.last_progress_minutes,
                        structural_homeward_delay_minutes(
@@ -4660,10 +4665,7 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
     next.owner = simulation_owner::local;
     next.handoff_epoch = plan.snapshot.handoff_epoch;
     next.last_advanced_minutes = plan.snapshot.committed_minutes;
-    const bool preserves_assessment_return_clock = next.schema_version >= 10 &&
-            next.phase == scout_phase::returning_home &&
-            !next.assessment.exit_reason.empty();
-    if( !preserves_assessment_return_clock ) {
+    if( !structural_assessment_owns_homeward_clock( next ) ) {
         next.last_progress_minutes = std::max( next.last_progress_minutes,
                                               plan.snapshot.committed_minutes );
     }
@@ -5292,7 +5294,11 @@ bool record_local_pair_abstract_resume_progress( site_record &site,
             rl_dist( snapshot.entry_position, snapshot.staging_position ) );
     }
     next.last_advanced_minutes = current_minutes;
-    next.last_progress_minutes = std::max( next.last_progress_minutes, current_minutes );
+    // The resume snapshot and owner cursor record real physical progress.  A
+    // completed assessment's last_progress owns the established return deadline.
+    if( !structural_assessment_owns_homeward_clock( next ) ) {
+        next.last_progress_minutes = std::max( next.last_progress_minutes, current_minutes );
+    }
     if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
         return false;
     }
@@ -9736,6 +9742,69 @@ void site_record::serialize( JsonOut &json ) const
     json.end_object();
 }
 
+namespace
+{
+void recover_legacy_frontier_handoff_return_clock( site_record &site )
+{
+    active_outing_state &outing = site.active_outing;
+    // Older frontier handoffs overwrote the return-leg start with their physical
+    // cursor. Recover only a uniquely recorded frontier completion and its exact
+    // abstract-to-local crossing; a plausible deadline alone is not provenance.
+    if( outing.schema_version != 9 || !structural_assessment_owns_homeward_clock( outing ) ||
+        structural_expected_return_is_consistent( outing, site.anchor ) ||
+        outing.camp_id != site.site_id || outing.activity_id != site.site_id + "#structural" ||
+        outing.owner != simulation_owner::local || !simulation_owner_state_is_consistent( outing ) ||
+        !site.roster().valid || !outing.casualty_ids.empty() ||
+        !outing.resolved_member_ids.empty() || !outing.member_return_receipts.empty() ||
+        !outing.observations.empty() || outing.assessment.observation_started_minutes != -1 ||
+        outing.assessment.last_progress_minutes != -1 || outing.assessment.readiness_latched ||
+        outing.assessment.interruption ||
+        outing.assessment.exit_reason != "frontier outer route physically checked" ) {
+        return;
+    }
+    const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    if( lead == nullptr || std::count_if( site.intelligence_map.leads.begin(),
+    site.intelligence_map.leads.end(), [&outing]( const camp_map_lead &candidate ) {
+    return candidate.lead_id == outing.target_lead_id;
+    } ) != 1 || !frontier_sector_from_lead( *lead ) ||
+        lead->origin != camp_lead_origin::structural_routine ||
+        lead->status != camp_lead_status::scout_confirmed ||
+        lead->last_outcome != "frontier_outer_sample_complete" ||
+        lead->revision != outing.target_lead_revision ||
+        outing.assessment.pinned_target_revision != lead->revision ||
+        lead->omt != outing.target_omt ||
+        !structural_route_is_canonical_for_outing( outing, site.anchor, *lead ) ||
+        lead->last_checked_minutes != lead->last_scouted_minutes ||
+        lead->last_scouted_minutes < outing.local_contact_minutes ||
+        outing.local_contact_minutes < outing.started_minutes ||
+        lead->last_scouted_minutes >= outing.last_progress_minutes ) {
+        return;
+    }
+    const auto &crossing = outing.crossing;
+    if( crossing.run_id.empty() || crossing.outcome != "committed" ||
+        crossing.actor_ids != outing.member_ids || crossing.activity_id != outing.activity_id ||
+        crossing.generation != outing.generation ||
+        crossing.prior_owner != simulation_owner::abstract ||
+        crossing.next_owner != simulation_owner::local ||
+        crossing.handoff_epoch != outing.handoff_epoch ||
+        crossing.cursor_waypoint != outing.waypoint_index ||
+        crossing.cursor_minutes != outing.last_progress_minutes ||
+        crossing.cursor_minutes != outing.last_advanced_minutes ||
+        crossing.cursor_minutes != outing.local_handoff.committed_minutes ) {
+        return;
+    }
+    active_outing_state recovered = outing;
+    recovered.last_progress_minutes = lead->last_scouted_minutes;
+    if( structural_expected_return_is_consistent( recovered, site.anchor ) &&
+        recovered.missing_deadline_minutes == minutes_after_saturated(
+            recovered.expected_return_minutes, scout_missing_grace_minutes ) ) {
+        // All ordinary site/world identity, route, membership and ownership
+        // checks still run below. NPC leases are reconciled only after NPC load.
+        outing.last_progress_minutes = recovered.last_progress_minutes;
+    }
+}
+} // namespace
+
 void site_record::deserialize( const JsonObject &jo )
 {
     deserialize( jo, {} );
@@ -10433,6 +10502,8 @@ void site_record::deserialize( const JsonObject &jo,
             active_outing.schema_version = 6;
         }
     }
+
+    recover_legacy_frontier_handoff_return_clock( *this );
 
     const bool scout_job_is_consistent = active_outing.kind != outing_kind::scout_sortie ||
                                          active_outing.job_type == "scout" ||

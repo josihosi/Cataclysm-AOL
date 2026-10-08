@@ -13539,6 +13539,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK( outing.local_handoff.route_position == progressed_position );
         CHECK( outing.local_handoff.approach_from == retained_position );
         CHECK( outing.last_advanced_minutes == 101 );
+        CHECK( outing.last_progress_minutes == 101 ); // No completed assessment owns this clock.
         CHECK( outing.local_handoff.members[0].exit_position == progressed_origin );
         CHECK( outing.local_handoff.members[1].exit_position ==
                tripoint_abs_ms( progressed_origin.x() + 1, progressed_origin.y(),
@@ -52594,5 +52595,361 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
                mode == "dog_ahead" || mode == "incident_hazard" || mode == "blocked" ||
                mode == "unavailable_source" || mode == "immediate_trap" ) {
         CHECK_FALSE( homeward_action );
+    }
+}
+
+namespace
+{
+std::string r067_return_fixture_bytes( const std::string &name )
+{
+    std::ifstream input( "tests/data/" + name, std::ios::binary );
+    REQUIRE( input.good() );
+    const std::string bytes( std::istreambuf_iterator<char>( input ), {} );
+    const auto begin = bytes.find_first_of( "[{" );
+    REQUIRE( begin != std::string::npos );
+    return bytes.substr( begin );
+}
+
+overmap_global_state r067_load_return_global( const std::string &bytes )
+{
+    auto dimension = json_loader::from_string( bytes ).get_object();
+    // Weather and power belong to game::unserialize_dimension_data; this
+    // control exercises the complete strict global/world loader underneath it.
+    dimension.allow_omitted_members();
+    overmap_global_state state;
+    auto buffer = dimension.get_object( "overmapbuffer" );
+    buffer.allow_omitted_members(); // Error paths stop before later global members.
+    state.deserialize( buffer );
+    return state;
+}
+
+template<typename T>
+std::string r067_return_record_bytes( const T &record )
+{
+    std::ostringstream out;
+    JsonOut json( out );
+    record.serialize( json );
+    return out.str();
+}
+
+std::string r067_replace_return_records( const std::string &bytes,
+        const std::function<void( bandit_live_world::active_outing_state &,
+                                 bandit_live_world::camp_intelligence_map & )> &change )
+{
+    std::istringstream stream( bytes );
+    TextJsonIn text( stream );
+    auto dimension = text.get_object(); dimension.allow_omitted_members();
+    auto buffer = dimension.get_object( "overmapbuffer" ); buffer.allow_omitted_members();
+    auto world = buffer.get_object( "bandit_live_world" ); world.allow_omitted_members();
+    auto site = world.get_array( "sites" ).get_object( 1 ); site.allow_omitted_members();
+    const auto outing_json = site.get_object( "active_outing" );
+    const auto map_json = site.get_object( "intelligence_map" );
+    bandit_live_world::active_outing_state outing;
+    bandit_live_world::camp_intelligence_map intelligence;
+    const auto value_bytes = []( const std::string &span ) {
+        return span.substr( 0, span.find_last_of( "}]" ) + 1 );
+    };
+    outing_json.allow_omitted_members(); map_json.allow_omitted_members();
+    outing.deserialize( json_loader::from_string( value_bytes( outing_json.str() ) ).get_object() );
+    intelligence.deserialize( json_loader::from_string( value_bytes( map_json.str() ) ).get_object() );
+    change( outing, intelligence );
+    std::string result = bytes;
+    const auto replace = [&]( const std::string &span, const std::string &value ) {
+        const auto end = span.find_last_of( "}]" ); REQUIRE( end != std::string::npos );
+        const auto old = span.substr( 0, end + 1 );
+        const auto offset = result.find( old ); REQUIRE( offset != std::string::npos );
+        result.replace( offset, old.size(), value );
+    };
+    replace( outing_json.str(), r067_return_record_bytes( outing ) );
+    replace( map_json.str(), r067_return_record_bytes( intelligence ) );
+    return result;
+}
+
+void r067_dematerialize_return( bandit_live_world::world_state &world,
+                               bandit_live_world::site_record &site, const int now )
+{
+    world.acknowledge_persisted_crossings();
+    std::vector<bandit_live_world::local_dematerialization_member_read> reads;
+    for( const auto &member : site.active_outing.local_handoff.members ) {
+        reads.push_back( { member.npc_id, true, false, true, member.hp_percent,
+                           member.entry_position } );
+    }
+    const auto plan = bandit_live_world::plan_local_pair_dematerialization(
+                          site, require_current_simulation_cursor( site ), now, reads,
+                          site.active_outing.cargo );
+    CAPTURE( plan.notes ); REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::commit_local_pair_dematerialization( site, plan,
+             []( const auto & ) { return true; }, []( const auto & ) {} ) ==
+             bandit_live_world::local_handoff_commit_result::applied );
+    world.acknowledge_persisted_crossings();
+}
+} // namespace
+
+TEST_CASE( "assessment return transfers preserve the deadline clock and real physical progress",
+           "[bandit_live_world][assessment_return_clock_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const bool frontier = GENERATE( false, true );
+    CAPTURE( cannibal, frontier );
+    world_state world;
+    if( frontier ) {
+        // Reconstructed pre-completion input from the retained native outing.
+        // Only the old diagnostic clock correction admits this setup on the
+        // before source. The real arrival producer then establishes this test's
+        // completion time, lead revision and deadline; no recovered credit.
+        const auto original = r067_return_fixture_bytes( "r067_frontier_return_5553081.gsav" );
+        auto global = r067_load_return_global( r067_replace_return_records( original,
+        []( auto &outing, auto & ) { outing.last_progress_minutes = 13210; } ) );
+        world = global.bandit_live_world;
+    } else {
+        world.deserialize( json_loader::from_string(
+                               r067_return_fixture_bytes( "r067_watch_return_8640.json" ) ).get_object() );
+    }
+    const std::string site_id = "overmap_special:bandit_camp@129,149,0";
+    auto *site = world.find_site( site_id ); REQUIRE( site );
+    if( cannibal ) {
+        site->site_kind = owned_site_kind::cannibal_camp;
+        site->profile = hostile_site_profile::cannibal_camp;
+        site->source_id = "cannibal_camp";
+    }
+    if( frontier ) {
+        auto &outing = site->active_outing;
+        outing.phase = scout_phase::observing;
+        outing.local_handoff.phase = outing.phase;
+        outing.last_progress_minutes = outing.last_advanced_minutes = 13200;
+        outing.local_handoff.committed_minutes = 13200;
+        outing.crossing.clear();
+        outing.local_handoff.route_position = outing.target_omt;
+        outing.local_handoff.approach_from = outing.shared_route[1];
+        std::vector<local_route_arrival_member_read> reads;
+        const auto origin = project_to<coords::ms>( outing.target_omt );
+        for( std::size_t i = 0; i < outing.local_handoff.members.size(); ++i ) {
+            auto &member = outing.local_handoff.members[i];
+            member.entry_position = origin + point( static_cast<int>( i ), 0 );
+            member.staging_position = origin + point( static_cast<int>( 1 - i ), 0 );
+            member.exit_position = member.entry_position;
+        }
+        for( std::size_t i = 0; i < outing.member_ids.size(); ++i ) {
+            reads.push_back( { outing.member_ids[i], true, false, true, 90,
+                               origin + point( static_cast<int>( i ), 0 ) } );
+        }
+        REQUIRE( complete_structural_frontier_arrival( *site,
+                 require_current_simulation_cursor( *site ), 13210, reads ) ==
+                 local_handoff_commit_result::applied );
+    }
+    const int demat_time = frontier ? 13215 : 8640;
+    r067_dematerialize_return( world, *site, demat_time );
+    if( !frontier ) {
+        advance_structural_bounty_outings( world, demat_time + 1, {} );
+    }
+    REQUIRE( site->active_outing.phase == scout_phase::returning_home );
+    world = round_trip_world( world ); site = world.find_site( site_id ); REQUIRE( site );
+    const int return_start = site->active_outing.last_progress_minutes;
+    const int deadline = site->active_outing.expected_return_minutes;
+    const int missing = site->active_outing.missing_deadline_minutes;
+    const auto members = site->active_outing.member_ids;
+    const auto reload_committed_world = [&]() {
+        // Feed each successful strict reload into the next real transaction.
+        // On the before source retain the refused writer state so the other
+        // seam still executes and reports its independent failed assertion.
+        try {
+            auto restored = round_trip_world( world );
+            CHECK( serialize_world( restored ) == serialize_world( world ) );
+            world = std::move( restored );
+            site = world.find_site( site_id ); REQUIRE( site );
+        } catch( const JsonError &error ) {
+            FAIL_CHECK( error.what() );
+        }
+    };
+    for( int repeat = 0; repeat < 2; ++repeat ) {
+        const int now = demat_time + 5 + repeat * 10;
+        const auto old_cursor = require_current_simulation_cursor( *site );
+        const auto old_omt = site->active_outing.local_handoff.route_position;
+        const auto progressed = old_omt + point( 0, 1 );
+        const auto origin = project_to<coords::ms>( progressed );
+        std::vector<local_abstract_resume_progress_read> reads;
+        for( std::size_t i = 0; i < members.size(); ++i ) {
+            reads.push_back( { members[i], true, false, 80,
+                               origin + point( static_cast<int>( i ), 0 ) } );
+        }
+        for( const std::string defect : { "generation", "owner", "clock", "member", "partial", "same_omt" } ) {
+            auto refused = *site; auto cursor = old_cursor; auto bad = reads;
+            if( defect == "generation" ) { ++cursor.generation; }
+            if( defect == "owner" ) { cursor.owner = simulation_owner::local; }
+            if( defect == "clock" ) { --cursor.last_advanced_minutes; }
+            if( defect == "member" ) { bad.back().npc_id = character_id( 999999 ); }
+            if( defect == "partial" ) { bad.pop_back(); }
+            if( defect == "same_omt" ) {
+                for( auto &read : bad ) { read.current_position = project_to<coords::ms>( old_omt ); }
+            }
+            const auto before = r067_return_record_bytes( refused );
+            CHECK_FALSE( record_local_pair_abstract_resume_progress( refused, cursor, now, bad ) );
+            CHECK( r067_return_record_bytes( refused ) == before );
+        }
+        REQUIRE( record_local_pair_abstract_resume_progress( *site, old_cursor, now, reads ) );
+        CHECK( site->active_outing.last_progress_minutes == return_start );
+        CHECK( site->active_outing.last_advanced_minutes == now );
+        CHECK( site->active_outing.local_handoff.committed_minutes == now );
+        CHECK( site->active_outing.local_handoff.route_position == progressed );
+        CHECK( site->active_outing.local_handoff.members.front().exit_position == origin );
+        CHECK( site->active_outing.expected_return_minutes == deadline );
+        CHECK( site->active_outing.missing_deadline_minutes == missing );
+        CHECK_FALSE( record_local_pair_abstract_resume_progress( *site, old_cursor, now, reads ) );
+        // Continue even on the before source so both writer failures are visible;
+        // strict reload is an assertion, not a prerequisite for the second seam.
+        reload_committed_world();
+        const auto cursor = require_current_simulation_cursor( *site );
+        std::vector<local_handoff_member_read> handoff_reads;
+        for( const auto &member : site->active_outing.local_handoff.members ) {
+            handoff_reads.push_back( { member.npc_id, true, false, member.hp_percent,
+                                      member.exit_position, member.exit_position, member.staging_position } );
+        }
+        for( const std::string defect : { "generation", "foreign", "clock", "member", "route" } ) {
+            auto refused = *site; auto bad_cursor = cursor; auto bad = handoff_reads;
+            if( defect == "generation" ) { ++bad_cursor.generation; }
+            if( defect == "foreign" ) { bad_cursor.activity_id += "-foreign"; }
+            if( defect == "clock" ) { --bad_cursor.last_advanced_minutes; }
+            if( defect == "member" ) { bad.back().npc_id = character_id( 999999 ); }
+            if( defect == "route" ) { refused.active_outing.shared_route.pop_back(); }
+            CHECK_FALSE( plan_local_pair_handoff( refused, bad_cursor, now + 1, bad ).valid );
+        }
+        const auto handoff = plan_local_pair_handoff( *site, cursor, now + 1, handoff_reads );
+        CAPTURE( handoff.notes ); REQUIRE( handoff.valid );
+        REQUIRE( commit_local_pair_handoff( *site, handoff,
+                 []( const auto & ) { return true; }, []( const auto & ) {} ) == local_handoff_commit_result::applied );
+        CHECK( commit_local_pair_handoff( *site, handoff,
+               []( const auto & ) { return true; }, []( const auto & ) {} ) == local_handoff_commit_result::unchanged );
+        CHECK( site->active_outing.last_progress_minutes == return_start );
+        CHECK( site->active_outing.last_advanced_minutes == now + 1 );
+        CHECK( site->active_outing.crossing.cursor_minutes == now + 1 );
+        CHECK( site->active_outing.expected_return_minutes == deadline );
+        reload_committed_world();
+        r067_dematerialize_return( world, *site, now + 2 );
+        reload_committed_world();
+    }
+    CHECK( site->active_outing.member_ids == members );
+    CHECK( site->active_outing.member_return_receipts.empty() );
+    CHECK( site->active_outing.expected_return_minutes == deadline );
+}
+
+TEST_CASE( "original frontier save clock recovery requires completion and crossing provenance",
+           "[bandit_live_world][frontier_clock_load_067]" )
+{
+    using namespace bandit_live_world;
+    const auto original = r067_return_fixture_bytes( "r067_frontier_return_5553081.gsav" );
+    const std::string defect = GENERATE( std::string( "original" ), std::string( "missing_completion" ),
+        std::string( "stale_completion" ), std::string( "split_completion" ), std::string( "wrong_pin" ),
+        std::string( "foreign_target" ), std::string( "relocated" ), std::string( "duplicate_lead" ),
+        std::string( "wrong_cause" ), std::string( "wrong_generation" ), std::string( "wrong_member" ),
+        std::string( "wrong_route" ), std::string( "wrong_owner" ), std::string( "missing_crossing" ),
+        std::string( "stale_crossing" ), std::string( "wrong_deadline" ), std::string( "casualty" ),
+        std::string( "wrong_assessment_pin" ) );
+    CAPTURE( defect );
+    if( defect != "original" ) {
+        const auto negative = r067_replace_return_records( original, [&]( auto &outing, auto &map ) {
+            auto *lead = map.find_lead( outing.target_lead_id ); REQUIRE( lead );
+            if( defect == "missing_completion" ) { lead->last_outcome.clear(); }
+            if( defect == "stale_completion" ) { lead->last_scouted_minutes = lead->last_checked_minutes = 12900; }
+            if( defect == "split_completion" ) { --lead->last_checked_minutes; }
+            if( defect == "wrong_pin" ) { ++lead->revision; }
+            if( defect == "foreign_target" ) { lead->target_id += "-foreign"; }
+            if( defect == "relocated" ) { lead->omt += point( 1, 0 ); }
+            if( defect == "duplicate_lead" ) { map.leads.push_back( *lead ); }
+            if( defect == "wrong_cause" ) { outing.assessment.exit_reason = "normal watch assessment complete"; }
+            if( defect == "wrong_generation" ) { ++outing.generation; }
+            if( defect == "wrong_member" ) { outing.member_ids.back() = character_id( 999999 ); }
+            if( defect == "wrong_route" ) { outing.shared_route[1] += point( 2, 0 ); }
+            if( defect == "wrong_owner" ) { outing.camp_id += "-foreign"; }
+            if( defect == "missing_crossing" ) { outing.crossing.clear(); }
+            if( defect == "stale_crossing" ) { --outing.crossing.cursor_minutes; }
+            if( defect == "wrong_deadline" ) { ++outing.expected_return_minutes; }
+            if( defect == "casualty" ) { outing.casualty_ids.push_back( outing.member_ids.back() ); }
+            if( defect == "wrong_assessment_pin" ) { ++outing.assessment.pinned_target_revision; }
+        } );
+        CHECK_THROWS( r067_load_return_global( negative ) );
+        return;
+    }
+    auto global = r067_load_return_global( original );
+    auto *site = global.bandit_live_world.find_site( "overmap_special:bandit_camp@129,149,0" );
+    REQUIRE( site );
+    CHECK( site->active_outing.last_progress_minutes == 13210 );
+    CHECK( site->active_outing.last_advanced_minutes == 13215 );
+    CHECK( site->active_outing.local_handoff.committed_minutes == 13215 );
+    CHECK( site->active_outing.expected_return_minutes == 13300 );
+    const auto saved = r067_return_record_bytes( global );
+    overmap_global_state loaded;
+    REQUIRE_NOTHROW( loaded.deserialize( json_loader::from_string( saved ).get_object() ) );
+    // Global unordered containers need not retain serialization order. Their
+    // semantic values and the complete canonical world must survive reload.
+    CHECK( loaded.placed_unique_specials == global.placed_unique_specials );
+    CHECK( loaded.unique_special_count == global.unique_special_count );
+    CHECK( loaded.placed_regions == global.placed_regions );
+    CHECK( loaded.overmap_count == global.overmap_count );
+    CHECK( serialize_world( loaded.bandit_live_world ) == serialize_world( global.bandit_live_world ) );
+    auto independently_bound = r067_load_return_global( r067_replace_return_records( original,
+    []( auto &outing, auto & ) { outing.last_progress_minutes = 13210; } ) );
+    // The preserved original's only repair is its return-leg clock, not any
+    // observation, report, claim, roster, physical cursor or inventory record.
+    CHECK( serialize_world( independently_bound.bandit_live_world ) == serialize_world( global.bandit_live_world ) );
+}
+
+TEST_CASE( "recovered frontier world reconciles unchanged native NPC leases once",
+           "[bandit_live_world][frontier_clock_npc_load_067]" )
+{
+    using namespace bandit_live_world;
+    const std::string defect = GENERATE( std::string( "original" ), std::string( "stale" ),
+                                        std::string( "foreign" ), std::string( "missing" ) );
+    CAPTURE( defect );
+    r054_clear_previous_test_projections();
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto before_world = world;
+    on_out_of_scope cleanup( [&]() {
+        for( const int id : { 5, 6 } ) {
+            g->remove_npc( character_id( id ) );
+            if( overmap_buffer.find_npc( character_id( id ) ) ) {
+                overmap_buffer.remove_npc( character_id( id ) );
+            }
+        }
+        world = before_world;
+    } );
+    auto global = r067_load_return_global( r067_return_fixture_bytes( "r067_frontier_return_5553081.gsav" ) );
+    world = global.bandit_live_world;
+    std::vector<shared_ptr_fast<npc>> actors;
+    std::vector<std::string> before;
+    for( const auto &row : json_loader::from_string(
+             r067_return_fixture_bytes( "r067_frontier_return_5553081_npcs.json" ) ).get_array() ) {
+        auto actor = make_shared_fast<npc>(); actor->deserialize( row.get_object() );
+        overmap_buffer.insert_npc( actor ); actors.push_back( actor );
+    }
+    REQUIRE( actors.size() == 2 );
+    if( defect == "stale" || defect == "foreign" ) {
+        auto lease = actors.back()->get_bandit_live_world_projection_lease();
+        if( defect == "stale" ) { --lease.last_advanced_minutes; }
+        if( defect == "foreign" ) { lease.site_id += "-foreign"; }
+        actors.back()->set_bandit_live_world_projection_lease( lease );
+    }
+    if( defect == "missing" ) { overmap_buffer.remove_npc( actors.back()->getID() ); }
+    for( const auto &actor : actors ) { before.push_back( r054_actor_bytes( *actor ) ); }
+    auto *site = world.find_site( "overmap_special:bandit_camp@129,149,0" ); REQUIRE( site );
+    const auto result = reconcile_loaded_bandit_live_world_projections_for_test();
+    REQUIRE( result == ( defect == "original" ? local_projection_reconciliation_result::repaired :
+                        local_projection_reconciliation_result::rejected ) );
+    for( std::size_t i = 0; i < actors.size(); ++i ) {
+        CHECK( r054_actor_bytes( *actors[i] ) == before[i] );
+    }
+    CHECK( site->active_outing.last_progress_minutes == 13210 );
+    CHECK( site->active_outing.last_advanced_minutes == 13215 );
+    CHECK( site->active_outing.local_projection_reconciliation_rejected == ( defect != "original" ) );
+    if( defect == "original" ) {
+        CHECK( site->active_outing.crossing.activity_id.empty() );
+        CHECK( site->find_member( character_id( 5 ) )->state == member_state::local_contact );
+        CHECK( site->find_member( character_id( 6 ) )->state == member_state::local_contact );
+        const auto reconciled = serialize_world( world );
+        CHECK( reconcile_loaded_bandit_live_world_projections_for_test() == local_projection_reconciliation_result::unchanged );
+        CHECK( serialize_world( world ) == reconciled );
+        world = round_trip_world( world );
+        CHECK( reconcile_loaded_bandit_live_world_projections_for_test() == local_projection_reconciliation_result::unchanged );
+        CHECK( serialize_world( world ) == reconciled );
     }
 }
