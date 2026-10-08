@@ -13680,17 +13680,35 @@ bool live_bandit_local_step_has_known_dangerous_trap(
     return candidate.can_see( step, member ) && !candidate.is_benign();
 }
 
-// A separated homeward pair needs a reachable rendezvous, not a greedy decrease
-// in straight-line distance.  Keep one actor stationary while the other follows
-// a complete native route; this permits safe detours without releasing cohesion.
+// A homeward pair may need a reachable rendezvous even at the cohesion limit.
+// Keep one actor stationary while the other follows a validated native route;
+// already separated pairs retain safe detours without greedy distance reduction.
 struct live_bandit_homeward_reunion_route {
     character_id mover;
     std::vector<tripoint_bub_ms> path;
 };
 
+enum class live_bandit_homeward_reunion_request { separated, cohesion_refused, continuation };
+
 live_bandit_homeward_reunion_route live_bandit_homeward_reunion_path(
-    npc &member, npc &partner, const bandit_live_world::site_record &site, map &here )
+    npc &member, npc &partner, const bandit_live_world::site_record &site, map &here,
+    live_bandit_homeward_reunion_request request )
 {
+    const bool cohesion_refused = request != live_bandit_homeward_reunion_request::separated;
+    if( cohesion_refused ) {
+        const auto lease = live_bandit_projection_lease( site.site_id, site.active_outing );
+        for( npc *actor : { &member, &partner } ) {
+            if( !actor->is_active() || !live_bandit_member_can_take_homeward_step( *actor ) ||
+                !live_bandit_projection_copies_match( *actor, lease ) ||
+                ( !live_bandit_member_routing_home( *actor, site ) &&
+                  !live_bandit_member_routing_burn_egress( *actor, site.active_outing ) ) ||
+                actor->get_attitude() == NPCATT_FLEE || actor->get_attitude() == NPCATT_FLEE_TEMP ||
+                actor->faction_alarm_requires_response() ||
+                ( actor->current_target() != nullptr && actor->get_ai_danger() > 0 ) ) {
+                return {};
+            }
+        }
+    }
     if( site.active_outing.leader_id != member.getID() &&
         site.active_outing.leader_id != partner.getID() ) {
         return {};
@@ -13710,21 +13728,36 @@ live_bandit_homeward_reunion_route live_bandit_homeward_reunion_path(
         if( !relationship ) {
             continue;
         }
+        const int radius = bandit_live_world::local_pair_cohesion_radius();
         const auto npc_avoid = mover->get_path_avoid();
         const auto avoid = [&]( const tripoint_bub_ms & step ) {
             return npc_avoid( step ) ||
+                   ( cohesion_refused && rl_dist( here.get_abs( step ), anchor.pos_abs() ) > radius ) ||
                    live_bandit_local_step_has_known_dangerous_trap( *mover, here, step ) ||
                    !live_bandit_local_step_respects_nonreentry(
                        *mover, *relationship, here, step );
         };
-        bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
+        // A refusal inside the radius needs real inward room for the next
+        // homeward step. Already separated pairs retain full, non-monotonic
+        // rendezvous detours. Native radius targets use square distance; qualify
+        // their endpoint with the configured cohesion metric as well.
+        const int endpoint_distance = cohesion_refused ?
+                                      rl_dist( mover->pos_abs(), anchor.pos_abs() ) - 1 : radius;
+        if( endpoint_distance < 0 ) {
+            continue;
+        }
         const auto valid_reunion_path = [&]( std::vector<tripoint_bub_ms> &path ) {
             while( !path.empty() && path.front() == mover->pos_bub( here ) ) {
                 path.erase( path.begin() );
             }
+            tripoint_bub_ms previous = mover->pos_bub( here );
             if( path.empty() || project_to<coords::omt>( here.get_abs( path.back() ) ) !=
-                anchor.pos_abs_omt() || !std::all_of( path.begin(), path.end(), [&]( const auto & step ) {
-                return !avoid( step );
+                anchor.pos_abs_omt() ||
+                rl_dist( here.get_abs( path.back() ), anchor.pos_abs() ) > endpoint_distance ||
+                !std::all_of( path.begin(), path.end(), [&]( const auto & step ) {
+                const bool continuous = step != previous && rl_dist( step, previous ) <= 1;
+                previous = step;
+                return continuous && !avoid( step );
             } ) ) {
                 return false;
             }
@@ -13742,18 +13775,34 @@ live_bandit_homeward_reunion_route live_bandit_homeward_reunion_path(
             }
             return true;
         };
-        const int radius = bandit_live_world::local_pair_cohesion_radius();
-        auto path = here.route( mover->pos_bub( here ),
-                                pathfinding_target::radius( anchor.pos_bub( here ), radius ),
-                                mover->get_pathfinding_settings( false ), avoid );
+        // Preserve the inward endpoint, not cached terrain/edge assumptions.
+        // The native route owner rechecks doors, vehicles and movement costs;
+        // avoidance alone cannot certify that a cached step remains traversable.
+        auto path = mover->path;
+        if( cohesion_refused && valid_reunion_path( path ) ) {
+            bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
+            path = here.route( mover->pos_bub( here ), pathfinding_target::point( path.back() ),
+                               mover->get_pathfinding_settings( false ), avoid );
+            if( valid_reunion_path( path ) ) {
+                return { mover->getID(), std::move( path ) };
+            }
+        }
+        if( request == live_bandit_homeward_reunion_request::continuation ) {
+            continue;
+        }
+        bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
+        path = here.route( mover->pos_bub( here ),
+                           pathfinding_target::radius( anchor.pos_bub( here ), endpoint_distance ),
+                           mover->get_pathfinding_settings( false ), avoid );
         if( valid_reunion_path( path ) ) {
             return { mover->getID(), std::move( path ) };
         }
         // A radius target can end on an occupied/avoided tile or across an OMT edge.
         // Try the legal endpoints of that same rendezvous, without relaxing the route.
         std::vector<tripoint_bub_ms> endpoints;
-        for( const auto &point : here.points_in_radius( anchor.pos_bub( here ), radius ) ) {
+        for( const auto &point : here.points_in_radius( anchor.pos_bub( here ), endpoint_distance ) ) {
             if( here.inbounds( point ) && !avoid( point ) &&
+                rl_dist( here.get_abs( point ), anchor.pos_abs() ) <= endpoint_distance &&
                 project_to<coords::omt>( here.get_abs( point ) ) == anchor.pos_abs_omt() ) {
                 endpoints.push_back( point );
             }
@@ -15612,6 +15661,61 @@ void monmove()
                 const std::optional<tripoint_bub_ms> forced_field_escape =
                     immediate_field_hazard && !field_escape ?
                     choose_noninward_step( false ) : std::nullopt;
+                const auto choose_homeward_reunion = [&]( live_bandit_homeward_reunion_request request ) {
+                    return homeward_site && partner ? live_bandit_homeward_reunion_path(
+                               guy, *partner, *homeward_site, m, request ) : live_bandit_homeward_reunion_route{};
+                };
+                const auto move_homeward_reunion = [&]( live_bandit_homeward_reunion_route reunion,
+                live_bandit_homeward_reunion_request request ) -> const char * {
+                    const bool cohesion_refused = request != live_bandit_homeward_reunion_request::separated;
+                    if( reunion.mover != guy.getID() ) {
+                        guy.path.clear();
+                        homeward_trace.action( "move_pause", reunion.path.empty() ?
+                                               "safe homeward reunion route unavailable" :
+                                               "holding homeward rendezvous anchor", reunion.path.empty() ? "blocked" : "waiting" );
+                        guy.move_pause();
+                        return "move_pause";
+                    } else {
+                        guy.path = std::move( reunion.path );
+                        if( auto *read = homeward_trace.read() ) {
+                            read->route_found = true;
+                            read->route_safe = true;
+                            read->next_step_cohesive = step_preserves_pair_cohesion( guy.path.front() );
+                            read->next_step_ms = m.get_abs( guy.path.front() ).to_string();
+                            read->next_step_passable = m.passable_through( guy.path.front() );
+                            read->next_step_occupied = get_creature_tracker().creature_at( guy.path.front() ) != nullptr;
+                            read->next_step_dangerous = guy.sees_dangerous_field( guy.path.front() );
+                        }
+                        homeward_trace.action( "move_to_next", "safe homeward reunion route" );
+                        guy.move_to_next();
+                        if( !cohesion_refused && rl_dist( guy.pos_abs(), partner->pos_abs() ) <=
+                            bandit_live_world::local_pair_cohesion_radius() &&
+                            guy.pos_abs_omt() == partner->pos_abs_omt() ) {
+                            // Reunion may cross an OMT outside the actor's old homeward path.
+                            // Rebind both routes from their real positions through the existing
+                            // covert planner, without changing ownership or crediting a return.
+                            // The relationship retains a required burned egress until
+                            // its physical completion authorizes travel to camp.
+                            const tripoint_abs_omt destination = relationship->egress_omt;
+                            auto member_route = live_bandit_member_route_to( guy, *homeward_site, destination );
+                            auto partner_route = live_bandit_member_route_to( *partner, *homeward_site, destination );
+                            if( !member_route.empty() && !partner_route.empty() ) {
+                                guy.goal = destination;
+                                partner->goal = destination;
+                                guy.omt_path = std::move( member_route );
+                                partner->omt_path = std::move( partner_route );
+                                guy.path.clear();
+                                partner->path.clear();
+                            }
+                        }
+                        return "move_to_next";
+                    }
+                };
+                auto reunion_continuation = partner && homeward_site &&
+                                                  rl_dist( guy.pos_abs(), partner->pos_abs() ) <=
+                                                  bandit_live_world::local_pair_cohesion_radius() ?
+                                                  choose_homeward_reunion( live_bandit_homeward_reunion_request::continuation ) :
+                                                  live_bandit_homeward_reunion_route{};
                 if( !relationship ) {
                     // Once committed contact ends the covert relationship, ordinary combat owns
                     // the actor again.
@@ -15641,54 +15745,18 @@ void monmove()
                     // Defense follows immediate field survival but still precedes squad routing.
                     homeward_trace.action( "melee_attack", "adjacent non-camp threat selected" );
                     guy.melee_attack( *threat, true );
+                } else if( !reunion_continuation.path.empty() ) {
+                    move_homeward_reunion( std::move( reunion_continuation ),
+                                           live_bandit_homeward_reunion_request::continuation );
                 } else if( partner != nullptr && !partner->is_dead() &&
                            ( rl_dist( guy.pos_abs(), partner->pos_abs() ) >
                              bandit_live_world::local_pair_cohesion_radius() ||
                              ( homeward_site != nullptr &&
                                homeward_site->active_outing.local_handoff.cohesion_abort_return &&
                                guy.pos_abs_omt() != partner->pos_abs_omt() ) ) ) {
-                    const auto reunion = homeward_site ? live_bandit_homeward_reunion_path(
-                                             guy, *partner, *homeward_site, m ) : live_bandit_homeward_reunion_route{};
-                    if( reunion.mover != guy.getID() ) {
-                        guy.path.clear();
-                        homeward_trace.action( "move_pause", reunion.path.empty() ?
-                                               "safe homeward reunion route unavailable" :
-                                               "holding homeward rendezvous anchor", reunion.path.empty() ? "blocked" : "waiting" );
-                        guy.move_pause();
-                    } else {
-                        guy.path = reunion.path;
-                        if( auto *read = homeward_trace.read() ) {
-                            read->route_found = true;
-                            read->route_safe = true;
-                            read->next_step_cohesive = step_preserves_pair_cohesion( guy.path.front() );
-                            read->next_step_ms = m.get_abs( guy.path.front() ).to_string();
-                            read->next_step_passable = m.passable_through( guy.path.front() );
-                            read->next_step_occupied = get_creature_tracker().creature_at( guy.path.front() ) != nullptr;
-                            read->next_step_dangerous = guy.sees_dangerous_field( guy.path.front() );
-                        }
-                        homeward_trace.action( "move_to_next", "safe homeward reunion route" );
-                        guy.move_to_next();
-                        if( rl_dist( guy.pos_abs(), partner->pos_abs() ) <=
-                            bandit_live_world::local_pair_cohesion_radius() &&
-                            guy.pos_abs_omt() == partner->pos_abs_omt() ) {
-                            // Reunion may cross an OMT outside the actor's old homeward path.
-                            // Rebind both routes from their real positions through the existing
-                            // covert planner, without changing ownership or crediting a return.
-                            // The relationship retains a required burned egress until
-                            // its physical completion authorizes travel to camp.
-                            const tripoint_abs_omt destination = relationship->egress_omt;
-                            auto member_route = live_bandit_member_route_to( guy, *homeward_site, destination );
-                            auto partner_route = live_bandit_member_route_to( *partner, *homeward_site, destination );
-                            if( !member_route.empty() && !partner_route.empty() ) {
-                                guy.goal = destination;
-                                partner->goal = destination;
-                                guy.omt_path = std::move( member_route );
-                                partner->omt_path = std::move( partner_route );
-                                guy.path.clear();
-                                partner->path.clear();
-                            }
-                        }
-                    }
+                    move_homeward_reunion(
+                        choose_homeward_reunion( live_bandit_homeward_reunion_request::separated ),
+                        live_bandit_homeward_reunion_request::separated );
                 } else if( homeward_boundary != pair_homeward_boundary_steps.end() ) {
                     if( guy.pos_abs() == homeward_boundary->second.departure ) {
                         homeward_trace.action( "move_pause", "at selected boundary departure", "blocked" );
@@ -15776,12 +15844,15 @@ void monmove()
                                        << " covert_avoid_path=" << covert_avoid_path.size();
                             rejection_classifier = classifier.str();
                         }
+                        const char *selected_action = "omt_fallback";
                         if( route_safe && next_step_cohesive ) {
+                            selected_action = "move_to_next";
                             homeward_trace.action( "move_to_next", "safe boundary route and cohesive next step" );
                             guy.move_to_next();
                         } else if( route_safe ) {
-                            homeward_trace.action( "move_pause", "pair_cohesion", "blocked" );
-                            guy.move_pause();
+                            selected_action = move_homeward_reunion(
+                                                  choose_homeward_reunion( live_bandit_homeward_reunion_request::cohesion_refused ),
+                                                  live_bandit_homeward_reunion_request::cohesion_refused );
                         } else {
                             homeward_trace.action( "omt_fallback", "boundary route did not pass safety preflight" );
                             guy.path.clear();
@@ -15798,7 +15869,7 @@ void monmove()
                                     << " route_found=" << ( route_found ? "yes" : "no" )
                                     << " route_safe=" << ( route_safe ? "yes" : "no" )
                                     << " path_before=" << path_size_before_movement
-                                    << " action=" << ( route_safe ? "move_to_next" : "omt_fallback" )
+                                    << " action=" << selected_action
                                     << " pos_before=" << position_before_movement.to_string()
                                     << " moves_before=" << moves_before_movement
                                     << " next=" << ( next_step ? next_step->to_string() : "none" )
@@ -15924,9 +15995,12 @@ void monmove()
                         homeward_trace.read()->next_step_cohesive = next_step_cohesive;
                     }
                     if( !next_step_cohesive ) {
-                        homeward_trace.action( "move_pause", "pair_cohesion", "blocked" );
+                        const char *selected_action = move_homeward_reunion(
+                                                          choose_homeward_reunion( live_bandit_homeward_reunion_request::cohesion_refused ),
+                                                          live_bandit_homeward_reunion_request::cohesion_refused );
                         DebugLog( D_INFO, DC_ALL )
-                                << "bandit_live_world loaded homeward local movement deferred"
+                                << "bandit_live_world loaded homeward cohesion recovery"
+                                << " action=" << selected_action
                                 << " member=" << guy.getID().get_value()
                                 << " phase=" << bandit_live_world::to_string(
                                     relationship->phase )
@@ -15936,7 +16010,6 @@ void monmove()
                                 << " next_omt=" << next_omt->to_string()
                                 << " next_step=" << preflight_path.front().to_string()
                                 << " reason=pair_cohesion\n";
-                        guy.move_pause();
                         continue;
                     }
                     while( !guy.omt_path.empty() && guy.omt_path.back() == current_omt ) {

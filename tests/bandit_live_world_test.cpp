@@ -42914,8 +42914,9 @@ class r055_scene
                            site().active_outing.phase ) ) {
                 REQUIRE( bandit_live_world::local_pair_homeward_travel_ids( world ).size() == 2 );
             }
-            if( provenance.get_string( "proof_kind", "" ) == "paid_return_067" ) {
-                return; // Sleep and actual visit members are assertions of the caller.
+            if( provenance.get_string( "proof_kind", "" ) == "paid_return_067" ||
+                provenance.get_string( "proof_kind", "" ) == "cohesion_return_067" ) {
+                return; // Actual retained members are assertions of the caller.
             }
             for( int id : {
                      4, 5
@@ -52952,4 +52953,347 @@ TEST_CASE( "recovered frontier world reconciles unchanged native NPC leases once
         CHECK( reconcile_loaded_bandit_live_world_projections_for_test() == local_projection_reconciliation_result::unchanged );
         CHECK( serialize_world( world ) == reconciled );
     }
+}
+
+
+// Copied native5556981 bodies and terrain, reconstructed caches/seed, LLM off.
+// Regrouping is selected only by the production motor: no test path assignment.
+TEST_CASE( "cohesive homeward pair automatically regroups across refused steps",
+           "[bandit_live_world][pair_cohesion_5556981]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const bool circular = GENERATE( false, true );
+    const bool boundary = GENERATE( false, true );
+    CAPTURE( cannibal, circular, boundary );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool old_trigdist = trigdist;
+    trigdist = circular;
+    on_out_of_scope distance_restore( [&]() { trigdist = old_trigdist; } );
+    r055_scene scene;
+    scene.load( cannibal, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    npc *leader = &scene.actor( 5 );
+    npc *follower = &scene.actor( 6 );
+    map &here = get_map();
+    const auto leader_before = leader->pos_abs();
+    const auto follower_before = follower->pos_abs();
+    REQUIRE( leader_before == tripoint_abs_ms( 3143, 3458, 0 ) );
+    REQUIRE( follower_before == tripoint_abs_ms( 3137, 3461, 0 ) );
+    REQUIRE( here.get_abs_sub() == tripoint_abs_sm( 258, 282, 0 ) );
+    const auto original_report = r067_return_record_bytes( scene.site().current_scout_report );
+    const int radius = bandit_live_world::local_pair_cohesion_radius();
+    REQUIRE( rl_dist( leader_before, follower_before ) == radius );
+    // A closed loaded perimeter removes boundary departure offers, exposing the
+    // ordinary loaded-OMT caller without altering bodies, route or ownership.
+    // It proves local progress, not a complete safe route out of this map.
+    if( !boundary ) {
+        for( const auto &point : here.points_on_zlevel( 0 ) ) {
+            if( point.x() == 0 || point.y() == 0 ||
+                point.x() == MAPSIZE * SEEX - 1 || point.y() == MAPSIZE * SEEY - 1 ) {
+                here.ter_set( point, ter_id( "t_rock" ) );
+            }
+        }
+        REQUIRE( live_bandit_homeward_boundary_steps_for_test().empty() );
+        // Preserve the original macro path, but qualify a loaded-route
+        // obstruction that makes its first independent steps diverge. The
+        // inward rendezvous remains physically reachable around these walls.
+        for( const tripoint_abs_ms point : {
+                 tripoint_abs_ms( 3142, 3457, 0 ), tripoint_abs_ms( 3142, 3458, 0 ),
+                 tripoint_abs_ms( 3142, 3459, 0 ), tripoint_abs_ms( 3137, 3460, 0 ),
+                 tripoint_abs_ms( 3138, 3460, 0 )
+             } ) {
+            here.ter_set( here.get_bub( point ), ter_id( "t_rock" ) );
+        }
+    } else {
+        REQUIRE( live_bandit_homeward_boundary_steps_for_test().size() == 2 );
+    }
+    int regroups = 0;
+    int joint_turns = 0;
+    bool ordinary_caller = false;
+    bool survival = false;
+    int reloads = 0;
+    for( int turn = 0; turn < 45; ++turn ) {
+        const auto before_first = leader->pos_abs();
+        const auto before_second = follower->pos_abs();
+        bandit_live_world_probe::snapshot snapshot;
+        {
+            bandit_live_world_probe::session trace( bandit_live_world_probe::collection_mode::transition_events );
+            scene.step();
+            snapshot = trace.result();
+        }
+        for( const auto &event : snapshot.transition_events ) {
+            if( event.transition != "scout_homeward_motor" || !event.scout_homeward ) { continue; }
+            const auto &read = *event.scout_homeward;
+            regroups += read.action == "move_to_next" && event.reason == "safe homeward reunion route";
+            ordinary_caller |= read.next_center_in_bounds.value_or( false );
+            survival |= read.action == "npc_move" && event.reason == "native_survival branch selected";
+            if( read.action == "move_to_next" && !survival ) {
+                CHECK( read.next_step_cohesive.value_or( false ) );
+            }
+            std::cout << "COHESION_SELECTED faction=" << cannibal << " circular=" << circular
+                      << " boundary=" << boundary << " turn=" << turn
+                      << " actor=" << event.actor_ids.front() << " action=" << read.action
+                      << " reason=" << event.reason << " before=" << read.members.front().position_ms
+                      << " after=" << read.members.front().position_after_ms << '\n';
+        }
+        if( survival ) { break; } // Genuine native survival still owns the next action.
+        if( boundary && regroups > 0 && ( turn == 5 || turn == 10 ) ) {
+            const auto world_bytes = serialize_world( overmap_buffer.global_state.bandit_live_world );
+            std::vector<std::string> bodies;
+            const auto first = leader->pos_abs();
+            const auto second = follower->pos_abs();
+            for( int id : { 5, 6 } ) {
+                bodies.push_back( r054_actor_bytes( scene.actor( id ) ) );
+                g->remove_npc( character_id( id ) );
+                overmap_buffer.remove_npc( character_id( id ) );
+            }
+            overmap_buffer.global_state.bandit_live_world.deserialize(
+                json_loader::from_string( world_bytes ).get_object() );
+            for( const auto &bytes : bodies ) {
+                auto actor = make_shared_fast<npc>();
+                actor->deserialize( json_loader::from_string( bytes ).get_object() );
+                overmap_buffer.insert_npc( actor );
+            }
+            REQUIRE( reconcile_loaded_bandit_live_world_projections_for_test() ==
+                     bandit_live_world::local_projection_reconciliation_result::unchanged );
+            g->load_npcs();
+            leader = &scene.actor( 5 );
+            follower = &scene.actor( 6 );
+            CHECK( leader->pos_abs() == first );
+            CHECK( follower->pos_abs() == second );
+            CHECK( scene.site().active_outing.member_return_receipts.empty() );
+            ++reloads;
+        }
+        CHECK( rl_dist( leader->pos_abs(), follower->pos_abs() ) <= radius );
+        joint_turns += leader->pos_abs() != before_first && follower->pos_abs() != before_second;
+        if( rl_dist( leader_before, leader->pos_abs() ) >= 15 &&
+            rl_dist( follower_before, follower->pos_abs() ) >= 15 ) { break; }
+    }
+    CHECK( regroups >= ( boundary ? 2 : 1 ) );
+    if( boundary ) { CHECK( reloads == 2 ); }
+    CHECK( joint_turns > 1 );
+    CHECK( rl_dist( leader_before, leader->pos_abs() ) >= 10 );
+    CHECK( rl_dist( follower_before, follower->pos_abs() ) >= 10 );
+    if( !boundary ) { CHECK( ordinary_caller ); }
+    CHECK( scene.site().active_outing.member_return_receipts.empty() );
+    CHECK( r067_return_record_bytes( scene.site().current_scout_report ) == original_report );
+    std::cout << "COHESION_FINAL faction=" << cannibal << " circular=" << circular
+              << " boundary=" << boundary << " regroups=" << regroups << " joint_turns=" << joint_turns
+              << " reloads=" << reloads << " survival=" << survival << " leader=" << leader->pos_abs()
+              << " follower=" << follower->pos_abs() << '\n';
+}
+
+// Change the live scene only after a production-selected regroup has moved.
+// Its cached remainder is evidence of a prior solve, not current traversability.
+TEST_CASE( "homeward regroup rechecks changed terrain occupancy and fields",
+           "[bandit_live_world][pair_cohesion_changed_scene_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const bool boundary = GENERATE( false, true );
+    const std::string change = GENERATE( "wall", "door", "occupied", "field" );
+    CAPTURE( cannibal, boundary, change );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool old_trigdist = trigdist;
+    trigdist = true;
+    on_out_of_scope distance_restore( [&]() { trigdist = old_trigdist; } );
+    r055_scene scene;
+    scene.load( cannibal, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    map &here = get_map();
+    npc *mover = nullptr;
+    for( int turn = 0; turn < 12 && !mover; ++turn ) {
+        bandit_live_world_probe::snapshot snapshot;
+        {
+            bandit_live_world_probe::session trace( bandit_live_world_probe::collection_mode::transition_events );
+            scene.step();
+            snapshot = trace.result();
+        }
+        for( const auto &event : snapshot.transition_events ) {
+            if( event.transition != "scout_homeward_motor" || !event.scout_homeward ||
+                event.scout_homeward->action != "move_to_next" ||
+                event.reason != "safe homeward reunion route" ) { continue; }
+            npc &actor = scene.actor( event.actor_ids.front() );
+            if( actor.path.size() >= 2 ) {
+                REQUIRE( event.scout_homeward->members.front().position_ms !=
+                         event.scout_homeward->members.front().position_after_ms );
+                mover = &actor;
+                break;
+            }
+        }
+    }
+    REQUIRE( mover != nullptr );
+    // Close the perimeter only after actual acquisition when exercising the
+    // ordinary caller setting; no synthetic cached path or body relocation.
+    if( !boundary ) {
+        for( const auto &point : here.points_on_zlevel( 0 ) ) {
+            if( point.x() == 0 || point.y() == 0 || point.x() == MAPSIZE * SEEX - 1 ||
+                point.y() == MAPSIZE * SEEY - 1 ) {
+                here.ter_set( point, ter_id( "t_rock" ) );
+            }
+        }
+        REQUIRE( live_bandit_homeward_boundary_steps_for_test().empty() );
+    }
+    const auto cached = mover->path;
+    const auto changed = cached.front();
+    const auto changed_abs = here.get_abs( changed );
+    REQUIRE( here.passable_through( changed ) );
+    REQUIRE( get_creature_tracker().creature_at( changed ) == nullptr );
+    REQUIRE_FALSE( mover->get_path_avoid()( changed ) );
+    if( change == "wall" ) {
+        here.ter_set( changed, ter_id( "t_rock" ) );
+        REQUIRE_FALSE( mover->can_move_to_ignoring_danger( changed, false ) );
+        // Avoidance has no terrain predicate: this is the original review gap.
+        REQUIRE_FALSE( mover->get_path_avoid()( changed ) );
+    } else if( change == "door" ) {
+        here.ter_set( changed, ter_id( "t_door_c" ) );
+        REQUIRE( mover->can_move_to_ignoring_danger( changed, false ) );
+    } else if( change == "occupied" ) {
+        auto occupant = make_shared_fast<npc>();
+        occupant->deserialize( json_loader::from_string( r054_actor_bytes( *mover ) ).get_object() );
+        occupant->setID( character_id( 99 ), true );
+        occupant->set_bandit_live_world_projection_lease( {} );
+        occupant->spawn_at_precise( changed_abs );
+        occupant->add_effect( efftype_id( "sleep" ), 1_days );
+        occupant->add_effect( efftype_id( "narcosis" ), 1_days );
+        overmap_buffer.insert_npc( occupant );
+        g->load_npcs();
+        REQUIRE( occupant->is_active() );
+        REQUIRE( mover->get_path_avoid()( changed ) );
+    } else {
+        here.add_field( changed, field_type_id( "fd_acid" ), 3 );
+        REQUIRE( mover->get_path_avoid()( changed ) );
+    }
+    bool selected = false;
+    bool survival = false;
+    bool blocked = false;
+    for( int turn = 0; turn < 3; ++turn ) {
+        bandit_live_world_probe::snapshot snapshot;
+        {
+            bandit_live_world_probe::session trace( bandit_live_world_probe::collection_mode::transition_events );
+            scene.step();
+            snapshot = trace.result();
+        }
+        for( const auto &event : snapshot.transition_events ) {
+            if( event.transition != "scout_homeward_motor" || !event.scout_homeward ) { continue; }
+            const auto &read = *event.scout_homeward;
+            survival |= event.reason == "native_survival branch selected";
+            blocked |= read.action == "move_pause" || read.action == "omt_fallback";
+            if( read.action == "move_to_next" && event.reason == "safe homeward reunion route" ) {
+                selected = true;
+                if( change != "door" ) {
+                    CHECK( read.next_step_ms != changed_abs.to_string() );
+                    const auto &path = scene.actor( event.actor_ids.front() ).path;
+                    CHECK( std::find( path.begin(), path.end(), changed ) == path.end() );
+                }
+            }
+        }
+        if( change != "door" ) { CHECK( mover->pos_abs() != changed_abs ); }
+    }
+    if( change == "field" || change == "occupied" ) {
+        // Existing avoidance may decline regrouping altogether. It need not
+        // select movement through another route to preserve this refusal.
+        CHECK( mover->get_path_avoid()( changed ) );
+    } else {
+        CHECK( ( selected || survival || blocked ) );
+    }
+    if( change == "door" ) {
+        // A door remains a native opening action, or the route owner can avoid it.
+        CHECK( ( here.ter( changed ) == ter_id( "t_door_o" ) ||
+                 std::find( mover->path.begin(), mover->path.end(), changed ) == mover->path.end() ) );
+    }
+    CHECK( scene.site().active_outing.member_return_receipts.empty() );
+    std::cout << "COHESION_CHANGED faction=" << cannibal << " boundary=" << boundary
+              << " change=" << change << " tile=" << changed_abs
+              << " selected=" << selected << " survival=" << survival << " blocked=" << blocked << '\n';
+}
+
+TEST_CASE( "cohesion refusal cannot regroup with invalid ownership or incapacity",
+           "[bandit_live_world][pair_cohesion_refusal_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const std::string condition = GENERATE( "foreign", "stale", "missing", "wrong_goal", "narcosis", "cannot_move", "blocked" );
+    CAPTURE( cannibal, condition );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool old_trigdist = trigdist;
+    trigdist = true;
+    on_out_of_scope distance_restore( [&]() { trigdist = old_trigdist; } );
+    r055_scene scene;
+    scene.load( cannibal, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    npc &leader = scene.actor( 5 );
+    npc &follower = scene.actor( 6 );
+    const auto first = leader.pos_abs();
+    const auto second = follower.pos_abs();
+    if( condition == "foreign" || condition == "stale" || condition == "missing" ) {
+        auto lease = follower.get_bandit_live_world_projection_lease();
+        if( condition == "foreign" ) { lease.site_id += "-foreign"; }
+        if( condition == "stale" ) { --lease.generation; }
+        if( condition == "missing" ) { lease = {}; }
+        follower.set_bandit_live_world_projection_lease( lease );
+    } else if( condition == "wrong_goal" ) {
+        follower.goal = scene.site().anchor + tripoint( 50, 50, 0 );
+        REQUIRE( std::find( scene.site().footprint.begin(), scene.site().footprint.end(), follower.goal ) ==
+                 scene.site().footprint.end() );
+    } else if( condition == "narcosis" ) {
+        follower.add_effect( efftype_id( "sleep" ), 1_days );
+        follower.add_effect( efftype_id( "narcosis" ), 1_days );
+    } else if( condition == "cannot_move" ) {
+        load_effect_type( json_loader::from_string(
+                             R"({"id":"r067_regroup_incapacitated","name":["incapacitated"],"desc":["Cannot move."],"flags":["CANNOT_MOVE"]})" ).get_object(), "test" );
+        follower.add_effect( efftype_id( "r067_regroup_incapacitated" ), 1_days );
+    } else {
+        for( const auto &point : get_map().points_in_radius( follower.pos_bub(), 1 ) ) {
+            if( point != follower.pos_bub() ) { get_map().ter_set( point, ter_id( "t_rock" ) ); }
+        }
+        for( const auto &point : get_map().points_in_radius( leader.pos_bub(), 1 ) ) {
+            if( point != leader.pos_bub() ) { get_map().ter_set( point, ter_id( "t_rock" ) ); }
+        }
+    }
+    bandit_live_world_probe::snapshot snapshot;
+    {
+        bandit_live_world_probe::session trace( bandit_live_world_probe::collection_mode::transition_events );
+        scene.step();
+        snapshot = trace.result();
+    }
+    for( const auto &event : snapshot.transition_events ) {
+        if( event.transition == "scout_homeward_motor" && event.scout_homeward ) {
+            CHECK_FALSE( ( event.scout_homeward->action == "move_to_next" &&
+                           event.reason == "safe homeward reunion route" ) );
+        }
+    }
+    CHECK( leader.pos_abs() == first );
+    CHECK( follower.pos_abs() == second );
+    CHECK( scene.site().active_outing.member_return_receipts.empty() );
+    if( condition == "narcosis" ) { CHECK( follower.in_sleep_state() ); }
+}
+
+TEST_CASE( "homeward rendezvous refuses square-only endpoints in circular mode",
+           "[bandit_live_world][pair_cohesion_metric_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const bool old_trigdist = trigdist;
+    trigdist = true;
+    on_out_of_scope distance_restore( [&]() { trigdist = old_trigdist; } );
+    r055_scene scene;
+    scene.load( cannibal, false );
+    scene.position( 4, tripoint_bub_ms( 80, 60, 0 ) );
+    scene.position( 5, tripoint_bub_ms( 20, 60, 0 ) );
+    const auto anchor = scene.actor( 4 ).pos_bub();
+    const tripoint_bub_ms square_corner( 74, 66, 0 );
+    const int radius = bandit_live_world::local_pair_cohesion_radius();
+    REQUIRE( pathfinding_target::radius( anchor, radius ).contains( square_corner ) );
+    REQUIRE( rl_dist( anchor, square_corner ) > radius );
+    for( const auto &point : get_map().points_in_radius( anchor, radius ) ) {
+        if( point != anchor && point != square_corner ) {
+            get_map().ter_set( point, ter_id( "t_rock" ) );
+        }
+    }
+    const auto first = scene.actor( 4 ).pos_abs();
+    const auto second = scene.actor( 5 ).pos_abs();
+    scene.step();
+    CHECK( scene.actor( 4 ).pos_abs() == first );
+    CHECK( scene.actor( 5 ).pos_abs() == second );
+    get_map().ter_set( tripoint_bub_ms( 74, 60, 0 ), ter_id( "t_grass" ) );
+    scene.step();
+    CHECK( scene.actor( 5 ).pos_abs() != second );
+    REQUIRE_FALSE( scene.actor( 5 ).path.empty() );
+    CHECK( rl_dist( get_map().get_abs( scene.actor( 5 ).path.back() ), scene.actor( 4 ).pos_abs() ) <= radius );
+    CHECK( scene.site().active_outing.member_return_receipts.empty() );
 }
