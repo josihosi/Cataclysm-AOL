@@ -165,3 +165,196 @@ TEST_CASE( "pickup explains a native pocket denial and permits read-only details
     CHECK( calendar::turn == turn );
     CHECK( you.get_moves() == moves );
 }
+
+#if !defined(TILES)
+#include <clocale>
+#include <cstdlib>
+#include <optional>
+#include <map>
+#include "compatibility.h"
+#include "cached_options.h"
+#include "do_turn.h"
+#include "options_helpers.h"
+#include "worldfactory.h"
+#include "cursesdef.h"
+#include "game.h"
+#include "input.h"
+#include "player_activity.h"
+extern "C" int ungetch( int );
+extern "C" int flushinp();
+
+namespace
+{
+class pickup_environment
+{
+    public:
+        pickup_environment( const char *name, const std::string &value ) : name( name ) {
+            if( const char *old = std::getenv( name ) ) {
+                previous = old;
+            }
+            setenv( name, value.c_str(), 1 );
+        }
+        ~pickup_environment() {
+            if( previous ) {
+                setenv( name.c_str(), previous->c_str(), 1 );
+            } else {
+                unsetenv( name.c_str() );
+            }
+        }
+    private:
+        std::string name;
+        std::optional<std::string> previous;
+};
+}
+
+TEST_CASE( "queued pickup after Wield owns a fresh native cancel and World successor",
+           "[semantic_surface][pickup_denial][queued_pickup_067]" )
+{
+    const bool outer = GENERATE( false, true );
+    CAPTURE( outer );
+    const std::string run = outer ? "queued-pickup-outer" : "queued-pickup-bare";
+    pickup_environment run_env( "OPENCLAW_HARNESS_RUN_ID", run );
+    pickup_environment bound_env( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run );
+    pickup_environment request_env( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", "" );
+    auto &manager = openclaw_harness_semantic_surface_manager();
+    REQUIRE( manager.stack().empty() );
+    semantic_surface_manager enclosing( run + "-enclosing" );
+    semantic_surface_manager &pickup_manager = outer ? enclosing : manager;
+    std::optional<semantic_surface_manager_session> enclosing_session;
+    if( outer ) {
+        enclosing_session.emplace( enclosing );
+    }
+    const auto expected_manager = active_semantic_surface_manager();
+    clear_avatar();
+    clear_map();
+    // The public turn caller needs the ordinary native game mode, which Catch
+    // has not started. Restore it through the established save/load path.
+    REQUIRE( world_generator->active_world );
+    const std::string world_name = world_generator->active_world->world_name;
+    REQUIRE( g->save() );
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    REQUIRE( g->load( world_name ) );
+    clear_avatar();
+    clear_map();
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    restore_on_out_of_scope<time_point> restore_turn( calendar::turn );
+    restore_on_out_of_scope<decltype( g->uquit )> restore_quit( g->uquit );
+    g->uquit = QUIT_NO;
+    const std::string locale = std::setlocale( LC_CTYPE, nullptr );
+    REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) );
+    on_out_of_scope restore_locale( [&]() { std::setlocale( LC_CTYPE, locale.c_str() ); } );
+    static bool initialized = false;
+    if( !initialized ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+        initialized = true;
+    }
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    test_mode = false;
+    const int timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 1 );
+    on_out_of_scope cleanup( [&]() {
+        uistate.open_menu.reset();
+        manager.set_descriptor_observer( {} );
+        manager.set_receipt_observer( {} );
+        enclosing.set_descriptor_observer( {} );
+        enclosing.set_receipt_observer( {} );
+        inp_mngr.set_timeout( timeout );
+        ::flushinp();
+        catacurses::endwin();
+    } );
+    avatar &you = get_avatar();
+    you.wear_item( item( itype_id( "pants" ) ) );
+    map &here = get_map();
+    const auto position = you.pos_bub();
+    item &large = here.add_item_or_charges( position, item( itype_id( "log" ) ) );
+    const auto large_uid = std::to_string( large.uid().get_value() );
+    item &small = here.add_item_or_charges( position, item( itype_id( "smart_phone" ) ) );
+    const auto small_uid = std::to_string( small.uid().get_value() );
+    REQUIRE_FALSE( you.can_pickVolume_partial( large, false, nullptr, false, true ) );
+    semantic_surface_descriptor first;
+    semantic_surface_descriptor reopened;
+    std::map<std::string, semantic_action_receipt> receipts;
+    int phase = 0;
+    const auto observe = [&]( const semantic_surface_descriptor &descriptor ) {
+        auto &owner = descriptor.kind == "world" ? manager : pickup_manager;
+        const auto submit = [&]( const std::string &id, const std::string &action,
+                                 std::optional<std::string> uid = std::nullopt ) {
+            REQUIRE( owner.submit_request( { descriptor.run_id, descriptor.surface_id,
+                                             descriptor.frame_id, id, action, uid, {} } ) );
+        };
+        if( descriptor.kind == "inventory" && phase == 0 ) {
+            first = descriptor;
+            phase = 1;
+            submit( "wield-once", "inventory.wield", large_uid );
+        } else if( descriptor.kind == "inventory" && phase == 2 ) {
+            reopened = descriptor;
+            phase = 3;
+            CHECK( descriptor.surface_id != first.surface_id );
+            auto invalid = semantic_action_request{ descriptor.run_id, first.surface_id,
+                           first.frame_id, "stale-original", "inventory.cancel", std::nullopt, {} };
+            REQUIRE( owner.submit_request( invalid ) );
+            CHECK_FALSE( owner.consume_top_request() );
+            invalid.surface_id = descriptor.surface_id;
+            invalid.frame_id = descriptor.frame_id;
+            invalid.run_id = "foreign-run";
+            invalid.request_id = "foreign-run";
+            REQUIRE( owner.submit_request( invalid ) );
+            CHECK_FALSE( owner.consume_top_request() );
+            CHECK_FALSE( owner.submit_request( { first.run_id, first.surface_id, first.frame_id,
+                                                "wield-once", "inventory.wield", large_uid, {} } ) );
+            CHECK_FALSE( owner.has_pending_request() );
+            submit( "reopened-cancel", "inventory.cancel" );
+        } else if( descriptor.kind == "world" && phase >= 2 && phase < 5 ) {
+            const bool second_turn = phase == 4;
+            phase = second_turn ? 5 : 4;
+            submit( second_turn ? "world-next-turn" : "world-successor", "world.pause" );
+        }
+    };
+    const auto receipt = [&]( const semantic_action_receipt &value ) {
+        receipts[value.request_id] = value;
+    };
+    manager.set_descriptor_observer( observe );
+    manager.set_receipt_observer( receipt );
+    enclosing.set_descriptor_observer( observe );
+    enclosing.set_receipt_observer( receipt );
+    {
+        semantic_surface_manager_session initial( pickup_manager );
+        CHECK( game_menus::inv::pickup( { position } ).empty() );
+        REQUIRE( phase == 1 );
+        REQUIRE_FALSE( you.activity.is_null() );
+        process_activity( you );
+    }
+    REQUIRE( you.get_wielded_item() );
+    CHECK( you.get_wielded_item()->typeId() == itype_id( "log" ) );
+    REQUIRE( uistate.open_menu );
+    REQUIRE( active_semantic_surface_manager() == expected_manager );
+    phase = 2;
+    // A normal keyboard cancellation bounds the unfixed before control. It
+    // neither creates semantic authority nor repairs an unknown native action.
+    REQUIRE( ::ungetch( 27 ) != -1 );
+    you.set_moves( 100 );
+    CHECK_FALSE( g->do_turn() );
+    ::flushinp();
+    REQUIRE_FALSE( reopened.surface_id.empty() );
+    REQUIRE( phase == 4 );
+    CHECK_FALSE( uistate.open_menu );
+    CHECK( active_semantic_surface_manager() == expected_manager );
+    REQUIRE( receipts.count( "reopened-cancel" ) == 1 );
+    CHECK( receipts.at( "reopened-cancel" ).accepted );
+    CHECK_FALSE( receipts.at( "stale-original" ).accepted );
+    CHECK_FALSE( receipts.at( "foreign-run" ).accepted );
+    CHECK( you.activity.is_null() );
+    REQUIRE( here.i_at( position ).size() == 1 );
+    CHECK( std::to_string( here.i_at( position ).begin()->uid().get_value() ) == small_uid );
+    you.set_moves( 100 );
+    CHECK_FALSE( g->do_turn() );
+    CHECK( phase == 5 );
+    CHECK( manager.stack().empty() );
+    CHECK( pickup_manager.stack().empty() );
+    CHECK( active_semantic_surface_manager() == expected_manager );
+    REQUIRE( receipts.count( "world-successor" ) == 1 );
+    CHECK( receipts.at( "world-successor" ).accepted );
+}
+#endif

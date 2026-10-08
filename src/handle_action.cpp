@@ -5704,6 +5704,13 @@ bool game::handle_action()
         player_character.start_destination_activity();
         return false;
     } else if( uistate.open_menu ) {
+        // Activity callbacks reopen a native modal before the ordinary World
+        // input branch. Give that modal the bound session when no caller owns
+        // one; an enclosing native session retains its existing authority.
+        if( active_semantic_surface_manager() == nullptr &&
+            !openclaw_harness_bound_semantic_run_id().empty() ) {
+            semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+        }
         // make a copy so that uistate.open_menu can be assigned a new function
         // during the execution of the copied old function
         std::optional<std::function<void()>> open_menu_tmp = std::nullopt;
