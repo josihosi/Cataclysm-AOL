@@ -33384,6 +33384,34 @@ def execute_probe_steps(
             required_actions = checkpoint.get( "required_actions", [] )
             if not isinstance( required_actions, list ):
                 required_actions = []
+            # A full saved-world continuation can resume an activity before
+            # reaching World. Admit its actual native owner to the existing
+            # cockpit; do not require or manufacture fresh-start HUD proof.
+            saved_input_owner = checkpoint.get("allow_saved_native_input_owner") is True
+            if saved_input_owner and (
+                    immutable_saved_world_snapshot is None or
+                    not Path(immutable_saved_world_snapshot).is_dir() or
+                    checkpoint.get("require_initial_hud_world_ready_frame") is True or
+                    not recoverable_selection_handoff_live_step(steps, index - (1 + step_index_offset))):
+                report["abort"] = {
+                    "guard": "native_semantic_bootstrap",
+                    "status": "blocked_saved_native_input_owner_contract",
+                    "reason": "saved input-owner bootstrap requires the immutable snapshot, a following live cockpit, and no strict fresh-HUD claim",
+                }
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
+            if saved_input_owner:
+                owned = current_owned_process_generation(run_dir)
+                if owned.get("status") != "alive" or owned.get("pid") != pid:
+                    report["abort"] = {
+                        "guard": "native_semantic_bootstrap",
+                        "status": "blocked_saved_native_process_identity",
+                        "reason": "the saved continuation's original process generation is not currently matched",
+                    }
+                    report["stop_after_step"] = True
+                    reports.append(report)
+                    return reports
             # A saved-world launch can legitimately stop at the native main
             # menu or character chooser before emitting its first World HUD
             # frame.  If this checkpoint explicitly permits that recovery and
@@ -33477,7 +33505,14 @@ def execute_probe_steps(
                 require_initial_hud_world_ready_frame=(
                     checkpoint.get("require_initial_hud_world_ready_frame") is True
                 ),
+                allow_any_native_input_owner=saved_input_owner,
             )
+            if saved_input_owner:
+                report["metadata"].update({
+                    "saved_continuation_input_owner": True,
+                    "initial_world_readiness": "not_claimed_saved_continuation",
+                    "gameplay_credit": False,
+                })
             if checkpoint.get("require_initial_hud_world_ready_frame") is True:
                 matching, foreign = initial_hud_world_frame_counts(
                     profile=profile,
