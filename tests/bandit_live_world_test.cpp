@@ -38503,6 +38503,230 @@ TEST_CASE( "authoritative_player_opportunity_is_not_starved_by_route_candidate_c
     CHECK( result.dispatches_applied == 1 );
 }
 
+TEST_CASE( "authoritative_opportunity_prefix_preserves_both_candidate_ordering_callers",
+           "[bandit][live_world][authoritative_opportunity][opportunity_predicate_067]" )
+{
+    using namespace bandit_live_world;
+    const std::vector<std::pair<std::string, bool>> prefixes = {
+        { "authoritative_player_opportunity:", true },
+        { "authoritative_player_opportunity:terrain_fit:unknown", true },
+        { "authoritative_player_opportunity", false },
+        { "authoritative_player_opportunityX:terrain_fit:unknown", false },
+        { "xauthoritative_player_opportunity:terrain_fit:unknown", false }
+    };
+    for( const auto &[source_key, authoritative] : prefixes ) {
+        for( const bool urgent : { false, true } ) {
+            CAPTURE( source_key, urgent );
+            world_state world;
+            add_scheduler_test_site( world, 0, false, 987000 );
+            site_record &site = world.sites.front();
+            constexpr int now = 72 * 60;
+            site.routine_activated_minutes = 0;
+            site.supply_units = 0;
+            site.supply_last_update_minutes = now;
+            site.intelligence_map.frontier_last_resolved_minutes.assign( 8, -1 );
+            const auto add_lead = [&site]( const std::string &id, const int x,
+            const std::string &source ) {
+                camp_map_lead lead;
+                lead.lead_id = id;
+                lead.kind = camp_lead_kind::terrain_opportunity;
+                lead.origin = camp_lead_origin::structural_routine;
+                lead.target_id = id;
+                lead.omt = tripoint_abs_omt( x, 0, 0 );
+                lead.source_key = source;
+                REQUIRE( upsert_camp_map_lead( site, lead ) );
+            };
+            add_lead( "player", 2, source_key );
+            add_lead( "road-b", 3, "terrain_opportunity:terrain_fit:road" );
+            add_lead( "road-a", 3, "terrain_opportunity:terrain_fit:road" );
+            add_lead( "road-far", 5, "terrain_opportunity:terrain_fit:road" );
+            if( urgent ) {
+                camp_map_lead signal;
+                signal.lead_id = "sound";
+                signal.kind = camp_lead_kind::sound_signal;
+                signal.origin = camp_lead_origin::signal;
+                signal.target_id = "sound";
+                signal.omt = tripoint_abs_omt( 4, 0, 0 );
+                signal.last_seen_minutes = now - 10;
+                signal.generated_by_this_camp_routine = true;
+                signal.confidence = 2;
+                REQUIRE( upsert_camp_map_lead( site, signal ) );
+            }
+            const auto cheap = plan_structural_bounty_outing_candidates( site, now );
+            REQUIRE( !cheap.empty() );
+            CHECK( cheap.front().lead_id == ( authoritative ? "player" : "road-a" ) );
+            const auto position = [&cheap]( const std::string &id ) {
+                return std::find_if( cheap.begin(), cheap.end(), [&id]( const auto &plan ) {
+                    return plan.lead_id == id;
+                } );
+            };
+            CHECK( position( "road-a" ) < position( "road-b" ) );
+            CHECK( position( "road-b" ) < position( "road-far" ) );
+            std::vector<std::string> routed;
+            bool missing_frontier_lead = false;
+            const auto result = advance_structural_bounty_maintenance(
+                                    world, now, 0, 1, {}, {},
+            [&]( const site_record &current, const structural_outing_plan &plan ) {
+                routed.push_back( plan.lead_id );
+                if( plan.frontier_sector >= 0 ) {
+                    missing_frontier_lead = current.intelligence_map.find_lead( plan.lead_id ) == nullptr;
+                }
+                return structural_route_read{ true, 4, 0, "controlled bounded route" };
+            } );
+            REQUIRE( !routed.empty() );
+            CHECK( routed.front() == ( authoritative ? "player" : urgent ? "sound" :
+                                      "frontier_probe:0" ) );
+            if( !authoritative && !urgent ) {
+                CHECK( missing_frontier_lead );
+            }
+            CHECK( result.dispatches_applied == 1 );
+        }
+    }
+}
+
+TEST_CASE( "retained_fresh_smoke_survives_cheap_trim_before_urgent_dispatch",
+           "[bandit][live_world][scheduler][urgent_signal_trim_067]" )
+{
+    using namespace bandit_live_world;
+    const std::string mode = GENERATE( "fresh", "stale", "missing", "dangerous",
+                                      "threat", "recent", "blocked_route", "outside_pressure", "unready",
+                                      "authoritative", "earlier_signal" );
+    CAPTURE( mode );
+    std::ifstream input( "tests/data/r067_urgent_smoke_preselection.json" );
+    REQUIRE( input.good() );
+    JsonObject retained = json_loader::from_string(
+                              std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    retained.allow_omitted_members();
+    world_state world;
+    world.sites.emplace_back();
+    site_record &site = world.sites.front();
+    site.deserialize( retained.get_object( "site" ) );
+    const int now = retained.get_int( "controlled_minutes" );
+    REQUIRE_FALSE( site.has_active_outside_pressure() );
+    std::vector<response_member_power_read> member_reads;
+    for( const auto &member : site.members ) {
+        member_reads.push_back( { member.npc_id, true, true, true, 10 } );
+    }
+    const auto effective = evaluate_scout_report_at( site.current_scout_report, now );
+    const auto selection = select_capable_response_party(
+                               site, site.current_scout_report.action_policy, effective.danger_high, member_reads );
+    REQUIRE( resolve_response_authorization_denial( site, now, selection, member_reads ) ==
+             response_denial_resolution::rescout_ready );
+    REQUIRE( site.camp_decision.state == camp_decision_state::idle );
+    // The actual original sample refresh is passed through the production recorder.
+    // Route operands below are a controlled preselection comparison, not historical motor/LOS proof.
+    const auto refreshed = record_staffed_camp_signal_observations( world, now,
+    [now]( const site_record &, const camp_signal_observer_request & ) {
+        structural_signal_read read;
+        read.source_omt = tripoint_abs_omt( 131, 143, 0 );
+        read.source_id = "live_smoke@3159,3449,0#5529600";
+        read.observed_minutes = now;
+        read.range_cap_omt = 6;
+        read.strength = 1;
+        read.confidence = 50;
+        read.uncertainty_radius_omt = 3;
+        read.line_of_sight = true;
+        return std::vector<structural_signal_read>{ read };
+    } );
+    REQUIRE( refreshed.leads_refreshed == 1 );
+    const std::string smoke_id =
+        "overmap_special:bandit_camp@129,149,0#lead:smoke_signal:camp-smoke@(131,143,0)@131,143,0";
+    camp_map_lead *smoke = site.intelligence_map.find_lead( smoke_id );
+    REQUIRE( smoke != nullptr );
+    CHECK( smoke->last_checked_minutes == 7920 );
+    CHECK( smoke->last_scouted_minutes == 7920 );
+    const std::string refreshed_state = serialize_world( world );
+    site = round_trip_world( world ).sites.front();
+    CHECK( serialize_world( world ) == refreshed_state );
+    smoke = site.intelligence_map.find_lead( smoke_id );
+    REQUIRE( smoke != nullptr );
+    if( mode == "stale" ) {
+        smoke->last_seen_minutes = now - 6 * 60;
+    } else if( mode == "dangerous" ) {
+        smoke->status = camp_lead_status::dangerous;
+    } else if( mode == "threat" ) {
+        smoke->threat_confirmed = true;
+        smoke->threat = smoke->confidence;
+    } else if( mode == "recent" ) {
+        smoke->last_checked_minutes = now - 1;
+        smoke->last_scouted_minutes = now - 1;
+    } else if( mode == "missing" ) {
+        site.intelligence_map.leads.erase( std::remove_if( site.intelligence_map.leads.begin(),
+        site.intelligence_map.leads.end(), [&smoke_id]( const auto &lead ) {
+            return lead.lead_id == smoke_id;
+        } ), site.intelligence_map.leads.end() );
+    } else if( mode == "outside_pressure" ) {
+        const auto plan = plan_structural_bounty_outing( site,
+                          *site.intelligence_map.find_lead(
+                              site.site_id + ":terrain_opportunity:125,149,0:field" ), now );
+        REQUIRE( apply_structural_bounty_outing_plan( site, plan, now ) );
+    } else if( mode == "unready" ) {
+        for( auto &member : site.members ) {
+            member.wounded_or_unready = true;
+        }
+    } else if( mode == "authoritative" ) {
+        camp_map_lead player;
+        player.lead_id = "controlled-player-opportunity";
+        player.kind = camp_lead_kind::terrain_opportunity;
+        player.origin = camp_lead_origin::structural_routine;
+        player.target_id = "controlled-player";
+        player.omt = tripoint_abs_omt( 130, 147, 0 );
+        player.source_key = "authoritative_player_opportunity:terrain_fit:unknown";
+        REQUIRE( upsert_camp_map_lead( site, player ) );
+    } else if( mode == "earlier_signal" ) {
+        camp_map_lead sound = *smoke;
+        sound.lead_id = "controlled-earlier-sound";
+        sound.kind = camp_lead_kind::sound_signal;
+        sound.target_id = "controlled-sound";
+        sound.source_key = "camp-signal:controlled-sound";
+        sound.source_sample_id.clear();
+        sound.last_seen_minutes = now - 60;
+        REQUIRE( upsert_camp_map_lead( site, sound ) );
+    }
+    if( mode == "fresh" || mode == "blocked_route" || mode == "authoritative" ) {
+        const auto individual = plan_structural_bounty_outing( site, *site.intelligence_map.find_lead(
+                                    smoke_id ), now );
+        REQUIRE( individual.valid );
+        CHECK( individual.cheap_score == 245 );
+        const auto ordinary = plan_structural_bounty_outing_candidates( site, now );
+        CHECK( ordinary.size() == 6 );
+        CHECK( std::none_of( ordinary.begin(), ordinary.end(), [&smoke_id]( const auto &plan ) {
+            return plan.lead_id == smoke_id;
+        } ) );
+    }
+    std::vector<std::string> routed;
+    const auto result = advance_structural_bounty_maintenance(
+                            world, now, 0, 1, {}, {},
+    [&]( const site_record &, const structural_outing_plan &plan ) {
+        routed.push_back( plan.lead_id );
+        const bool reachable = mode != "blocked_route" || plan.lead_id != smoke_id;
+        return structural_route_read{ reachable, plan.full_route_cost, plan.static_risk,
+                                      "controlled native radial route admission" };
+    } );
+    const bool attempted = std::find( routed.begin(), routed.end(), smoke_id ) != routed.end();
+    const bool signal_eligible = mode == "fresh" || mode == "blocked_route" || mode == "authoritative";
+    CHECK( attempted == signal_eligible );
+    CHECK( result.full_route_solves <= result.full_route_solve_cap );
+    CHECK( static_cast<int>( routed.size() ) == result.full_route_solves );
+    if( mode == "outside_pressure" || mode == "unready" ) {
+        CHECK( routed.empty() );
+        CHECK( result.dispatches_applied == 0 );
+    } else {
+        CHECK( result.dispatches_applied == 1 );
+        CHECK( ( site.active_outing.target_lead_id == smoke_id ) ==
+               ( mode == "fresh" || mode == "authoritative" ) );
+        if( signal_eligible ) {
+            REQUIRE( !routed.empty() );
+            CHECK( routed.front() == ( mode == "authoritative" ?
+                                      "controlled-player-opportunity" : smoke_id ) );
+        } else if( mode == "earlier_signal" ) {
+            REQUIRE( !routed.empty() );
+            CHECK( routed.front() == "controlled-earlier-sound" );
+            CHECK( site.active_outing.target_lead_id == "controlled-earlier-sound" );
+        }
+    }
+}
+
 TEST_CASE( "hostile_camp_terrain_scan_rotates_fairly_and_resumes_exact_offsets",
            "[bandit][live_world][scheduler][structural_bounty][terrain_fit][fairness][save]" )
 {

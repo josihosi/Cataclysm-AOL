@@ -1,0 +1,732 @@
+{
+  "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/R-MAINT-SCENARIO-CONSOLIDATION-mac-capacity-001/saved-scout-disengagement-7ded-native/native_evidence/dimension_data-gen2-held-report-5443221.gsav",
+  "source_sha256": "69e99d7c6c6f5ac70513f758e5b576fb710df2adb405abaadc307fe1727fd23e",
+  "saved_minutes": 11520,
+  "controlled_minutes": 12960,
+  "scope": "Reconstructed single-camp preselection control. Original11520 site bytes; production report-expiry and staffed signal refresh before production dispatch. Route callback is controlled, not historical12960 geometry. No postdispatch save mutation or historical9780 result.",
+  "site": {
+    "schema_version": 12,
+    "site_id": "overmap_special:bandit_camp@129,149,0",
+    "source_kind": "overmap_special",
+    "site_kind": "bandit_camp",
+    "hostile_profile": "camp_style",
+    "source_id": "bandit_camp",
+    "anchor": [
+      129,
+      149,
+      0
+    ],
+    "living_total": 6,
+    "supply_units": 27,
+    "supply_last_update_minutes": 11520,
+    "supply_accounted_living_total": 6,
+    "supply_member_minute_remainder": 720,
+    "routine_unmet_need_since_minutes": 8040,
+    "routine_activated_minutes": 7800,
+    "last_routine_resolved_minutes": 10140,
+    "next_routine_dispatch_eligible_minutes": 11520,
+    "routine_no_candidate_streak": 0,
+    "footprint": [
+      [
+        129,
+        149,
+        0
+      ],
+      [
+        130,
+        149,
+        0
+      ],
+      [
+        129,
+        150,
+        0
+      ],
+      [
+        130,
+        150,
+        0
+      ],
+      [
+        129,
+        149,
+        1
+      ],
+      [
+        130,
+        149,
+        1
+      ],
+      [
+        129,
+        150,
+        1
+      ],
+      [
+        130,
+        150,
+        1
+      ]
+    ],
+    "members": [
+      {
+        "npc_id": 5,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3101,
+          3581,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": "physical structural return receipt committed"
+      },
+      {
+        "npc_id": 6,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3106,
+          3584,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": "physical structural return receipt committed"
+      },
+      {
+        "npc_id": 7,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3123,
+          3595,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": ""
+      },
+      {
+        "npc_id": 8,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3118,
+          3580,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": ""
+      },
+      {
+        "npc_id": 9,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3122,
+          3580,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": ""
+      },
+      {
+        "npc_id": 10,
+        "npc_template_id": "bandit",
+        "home_spawn_tile": [
+          3099,
+          3617,
+          0
+        ],
+        "state": "at_home",
+        "wounded_or_unready": false,
+        "last_writeback_summary": ""
+      }
+    ],
+    "spawn_tiles": [
+      {
+        "tile": [
+          3101,
+          3581,
+          0
+        ],
+        "assigned_living_total": 1
+      },
+      {
+        "tile": [
+          3106,
+          3584,
+          0
+        ],
+        "assigned_living_total": 1
+      },
+      {
+        "tile": [
+          3123,
+          3595,
+          0
+        ],
+        "assigned_living_total": 1
+      },
+      {
+        "tile": [
+          3118,
+          3580,
+          0
+        ],
+        "assigned_living_total": 1
+      },
+      {
+        "tile": [
+          3122,
+          3580,
+          0
+        ],
+        "assigned_living_total": 1
+      },
+      {
+        "tile": [
+          3099,
+          3617,
+          0
+        ],
+        "assigned_living_total": 1
+      }
+    ],
+    "next_outing_generation": 3,
+    "applied_return_generation": 2,
+    "applied_report_generation": 2,
+    "applied_cargo_generation": 0,
+    "last_cargo_application_key": "",
+    "last_hostile_shakedown_aftermath_key": "",
+    "last_hostile_shakedown_operation_id": "",
+    "last_hostile_shakedown_report_key": "",
+    "last_hostile_shakedown_generation": 0,
+    "applied_resource_generation": 0,
+    "last_resource_application_key": "",
+    "last_resource_claimed_units": 0,
+    "current_scout_report": {
+      "schema_version": 5,
+      "revision": 1,
+      "action_policy": "bandit_shakedown",
+      "source_activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+      "source_generation": 2,
+      "source_job_type": "scout",
+      "target_id": "field",
+      "target_omt": [
+        129,
+        145,
+        0
+      ],
+      "target_lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,145,0:field",
+      "target_lead_revision": 3,
+      "application_key": "overmap_special:bandit_camp@129,149,0#structural:report:2",
+      "carrier_ids": [
+        5,
+        6
+      ],
+      "observations": [],
+      "assessment": {
+        "schema_version": 3,
+        "observation_started_minutes": 9900,
+        "last_progress_minutes": 10020,
+        "burned_minutes": -1,
+        "burn_origin_omt": [
+          0,
+          0,
+          0
+        ],
+        "certainty": 0,
+        "habitation_certainty": 0,
+        "readiness_latched": false,
+        "threshold_class": "none",
+        "strong_visual_windows": 0,
+        "defenders_low": 0,
+        "defenders_high": 3,
+        "danger_low": 0,
+        "danger_high": 9,
+        "bounty_estimate": 0,
+        "route_danger_high": 0,
+        "site_signal_observed_minutes": -1,
+        "site_signal_source_id": "",
+        "target_alert": 0,
+        "pinned_target_revision": 3,
+        "next_eligible_minutes": 10740,
+        "exit_reason": "selected watch made no assessment progress and no alternate was available"
+      },
+      "casualty_ids": [],
+      "delivered_minutes": 10080,
+      "provisional": false
+    },
+    "camp_decision": {
+      "schema_version": 2,
+      "state": "report_awaiting_assessment",
+      "report_policy": "bandit_shakedown",
+      "source_report_revision": 1,
+      "source_report_generation": 2,
+      "source_report_activity_id": "overmap_special:bandit_camp@129,149,0#structural",
+      "source_report_application_key": "overmap_special:bandit_camp@129,149,0#structural:report:2",
+      "target_id": "field",
+      "target_omt": [
+        129,
+        145,
+        0
+      ],
+      "target_lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,145,0:field",
+      "target_lead_revision": 3,
+      "last_transition_minutes": 10080,
+      "next_eligible_minutes": -1,
+      "transition_reason": "final scout report delivered for assessment"
+    },
+    "acted_reports": [
+      {
+        "target_id": "camp-smoke@(131,143,0)",
+        "target_omt": [
+          131,
+          143,
+          0
+        ],
+        "policy": "bandit_shakedown",
+        "source_generation": 1,
+        "report_revision": 1,
+        "acted_minutes": 8400
+      },
+      {
+        "target_id": "field",
+        "target_omt": [
+          129,
+          145,
+          0
+        ],
+        "policy": "bandit_shakedown",
+        "source_generation": 2,
+        "report_revision": 1,
+        "acted_minutes": 10080
+      }
+    ],
+    "returned_cargo_stock": {
+      "supply_units": 0,
+      "trade_value": 0
+    },
+    "active_outing": {
+      "schema_version": 5,
+      "kind": "none",
+      "activity_id": "",
+      "camp_id": "",
+      "generation": 0,
+      "member_ids": [],
+      "leader_id": -1,
+      "shared_route": [],
+      "waypoint_index": 0,
+      "actor_route_waypoint": -1,
+      "actor_departure_observed": false,
+      "target_id": "",
+      "target_omt": [
+        0,
+        0,
+        0
+      ],
+      "job_type": "",
+      "target_lead_id": "",
+      "target_lead_revision": 0,
+      "phase": "assembling",
+      "observations": [],
+      "cargo": {
+        "supply_units": 0,
+        "trade_value": 0
+      },
+      "casualty_ids": [],
+      "resolved_member_ids": [],
+      "started_minutes": -1,
+      "local_contact_minutes": -1,
+      "last_progress_minutes": -1,
+      "expected_return_minutes": -1,
+      "missing_deadline_minutes": -1,
+      "simulation_owner": "abstract",
+      "handoff_epoch": 0,
+      "last_advanced_minutes": -1,
+      "local_projection_reconciliation_rejected": false,
+      "return_application_key": "",
+      "report_application_key": "",
+      "cargo_application_key": "",
+      "member_return_receipts": []
+    },
+    "active_hostile_operation": {
+      "schema_version": 4,
+      "operation_kind": "none",
+      "phase": "assembling",
+      "reservation": {
+        "schema_version": 5,
+        "kind": "none",
+        "activity_id": "",
+        "camp_id": "",
+        "generation": 0,
+        "member_ids": [],
+        "leader_id": -1,
+        "shared_route": [],
+        "waypoint_index": 0,
+        "actor_route_waypoint": -1,
+        "actor_departure_observed": false,
+        "target_id": "",
+        "target_omt": [
+          0,
+          0,
+          0
+        ],
+        "job_type": "",
+        "target_lead_id": "",
+        "target_lead_revision": 0,
+        "phase": "assembling",
+        "observations": [],
+        "cargo": {
+          "supply_units": 0,
+          "trade_value": 0
+        },
+        "casualty_ids": [],
+        "resolved_member_ids": [],
+        "started_minutes": -1,
+        "local_contact_minutes": -1,
+        "last_progress_minutes": -1,
+        "expected_return_minutes": -1,
+        "missing_deadline_minutes": -1,
+        "simulation_owner": "abstract",
+        "handoff_epoch": 0,
+        "last_advanced_minutes": -1,
+        "local_projection_reconciliation_rejected": false,
+        "return_application_key": "",
+        "report_application_key": "",
+        "cargo_application_key": "",
+        "member_return_receipts": []
+      },
+      "source_report_revision": 0,
+      "source_report_generation": 0,
+      "source_report_activity_id": "",
+      "source_report_application_key": "",
+      "shakedown_pending_branch": "",
+      "shakedown_pending_pay_identity": "",
+      "shakedown_pending_demanded_value": 0,
+      "shakedown_pending_surrendered_value": 0,
+      "shakedown_pending_reachable_value": 0,
+      "shakedown_pending_basecamp_scene": false,
+      "shakedown_demand_emitted_turn": -1,
+      "shakedown_demand_volume": 0,
+      "shakedown_demand_speaker_id": -1,
+      "shakedown_contact_established": false,
+      "shakedown_receiver_id": -1,
+      "shakedown_receiver_is_avatar": false,
+      "shakedown_contact_by_shout": false,
+      "shakedown_waiting_local": false,
+      "site_search_waypoint": 0,
+      "site_search_initial_goods_value": -1,
+      "site_search_waypoint_attempted": false,
+      "site_search_retry_after_turn": 0,
+      "withdrawing_member_ids": [],
+      "has_rally": false,
+      "rally_omt": [
+        0,
+        0,
+        0
+      ],
+      "last_transition_reason": "",
+      "legacy_unpinned": false
+    },
+    "remembered_target_or_mark": "",
+    "remembered_threat_estimate": 0,
+    "remembered_bounty_estimate": 0,
+    "remembered_retreat_bias": 0,
+    "remembered_return_clock": 0,
+    "remembered_pressure": "ample",
+    "known_recent_marks": [],
+    "intelligence_map": {
+      "schema_version": 6,
+      "last_daily_cleanup_minutes": 11520,
+      "next_near_tick_minutes": 11580,
+      "next_mid_tick_minutes": -1,
+      "next_far_tick_minutes": -1,
+      "next_frontier_tick_minutes": -1,
+      "known_radius_omt": 8,
+      "terrain_scan_cursor": 3,
+      "last_routine_target_lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,145,0:field",
+      "previous_routine_target_lead_id": "overmap_special:bandit_camp@129,149,0#lead:smoke_signal:camp-smoke@(131,143,0)@131,143,0",
+      "frontier_radius_omt": 0,
+      "frontier_sector_cursor": 0,
+      "frontier_search_cursor": 2,
+      "frontier_last_resolved_minutes": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "leads": [
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0#lead:smoke_signal:camp-smoke@(131,143,0)@131,143,0",
+          "revision": 2712,
+          "kind": "smoke_signal",
+          "origin": "signal",
+          "status": "suspected",
+          "target_id": "camp-smoke@(131,143,0)",
+          "omt": [
+            131,
+            143,
+            0
+          ],
+          "radius_omt": 3,
+          "source_key": "camp-signal:camp-smoke@(131,143,0)",
+          "source_sample_id": "live_smoke@3159,3449,0#5443200",
+          "source_summary": "smoke weather: verdict=allowed, weather=clear, range_penalty=0, confidence_penalty=0, source_precision_penalty=0, displacement_bias=0, vertical_offset=0, vertical_sightline=no, nearby_cross_z_visible=no, vertical_range_bonus=0, origin_hint=localized, proje",
+          "first_seen_minutes": 7745,
+          "last_seen_minutes": 11520,
+          "last_checked_minutes": 7920,
+          "last_scouted_minutes": 7920,
+          "confidence": 2,
+          "generated_by_this_camp_routine": true,
+          "last_outcome": "camp_observer_smoke"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:structural_bounty:129,143,0:forest",
+          "revision": 5,
+          "kind": "structural_bounty",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "forest",
+          "omt": [
+            129,
+            143,
+            0
+          ],
+          "source_key": "structural_bounty:forest:terrain_fit:deep_forest",
+          "source_summary": "low structural forest/woods bounty",
+          "first_seen_minutes": 8400,
+          "last_seen_minutes": 11280,
+          "bounty": 1,
+          "confidence": 1,
+          "last_outcome": "structural_bounty_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:structural_bounty:130,144,0:forest",
+          "revision": 5,
+          "kind": "structural_bounty",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "forest",
+          "omt": [
+            130,
+            144,
+            0
+          ],
+          "source_key": "structural_bounty:forest:terrain_fit:deep_forest",
+          "source_summary": "low structural forest/woods bounty",
+          "first_seen_minutes": 8220,
+          "last_seen_minutes": 11100,
+          "bounty": 1,
+          "confidence": 1,
+          "last_outcome": "structural_bounty_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:123,149,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            123,
+            149,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8280,
+          "last_seen_minutes": 8280,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:124,148,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            124,
+            148,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8040,
+          "last_seen_minutes": 8040,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:125,149,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            125,
+            149,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 7800,
+          "last_seen_minutes": 7800,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:128,154,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            128,
+            154,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8160,
+          "last_seen_minutes": 8160,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,145,0:field",
+          "revision": 3,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "scout_confirmed",
+          "target_id": "field",
+          "omt": [
+            129,
+            145,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "live structural terrain threat read: field",
+          "first_seen_minutes": 7920,
+          "last_seen_minutes": 7920,
+          "last_checked_minutes": 9900,
+          "last_scouted_minutes": 9900,
+          "threat_confirmed": true,
+          "last_outcome": "threat_revealed_interest_survives"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,153,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            129,
+            153,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 7980,
+          "last_seen_minutes": 7980,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:129,155,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            129,
+            155,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8460,
+          "last_seen_minutes": 8460,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:133,149,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            133,
+            149,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 7860,
+          "last_seen_minutes": 7860,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:134,150,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            134,
+            150,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8100,
+          "last_seen_minutes": 8100,
+          "last_outcome": "terrain_opportunity_suspected"
+        },
+        {
+          "lead_id": "overmap_special:bandit_camp@129,149,0:terrain_opportunity:135,149,0:field",
+          "revision": 1,
+          "kind": "terrain_opportunity",
+          "origin": "structural_routine",
+          "status": "suspected",
+          "target_id": "field",
+          "omt": [
+            135,
+            149,
+            0
+          ],
+          "source_key": "terrain_opportunity:terrain_fit:field",
+          "source_summary": "static field terrain worth an honest paired scout check",
+          "first_seen_minutes": 8340,
+          "last_seen_minutes": 8340,
+          "last_outcome": "terrain_opportunity_suspected"
+        }
+      ]
+    },
+    "last_shakedown_outcome": "",
+    "shakedown_last_demanded_value": 0,
+    "shakedown_last_surrendered_value": 0,
+    "shakedown_last_reachable_value": 0,
+    "shakedown_loot_value": 0,
+    "shakedown_defender_losses": 0,
+    "shakedown_bandit_losses": 0,
+    "shakedown_anger": 0,
+    "shakedown_caution": 0,
+    "shakedown_basecamp_defenders_at_fight": 0,
+    "shakedown_basecamp_defender_observation_pending": false,
+    "shakedown_reopen_available": false,
+    "shakedown_reopen_used": false,
+    "origin_disposition": "active_hostile",
+    "origin_changed_minutes": -1,
+    "origin_summary": "",
+    "retired_empty_site": false,
+    "retirement_summary": ""
+  }
+}

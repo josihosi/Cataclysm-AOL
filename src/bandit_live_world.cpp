@@ -14464,6 +14464,22 @@ bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_
            now_minutes - lead.last_checked_minutes < recent_structural_check_cooldown_minutes;
 }
 
+std::optional<int> qualified_urgent_signal_expiry( const camp_map_lead &lead,
+        const int now_minutes )
+{
+    if( !returned_structural_signal_lead( lead ) ||
+        structural_signal_strength( lead, now_minutes ) <= 0 ||
+        lead.status == camp_lead_status::active ||
+        lead.status == camp_lead_status::harvested ||
+        lead.status == camp_lead_status::dangerous ||
+        lead.status == camp_lead_status::invalidated ||
+        structural_lead_recently_checked( lead, now_minutes ) ) {
+        return std::nullopt;
+    }
+    const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ? 3 * 60 : 6 * 60;
+    return minutes_after_saturated( lead.last_seen_minutes, horizon_minutes );
+}
+
 } // namespace
 
 bool structural_lead_check_cooldown_active_for_test( const camp_map_lead &lead,
@@ -16101,17 +16117,19 @@ structural_outing_plan plan_structural_bounty_outing_impl( const site_record &si
     return plan;
 }
 
+bool is_authoritative_player_opportunity( const site_record &site,
+        const structural_outing_plan &plan )
+{
+    const camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
+    return lead != nullptr && lead->source_key.rfind(
+               "authoritative_player_opportunity:", 0 ) == 0;
+}
+
 bool cheap_plan_precedes( const structural_outing_plan &lhs, const structural_outing_plan &rhs,
                           const site_record &site )
 {
-    const auto is_authoritative_player_opportunity = [&site](
-    const structural_outing_plan &plan ) {
-        const camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
-        return lead != nullptr && lead->source_key.rfind(
-                   "authoritative_player_opportunity:", 0 ) == 0;
-    };
-    const bool lhs_is_authoritative = is_authoritative_player_opportunity( lhs );
-    const bool rhs_is_authoritative = is_authoritative_player_opportunity( rhs );
+    const bool lhs_is_authoritative = is_authoritative_player_opportunity( site, lhs );
+    const bool rhs_is_authoritative = is_authoritative_player_opportunity( site, rhs );
     if( lhs_is_authoritative != rhs_is_authoritative ) {
         // A player-scene opportunity is identity-bearing producer truth.  Keep it inside the
         // bounded route-solve window so ordinary structural leads cannot starve its consumer.
@@ -16129,7 +16147,8 @@ bool cheap_plan_precedes( const structural_outing_plan &lhs, const structural_ou
 }
 
 std::vector<structural_outing_plan> cheap_structural_outing_candidates(
-    const site_record &site, const int now_minutes, const bool require_exact_pair = true )
+    const site_record &site, const int now_minutes, const bool require_exact_pair = true,
+    const bool urgent_signal = false )
 {
     std::vector<structural_outing_plan> candidates;
     for( const camp_map_lead &lead : site.intelligence_map.leads ) {
@@ -16139,8 +16158,27 @@ std::vector<structural_outing_plan> cheap_structural_outing_candidates(
             candidates.push_back( std::move( candidate ) );
         }
     }
-    std::sort( candidates.begin(), candidates.end(), [&site]( const structural_outing_plan &lhs,
-    const structural_outing_plan &rhs ) {
+    std::sort( candidates.begin(), candidates.end(), [&site, now_minutes, urgent_signal](
+    const structural_outing_plan &lhs, const structural_outing_plan &rhs ) {
+        if( urgent_signal ) {
+            const bool lhs_authoritative = is_authoritative_player_opportunity( site, lhs );
+            const bool rhs_authoritative = is_authoritative_player_opportunity( site, rhs );
+            if( lhs_authoritative != rhs_authoritative ) {
+                return lhs_authoritative;
+            }
+            const camp_map_lead *lhs_lead = site.intelligence_map.find_lead( lhs.lead_id );
+            const camp_map_lead *rhs_lead = site.intelligence_map.find_lead( rhs.lead_id );
+            const auto lhs_expiry = lhs_lead ? qualified_urgent_signal_expiry( *lhs_lead, now_minutes ) :
+                                    std::nullopt;
+            const auto rhs_expiry = rhs_lead ? qualified_urgent_signal_expiry( *rhs_lead, now_minutes ) :
+                                    std::nullopt;
+            if( lhs_expiry.has_value() != rhs_expiry.has_value() ) {
+                return lhs_expiry.has_value();
+            }
+            if( lhs_expiry && *lhs_expiry != *rhs_expiry ) {
+                return *lhs_expiry < *rhs_expiry;
+            }
+        }
         return cheap_plan_precedes( lhs, rhs, site );
     } );
     if( candidates.size() > routine_remembered_ground_candidate_cap ) {
@@ -18575,20 +18613,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         const site_record &site = state.sites[site_index];
         int earliest_expiry = std::numeric_limits<int>::max();
         for( const camp_map_lead &lead : site.intelligence_map.leads ) {
-            if( !returned_structural_signal_lead( lead ) ||
-                structural_signal_strength( lead, now_minutes ) <= 0 ||
-                lead.status == camp_lead_status::active ||
-                lead.status == camp_lead_status::harvested ||
-                lead.status == camp_lead_status::dangerous ||
-                lead.status == camp_lead_status::invalidated ||
-                structural_lead_recently_checked( lead, now_minutes ) ) {
-                continue;
+            if( const auto expiry = qualified_urgent_signal_expiry( lead, now_minutes ) ) {
+                earliest_expiry = std::min( earliest_expiry, *expiry );
             }
-            const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ?
-                                        3 * 60 : 6 * 60;
-            earliest_expiry = std::min( earliest_expiry,
-                                        minutes_after_saturated( lead.last_seen_minutes,
-                                                horizon_minutes ) );
         }
         if( earliest_expiry != std::numeric_limits<int>::max() ) {
             urgent_signal_sites.push_back( { site_index, earliest_expiry } );
@@ -18933,7 +18960,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             continue;
         }
         std::vector<structural_outing_plan> cheap_plans =
-            cheap_structural_outing_candidates( site, now_minutes, !defer_exact_pair );
+            cheap_structural_outing_candidates( site, now_minutes, !defer_exact_pair,
+                                               urgent_signal );
         if( frontier_due ) {
             const std::vector<std::pair<int, int>> options = frontier_candidate_options(
                         site, now_minutes );
@@ -18978,14 +19006,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
 
         std::stable_sort( cheap_plans.begin(), cheap_plans.end(), [&site, frontier_due, urgent_signal](
         const structural_outing_plan & lhs, const structural_outing_plan & rhs ) {
-            const auto is_authoritative_player_opportunity = [&site](
-            const structural_outing_plan &plan ) {
-                const camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
-                return lead != nullptr && lead->source_key.rfind(
-                           "authoritative_player_opportunity:", 0 ) == 0;
-            };
-            const bool lhs_is_authoritative = is_authoritative_player_opportunity( lhs );
-            const bool rhs_is_authoritative = is_authoritative_player_opportunity( rhs );
+            const bool lhs_is_authoritative = is_authoritative_player_opportunity( site, lhs );
+            const bool rhs_is_authoritative = is_authoritative_player_opportunity( site, rhs );
             if( lhs_is_authoritative != rhs_is_authoritative ) {
                 return lhs_is_authoritative;
             }
