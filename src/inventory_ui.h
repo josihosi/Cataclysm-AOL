@@ -789,6 +789,9 @@ class inventory_selector
          */
         std::vector<semantic_action_descriptor> semantic_actions(
             const std::vector<semantic_action_descriptor> &mode_actions = {} ) const;
+        // Physical rows only: collation headers repeat their members' UIDs.
+        // A null entry denotes conflicting native groups for the same UID.
+        std::map<std::string, inventory_entry *> semantic_item_entries( bool selection_groups = false ) const;
         semantic_action_dispatch_result handle_semantic_request(
             const semantic_action_request &request, std::optional<inventory_input> &native_input );
         /** Entry has been changed. */

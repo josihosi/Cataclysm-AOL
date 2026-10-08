@@ -3749,6 +3749,64 @@ inventory_input inventory_selector::process_input( const std::string &action, in
     return res;
 }
 
+std::map<std::string, inventory_entry *> inventory_selector::semantic_item_entries(
+    bool selection_groups ) const
+{
+    std::map<std::string, inventory_entry *> items;
+    for( inventory_column *column : get_all_columns() ) {
+        const auto visible_entries = column->get_entries( return_item );
+        for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
+            // collate() retains the physical rows and copies their locations
+            // into a synthetic display header. Resolve each UID through its
+            // physical row, not through both representations.
+            if( entry == nullptr || entry->is_collation_header() ) {
+                continue;
+            }
+            inventory_entry *collation_group = nullptr;
+            if( entry->is_collation_entry() ) {
+                for( inventory_entry *visible : visible_entries ) {
+                    if( visible->is_collation_header() &&
+                        visible->collation_meta == entry->collation_meta ) {
+                        collation_group = visible;
+                        break;
+                    }
+                }
+            }
+            // A visible collapsed header still exposes its physical members
+            // under a filter. Other hidden/nonmatching rows do not.
+            if( !get_filter().empty() && !collation_group &&
+                std::find( visible_entries.begin(), visible_entries.end(), entry ) == visible_entries.end() ) {
+                continue;
+            }
+            // Group operations retain the ordinary visible collation group;
+            // selection/details address the exact physical member.
+            inventory_entry *addressed = selection_groups && collation_group ? collation_group : entry;
+            addressed->cache_denial( preset );
+            for( const item_location &location : entry->locations ) {
+                if( !location || !location->uid().is_valid() ) {
+                    continue;
+                }
+                const std::string uid = std::to_string( location->uid().get_value() );
+                const auto inserted = items.emplace( uid, addressed );
+                if( !inserted.second ) {
+                    inventory_entry *previous = inserted.first->second;
+                    // Repeated exposure of the same native group is harmless.
+                    // Conflicting denial, quantity or group membership is not
+                    // addressable by one UID; neither publication nor dispatch
+                    // may silently choose the first column in that case.
+                    if( previous && ( previous->locations != addressed->locations ||
+                                      previous->is_selectable() != addressed->is_selectable() ||
+                                      previous->denial != addressed->denial ||
+                                      previous->chosen_count != addressed->chosen_count ) ) {
+                        inserted.first->second = nullptr;
+                    }
+                }
+            }
+        }
+    }
+    return items;
+}
+
 std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     const std::vector<semantic_action_descriptor> &mode_actions ) const
 {
@@ -3764,54 +3822,51 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     }
     std::vector<std::pair<std::string, std::string>> selectable_items;
     std::vector<std::pair<item_location, std::string>> all_items;
-    for( inventory_column *column : get_all_columns() ) {
-        // A filter must describe the same matching rows as the native selector.
-        // Without a filter retain access to collapsed container contents.
-        for( inventory_entry *entry : column->get_entries( return_item, get_filter().empty() ) ) {
-            if( entry == nullptr || !entry->is_item() ) {
-                continue;
+    const auto groups = semantic_item_entries( true );
+    for( const auto &item : semantic_item_entries() ) {
+        const std::string &stable_id = item.first;
+        inventory_entry *entry = item.second;
+        if( entry == nullptr ) {
+            actions.push_back( { "inventory.select", stable_id, _( "Ambiguous native selection group" ), false } );
+            actions.push_back( { "inventory.details", stable_id, _( "Ambiguous native selection group" ), false } );
+            continue;
+        }
+        const auto found = std::find_if( entry->locations.begin(), entry->locations.end(),
+        [&stable_id]( const item_location & location ) {
+            return location && std::to_string( location->uid().get_value() ) == stable_id;
+        } );
+        const item_location &location = *found;
+        const bool enabled = entry->is_selectable();
+        all_items.emplace_back( location, stable_id );
+        if( enabled ) {
+            selectable_items.emplace_back( stable_id, location->tname() );
+        }
+        std::string label = location->tname();
+        if( !enabled && entry->denial && !entry->denial->empty() ) {
+            // Project the same cached restriction shown beside the
+            // native row, without guessing why selection is disabled.
+            label += " — " + *entry->denial;
+        }
+        actions.push_back( { "inventory.select", stable_id, label, enabled } );
+        const inventory_entry *group = groups.at( stable_id );
+        for( const semantic_action_descriptor &mode_action : mode_actions ) {
+            if( mode_action.id == "inventory.increase_quantity" ||
+                mode_action.id == "inventory.decrease_quantity" ) {
+                const bool applicable = mode_action.id == "inventory.increase_quantity" ?
+                                        group && group->chosen_count < group->get_available_count() :
+                                        group && group->chosen_count > 0;
+                actions.push_back( { mode_action.id, stable_id,
+                                     mode_action.label + _( " in this selection group" ),
+                                     mode_action.enabled && group && group->is_selectable() && applicable } );
             }
-            // The first semantic frame may precede a redraw.  Initialize the
-            // same denial cache the native row renderer uses before exposing
-            // selection availability and its explanation.
-            entry->cache_denial( preset );
-            for( const item_location &location : entry->locations ) {
-                if( !location || !location->uid().is_valid() ) {
-                    continue;
-                }
-                const std::string stable_id = std::to_string( location->uid().get_value() );
-                const bool enabled = entry->is_selectable();
-                all_items.emplace_back( location, stable_id );
-                if( enabled ) {
-                    selectable_items.emplace_back( stable_id, location->tname() );
-                }
-                std::string label = location->tname();
-                if( !enabled && entry->denial && !entry->denial->empty() ) {
-                    // Project the same cached restriction shown beside the
-                    // native row, without guessing why selection is disabled.
-                    label += " — " + *entry->denial;
-                }
-                actions.push_back( { "inventory.select", stable_id, label, enabled } );
-                for( const semantic_action_descriptor &mode_action : mode_actions ) {
-                    if( mode_action.id == "inventory.increase_quantity" ||
-                        mode_action.id == "inventory.decrease_quantity" ) {
-                        const bool applicable = mode_action.id == "inventory.increase_quantity" ?
-                                                entry->chosen_count < entry->get_available_count() :
-                                                entry->chosen_count > 0;
-                        actions.push_back( { mode_action.id, stable_id,
-                                             mode_action.label + _( " in this selection group" ),
-                                             mode_action.enabled && enabled && applicable } );
-                    }
-                    if( mode_action.id == "inventory.toggle" ) {
-                        actions.push_back( { mode_action.id, stable_id, mode_action.label,
-                                             mode_action.enabled && enabled } );
-                    }
-                }
-                actions.push_back( { "inventory.details", stable_id, _( "Details" ), true } );
-                if( location->is_container() ) {
-                    actions.push_back( { "inventory.contents", stable_id, _( "Contents" ), enabled } );
-                }
+            if( mode_action.id == "inventory.toggle" ) {
+                actions.push_back( { mode_action.id, stable_id, mode_action.label,
+                                     mode_action.enabled && group && group->is_selectable() } );
             }
+        }
+        actions.push_back( { "inventory.details", stable_id, _( "Details" ), true } );
+        if( location->is_container() ) {
+            actions.push_back( { "inventory.contents", stable_id, _( "Contents" ), enabled } );
         }
     }
     actions.push_back( { "inventory.filter", "", _( "Filter" ), true } );
@@ -3838,7 +3893,10 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
             continue;
         }
         for( const auto &item : selectable_items ) {
-            actions.push_back( { mode_action.id, item.first, mode_action.label, mode_action.enabled } );
+            const inventory_entry *group = groups.at( item.first );
+            actions.push_back( { mode_action.id, item.first, mode_action.label,
+                                 mode_action.enabled && ( mode_action.id != "inventory.set_quantity" ||
+                                                          ( group && group->is_selectable() ) ) } );
         }
     }
     actions.push_back( { "inventory.cancel", "", _( "Cancel" ), true } );
@@ -3893,75 +3951,90 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
     if( !request.stable_id ) {
         return { false, "missing_stable_id", "" };
     }
-    for( inventory_column *column : get_all_columns() ) {
-        for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
-            if( entry == nullptr || !entry->is_item() ||
-                ( !entry->is_selectable() && request.action_id != "inventory.details" &&
-                  request.action_id != "inventory.wield" && request.action_id != "inventory.wear" ) ) {
-                continue;
-            }
-            for( const item_location &location : entry->locations ) {
-                if( !location || !location->uid().is_valid() ||
-                    std::to_string( location->uid().get_value() ) != *request.stable_id ) {
-                    continue;
-                }
-                const int64_t uid = location->uid().get_value();
-                const item_location resolved = find_item_by_uid( uid,
-                                               inventory_selector_hint_from_location( location ) );
-                if( !resolved || resolved != location ) {
-                    return { false, "stale_stable_id", "" };
-                }
-                if( request.action_id == "inventory.wield" || request.action_id == "inventory.wear" ) {
-                    const bool wielding = request.action_id == "inventory.wield";
-                    const auto permission = wielding ? u.can_wield( *resolved ) : u.can_wear( *resolved );
-                    if( !permission.success() ) {
-                        return { false, wielding ? "cannot_wield" : "cannot_wear", "" };
-                    }
-                    // Wield/wear do not require a storage pocket. Keep the
-                    // validated target even when navigation skips denied rows.
-                    native_input = inventory_input{ wielding ? "WIELD" : "WEAR", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( !entry->is_selectable() && request.action_id == "inventory.details" ) {
-                    // A disabled pickup row can still be examined natively.
-                    // Preserve selection and address only this validated item.
-                    native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
-                    return { true, "", "", true };
-                }
-                if( !highlight( resolved ) ) {
-                    return { false, "invalid_stable_id", "" };
-                }
-                if( request.action_id == "inventory.select" ) {
-                    native_input = inventory_input{ "CONFIRM", 0, nullptr, resolved };
-                    return { true, "", "", true };
-                }
-                if( request.action_id == "inventory.details" ) {
-                    native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
-                    return { true, "", "", true };
-                }
-                if( request.action_id == "inventory.contents" && resolved->is_container() ) {
-                    native_input = inventory_input{ "EXAMINE_CONTENTS", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.toggle" ) {
-                    native_input = inventory_input{ "TOGGLE_ENTRY", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.set_quantity" ) {
-                    native_input = inventory_input{ "MARK_WITH_COUNT", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.increase_quantity" ) {
-                    native_input = inventory_input{ "INCREASE_COUNT", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.decrease_quantity" ) {
-                    native_input = inventory_input{ "DECREASE_COUNT", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                return { false, "unadvertised_action", "" };
-            }
+    const bool selection_group = request.action_id == "inventory.toggle" ||
+                                 request.action_id == "inventory.set_quantity" ||
+                                 request.action_id == "inventory.increase_quantity" ||
+                                 request.action_id == "inventory.decrease_quantity";
+    const auto items = semantic_item_entries( selection_group );
+    const auto match = items.find( *request.stable_id );
+    if( match == items.end() ) {
+        return { false, "invalid_stable_id", "" };
+    }
+    inventory_entry *entry = match->second;
+    if( entry == nullptr ) {
+        return { false, "ambiguous_stable_id", "" };
+    }
+    if( !entry->is_selectable() && request.action_id != "inventory.details" &&
+        request.action_id != "inventory.wield" && request.action_id != "inventory.wear" ) {
+        return { false, "disabled_action", "" };
+    }
+    for( const item_location &location : entry->locations ) {
+        if( !location || std::to_string( location->uid().get_value() ) != *request.stable_id ) {
+            continue;
         }
+        const int64_t uid = location->uid().get_value();
+        const item_location resolved = find_item_by_uid( uid,
+                                       inventory_selector_hint_from_location( location ) );
+        if( !resolved || resolved != location ) {
+            return { false, "stale_stable_id", "" };
+        }
+        if( request.action_id == "inventory.wield" || request.action_id == "inventory.wear" ) {
+            const bool wielding = request.action_id == "inventory.wield";
+            const auto permission = wielding ? u.can_wield( *resolved ) : u.can_wear( *resolved );
+            if( !permission.success() ) {
+                return { false, wielding ? "cannot_wield" : "cannot_wear", "" };
+            }
+            // Wield/wear do not require a storage pocket. Keep the
+            // validated target even when navigation skips denied rows.
+            native_input = inventory_input{ wielding ? "WIELD" : "WEAR", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        if( !entry->is_selectable() && request.action_id == "inventory.details" ) {
+            // A disabled pickup row can still be examined natively.
+            // Preserve selection and address only this validated item.
+            native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
+            return { true, "", "", true };
+        }
+        // Revealing a hidden row can move/reallocate the column entries.
+        // Keep the addressed native group independent of those row pointers.
+        const item_location anchor = entry->any_item();
+        const std::vector<item_location> group_locations = selection_group ? entry->locations :
+                std::vector<item_location>();
+        if( !highlight( anchor, false, !selection_group ) && !highlight( anchor, true ) ) {
+            return { false, "invalid_stable_id", "" };
+        }
+        if( selection_group && get_highlighted().locations != group_locations ) {
+            return { false, "ambiguous_stable_id", "" };
+        }
+        if( request.action_id == "inventory.select" ) {
+            native_input = inventory_input{ "CONFIRM", 0, nullptr, resolved };
+            return { true, "", "", true };
+        }
+        if( request.action_id == "inventory.details" ) {
+            native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
+            return { true, "", "", true };
+        }
+        if( request.action_id == "inventory.contents" && resolved->is_container() ) {
+            native_input = inventory_input{ "EXAMINE_CONTENTS", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        if( request.action_id == "inventory.toggle" ) {
+            native_input = inventory_input{ "TOGGLE_ENTRY", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        if( request.action_id == "inventory.set_quantity" ) {
+            native_input = inventory_input{ "MARK_WITH_COUNT", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        if( request.action_id == "inventory.increase_quantity" ) {
+            native_input = inventory_input{ "INCREASE_COUNT", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        if( request.action_id == "inventory.decrease_quantity" ) {
+            native_input = inventory_input{ "DECREASE_COUNT", 0, nullptr, resolved };
+            return { true, "", "" };
+        }
+        return { false, "unadvertised_action", "" };
     }
     return { false, "invalid_stable_id", "" };
 }
