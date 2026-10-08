@@ -12,6 +12,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -53296,4 +53297,620 @@ TEST_CASE( "homeward rendezvous refuses square-only endpoints in circular mode",
     REQUIRE_FALSE( scene.actor( 5 ).path.empty() );
     CHECK( rl_dist( get_map().get_abs( scene.actor( 5 ).path.back() ), scene.actor( 4 ).pos_abs() ) <= radius );
     CHECK( scene.site().active_outing.member_return_receipts.empty() );
+}
+
+namespace
+{
+
+// Replay actual game commands, with an independent ledger of identities,
+// durable cargo and completed-assessment time. No model chooses NPC movement.
+// CAOL_R067_ACTIONS replays a printed prefix; invalid commands have a distinct
+// fingerprint so a reducer cannot substitute a broken precondition for a bug.
+void r067_stateful_return( const std::string &scenario )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool old_metric = trigdist;
+    trigdist = true;
+    on_out_of_scope restore_metric( [&]() { trigdist = old_metric; } );
+    unsigned seed = Catch::getCurrentContext().getConfig()->rngSeed();
+    if( seed == 0 ) { seed = static_cast<unsigned>( rng_get_first_seed() ); }
+    const bool frontier = scenario == "journey";
+    const char *frontier_fixture = std::getenv( "CAOL_R067_FRONTIER_FIXTURE" );
+    r055_scene scene;
+    scene.load( frontier && seed % 2 == 0, !frontier, false,
+                frontier ? ( frontier_fixture ? frontier_fixture :
+                             "tests/data/r067_frontier_return_12035.json" ) :
+                "tests/data/r067_pair_cohesion_5556981.json" );
+    const auto ids = scene.site().active_outing.member_ids;
+    const int generation = scene.site().active_outing.generation;
+    REQUIRE( ids.size() == 2 );
+    while( g->assign_npc_id().get_value() <= 20 ) {}
+    // Declared calm initial scene. Bodies, goals, leases and clocks remain the
+    // retained ones. The frontier fixture uses R063's passable-ground variant.
+    clear_creatures();
+    for( const auto &tile : get_map().points_in_radius( get_avatar().pos_bub(), 1 ) ) {
+        if( tile != get_avatar().pos_bub() ) { get_map().ter_set( tile, ter_id( "t_wall" ) ); }
+    }
+    get_map().invalidate_map_cache( get_avatar().pos_abs().z() );
+    get_map().build_map_cache( get_avatar().pos_abs().z(), true );
+    for( character_id id : ids ) {
+        item cargo( itype_id( "rock" ) );
+        cargo.set_var( "r067_sequence_cargo", std::to_string( id.get_value() ) );
+        scene.actor( id.get_value() ).i_add( cargo );
+    }
+    std::vector<std::string> executed;
+    const auto prefix = [&]() {
+        std::string value;
+        for( const auto &command : executed ) {
+            if( !value.empty() ) { value += ','; }
+            value += command;
+        }
+        return value;
+    };
+    std::string producer = "initial fixture";
+    std::optional<bandit_live_world::site_record> producer_input;
+    const auto before_producer = [&]( const std::string &name ) {
+        producer = name;
+        producer_input = scene.site();
+    };
+    const auto demand = [&]( bool value, const std::string &fingerprint ) {
+        if( !value ) {
+            if( const char *path = std::getenv( "CAOL_R067_FAILURE_STATE" ) ) {
+                std::ofstream( path ) << serialize_world( overmap_buffer.global_state.bandit_live_world );
+                if( producer_input ) {
+                    std::ofstream( std::string( path ) + ".before-site.json" ) <<
+                            r067_return_record_bytes( *producer_input );
+                }
+            }
+            if( fingerprint.rfind( "clock.", 0 ) == 0 ) {
+                try {
+                    const auto &world = overmap_buffer.global_state.bandit_live_world;
+                    const bool unchanged = serialize_world( round_trip_world( world ) ) == serialize_world( world );
+                    std::cout << "R067_FAILURE_STRICT_RELOAD " << ( unchanged ? "unchanged" : "rewritten" ) << std::endl;
+                } catch( const JsonError & ) { std::cout << "R067_FAILURE_STRICT_RELOAD rejected" << std::endl; }
+            }
+            std::cout << "R067_SEQUENCE_FAIL fingerprint=" << fingerprint << " scenario=" << scenario
+                      << " seed=" << seed << " actions=" << prefix() << std::endl;
+            std::cout << "R067_LAST_PRODUCER " << producer << " minute=" <<
+                      to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) << std::endl;
+            for( character_id id : ids ) {
+                const auto actor = overmap_buffer.find_npc( id );
+                if( !actor ) { continue; }
+                std::cout << "R067_FAILURE_ACTOR id=" << id.get_value() << " position=" << actor->pos_abs()
+                          << " active=" << actor->is_active() << " goal=" << actor->goal
+                          << " path=" << actor->omt_path.size() << " incapacity=" << actor->duty_incapacitated()
+                          << " flee=" << actor->has_effect( efftype_id( "npc_run_away" ) )
+                          << " alarm=" << actor->has_active_faction_alarm()
+                          << " response=" << actor->faction_alarm_requires_response()
+                          << " danger=" << actor->get_ai_danger() << std::endl;
+            }
+        }
+        INFO( "fingerprint=" << fingerprint << " scenario=" << scenario << " seed=" << seed
+              << " replay=" << prefix() );
+        REQUIRE( value );
+    };
+    const auto inventory_key = []( const npc &actor ) {
+        // Inventory loading currently reconstructs UIDs. Conserve every type,
+        // charge count and multiplicity, plus the stable marked cargo identity;
+        // this oracle makes no claim that arbitrary item UIDs survive loading.
+        std::multiset<std::pair<std::string, int>> items;
+        actor.visit_items( [&]( item *value, item * ) {
+            items.emplace( value->typeId().str() + ":" + value->get_var( "r067_sequence_cargo" ), value->charges );
+            return VisitResponse::NEXT;
+        } );
+        return items;
+    };
+    const auto survival_key = []( const npc &actor ) {
+        return std::make_tuple( actor.get_attitude(), actor.in_sleep_state(),
+                                actor.has_effect( efftype_id( "npc_run_away" ) ),
+                                actor.faction_alarm ? r067_return_record_bytes( *actor.faction_alarm ) : std::string(),
+                                actor.goal, actor.omt_path );
+    };
+    const auto lease_key = []( const npc &actor ) {
+        const auto &lease = actor.get_bandit_live_world_projection_lease();
+        return std::make_tuple( lease.present, lease.site_id, lease.activity_id, lease.owner,
+                                lease.generation, lease.handoff_epoch, lease.last_advanced_minutes );
+    };
+    int fixed_progress = -1;
+    int fixed_return = -1;
+    int fixed_missing = -1;
+    int regroups = 0;
+    int survival = 0;
+    int encounter_survival_start = 0;
+    int local_to_abstract = 0;
+    int abstract_to_local = 0;
+    int reloads = 0;
+    bool encounter = false;
+    bool completed = false;
+    std::string report;
+    std::set<character_id> dead;
+    std::map<character_id, tripoint_abs_ms> death_positions;
+    auto previous_owner = scene.site().active_outing.owner;
+    const auto clock_and_owner = [&]() {
+        const auto &site = scene.site();
+        const auto &outing = site.active_outing;
+        if( !outing.is_active() ) { return; }
+        demand( outing.generation == generation && outing.member_ids == ids, "actors.outing_identity" );
+        demand( bandit_live_world::current_external_simulation_cursor( site ).has_value(), "owner.valid_cursor" );
+        if( outing.owner != previous_owner ) {
+            if( outing.owner == bandit_live_world::simulation_owner::local ) { ++abstract_to_local; }
+            else { ++local_to_abstract; }
+            previous_owner = outing.owner;
+        }
+        if( outing.phase == bandit_live_world::scout_phase::returning_home &&
+            !outing.assessment.exit_reason.empty() && outing.shared_route.size() >= 2 &&
+            outing.waypoint_index == static_cast<int>( outing.shared_route.size() ) - 2 ) {
+            if( fixed_progress < 0 ) {
+                fixed_progress = outing.last_progress_minutes;
+                fixed_return = outing.expected_return_minutes;
+                fixed_missing = outing.missing_deadline_minutes;
+                std::cout << "R067_HOMEWARD_CLOCK_BOUND progress=" << fixed_progress << " expected="
+                          << fixed_return << " missing=" << fixed_missing << " producer=" << producer << std::endl;
+                if( frontier ) {
+                    // A newly produced leg must already have a strict coherent
+                    // deadline before later movement or load recovery can mask it.
+                    const auto &world = overmap_buffer.global_state.bandit_live_world;
+                    try {
+                        demand( serialize_world( round_trip_world( world ) ) == serialize_world( world ),
+                                "clock.new_leg_strict_continuity" );
+                    } catch( const JsonError & ) { demand( false, "clock.new_leg_strict_rejected" ); }
+                }
+            }
+        }
+        if( fixed_progress >= 0 ) {
+            if( outing.last_progress_minutes != fixed_progress ) {
+                std::cout << "R067_RAW_CLOCK anchor=" << fixed_progress << " actual="
+                          << outing.last_progress_minutes << " return=" << outing.expected_return_minutes
+                          << " advanced=" << outing.last_advanced_minutes << std::endl;
+            }
+            // Inspect the raw writer result before any legacy load recovery.
+            demand( outing.last_progress_minutes == fixed_progress, "clock.progress_anchor" );
+            demand( outing.expected_return_minutes == fixed_return &&
+                    outing.missing_deadline_minutes == fixed_missing, "clock.fixed_deadlines" );
+        }
+    };
+    const auto ledger = [&]() {
+        clock_and_owner();
+        const auto &site = scene.site();
+        const auto &outing = site.active_outing;
+        std::map<std::string, int> cargo;
+        const auto count = [&]( item *value, item * ) {
+            const std::string token = value->get_var( "r067_sequence_cargo" );
+            if( !token.empty() ) { ++cargo[token]; }
+            return VisitResponse::NEXT;
+        };
+        std::set<character_id> persistent_ids;
+        for( const auto &actor : overmap_buffer.get_overmap_npcs() ) {
+            demand( persistent_ids.insert( actor->getID() ).second, "actors.duplicate_persistent_identity" );
+            actor->visit_items( count );
+        }
+        for( character_id id : ids ) {
+            if( dead.count( id ) ) {
+                const auto *member = site.find_member( id );
+                demand( member && member->state == bandit_live_world::member_state::dead, "actors.confirmed_casualty_recorded" );
+                const auto actor = overmap_buffer.find_npc( id );
+                demand( !actor || actor->is_dead(), "actors.dead_member_not_duplicated_alive" );
+                continue;
+            }
+            const auto actor = overmap_buffer.find_npc( id );
+            demand( actor && !actor->is_dead(), "actors.living_member_conserved" );
+            int active_copies = 0;
+            for( const npc &active : g->all_npcs() ) {
+                if( active.getID() != id ) { continue; }
+                ++active_copies;
+                demand( active.pos_abs() == actor->pos_abs() && lease_key( active ) == lease_key( *actor ) &&
+                        inventory_key( active ) == inventory_key( *actor ),
+                        "owner.active_persistent_agree" );
+            }
+            demand( active_copies <= 1, "owner.single_active_body" );
+            const auto &lease = actor->get_bandit_live_world_projection_lease();
+            if( outing.is_active() && outing.owner == bandit_live_world::simulation_owner::local ) {
+                demand( lease.present && lease.site_id == site.site_id && lease.activity_id == outing.activity_id &&
+                        lease.owner == "local" && lease.generation == generation &&
+                        lease.handoff_epoch == outing.handoff_epoch &&
+                        lease.last_advanced_minutes == outing.last_advanced_minutes, "owner.exact_local_lease" );
+            } else { demand( !lease.present, "owner.abstract_has_no_local_lease" ); }
+        }
+        for( const auto &tile : get_map().points_on_zlevel( 0 ) ) {
+            for( item &value : get_map().i_at( tile ) ) { value.visit_items( count ); }
+        }
+        std::set<tripoint_abs_ms> inspected_death_tiles;
+        for( const auto &[id, position] : death_positions ) {
+            if( get_map().inbounds( position ) || !inspected_death_tiles.insert( position ).second ) { continue; }
+            const auto coordinate = project_to<coords::sm>( position );
+            submap *sm = MAPBUFFER.lookup_submap( coordinate );
+            demand( sm != nullptr, "items.retained_corpse_submap" );
+            const auto origin = project_to<coords::ms>( coordinate );
+            for( item &value : sm->get_items( point_sm_ms( position.x() - origin.x(), position.y() - origin.y() ) ) ) {
+                value.visit_items( count );
+            }
+        }
+        for( character_id id : ids ) {
+            demand( cargo[std::to_string( id.get_value() )] == 1, "items.durable_cargo_conserved" );
+        }
+        if( site.current_scout_report.source_generation == generation ) {
+            if( !completed ) {
+                demand( !outing.is_active(), "completion.report_requires_resolution" );
+                demand( site.current_scout_report.carrier_ids == ids, "completion.exact_carriers" );
+                for( character_id id : ids ) {
+                    demand( scene.actor( id.get_value() ).pos_abs_omt() == site.anchor, "completion.physical_home" );
+                }
+                report = r067_return_record_bytes( site.current_scout_report );
+                completed = true;
+            }
+            demand( r067_return_record_bytes( site.current_scout_report ) == report &&
+                    site.applied_report_generation == generation, "completion.report_once_only" );
+        }
+    };
+    const auto strict_snapshot = [&]() {
+        const auto &world = overmap_buffer.global_state.bandit_live_world;
+        try {
+            demand( serialize_world( round_trip_world( world ) ) == serialize_world( world ),
+                    "persistence.world_continuity" );
+            for( character_id id : ids ) {
+                if( dead.count( id ) ) { continue; }
+                npc copy;
+                const auto &actor = scene.actor( id.get_value() );
+                copy.deserialize( json_loader::from_string( r054_actor_bytes( actor ) ).get_object() );
+                demand( copy.pos_abs() == actor.pos_abs() && copy.get_hp() == actor.get_hp() &&
+                        lease_key( copy ) == lease_key( actor ), "persistence.body_continuity" );
+            }
+        } catch( const JsonError &error ) {
+            if( const char *path = std::getenv( "CAOL_R067_FAILURE_STATE" ) ) { std::ofstream( std::string( path ) + ".error" ) << error.what(); }
+            demand( false, "persistence.strict_json_rejected" );
+        }
+    };
+    const auto local_tick = [&]() {
+        for( npc &actor : g->all_npcs() ) { sounds::process_sound_markers( &actor ); }
+        sounds::reset_sounds();
+        bandit_live_world_probe::snapshot snapshot;
+        {
+            bandit_live_world_probe::session trace( bandit_live_world_probe::collection_mode::transition_events );
+            before_producer( "monmove" );
+            scene.step();
+            snapshot = trace.result();
+        }
+        for( const auto &event : snapshot.transition_events ) {
+            if( event.transition != "scout_homeward_motor" || !event.scout_homeward ) { continue; }
+            regroups += event.reason == "safe homeward reunion route" && event.scout_homeward->action == "move_to_next";
+            survival += event.reason == "native_survival branch selected";
+        }
+        clock_and_owner();
+    };
+    const auto scheduled_tick = [&]() {
+        local_tick();
+        if( calendar::once_every( time_between_npc_OM_moves ) ) {
+            before_producer( "overmap_npc_move" );
+            process_overmap_npc_move_for_test();
+            clock_and_owner();
+            if( scene.site().active_outing.crossing.pending() ) {
+                demand( g->save(), "persistence.crossing_save" );
+            }
+        }
+    };
+    const auto minute_tick = [&]() {
+        // The real per-second local motor and five-minute overmap owner supply all
+        // callbacks. Do not call the structural reducer separately with empty
+        // threat/projection callbacks or drift past its cadence boundaries.
+        for( int second = 0; second < 60; ++second ) {
+            scheduled_tick();
+        }
+    };
+    const auto ready_to_travel = [&]( const npc &actor ) {
+        return !actor.is_dead() && !actor.duty_incapacitated() && actor.get_speed() > 0 &&
+               !actor.in_sleep_state() && !actor.has_effect( efftype_id( "npc_run_away" ) ) &&
+               !actor.has_effect( efftype_id( "npc_flee_player" ) ) &&
+               actor.get_attitude() != NPCATT_FLEE && actor.get_attitude() != NPCATT_FLEE_TEMP &&
+               !actor.faction_alarm_requires_response() && actor.get_ai_danger() <= 0 &&
+               actor.current_target() == nullptr &&
+               ( !get_map().inbounds( actor.pos_abs() ) || !get_map().dangerous_field_at( actor.pos_bub() ) ) &&
+               ( actor.pos_abs_omt() == scene.site().anchor ||
+                 ( actor.goal != npc::no_goal_point && !actor.omt_path.empty() ) );
+    };
+    ledger();
+    const auto choice = rng_sequence( 4, 0, 99, static_cast<int>( seed ) );
+    std::string commands;
+    if( const char *replay = std::getenv( "CAOL_R067_ACTIONS" ) ) { commands = replay; }
+    else if( scenario == "casualty" ) { commands = "s,t" + std::to_string( choice[0] % 3 + 1 ) + ",k,s,l,s,l,s"; }
+    else if( scenario == "cohesion" ) {
+        commands = "s,t" + std::to_string( choice[0] % 3 + 1 ) +
+                   ( choice[2] % 2 ? ",l,g,s,d,t" : ",g,l,s,d,t" ) +
+                   std::to_string( choice[1] % 3 + 1 ) +
+                   ( choice[3] % 2 ? ",e,a,l,h,s,m2,l,s" : ",e,s,a,l,h,l,s,m1,s" );
+    } else {
+        commands = "o,t" + std::to_string( 60 + choice[0] % 8 ) +
+                   ( choice[2] % 2 ? ",s,l,u,m" : ",l,s,u,m" ) +
+                   std::to_string( choice[1] % 3 + 1 ) + ",s,l,h,s,m2,l,s";
+    }
+    std::cout << "R067_SEQUENCE_BEGIN scenario=" << scenario << " seed=" << seed << " actions=" << commands << std::endl;
+    std::istringstream input( commands );
+    std::string command;
+    while( std::getline( input, command, ',' ) ) {
+        demand( !command.empty(), "invalid.empty_action" );
+        executed.push_back( command );
+        std::cout << "R067_SEQUENCE_ACTION " << prefix() << std::endl;
+        const char op = command.front();
+        const int count = command.size() > 1 ? std::stoi( command.substr( 1 ) ) : 1;
+        demand( count > 0, "invalid.nonpositive_count" );
+        if( op == 't' || op == 'm' ) {
+            for( int i = 0; i < count; ++i ) {
+                executed.back() = std::string( 1, op ) + std::to_string( i + 1 );
+                if( op == 't' ) { local_tick(); } else { minute_tick(); }
+            }
+        } else if( op == 's' ) { strict_snapshot(); }
+        else if( op == 'l' ) {
+            strict_snapshot();
+            std::vector<character_id> living;
+            for( character_id id : ids ) { if( !dead.count( id ) ) { living.push_back( id ); } }
+            // Type deduction is unevaluated, so all-dead reloads are admitted.
+            std::vector<std::tuple<tripoint_abs_ms, int, decltype( lease_key( scene.actor( ids[0].get_value() ) ) )>> actors;
+            for( character_id id : living ) {
+                const auto &actor = scene.actor( id.get_value() );
+                actors.emplace_back( actor.pos_abs(), actor.get_hp(), lease_key( actor ) );
+            }
+            std::vector<decltype( survival_key( scene.actor( ids[0].get_value() ) ) )> survival_state;
+            std::vector<decltype( inventory_key( scene.actor( ids[0].get_value() ) ) )> possessions;
+            for( character_id id : living ) {
+                survival_state.push_back( survival_key( scene.actor( id.get_value() ) ) );
+                possessions.push_back( inventory_key( scene.actor( id.get_value() ) ) );
+            }
+            const auto saved_turn = calendar::turn;
+            demand( g->save(), "persistence.game_save" );
+            const std::string world_name = world_generator->active_world->world_name;
+            demand( turn_handler::cleanup_at_end(), "persistence.game_cleanup" );
+            world_generator->set_active_world( nullptr );
+            demand( g->load( world_name ), "persistence.game_load" );
+            demand( calendar::turn == saved_turn, "persistence.calendar_continuity" );
+            for( std::size_t i = 0; i < living.size(); ++i ) {
+                const auto &actor = scene.actor( living[i].get_value() );
+                demand( std::make_tuple( actor.pos_abs(), actor.get_hp(), lease_key( actor ) ) == actors[i],
+                        "persistence.loaded_actor_continuity" );
+                demand( survival_key( actor ) == survival_state[i], "persistence.survival_and_destination_continuity" );
+                const auto loaded_items = inventory_key( actor );
+                if( loaded_items != possessions[i] ) {
+                    std::cout << "R067_ITEM_MULTISET before=" << possessions[i].size() << " after=" << loaded_items.size() << std::endl;
+                }
+                demand( loaded_items == possessions[i], "persistence.all_possessions_continuity" );
+            }
+            ++reloads;
+        } else if( op == 'u' ) {
+            // Only the bubble moves. The scheduler owns representation transfer.
+            const auto survivor = std::find_if( ids.begin(), ids.end(), [&]( character_id id ) { return !dead.count( id ); } );
+            demand( survivor != ids.end(), "invalid.unload_has_no_survivor" );
+            const auto origin = scene.actor( survivor->get_value() ).pos_abs_sm() + point( 30, 30 );
+            get_map().load( origin, false );
+            get_avatar().setpos( get_map(), tripoint_bub_ms( 48, 48, 0 ), false );
+            g->reload_npcs();
+            for( character_id id : ids ) {
+                if( !dead.count( id ) ) { demand( !scene.actor( id.get_value() ).is_active(), "invalid.unload_failed" ); }
+            }
+        } else if( op == 'r' ) {
+            demand( !encounter && dead.empty(), "invalid.reentry_during_encounter" );
+            const auto origin = scene.actor( ids[0].get_value() ).pos_abs_sm() - point( 4, 4 );
+            get_map().load( origin, false );
+            get_avatar().setpos( get_map(), tripoint_bub_ms( 48, 48, 1 ), false );
+            for( const auto &tile : get_map().points_in_radius( get_avatar().pos_bub(), 1 ) ) {
+                if( tile != get_avatar().pos_bub() ) { get_map().ter_set( tile, ter_id( "t_wall" ) ); }
+            }
+            g->reload_npcs();
+            for( character_id id : ids ) { demand( scene.actor( id.get_value() ).is_active(), "invalid.reentry_excludes_pair" ); }
+        } else if( op == 'd' ) {
+            demand( !encounter, "invalid.encounter_already_active" );
+            npc &actor = scene.actor( ids[0].get_value() );
+            demand( actor.is_active() && !actor.is_dead(), "invalid.threat_needs_loaded_actor" );
+            actor.personality.bravery = -10;
+            actor.personality.aggression = -10;
+            item lamp( itype_id( "wearable_light_on" ) );
+            item battery( itype_id( "medium_battery_cell" ) );
+            battery.ammo_set( battery.ammo_default(), -1 );
+            lamp.put_in( battery, pocket_type::MAGAZINE_WELL );
+            actor.worn.wear_item( actor, lamp, false, true );
+            g->reset_light_level();
+            get_map().invalidate_map_cache( 0 );
+            get_map().build_map_cache( 0 );
+            actor.recalc_sight_limits();
+            std::optional<tripoint_bub_ms> tile;
+            for( const point &offset : { point( 0, -3 ), point( 3, 0 ), point( 0, 3 ), point( -3, 0 ) } ) {
+                const auto candidate = actor.pos_bub() + offset;
+                if( get_map().passable( candidate ) && g->is_empty( candidate ) && actor.sees( get_map(), candidate ) ) {
+                    tile = candidate;
+                    break;
+                }
+            }
+            demand( tile.has_value(), "invalid.no_visible_encounter_tile" );
+            monster &pressure = spawn_test_monster( "mon_zombie_brute", *tile );
+            demand( actor.sees( get_map(), pressure ), "invalid.unperceived_encounter" );
+            encounter_survival_start = survival;
+            encounter = true;
+        } else if( op == 'e' ) {
+            demand( encounter, "invalid.no_encounter_to_end" );
+            demand( survival > encounter_survival_start, "survival.real_threat_preempted_return" );
+            // Native flight/alarm/sleep remain intact after the external threat ends.
+            clear_creatures();
+            encounter = false;
+        } else if( op == 'q' ) {
+            // Reader rejection controls operate only on copies of an actual
+            // cleanup-produced terminal state. They are not journey actions.
+            demand( dead.size() == 2 && scene.site().active_outing.phase == bandit_live_world::scout_phase::lost,
+                    "invalid.terminal_reader_controls_need_real_casualties" );
+            const auto &world = overmap_buffer.global_state.bandit_live_world;
+            const auto original = serialize_world( world );
+            for( const std::string defect : { "partial_casualties", "partial_resolution", "foreign_casualty",
+                                            "duplicate_casualty", "living_snapshot", "no_assessment", "wrong_waypoint",
+                                            "wrong_pin", "wrong_route", "living_roster" } ) {
+                auto refused = world;
+                auto &site = *refused.find_site( scene.site().site_id );
+                auto &outing = site.active_outing;
+                if( defect == "partial_casualties" ) { outing.casualty_ids.pop_back(); }
+                if( defect == "partial_resolution" ) { outing.resolved_member_ids.pop_back(); }
+                if( defect == "foreign_casualty" ) { outing.casualty_ids.back() = character_id( 990671 ); }
+                if( defect == "duplicate_casualty" ) { outing.casualty_ids.back() = outing.casualty_ids.front(); }
+                if( defect == "living_snapshot" ) { outing.local_handoff.members.front().dead = false; }
+                if( defect == "no_assessment" ) { outing.assessment.exit_reason.clear(); }
+                if( defect == "wrong_waypoint" ) { --outing.waypoint_index; }
+                if( defect == "wrong_pin" ) { ++outing.assessment.pinned_target_revision; }
+                if( defect == "wrong_route" ) { outing.shared_route.back() += tripoint( 1, 0, 0 ); }
+                if( defect == "living_roster" ) {
+                    site.find_member( ids.front() )->state = bandit_live_world::member_state::at_home;
+                    ++site.living_total;
+                }
+                CAPTURE( defect );
+                if( defect == "partial_resolution" ) {
+                    // The existing reader fills resolved IDs from confirmed
+                    // casualties before site validation. Preserve that semantic.
+                    CHECK( serialize_world( round_trip_world( refused ) ) == original );
+                } else { CHECK_THROWS_AS( round_trip_world( refused ), JsonError ); }
+            }
+            demand( serialize_world( world ) == original, "persistence.reader_controls_do_not_change_live_state" );
+        } else if( op == 'o' ) {
+            // Explicit off-cadence entrypoint control matching R063's initial
+            // fixture admission call. This initializes the retained route;
+            // subsequent generated time advances use the native cadence.
+            before_producer( "explicit overmap_npc_move control" );
+            process_overmap_npc_move_for_test();
+        } else if( op == 'v' ) {
+            demand( dead.size() == 1 && scene.site().active_outing.owner == bandit_live_world::simulation_owner::local,
+                    "invalid.dead_dematerialization_requires_confirmed_local_survivor" );
+            before_producer( "dematerialize_live_bandit_structural_handoffs" );
+            demand( dematerialize_live_bandit_structural_handoffs_for_test(), "owner.dead_dematerialization_admitted" );
+        } else if( op == 'n' ) {
+            // A real unrelated NPC death must not borrow this outing's clock
+            // or casualty identity. Only the ordinary death owner is called.
+            auto other = make_shared_fast<npc>();
+            other->normalize();
+            other->setID( g->assign_npc_id(), true );
+            other->spawn_at_precise( scene.actor( ids[0].get_value() ).pos_abs() + point( 10, 0 ) );
+            overmap_buffer.insert_npc( other );
+            g->load_npcs();
+            demand( other->is_active(), "invalid.unrelated_casualty_not_loaded" );
+            other->apply_damage( nullptr, bodypart_id( "torso" ), other->get_hp_max() * 2 );
+            g->cleanup_dead();
+        } else if( op == 'k' || op == 'j' ) {
+            demand( count <= static_cast<int>( ids.size() ), "invalid.casualty_count" );
+            for( int index = 0; index < count; ++index ) {
+                npc &actor = scene.actor( ids[op == 'j' ? ids.size() - 1 - index : index].get_value() );
+                demand( !actor.is_dead() && actor.is_active(), "invalid.casualty_actor" );
+                // Declared lethal injury enters real cleanup. No clock,
+                // receipt or roster setter is used.
+                death_positions.emplace( actor.getID(), actor.pos_abs() );
+                actor.apply_damage( nullptr, bodypart_id( "torso" ), actor.get_hp_max() * 2 );
+                dead.insert( actor.getID() );
+            }
+            before_producer( "game::cleanup_dead" );
+            g->cleanup_dead();
+        } else if( op == 'g' ) {
+            demand( !encounter, "invalid.progress_during_encounter" );
+            const auto first = scene.actor( ids[0].get_value() ).pos_abs();
+            const auto second = scene.actor( ids[1].get_value() ).pos_abs();
+            const int old_survival = survival;
+            // This retained viable route produced repeated safe regroups within
+            // 45 turns in the accepted control; survival invalidates that bound.
+            for( int turn = 0; turn < 45; ++turn ) { local_tick(); }
+            demand( survival == old_survival, "invalid.regroup_interrupted_by_survival" );
+            demand( regroups > 0 && scene.actor( ids[0].get_value() ).pos_abs() != first &&
+                    scene.actor( ids[1].get_value() ).pos_abs() != second, "progress.safe_regroup_deadlock" );
+        } else if( op == 'a' ) {
+            demand( !encounter && dead.empty(), "invalid.loaded_recovery_under_interruption" );
+            const auto first = scene.actor( ids[0].get_value() ).pos_abs();
+            const auto second = scene.actor( ids[1].get_value() ).pos_abs();
+            const int deadline = scene.site().active_outing.missing_deadline_minutes;
+            bool recovered = false;
+            do {
+                const int previous_survival = survival;
+                scheduled_tick();
+                recovered = survival == previous_survival &&
+                            ready_to_travel( scene.actor( ids[0].get_value() ) ) &&
+                            ready_to_travel( scene.actor( ids[1].get_value() ) ) &&
+                            scene.actor( ids[0].get_value() ).pos_abs() != first &&
+                            scene.actor( ids[1].get_value() ).pos_abs() != second;
+            } while( !recovered && scene.site().active_outing.is_active() &&
+                     to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) < deadline );
+            demand( recovered, "invalid.no_observed_native_recovery" );
+        } else if( op == 'h' ) {
+            demand( !encounter && dead.empty(), "invalid.home_progress_under_interruption" );
+            for( character_id id : ids ) {
+                demand( ready_to_travel( scene.actor( id.get_value() ) ),
+                        "invalid.progress_capability_route_or_native_interruption" );
+            }
+            const int deadline = scene.site().active_outing.missing_deadline_minutes;
+            while( scene.site().active_outing.is_active() &&
+                   to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) < deadline ) { minute_tick(); }
+            ledger();
+            demand( completed, "progress.viable_return_did_not_complete" );
+        } else { demand( false, "invalid.unknown_action" ); }
+        ledger();
+        std::cout << "R067_SEQUENCE_STATE active=" << scene.site().active_outing.is_active() << " phase=" << bandit_live_world::to_string( scene.site().active_outing.phase )
+                  << " owner=" << bandit_live_world::to_string( scene.site().active_outing.owner )
+                  << " minute=" << to_minutes<int>( calendar::turn - calendar::start_of_cataclysm )
+                  << " regroups=" << regroups << " survival=" << survival
+                  << " local_to_abstract=" << local_to_abstract << " abstract_to_local=" << abstract_to_local
+                  << " reloads=" << reloads << " completed=" << completed << std::endl;
+        for( character_id id : ids ) {
+            if( dead.count( id ) ) { continue; }
+            const auto &actor = scene.actor( id.get_value() );
+            std::cout << "R067_SEQUENCE_ACTOR id=" << id.get_value() << " position=" << actor.pos_abs()
+                      << " active=" << actor.is_active() << " goal=" << actor.goal
+                      << " path=" << actor.omt_path.size() << " sleep=" << actor.in_sleep_state()
+                      << " flee=" << actor.has_effect( efftype_id( "npc_run_away" ) )
+                      << " alarm=" << actor.has_active_faction_alarm()
+                      << " response=" << actor.faction_alarm_requires_response()
+                      << " danger=" << actor.get_ai_danger() << " incapacity=" << actor.duty_incapacitated()
+                      << " speed=" << actor.get_speed() << std::endl;
+        }
+    }
+}
+
+} // namespace
+
+TEST_CASE( "return home stateful production journey",
+           "[bandit_live_world][return_home_stateful_067][return_home_sequence_journey_067]" )
+{
+    r067_stateful_return( "journey" );
+}
+
+TEST_CASE( "return home stateful regroup and survival",
+           "[bandit_live_world][return_home_stateful_067][return_home_sequence_cohesion_067]" )
+{
+    r067_stateful_return( "cohesion" );
+}
+
+TEST_CASE( "return home stateful confirmed casualty",
+           "[bandit_live_world][return_home_stateful_067][return_home_sequence_casualty_067]" )
+{
+    r067_stateful_return( "casualty" );
+}
+
+TEST_CASE( "native return dematerialization refuses unauthenticated projection identity",
+           "[bandit_live_world][return_home_stateful_067][return_home_sequence_refusal_067]" )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const std::string defect = GENERATE( std::string( "stale" ), std::string( "foreign" ),
+                                        std::string( "missing" ), std::string( "wrong_actor" ) );
+    CAPTURE( defect );
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    const auto ids = scene.site().active_outing.member_ids;
+    get_map().load( scene.actor( ids[0].get_value() ).pos_abs_sm() + point( 30, 30 ), false );
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 48, 48, 0 ), false );
+    g->reload_npcs();
+    for( character_id id : ids ) { REQUIRE_FALSE( scene.actor( id.get_value() ).is_active() ); }
+    auto actor = overmap_buffer.find_npc( ids.front() );
+    REQUIRE( actor );
+    const auto original_lease = actor->get_bandit_live_world_projection_lease();
+    auto invalid = original_lease;
+    if( defect == "stale" ) { ++invalid.handoff_epoch; }
+    if( defect == "foreign" ) { invalid.site_id += "-foreign"; }
+    if( defect == "missing" ) { invalid.clear(); }
+    actor->set_bandit_live_world_projection_lease( invalid );
+    if( defect == "wrong_actor" ) { actor->setID( character_id( 990671 ), true ); }
+    const auto world_before = serialize_world( overmap_buffer.global_state.bandit_live_world );
+    const auto body_before = r054_actor_bytes( *actor );
+    const auto partner_before = r054_actor_bytes( scene.actor( ids.back().get_value() ) );
+    CHECK_FALSE( dematerialize_live_bandit_structural_handoffs_for_test() );
+    CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == world_before );
+    CHECK( r054_actor_bytes( *actor ) == body_before );
+    CHECK( r054_actor_bytes( scene.actor( ids.back().get_value() ) ) == partner_before );
+    // Restore only the deliberately invalid test input for fixture cleanup.
+    actor->setID( ids.front(), true );
+    actor->set_bandit_live_world_projection_lease( original_lease );
 }
