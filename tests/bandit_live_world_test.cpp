@@ -43,6 +43,7 @@
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
 #include "monster.h"
+#include "mtype.h"
 #include "monster_helpers.h"
 #include "npc.h"
 #include "npctrade.h"
@@ -64,6 +65,7 @@
 #include "talker.h"
 #include "submap.h"
 #include "mapbuffer.h"
+#include "trap.h"
 #include "type_id.h"
 #include "weather_type.h"
 #include "weakpoint.h"
@@ -52045,5 +52047,328 @@ TEST_CASE( "retained Darell paid home order meets persistent guard after smoke c
             std::cout << "R067_DARELL_TRACE ownership=" << ownership << " motor=" << native_motor
                       << " row=" << row << '\n';
         }
+    }
+}
+
+
+TEST_CASE( "authenticated scouts disengage homeward without dismissing a current alert",
+           "[bandit][npc][scout_alarm_disengagement_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const std::string mode = GENERATE( "move", "scheduler", "blocked", "combat", "unavailable_source",
+                                      "wrong_home", "foreign_owner", "forced_sleep", "flight",
+                                      "dog_ahead", "incident_hazard", "hidden_incident", "received", "adjacent_threat", "stale_local_path",
+                                      "later_hazard", "immediate_trap", "ordinary_navigation" );
+    CAPTURE( cannibal, mode );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "fog" ) );
+    const std::string fixture_path = "tests/data/r067_alarm_return_8355.json";
+    std::ifstream input( fixture_path );
+    JsonObject fixture = json_loader::from_string(
+                             std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    fixture.allow_omitted_members();
+    // Restore native master faction identities for actual received warnings;
+    // the saved Hell's Raiders is dynamically created, not a data default.
+    const faction_manager original_factions = *g->faction_manager_ptr;
+    on_out_of_scope restore_factions( [&]() {
+        *g->faction_manager_ptr = original_factions;
+    } );
+    g->faction_manager_ptr->deserialize( fixture.get_member( "factions" ) );
+    r055_scene scene;
+    scene.load( cannibal, true, false, fixture_path );
+    // Restore the actual admitted objects after load aging. Runtime cache/RNG
+    // are unavailable: this is a copied-scene
+    // caller control, not attribution of the original native action history.
+    for( JsonObject record : fixture.get_array( "actors" ) ) {
+        record.allow_omitted_members();
+        npc *member = g->find_npc( character_id( record.get_int( "id" ) ) );
+        REQUIRE( member );
+        npc restored;
+        restored.deserialize( record );
+        *member = std::move( restored );
+        // As in native overmap loading, resolve faction pointers after body
+        // deserialization; the body stores an ID, not this runtime pointer.
+        member->set_fac( faction_id( record.get_string( "my_fac" ) ) );
+        REQUIRE( member->get_faction() );
+        REQUIRE( member->get_fac_id() == faction_id( record.get_string( "my_fac" ) ) );
+        member->recalc_sight_limits();
+    }
+    if( cannibal ) {
+        for( int id : { 5, 6 } ) {
+            scene.actor( id ).set_fac( faction_id( "cannibal_camp" ) );
+        }
+        for( int id : { 5, 6 } ) {
+            REQUIRE( scene.actor( id ).faction_alarm );
+            scene.actor( id ).faction_alarm->group = scene.actor( id ).faction_alarm_group();
+        }
+    }
+    map &here = get_map();
+    npc &first = scene.actor( 5 );
+    npc &second = scene.actor( 6 );
+    REQUIRE( calendar::turn == time_point::from_turn( 5253356 ) );
+    REQUIRE( first.pos_abs() == tripoint_abs_ms( 3108, 3503, 0 ) );
+    REQUIRE( second.pos_abs() == tripoint_abs_ms( 3109, 3503, 0 ) );
+    REQUIRE( scene.site().active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    REQUIRE( scene.site().active_outing.owner == bandit_live_world::simulation_owner::local );
+    const auto first_position = first.pos_abs();
+    const auto second_position = second.pos_abs();
+    const auto until = first.faction_alarm->until;
+    const auto incident = first.faction_alarm->incident;
+    first.regen_ai_cache();
+    second.regen_ai_cache();
+    REQUIRE( first.has_active_faction_alarm() );
+    REQUIRE( first.faction_alarm_requires_response() );
+    REQUIRE_FALSE( first.current_target() );
+    // Native HIT_AND_RUN/IGNORE remains HOSTILE. The decision also needs an
+    // actual retreating, passable route; these zero-cache values are not safety.
+    bool saw_hostile_dog = false;
+    for( const Creature *creature : first.get_visible_creatures( MAX_VIEW_DISTANCE ) ) {
+        if( const monster *mon = creature->as_monster() ) {
+            if( mon->type->id == mtype_id( "mon_dog_gpyrenees" ) ) {
+                CHECK( mon->pos_abs() == incident );
+                CHECK( mon->attitude( &first ) == MATT_IGNORE );
+                CHECK( mon->has_flag( mon_flag_HIT_AND_RUN ) );
+                CHECK( first.attitude_to( *mon ) == Creature::Attitude::HOSTILE );
+                saw_hostile_dog = true;
+            }
+        }
+    }
+    REQUIRE( saw_hostile_dog );
+    std::optional<tripoint_bub_ms> stale_next;
+    std::optional<tripoint_bub_ms> later_hazard;
+    const auto waypoint_target = [&]( const npc &member ) {
+        auto waypoint = member.omt_path.rbegin();
+        while( waypoint != member.omt_path.rend() && *waypoint == member.pos_abs_omt() ) {
+            ++waypoint;
+        }
+        REQUIRE( waypoint != member.omt_path.rend() );
+        auto center = here.get_bub( project_to<coords::ms>( *waypoint ) ) + point( SEEX, SEEY );
+        here.clip_to_bounds( center );
+        return pathfinding_target::radius( center, 2 );
+    };
+    const auto fill_native_path = [&]( npc &member ) {
+        member.path = here.route( member, waypoint_target( member ) );
+        while( !member.path.empty() && member.path.front() == member.pos_bub() ) {
+            member.path.erase( member.path.begin() );
+        }
+        REQUIRE( member.path.size() > 5 );
+        REQUIRE( waypoint_target( member ).contains( member.path.back() ) );
+    };
+    if( mode == "stale_local_path" ) {
+        // A real passable cached path to the east increases incident distance,
+        // but is not a route to the authenticated current home waypoint.
+        second.path = here.route( second,
+                                  pathfinding_target::point( second.pos_bub() + point( 4, 0 ) ) );
+        while( !second.path.empty() && second.path.front() == second.pos_bub() ) {
+            second.path.erase( second.path.begin() );
+        }
+        REQUIRE_FALSE( second.path.empty() );
+        stale_next = second.path.front();
+        REQUIRE( trig_dist( here.get_abs( *stale_next ).raw(), incident.raw() ) >
+                 trig_dist( second.pos_abs().raw(), incident.raw() ) );
+        REQUIRE_FALSE( waypoint_target( second ).contains( second.path.back() ) );
+    } else if( mode == "later_hazard" || mode == "immediate_trap" ) {
+        for( npc *member : { &first, &second } ) {
+            fill_native_path( *member );
+            if( mode == "immediate_trap" ) {
+                const auto next = member->path.front();
+                here.trap_set( next, trap_id( "tr_beartrap" ) );
+                member->add_known_trap( next, here.tr_at( next ) );
+                REQUIRE( here.tr_at( next ).can_see( next, *member ) );
+            }
+        }
+        if( mode == "later_hazard" ) {
+            later_hazard = first.path[4];
+            here.add_field( *later_hazard, field_type_id( "fd_acid" ), 3 );
+            REQUIRE( first.sees_dangerous_field( *later_hazard ) );
+            REQUIRE_FALSE( first.sees_dangerous_field( first.path.front() ) );
+        }
+    } else if( mode == "dog_ahead" ) {
+        for( monster &creature : g->all_monsters() ) {
+            if( creature.type->id == mtype_id( "mon_dog_gpyrenees" ) ) {
+                creature.setpos( here, first.pos_bub() + point( 0, 10 ) );
+            }
+        }
+        first.regen_ai_cache();
+        second.regen_ai_cache();
+        REQUIRE_FALSE( first.current_target() );
+        REQUIRE( first.get_ai_danger() == 0 );
+    } else if( mode == "incident_hazard" ) {
+        here.add_field( here.get_bub( incident ), field_type_id( "fd_acid" ), 3 );
+        REQUIRE( first.sees_dangerous_field( here.get_bub( incident ) ) );
+    } else if( mode == "hidden_incident" ) {
+        const auto ray = line_to( first.pos_bub(), here.get_bub( incident ) );
+        REQUIRE( ray.size() > 2 );
+        here.ter_set( ray[ray.size() / 2], ter_id( "t_wall" ) );
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        REQUIRE_FALSE( first.sees( here, here.get_bub( incident ) ) );
+        REQUIRE( first.faction_alarm_requires_response() );
+    } else if( mode == "received" ) {
+        second.faction_alarm.reset();
+        REQUIRE( second.receive_faction_alarm( *first.faction_alarm, 20 ) );
+        REQUIRE( second.faction_alarm->source_id == first.getID() );
+    } else if( mode == "blocked" ) {
+        for( int id : { 5, 6 } ) {
+            for( const auto &point : here.points_in_radius( scene.actor( id ).pos_bub(), 1 ) ) {
+                if( point != first.pos_bub() && point != second.pos_bub() ) {
+                    here.ter_set( point, ter_id( "t_wall" ) );
+                }
+            }
+        }
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+    } else if( mode == "combat" || mode == "adjacent_threat" ) {
+        monster &threat = spawn_test_monster( "mon_zombie_hulk", first.pos_bub() + point( 0, 1 ) );
+        threat.anger = 100;
+        REQUIRE( first.sees( here, threat ) );
+        REQUIRE( first.attitude_to( threat ) == Creature::Attitude::HOSTILE );
+        if( mode == "combat" ) {
+            // Countercontrol for the actual native combat branch. The saved
+            // follow_close rule otherwise suppresses target selection through
+            // native must_retreat, even with a visible adjacent hostile.
+            first.rules.clear_flag( ally_rule::follow_close );
+        }
+        first.regen_ai_cache();
+        if( mode == "combat" ) {
+            REQUIRE( first.current_target() );
+            REQUIRE( first.get_ai_danger() > 0 );
+        } else {
+            REQUIRE_FALSE( first.current_target() );
+        }
+    } else if( mode == "unavailable_source" ) {
+        second.faction_alarm = first.faction_alarm;
+        g->remove_npc( first.getID() );
+        REQUIRE_FALSE( first.is_active() );
+    } else if( mode == "wrong_home" ) {
+        first.goal += point( 1, 0 );
+        second.goal += point( 1, 0 );
+    } else if( mode == "foreign_owner" ) {
+        scene.site().active_outing.owner = bandit_live_world::simulation_owner::abstract;
+    } else if( mode == "forced_sleep" ) {
+        first.add_effect( efftype_id( "narcosis" ), 1_hours );
+        first.fall_asleep( 1_hours );
+        second.add_effect( efftype_id( "narcosis" ), 1_hours );
+        second.fall_asleep( 1_hours );
+    } else if( mode == "flight" ) {
+        first.set_attitude( NPCATT_FLEE );
+        second.set_attitude( NPCATT_FLEE );
+    }
+    r067_reply_capture trace( "alarm-disengagement-" + mode, true, 5 );
+    if( mode == "scheduler" || mode == "forced_sleep" ) {
+        first.set_moves( 0 );
+        second.set_moves( 0 );
+        process_monsters_and_npcs_turn_for_test();
+    } else {
+        for( npc *member : { &first, &second } ) {
+            if( member->is_active() ) {
+                member->set_moves( 100 );
+                if( mode == "ordinary_navigation" ) {
+                    member->go_to_omt_destination();
+                } else {
+                    member->move();
+                }
+            }
+        }
+    }
+    const bool progress = mode == "move" || mode == "scheduler" ||
+                          mode == "hidden_incident" || mode == "received" ||
+                          mode == "stale_local_path" || mode == "later_hazard" || mode == "ordinary_navigation";
+    if( progress ) {
+        CHECK( first.pos_abs() != first_position );
+        CHECK( second.pos_abs() != second_position );
+        CHECK( trig_dist( first.pos_abs().raw(), incident.raw() ) >
+               trig_dist( first_position.raw(), incident.raw() ) );
+        CHECK( trig_dist( second.pos_abs().raw(), incident.raw() ) >
+               trig_dist( second_position.raw(), incident.raw() ) );
+        CHECK( rl_dist( first.pos_abs(), second.pos_abs() ) <=
+               bandit_live_world::local_pair_cohesion_radius() );
+        CHECK( first.goal == scene.site().anchor );
+        CHECK( first.is_travelling() );
+        CHECK( first.has_active_faction_alarm() );
+        CHECK( first.faction_alarm->until == until );
+        CHECK( first.faction_alarm_requires_response() );
+        // Movement is not an assessment, return receipt or report.
+        CHECK( scene.site().active_outing.assessment.observation_started_minutes == -1 );
+        CHECK_FALSE( scene.site().current_scout_report.is_present() );
+        CHECK( scene.site().active_outing.member_return_receipts.empty() );
+        if( stale_next ) {
+            CHECK( second.pos_bub() != *stale_next );
+            CHECK_FALSE( second.path.empty() );
+            if( !second.path.empty() ) {
+                CHECK( waypoint_target( second ).contains( second.path.back() ) );
+            }
+        }
+        // Next callback uses fresh native cache/route checks and preserves alert.
+        first.regen_ai_cache();
+        first.set_moves( 100 );
+        const auto after = first.pos_abs();
+        if( mode == "ordinary_navigation" ) {
+            // Existing owner: fresh native route above, then its ordinary
+            // cached-route continuation, without imposing an alarm policy.
+            first.go_to_omt_destination();
+        } else {
+            first.move();
+        }
+        CHECK( first.pos_abs() != after );
+        CHECK( first.faction_alarm->until == until );
+        if( later_hazard ) {
+            // The later sensed hazard is not a future-route admission gate.
+            // At its actual next-step boundary, the same native decision refuses.
+            for( int step = 0; step < 6 && !first.path.empty() &&
+                 first.path.front() != *later_hazard; ++step ) {
+                const auto prior = first.pos_abs();
+                first.regen_ai_cache();
+                first.set_moves( 100 );
+                first.move();
+                if( first.pos_abs() == prior ) {
+                    break;
+                }
+            }
+            CHECK_FALSE( first.path.empty() );
+            if( !first.path.empty() ) {
+                CHECK( first.path.front() == *later_hazard );
+            }
+            const auto before_hazard = first.pos_abs();
+            first.regen_ai_cache();
+            first.set_moves( 100 );
+            first.move();
+            CHECK( first.pos_abs() == before_hazard );
+            CHECK( first.faction_alarm->until == until );
+        }
+    } else if( mode != "combat" && mode != "flight" && mode != "adjacent_threat" ) {
+        CHECK( first.pos_abs() == first_position );
+        CHECK( second.pos_abs() == second_position );
+        if( mode == "forced_sleep" ) {
+            CHECK( first.in_sleep_state() );
+            CHECK( second.in_sleep_state() );
+        }
+    }
+    raid_decision_trace::native_recorder().closeout();
+    std::ifstream events( std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" ) );
+    std::string line;
+    bool homeward_action = false;
+    while( std::getline( events, line ) ) {
+        if( line.find( "raid_actor_action" ) != std::string::npos ) {
+            JsonObject event = json_loader::from_string( line ).get_object();
+            event.allow_omitted_members();
+            if( event.get_string( "event", "" ) == "raid_actor_action" ) {
+                const auto action = event.get_string( "action", "" );
+                homeward_action |= action == "Go to destination" &&
+                                   event.get_string( "reason", "" ) == "execute_action";
+                std::cout << "SCOUT_DISENGAGEMENT cannibal=" << cannibal << " mode=" << mode
+                          << " native_action=" << action << " from=" << first_position
+                          << " now=" << first.pos_abs() << " partner=" << second.pos_abs()
+                          << " alert_until=" << to_turns<int>( until - calendar::turn_zero ) << '\n';
+            }
+        }
+    }
+    if( progress && mode != "ordinary_navigation" ) {
+        CHECK( homeward_action );
+    } else if( mode == "combat" || mode == "adjacent_threat" || mode == "flight" || mode == "forced_sleep" ||
+               mode == "wrong_home" || mode == "foreign_owner" ||
+               mode == "dog_ahead" || mode == "incident_hazard" || mode == "blocked" ||
+               mode == "unavailable_source" || mode == "immediate_trap" ) {
+        CHECK_FALSE( homeward_action );
     }
 }

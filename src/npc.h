@@ -1540,6 +1540,10 @@ class npc : public Character
         bool has_omt_destination() const;
         // Pick a place to go
         void set_omt_destination();
+        // Prepare the owning native route without spending a movement action.
+        // Validated cached routes must reach the current waypoint boundary.
+        bool prepare_omt_destination_path( const std::function<bool(
+                                          const std::vector<tripoint_bub_ms> & )> &path_validator = {} );
         // Move there; on the micro scale
         void go_to_omt_destination( const std::function<bool(
                                     const std::vector<tripoint_bub_ms> & )> &path_validator = {} );

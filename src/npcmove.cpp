@@ -113,6 +113,7 @@
 #include "talker.h"  // IWYU pragma: keep
 #include "translation.h"
 #include "translations.h"
+#include "trap.h"
 #include "type_id.h"
 #include "units.h"
 #include "value_ptr.h"
@@ -892,6 +893,99 @@ bool has_paid_home_return_order( const npc &who )
                world, who.getID() ) == site && who.is_travelling() &&
            who.has_omt_destination() && who.goal == site->anchor &&
            !who.omt_path.empty() && who.omt_path.front() == site->anchor;
+}
+
+// An alert remains credible while a scout disengages. Validate only the loaded
+// homeward route and its next physical step; this grants no future safety credit.
+bool prepare_scout_alarm_homeward_step( npc &who )
+{
+    const auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto relationship = bandit_live_world::read_active_covert_scout_homeward_member(
+                                  world, who.getID() );
+    const auto *site = bandit_live_world::active_operation_duty_site_for( world, who.getID() );
+    map &here = get_map();
+    if( !relationship || !site || site->active_outing.kind !=
+        bandit_live_world::outing_kind::structural_sortie || site->active_outing.job_type != "scout" ||
+        !bandit_live_world::scout_phase_requires_homeward_only(
+            relationship->phase ) || !who.has_active_faction_alarm() ||
+        !who.is_travelling() || who.goal != relationship->egress_omt ||
+        who.omt_path.empty() || who.get_ai_guard_pos() == who.pos_abs() ||
+        who.duty_incapacitated() ||
+        who.has_flag( json_flag_CANNOT_MOVE ) || who.in_sleep_state() ||
+        who.has_effect( effect_downed ) || who.has_effect( effect_stunned ) ||
+        who.has_effect( effect_psi_stunned ) ) {
+        return false;
+    }
+    const npc *source = g->find_npc( who.faction_alarm->source_id );
+    const auto fleeing = []( const npc &member ) {
+        return member.get_attitude() == NPCATT_FLEE || member.get_attitude() == NPCATT_FLEE_TEMP ||
+               member.has_effect( effect_npc_flee_player ) || member.has_effect( effect_npc_run_away );
+    };
+    // A loaded authenticated source preserves a received warning even when
+    // the incident is out of sight. Move away from that known location rather
+    // than declaring it clear; native current combat/flight/fields still win.
+    if( !source || !source->is_active() || source->is_dead() || source->duty_incapacitated() ||
+        fleeing( who ) || fleeing( *source ) ||
+        !here.inbounds( who.faction_alarm->incident ) ||
+        !here.inbounds( source->pos_abs() ) ||
+        source->sees_dangerous_field( source->pos_bub() ) ||
+        source->sees_dangerous_field( here.get_bub( who.faction_alarm->incident ) ) ||
+        who.sees_dangerous_field( who.pos_bub() ) ||
+        ( source->current_target() && source->get_ai_danger() > 0 ) ) {
+        return false;
+    }
+    return who.prepare_omt_destination_path( [&]( const std::vector<tripoint_bub_ms> &route ) {
+        const tripoint_abs_ms next = here.get_abs( route.front() );
+        if( trig_dist( next.raw(), who.faction_alarm->incident.raw() ) <=
+            trig_dist( who.pos_abs().raw(), who.faction_alarm->incident.raw() ) ||
+            !who.can_move_to_ignoring_danger( route.front(), false ) ) {
+            return false;
+        }
+        for( const npc *observer : { static_cast<const npc *>( &who ), source } ) {
+            for( const Creature *creature : observer->get_visible_creatures( MAX_VIEW_DISTANCE ) ) {
+                if( creature != observer && !creature->is_dead_state() &&
+                    observer->attitude_to( *creature ) == Creature::Attitude::HOSTILE &&
+                    ( rl_dist( who.pos_abs(), creature->pos_abs() ) <= 1 ||
+                      trig_dist( next.raw(), creature->pos_abs().raw() ) <=
+                      trig_dist( who.pos_abs().raw(), creature->pos_abs().raw() ) ) ) {
+                    return false;
+                }
+            }
+        }
+        // Keep the existing pair ownership/cohesion and target non-reentry limits.
+        for( const character_id id : site->active_outing.member_ids ) {
+            if( id == who.getID() || site->active_outing.member_is_resolved( id ) ) {
+                continue;
+            }
+            const npc *partner = g->find_npc( id );
+            if( !partner || !partner->is_active() || partner->is_dead() ||
+                !bandit_live_world::read_active_covert_scout_homeward_member( world, id ) ||
+                ( rl_dist( next, partner->pos_abs() ) > bandit_live_world::local_pair_cohesion_radius() &&
+                  rl_dist( next, partner->pos_abs() ) >= rl_dist( who.pos_abs(), partner->pos_abs() ) ) ) {
+                return false;
+            }
+        }
+        const auto avoid = who.get_path_avoid();
+        const tripoint_bub_ms step = route.front();
+        const trap &candidate = here.tr_at( step );
+        if( avoid( step ) || who.sees_dangerous_field( step ) ||
+            ( candidate.can_see( step, who ) && !candidate.is_benign() ) ) {
+            return false;
+        }
+        // Non-reentry is a route identity constraint. Sensed physical hazards are
+        // checked only at the next step, then reassessed at the next native action.
+        return std::all_of( route.begin(), route.end(), [&]( const tripoint_bub_ms &point ) {
+            const auto omt = project_to<coords::omt>( here.get_abs( point ) );
+            const auto distance = bandit_live_world::target_footprint_watch_distance(
+                                      omt, relationship->target_footprint );
+            return here.inbounds( point ) && distance &&
+                   *distance >= relationship->minimum_target_distance &&
+                   ( omt == who.pos_abs_omt() ||
+                     std::find( relationship->forbidden_route_omts.begin(),
+                                relationship->forbidden_route_omts.end(), omt ) ==
+                     relationship->forbidden_route_omts.end() );
+        } );
+    } );
 }
 
 bool live_bandit_hot_defended_doorstep_pickup_blocked( const npc &who )
@@ -3278,9 +3372,15 @@ void npc::move() {
     // and visible combat above retain priority, including party separation.
     action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );
     if( action == npc_undecided ) {
-        ai_cache.s_abs_pos = faction_alarm->incident;
-        action = sees( here, here.get_bub( faction_alarm->incident ) ) ||
-                 has_flag( json_flag_CANNOT_MOVE ) ? npc_pause : npc_investigate_sound;
+        if( prepare_scout_alarm_homeward_step( *this ) ) {
+            // Consume only a preflighted native home step. The alert remains
+            // active; the next cache/action cycle reassesses combat and retreat.
+            action = npc_goto_destination;
+        } else {
+            ai_cache.s_abs_pos = faction_alarm->incident;
+            action = sees( here, here.get_bub( faction_alarm->incident ) ) ||
+                     has_flag( json_flag_CANNOT_MOVE ) ? npc_pause : npc_investigate_sound;
+        }
     }
   } else if (!ai_cache.sound_alerts.empty() && !is_walking_with() &&
              !has_flag(json_flag_CANNOT_MOVE)) {
@@ -7909,7 +8009,6 @@ void npc::set_omt_destination() {
 
 void npc::go_to_omt_destination( const std::function<bool(
                                      const std::vector<tripoint_bub_ms> & )> &path_validator ) {
-  map &here = get_map();
     if( ai_cache.guard_pos && pos_abs() == *ai_cache.guard_pos &&
         !has_paid_home_return_order( *this ) ) {
         path.clear();
@@ -7931,52 +8030,75 @@ void npc::go_to_omt_destination( const std::function<bool(
     reach_omt_destination();
     return;
     }
-    if( !path.empty() ) {
-        // we already have a path, just use that until we can't.
-        if( path_validator && !path_validator( path ) ) {
-            path.clear();
-            move_pause();
-            return;
-        }
+    if( prepare_omt_destination_path( path_validator ) ) {
         move_to_next();
         return;
     }
-    // get the next path point
-    if( omt_path.back() == omt_pos ) {
-        // this should be the square we are at.
-        omt_path.pop_back();
-  }
-  if (!omt_path.empty()) {
-    point_rel_omt omt_diff = omt_path.back().xy() - omt_pos.xy();
-    if (omt_diff.x() > 3 || omt_diff.x() < -3 || omt_diff.y() > 3 ||
-        omt_diff.y() < -3) {
-      // we've gone wandering somehow, reset destination.
-      if (!is_player_ally()) {
-        set_omt_destination();
+    if( !omt_path.empty() ) {
+        const point_rel_omt difference = omt_path.back().xy() - omt_pos.xy();
+        if( difference.x() > 3 || difference.x() < -3 ||
+            difference.y() > 3 || difference.y() < -3 ) {
+            // Preserve the ordinary owner's wandering recovery. A caller
+            // merely preparing a validated step cannot replace its order.
+            if( !is_player_ally() ) {
+                set_omt_destination();
             } else {
                 talk_function::assign_guard( *this );
             }
-      return;
+            return;
+        }
     }
-  }
-  tripoint_bub_ms sm_tri =
-      here.get_bub(project_to<coords::ms>(omt_path.back()));
-  tripoint_bub_ms centre_sub = sm_tri + point(SEEX, SEEY);
-  bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
-  path = here.route(*this, pathfinding_target::radius(centre_sub, 2));
-  add_msg_debug(debugmode::DF_NPC, "%s going %s->%s", get_name(),
-                omt_pos.to_string_writable(), goal.to_string_writable());
+    move_pause();
+}
 
-  if (!path.empty()) {
-    if( path_validator && !path_validator( path ) ) {
-      path.clear();
-      move_pause();
-      return;
+bool npc::prepare_omt_destination_path( const std::function<bool(
+        const std::vector<tripoint_bub_ms> & )> &path_validator )
+{
+    map &here = get_map();
+    const tripoint_abs_omt omt_pos = pos_abs_omt();
+    if( goal == no_goal_point || goal == omt_pos || omt_path.empty() ) {
+        return false;
     }
-    move_to_next();
-        return;
+    if( !path_validator && !path.empty() ) {
+        // Preserve ordinary cached navigation without imposing a new contract.
+        return true;
     }
-  move_pause();
+    if( omt_path.back() == omt_pos ) {
+        omt_path.pop_back();
+    }
+    if( omt_path.empty() ) {
+        return false;
+    }
+    const point_rel_omt difference = omt_path.back().xy() - omt_pos.xy();
+    if( difference.x() > 3 || difference.x() < -3 ||
+        difference.y() > 3 || difference.y() < -3 ) {
+        return false;
+    }
+    tripoint_bub_ms centre =
+        here.get_bub( project_to<coords::ms>( omt_path.back() ) ) + point( SEEX, SEEY );
+    // map::route clips out-of-bounds targets. Apply its same boundary when
+    // checking whether a validated cached route belongs to this waypoint.
+    here.clip_to_bounds( centre );
+    const auto destination = pathfinding_target::radius( centre, 2 );
+    if( path_validator && !path.empty() && !destination.contains( path.back() ) ) {
+        path.clear();
+    }
+    if( path.empty() ) {
+        bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
+        path = here.route( *this, destination );
+        add_msg_debug( debugmode::DF_NPC, "%s going %s->%s", get_name(),
+                       omt_pos.to_string_writable(), goal.to_string_writable() );
+    }
+    if( path_validator ) {
+        // As in move_to_next, validate the next physical tile, not the origin.
+        while( !path.empty() && path.front() == pos_bub() ) {
+            path.erase( path.begin() );
+        }
+        if( !path.empty() && !path_validator( path ) ) {
+            path.clear();
+        }
+    }
+    return !path.empty();
 }
 
 void npc::guard_current_pos() {
