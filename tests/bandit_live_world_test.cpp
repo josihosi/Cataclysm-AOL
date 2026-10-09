@@ -57,6 +57,8 @@
 #include "basecamp.h"
 #include "do_turn.h"
 #include "faction.h"
+#include "faction_camp.h"
+#include "pickup.h"
 #include "effect.h"
 #include "game.h"
 #include "game_constants.h"
@@ -71,6 +73,10 @@
 #include "mtype.h"
 #include "monster_helpers.h"
 #include "npc.h"
+#include "dialogue.h"
+#include "npctalk.h"
+#include "item_pocket.h"
+#include "pocket_type.h"
 #include "npctrade.h"
 #include "item.h"
 #include "omdata.h"
@@ -56297,6 +56303,7 @@ TEST_CASE( "encounter demand and native payment share current physical eligibili
            "[bandit_live_world][payment_eligibility_067]" )
 {
     const bool resident = GENERATE( false, true );
+    const std::string ownership = GENERATE( std::string( "payer" ), std::string( "unowned" ), std::string( "foreign" ) );
     const std::string outcome = GENERATE( std::string( "paid" ), std::string( "cancel" ),
                                          std::string( "authority" ), std::string( "access" ),
                                          std::string( "storage_retry" ) );
@@ -56316,11 +56323,12 @@ TEST_CASE( "encounter demand and native payment share current physical eligibili
     const auto source = payer->pos_bub() + tripoint( 0, 2, 0 );
     get_map().i_clear( source );
     item gun( itype_id( "m240" ) );
-    gun.set_owner( *payer );
+    if( ownership == "payer" ) { gun.set_owner( *payer ); }
+    if( ownership == "foreign" ) { gun.set_owner( faction_id( "free_merchants" ) ); }
     item &goods = get_map().add_item( source, gun );
     for( int copy = 1; copy < 8; ++copy ) { get_map().add_item( source, gun ); }
     const std::string uid = std::to_string( goods.uid().get_value() );
-    const int eligible_value = 8 * goods.price( true );
+    const int eligible_value = 8 * goods.price( true ) + 2 * item( itype_id( "coin_gold" ) ).price( true );
     std::vector<std::string> excluded;
     for( const std::string &reason : { "unowned", "foreign", "denied" } ) {
         item other( itype_id( "coin_gold" ) );
@@ -56330,10 +56338,10 @@ TEST_CASE( "encounter demand and native payment share current physical eligibili
             other.set_var( VAR_TRADE_IGNORE, 1 );
         }
         item &placed = get_map().add_item( source, other );
-        excluded.push_back( std::to_string( placed.uid().get_value() ) );
+        if( reason == "denied" ) { excluded.push_back( std::to_string( placed.uid().get_value() ) ); }
     }
     const auto pool = bandit_encounter_goods_pool_for_test( input, *payer );
-    CHECK( pool.reachable_basecamp_value == eligible_value );
+    CHECK( pool.reachable_basecamp_value - initial.reachable_basecamp_value == eligible_value );
     const auto surface = scene.surface( *payer );
     REQUIRE( surface.valid );
     CHECK( surface.reachable_goods_value == initial_value + eligible_value );
@@ -56388,7 +56396,7 @@ TEST_CASE( "encounter demand and native payment share current physical eligibili
             INFO( text );
             if( ( text.find( "Accept this trade" ) != std::string::npos || text.find( "Continue with trade" ) != std::string::npos ) ) {
                 ++confirmations;
-                if( outcome == "authority" ) { goods.set_owner( *scene.collector ); }
+                if( outcome == "authority" ) { goods.set_var( VAR_TRADE_IGNORE, 1 ); }
                 if( outcome == "access" ) {
                     for( int dx = -1; dx <= 1; ++dx ) {
                         for( int dy = -1; dy <= 1; ++dy ) {
@@ -56639,7 +56647,7 @@ TEST_CASE( "encounter ally cargo and nested native quantities share eligibility"
     const auto total = []( const bandit_live_world::shakedown_goods_pool &p ) {
         return p.player_carried_value + p.companion_carried_value + p.reachable_basecamp_value;
     };
-    const int initial = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
+    int initial = 0;
     item wallet( itype_id( "backpack" ) ); wallet.set_owner( *payer );
     item bullets( itype_id( "9mm" ), calendar::turn, 5 ); bullets.set_owner( *payer );
     REQUIRE( wallet.put_in( bullets, pocket_type::CONTAINER ).success() );
@@ -56651,17 +56659,20 @@ TEST_CASE( "encounter ally cargo and nested native quantities share eligibility"
     item_location bag;
     on_out_of_scope vehicle_cleanup( [&]() { if( cart ) { get_map().destroy_vehicle( cart ); } } );
     if( kind == "ground" ) {
+        initial = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
         item &placed = get_map().add_item( tile, wallet ); bag = item_location( map_cursor( tile ), &placed );
     } else if( kind == "ally" ) {
         npc &ally = spawn_npc( tile.xy(), "test_talker" );
         clear_character( ally );
         ally.setpos( get_map(), tile );
         ally.set_fac( faction_id( "your_followers" ) );
+        initial = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
         bag = ally.i_add( wallet, false );
     } else {
         cart = get_map().add_vehicle( vproto_id( "test_shopping_cart" ), tile, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
         REQUIRE( cart ); cart->set_owner( *payer );
         const auto cargo = get_map().veh_at( tile ).cargo(); REQUIRE( cargo );
+        initial = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
         const auto added = cart->add_item( get_map(), cargo->part(), wallet ); REQUIRE( added );
         bag = item_location( vehicle_cursor( *cart, cargo->part_index() ), &**added );
     }
@@ -56750,6 +56761,160 @@ TEST_CASE( "encounter ally cargo and nested native quantities share eligibility"
     CHECK( rounds == ( selection == "container" ? 5 : selection == "charges" ? 2 : 0 ) );
 }
 
+TEST_CASE( "encounter payment rechecks native carrier and cargo access",
+           "[bandit_live_world][payment_access_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    const bool cargo_source = GENERATE( false, true );
+    const bool initially_denied = GENERATE( false, true );
+    CAPTURE( resident, cargo_source, initially_denied );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) {
+        payer = &scene.camp_receiver();
+        scene.distant_adjacent_avatar();
+    }
+    REQUIRE( scene.communicate() );
+    bandit_live_world::local_gate_input input;
+    input.basecamp_or_camp_scene = true;
+    const auto total = []( const bandit_live_world::shakedown_goods_pool &pool ) {
+        return pool.player_carried_value + pool.companion_carried_value +
+               pool.reachable_basecamp_value;
+    };
+    int baseline = 0;
+    map &here = get_map();
+    const auto tile = payer->pos_bub() + tripoint( -3, 0, 0 );
+    vehicle *cart = nullptr;
+    on_out_of_scope vehicle_cleanup( [&]() {
+        if( cart ) {
+            here.destroy_vehicle( cart );
+        }
+    } );
+    item gun( itype_id( "m240" ) );
+    gun.set_owner( *payer );
+    item_location source;
+    std::function<void()> deny_access;
+    if( cargo_source ) {
+        cart = here.add_vehicle( vproto_id( "none" ), tile, 0_degrees, 0,
+                                 veh_spawn_status::UNDAMAGED );
+        REQUIRE( cart );
+        REQUIRE( cart->install_part( here, point_rel_ms( 0, 0 ), vpart_id( "frame" ) ) >= 0 );
+        const int trunk = cart->install_part( here, point_rel_ms( 0, 0 ), vpart_id( "trunk_floor" ) );
+        REQUIRE( trunk >= 0 );
+        const int lock = cart->install_part( here, point_rel_ms( 0, 0 ), vpart_id( "cargo_lock" ) );
+        REQUIRE( lock >= 0 );
+        const int lock_hp = cart->part( lock ).hp();
+        // Use the native operational/broken lock distinction without replacing
+        // vehicle-part storage or the source object after the accepted basket.
+        cart->set_hp( cart->part( lock ), 0, true );
+        here.rebuild_vehicle_level_caches();
+        REQUIRE_FALSE( here.veh_at( tile ).part_with_feature( "CARGO_LOCKING", true ) );
+        baseline = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
+        const auto placed = cart->add_item( here, cart->part( trunk ), gun );
+        REQUIRE( placed );
+        source = item_location( vehicle_cursor( *cart, trunk ), &**placed );
+        deny_access = [&, lock, lock_hp]() {
+            const auto physical_uid = source->uid().get_value();
+            cart->set_hp( cart->part( lock ), lock_hp, true );
+            REQUIRE( here.veh_at( tile ).part_with_feature( "CARGO_LOCKING", true ) );
+            REQUIRE( source );
+            CHECK( source->uid().get_value() == physical_uid );
+        };
+    } else {
+        npc &ally = spawn_npc( tile.xy(), "test_talker" );
+        clear_character( ally );
+        ally.setpos( here, tile );
+        ally.set_fac( faction_id( "your_followers" ) );
+        baseline = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
+        REQUIRE( ally.wield( gun ) );
+        source = ally.get_wielded_item();
+        deny_access = [&]() {
+            source->set_flag( flag_id( "NO_UNWIELD" ) );
+            REQUIRE_FALSE( ally.can_unwield( *source ).success() );
+        };
+    }
+    REQUIRE( source );
+    CHECK( total( bandit_encounter_goods_pool_for_test( input, *payer ) ) ==
+           baseline + source->price( true ) );
+    if( initially_denied ) {
+        deny_access();
+        CHECK( total( bandit_encounter_goods_pool_for_test( input, *payer ) ) == baseline );
+    }
+    const bool owns_imgui = ImGui::GetCurrentContext() == nullptr;
+    if( owns_imgui ) {
+        ImGui::CreateContext();
+        auto &io = ImGui::GetIO();
+        io.DisplaySize = ImVec2( 800, 600 );
+        io.DeltaTime = 1.0f / 60.0f;
+        io.Fonts->AddFontDefault();
+        io.Fonts->Build();
+        ImGui::NewFrame();
+    }
+    on_out_of_scope imgui( [&]() {
+        if( owns_imgui ) {
+            ImGui::EndFrame();
+            ImGui::DestroyContext();
+        }
+    } );
+    semantic_surface_manager manager( "payment-native-access" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope world( manager, "world", "World" );
+    const std::string uid = std::to_string( source->uid().get_value() );
+    int stage = 0;
+    int sequence = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &d ) {
+        const auto submit = [&]( const std::string &action, const std::string &target = "" ) {
+            REQUIRE( manager.submit_request( { manager.run_id(), d.surface_id, d.frame_id,
+                std::to_string( ++sequence ), action,
+                target.empty() ? std::nullopt : std::optional<std::string>( target ), {} } ) );
+        };
+        if( d.kind == "inventory" ) {
+            REQUIRE( ++stage < 5 );
+            if( stage == 1 ) {
+                submit( "trade.switch_pane" );
+            } else if( initially_denied ) {
+                CHECK( std::none_of( d.valid_actions.begin(), d.valid_actions.end(), [&]( const auto &a ) {
+                    return a.id == "inventory.toggle" && a.stable_id == uid;
+                } ) );
+                submit( "inventory.cancel" );
+            } else if( stage == 2 ) {
+                submit( "inventory.toggle", uid );
+            } else {
+                submit( "inventory.commit" );
+            }
+        } else if( d.kind == "prompt" ) {
+            const auto yes = std::find_if( d.valid_actions.begin(), d.valid_actions.end(),
+            []( const auto &a ) { return a.label == "YES"; } );
+            REQUIRE( yes != d.valid_actions.end() );
+            submit( yes->id, yes->stable_id );
+        }
+    } );
+    trade_ui::trade_result_t result;
+    {
+        trade_ui ui( *payer, *scene.collector, 0, "Pay:", 30, 12, nullptr, true, true, 2 );
+        result = ui.perform_trade();
+    }
+    manager.set_descriptor_observer( {} );
+    REQUIRE( source );
+    if( initially_denied ) {
+        CHECK_FALSE( result.traded );
+        CHECK( result.items_you.empty() );
+    } else {
+        REQUIRE( result.traded );
+        REQUIRE( result.items_you.size() == 1 );
+        CHECK( result.items_you.front().first == source );
+        deny_access();
+        npc_trading::stash_trade_failure failure;
+        CHECK_FALSE( npc_trading::complete_trade_to_stash( *scene.collector, *payer, result,
+                     scene.site().anchor, 30, 12, 2, &failure ) );
+        CHECK( failure == npc_trading::stash_trade_failure::source );
+        REQUIRE( source );
+        CHECK( source->is_owned_by( *payer ) );
+    }
+    CHECK( manager.top()->surface_id == world.surface_id() );
+}
+
 TEST_CASE( "encounter appraisal on missing stairs is noninteractive",
            "[bandit_live_world][payment_stairs_067]" )
 {
@@ -56783,12 +56948,660 @@ TEST_CASE( "encounter appraisal on missing stairs is noninteractive",
     REQUIRE_FALSE( g->find_stairs( here, origin.z() + 1, origin ) );
     const auto source = origin + tripoint( 2, 0, 1 );
     item gun( itype_id( "m240" ) ); gun.set_owner( *payer );
-    here.add_item( source, gun );
     bandit_live_world::local_gate_input input; input.basecamp_or_camp_scene = true;
-    CHECK( bandit_encounter_goods_pool_for_test( input, *payer ).reachable_basecamp_value == 0 );
+    const auto baseline = bandit_encounter_goods_pool_for_test( input, *payer );
+    here.add_item( source, gun );
+    CHECK( bandit_encounter_goods_pool_for_test( input, *payer ).reachable_basecamp_value ==
+           baseline.reachable_basecamp_value );
     const auto eligible = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
     CHECK( std::none_of( eligible.begin(), eligible.end(), [&]( const auto &loc ) {
         return loc->typeId() == itype_id( "m240" );
     } ) );
     CHECK_FALSE( g->find_stairs( here, origin.z() + 1, origin ) );
+}
+
+TEST_CASE( "local robbery pool includes accessible property but not the designated hide site",
+           "[bandit_live_world][payment_unstashed_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) { payer = &scene.camp_receiver(); scene.distant_adjacent_avatar(); }
+    REQUIRE( scene.communicate() );
+    map &here = get_map();
+    const auto tile = payer->pos_bub() + point( 0, 2 );
+    const auto omt = project_to<coords::omt>( here.get_abs( tile ) );
+    const auto old_omt = overmap_buffer.ter( omt );
+    const auto stash_tile = here.get_bub( project_to<coords::ms>( omt ) + point( 11, 10 ) );
+    const auto old_ter = here.ter( stash_tile );
+    on_out_of_scope restore( [&]() { overmap_buffer.ter_set( omt, old_omt ); here.ter_set( stash_tile, old_ter ); } );
+    here.i_clear( tile ); here.i_clear( stash_tile );
+    item military( itype_id( "m240" ) );
+    item &unowned = here.add_item( tile, military );
+    military.set_owner( faction_id( "free_merchants" ) );
+    item &foreign = here.add_item( tile, military );
+    item &hidden = here.add_item( stash_tile, military );
+    overmap_buffer.ter_set( omt, oter_id( "faction_hide_site_0" ) );
+    here.ter_set( stash_tile, ter_str_id( "t_improvised_shelter" ) );
+    const auto pool = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
+    const auto contains = [&]( const item &it ) { return std::any_of( pool.begin(), pool.end(), [&]( const auto &loc ) { return loc.get_item() == &it; } ); };
+    CHECK( contains( unowned ) );
+    CHECK( contains( foreign ) );
+    CHECK_FALSE( contains( hidden ) );
+    // Neither an ordinary container nor an ordinary shelter is a hide-site stash.
+    overmap_buffer.ter_set( omt, old_omt );
+    const auto ordinary = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
+    CHECK( std::any_of( ordinary.begin(), ordinary.end(), [&]( const auto &loc ) { return loc.get_item() == &hidden; } ) );
+}
+
+
+TEST_CASE( "native hide site setup relay and reload preserve the designated payment exemption",
+           "[bandit_live_world][payment_hide_site_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) { payer = &scene.camp_receiver(); scene.distant_adjacent_avatar(); }
+    REQUIRE( scene.communicate() );
+    const auto payer_id = payer->getID(), collector_id = scene.collector->getID(), escort_id = scene.escort->getID();
+    map &here = get_map();
+    const auto omt = payer->pos_abs_omt();
+    const auto stash_abs = project_to<coords::ms>( omt ) + point( 11, 10 );
+    const auto source_abs = payer->pos_abs() + point( 0, 2 );
+    const auto ordinary_abs = stash_abs + point( 1, 0 );
+    const auto old_omt = overmap_buffer.ter( omt );
+    const auto old_stash = here.ter( here.get_bub( stash_abs ) );
+    const auto old_ordinary = here.ter( here.get_bub( ordinary_abs ) );
+    on_out_of_scope restore( [&]() {
+        overmap_buffer.ter_set( omt, old_omt );
+        get_map().ter_set( get_map().get_bub( stash_abs ), old_stash );
+        get_map().ter_set( get_map().get_bub( ordinary_abs ), old_ordinary );
+    } );
+    here.i_clear( here.get_bub( stash_abs ) ); here.i_clear( here.get_bub( source_abs ) );
+    here.i_clear( here.get_bub( ordinary_abs ) );
+    item gun( itype_id( "m240" ) ); gun.set_owner( faction_id( "free_merchants" ) );
+    item &setup = here.add_item( here.get_bub( source_abs ), gun );
+    // This is the storage writer called by actual Setup/Relay, not a seeded
+    // terrain flag. Mission travel/menu admission is outside this control.
+    REQUIRE( om_set_hide_site( *scene.escort, omt,
+              { { item_location( map_cursor( here.get_bub( source_abs ) ), &setup ), 1 } } ) );
+    REQUIRE( here.i_at( here.get_bub( source_abs ) ).empty() );
+    REQUIRE( is_hide_site_stash( stash_abs ) );
+    REQUIRE( here.i_at( here.get_bub( stash_abs ) ).size() == 1 );
+    item &stored = *here.i_at( here.get_bub( stash_abs ) ).begin();
+    item &relay = here.add_item( here.get_bub( source_abs ), gun );
+    REQUIRE( om_set_hide_site( *scene.escort, omt,
+              { { item_location( map_cursor( here.get_bub( source_abs ) ), &relay ), 1 } },
+              { { item_location( map_cursor( here.get_bub( stash_abs ) ), &stored ), 1 } } ) );
+    REQUIRE( here.i_at( here.get_bub( source_abs ) ).empty() );
+    REQUIRE( here.i_at( here.get_bub( stash_abs ) ).size() == 1 );
+    CHECK( scene.escort->companion_mission_inv.size() == 1 );
+    here.ter_set( here.get_bub( ordinary_abs ), ter_str_id( "t_improvised_shelter" ) );
+    here.add_item( here.get_bub( ordinary_abs ), gun );
+    const std::string world_name = world_generator->active_world->world_name;
+    for( int reload = 0; reload < 3; ++reload ) {
+        const auto sources = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
+        int hidden = 0, ordinary = 0;
+        for( const auto &loc : sources ) {
+            if( loc.where_recursive() != item_location::type::map ) { continue; }
+            const auto position = get_map().get_abs( loc.pos_bub( get_map() ) );
+            hidden += position == stash_abs; ordinary += position == ordinary_abs;
+        }
+        CHECK( hidden == 0 ); CHECK( ordinary == 1 );
+        CHECK( get_map().i_at( get_map().get_bub( stash_abs ) ).size() == 1 );
+        CHECK( scene.escort->companion_mission_inv.size() == 1 );
+        if( reload == 2 ) { break; }
+        REQUIRE( g->save() ); REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr ); REQUIRE( g->load( world_name ) );
+        scene.collector = g->find_npc( collector_id ); scene.escort = g->find_npc( escort_id );
+        REQUIRE( scene.collector ); REQUIRE( scene.escort );
+        payer = resident ? static_cast<Character *>( g->find_npc( payer_id ) ) : &get_avatar();
+        REQUIRE( payer );
+    }
+}
+
+
+static void check_payment_property_knowledge( bool resident, const std::string &outcome,
+        bool unrelated_property = false )
+{
+    const bool pocket_control = outcome.find( "pocket" ) != std::string::npos ||
+                                outcome.find( "selected_" ) == 0;
+    const bool visible_pocket = outcome == "transparent_pocket" || outcome == "open_pocket" ||
+                                outcome == "selected_visible_child" || outcome == "selected_hidden_child";
+    const bool reload_pickup = outcome == "knowing_reload" || outcome == "unobserved_identical_reload";
+    const bool knows_pickup = outcome == "knowing" || outcome == "knowing_reload";
+    const bool resolved_pickup = outcome == "allowed_keep" || outcome == "allowed_keep_reload" ||
+                                 outcome == "returned";
+    const bool speech_control = outcome.find( "speaker_" ) == 0;
+    const bool hears_report = outcome == "communicated" || speech_control;
+    CAPTURE( resident, outcome );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    avatar &you = get_avatar();
+    Character *payer = &you;
+    if( resident ) { payer = &scene.camp_receiver(); scene.distant_adjacent_avatar(); }
+    else if( outcome != "unregistered_building" ) {
+        overmap_buffer.add_camp( basecamp( "Local property test", scene.target ) ); scene.camp_added = true;
+    }
+    REQUIRE( scene.communicate() );
+    map &here = get_map();
+    npc *witness = &spawn_npc( scene.collector->pos_bub().xy() + point( 0, -1 ), "test_talker" );
+    const auto witness_position = witness->pos_abs();
+    clear_character( *witness ); witness->setpos( witness_position, false );
+    witness->set_fac( faction_id( "free_merchants" ) );
+    witness->set_attitude( NPCATT_NULL );
+    if( outcome == "unwitnessed" ) { witness->wear_item( item( itype_id( "blindfold" ) ) ); }
+    if( outcome == "sleeping_witness" ) { witness->fall_asleep( 1_hours ); }
+    if( outcome == "hallucinated_witness" ) { witness->hallucination = true; }
+    npc *listener = &spawn_npc( witness->pos_bub().xy() + point( -4, -1 ), "test_talker" );
+    const auto listener_position = listener->pos_abs();
+    clear_character( *listener ); listener->setpos( listener_position, false );
+    listener->set_fac( witness->get_fac_id() ); listener->set_attitude( NPCATT_NULL );
+    listener->wear_item( item( itype_id( "blindfold" ) ) );
+    listener->recalc_sight_limits();
+    REQUIRE( listener->is_blind() );
+    if( !hears_report ) { listener->add_effect( efftype_id( "deaf" ), 1_hours ); }
+    const auto source_omt = payer->pos_abs_omt();
+    const auto source_abs = outcome == "stale_stash" ? project_to<coords::ms>( source_omt ) + point( 11, 10 ) :
+                            payer->pos_abs() + point( 0, 2 );
+    const auto source = here.get_bub( source_abs );
+    const auto old_omt = overmap_buffer.ter( source_omt ); const auto old_ter = here.ter( source );
+    const auto old_furn = here.furn( source );
+    on_out_of_scope terrain( [&]() {
+        overmap_buffer.ter_set( source_omt, old_omt );
+        get_map().ter_set( get_map().get_bub( source_abs ), old_ter );
+        get_map().furn_set( get_map().get_bub( source_abs ), old_furn );
+    } );
+    here.ter_set( source, ter_str_id( "t_floor" ) ); here.i_clear( source );
+    if( outcome == "opaque_source" ) { here.furn_set( source, furn_str_id( "f_cupboard" ) ); }
+    item gun( itype_id( "m240" ) ); gun.set_owner( pocket_control ? payer->get_faction_id() : witness->get_fac_id() );
+    for( int n = 0; n < 8; ++n ) { here.add_item( source, gun ); }
+    item *first = &*here.i_at( source ).begin();
+    const auto first_uid = first->uid().get_value();
+    const std::string uid = std::to_string( first_uid );
+    const auto collector_id = scene.collector->getID(), escort_id = scene.escort->getID();
+    const auto witness_id = witness->getID(), listener_id = listener->getID(), payer_id = payer->getID();
+    const int faction_likes_before = witness->get_faction()->likes_u;
+    const std::string payer_faction = payer->get_faction_id().str();
+    const auto home = scene.site().anchor;
+    const auto prepare_store = [&]( bool blocked ) {
+        tinymap store; store.load( home, false );
+        for( const auto &p : store.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            store.cast_to_map()->i_clear( p ); store.cast_to_map()->furn_set( p, furn_str_id::NULL_ID() );
+            store.cast_to_map()->ter_set( p, ter_str_id( blocked ? "t_wall" : "t_floor" ) );
+        }
+        store.save();
+    };
+    prepare_store( outcome == "storage_retry" );
+    const bool owns_imgui = ImGui::GetCurrentContext() == nullptr;
+    if( owns_imgui ) {
+        ImGui::CreateContext(); auto &io = ImGui::GetIO(); io.DisplaySize = ImVec2( 800, 600 );
+        io.DeltaTime = 1.0f / 60.0f; io.Fonts->AddFontDefault(); io.Fonts->Build(); ImGui::NewFrame();
+    }
+    on_out_of_scope imgui( [&]() { if( owns_imgui ) { ImGui::EndFrame(); ImGui::DestroyContext(); } } );
+    semantic_surface_manager manager( "property-payment" ); semantic_surface_manager_session session( manager );
+    semantic_surface_scope world( manager, "world", "World" );
+    int seq = 0, stage = 0, demands = 0, failed = 0, thief_prompts = 0;
+    bool voluntary_pickup = false;
+    std::optional<item_location> stolen_coin;
+    std::int64_t hidden_uid = 0, unresolved_uid = 0;
+    if( pocket_control ) {
+        item container( itype_id( visible_pocket && outcome != "selected_hidden_child" ? outcome == "open_pocket" ? "bucket" : "bottle_plastic" :
+                                             outcome == "nested_opaque_pocket" ? "bucket" : "backpack" ) );
+        container.set_owner( *payer );
+        item coin( itype_id( "coin_gold" ) ); coin.set_owner( witness->get_fac_id() );
+        if( outcome == "nested_opaque_pocket" ) {
+            item inner( itype_id( "box_small" ) ); inner.set_owner( *payer );
+            REQUIRE( inner.put_in( coin, pocket_type::CONTAINER ).success() );
+            REQUIRE( container.put_in( inner, pocket_type::CONTAINER ).success() );
+        } else { REQUIRE( container.put_in( coin, pocket_type::CONTAINER ).success() ); }
+        item &placed = here.add_item( source, container );
+        item_location root( map_cursor( source ), &placed );
+        item *contained = placed.all_items_top().front();
+        item_location child( root, contained );
+        if( outcome == "nested_opaque_pocket" ) {
+            contained = contained->all_items_top().front(); child = item_location( child, contained );
+        }
+        hidden_uid = contained->uid().get_value();
+        REQUIRE( child.parent_pocket() );
+        CHECK( child.parent_pocket()->transparent() == ( visible_pocket && outcome != "selected_hidden_child" ) );
+        if( outcome == "nested_opaque_pocket" ) { REQUIRE( root->all_known_contents().size() == 1 ); }
+        stolen_coin = outcome.find( "selected_" ) == 0 ? child : root;
+    }
+    const auto drive = [&]( const semantic_surface_descriptor &d ) {
+        const auto submit = [&]( const std::string &action, const std::string &target = "" ) {
+            REQUIRE( manager.submit_request( { manager.run_id(), d.surface_id, d.frame_id,
+                std::to_string( ++seq ), action, target.empty() ? std::nullopt : std::optional<std::string>( target ), {} } ) );
+        };
+        if( d.kind == "shakedown_demand" ) {
+            REQUIRE( ++demands == 1 ); CHECK( d.payload.at( "receiver_id" ) == std::to_string( payer_id.get_value() ) );
+            submit( "shakedown.pay" );
+        } else if( d.kind == "inventory" ) {
+            REQUIRE( ++stage <= 6 );
+            if( stage == 1 ) { submit( "trade.switch_pane" ); }
+            else if( stage == 2 ) { submit( "inventory.toggle", uid ); }
+            else if( stolen_coin && stage == 3 ) {
+                // Trade toggle chooses the whole identical group. Native
+                // increase starts at one item, its ordered first occurrence.
+                submit( reload_pickup ? "inventory.increase_quantity" : "inventory.toggle",
+                        std::to_string( ( **stolen_coin ).uid().get_value() ) );
+            } else { submit( outcome == "cancel" || failed ? "inventory.cancel" : "inventory.commit" ); }
+        } else if( d.kind == "prompt" ) {
+            const auto &text = d.payload.at( "text" ); INFO( text );
+            if( text.find( "no longer eligible" ) != std::string::npos || text.find( "cannot store" ) != std::string::npos ) {
+                REQUIRE( ++failed == 1 ); CHECK( witness->known_property_thefts.empty() );
+                if( outcome == "storage_retry" ) {
+                    tinymap store; store.load( home, false );
+                    store.cast_to_map()->ter_set( tripoint_bub_ms( SEEX, SEEY, home.z() ), ter_str_id( "t_floor" ) ); store.save();
+                    failed = 0; // actual native basket retry, not a fabricated transfer
+                }
+                const auto ack = d.valid_actions.front(); submit( ack.id, ack.stable_id ); return;
+            }
+            if( voluntary_pickup ) { ++thief_prompts; }
+            else if( outcome == "stale_stash" ) {
+                overmap_buffer.ter_set( source_omt, oter_id( "faction_hide_site_0" ) );
+                here.ter_set( source, ter_str_id( "t_improvised_shelter" ) );
+            } else if( outcome == "stale_owner" ) { first->set_owner( faction_id( "your_followers" ) ); }
+            else if( outcome == "stale_position" ) {
+                item moved = *first; here.i_rem( source, first ); here.add_item( source + point( 0, 1 ), moved );
+            }
+            const auto yes = std::find_if( d.valid_actions.begin(), d.valid_actions.end(), []( const auto &a ) { return a.label == "YES"; } );
+            REQUIRE( yes != d.valid_actions.end() ); submit( yes->id, yes->stable_id );
+        }
+    };
+    manager.set_descriptor_observer( drive );
+    std::vector<std::int64_t> pickup_order;
+    if( outcome == "knowing" || resolved_pickup || reload_pickup ) {
+        // The actual native voluntary pickup producer, separate from Pay. A
+        // resident remains the encounter receiver even with a now-local avatar.
+        if( resident ) { you.setpos( payer->pos_abs() + point::west, false ); }
+        you.wear_item( item( itype_id( "backpack" ) ) );
+        if( reload_pickup ) {
+            // Native sees deliberately recognizes adjacent creatures even when
+            // blinded. Use real nonadjacent sight operands for this witness pair.
+            witness->setpos( you.pos_abs() + point( 0, 4 ), false );
+            listener->setpos( you.pos_abs() + point( -4, 4 ), false );
+            REQUIRE( rl_dist( witness->pos_abs(), you.pos_abs() ) > 1 );
+            REQUIRE( rl_dist( listener->pos_abs(), you.pos_abs() ) > 1 );
+        }
+        if( unrelated_property ) {
+            item other( itype_id( "coin_silver" ) ); other.set_owner( witness->get_fac_id() );
+            item &placed_other = here.add_item( you.pos_bub(), other );
+            you.set_value( "THIEF_MODE", "THIEF_ASK" );
+            here.invalidate_visibility_cache(); here.build_map_cache( you.posz() );
+            std::vector<item_location> other_targets{ item_location( map_cursor( you.pos_bub() ), &placed_other ) };
+            std::vector<int> other_quantities{ 1 }; bool other_stashed = true; Pickup::pick_info other_info;
+            you.set_moves( 1000 ); voluntary_pickup = true;
+            REQUIRE( Pickup::do_pickup( other_targets, other_quantities, false, other_stashed, other_info ) );
+            voluntary_pickup = false;
+            you.visit_items( [&]( item *part, item * ) {
+                if( part->typeId() == itype_id( "coin_silver" ) ) {
+                    unresolved_uid = part->uid().get_value();
+                    part->set_var( "r067_unresolved_property", std::to_string( unresolved_uid ) );
+                }
+                return VisitResponse::NEXT;
+            } );
+            REQUIRE( unresolved_uid != 0 );
+        }
+        if( reload_pickup && !knows_pickup ) {
+            // Native Trade selects the ordered first member of an identical
+            // group. Put the unseen taking first for the negative control,
+            // rather than pretending a group toggle picks its addressed member.
+            witness->wear_item( item( itype_id( "blindfold" ) ) ); witness->recalc_sight_limits();
+            listener->remove_worn_items_with( []( const item &it ) { return it.typeId() == itype_id( "blindfold" ); } );
+            listener->recalc_sight_limits(); REQUIRE( witness->is_blind() ); REQUIRE_FALSE( listener->is_blind() );
+            here.invalidate_visibility_cache(); here.build_map_cache( you.posz() );
+            REQUIRE( listener->sees( here, you ) );
+        }
+        item coin( itype_id( "coin_gold" ) ); coin.set_owner( witness->get_fac_id() );
+        item &placed = here.add_item( you.pos_bub(), coin );
+        you.set_value( "THIEF_MODE", "THIEF_ASK" );
+        here.invalidate_visibility_cache(); here.build_map_cache( you.posz() );
+        REQUIRE( witness->sees( here, you ) == !( reload_pickup && !knows_pickup ) );
+        std::vector<item_location> targets{ item_location( map_cursor( you.pos_bub() ), &placed ) };
+        std::vector<int> quantities{ 1 }; bool stashed = true; Pickup::pick_info info;
+        you.set_moves( 1000 ); voluntary_pickup = true;
+        REQUIRE( Pickup::do_pickup( targets, quantities, false, stashed, info ) );
+        voluntary_pickup = false;
+        REQUIRE( thief_prompts == ( unrelated_property ? 2 : 1 ) );
+        REQUIRE( witness->known_property_thefts.size() ==
+                 ( reload_pickup && !knows_pickup ? 0 : unrelated_property ? 2 : 1 ) );
+        you.visit_items( [&]( item *part, item * ) {
+            if( part->typeId() == itype_id( "coin_gold" ) ) { stolen_coin = item_location( you, part ); }
+            return VisitResponse::NEXT;
+        } );
+        REQUIRE( stolen_coin );
+        if( !reload_pickup ) {
+            ( **stolen_coin ).set_var( "r067_permission_subject", std::to_string( ( **stolen_coin ).uid().get_value() ) );
+        }
+        if( !reload_pickup || knows_pickup ) {
+            CHECK( witness->known_property_thefts.back().property.front().source_uid == ( **stolen_coin ).uid().get_value() );
+        }
+        REQUIRE( ( **stolen_coin ).is_old_owner( *witness ) );
+        if( outcome == "returned" ) {
+            talk_function::drop_stolen_item( *witness );
+            stolen_coin.reset();
+            for( item &goods : here.i_at( you.pos_bub() ) ) {
+                if( goods.typeId() == itype_id( "coin_gold" ) ) {
+                    stolen_coin = item_location( map_cursor( you.pos_bub() ), &goods );
+                }
+            }
+            REQUIRE( stolen_coin ); CHECK_FALSE( ( **stolen_coin ).is_old_owner( *witness ) );
+        } else if( resolved_pickup ) {
+            REQUIRE( witness->known_stolen_item == stolen_coin->get_item() );
+            dialogue permission( get_talker_for( you ), get_talker_for( *witness ) );
+            permission.add_topic( "TALK_ALLOW_KEEP_ITEM" );
+            permission.gen_responses( permission.topic_stack.back() );
+            REQUIRE( permission.responses.size() == 1 );
+            permission.responses.front().success.apply( permission );
+            CHECK_FALSE( witness->known_stolen_item );
+            CHECK_FALSE( ( **stolen_coin ).is_old_owner( *witness ) );
+        }
+        if( reload_pickup ) {
+            // A second visually identical taking is deliberately not witnessed.
+            // No item var distinguishes the items or changes stacking equality.
+            // Each coin has a real witness and unresolved native status, but
+            // the primary witness only knows the Pay candidate in the positive.
+            if( knows_pickup ) {
+                witness->wear_item( item( itype_id( "blindfold" ) ) ); witness->recalc_sight_limits();
+                listener->remove_worn_items_with( []( const item &it ) { return it.typeId() == itype_id( "blindfold" ); } );
+                listener->recalc_sight_limits();
+            } else {
+                witness->remove_worn_items_with( []( const item &it ) { return it.typeId() == itype_id( "blindfold" ); } );
+                witness->recalc_sight_limits();
+                listener->wear_item( item( itype_id( "blindfold" ) ) ); listener->recalc_sight_limits();
+            }
+            here.invalidate_visibility_cache(); here.build_map_cache( you.posz() );
+            REQUIRE( witness->sees( here, you ) == !knows_pickup );
+            REQUIRE( listener->sees( here, you ) == knows_pickup );
+            item other( itype_id( "coin_gold" ) ); other.set_owner( witness->get_fac_id() );
+            item &other_source = here.add_item( you.pos_bub(), other );
+            std::vector<item_location> other_targets{ item_location( map_cursor( you.pos_bub() ), &other_source ) };
+            std::vector<int> other_quantities{ 1 }; bool other_stashed = true; Pickup::pick_info other_info;
+            you.set_value( "THIEF_MODE", "THIEF_ASK" ); you.set_moves( 1000 ); voluntary_pickup = true;
+            REQUIRE( Pickup::do_pickup( other_targets, other_quantities, false, other_stashed, other_info ) );
+            voluntary_pickup = false;
+            REQUIRE( thief_prompts == 2 );
+            REQUIRE( listener->known_property_thefts.size() == 1 );
+            listener->wear_item( item( itype_id( "blindfold" ) ) ); listener->recalc_sight_limits();
+            REQUIRE( listener->is_blind() );
+            witness->remove_worn_items_with( []( const item &it ) { return it.typeId() == itype_id( "blindfold" ); } );
+            witness->recalc_sight_limits(); REQUIRE_FALSE( witness->is_blind() );
+            REQUIRE( witness->known_property_thefts.size() == 1 );
+            std::vector<item *> coins;
+            you.visit_items( [&]( item *it, item * ) {
+                if( it->typeId() == itype_id( "coin_gold" ) ) { coins.push_back( it ); pickup_order.push_back( it->uid().get_value() ); }
+                return VisitResponse::NEXT;
+            } );
+            REQUIRE( coins.size() == 2 );
+            REQUIRE( coins[0]->uid() != coins[1]->uid() );
+            CHECK( coins[0]->stacks_with( *coins[1] ) );
+            const auto witnessed_uid = witness->known_property_thefts.front().property.front().source_uid;
+            REQUIRE( std::count( pickup_order.begin(), pickup_order.end(), witnessed_uid ) == 1 );
+            const auto chosen = std::find_if( coins.begin(), coins.end(), [&]( const item *it ) {
+                return ( it->uid().get_value() == witnessed_uid ) == knows_pickup;
+            } );
+            REQUIRE( chosen != coins.end() ); stolen_coin = item_location( you, *chosen );
+        }
+        if( outcome == "allowed_keep_reload" || reload_pickup ) {
+            const auto coin_uid = ( **stolen_coin ).uid().get_value();
+            const std::string world_name = world_generator->active_world->world_name;
+            manager.set_descriptor_observer( {} );
+            REQUIRE( g->save() ); REQUIRE( turn_handler::cleanup_at_end() );
+            world_generator->set_active_world( nullptr ); REQUIRE( g->load( world_name ) );
+            scene.collector = g->find_npc( collector_id ); scene.escort = g->find_npc( escort_id );
+            witness = g->find_npc( witness_id ); listener = g->find_npc( listener_id );
+            REQUIRE( scene.collector ); REQUIRE( scene.escort ); REQUIRE( witness ); REQUIRE( listener );
+            payer = resident ? static_cast<Character *>( g->find_npc( payer_id ) ) : &get_avatar(); REQUIRE( payer );
+            first = &*here.i_at( source ).begin();
+            stolen_coin.reset();
+            if( reload_pickup ) {
+                // Keep the two real saved occurrences in their native order so
+                // the fail-before control reaches Pay even when loading loses
+                // their UIDs. Production never uses this fixture ordering.
+                std::vector<item *> loaded;
+                you.visit_items( [&]( item *it, item * ) {
+                    if( it->typeId() == itype_id( "coin_gold" ) ) { loaded.push_back( it ); }
+                    return VisitResponse::NEXT;
+                } );
+                REQUIRE( loaded.size() == pickup_order.size() );
+                for( size_t i = 0; i < loaded.size(); ++i ) {
+                    CHECK( loaded[i]->uid().get_value() == pickup_order[i] );
+                    REQUIRE( loaded[i]->is_old_owner( *witness ) );
+                    if( pickup_order[i] == coin_uid ) { stolen_coin = item_location( you, loaded[i] ); }
+                }
+                REQUIRE( stolen_coin );
+                CHECK( ( **stolen_coin ).uid().get_value() == coin_uid );
+                CHECK( loaded[0]->stacks_with( *loaded[1] ) );
+                CHECK( loaded[0]->uid() != loaded[1]->uid() );
+            } else {
+            you.visit_items( [&]( item *part, item * ) {
+                if( part->get_var( "r067_permission_subject", "" ) == std::to_string( coin_uid ) ) {
+                    CHECK( part->typeId() == itype_id( "coin_gold" ) );
+                    CHECK( part->get_owner() == you.get_faction_id() );
+                    std::cout << "R067_PERMISSION_RELOAD original_uid=" << coin_uid
+                              << " current_uid=" << part->uid().get_value()
+                              << " old_owner=" << part->get_old_owner().str() << '\n';
+                    REQUIRE_FALSE( stolen_coin );
+                    stolen_coin = item_location( you, part );
+                }
+                return VisitResponse::NEXT;
+            } );
+            REQUIRE( stolen_coin ); CHECK_FALSE( ( **stolen_coin ).is_old_owner( *witness ) );
+            CHECK( witness->known_property_thefts.back().property.front().source_uid == coin_uid );
+            }
+            manager.set_descriptor_observer( drive );
+        }
+    }
+    const auto check_unresolved_property = [&]() {
+        if( !unrelated_property ) { return; }
+        int present = 0;
+        you.visit_items( [&]( const item *part, const item * ) {
+            if( part->get_var( "r067_unresolved_property", "" ) == std::to_string( unresolved_uid ) ) {
+                ++present; CHECK( part->get_old_owner() == faction_id( "free_merchants" ) );
+                CHECK( part->get_owner() == you.get_faction_id() );
+            }
+            return VisitResponse::NEXT;
+        } );
+        CHECK( present == 1 );
+    };
+    check_unresolved_property();
+    const std::int64_t selected_coin_uid = reload_pickup ? ( **stolen_coin ).uid().get_value() : 0;
+    here.invalidate_visibility_cache(); here.build_map_cache( payer->posz() );
+    if( outcome != "unwitnessed" && outcome != "sleeping_witness" ) {
+        REQUIRE( witness->sees( here, *payer ) ); REQUIRE( witness->sees( here, *scene.collector ) );
+        REQUIRE( witness->sees( here, source ) );
+    }
+    if( outcome == "opaque_source" ) { REQUIRE_FALSE( here.sees_some_items( source, *witness ) ); }
+    CHECK( npc_trading::encounter_payment_identity( *scene.collector, *payer ).empty() == false );
+    REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    manager.set_descriptor_observer( {} );
+    const bool paid = outcome != "cancel" && outcome.rfind( "stale_", 0 ) != 0;
+    const bool knows = paid && outcome != "unwitnessed" && outcome != "sleeping_witness" &&
+                       outcome != "opaque_source" && outcome != "hallucinated_witness" &&
+                       ( !pocket_control || visible_pocket );
+    CHECK( demands == 1 );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == ( paid ? "paid" : "fight" ) );
+    CHECK( witness->knows_property_theft_by( collector_id ) == knows );
+    CHECK( witness->knows_property_theft_by( you.getID() ) == ( paid && knows_pickup ) );
+    if( paid ) { CHECK( scene.collector->attitude_to( you ) == Creature::Attitude::NEUTRAL ); }
+    CHECK( witness->get_faction()->likes_u == faction_likes_before ); // no automatic faction war/player blame
+    CHECK_FALSE( listener->knows_property_theft_by( collector_id ) );
+    if( hears_report ) {
+        REQUIRE_FALSE( witness->is_mute() ); REQUIRE_FALSE( witness->in_sleep_state() );
+        REQUIRE_FALSE( witness->duty_incapacitated() );
+        REQUIRE( listener->can_hear( witness->pos_bub(), witness->get_shout_volume() ) );
+        REQUIRE( listener->is_blind() );
+        REQUIRE( g->find_npc( witness_id ) == witness );
+        INFO( "emitted speech volume=" << witness->get_shout_volume() );
+    }
+    if( outcome == "speaker_dead" ) {
+        witness->set_part_hp_cur( bodypart_id( "torso" ), 0 ); REQUIRE( witness->is_dead() );
+    } else if( outcome == "speaker_removed" ) {
+        g->remove_npc( witness_id ); overmap_buffer.remove_npc( witness_id ); witness = nullptr;
+        REQUIRE_FALSE( g->find_npc( witness_id ) );
+    } else if( outcome == "speaker_merge" ) {
+        const auto emitted = witness->known_property_thefts.back();
+        auto later = emitted;
+        item new_property( itype_id( "coin_gold" ) ); new_property.set_owner( witness->get_fac_id() );
+        later.property.push_back( { new_property.uid().get_value(), new_property.typeId(), 1,
+                                   witness->get_fac_id(), witness->pos_abs() } );
+        later.culprit_ids.push_back( you.getID() );
+        REQUIRE( witness->learn_property_theft( later ) );
+        REQUIRE( witness->known_property_thefts.back().property.size() == emitted.property.size() + 1 );
+    }
+    if( hears_report || outcome == "deaf_listener" ) {
+        sounds::process_sound_markers( listener, true );
+        CHECK( listener->knows_property_theft_by( collector_id ) == ( paid && hears_report ) );
+    }
+    // Use the real scheduler's loaded-NPC cutoff policy. The marked report
+    // still follows native hearing when the unrelated avatar is farther away.
+    for( npc &actor : g->all_npcs() ) {
+        sounds::process_sound_markers( &actor,
+            rl_dist( actor.pos_bub(), you.pos_bub() ) >= MAX_VIEW_DISTANCE );
+    }
+    sounds::process_sound_markers( &you );
+    CHECK( listener->knows_property_theft_by( collector_id ) == ( paid && hears_report ) );
+    CHECK_FALSE( listener->knows_property_theft_by( you.getID() ) );
+    if( hears_report ) {
+        REQUIRE( listener->known_property_thefts.size() == 1 );
+        CHECK( listener->known_property_thefts.front().property.size() == 8 );
+    }
+    const auto check_custody = [&]() {
+        tinymap store; store.load( home, false ); int count = 0;
+        for( const auto &p : store.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            for( const item &goods : store.cast_to_map()->i_at( p ) ) {
+                if( reload_pickup && goods.typeId() == itype_id( "coin_gold" ) ) {
+                    REQUIRE( goods.has_var( "shakedown_source" ) );
+                    const auto receipt = json_loader::from_string( goods.get_var( "shakedown_source", "" ) ).get_object();
+                    receipt.allow_omitted_members();
+                    const auto property = receipt.get_array( "property" ); REQUIRE( property.size() == 1 );
+                    const auto transferred = property.get_object( 0 ); transferred.allow_omitted_members();
+                    CHECK( transferred.get_int( "source_uid" ) == selected_coin_uid );
+                    std::cout << "R067_PICKUP_PAYMENT outcome=" << outcome << " receiver=" << payer_id.get_value()
+                              << " selected_uid=" << selected_coin_uid
+                              << " committed_source_uid=" << transferred.get_int( "source_uid" ) << '\n';
+                }
+                if( goods.typeId() != itype_id( "m240" ) ) { continue; }
+                ++count; CHECK( goods.get_owner() == scene.collector->get_fac_id() );
+                REQUIRE( goods.has_var( "shakedown_source" ) );
+                const auto provenance = json_loader::from_string( goods.get_var( "shakedown_source", "" ) ).get_object();
+                provenance.allow_omitted_members();
+                CHECK( provenance.get_int( "receiver_id" ) == payer_id.get_value() );
+                CHECK( provenance.get_string( "site_id" ) == scene.site().site_id );
+                for( const JsonObject property : provenance.get_array( "property" ) ) {
+                    property.allow_omitted_members();
+                    CHECK( property.get_string( "owner" ) == ( pocket_control ? payer_faction : "free_merchants" ) );
+                }
+            }
+        }
+        CHECK( count == ( paid ? 8 : 0 ) );
+    };
+    check_custody();
+    if( knows && witness ) {
+        const auto &fact = witness->known_property_thefts.back();
+        CHECK( fact.receiver_id == payer_id ); CHECK( fact.collector_id == collector_id );
+        CHECK( fact.wronged_faction == faction_id( "free_merchants" ) ); CHECK( fact.property.size() == ( pocket_control ? 1 : 8 + ( knows_pickup || outcome == "returned" ? 1 : 0 ) +
+                                       ( outcome == "speaker_merge" ? 1 : 0 ) ) );
+        CHECK( std::any_of( fact.property.begin(), fact.property.end(), [&]( const auto &goods ) { return goods.source_uid == ( pocket_control ? hidden_uid : first_uid ); } ) );
+        CHECK_FALSE( witness->learn_property_theft( fact ) );
+        if( outcome == "witnessed" ) {
+            // Native perception selects an actual culprit; native attack and
+            // received-attack ownership support individual defensive retaliation.
+            INFO( "witness=" << witness->pos_abs().to_string() << " collector=" <<
+                  scene.collector->pos_abs().to_string() << " escort=" << scene.escort->pos_abs().to_string() );
+            item witness_weapon( itype_id( "spear_wood" ) );
+            REQUIRE( witness->wield( witness_weapon ) );
+            witness->personality.bravery = 10;
+            witness->rules.engagement = combat_engagement::ALL;
+            witness->set_skill_level( skill_id( "melee" ), 10 );
+            witness->rules.clear_flag( ally_rule::forbid_engage );
+            witness->rules.clear_flag( ally_rule::follow_close );
+            witness->regen_ai_cache();
+            REQUIRE( witness->current_target() != nullptr );
+            CHECK( ( witness->current_target()->as_npc() == scene.collector || witness->current_target()->as_npc() == scene.escort ) );
+            // Let the native combat motor approach and attack its perceived
+            // culprit, rather than calling melee from a nonadjacent location.
+            for( int turn = 0; turn < 20 &&
+                 !scene.collector->property_conflict_attackers.count( witness_id ) &&
+                 !scene.escort->property_conflict_attackers.count( witness_id ); ++turn ) {
+                witness->set_moves( 1000 ); witness->move();
+                INFO( "after native motor witness=" << witness->pos_abs().to_string() <<
+                      " danger=" << witness->get_ai_danger() << " path=" << witness->path.size() );
+            }
+            CHECK( ( scene.collector->property_conflict_attackers.count( witness_id ) == 1 ||
+                     scene.escort->property_conflict_attackers.count( witness_id ) == 1 ) );
+            const npc &defender = scene.collector->property_conflict_attackers.count( witness_id ) ?
+                                  *scene.collector : *scene.escort;
+            CHECK( defender.attitude_to( *witness ) == Creature::Attitude::HOSTILE );
+            CHECK_FALSE( scene.collector->hit_by_player );
+            CHECK( scene.collector->attitude_to( you ) == Creature::Attitude::NEUTRAL );
+        }
+    }
+    if( pocket_control && !visible_pocket ) { CHECK( witness->known_property_thefts.empty() ); }
+    if( resolved_pickup ) {
+        CHECK_FALSE( witness->knows_property_theft_by( you.getID() ) );
+        CHECK( witness->known_property_thefts.front().voluntary_pickup ); // history remains
+    }
+    if( paid && ( outcome == "witnessed" || outcome == "communicated" || outcome == "knowing" || reload_pickup ||
+                  resolved_pickup || pocket_control ) ) {
+        const std::string world_name = world_generator->active_world->world_name;
+        for( int iteration = 0; iteration < 2; ++iteration ) {
+            REQUIRE( g->save() ); REQUIRE( turn_handler::cleanup_at_end() );
+            world_generator->set_active_world( nullptr ); REQUIRE( g->load( world_name ) );
+            scene.collector = g->find_npc( collector_id ); scene.escort = g->find_npc( escort_id );
+            REQUIRE( scene.collector ); REQUIRE( scene.escort );
+            const npc *restored = g->find_npc( witness_id ); REQUIRE( restored );
+            CHECK( restored->knows_property_theft_by( collector_id ) == knows );
+            CHECK( restored->knows_property_theft_by( you.getID() ) == ( knows_pickup ) );
+            const npc *heard = g->find_npc( listener_id ); REQUIRE( heard );
+            CHECK( heard->knows_property_theft_by( collector_id ) == ( outcome == "communicated" ) );
+            if( outcome.find( "selected_" ) == 0 ) {
+                REQUIRE( get_map().i_at( get_map().get_bub( source_abs ) ).size() == 1 );
+                CHECK( get_map().i_at( get_map().get_bub( source_abs ) ).begin()->all_items_top().empty() );
+            } else { CHECK( get_map().i_at( get_map().get_bub( source_abs ) ).empty() ); }
+            CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), scene.surface( you ), 1000 ) );
+            check_custody(); check_unresolved_property();
+        }
+    }
+}
+
+TEST_CASE( "committed native local payment teaches actual theft culprits and preserves custody",
+           "[bandit_live_world][payment_theft_067]" )
+{
+    check_payment_property_knowledge( GENERATE( false, true ), GENERATE(
+        std::string( "witnessed" ), std::string( "unwitnessed" ), std::string( "communicated" ),
+        std::string( "deaf_listener" ), std::string( "cancel" ), std::string( "storage_retry" ),
+        std::string( "stale_stash" ), std::string( "stale_owner" ), std::string( "stale_position" ),
+        std::string( "knowing" ), std::string( "coerced" ), std::string( "unregistered_building" ),
+        std::string( "sleeping_witness" ), std::string( "opaque_source" ), std::string( "hallucinated_witness" ) ) );
+}
+
+TEST_CASE( "native payment knowledge respects pocket visibility permission and emitted speech",
+           "[bandit_live_world][payment_knowledge_review_067]" )
+{
+    check_payment_property_knowledge( GENERATE( false, true ), GENERATE(
+        std::string( "opaque_pocket" ), std::string( "transparent_pocket" ), std::string( "open_pocket" ),
+        std::string( "nested_opaque_pocket" ), std::string( "selected_hidden_child" ),
+        std::string( "selected_visible_child" ), std::string( "allowed_keep" ),
+        std::string( "allowed_keep_reload" ), std::string( "returned" ), std::string( "speaker_dead" ),
+        std::string( "speaker_removed" ), std::string( "speaker_merge" ), std::string( "communicated" ),
+        std::string( "deaf_listener" ), std::string( "cancel" ), std::string( "knowing" ),
+        std::string( "coerced" ), std::string( "unwitnessed" ) ) );
+}
+
+TEST_CASE( "native permission resolves named property without pardoning unrelated theft",
+           "[bandit_live_world][payment_permission_resolution_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    const std::string outcome = GENERATE( std::string( "allowed_keep" ), std::string( "allowed_keep_reload" ) );
+    check_payment_property_knowledge( resident, outcome, true );
+}
+
+TEST_CASE( "unresolved witnessed property keeps exact identity through nested reload and payment",
+           "[bandit_live_world][payment_pickup_reload_067]" )
+{
+    check_payment_property_knowledge( GENERATE( false, true ), GENERATE(
+        std::string( "knowing_reload" ), std::string( "unobserved_identical_reload" ) ) );
 }

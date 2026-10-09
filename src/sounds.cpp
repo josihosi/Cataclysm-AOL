@@ -208,6 +208,7 @@ struct sound_event {
     std::string season;
     std::optional<npc_alarm> alarm;
     std::optional<sounds::robbery_demand> robbery;
+    std::optional<sounds::property_theft_report> theft;
 };
 
 struct significant_sound_event {
@@ -438,7 +439,7 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     }
     sounds_since_last_turn.emplace_back( p,
                                          sound_event{ vol, category, description, ambient,
-                                                 false, id, variant, seas_str, std::nullopt, std::nullopt } );
+                                                 false, id, variant, seas_str, std::nullopt, std::nullopt, std::nullopt } );
     record_significant_sound( p, vol, significant_kind );
 }
 
@@ -480,6 +481,17 @@ void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
     }
 }
 
+void sounds::attach_property_theft_report( const tripoint_bub_ms &speaker,
+        const property_theft_report &report )
+{
+    if( !sounds_since_last_turn.empty() &&
+        tripoint_bub_ms( sounds_since_last_turn.back().first ) == speaker &&
+        sounds_since_last_turn.back().second.category == sound_t::alert &&
+        sounds_since_last_turn.back().second.volume > 0 ) {
+        sounds_since_last_turn.back().second.theft = report;
+    }
+}
+
 void sounds::sound( const tripoint_bub_ms &p, int vol, sound_t category,
                     const translation &description,
                     bool ambient, const std::string &id, const std::string &variant )
@@ -502,7 +514,7 @@ void sounds::add_footstep( const tripoint_bub_ms &p, int volume, int, monster *,
     const season_type seas = season_of_year( calendar::turn );
     const std::string seas_str = season_str( seas );
     sounds_since_last_turn.emplace_back( p, sound_event { volume,
-                                         sound_t::movement, footstep, false, true, "", "", seas_str, std::nullopt, std::nullopt } );
+                                         sound_t::movement, footstep, false, true, "", "", seas_str, std::nullopt, std::nullopt, std::nullopt } );
 }
 
 template <typename C>
@@ -733,7 +745,7 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
         // so the references may become invalid after the vector enlarged its internal buffer
         const tripoint_bub_ms pos = tripoint_bub_ms( sounds_since_last_turn[i].first );
         const sound_event sound = sounds_since_last_turn[i].second;
-        if( robbery_only && !sound.robbery ) {
+        if( robbery_only && !sound.robbery && !sound.theft ) {
             continue;
         }
         // This row observes the real queued event and this delivery pass, not a
@@ -903,6 +915,12 @@ void sounds::process_sound_markers( Character *you, bool robbery_only )
                 continue;
             }
         }
+        if( sound.theft && you->is_npc() && !you->is_dead_state() &&
+            !you->in_sleep_state() && !you->has_effect( effect_narcosis ) &&
+            !you->has_effect( efftype_id( "npc_suspend" ) ) ) {
+            you->as_npc()->receive_property_theft_report( *sound.theft );
+        }
+
         const std::string &description = sound.description.empty() ? _( "a noise" ) : sound.description;
         if( you->is_npc() ) {
             if( !sound.ambient ) {

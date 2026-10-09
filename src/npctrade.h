@@ -70,6 +70,8 @@ bool trade( npc &p, int cost, const std::string &deal, int you_nearby_item_radiu
 // Applies the selection made by the existing trade UI. The physical payer
 // can be a contacted camp member while the avatar controls the response.
 bool complete_trade( npc &trader, Character &payer, trade_ui::trade_result_t &result );
+// Transient native transaction binding; current encounter still owns authority.
+std::string encounter_payment_identity( const npc &trader, const Character &payer );
 // Shakedown payments use the same selection/prices but deposit actual items at
 // the validated home camp instead of testing or filling the collector's pockets.
 bool trade_to_stash( npc &trader, Character &payer, const tripoint_abs_omt &home,

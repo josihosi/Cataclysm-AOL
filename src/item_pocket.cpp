@@ -2259,7 +2259,8 @@ std::list<item> &item_pocket::edit_contents()
     return contents;
 }
 
-ret_val<item *> item_pocket::insert_item( const item &it,
+template<typename Item>
+ret_val<item *> item_pocket::insert_item_impl( Item &&it,
         const bool into_bottom, bool restack_charges, bool ignore_contents )
 {
     ret_val<item_pocket::contain_code> containable = can_contain( it, ignore_contents );
@@ -2268,24 +2269,39 @@ ret_val<item *> item_pocket::insert_item( const item &it,
         return ret_val<item *>::make_failure( nullptr, containable.str() );
     }
 
+    const bool counted = it.count_by_charges();
+    const units::volume added_volume = bulk_fill_volume ? it.volume() : 0_ml;
+    const units::mass added_weight = bulk_fill_volume ? it.weight() : 0_gram;
     item *inserted = nullptr;
     if( !into_bottom ) {
-        contents.push_front( it );
+        contents.push_front( std::forward<Item>( it ) );
         inserted = &contents.front();
     } else {
-        contents.push_back( it );
+        contents.push_back( std::forward<Item>( it ) );
         inserted = &contents.back();
     }
-    if( restack_charges && it.count_by_charges() ) {
+    if( restack_charges && counted ) {
         inserted = restack( inserted );
     }
     if( bulk_fill_volume ) {
         // restack conserves total volume/weight, so the inserted item's own
         // contribution is the delta regardless of any merge.
-        *bulk_fill_volume += it.volume();
-        *bulk_fill_weight += it.weight();
+        *bulk_fill_volume += added_volume;
+        *bulk_fill_weight += added_weight;
     }
     return ret_val<item *>::make_success( inserted );
+}
+
+ret_val<item *> item_pocket::insert_item( const item &it, const bool into_bottom,
+                                        bool restack_charges, bool ignore_contents )
+{
+    return insert_item_impl( it, into_bottom, restack_charges, ignore_contents );
+}
+
+ret_val<item *> item_pocket::insert_item( item &&it, const bool into_bottom,
+                                        bool restack_charges, bool ignore_contents )
+{
+    return insert_item_impl( std::move( it ), into_bottom, restack_charges, ignore_contents );
 }
 
 std::pair<item_location, item_pocket *> item_pocket::best_pocket_in_contents(

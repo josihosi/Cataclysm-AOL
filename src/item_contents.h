@@ -275,6 +275,7 @@ class item_contents
          * Called when adding an item as pockets to a molle item.
          */
         void add_pocket( const item &pocket );
+        void add_pocket( item &&pocket );
 
         /*
          * Called when removing a molle pocket.
@@ -339,7 +340,11 @@ class item_contents
          * other restrictions, since these pockets are not considered to be normal "containers".
          */
         ret_val<item *> insert_item( const item &it, pocket_type pk_type,
-                                     bool ignore_contents = false, bool unseal_pockets = false );
+                                     bool ignore_contents = false, bool unseal_pockets = false,
+                                     bool restack_charges = true );
+        ret_val<item *> insert_item( item &&it, pocket_type pk_type,
+                                     bool ignore_contents = false, bool unseal_pockets = false,
+                                     bool restack_charges = true );
         void force_insert_item( const item &it, pocket_type pk_type );
         bool can_unload_liquid() const;
 
@@ -455,13 +460,24 @@ class item_contents
         void info( std::vector<iteminfo> &info, const iteminfo_query *parts ) const;
 
         /** Read the items in the MOD pocket only. */
-        void read_mods( const item_contents &read_input );
+        void read_mods( item_contents &read_input );
         void combine( const item_contents &read_input, bool convert = false, bool into_bottom = false,
+                      bool restack_charges = true, bool ignore_contents = false );
+        // Hydration transfers saved physical items; ordinary copying stays distinct.
+        void combine( item_contents &&read_input, bool convert = false, bool into_bottom = false,
                       bool restack_charges = true, bool ignore_contents = false );
 
         void serialize( JsonOut &json ) const;
         void deserialize( const JsonObject &data );
     private:
+        template<typename Input>
+        void combine_impl( Input &read_input, bool convert, bool into_bottom,
+                           bool restack_charges, bool ignore_contents );
+        template<typename Item>
+        ret_val<item *> insert_item_impl( Item &&it, pocket_type pk_type,
+                                         bool ignore_contents, bool unseal_pockets, bool restack_charges );
+        template<typename Item>
+        void add_pocket_impl( Item &&pocket_item );
         /**
          * Find the best pocket of type pk_type the item will fit in.
          * @return nullptr if none is found.

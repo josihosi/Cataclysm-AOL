@@ -3,6 +3,7 @@
 #define CATA_SRC_SOUNDS_H
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string> // IWYU pragma: keep
 #include <string_view>
@@ -19,6 +20,7 @@ class JsonObject;
 class item;
 class monster;
 struct npc_alarm;
+struct npc_property_theft;
 class translation;
 template <typename E> struct enum_traits;
 
@@ -62,6 +64,17 @@ struct robbery_demand {
     character_id speaker_id;
     int emitted_turn = -1;
 };
+
+struct property_theft_report {
+    character_id reporter_id;
+    // A value snapshot of the utterance, owned only by its ephemeral sound.
+    // Current speaker memory/lifetime must not rewrite already-emitted facts.
+    std::shared_ptr<const npc_property_theft> fact;
+};
+// Attach knowledge to the speaker's just-emitted native speech event; this
+// never emits another sound or recomputes a recipient's hearing.
+void attach_property_theft_report( const tripoint_bub_ms &speaker,
+                                 const property_theft_report &report );
 
 // Methods for recording sound events.
 /**

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "coords_fwd.h"
+#include "item_location.h"
 #include "translation.h"
 #include "type_id.h"
 
@@ -26,6 +27,12 @@ namespace base_camps
 {
 enum tab_mode : int;
 } // namespace base_camps
+
+// Actual Setup/Relay Hide Site storage, not every item on its OMT.
+bool is_hide_site_stash( const tripoint_abs_ms &position );
+// Shared native storage writer for Setup and Relay Hide Site.
+bool om_set_hide_site( npc &comp, const tripoint_abs_omt &target,
+                       const drop_locations &deposit, const drop_locations &withdraw = {} );
 
 enum class farm_ops : int {
     plow = 1,

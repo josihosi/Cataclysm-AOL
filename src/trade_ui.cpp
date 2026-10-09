@@ -16,6 +16,7 @@
 #include "color.h"
 #include "enums.h"
 #include "game.h"
+#include "faction_camp.h"
 #include "game_constants.h"
 #include "inventory_ui.h"
 #include "item.h"
@@ -34,6 +35,7 @@
 #include "trap.h"
 #include "type_id.h"
 #include "vehicle.h"
+#include "visitable.h"
 
 static const faction_id faction_your_followers( "your_followers" );
 
@@ -58,10 +60,16 @@ point _pane_size()
 
 } // namespace
 
-trade_preset::trade_preset( Character const &you, Character const &trader )
-    : _u( you ), _trader( trader )
+trade_preset::trade_preset( Character const &you, Character const &trader,
+                            const bool encounter_payment )
+    : _u( you ), _trader( trader ), _encounter_payment( encounter_payment )
 {
     save_state = &inventory_ui_default_state;
+    if( _encounter_payment ) {
+        append_cell( []( const item_location &loc ) {
+            return loc->get_owner().is_null() ? _( "Unowned" ) : loc->get_owner_name();
+        }, _( "Property owner" ) );
+    }
     append_cell(
     [&]( item_location const & loc ) {
         return format_money( npc_trading::trading_price( _trader, _u, { loc, 1 } ) );
@@ -71,9 +79,15 @@ trade_preset::trade_preset( Character const &you, Character const &trader )
 
 bool trade_preset::is_shown( item_location const &loc ) const
 {
+    const Character *carrier = _encounter_payment ? loc.carrier() : &_u;
     return !loc->has_var( VAR_TRADE_IGNORE ) && inventory_selector_preset::is_shown( loc ) &&
-           loc->is_owned_by( _u ) && loc->made_of( phase_id::SOLID ) && !loc->is_frozen_liquid() &&
-           ( !_u.is_wielding( *loc ) || !loc->has_flag( json_flag_NO_UNWIELD ) );
+           ( _encounter_payment || loc->is_owned_by( _u ) ) &&
+           ( !_encounter_payment || loc.where_recursive() != item_location::type::map ||
+             !is_hide_site_stash( get_map().get_abs( loc.pos_bub( get_map() ) ) ) ) &&
+           loc->made_of( phase_id::SOLID ) && !loc->is_frozen_liquid() &&
+           ( !carrier || !carrier->is_wielding( *loc ) ||
+             ( _encounter_payment ? carrier->can_unwield( *loc ).success() :
+               !loc->has_flag( json_flag_NO_UNWIELD ) ) );
 }
 
 std::string trade_preset::get_denial( const item_location &loc ) const
@@ -102,13 +116,25 @@ std::string trade_preset::get_denial( const item_location &loc ) const
         }
     }
 
-    if( _u.is_worn( *loc ) ) {
-        ret_val<void> const ret = const_cast<Character &>( _u ).can_takeoff( *loc );
+    Character *carrier = _encounter_payment ? loc.carrier() : const_cast<Character *>( &_u );
+    if( carrier && carrier->is_worn( *loc ) ) {
+        ret_val<void> const ret = carrier->can_takeoff( *loc );
         if( !ret.success() ) {
-            return _u.replace_with_npc_name( ret.str() );
+            return carrier->replace_with_npc_name( ret.str() );
         }
     }
 
+    if( _encounter_payment ) {
+        for( const item *part : loc->all_items_ptr() ) {
+            const item_location nested( loc, const_cast<item *>( part ) );
+            const bool refused = part->has_var( VAR_TRADE_IGNORE ) ||
+                ( _u.is_npc() ? !_u.as_npc()->wants_to_sell( nested, 1 ).success() :
+                  _trader.is_npc() && !_trader.as_npc()->wants_to_buy( *part, 1 ).success() );
+            if( refused ) {
+                return _( "Contains goods which cannot be included in this payment" );
+            }
+        }
+    }
     return inventory_selector_preset::get_denial( loc );
 }
 
@@ -221,15 +247,24 @@ void add_encounter_trade_sources( inventory_selector &selector, Character &payer
             }
             if( encounter_goods_reachable( payer, tile, item_radius, z_radius ) ) {
                 selector.add_map_items( tile );
-                selector.add_vehicle_items( tile );
+                const auto vehicle = here.veh_at( tile );
+                if( cargo && !cargo->has_feature( "LOCKED" ) &&
+                    !vehicle.part_with_feature( "CARGO_LOCKING", true ) ) {
+                    selector.add_vehicle_items( tile );
+                }
             }
         }
     }
     if( ally_radius > 0 ) {
+        avatar &local_avatar = get_avatar();
+        if( &payer != &local_avatar && &buyer != &local_avatar && !local_avatar.is_dead_state() &&
+            encounter_goods_reachable( payer, local_avatar.pos_bub(), std::max( item_radius, ally_radius ), z_radius ) ) {
+            selector.add_character_items( local_avatar );
+        }
         for( npc &ally : g->all_npcs() ) {
             if( &ally != &payer && &ally != &buyer && ally.is_player_ally() &&
                 ally.is_active() && !ally.is_dead() &&
-                encounter_goods_reachable( payer, ally.pos_bub(), ally_radius, z_radius ) ) {
+                encounter_goods_reachable( payer, ally.pos_bub(), std::max( item_radius, ally_radius ), z_radius ) ) {
                 selector.add_character_items( ally );
             }
         }
@@ -237,9 +272,9 @@ void add_encounter_trade_sources( inventory_selector &selector, Character &payer
 }
 
 std::vector<item_location> encounter_trade_items( Character &payer, const Character &buyer,
-        int item_radius, int ally_radius, int z_radius )
+        int item_radius, int ally_radius, int z_radius, const bool encounter_payment )
 {
-    const trade_preset preset( payer, buyer );
+    const trade_preset preset( payer, buyer, encounter_payment );
     encounter_item_selector selector( payer, preset );
     add_encounter_trade_sources( selector, payer, buyer, item_radius, ally_radius, z_radius );
     return selector.eligible_items();
@@ -248,12 +283,14 @@ std::vector<item_location> encounter_trade_items( Character &payer, const Charac
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
                     const int you_nearby_item_radius, const int you_nearby_ally_radius,
                     basecamp *you_basecamp, const bool encounter_only, const bool goods_to_stash, const int nearby_z_radius )
-    : _upreset{ you, trader }, _tpreset{ trader, you },
+    : _upreset{ you, trader, encounter_only }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
               std::make_unique<pane_t>( this, you, _upreset, std::string(), _pane_size(),
                                         _pane_orig( 1 ) ) },
       _parties{ &trader, &you }, _requested_cost( cost ), _goods_to_stash( goods_to_stash ),
+      _encounter_payment( encounter_only && goods_to_stash ),
+      _encounter_identity( _encounter_payment ? npc_trading::encounter_payment_identity( trader, you ) : "" ),
       _title( std::move( title ) )
 
 {
@@ -368,6 +405,7 @@ trade_ui::trade_result_t trade_ui::perform_trade()
 {
     _exit = false;
     _traded = false;
+    _source_snapshots.clear();
 
     while( !_exit ) {
         _panes[_cpane]->execute();
@@ -386,10 +424,10 @@ trade_ui::trade_result_t trade_ui::perform_trade()
                  _trade_values[_you],
                  _trade_values[_trader],
                  _panes[_you]->to_trade(),
-                 _panes[_trader]->to_trade() };
+                 _panes[_trader]->to_trade(), _source_snapshots, _encounter_payment, _encounter_identity };
     }
 
-    return { false, 0, 0, 0, 0, {}, {} };
+    return { false, 0, 0, 0, 0, {}, {}, {}, false, {} };
 }
 
 std::map<std::string, std::string> trade_ui::semantic_payload() const
@@ -499,6 +537,22 @@ void trade_ui::_process( event const &ev )
             break;
         }
         case event::TRADEOK: {
+            _source_snapshots.clear();
+            if( _goods_to_stash ) {
+                for( const auto *pane : { _panes[_you].get(), _panes[_trader].get() } ) {
+                    for( const auto &entry : pane->to_trade() ) {
+                        if( !entry.first ) { continue; }
+                        trade_source_snapshot snapshot;
+                        snapshot.location = entry.first;
+                        snapshot.position = get_map().get_abs( entry.first.pos_bub( get_map() ) );
+                        entry.first->visit_items( [&]( const item *part, const item * ) {
+                            snapshot.items.emplace_back( part->uid().get_value(), part->typeId(), part->get_owner(), part->charges );
+                            return VisitResponse::NEXT;
+                        } );
+                        _source_snapshots.push_back( std::move( snapshot ) );
+                    }
+                }
+            }
             _traded = _confirm_trade();
             _exit = _traded;
             break;

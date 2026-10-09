@@ -2243,6 +2243,10 @@ void npc::load( const JsonObject &data )
     data.read( "camp_patrol_order_active", camp_patrol_order_active );
     faction_alarm.reset();
     data.read( "faction_alarm", faction_alarm );
+    known_property_thefts.clear();
+    data.read( "known_property_thefts", known_property_thefts );
+    property_conflict_attackers.clear();
+    data.read( "property_conflict_attackers", property_conflict_attackers );
     if( camp_patrol_order_active &&
         ( !assigned_camp || ( mission != NPC_MISSION_GUARD &&
                               mission != NPC_MISSION_GUARD_PATROL ) ) ) {
@@ -2413,6 +2417,12 @@ void npc::store( JsonOut &json ) const
     json.member( "previous_mission", previous_mission );
     json.member( "camp_patrol_order_active", camp_patrol_order_active );
     json.member( "faction_alarm", faction_alarm );
+    if( !known_property_thefts.empty() ) {
+        json.member( "known_property_thefts", known_property_thefts );
+    }
+    if( !property_conflict_attackers.empty() ) {
+        json.member( "property_conflict_attackers", property_conflict_attackers );
+    }
     json.member( "faction_api_ver", faction_api_version );
     if( !fac_id.str().empty() ) { // set in constructor
         json.member( "my_fac", fac_id.c_str() );
@@ -3668,7 +3678,7 @@ void item::deserialize( const JsonObject &data )
         data.read( "contents", read_contents );
         contents.read_mods( read_contents );
         update_modified_pockets();
-        contents.combine( read_contents, false, true, false, true );
+        contents.combine( std::move( read_contents ), false, true, false, true );
 
         //migrate SOFTWARE pocket
         auto pockets_e_legacy = []( item_pocket const & pocket ) {

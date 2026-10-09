@@ -37,6 +37,7 @@
 #include "game_inventory.h"
 #include "item.h"
 #include "item_location.h"
+#include "visitable.h"
 #include "json.h"
 #include "magic.h"
 #include "map.h"
@@ -1062,6 +1063,17 @@ void talk_function::drop_stolen_item( npc &p )
 
 void talk_function::remove_stolen_status( npc &p )
 {
+    // Resolve the native named property, not every unresolved theft from this
+    // faction. Match against held objects before touching the recovery pointer;
+    // it may no longer designate a live held item after a return/removal.
+    // Historical witnessed-pickup facts remain, but no longer authorize a new
+    // accusation after this property's native old-owner status is settled.
+    get_player_character().visit_items( [&]( item *goods, item * ) {
+        if( goods == p.known_stolen_item && goods->is_old_owner( p ) ) {
+            goods->remove_old_owner();
+        }
+        return VisitResponse::NEXT;
+    } );
     if( p.known_stolen_item ) {
         p.known_stolen_item = nullptr;
     }

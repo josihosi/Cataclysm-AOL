@@ -1066,8 +1066,7 @@ bandit_live_world::shakedown_goods_pool live_bandit_encounter_goods_pool(
     bandit_live_world::shakedown_goods_pool pool;
     pool.basecamp_or_camp_scene = input.basecamp_or_camp_scene;
     const auto sources = encounter_trade_items( receiver, trader,
-                         input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
-                         12, input.basecamp_or_camp_scene ? 2 : 0 );
+                         live_bandit_basecamp_reach_radius, 12, 2 );
     for( const item_location &loc : sources ) {
         // A selectable container's native price includes its contents. Keep
         // separately selectable contents, but never count them twice as wealth.
@@ -1256,8 +1255,9 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
                                << " trader=" << trader->getID().get_value();
     const bool paid = npc_trading::trade_to_stash( *trader, payer, site.anchor,
                                           surface.demanded_value, _( "Pay:" ),
-                                          input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
-                                          12, payment_basecamp, encounter_only, input.basecamp_or_camp_scene ? 2 : 0 );
+                                          encounter_only || input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
+                                          12, payment_basecamp, encounter_only,
+                                          encounter_only || input.basecamp_or_camp_scene ? 2 : 0 );
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result=" << ( paid ? "paid" : "cancel_or_short" )
                                << " demanded=" << surface.demanded_value
                                << " payer=" << payer.getID().get_value();

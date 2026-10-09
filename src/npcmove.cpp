@@ -2005,6 +2005,7 @@ void npc::assess_danger() {
     if( attitude_to( guy ) == Attitude::HOSTILE &&
         sees( here, guy.pos_bub( here ) ) ) {
       const bool shakedown_parley_member = camp_patrol_response &&
+          !knows_property_theft_by( guy.getID() ) &&
           bandit_live_world::is_active_shakedown_parley_member(
               overmap_buffer.global_state.bandit_live_world, guy.getID() );
       if( shakedown_parley_member ) {

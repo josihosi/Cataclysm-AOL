@@ -344,6 +344,8 @@ class item_pocket
         // tries to put an item in the pocket. returns false if failure
         ret_val<item *> insert_item( const item &it, bool into_bottom = false,
                                      bool restack_charges = true, bool ignore_contents = false );
+        ret_val<item *> insert_item( item &&it, bool into_bottom = false,
+                                     bool restack_charges = true, bool ignore_contents = false );
         /**
           * adds an item to the pocket with no checks
           * may create a new pocket
@@ -438,6 +440,9 @@ class item_pocket
         // pocket is currently OK with taking on solid (as opposed to liquid/gaseous) items
         static bool ok_for_solids( const item_pocket &pocket );
     private:
+        template<typename Item>
+        ret_val<item *> insert_item_impl( Item &&it, bool into_bottom,
+                                         bool restack_charges, bool ignore_contents );
         // the type of pocket, saved to json
         pocket_type _saved_type = pocket_type::LAST; // NOLINT(cata-serialize)
         bool _saved_sealed = false; // NOLINT(cata-serialize)

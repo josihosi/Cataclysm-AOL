@@ -521,6 +521,37 @@ struct dangerous_sound {
     int volume = 0;
 };
 
+// Durable knowledge of an observed taking. These are source facts, not item
+// pointers, a custody ledger, faction war or an omniscient destination target.
+struct npc_taken_property {
+    std::int64_t source_uid = 0;
+    itype_id type;
+    int quantity = 0;
+    faction_id owner;
+    tripoint_abs_ms position;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &json );
+};
+
+struct npc_property_theft {
+    std::string incident_key;
+    std::string site_id;
+    std::string operation_id;
+    int generation = 0;
+    character_id collector_id;
+    character_id receiver_id;
+    faction_id wronged_faction;
+    std::vector<character_id> culprit_ids;
+    std::vector<npc_taken_property> property;
+    time_point when = calendar::turn_zero;
+    // Native voluntary pickup supplies evidence of involvement; merely agreeing
+    // to an extorted payment never does. Pickup keeps its ordinary response.
+    bool voluntary_pickup = false;
+    bool valid() const;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &json );
+};
+
 // Finite knowledge from a received unit alert, independent of combat targets.
 struct npc_alarm {
     std::string group;
@@ -1323,6 +1354,14 @@ class npc : public Character
                            int heard_volume, const tripoint_bub_ms &spos );
 
         void witness_thievery( item *it ) override;
+        void remember_witnessed_pickup( const item &goods, const Character &thief );
+        bool learn_property_theft( const npc_property_theft &theft );
+        bool knows_property_theft_by( character_id culprit ) const;
+        void announce_property_theft( const std::string &incident_key );
+        bool receive_property_theft_report( const sounds::property_theft_report &report );
+        std::vector<npc_property_theft> known_property_thefts;
+        // Actual launched attacks during a known theft conflict, not faction war.
+        std::set<character_id> property_conflict_attackers;
 
         /* shift() works much like monster::shift(), and is called when the player moves
          * from one submap to an adjacent submap.  It updates our position (shifting by

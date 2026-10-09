@@ -314,9 +314,7 @@ static int om_cutdown_trees_logs( const tripoint_abs_omt &omt_tgt, int chance = 
 static int om_cutdown_trees_trunks( const tripoint_abs_omt &omt_tgt, int chance = 100 );
 
 /// Creates an improvised shelter at @ref omt_tgt and dumps the @ref itms into the building
-static bool om_set_hide_site( npc &comp, const tripoint_abs_omt &omt_tgt,
-                              const drop_locations &itms,
-                              const drop_locations &itms_rem = {} );
+
 /**
  * Opens the overmap so that you can select points for missions or constructions.
  * @param omt_pos start position, used for calculating travel distances
@@ -5801,6 +5799,14 @@ void basecamp::start_setup_hide_site( const mission_id &miss_id, float exertion_
 }
 
 static const tripoint_omt_ms relay_site_stash{ 11, 10, 0 };
+
+bool is_hide_site_stash( const tripoint_abs_ms &position )
+{
+    const auto omt = project_to<coords::omt>( position );
+    return omt.z() == 0 && overmap_buffer.ter( omt ) == oter_faction_hide_site_0 &&
+           position == project_to<coords::ms>( omt ) + relay_site_stash.raw();
+}
+
 
 void basecamp::start_relay_hide_site( const mission_id &miss_id, float exertion_level )
 {

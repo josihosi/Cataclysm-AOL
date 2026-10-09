@@ -714,9 +714,12 @@ bool Character::melee_attack_abstract( Creature &t, bool allow_special,
     if( !hits ) {
         // An avoided attack still breaks this exact peaceful visit. Hits use
         // Character::on_hit; ordinary unrelated melee policy stays unchanged.
-        if( t.is_npc() && ( is_avatar() || ( is_npc() && as_npc()->is_player_ally() ) ) &&
-            bandit_live_world::is_active_shakedown_parley_member(
-                overmap_buffer.global_state.bandit_live_world, t.as_npc()->getID() ) ) {
+        const bool known_property_conflict = is_npc() && t.is_npc() &&
+            as_npc()->knows_property_theft_by( t.as_npc()->getID() );
+        if( t.is_npc() && ( known_property_conflict ||
+            ( ( is_avatar() || ( is_npc() && as_npc()->is_player_ally() ) ) &&
+              bandit_live_world::is_active_shakedown_parley_member(
+                  overmap_buffer.global_state.bandit_live_world, t.as_npc()->getID() ) ) ) ) {
             t.as_npc()->on_attacked( *this );
         }
         int stumble_pen = stumble( *this, cur_weapon );

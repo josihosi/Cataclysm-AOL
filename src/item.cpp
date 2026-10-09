@@ -1425,12 +1425,15 @@ void item::handle_pickup_ownership( Character &c )
             };
             std::vector<Creature *> witnesses = g->get_creatures_if( sees_stealing );
             std::sort( witnesses.begin(), witnesses.end(), sort_criteria );
-            for( Creature *c : witnesses ) {
-                const npc *const elem = c->as_npc();
+            for( Creature *witness : witnesses ) {
+                const npc *const elem = witness->as_npc();
                 if( !elem ) {
                     // Sorted to have NPCs first
                     break;
                 }
+                // Preserve the actual voluntary actor before custody changes;
+                // a later coerced payment or remote UI cannot invent this fact.
+                witness->as_npc()->remember_witnessed_pickup( *this, c );
                 elem->say( "<witnessed_thievery>", 7 );
             }
             if( !witnesses.empty() ) {

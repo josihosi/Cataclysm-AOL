@@ -2373,6 +2373,11 @@ void npc::on_attacked( const Creature &attacker )
 
     hallucination_die( &here, nullptr );
 
+    const bool theft_conflict_attack = attacker.is_npc() &&
+        attacker.as_npc()->knows_property_theft_by( getID() );
+    if( theft_conflict_attack && !is_dead() ) {
+        property_conflict_attackers.insert( attacker.as_npc()->getID() );
+    }
     const bool defender_attacked_shakedown =
         ( attacker.is_avatar() || ( attacker.is_npc() && attacker.as_npc()->is_player_ally() ) ) &&
         bandit_live_world::release_shakedown_combat_on_player_attack(
@@ -2387,11 +2392,12 @@ void npc::on_attacked( const Creature &attacker )
     // This callback represents a launched melee/projectile attack even when damage is avoided.
     // Ranged shot commitment may already have set hit_by_player, so qualify the exact assignment
     // without consulting that flag.  Player-allied defenders break the same relationship.
-    std::string_view anger_branch = "none";
+    std::string_view anger_branch = theft_conflict_attack ? "property_conflict" : "none";
     if( !is_dead() && ( active_covert_scout || defender_attacked_shakedown ) ) {
         anger_branch = "covert_or_shakedown";
         make_angry();
-        hit_by_player = true;
+        hit_by_player = hit_by_player || attacker.is_avatar() ||
+                        ( attacker.is_npc() && attacker.as_npc()->is_player_ally() );
     } else if( attacker.is_avatar() && !is_enemy() && !is_dead() && !guaranteed_hostile() ) {
         anger_branch = "avatar_nonhostile";
         make_angry();
@@ -2407,6 +2413,146 @@ void npc::on_attacked( const Creature &attacker )
     }
     raid_decision_trace::record_attack_callback_outcome( trace_entry, *this,
             defender_attacked_shakedown, active_covert_scout, anger_branch, alarm_invoked, alarm_raised );
+}
+
+void npc_taken_property::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "source_uid", source_uid );
+    json.member( "type", type );
+    json.member( "quantity", quantity );
+    json.member( "owner", owner );
+    json.member( "position", position );
+    json.end_object();
+}
+
+void npc_taken_property::deserialize( const JsonObject &json )
+{
+    json.read( "source_uid", source_uid ); json.read( "type", type );
+    json.read( "quantity", quantity ); json.read( "owner", owner );
+    json.read( "position", position );
+}
+
+bool npc_property_theft::valid() const
+{
+    std::set<character_id> unique;
+    return !incident_key.empty() && !wronged_faction.is_null() && wronged_faction.is_valid() &&
+           !property.empty() && !culprit_ids.empty() &&
+           ( voluntary_pickup || ( !site_id.empty() && !operation_id.empty() && generation > 0 &&
+                                   collector_id.is_valid() && receiver_id.is_valid() ) ) &&
+           std::all_of( culprit_ids.begin(), culprit_ids.end(), [&]( character_id id ) {
+               return id.is_valid() && unique.insert( id ).second;
+           } ) && std::all_of( property.begin(), property.end(), [&]( const auto &goods ) {
+               return goods.source_uid != 0 && goods.type.is_valid() && goods.quantity > 0 &&
+                      goods.owner == wronged_faction;
+           } );
+}
+
+void npc_property_theft::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "incident_key", incident_key ); json.member( "site_id", site_id );
+    json.member( "operation_id", operation_id ); json.member( "generation", generation );
+    json.member( "collector_id", collector_id ); json.member( "receiver_id", receiver_id );
+    json.member( "wronged_faction", wronged_faction ); json.member( "culprit_ids", culprit_ids );
+    json.member( "property", property ); json.member( "when", when );
+    json.member( "voluntary_pickup", voluntary_pickup );
+    json.end_object();
+}
+
+void npc_property_theft::deserialize( const JsonObject &json )
+{
+    json.read( "incident_key", incident_key ); json.read( "site_id", site_id );
+    json.read( "operation_id", operation_id ); json.read( "generation", generation );
+    json.read( "collector_id", collector_id ); json.read( "receiver_id", receiver_id );
+    json.read( "wronged_faction", wronged_faction ); json.read( "culprit_ids", culprit_ids );
+    json.read( "property", property ); json.read( "when", when );
+    json.read( "voluntary_pickup", voluntary_pickup );
+    if( !valid() ) { json.throw_error( "Invalid witnessed property theft" ); }
+}
+
+void npc::remember_witnessed_pickup( const item &goods, const Character &thief )
+{
+    if( is_blind() || in_sleep_state() || has_effect( efftype_id( "narcosis" ) ) ||
+        has_effect( effect_npc_suspend ) ) { return; }
+    npc_property_theft fact;
+    fact.incident_key = "pickup:" + std::to_string( goods.uid().get_value() );
+    fact.wronged_faction = goods.get_owner();
+    fact.culprit_ids = { thief.getID() };
+    fact.property = { { goods.uid().get_value(), goods.typeId(),
+        goods.count_by_charges() ? goods.charges : 1, goods.get_owner(), thief.pos_abs() } };
+    fact.when = calendar::turn;
+    fact.voluntary_pickup = true;
+    learn_property_theft( fact );
+}
+
+bool npc::learn_property_theft( const npc_property_theft &theft )
+{
+    if( !theft.valid() || theft.wronged_faction != get_fac_id() || is_dead() || is_fake() ||
+        is_hallucination() ) {
+        return false;
+    }
+    auto existing = std::find_if( known_property_thefts.begin(), known_property_thefts.end(), [&]( const auto &known ) {
+        return known.incident_key == theft.incident_key && known.wronged_faction == theft.wronged_faction;
+    } );
+    if( existing == known_property_thefts.end() ) {
+        known_property_thefts.push_back( theft );
+        return true;
+    }
+    if( existing->site_id != theft.site_id || existing->operation_id != theft.operation_id ||
+        existing->generation != theft.generation || existing->collector_id != theft.collector_id ||
+        existing->receiver_id != theft.receiver_id || existing->when != theft.when ||
+        existing->voluntary_pickup != theft.voluntary_pickup ) { return false; }
+    npc_property_theft merged = *existing;
+    bool changed = false;
+    for( const auto &source : theft.property ) {
+        const auto previous = std::find_if( merged.property.begin(), merged.property.end(), [&]( const auto &known ) {
+            return known.source_uid == source.source_uid;
+        } );
+        if( previous == merged.property.end() ) {
+            merged.property.push_back( source ); changed = true;
+        } else if( previous->owner != source.owner || previous->quantity != source.quantity ||
+                   previous->position != source.position || previous->type != source.type ) { return false; }
+    }
+    for( const auto id : theft.culprit_ids ) {
+        if( std::find( merged.culprit_ids.begin(), merged.culprit_ids.end(), id ) == merged.culprit_ids.end() ) {
+            merged.culprit_ids.push_back( id ); changed = true;
+        }
+    }
+    if( changed ) { *existing = std::move( merged ); }
+    return changed;
+}
+
+bool npc::knows_property_theft_by( character_id culprit ) const
+{
+    return std::any_of( known_property_thefts.begin(), known_property_thefts.end(), [&]( const auto &known ) {
+        return !known.voluntary_pickup && known.wronged_faction == get_fac_id() &&
+               std::find( known.culprit_ids.begin(), known.culprit_ids.end(), culprit ) != known.culprit_ids.end();
+    } );
+}
+
+void npc::announce_property_theft( const std::string &incident_key )
+{
+    if( is_dead() || is_fake() || is_mute() || is_hallucination() || in_sleep_state() ||
+        has_effect( efftype_id( "narcosis" ) ) || has_effect( effect_npc_suspend ) ) { return; }
+    const auto fact = std::find_if( known_property_thefts.begin(), known_property_thefts.end(),
+    [&]( const auto &known ) {
+        return known.incident_key == incident_key && !known.voluntary_pickup &&
+               known.wronged_faction == get_fac_id() && known.valid();
+    } );
+    if( fact == known_property_thefts.end() ) { return; }
+    const auto utterance = std::make_shared<const npc_property_theft>( *fact );
+    // say owns the actual native voice event. Only an emitted event carries
+    // this immutable utterance through ordinary hearing, independent of later
+    // speaker death, unloading or additional knowledge.
+    say( std::string( _( "Those bandits are stealing our property!" ) ), sounds::sound_t::alert );
+    sounds::attach_property_theft_report( pos_bub(), { getID(), utterance } );
+}
+
+bool npc::receive_property_theft_report( const sounds::property_theft_report &report )
+{
+    return report.reporter_id.is_valid() && report.reporter_id != getID() && report.fact &&
+           !report.fact->voluntary_pickup && learn_property_theft( *report.fact );
 }
 
 void npc_alarm::serialize( JsonOut &json ) const
@@ -3889,6 +4035,13 @@ bool npc::is_travelling() const
 
 Creature::Attitude npc::attitude_to( const Creature &other ) const
 {
+    if( ( other.is_avatar() || other.is_npc() ) &&
+        ( knows_property_theft_by( other.as_character()->getID() ) ||
+          property_conflict_attackers.count( other.as_character()->getID() ) ) ) {
+        // Specific, actually learned culprit knowledge is a real cause that
+        // can end peaceful contact. It does not make an entire faction an enemy.
+        return Attitude::HOSTILE;
+    }
     if( other.is_avatar() ) {
         const bandit_live_world::hostile_operation_player_relationship operation_relationship =
             bandit_live_world::hostile_operation_player_relationship_for(
