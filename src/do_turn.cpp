@@ -76,6 +76,7 @@
 #include "map_scale_constants.h"
 #include "mapbuffer.h"
 #include "scout_observation.h"
+#include "save_continuity.h"
 #include "mapdata.h"
 #include "memorial_logger.h"
 #include "messages.h"
@@ -13434,34 +13435,87 @@ bool cleanup_at_end()
     }
     avatar &u = get_avatar();
     if( g->uquit == QUIT_DIED || g->uquit == QUIT_SUICIDE ) {
-        // Put (non-hallucinations) into the overmap so they are not lost.
-        for( monster &critter : g->all_monsters() ) {
-            g->despawn_monster( critter );
+        const std::string world_name = world_generator->active_world->world_name;
+        const std::filesystem::path world_path =
+            world_generator->active_world->folder_path().get_unrelative_path();
+        g->incomplete_retirement_worlds_[world_name] = world_generator->active_world->timestamp;
+        g->last_confirmed_save_turn_.reset();
+        g->last_save_result_ = "retirement_in_progress";
+        try {
+            const bool already_complete = save_continuity::begin_retirement(
+                world_path, u.get_save_id(), u.getID().get_value(),
+                ( PATH_INFO::graveyarddir_path() / game::timestamp_now() / world_name ).get_unrelative_path(),
+                world_generator->active_world->save_exists( save_t::from_save_id( u.get_save_id() ) ) );
+            if( !already_complete ) {
+                if( !g->retirement_prepared_ ) {
+                    for( monster &critter : g->all_monsters() ) {
+                        if( !g->despawn_monster( critter ) ) {
+                            g->last_save_result_ = "failed_retirement_monster_handoff";
+                            return false;
+                        }
+                    }
+                    if( u.has_trait( trait_HAS_NEMESIS ) ) {
+                        overmap_buffer.remove_nemesis();
+                    }
+                    g->reset_npc_dispositions();
+                    g->retirement_prepared_ = true;
+                }
+                if( !g->retirement_presented_ ) {
+                    g->death_screen();
+                    const auto time_since_load = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now() - g->time_of_last_load );
+                    const auto total_time_played = g->time_played_at_last_load + time_since_load;
+                    get_event_bus().send<event_type::game_over>( total_time_played );
+                    g->retirement_presented_ = true;
+                }
+                // Persist the actual final world, including native game-over
+                // effects and the corpse. Do not serialize a living/dead avatar
+                // back into a character save as a substitute for retirement.
+                if( !g->save_factions_missions_npcs() ) {
+                    g->last_save_result_ = "failed_retirement_master";
+                    return false;
+                }
+                if( !g->save_dimension_data() ) {
+                    g->last_save_result_ = "failed_retirement_dimension";
+                    return false;
+                }
+                if( !g->save_maps() ) {
+                    g->last_save_result_ = "failed_retirement_maps";
+                    return false;
+                }
+                if( !g->save_achievements() ) {
+                    g->last_save_result_ = "failed_retirement_achievements";
+                    return false;
+                }
+                const auto acknowledged =
+                    overmap_buffer.global_state.bandit_live_world.acknowledge_persisted_crossings();
+                if( !acknowledged.empty() && !g->save_maps() ) {
+                    overmap_buffer.global_state.bandit_live_world.rollback_persisted_crossings( acknowledged );
+                    g->last_save_result_ = "failed_retirement_crossing_acknowledgement";
+                    return false;
+                }
+                // The acknowledgment can write character-specific overmap
+                // view files again. Archive only after every world write ends.
+                if( !g->move_save_to_graveyard() ) {
+                    return false;
+                }
+                save_continuity::publish_retirement( world_path,
+                    to_turns<int>( calendar::turn - calendar::turn_zero ), u.get_save_id(),
+                    u.getID().get_value() );
+            }
+            g->incomplete_retirement_worlds_.erase( world_name );
+            g->last_save_result_ = "retired";
+            g->last_confirmed_save_turn_ = to_turns<int>( calendar::turn - calendar::turn_zero );
+            auto &saves = world_generator->active_world->world_saves;
+            const save_t retired = save_t::from_save_id( u.get_save_id() );
+            saves.erase( std::remove( saves.begin(), saves.end(), retired ), saves.end() );
+        } catch( const std::exception &error ) {
+            g->last_save_result_ = "failed_retirement_publication";
+            popup( _( "Death retirement did not complete. The recovery evidence is retained; a living fallback will not be restored. %s" ), error.what() );
+            return false;
         }
-        // if player has "hunted" trait, remove their nemesis monster on death
-        if( u.has_trait( trait_HAS_NEMESIS ) ) {
-            overmap_buffer.remove_nemesis();
-        }
-        // Reset NPC factions and disposition
-        g->reset_npc_dispositions();
-        // Save the factions', missions and set the NPC's overmap coordinates
-        // Npcs are saved in the overmap.
-        g->save_factions_missions_npcs(); //missions need to be saved as they are global for all saves.
-
-        // and the overmap, and the local map.
-        g->save_maps(); //Omap also contains the npcs who need to be saved.
-
-        //save achievements entry
-        g->save_achievements();
-
-        g->death_screen();
-        std::chrono::seconds time_since_load =
-            std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - g->time_of_last_load );
-        std::chrono::seconds total_time_played = g->time_played_at_last_load + time_since_load;
-        get_event_bus().send<event_type::game_over>( total_time_played );
-        // Struck the save_player_data here to forestall Weirdness
-        g->move_save_to_graveyard();
+        // Memorial and unrelated global achievements are not rolled back by
+        // world recovery. The verified graveyard transfer above is authority.
         g->write_memorial_file( g->stats().value_of( event_statistic_last_words )
                                 .get<cata_variant_type::string>() );
         get_memorial().clear();
@@ -13510,11 +13564,16 @@ bool cleanup_at_end()
                 }
             }
 
-            if( queryDelete || get_option<std::string>( "WORLD_END" ) == "delete" ) {
-                world_generator->delete_world( world_generator->active_world->world_name, true );
-
-            } else if( queryReset || get_option<std::string>( "WORLD_END" ) == "reset" ) {
-                world_generator->delete_world( world_generator->active_world->world_name, false );
+            try {
+                if( queryDelete || get_option<std::string>( "WORLD_END" ) == "delete" ) {
+                    world_generator->delete_world( world_name, true );
+                } else if( queryReset || get_option<std::string>( "WORLD_END" ) == "reset" ) {
+                    world_generator->delete_world( world_name, false );
+                }
+            } catch( const std::exception &error ) {
+                g->last_save_result_ = "failed_world_retirement_erasure";
+                popup( _( "World reset/deletion did not complete. Recovery will not recreate this intentionally erased world. %s" ), error.what() );
+                return false;
             }
         } else if( get_option<std::string>( "WORLD_END" ) != "keep" ) {
             std::string tmpmessage;
@@ -17775,7 +17834,13 @@ void game::handle_progress_ui()
 bool game::do_turn()
 {
     if( is_game_over() ) {
-        return turn_handler::cleanup_at_end();
+        if( !turn_handler::cleanup_at_end() ) {
+            // do_turn's result means the game ended, not that retirement saved.
+            // Do not loop through is_game_over and place another corpse after
+            // a failed publication. The explicit retirement receipt stays failed.
+            popup( _( "The game ended, but death retirement was not saved completely. This world's incomplete retirement cannot be loaded or restored as a living character." ) );
+        }
+        return true;
     }
 
     drain_renderer_recovery();
@@ -17943,7 +18008,10 @@ bool game::do_turn()
                 }
 
                 if( is_game_over() ) {
-                    return turn_handler::cleanup_at_end();
+                    if( !turn_handler::cleanup_at_end() ) {
+                        popup( _( "The game ended, but death retirement failed. The living fallback will not be restored." ) );
+                    }
+                    return true;
                 }
 
                 if( uquit == QUIT_WATCH ) {

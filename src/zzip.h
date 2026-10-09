@@ -53,6 +53,7 @@ class zzip
         zzip( std::shared_ptr<mmap_file> file, JsonObject footer );
 
     public:
+        static void invalidate_world_cache( const std::filesystem::path &world );
         ~zzip() noexcept;
 
         zzip( zzip && ) noexcept /* = default */;
@@ -213,6 +214,8 @@ class zzip
         std::vector<entry_layout> get_layout() const;
 
     private:
+        static std::optional<zzip> load_impl( std::shared_ptr<mmap_file> file,
+                const std::filesystem::path &dictionary, const std::filesystem::path &path );
         JsonObject copy_footer() const;
         size_t ensure_capacity_for( size_t bytes );
         size_t write_file_at( std::string_view filename, std::string_view content, size_t offset,

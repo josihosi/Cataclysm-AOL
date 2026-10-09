@@ -527,6 +527,8 @@ struct npc_alarm {
     character_id source_id;
     tripoint_abs_ms incident;
     time_point until = calendar::turn_zero;
+    // Absent on legacy alerts; never infer an attack from their coordinates.
+    std::optional<bool> received_attack = std::nullopt;
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &json );
 };
@@ -1726,11 +1728,13 @@ class npc : public Character
         // after loading a save whose member was already in ordinary sleep.
         void reconcile_active_assault_routine( const std::string &operation_key );
         std::string faction_alarm_group() const;
-        bool raise_faction_alarm( const tripoint_abs_ms &incident );
+        bool raise_faction_alarm( const tripoint_abs_ms &incident, bool received_attack = false );
         bool receive_faction_alarm( const npc_alarm &alarm, int heard_volume );
         bool has_active_faction_alarm() const;
         // Scouting movement uses current incident evidence; alert delivery/waking stays finite.
         bool faction_alarm_requires_response() const;
+        bool scouting_creature_requires_response( const Creature &creature,
+                std::string_view caller ) const;
         bool has_active_alarm_response() const;
         void reconcile_alarm_response();
         bool has_active_operation_duty() const;

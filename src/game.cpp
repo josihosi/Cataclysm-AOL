@@ -1,4 +1,5 @@
 #include "game.h"
+#include "save_continuity.h"
 #include "map_memory.h"
 
 #include <algorithm>
@@ -709,6 +710,8 @@ void game::setup()
     next_mission_id = 1;
     next_item_uid = 1;
     uquit = QUIT_NO;   // We haven't quit the game
+    retirement_prepared_ = false;
+    retirement_presented_ = false;
     bVMonsterLookFire = true;
 
     calendar::set_eternal_night( ::get_option<std::string>( "ETERNAL_TIME_OF_DAY" ) == "night" );
@@ -808,6 +811,12 @@ void game::legacy_migrate_npctalk_var_prefix( global_variables::impl_t &map_of_v
 // Set up all default values for a new game
 bool game::start_game()
 {
+    // New Game's owning menu admits the selected world before setup/create.
+    // A later changed boundary must not be read as a successful new start.
+    if( !can_load_world_after_retirement( world_generator->active_world->world_name ) ||
+        save_continuity::incomplete( world_generator->active_world->folder_path().get_unrelative_path() ) ) {
+        return false;
+    }
     if( !gamemode ) {
         gamemode = std::make_unique<special_game>();
     }
@@ -10835,7 +10844,7 @@ void game::update_overmap_seen()
     }
 }
 
-void game::despawn_monster( monster &critter )
+bool game::despawn_monster( monster &critter )
 {
     bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "despawn_monster", "local" );
     // hallucinations aren't stored, they come and go as they like
@@ -10844,12 +10853,13 @@ void game::despawn_monster( monster &critter )
         // transactionally, leaving this local owner valid on failure.
         if( !overmap_buffer.despawn_monster( critter ) ) {
             debugmsg( "Refusing to delete local monster after failed horde handoff." );
-            return;
+            return false;
         }
     }
     remove_zombie( critter );
     // simulate it being dead so further processing of it (e.g. in monmove) will yield
     critter.set_hp( 0 );
+    return true;
 }
 
 void game::despawn_nonlocal_monsters()

@@ -709,7 +709,110 @@ void record_alarm_edge( const npc &actor, const npc_alarm &alarm,
             << ",\"sleep_before\":" << ( was_sleeping ? "true" : "false" )
             << ",\"sleep_after\":" << ( actor.in_sleep_state() ? "true" : "false" )
             << ",\"incapacitated\":" << ( actor.duty_incapacitated() ? "true" : "false" );
+    payload << ",\"received_attack\":" << ( alarm.received_attack ?
+            ( *alarm.received_attack ? "true" : "false" ) : "null" );
     trace.record_edge( "npc_alarm", turn, payload.str() );
+}
+
+void record_scout_threat_read( const npc &observer, const Creature &creature,
+                             const bandit_live_world::site_record &site,
+                             const std::string_view caller, const scout_threat_read &read )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return;
+    }
+    const selected_npc_scope scope = environment_selected_npcs();
+    const int turn = to_turn<int>( calendar::turn );
+    if( !scope.includes_turn( turn ) || !selected_npc_id( &observer, scope ) ) {
+        return;
+    }
+    std::ostringstream bytes;
+    JsonOut json( bytes );
+    json.start_object();
+    json.member( "npc_id", observer.getID() );
+    json.member( "observer_position", observer.pos_abs() );
+    json.member( "creature_position", creature.pos_abs() );
+    json.member( "creature_kind", creature.is_monster() ? creature.as_monster()->type->id.str() : "character" );
+    json.member( "caller", std::string( caller ) );
+    json.member( "native_attitude", read.native_attitude );
+    json.member( "threatened_member", read.threatened_member );
+    json.member( "distance", read.distance );
+    json.member( "approaching_party", read.approaching );
+    json.member( "melee_reach", read.melee_reach );
+    json.member( "special_range", read.special_range );
+    json.member( "route_reachable", read.route_reachable );
+    json.member( "requires_response", read.response );
+    json.member( "reason", std::string( read.reason ) );
+    const auto &outing = site.active_outing;
+    json.member( "site_id", site.site_id );
+    json.member( "operation_id", outing.activity_id );
+    json.member( "generation", outing.generation );
+    json.member( "operation_phase", bandit_live_world::to_string( outing.phase ) );
+    json.member( "operation_owner", bandit_live_world::to_string( outing.owner ) );
+    json.member( "route_waypoint_index", outing.waypoint_index );
+    json.member( "actor_route_waypoint", outing.actor_route_waypoint );
+    json.member( "handoff_epoch", outing.handoff_epoch );
+    json.member( "source_revision", outing.target_lead_revision );
+    json.member( "watch_omt", outing.selected_watch_omt );
+    json.member( "watch_started_minutes", outing.assessment.observation_started_minutes );
+    json.end_object();
+    std::ostringstream payload;
+    const std::string object = bytes.str();
+    payload << object.substr( 1, object.size() - 2 );
+    trace.record( std::to_string( observer.getID().get_value() ) + ":scout_threat:" +
+                  std::string( caller ) + ":" + creature.pos_abs().to_string(),
+                  "scout_perceived_threat", turn, payload.str() );
+}
+
+void record_scout_alarm_response( const npc &observer, const npc_alarm &alarm,
+                                  const bandit_live_world::site_record &site,
+                                  const npc *source, const scout_alarm_response_read &read )
+{
+    recorder &trace = native_recorder();
+    if( !trace.enabled() ) {
+        return;
+    }
+    const selected_npc_scope scope = environment_selected_npcs();
+    const int turn = to_turn<int>( calendar::turn );
+    if( !scope.includes_turn( turn ) || !selected_npc_id( &observer, scope ) ) {
+        return;
+    }
+    std::ostringstream bytes;
+    JsonOut json( bytes );
+    json.start_object();
+    json.member( "npc_id", observer.getID() );
+    json.member( "source_id", alarm.source_id );
+    json.member( "incident", alarm.incident );
+    json.member( "until", to_turn<int>( alarm.until ) );
+    json.member( "received_attack", alarm.received_attack );
+    json.member( "source_position", source == nullptr ? std::optional<tripoint_abs_ms>() : source->pos_abs() );
+    json.member( "source_available", read.source_available );
+    json.member( "source_incapacitated", read.source_incapacitated );
+    json.member( "source_flight", read.source_flight );
+    json.member( "incident_visible", read.incident_visible );
+    json.member( "incident_field", read.incident_field );
+    json.member( "source_field", read.source_field );
+    json.member( "requires_response", read.response );
+    json.member( "reason", std::string( read.reason ) );
+    const auto &outing = site.active_outing;
+    json.member( "site_id", site.site_id );
+    json.member( "operation_id", outing.activity_id );
+    json.member( "generation", outing.generation );
+    json.member( "operation_phase", bandit_live_world::to_string( outing.phase ) );
+    json.member( "operation_owner", bandit_live_world::to_string( outing.owner ) );
+    json.member( "route_waypoint_index", outing.waypoint_index );
+    json.member( "actor_route_waypoint", outing.actor_route_waypoint );
+    json.member( "handoff_epoch", outing.handoff_epoch );
+    json.member( "source_revision", outing.target_lead_revision );
+    json.member( "watch_omt", outing.selected_watch_omt );
+    json.member( "watch_started_minutes", outing.assessment.observation_started_minutes );
+    json.end_object();
+    std::ostringstream payload;
+    const std::string object = bytes.str();
+    payload << object.substr( 1, object.size() - 2 );
+    trace.record( std::to_string( observer.getID().get_value() ) + ":scout_alarm_response",
+                  "scout_alarm_response", turn, payload.str() );
 }
 
 } // namespace raid_decision_trace
@@ -1957,6 +2060,10 @@ void npc::assess_danger() {
 
         raise_camp_patrol_alarm( critter.pos_abs() );
         raise_faction_alarm( critter.pos_abs() );
+        if( !scouting_creature_requires_response( critter, "perception" ) ) {
+            ai_cache.neutral_guys.emplace_back( g->shared_from( critter ) );
+            continue;
+        }
         ai_cache.hostile_guys.emplace_back( g->shared_from( critter ) );
         // warn and consider the odds for distant enemies
         int dist = rl_dist( pos_bub(), critter.pos_bub() );

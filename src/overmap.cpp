@@ -1,3 +1,4 @@
+#include "save_continuity.h"
 #include "cube_direction.h" // IWYU pragma: associated
 #include "omdata.h" // IWYU pragma: associated
 #include "overmap.h" // IWYU pragma: associated
@@ -3925,6 +3926,7 @@ void overmap::open( overmap_special_batch &enabled_specials )
 // Note: this may throw io errors from std::ofstream
 void overmap::save() const
 {
+    save_continuity::before_file_write( overmapbuffer::player_filename( loc ).get_unrelative_path() );
     write_to_file( overmapbuffer::player_filename( loc ), [&]( std::ostream & stream ) {
         serialize_view( stream );
     } );
@@ -3957,7 +3959,9 @@ void overmap::save() const
         cata_path tmp_path = zzip_path + ".tmp";
         if( z->compact_to( tmp_path.get_unrelative_path(), 2.0 ) ) {
             z.reset();
-            rename_file( tmp_path, zzip_path );
+            if( !rename_file( tmp_path, zzip_path ) ) {
+                throw std::runtime_error( "Failed replacing compacted overmap archive" );
+            }
         }
     } else {
         write_to_file( PATH_INFO::current_dimension_save_path() /

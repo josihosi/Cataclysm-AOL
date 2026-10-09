@@ -7,6 +7,7 @@
 
 #include "filesystem.h"
 #include "ofstream_wrapper.h"
+#include "save_continuity.h"
 
 #if defined(__linux__)
 #include <unistd.h>
@@ -109,6 +110,7 @@ void MAP_SHARING::setDefaults()
 
 void ofstream_wrapper::open( const std::ios::openmode mode )
 {
+    save_continuity::before_file_write( path );
     // Create a *unique* temporary path. No other running program should
     // use this path. If the file exists, it must be of a *former* program
     // instance and can safely be deleted.

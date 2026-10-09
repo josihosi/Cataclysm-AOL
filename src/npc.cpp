@@ -58,6 +58,7 @@
 #include "map.h"
 #include "map_iterator.h"
 #include "mapdata.h"
+#include "mattack_actors.h"
 #include "messages.h"
 #include "mission.h"
 #include "monster.h"
@@ -134,6 +135,7 @@ static const item_group_id Item_spawn_data_survivor_stabbing( "survivor_stabbing
 static const itype_id itype_molotov( "molotov" );
 
 static const json_character_flag json_flag_CANNOT_MOVE( "CANNOT_MOVE" );
+static const json_character_flag json_flag_CANNOT_ATTACK( "CANNOT_ATTACK" );
 static const json_character_flag json_flag_READ_IN_DARKNESS( "READ_IN_DARKNESS" );
 static const json_character_flag json_flag_SAPIOVORE( "SAPIOVORE" );
 
@@ -2401,7 +2403,7 @@ void npc::on_attacked( const Creature &attacker )
         alarm_invoked = true;
         // A received attack establishes an incident here, even without sight
         // of the attacker. It does not establish the attacker's coordinates.
-        alarm_raised = raise_faction_alarm( pos_abs() );
+        alarm_raised = raise_faction_alarm( pos_abs(), true );
     }
     raid_decision_trace::record_attack_callback_outcome( trace_entry, *this,
             defender_attacked_shakedown, active_covert_scout, anger_branch, alarm_invoked, alarm_raised );
@@ -2414,6 +2416,9 @@ void npc_alarm::serialize( JsonOut &json ) const
     json.member( "source_id", source_id );
     json.member( "incident", incident );
     json.member( "until", until );
+    if( received_attack ) {
+        json.member( "received_attack", *received_attack );
+    }
     json.end_object();
 }
 
@@ -2423,6 +2428,8 @@ void npc_alarm::deserialize( const JsonObject &json )
     json.read( "source_id", source_id );
     json.read( "incident", incident );
     json.read( "until", until );
+    received_attack.reset();
+    json.read( "received_attack", received_attack );
 }
 
 std::string npc::faction_alarm_group() const
@@ -2490,42 +2497,190 @@ bool npc::faction_alarm_requires_response() const
         site->active_outing.job_type != "scout" ) {
         return true;
     }
-    const npc *source = g->find_npc( faction_alarm->source_id );
+    const npc *source = nullptr;
+    raid_decision_trace::scout_alarm_response_read read;
+    const auto finish = [&]( const bool response, const std::string_view reason ) {
+        read.response = response;
+        read.reason = reason;
+        raid_decision_trace::record_scout_alarm_response( *this, *faction_alarm, *site, source, read );
+        return response;
+    };
+    if( faction_alarm->received_attack.value_or( false ) ) {
+        // A real launched attack remains a finite credible incident, including
+        // when its attacker is no longer visible. Hearing copies this fact.
+        return finish( true, "authenticated received attack" );
+    }
+    source = g->find_npc( faction_alarm->source_id );
     map &here = get_map();
     // A receiver need not see the incident. An unavailable source or hidden
     // incident cannot certify that its authenticated warning is now clear.
-    if( source == nullptr || !source->is_active() || source->is_dead() ||
-        !here.inbounds( source->pos_abs() ) ||
-        !here.inbounds( faction_alarm->incident ) || source->duty_incapacitated() ||
-        source->get_attitude() == NPCATT_FLEE || source->get_attitude() == NPCATT_FLEE_TEMP ||
-        source->has_effect( effect_npc_flee_player ) ||
-        source->has_effect( efftype_id( "npc_run_away" ) ) ||
-        !source->sees( here, here.get_bub( faction_alarm->incident ) ) ||
-        source->sees_dangerous_field( here.get_bub( faction_alarm->incident ) ) ||
-        source->sees_dangerous_field( source->pos_bub() ) ) {
-        return true;
+    read.source_available = source != nullptr && source->is_active() && !source->is_dead() &&
+                            here.inbounds( source->pos_abs() ) && here.inbounds( faction_alarm->incident );
+    if( !*read.source_available ) {
+        return finish( true, "source or incident unavailable for current assessment" );
+    }
+    read.source_incapacitated = source->duty_incapacitated();
+    if( *read.source_incapacitated ) {
+        return finish( true, "source is incapacitated" );
+    }
+    read.source_flight = source->get_attitude() == NPCATT_FLEE ||
+                        source->get_attitude() == NPCATT_FLEE_TEMP ||
+                        source->has_effect( effect_npc_flee_player ) ||
+                        source->has_effect( efftype_id( "npc_run_away" ) );
+    if( *read.source_flight ) {
+        return finish( true, "source is in native flight" );
+    }
+    read.incident_visible = source->sees( here, here.get_bub( faction_alarm->incident ) );
+    if( !*read.incident_visible ) {
+        return finish( true, "source cannot currently inspect the incident" );
+    }
+    read.incident_field = source->sees_dangerous_field( here.get_bub( faction_alarm->incident ) );
+    if( *read.incident_field ) {
+        return finish( true, "incident has a dangerous field" );
+    }
+    read.source_field = source->sees_dangerous_field( source->pos_bub() );
+    if( *read.source_field ) {
+        return finish( true, "source occupies a dangerous field" );
     }
     for( const Creature *creature : source->get_visible_creatures( MAX_VIEW_DISTANCE ) ) {
         if( creature != source && !creature->is_dead_state() &&
-            source->attitude_to( *creature ) == Creature::Attitude::HOSTILE ) {
-            return true;
+            source->attitude_to( *creature ) == Creature::Attitude::HOSTILE &&
+            source->scouting_creature_requires_response( *creature, "alarm_response" ) ) {
+            return finish( true, "current perceived creature requires a response" );
         }
     }
     // Actual current source perception cleared the visible incident, not merely
     // a null target, zero danger or absence of an attack. Keep the alert itself.
-    return false;
+    return finish( false, "current source assessment permits scouting with alert retained" );
 }
 
-bool npc::raise_faction_alarm( const tripoint_abs_ms &incident )
+bool npc::scouting_creature_requires_response( const Creature &creature,
+        const std::string_view caller ) const
+{
+    const auto *site = bandit_live_world::active_operation_duty_site_for(
+                           overmap_buffer.global_state.bandit_live_world, getID() );
+    if( !site || site->active_outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+        site->active_outing.job_type != "scout" || !creature.is_monster() ) {
+        return true; // Other operation and hostile-character policies are unchanged.
+    }
+    const monster &critter = *creature.as_monster();
+    map &here = get_map();
+    raid_decision_trace::scout_threat_read read;
+    const auto finish = [&]( bool response, std::string_view reason ) {
+        read.response = response;
+        read.reason = reason;
+        raid_decision_trace::record_scout_threat_read( *this, creature, *site, caller, read );
+        return response;
+    };
+    const monster_attitude behavior = critter.attitude( this );
+    read.native_attitude = static_cast<int>( behavior );
+    if( behavior != MATT_ATTACK && behavior != MATT_FOLLOW ) {
+        // HIT_AND_RUN coarsens IGNORE/FLEE to HOSTILE. That is alert knowledge,
+        // not evidence that this currently perceived animal is attacking us.
+        return finish( behavior == MATT_NULL, "native behavior is not attacking or approaching" );
+    }
+    read.approaching = false;
+    for( const auto id : site->active_outing.member_ids ) {
+        const npc *member = g->find_npc( id );
+        if( member && !member->is_dead() && critter.has_dest() &&
+            rl_dist( critter.get_dest(), member->pos_abs() ) <
+            rl_dist( critter.pos_abs(), member->pos_abs() ) ) {
+            read.approaching = true;
+            break;
+        }
+    }
+    if( behavior == MATT_FOLLOW && !*read.approaching ) {
+        return finish( false, "native follow behavior has no approach to this party" );
+    }
+    if( critter.has_flag( json_flag_CANNOT_ATTACK ) ) {
+        return finish( false, "creature cannot attack" );
+    }
+    // Qualify reach to the actual living party, not only the scout whose
+    // perception first raised the alert. A creature beside the partner is real
+    // danger even when this observer is farther away.
+    read.route_reachable = false;
+    for( const auto id : site->active_outing.member_ids ) {
+        const npc *member = g->find_npc( id );
+        if( !member || member->is_dead() ) {
+            continue;
+        }
+        const int distance = rl_dist( critter.pos_abs(), member->pos_abs() );
+        read.threatened_member = id;
+        read.distance = distance;
+        read.melee_reach = distance <= 1 && critter.type->melee_dice > 0 &&
+                           critter.can_reach_to( member->pos_bub() );
+        if( *read.melee_reach ) {
+            return finish( true, "native melee reach" );
+        }
+        for( const auto &[name, special] : critter.type->special_attacks ) {
+            if( !critter.has_special( name ) ) {
+                continue;
+            }
+            if( const auto *gun = dynamic_cast<const gun_actor *>( special.get() ) ) {
+                read.special_range = gun->get_max_range();
+                const auto ammunition = critter.ammo.find( gun->ammo_type );
+                const bool in_range = std::any_of( gun->ranges.begin(), gun->ranges.end(),
+                [distance]( const auto &range ) {
+                    return distance >= range.first.first && distance <= range.first.second;
+                } );
+                if( in_range && critter.sees( here, *member ) &&
+                    ammunition != critter.ammo.end() && ammunition->second > 0 ) {
+                    return finish( true, "native ranged capability and visible reach" );
+                }
+            } else if( const auto *melee = dynamic_cast<const melee_actor *>( special.get() ) ) {
+                read.special_range = melee->range;
+                const int reach_distance = rl_dist( critter.pos_bub().xy(), member->pos_bub().xy() ) +
+                                           4 * std::abs( critter.pos_bub().z() - member->pos_bub().z() );
+                if( ( melee->range == 1 && critter.is_adjacent( member, false ) ) ||
+                    ( melee->range > 1 && reach_distance <= melee->range && critter.sees( here, *member ) ) ) {
+                    // Use the native reach attack's thin-obstacle and occupied
+                    // ray rules; visibility alone does not certify attack reach.
+                    auto ray = line_to( critter.pos_bub(), member->pos_bub(), 0, 0 );
+                    if( !ray.empty() ) {
+                        ray.pop_back();
+                    }
+                    const bool blocked = std::any_of( ray.begin(), ray.end(), [&]( const auto &point ) {
+                        return ( point != critter.pos_bub() && get_creature_tracker().creature_at( point ) ) ||
+                               ( here.impassable( point ) &&
+                                 !here.has_flag( ter_furn_flag::TFLAG_THIN_OBSTACLE, point ) );
+                    } );
+                    if( !blocked && !( melee->no_adjacent && critter.is_adjacent( member, false ) ) ) {
+                        return finish( true, "native special melee reach" );
+                    }
+                }
+            } else {
+                // Legacy function/spell/leap actors do not share a pure reach
+                // query. Do not execute them or certify an attacking creature safe.
+                return finish( true, "attacking or approaching with unclassified special capability" );
+            }
+        }
+        if( !critter.has_flag( mon_flag_IMMOBILE ) && !critter.has_flag( json_flag_CANNOT_MOVE ) &&
+            critter.can_reach_to( member->pos_bub() ) && critter.type->melee_dice > 0 ) {
+            read.route_reachable = !here.route( critter, pathfinding_target::point( member->pos_bub() ) ).empty();
+            if( *read.route_reachable ) {
+                return finish( true, "native attack approach has a physical route" );
+            }
+        }
+    }
+    return finish( false, "no applicable current attack reach or route" );
+}
+
+bool npc::raise_faction_alarm( const tripoint_abs_ms &incident, const bool received_attack )
 {
     const std::string group = faction_alarm_group();
-    if( group.empty() || has_active_faction_alarm() || duty_incapacitated() ) {
+    if( group.empty() || duty_incapacitated() ) {
+        return false;
+    }
+    const bool active = has_active_faction_alarm();
+    if( active && ( !received_attack || faction_alarm->received_attack.value_or( false ) ) ) {
         return false;
     }
     // Match the existing patrol alarm's finite response duration. Only an
     // actual new perception/attack can renew it after expiry.
-    faction_alarm = npc_alarm{ group, getID(), incident, calendar::turn + 30_minutes };
-    raid_decision_trace::record_alarm_edge( *this, *faction_alarm, "perceived_or_attacked",
+    const time_point until = active ? faction_alarm->until : calendar::turn + 30_minutes;
+    faction_alarm = npc_alarm{ group, getID(), incident, until, received_attack };
+    raid_decision_trace::record_alarm_edge( *this, *faction_alarm,
+                                          received_attack ? "received_attack" : "perceived",
                                           in_sleep_state() );
     sounds::sound( pos_bub(), get_shout_volume(), sounds::sound_t::alert,
                    _( "To arms!" ), *faction_alarm );

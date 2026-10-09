@@ -25,6 +25,7 @@
 #include <zstd/common/xxhash.h>
 
 #include "filesystem.h"
+#include "save_continuity.h"
 #include "flexbuffer_cache.h"
 #include "flexbuffer_json.h"
 #include "mmap_file.h"
@@ -134,7 +135,7 @@ struct cached_zstd_context {
     }
 };
 
-std::unordered_map<std::string, cached_zstd_context> cached_contexts;
+std::unordered_map<std::string, std::shared_ptr<cached_zstd_context>> cached_contexts;
 
 } // namespace
 
@@ -332,9 +333,12 @@ std::pair<void *, size_t> read_and_skip_entry_metadata(
 } // namespace
 
 struct zzip::context {
-    context( ZSTD_CCtx *cctx, ZSTD_DCtx *dctx )
-        : cctx{ cctx }, dctx{ dctx }
+    context( std::shared_ptr<cached_zstd_context> owner, std::filesystem::path path )
+        : owner{ std::move( owner ) }, path{ std::move( path ) },
+          cctx{ this->owner->cctx }, dctx{ this->owner->dctx }
     {}
+    std::shared_ptr<cached_zstd_context> owner;
+    std::filesystem::path path;
     ZSTD_CCtx *cctx;
     ZSTD_DCtx *dctx;
 };
@@ -355,6 +359,9 @@ zzip &zzip::operator=( zzip && ) noexcept = default;
 std::optional<zzip> zzip::load( std::filesystem::path const &path,
                                 std::filesystem::path const &dictionary_path )
 {
+    if( !std::filesystem::exists( path ) ) {
+        save_continuity::before_file_write( path );
+    }
     std::shared_ptr<mmap_file> file = mmap_file::map_writeable_file( path );
     int retries = 0;
 
@@ -368,11 +375,17 @@ std::optional<zzip> zzip::load( std::filesystem::path const &path,
         return {};
     }
 
-    return load( std::move( file ), dictionary_path );
+    return load_impl( std::move( file ), dictionary_path, path );
 }
 std::optional<zzip> zzip::load(
     std::shared_ptr<mmap_file> file,
     std::filesystem::path const &dictionary_path )
+{
+    return load_impl( std::move( file ), dictionary_path, {} );
+}
+
+std::optional<zzip> zzip::load_impl( std::shared_ptr<mmap_file> file,
+        const std::filesystem::path &dictionary_path, const std::filesystem::path &path )
 {
     flexbuffers::Reference root;
     std::shared_ptr<parsed_flexbuffer> flexbuffer;
@@ -406,16 +419,14 @@ std::optional<zzip> zzip::load(
     std::optional<zzip> ret{ std::in_place, zzip{std::move( file ), std::move( footer )} };
     zzip &zip = ret.value();
 
-    ZSTD_CCtx *cctx;
-    ZSTD_DCtx *dctx;
+    std::shared_ptr<cached_zstd_context> owner;
     if( auto it = cached_contexts.find( dictionary_path.generic_u8string() );
         it != cached_contexts.end() ) {
-        cctx = it->second.cctx;
-        dctx = it->second.dctx;
+        owner = it->second;
     } else {
-        cctx = ZSTD_createCCtx();
+        ZSTD_CCtx *cctx = ZSTD_createCCtx();
         ZSTD_CCtx_setParameter( cctx, ZSTD_c_compressionLevel, 7 );
-        dctx = ZSTD_createDCtx();
+        ZSTD_DCtx *dctx = ZSTD_createDCtx();
 
         std::vector<char> dictionary;
         if( !dictionary_path.empty() ) {
@@ -426,20 +437,22 @@ std::optional<zzip> zzip::load(
             ZSTD_DCtx_loadDictionary_byReference( dctx, dictionary.data(), dictionary.size() );
         }
 
-        cached_contexts.emplace( dictionary_path.generic_u8string(), cached_zstd_context{ std::move( dictionary ), cctx, dctx } );
+        owner = std::make_shared<cached_zstd_context>( std::move( dictionary ), cctx, dctx );
+        cached_contexts.emplace( dictionary_path.generic_u8string(), owner );
     }
 
+    zip.ctx_ = std::make_unique<zzip::context>( std::move( owner ), path );
     if( needs_footer && !zip.rewrite_footer() ) {
         ret.reset();
         return ret;
     }
 
-    zip.ctx_ = std::make_unique<zzip::context>( cctx, dctx );
     return ret;
 }
 
 bool zzip::add_file( std::filesystem::path const &zzip_relative_path, std::string_view content )
 {
+    save_continuity::before_file_write( ctx_->path );
     size_t estimated_size = ZSTD_compressBound( content.length() );
 
     JsonObject footer_copy = copy_footer();
@@ -487,6 +500,7 @@ bool zzip::add_file( std::filesystem::path const &zzip_relative_path, std::strin
 bool zzip::copy_files( std::vector<std::filesystem::path> const &zzip_relative_paths,
                        zzip const &from, bool shrink_to_fit )
 {
+    save_continuity::before_file_write( ctx_->path );
     if( zzip_relative_paths.empty() ) {
         return true;
     }
@@ -846,6 +860,7 @@ bool zzip::update_footer( JsonObject const &original_footer,
 // Scans the zzip to read what data we can validate and write a fresh footer.
 bool zzip::rewrite_footer( bool shrink_to_fit )
 {
+    save_continuity::before_file_write( ctx_->path );
     const size_t zzip_len = file_->len();
     size_t scan_offset = 0;
 
@@ -1081,6 +1096,7 @@ bool zzip::extract_to_folder( std::filesystem::path const &folder )
         if( !assure_dir_exist( destination_file_path.parent_path() ) ) {
             return false;
         }
+        save_continuity::before_file_write( destination_file_path );
         std::shared_ptr<mmap_file> file = mmap_file::map_writeable_file( destination_file_path );
         if( !file || !file->resize_file( len ) ) {
             return false;
@@ -1095,6 +1111,7 @@ bool zzip::extract_to_folder( std::filesystem::path const &folder )
 bool zzip::delete_files( std::unordered_set<std::filesystem::path, std_fs_path_hash> const
                          &zzip_relative_paths )
 {
+    save_continuity::before_file_write( ctx_->path );
     size_t empty_estimated_size = ZSTD_compressBound( 0 );
 
     JsonObject footer_copy = copy_footer();
@@ -1175,6 +1192,7 @@ bool zzip::compact_to( std::filesystem::path const &dest, double bloat_factor )
         }
     }
 
+    save_continuity::before_file_write( dest );
     std::unique_ptr<mmap_file> compacted_file = mmap_file::map_writeable_file( dest );
     if( !compacted_file ) {
         return false;
@@ -1196,6 +1214,7 @@ bool zzip::compact_to( std::shared_ptr<mmap_file> const &dest ) const
 
 bool zzip::clear()
 {
+    save_continuity::before_file_write( ctx_->path );
     return file_->resize_file( 0 ) && rewrite_footer( /* shrink_to_fit = */ true );
 }
 
@@ -1212,4 +1231,19 @@ size_t zzip::file_capacity_at( size_t offset ) const
         return 0;
     }
     return file_->len() - offset;
+}
+
+void zzip::invalidate_world_cache( const std::filesystem::path &world )
+{
+    const auto root = std::filesystem::absolute( world ).lexically_normal();
+    for( auto it = cached_contexts.begin(); it != cached_contexts.end(); ) {
+        if( !it->first.empty() ) {
+            const auto relative = std::filesystem::absolute( std::filesystem::u8path( it->first ) ).lexically_normal().lexically_relative( root );
+            if( !relative.empty() && !relative.is_absolute() && *relative.begin() != ".." ) {
+                it = cached_contexts.erase( it );
+                continue;
+            }
+        }
+        ++it;
+    }
 }

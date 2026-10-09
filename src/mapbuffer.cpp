@@ -1,3 +1,4 @@
+#include "save_continuity.h"
 #include "mapbuffer.h"
 
 #include <algorithm>
@@ -428,8 +429,13 @@ void mapbuffer::save_quad(
     std::string s = std::move( stringout ).str();
 
     if( z ) {
-        z->add_file( filename.get_relative_path().filename(), s );
+        if( !z->add_file( filename.get_relative_path().filename(), s ) ) {
+            throw std::runtime_error( "Failed writing compressed submap " + filename.generic_u8string() );
+        }
     } else {
+        // The plain standalone writer owns the same incomplete-publication
+        // boundary as zzip, before it replaces any protected world bytes.
+        save_continuity::before_file_write( filename.get_unrelative_path() );
         // Don't create the directory if it would be empty
         assure_dir_exist( dirname );
         write_to_file( filename, [&]( std::ostream & fout ) {
@@ -439,16 +445,22 @@ void mapbuffer::save_quad(
 
     if( all_uniform && reverted_to_uniform ) {
         if( z ) {
-            z->delete_files( { filename.get_relative_path().filename() } );
+            if( !z->delete_files( { filename.get_relative_path().filename() } ) ) {
+                throw std::runtime_error( "Failed removing reverted compressed submap" );
+            }
         } else {
-            std::filesystem::remove( filename.get_unrelative_path() );
+            if( !std::filesystem::remove( filename.get_unrelative_path() ) ) {
+                throw std::runtime_error( "Failed removing reverted plain submap" );
+            }
         }
     }
     if( z ) {
         cata_path tmp_path = zzip_name + ".tmp";
         if( z->compact_to( tmp_path.get_unrelative_path(), 2.0 ) ) {
             z.reset();
-            rename_file( tmp_path, zzip_name );
+            if( !rename_file( tmp_path, zzip_name ) ) {
+                throw std::runtime_error( "Failed replacing compacted map archive" );
+            }
         }
     }
 }

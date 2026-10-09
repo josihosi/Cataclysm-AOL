@@ -73,12 +73,14 @@
 #include "mod_manager.h"
 #include "options.h"
 #include "output.h"
+#include "semantic_surface.h"
 #include "overmapbuffer.h"
 #include "path_info.h"
 #include "perf.h"
 #include "pimpl.h"
 #include "popup.h"
 #include "safemode_ui.h"
+#include "save_continuity.h"
 #if defined(TILES)
 #include "sdltiles.h"
 #endif
@@ -353,36 +355,86 @@ void game::load_map( const tripoint_abs_sm &pos_sm,
     here.load( pos_sm, true, pump_events );
 }
 
-void game::move_save_to_graveyard()
+bool game::move_save_to_graveyard()
 {
-    const cata_path save_dir      = PATH_INFO::world_base_save_path();
-    const cata_path graveyard_dir = PATH_INFO::graveyarddir_path() / timestamp_now();
-    const std::string prefix      = base64_encode( u.get_save_id() ) + ".";
-
-    if( !assure_dir_exist( graveyard_dir ) ) {
-        debugmsg( "could not create graveyard path '%s'", graveyard_dir );
+    try {
+        save_continuity::archive_retirement( PATH_INFO::world_base_save_path().get_unrelative_path() );
+        return true;
+    } catch( const std::exception &error ) {
+        last_save_result_ = "failed_character_archive_or_exclusion";
+        popup( _( "Character retirement failed. The living save will not be restored. %s" ), error.what() );
+        return false;
     }
+}
 
-    const auto save_files = get_files_from_path( prefix, save_dir );
-    if( save_files.empty() ) {
-        debugmsg( "could not find save files in '%s'", save_dir );
+bool game::can_load_world_after_retirement( const std::string &world ) const
+{
+    // This also handles inability to persist the initial refusal marker while
+    // the process still owns the actual death. It is not crash durability.
+    const auto failed = incomplete_retirement_worlds_.find( world );
+    if( failed == incomplete_retirement_worlds_.end() ) {
+        return true;
     }
+    if( failed->second.empty() || !world_generator->has_world( world ) ) {
+        return false; // Unavailable identity cannot discharge the refusal.
+    }
+    const std::string &current = world_generator->get_world( world )->timestamp;
+    // Intentional deletion and a new world's ordinary creation are a new
+    // identity, even if its displayed name is reused. Durable pending metadata
+    // is still checked independently by prepare_load.
+    return !current.empty() && current != failed->second;
+}
 
-    for( const cata_path &src_path : save_files ) {
-        const cata_path dst_path = graveyard_dir / src_path.get_relative_path().filename();
+bool game::admit_world( const std::string &world, bool &restored )
+{
+    // World registry refresh invalidates callers' WORLD/name references.
+    const std::string selected_world = world;
+    restored = false;
+    if( !world_generator->has_world( selected_world ) ) {
+        return false;
+    }
+    if( !can_load_world_after_retirement( selected_world ) ) {
+        popup( _( "Death retirement did not complete. Entering this world was canceled; a living fallback will not be restored." ) );
+        return false;
+    }
+    if( !save_continuity::prepare_load( world_generator->get_world( selected_world )->folder_path().get_unrelative_path(),
+                                      restored ) ) {
+        return false;
+    }
+    if( restored ) {
+        MAPBUFFER.clear();
+        overmap_buffer.clear();
+        world_generator->set_active_world( nullptr );
+        world_generator->init();
+    }
+    return world_generator->has_world( selected_world );
+}
 
-        if( rename_file( src_path, dst_path ) ) {
-            continue;
+void game::await_retirement_protection()
+{
+    if( !world_generator->active_world ) {
+        return;
+    }
+    const std::string world = world_generator->active_world->world_name;
+    if( can_load_world_after_retirement( world ) ) {
+        return;
+    }
+    const auto path = world_generator->active_world->folder_path().get_unrelative_path();
+    std::optional<semantic_surface_manager_session> session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    while( !save_continuity::retirement_refusal_persisted( path ) ) {
+        if( query_yn( _( "Death retirement failed and no durable refusal could be written. Closing now could restore this character's living save. Resolve the storage failure, then retry retirement? No keeps this pending without advancing play." ) ) ) {
+            turn_handler::cleanup_at_end();
+            if( can_load_world_after_retirement( world ) ) {
+                return; // Actual completed retirement, not refusal credit.
+            }
+        } else {
+            popup( _( "Retry canceled. The unresolved retirement remains in memory; ordinary menu disposal and successful close are unavailable until refusal or retirement is persisted." ) );
         }
-
-        debugmsg( "could not rename file '%s' to '%s'", src_path, dst_path );
-
-        if( remove_file( src_path ) ) {
-            continue;
-        }
-
-        debugmsg( "could not remove file '%s'", src_path );
     }
+    popup( _( "Death retirement is still incomplete (%s), but its refusal is persisted. Closing is now safe; no saved turn or retirement success was confirmed. The living fallback remains unavailable." ), last_save_result_ );
 }
 
 void game::load_master()
@@ -404,22 +456,30 @@ bool game::load_dimension_data()
 
 bool game::load( const std::string &world )
 {
+    // The caller may hold a registry-owned name; init replaces that storage.
+    const std::string world_name = world;
+    bool restored = false;
+    if( !admit_world( world_name, restored ) ) {
+        return false;
+    }
     world_generator->init();
-    WORLD *const wptr = world_generator->get_world( world );
+    WORLD *const wptr = world_generator->get_world( world_name );
     if( !wptr ) {
         return false;
     }
     if( wptr->world_saves.empty() ) {
-        debugmsg( "world '%s' contains no saves", world );
+        debugmsg( "world '%s' contains no saves", world_name );
         return false;
     }
 
     try {
         world_generator->set_active_world( wptr );
         g->setup();
-        g->load( wptr->world_saves.front() );
+        if( !g->load( wptr->world_saves.front() ) ) {
+            return false;
+        }
     } catch( const std::exception &err ) {
-        debugmsg( "cannot load world '%s': %s", world, err.what() );
+        debugmsg( "cannot load world '%s': %s", world_name, err.what() );
         return false;
     }
 
@@ -428,13 +488,24 @@ bool game::load( const std::string &world )
 
 bool game::load( const save_t &name )
 {
+    const save_t selected_save = name;
+    // Only the normal menu/public world loader owns admission and setup.
+    // Refuse a changed boundary rather than asking a second recovery question
+    // after setup has already consumed this world's options/mod definitions.
+    if( !can_load_world_after_retirement( world_generator->active_world->world_name ) ||
+        save_continuity::incomplete( world_generator->active_world->folder_path().get_unrelative_path() ) ) {
+        return false;
+    }
+    if( !world_generator->active_world->save_exists( selected_save ) ) {
+        return false;
+    }
     map &here = get_map();
     last_save_result_ = "unattempted";
     last_confirmed_save_turn_.reset();
 
     const cata_path worldpath = PATH_INFO::world_base_save_path();
     const cata_path save_file_path = PATH_INFO::world_base_save_path() /
-                                     ( name.base_path() + SAVE_EXTENSION );
+                                     ( selected_save.base_path() + SAVE_EXTENSION );
 
     bool abort = false;
     std::optional<int> loaded_character_turn;
@@ -459,7 +530,7 @@ bool game::load( const save_t &name )
                 _( "Character save" ), [&]()
                 {
                     u = avatar();
-                    u.set_save_id( name.decoded_name() );
+                    u.set_save_id( selected_save.decoded_name() );
 
                     if( world_generator->active_world->has_compression_enabled() ) {
                         std::optional<zzip> z = zzip::load( ( save_file_path + zzip_suffix ).get_unrelative_path() );
@@ -496,7 +567,7 @@ bool game::load( const save_t &name )
                 _( "Memorial" ), [&]()
                 {
                     const cata_path log_filename =
-                    worldpath / ( name.base_path() + SAVE_EXTENSION_LOG );
+                    worldpath / ( selected_save.base_path() + SAVE_EXTENSION_LOG );
                     read_from_file_optional(
                         log_filename.get_unrelative_path(),
                     [this]( std::istream & is ) {
@@ -510,7 +581,7 @@ bool game::load( const save_t &name )
 
 #if defined(__ANDROID__)
                     const cata_path shortcuts_filename =
-                    worldpath / ( name.base_path() + SAVE_EXTENSION_SHORTCUTS );
+                    worldpath / ( selected_save.base_path() + SAVE_EXTENSION_SHORTCUTS );
                     if( file_exist( shortcuts_filename ) ) {
                         load_shortcuts( shortcuts_filename );
                     }
@@ -704,6 +775,7 @@ bool game::save_dimension_data()
 {
     cata_path data_file = PATH_INFO::current_dimension_save_path() / SAVE_DIMENSION_DATA;
     return write_to_file( data_file, [&]( std::ostream & fout ) {
+        save_continuity::begin_write( PATH_INFO::world_base_save_path().get_unrelative_path() );
         serialize_dimension_data( fout );
     }, _( "dimension data" ) );
 }
@@ -712,6 +784,7 @@ bool game::save_maps()
     map &here = get_map();
 
     try {
+        save_continuity::begin_write( PATH_INFO::world_base_save_path().get_unrelative_path() );
         here.save();
         overmap_buffer.save(); // can throw
         MAPBUFFER.save(); // can throw
@@ -872,6 +945,11 @@ bool game::save()
     std::chrono::seconds total_time_played = time_played_at_last_load + time_since_load;
     events().send<event_type::game_save>( time_since_load, total_time_played );
     try {
+        if( !can_load_world_after_retirement( world_generator->active_world->world_name ) ) {
+            throw std::runtime_error( "ordinary save cannot replace the process-owned incomplete retirement" );
+        }
+        save_continuity::require_ordinary_save( PATH_INFO::world_base_save_path().get_unrelative_path() );
+        save_continuity::begin_write( PATH_INFO::world_base_save_path().get_unrelative_path() );
         if( !save_player_data() ) {
             last_save_result_ = "failed_player_data";
             return false;
@@ -938,6 +1016,11 @@ bool game::save()
             last_save_result_ = "failed_crossing_acknowledgement";
             return false;
         }
+        // Protect only a genuinely complete connected generation, after the
+        // second map write has acknowledged crossings. Protection failure is
+        // still save failure; the prior complete generation remains independent.
+        save_continuity::publish_complete( PATH_INFO::world_base_save_path().get_unrelative_path(),
+                                          to_turns<int>( calendar::turn - calendar::turn_zero ), u.get_save_id() );
         // The certification digest must describe the completed ordinary
         // save, including any persisted crossing acknowledgement above.
         bandit_live_world_probe::record_certification_save_receipt(

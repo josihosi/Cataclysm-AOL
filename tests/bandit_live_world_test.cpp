@@ -1,11 +1,25 @@
+#include "input.h"
 #include "bandit_live_world.h"
 #include "bandit_live_world_probe.h"
 #include "scout_observation.h"
+#include "save_continuity.h"
+#include "scenario.h"
+#include "start_location.h"
+#include "player_difficulty.h"
+#ifdef __APPLE__
+#include <sys/stat.h>
+#include <mach-o/dyld.h>
+#include <unistd.h>
+#endif
+#include "rng.h"
+#include "zzip.h"
 #include "physical_light.h"
 
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <cstring>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -21,8 +35,17 @@
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32)
+#include "platform_win.h"
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
+
 #include "cata_catch.h"
+#include "catacharset.h"
+#include "cursesdef.h"
 #include "cata_scope_helpers.h"
+#include "cata_utility.h"
 #include "calendar.h"
 #include "damage.h"
 #include "creature_tracker.h"
@@ -42,6 +65,7 @@
 #include "lightmap.h"
 #include "map.h"
 #include "map_helpers.h"
+#include "main_menu.h"
 #include "map_helpers_tests.h"
 #include "monster.h"
 #include "mtype.h"
@@ -2423,7 +2447,7 @@ bandit_live_world::sortie_observation make_typed_visual_observation(
 
 bandit_live_world::world_state make_abstract_threat_test_world( const bool cannibal,
         const int id_base, const int target_distance_omt = 4,
-        const std::string &terrain = "forest" )
+        const std::string &terrain = "forest", const int current_minutes = 100 )
 {
     bandit_live_world::world_state world;
     for( int index = 0; index < 3; ++index ) {
@@ -2438,15 +2462,15 @@ bandit_live_world::world_state make_abstract_threat_test_world( const bool canni
                                    site.anchor.y(), site.anchor.z() );
     const bandit_live_world::structural_bounty_read read =
         bandit_live_world::classify_structural_bounty_terrain( terrain );
-    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, 0 ) );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, target, read, std::max( 0, current_minutes - 100 ) ) );
     const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id(
                                     site.site_id, target, read.terrain_class );
     const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
     REQUIRE( lead != nullptr );
     const bandit_live_world::structural_outing_plan plan =
-        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, current_minutes );
     REQUIRE( plan.valid );
-    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, current_minutes ) );
     REQUIRE( site.active_outing.member_ids.size() == 2 );
     return world;
 }
@@ -42703,9 +42727,18 @@ class r055_scene
         std::vector<std::pair<tripoint_abs_omt, oter_id>> old_terrain;
         std::vector<std::pair<tripoint_abs_sm, std::string>> old_submaps;
         std::vector<tripoint_abs_sm> added_submaps;
+        std::vector<character_id> imported_actor_ids;
 
     public:
         ~r055_scene() {
+            // Complete return can clear the lease and move an imported body
+            // outside the bubble. Resolve identities after reload, not pointers.
+            for( character_id id : imported_actor_ids ) {
+                g->remove_npc( id );
+                if( overmap_buffer.find_npc( id ) ) {
+                    overmap_buffer.remove_npc( id );
+                }
+            }
             sounds::reset_sounds();
             overmap_buffer.global_state.bandit_live_world.clear();
             r054_clear_previous_test_projections();
@@ -42882,6 +42915,7 @@ class r055_scene
                     actor->clear_ai_guard_pos();
                     actor->path.clear();
                 }
+                imported_actor_ids.push_back( actor->getID() );
                 overmap_buffer.insert_npc( actor );
             }
             if( saved_terrain ) {
@@ -42970,6 +43004,7 @@ class r055_scene
         }
 };
 }
+
 
 TEST_CASE( "R051 separated awake homeward pair physically reunites on saved terrain",
            "[bandit_live_world][separated_homeward_055][saved_geometry]" )
@@ -43307,6 +43342,28 @@ TEST_CASE( "homeward reunion refuses a route through known dangerous traps",
 TEST_CASE( "saved homeward fixture restores the surrounding overmap and submaps",
            "[bandit_live_world][separated_homeward_055][fixture_restore]" )
 {
+    const std::string fixture_path = GENERATE( std::string( "tests/data/r055_separated_homeward.json" ),
+                                    std::string( "tests/data/r067_pair_cohesion_5556981.json" ) );
+    std::ifstream input( fixture_path );
+    REQUIRE( input.good() );
+    JsonObject fixture = json_loader::from_string(
+                             std::string( std::istreambuf_iterator<char>( input ), {} ) ).get_object();
+    fixture.allow_omitted_members();
+    std::vector<character_id> imported;
+    for( JsonObject row : fixture.get_array( "actors" ) ) {
+        row.allow_omitted_members();
+        imported.emplace_back( row.get_int( "id" ) );
+    }
+    character_id unrelated_id;
+    on_out_of_scope retire_unrelated( [&]() {
+        if( unrelated_id.get_value() > 0 ) {
+            g->remove_npc( unrelated_id );
+            if( overmap_buffer.find_npc( unrelated_id ) ) {
+                overmap_buffer.remove_npc( unrelated_id );
+            }
+        }
+    } );
+    const tripoint_abs_sm original_position( 257, 282, 0 );
     const tripoint_abs_omt position( 130, 140, 0 );
     const auto before = overmap_buffer.ter( position );
     std::string original_submap;
@@ -43321,7 +43378,7 @@ TEST_CASE( "saved homeward fixture restores the surrounding overmap and submaps"
         r055_scene scene;
         // Capture a generated submap at the fixture location before it is replaced.
         g->place_player_overmap( tripoint_abs_omt( 131, 143, 0 ) );
-        sm = MAPBUFFER.lookup_submap( tripoint_abs_sm( 257, 282, 0 ) );
+        sm = MAPBUFFER.lookup_submap( original_position );
         REQUIRE( sm );
         // A blank grassy map would conceal destructive fixture setup.  Preserve
         // concrete non-default terrain, furniture and a trap across the load.
@@ -43330,6 +43387,8 @@ TEST_CASE( "saved homeward fixture restores the surrounding overmap and submaps"
         const auto prior_furniture = sm->get_furn( sentinel );
         const auto prior_trap = sm->get_trap( sentinel );
         restore_original_sentinel = [&, prior_terrain, prior_furniture, prior_trap, sentinel]() {
+            sm = MAPBUFFER.lookup_submap( original_position );
+            REQUIRE( sm );
             sm->set_ter( sentinel, prior_terrain );
             sm->set_furn( sentinel, prior_furniture );
             sm->set_trap( sentinel, prior_trap );
@@ -43343,10 +43402,52 @@ TEST_CASE( "saved homeward fixture restores the surrounding overmap and submaps"
         sm->store( out );
         out.end_object();
         original_submap = bytes.str();
-        scene.load( false );
+        scene.load( false, true, false, fixture_path );
+        do {
+            unrelated_id = g->assign_npc_id();
+        } while( overmap_buffer.find_npc( unrelated_id ) );
+        auto unrelated = make_shared_fast<npc>();
+        unrelated->normalize();
+        unrelated->setID( unrelated_id, true );
+        unrelated->spawn_at_precise( tripoint_abs_ms( 3600, 3600, 0 ) );
+        unrelated->set_value( "r067_fixture_unrelated", "owned-sentinel" );
+        overmap_buffer.insert_npc( unrelated );
+        REQUIRE_FALSE( unrelated->is_active() );
+        REQUIRE_FALSE( unrelated->get_bandit_live_world_projection_lease().present );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        // Reload replaced objects. Retire all fixture-owned identities even
+        // when ordinary completion has cleared their leases or bubble status.
+        for( character_id id : imported ) {
+            auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            auto lease = actor->get_bandit_live_world_projection_lease();
+            lease.clear();
+            actor->set_bandit_live_world_projection_lease( lease );
+        }
+        for( character_id id : imported ) {
+            g->remove_npc( id );
+            const auto actor = overmap_buffer.find_npc( id );
+            REQUIRE( actor );
+            REQUIRE_FALSE( actor->is_active() );
+        }
         overmap_buffer.ter_set( position, oter_str_id( "open_air" ).id() );
     }
+    for( character_id id : imported ) {
+        CHECK_FALSE( overmap_buffer.find_npc( id ) );
+        CHECK_FALSE( g->find_npc( id ) );
+    }
+    const auto unrelated = overmap_buffer.find_npc( unrelated_id );
+    REQUIRE( unrelated );
+    CHECK( unrelated->pos_abs() == tripoint_abs_ms( 3600, 3600, 0 ) );
+    CHECK( unrelated->get_value( "r067_fixture_unrelated" ) == "owned-sentinel" );
+    CHECK_FALSE( unrelated->get_bandit_live_world_projection_lease().present );
     CHECK( overmap_buffer.ter( position ) == before );
+    sm = MAPBUFFER.lookup_submap( original_position );
+    REQUIRE( sm );
     std::ostringstream bytes;
     JsonOut out( bytes );
     out.start_object();
@@ -53913,4 +54014,1879 @@ TEST_CASE( "native return dematerialization refuses unauthenticated projection i
     // Restore only the deliberately invalid test input for fixture cleanup.
     actor->setID( ids.front(), true );
     actor->set_bandit_live_world_projection_lease( original_lease );
+}
+
+TEST_CASE( "complete save generations reject mixed custody and restore explicitly",
+           "[save_continuity_067][connected_save]" )
+{
+    namespace fs = std::filesystem;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const std::string boundary = GENERATE( "master", "dimension" );
+    const bool retry_in_memory = GENERATE( false, true );
+    const bool compressed = GENERATE( false, true );
+    CAPTURE( boundary, retry_in_memory, compressed );
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    const auto ids = scene.site().active_outing.member_ids;
+    REQUIRE( ids.size() == 2 );
+    const character_id carrier = ids.front();
+    const std::string world_name = world_generator->active_world->world_name;
+    const fs::path world_path = world_generator->active_world->folder_path().get_unrelative_path();
+    save_continuity::forget( world_path );
+    const bool original_compression = world_generator->active_world->has_compression_enabled();
+    on_out_of_scope restore_compression( [&]() {
+        CHECK( world_generator->get_world( world_name )->set_compression_enabled( original_compression ) );
+    } );
+    REQUIRE( world_generator->active_world->set_compression_enabled( compressed ) );
+    const auto count = []( const Character &actor ) {
+        int total = 0;
+        actor.visit_items( [&]( const item *value, const item * ) {
+            total += value->get_var( "r067_save_generation_item" ) == "owned-transfer-one";
+            return VisitResponse::NEXT;
+        } );
+        return total;
+    };
+    item token( itype_id( "rock" ) );
+    token.set_var( "r067_save_generation_item", "owned-transfer-one" );
+    scene.actor( carrier.get_value() ).i_add( token );
+    REQUIRE( scene.actor( carrier.get_value() ).raise_faction_alarm( scene.actor( carrier.get_value() ).pos_abs(), true ) );
+    const auto attack_until = scene.actor( carrier.get_value() ).faction_alarm->until;
+    g->save_is_dirty = false;
+    const auto save_begin = std::chrono::steady_clock::now();
+    REQUIRE( g->save() );
+    const auto save_duration = std::chrono::steady_clock::now() - save_begin;
+    const auto prior = save_continuity::prior_point( world_path );
+    REQUIRE( prior );
+    CHECK( prior->turn == to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    CHECK_FALSE( save_continuity::incomplete( world_path ) );
+    // Baseline is the same native load of this protected point, not live
+    // post-save temperature/cache/UID data which native loading reconstructs.
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    REQUIRE( g->load( world_name ) );
+    REQUIRE( scene.actor( carrier.get_value() ).faction_alarm );
+    CHECK( scene.actor( carrier.get_value() ).faction_alarm->received_attack.value_or( false ) );
+    CHECK( scene.actor( carrier.get_value() ).faction_alarm->until == attack_until );
+    const std::string prior_world = serialize_world( overmap_buffer.global_state.bandit_live_world );
+    const auto actor_key = []( const npc &actor ) {
+        std::map<std::string, int> injuries;
+        for( const auto &part : actor.get_all_body_parts() ) {
+            injuries.emplace( part.id().str(), actor.get_hp( part ) );
+        }
+        std::multiset<std::pair<std::string, int>> items;
+        actor.visit_items( [&]( const item *value, const item * ) {
+            items.emplace( value->typeId().str() + ":" + value->get_var( "r067_save_generation_item" ), value->charges );
+            return VisitResponse::NEXT;
+        } );
+        const auto &lease = actor.get_bandit_live_world_projection_lease();
+        return std::make_tuple( actor.getID(), actor.pos_abs(), injuries, actor.is_dead(),
+                                actor.mission, actor.goal, actor.omt_path,
+                                lease.present, lease.site_id, lease.activity_id, lease.owner,
+                                lease.generation, lease.handoff_epoch, lease.last_advanced_minutes, items );
+    };
+    std::map<character_id, decltype( actor_key( scene.actor( carrier.get_value() ) ) )> prior_actors;
+    for( auto id : ids ) {
+        prior_actors.emplace( id, actor_key( scene.actor( id.get_value() ) ) );
+    }
+
+    item *owned = nullptr;
+    scene.actor( carrier.get_value() ).visit_items( [&]( item *value, item * ) {
+        if( value->get_var( "r067_save_generation_item" ) == "owned-transfer-one" ) {
+            owned = value;
+            return VisitResponse::ABORT;
+        }
+        return VisitResponse::NEXT;
+    } );
+    REQUIRE( owned );
+    item transferred = *owned;
+    item_location location( scene.actor( carrier.get_value() ), owned );
+    location.remove_item();
+    get_avatar().i_add( transferred );
+    calendar::turn += 1_turns;
+    // These real standalone writes precede game::save. They must never become
+    // an entry-time "prior" backup for the subsequent partially written save.
+    overmap_buffer.ter_set( tripoint_abs_omt( 130, 140, 0 ), oter_str_id( "field" ).id() );
+    // Invoke the native map writers used by save_maps without a dimension
+    // transfer, which would unload/reassign this fixture's local owner. These
+    // writes are outside game::save and must leave the trusted point unchanged.
+    get_map().save();
+    overmap_buffer.save();
+    MAPBUFFER.save();
+    REQUIRE( save_continuity::incomplete( world_path ) );
+    REQUIRE( save_continuity::prior_point( world_path )->turn == prior->turn );
+    const fs::path destination = ( boundary == "master" ?
+                                  PATH_INFO::world_base_save_path() / SAVE_MASTER :
+                                  PATH_INFO::current_dimension_save_path() / SAVE_DIMENSION_DATA ).get_unrelative_path();
+    std::string suffix = ".temp";
+#if defined(_WIN32)
+    suffix = "." + std::to_string( GetCurrentProcessId() ) + suffix;
+#elif defined(__linux__)
+    suffix = "." + std::to_string( getpid() ) + suffix;
+#endif
+    const fs::path blocked = destination.string() + suffix;
+    REQUIRE_FALSE( fs::exists( blocked ) );
+    REQUIRE( fs::create_directory( blocked ) );
+    {
+        on_out_of_scope unblock( [&]() { fs::remove_all( blocked ); } );
+        REQUIRE_FALSE( g->save() );
+        CHECK_FALSE( g->last_confirmed_save_turn() );
+        CHECK( g->last_save_result() == ( boundary == "master" ?
+                                       "failed_factions_missions_npcs" : "failed_dimension_data" ) );
+    }
+    CHECK( count( get_avatar() ) == 1 );
+    CHECK( count( scene.actor( carrier.get_value() ) ) == 0 );
+    CHECK( save_continuity::prior_point( world_path )->turn == prior->turn );
+
+    if( retry_in_memory ) {
+        // The failed save did not end the game or undo the real item transfer.
+        // A successful retry commits B, rather than restoring A on entry.
+        REQUIRE( g->save() );
+        CHECK_FALSE( save_continuity::incomplete( world_path ) );
+        CHECK( save_continuity::prior_point( world_path )->turn > prior->turn );
+        const std::string retry_world = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        std::map<character_id, decltype( actor_key( scene.actor( carrier.get_value() ) ) )> retry_actors;
+        for( auto id : ids ) {
+            retry_actors.emplace( id, actor_key( scene.actor( id.get_value() ) ) );
+        }
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        CHECK( count( get_avatar() ) == 1 );
+        CHECK( count( scene.actor( carrier.get_value() ) ) == 0 );
+        CHECK_FALSE( scene.site().active_outing.local_projection_reconciliation_rejected );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == retry_world );
+        for( auto id : ids ) {
+            CHECK( actor_key( scene.actor( id.get_value() ) ) == retry_actors.at( id ) );
+        }
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        CHECK( count( get_avatar() ) == 1 );
+        CHECK( count( scene.actor( carrier.get_value() ) ) == 0 );
+        CHECK_FALSE( scene.site().active_outing.local_projection_reconciliation_rejected );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == retry_world );
+        for( auto id : ids ) {
+            CHECK( actor_key( scene.actor( id.get_value() ) ) == retry_actors.at( id ) );
+        }
+        return;
+    }
+
+    // Exercise actual native prompt consumption and the complete production
+    // loader, including cancel without registry/setup/deserialization mutation.
+    semantic_surface_manager manager( "save-continuity-control" );
+    semantic_surface_manager_session session( manager );
+    std::string choice = "NO";
+    int prompts = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        if( descriptor.kind != "prompt" ) {
+            return;
+        }
+        ++prompts;
+        const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+        [&]( const semantic_action_descriptor &candidate ) {
+            return candidate.id == "prompt.choose" && candidate.label == choice && candidate.enabled;
+        } );
+        REQUIRE( action != descriptor.valid_actions.end() );
+        REQUIRE( manager.submit_request( { "save-continuity-control", descriptor.surface_id, descriptor.frame_id,
+                                           "recovery-" + std::to_string( prompts ), "prompt.choose", action->stable_id, {} } ) );
+    } );
+    REQUIRE_FALSE( g->load( world_name ) );
+    CHECK( prompts == 1 );
+    CHECK( count( get_avatar() ) == 1 );
+    CHECK( save_continuity::incomplete( world_path ) );
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    choice = "YES";
+    const auto restore_begin = std::chrono::steady_clock::now();
+    REQUIRE( g->load( world_name ) );
+    const auto restore_duration = std::chrono::steady_clock::now() - restore_begin;
+    if( const char *output = std::getenv( "CAOL_R067_SAVE_COST_OUTPUT" ) ) {
+        std::uintmax_t working = 0;
+        std::uintmax_t protected_bytes = 0;
+        const fs::path protected_root = fs::u8path( PATH_INFO::savedir() ) / ".save-continuity" / fs::u8path( world_name );
+        for( const auto &entry : fs::recursive_directory_iterator( world_path ) ) {
+            if( entry.is_regular_file() ) { working += entry.file_size(); }
+        }
+        for( const auto &entry : fs::recursive_directory_iterator( protected_root ) ) {
+            if( entry.is_regular_file() ) { protected_bytes += entry.file_size(); }
+        }
+        std::ofstream stream( fs::u8path( output ) / ( boundary + "-cost.json" ) );
+        JsonOut json( stream, true );
+        json.start_object();
+        json.member( "world_payload_bytes", working );
+        json.member( "retained_protection_bytes", protected_bytes );
+        json.member( "full_initial_save_ms", std::chrono::duration<double, std::milli>( save_duration ).count() );
+        json.member( "full_restore_and_native_load_ms", std::chrono::duration<double, std::milli>( restore_duration ).count() );
+        json.member( "scope", "small disposable warm-cache Mac scene; no large-world/Windows/power-loss claim" );
+        json.end_object();
+    }
+    CHECK( prompts == 2 );
+    CHECK_FALSE( save_continuity::incomplete( world_path ) );
+    CHECK( count( get_avatar() ) == 0 );
+    CHECK( count( scene.actor( carrier.get_value() ) ) == 1 );
+    REQUIRE( scene.actor( carrier.get_value() ).faction_alarm );
+    CHECK( scene.actor( carrier.get_value() ).faction_alarm->received_attack.value_or( false ) );
+    CHECK( scene.actor( carrier.get_value() ).faction_alarm->until == attack_until );
+    CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == prior_world );
+    for( auto id : ids ) {
+        CHECK( actor_key( scene.actor( id.get_value() ) ) == prior_actors.at( id ) );
+    }
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    REQUIRE( g->load( world_name ) );
+    CHECK( prompts == 2 );
+    CHECK( count( get_avatar() ) == 0 );
+    CHECK( count( scene.actor( carrier.get_value() ) ) == 1 );
+    calendar::turn += 1_turns;
+    REQUIRE( g->save() );
+    CHECK( save_continuity::prior_point( world_path )->turn == to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    CHECK_FALSE( save_continuity::incomplete( world_path ) );
+}
+
+TEST_CASE( "save protection first generation and verified restore failures retain custody",
+           "[save_continuity_067][generation_files]" )
+{
+    namespace fs = std::filesystem;
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-protection-files";
+    const fs::path protected_root = fs::u8path( PATH_INFO::savedir() ) / ".save-continuity" / world.filename();
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() {
+        save_continuity::forget( world );
+        fs::remove_all( world );
+    } );
+    fs::create_directories( world );
+    const auto write = []( const fs::path &path, const std::string &text ) {
+        write_to_file( path.string(), [&]( std::ostream &out ) { out << text; } );
+    };
+    write( world / PATH_INFO::world_timestamp(), "\"owned-generation\"" );
+    write( world / "master.gsav", "NPC possesses one marker" );
+    write( world / "player.sav", "avatar possesses no marker" );
+    save_continuity::begin_write( world );
+    CHECK( save_continuity::incomplete( world ) );
+    CHECK_FALSE( save_continuity::prior_point( world ) );
+    {
+        semantic_surface_manager manager( "no-baseline-control" );
+        semantic_surface_manager_session session( manager );
+        int prompts = 0;
+        manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+            if( descriptor.kind != "prompt" ) { return; }
+            ++prompts;
+            const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const auto &candidate ) { return candidate.id == "prompt.cancel" && candidate.enabled; } );
+            REQUIRE( action != descriptor.valid_actions.end() );
+            REQUIRE( manager.submit_request( { "no-baseline-control", descriptor.surface_id, descriptor.frame_id,
+                                               "no-baseline-close", action->id, action->stable_id, {} } ) );
+        } );
+        // The real public loader refuses before creating registry/game state.
+        REQUIRE_FALSE( g->load( world.filename().string() ) );
+        CHECK( prompts == 1 );
+        CHECK( save_continuity::incomplete( world ) );
+    }
+    save_continuity::publish_complete( world, 10, "prior character" );
+    REQUIRE( save_continuity::prior_point( world ) );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    write( world / "player.sav", "avatar possesses one marker" );
+    CHECK( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 10 );
+    // An unverifiable fallback cannot authorize replacement, nor be silently
+    // replaced by mutable working files. Keep its original bytes for recovery.
+    const fs::path prior_file = protected_root / "complete/world/master.gsav";
+    const fs::path held_file = protected_root / "held-master";
+    fs::rename( prior_file, held_file );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK( fs::exists( held_file ) );
+    CHECK( fs::exists( world / "player.sav" ) );
+    CHECK( save_continuity::incomplete( world ) );
+    fs::rename( held_file, prior_file );
+    // Block the restore staging owner before any working-directory replacement.
+    const fs::path restore_stage = protected_root / "restore-pending";
+    fs::create_directory( restore_stage );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 10 );
+    fs::remove( restore_stage );
+    save_continuity::restore_prior( world );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    std::ifstream restored( world / "player.sav" );
+    std::string line;
+    std::getline( restored, line );
+    CHECK( line == "avatar possesses no marker" );
+    write( world / "player.sav", "avatar possesses one marker" );
+    write( world / "master.gsav", "NPC possesses no marker" );
+    save_continuity::publish_complete( world, 11, "new character" );
+    CHECK( save_continuity::prior_point( world )->turn == 11 );
+    save_continuity::begin_write( world );
+    save_continuity::restore_prior( world );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 11 );
+}
+
+TEST_CASE( "scout native threat facts precede response and actual watch interruption",
+           "[scout_threat_067][connected_alarm]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const std::string stimulus = GENERATE( "dog_ignore", "dog_follow", "dog_attack", "zombie", "ranged", "ranged_far", "ranged_empty", "hidden", "field", "attack", "flight", "incapacity" );
+    const bool travel = GENERATE( false, true );
+    const std::string recovery = "same";
+    const bool different = recovery == "blocked" || recovery == "missing";
+    CAPTURE( cannibal, stimulus, travel );
+    auto previous_world = overmap_buffer.global_state.bandit_live_world;
+    const auto previous_turn = calendar::turn;
+    const auto previous_player = get_avatar().pos_abs_omt();
+    clear_npcs();
+    clear_avatar();
+    sounds::reset_sounds();
+    std::vector<shared_ptr_fast<npc>> actors;
+    on_out_of_scope restore( [&]() {
+        // Test cleanup is not another outing death/casualty service.
+        overmap_buffer.global_state.bandit_live_world.clear();
+        clear_npcs();
+        for( const auto &actor : actors ) {
+            if( overmap_buffer.find_npc( actor->getID() ) ) {
+                overmap_buffer.remove_npc( actor->getID() );
+            }
+        }
+        g->clear_zombies();
+        sounds::reset_sounds();
+        overmap_buffer.global_state.bandit_live_world = std::move( previous_world );
+        calendar::turn = previous_turn;
+        g->place_player_overmap( previous_player );
+    } );
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world.clear();
+    set_time_to_day();
+    const int start = to_turns<int>( calendar::turn - calendar::turn_zero ) / 60;
+    auto controlled = make_abstract_threat_test_world( cannibal, 976400, 6, "shelter", start );
+    auto &site = controlled.sites.front();
+    auto &outing = site.active_outing;
+    const auto watch = outing.target_omt + point( -3, 0 );
+    const auto approach = watch + point( -1, 0 );
+    const auto alternate = outing.target_omt + point( 3, 0 );
+    const auto alternate_approach = alternate + point( 1, 0 );
+    const auto route_cursor = require_current_simulation_cursor( site );
+    outing.schema_version = 10;
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    REQUIRE( apply_structural_watch_route_selection( site,
+                 route_cursor, { outing.target_omt },
+                 { { watch, true, true, true, 1 }, { alternate, true, true, true, 2 } },
+                 { site.anchor, alternate_approach, alternate, alternate_approach, site.anchor } ) ==
+             structural_watch_route_apply_result::applied );
+    // The real loaded ingress owner is observing before physical arrival;
+    // waypoint 1 and an unstarted assessment distinguish it from a watch.
+    outing.phase = scout_phase::observing;
+    outing.waypoint_index = travel ? 1 : 2;
+    // This controlled completed route mirror requires its existing departure
+    // fact; it is not a reconstruction of the historical first abort.
+    outing.actor_departure_observed = true;
+    outing.actor_route_waypoint = outing.waypoint_index;
+    outing.local_contact_minutes = start;
+    outing.expected_return_minutes = start + 105;
+    outing.missing_deadline_minutes = outing.expected_return_minutes + 1440;
+    if( !travel ) {
+        REQUIRE( advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                     outing.target_lead_revision, start ) == scout_assessment_result::updated );
+    }
+    // Deliberately exercise the fallback after an already attempted alternate;
+    // that flag must never substitute for current survival checks.
+    if( recovery == "missing" ) {
+        outing.alternate_watch_kind = structural_watch_kind::none;
+        outing.alternate_watch_omt = {};
+        outing.alternate_watch_route_cost = -1;
+        outing.alternate_watch_shared_route.clear();
+    } else {
+        outing.alternate_watch_attempted = true;
+    }
+    g->place_player_overmap( travel ? approach : watch );
+    clear_map_with_vision( -1, 1, false );
+    set_time_to_day();
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> terrain;
+    on_out_of_scope restore_terrain( [&]() {
+        for( auto it = terrain.rbegin(); it != terrain.rend(); ++it ) {
+            overmap_buffer.ter_set( it->first, it->second );
+        }
+    } );
+    for( int x = -5; x <= 5; ++x ) for( int y = -5; y <= 5; ++y ) {
+        const auto point = outing.target_omt + tripoint( x, y, 0 );
+        terrain.emplace_back( point, overmap_buffer.ter( point ) );
+        overmap_buffer.ter_set( point, oter_id( "solid_earth" ) );
+    }
+    const auto new_watch = outing.target_omt + point( 0, -3 );
+    for( const auto point : { outing.target_omt, watch, approach, site.anchor,
+                            outing.target_omt + tripoint( -1, 0, 0 ),
+                            outing.target_omt + tripoint( -2, 0, 0 ) } ) {
+        overmap_buffer.ter_set( point, oter_id( "field" ) );
+    }
+    if( recovery != "none" ) {
+        overmap_buffer.ter_set( site.anchor + tripoint( 1, 0, 0 ), oter_id( "field" ) );
+    }
+    if( different ) {
+        for( int offset = 1; offset <= 3; ++offset ) {
+            overmap_buffer.ter_set( watch + tripoint( 0, -offset, 0 ), oter_id( "field" ) );
+            overmap_buffer.ter_set( new_watch + tripoint( -offset, 0, 0 ), oter_id( "field" ) );
+            overmap_buffer.ter_set( outing.target_omt + tripoint( 0, -offset, 0 ), oter_id( "field" ) );
+        }
+        overmap_buffer.ter_set( new_watch, oter_id( "forest" ) );
+    }
+    // These are real stored target cells for geometry qualification, not a
+    // signal/readiness certificate. The interrupted watch still has no records.
+    tinymap target_map;
+    target_map.load( outing.target_omt, false, false );
+    std::vector<std::tuple<tripoint_omt_ms, ter_id, furn_id>> previous_cells;
+    on_out_of_scope restore_target( [&]() {
+        for( const auto &[point, terrain, furniture] : previous_cells ) {
+            target_map.ter_set( point, terrain );
+            target_map.furn_set( point, furniture );
+        }
+        target_map.save();
+    } );
+    for( int z : { 0, 1, 2 } ) for( const auto &point : target_map.points_on_zlevel( z ) ) {
+        previous_cells.emplace_back( point, target_map.ter( point ), target_map.furn( point ) );
+        target_map.ter_set( point, ter_id( z == 0 ? "t_grass" : "t_open_air" ) );
+        target_map.furn_set( point, furn_id( "f_null" ) );
+    }
+    target_map.save();
+    const auto watch_origin = project_to<coords::ms>( travel ? approach : watch );
+    std::vector<local_handoff_member_read> handoff_reads;
+    for( std::size_t index = 0; index < outing.member_ids.size(); ++index ) {
+        auto actor = make_shared_fast<npc>();
+        actor->normalize();
+        actor->load_npc_template( npc_template_id( "test_talker" ) );
+        clear_character( *actor, true );
+        actor->setID( outing.member_ids[index], true );
+        actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
+        actor->set_attitude( NPCATT_NULL );
+        const auto position = watch_origin + point( 8 + index, 8 );
+        actor->spawn_at_precise( position );
+        overmap_buffer.insert_npc( actor );
+        actors.push_back( actor );
+        handoff_reads.push_back( { actor->getID(), true, false, 100, position,
+                                  position + point( 0, -1 ), position } );
+    }
+    world = std::move( controlled );
+    if( travel ) {
+        // The production abstract owner supplies the native OMT mission before
+        // the loaded handoff. A valid lease alone never grants movement.
+        prepare_live_bandit_abstract_scout_travel_for_test();
+        for( const auto &actor : actors ) {
+            REQUIRE( actor->is_travelling() );
+            REQUIRE( actor->goal == outing.selected_watch_omt );
+            REQUIRE_FALSE( actor->omt_path.empty() );
+        }
+    }
+    // The test's explicit handoff below owns local admission. Keep the
+    // abstract record out of automatic load reconciliation until that commit;
+    // retain the production-prepared native orders on the physical actors.
+    controlled = std::move( world );
+    world.clear();
+    g->load_npcs();
+    world = std::move( controlled );
+    INFO( "native handoff admission after map loading" );
+    CAPTURE( outing.phase, outing.expected_return_minutes, outing.selected_watch_omt,
+             outing.shared_route, outing.last_advanced_minutes );
+    const auto handoff = plan_local_pair_handoff( site, require_current_simulation_cursor( site ),
+                         start, handoff_reads );
+    CAPTURE( handoff.notes );
+    REQUIRE( handoff.valid );
+    REQUIRE( commit_local_pair_handoff( site, handoff, []( const auto & ) { return true; },
+                                      []( const auto & ) {} ) == local_handoff_commit_result::applied );
+    std::vector<local_cohesion_member_read> together;
+    for( const auto &actor : actors ) {
+        REQUIRE( actor->is_active() );
+        together.push_back( { actor->getID(), true, false, actor->pos_abs() } );
+    }
+    const auto assembly = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ),
+                          start, together );
+    REQUIRE( assembly.valid );
+    REQUIRE( assembly.snapshot.cohesion_assembled );
+    REQUIRE( commit_local_pair_cohesion( site, assembly, false, false ) );
+    REQUIRE( persist_live_bandit_local_projection_leases_for_test( site ) );
+    world.acknowledge_persisted_crossings();
+    get_avatar().setpos( get_map(), tripoint_bub_ms( 110, 110, -2 ) );
+    get_map().invalidate_map_cache( 0 );
+    get_map().build_map_cache( 0 );
+
+    map &here = get_map();
+    npc &source = *actors.front();
+    npc &recipient = *actors.back();
+    const tripoint_bub_ms incident = source.pos_bub() + tripoint( stimulus == "ranged_far" ? 20 : 10, 0, 0 );
+    monster &creature = spawn_test_monster( stimulus == "zombie" ? "mon_zombie" :
+                           stimulus.rfind( "ranged", 0 ) == 0 ? "mon_turret" : "mon_dog", incident );
+    if( stimulus == "ranged_empty" ) {
+        for( auto &[ammo, count] : creature.ammo ) { count = 0; }
+    }
+    if( stimulus == "dog_follow" || stimulus == "dog_attack" ) {
+        creature.aggro_character = true;
+        creature.anger = stimulus == "dog_follow" ? 5 : 100;
+        creature.morale = 100;
+    }
+    if( stimulus == "field" ) {
+        here.add_field( source.pos_bub(), field_type_str_id( "fd_fire" ), 3 );
+    }
+    if( stimulus == "hidden" ) {
+        here.ter_set( source.pos_bub() + tripoint( 5, 0, 0 ), ter_id( "t_wall" ) );
+    }
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0 );
+    const bool visible = source.sees( here, creature );
+    const int native_before = static_cast<int>( creature.attitude( &source ) );
+    creature.plan();
+    const int native_after = static_cast<int>( creature.attitude( &source ) );
+    const auto planned_destination = creature.get_dest();
+    const auto monster_target = creature.attack_target();
+    source.regen_ai_cache();
+    recipient.regen_ai_cache();
+    if( stimulus == "hidden" ) {
+        // An actually received warning whose source cannot currently inspect
+        // the incident retains its existing response; do not certify safety.
+        REQUIRE( source.raise_faction_alarm( here.get_abs( incident ) ) );
+        sounds::process_sound_markers( &recipient );
+    } else {
+        sounds::process_sound_markers( &recipient );
+    }
+    if( stimulus == "attack" ) {
+        // Actual launched attack callback upgrades a perceived alert once,
+        // even when the eventual damage is avoided. The finite expiry stays.
+        REQUIRE( source.has_active_faction_alarm() );
+        const auto original_until = source.faction_alarm->until;
+        source.on_attacked( creature );
+        REQUIRE( source.faction_alarm->received_attack.value_or( false ) );
+        CHECK( source.faction_alarm->until == original_until );
+        CHECK_FALSE( source.raise_faction_alarm( source.pos_abs(), true ) );
+        sounds::process_sound_markers( &recipient );
+        CHECK( recipient.faction_alarm->received_attack.value_or( false ) );
+        std::ostringstream bytes;
+        JsonOut json( bytes );
+        source.faction_alarm->serialize( json );
+        npc_alarm restored;
+        restored.deserialize( json_loader::from_string( bytes.str() ).get_object() );
+        CHECK( restored.received_attack == source.faction_alarm->received_attack );
+        CHECK( restored.until == original_until );
+    }
+    if( stimulus == "flight" ) {
+        source.set_attitude( NPCATT_FLEE_TEMP );
+    }
+    if( stimulus == "incapacity" ) {
+        source.add_effect( efftype_id( "narcosis" ), 10_minutes );
+        source.fall_asleep( 10_minutes );
+    }
+    const bool raised = source.has_active_faction_alarm();
+    const bool response = source.faction_alarm_requires_response();
+    const bool recipient_response = recipient.faction_alarm_requires_response();
+    const float danger = source.get_ai_danger();
+    const bool npc_target_is_creature = source.current_target() == &creature;
+    const auto until = source.faction_alarm ? to_turn<int>( source.faction_alarm->until ) : -1;
+    if( travel ) {
+        const auto destinations = local_pair_ingress_travel_destinations( world );
+        REQUIRE( destinations.count( source.getID() ) == 1 );
+        REQUIRE( outing.assessment.observation_started_minutes < 0 );
+    }
+    const auto pre_position = source.pos_abs();
+    calendar::turn += 1_minutes;
+    if( travel ) {
+        source.set_moves( 100 );
+        recipient.set_moves( 100 );
+        live_bandit_elevated_recovery_npc_turn_for_test( false );
+    } else {
+        advance_live_bandit_local_scout_assessments_for_test();
+    }
+    const bool interrupted = outing.assessment.interruption && outing.assessment.interruption->pending();
+    if( !travel && stimulus != "incapacity" ) {
+        source.set_moves( 100 );
+        source.move();
+    }
+    const std::string suffix = std::string( cannibal ? "cannibal-" : "bandit-" ) + stimulus + ( travel ? "-travel" : "-watch" );
+    const char *output = std::getenv( "CAOL_R067_NATIVE_FACT_OUTPUT" );
+    if( output ) {
+    std::ofstream stream( std::filesystem::path( output ) / ( suffix + ".json" ) );
+    JsonOut row( stream, true );
+    row.start_object();
+    row.member( "source", "controlled production-admitted local watch, not historical scene" );
+    row.member( "cannibal", cannibal );
+    row.member( "stimulus", stimulus );
+    row.member( "member", source.getID() );
+    row.member( "recipient", recipient.getID() );
+    row.member( "member_position_before", pre_position );
+    row.member( "member_position_after_native_move", source.pos_abs() );
+    row.member( "creature_position", creature.pos_abs() );
+    row.member( "creature_aggro_character", creature.aggro_character );
+    row.member( "creature_anger", creature.anger );
+    row.member( "monster_native_attitude_before_plan", native_before );
+    row.member( "monster_native_attitude_after_plan", native_after );
+    row.member( "npc_attitude", static_cast<int>( source.attitude_to( creature ) ) );
+    row.member( "visible", visible );
+    row.member( "monster_has_destination", creature.has_dest() );
+    row.member( "monster_destination", planned_destination );
+    row.member( "monster_target_is_source", monster_target == &source );
+    row.member( "monster_target_is_recipient", monster_target == &recipient );
+    row.member( "monster_can_reach_z", creature.can_reach_to( source.pos_bub() ) );
+    row.member( "distance", rl_dist( pre_position, creature.pos_abs() ) );
+    row.member( "monster_melee_dice", creature.type->melee_dice );
+    row.member( "monster_special_attacks", creature.type->special_attacks_names );
+    row.member( "alarm_raised", raised );
+    row.member( "response", response );
+    row.member( "recipient_response", recipient_response );
+    row.member( "npc_cache_danger", danger );
+    row.member( "npc_target_is_creature", npc_target_is_creature );
+    row.member( "watch_interrupted", interrupted );
+    row.member( "interruption_cause", outing.assessment.interruption ? outing.assessment.interruption->cause : "" );
+    row.member( "alarm_until", until );
+    row.member( "alarm_retained_after_native_move", source.has_active_faction_alarm() );
+    std::ostringstream random_state;
+    random_state << rng_get_engine();
+    row.member( "rng_state", random_state.str() );
+    row.member( "world_state", serialize_world( world ) );
+    row.end_object();
+    }
+    // These assertions expose the contract divergence on the unchanged
+    // production predicate. Mere native ignoring is not an attack or approach.
+    if( stimulus == "dog_ignore" || stimulus == "dog_follow" ) {
+        REQUIRE( visible );
+        CHECK( native_after == ( stimulus == "dog_ignore" ? MATT_IGNORE : MATT_FOLLOW ) );
+        CHECK_FALSE( response );
+        CHECK_FALSE( interrupted );
+        if( travel ) {
+            CHECK( source.pos_abs() != pre_position );
+            CHECK( outing.assessment.observation_started_minutes < 0 );
+        }
+    } else if( stimulus == "ranged_far" || stimulus == "ranged_empty" ) {
+        REQUIRE( visible );
+        CHECK_FALSE( response );
+        CHECK_FALSE( interrupted );
+    } else if( stimulus == "dog_attack" || stimulus == "zombie" || stimulus == "ranged" || stimulus == "hidden" || stimulus == "field" || stimulus == "attack" ) {
+        CHECK( response );
+        CHECK( interrupted );
+    }
+    if( !travel && stimulus == "zombie" ) {
+        REQUIRE( interrupted );
+        g->clear_zombies();
+        source.regen_ai_cache();
+        recipient.regen_ai_cache();
+        CHECK( source.has_active_faction_alarm() );
+        CHECK_FALSE( source.faction_alarm_requires_response() );
+        calendar::turn += 1_minutes;
+        advance_live_bandit_local_scout_assessments_for_test();
+        REQUIRE( outing.assessment.interruption );
+        CHECK_FALSE( outing.assessment.interruption->pending() );
+        CHECK( outing.assessment.observation_started_minutes >= 0 );
+    }
+    if( !travel && stimulus == "incapacity" ) {
+        CHECK( source.in_sleep_state() );
+        CHECK( source.has_effect( efftype_id( "narcosis" ) ) );
+        CHECK( interrupted );
+    }
+    if( !travel && stimulus == "flight" ) {
+        CHECK( interrupted );
+    }
+
+    if( !travel && stimulus == "attack" ) {
+        const auto original_until = source.faction_alarm->until;
+        calendar::turn = original_until + 1_turns;
+        source.regen_ai_cache();
+        recipient.regen_ai_cache();
+        sounds::process_sound_markers( &recipient );
+        CHECK_FALSE( source.faction_alarm->received_attack.value_or( true ) );
+        CHECK_FALSE( source.faction_alarm_requires_response() );
+        CHECK_FALSE( recipient.faction_alarm_requires_response() );
+        advance_live_bandit_local_scout_assessments_for_test();
+        REQUIRE( outing.assessment.interruption );
+        CHECK_FALSE( outing.assessment.interruption->pending() );
+    }
+
+}
+
+TEST_CASE( "failed complete publication retains its committed generation and retries",
+           "[save_continuity_067][publication_failure]" )
+{
+    namespace fs = std::filesystem;
+    const std::string failure = GENERATE( "intent_write", "late_commit", "first_commit" );
+    CAPTURE( failure );
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-publication-failure";
+    const fs::path root = fs::u8path( PATH_INFO::savedir() ) / ".save-continuity" / world.filename();
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() { save_continuity::forget( world ); fs::remove_all( world ); } );
+    fs::create_directories( world );
+    const auto write = []( const fs::path &path, const std::string &text ) {
+        write_to_file( path.string(), [&]( std::ostream &out ) { out << text; } );
+    };
+    write( world / PATH_INFO::world_timestamp(), "\"publication-owner\"" );
+    write( world / "actor", "A:actor owns one item" );
+    write( world / "player", "A:player owns none" );
+    if( failure != "first_commit" ) {
+        save_continuity::publish_complete( world, 10, "A" );
+    }
+    save_continuity::begin_write( world );
+    write( world / "actor", "B:actor owns none" );
+    write( world / "player", "B:player owns one item" );
+    const auto obstruction = root / ( failure == "intent_write" ? "publication-base.pending" : "incomplete" );
+    fs::remove( obstruction );
+    fs::create_directory( obstruction );
+    std::ofstream( obstruction / "owned-obstruction" ) << "bounded test failure";
+    CHECK_THROWS( save_continuity::publish_complete( world, 11, "B" ) );
+    CHECK( save_continuity::incomplete( world ) );
+    const auto prior = save_continuity::prior_point( world );
+    if( failure == "first_commit" ) {
+        CHECK_FALSE( prior );
+    } else {
+        REQUIRE( prior );
+        CHECK( prior->turn == 10 );
+    }
+    fs::remove_all( obstruction );
+    save_continuity::begin_write( world );
+    // Successful retry publishes the unchanged real working B; no entry backup.
+    save_continuity::publish_complete( world, 11, "B" );
+    REQUIRE( save_continuity::prior_point( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 11 );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    save_continuity::begin_write( world );
+    save_continuity::restore_prior( world );
+    std::ifstream restored( world / "player" );
+    std::string bytes;
+    std::getline( restored, bytes );
+    CHECK( bytes == "B:player owns one item" );
+}
+
+TEST_CASE( "verified generation restores archive dictionaries and world settings with live cache owners",
+           "[save_continuity_067][archive_cache]" )
+{
+    namespace fs = std::filesystem;
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-archive-generation";
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() { save_continuity::forget( world ); fs::remove_all( world ); } );
+    fs::create_directories( world / "dimension" );
+    const auto write = []( const fs::path &path, const std::string &text ) {
+        write_to_file( path.string(), [&]( std::ostream &out ) { out << text; } );
+    };
+    write( world / PATH_INFO::world_timestamp(), "\"archive-owner\"" );
+    const fs::path dictionary = world / "maps.dict";
+    const fs::path archive = world / "dimension/maps.zzip";
+    const std::string item = "actual dictionary-dependent actor/item/world payload repeated repeated repeated";
+    write( dictionary, std::string( 800, 'A' ) + item );
+    write( world / "worldoptions.json", "{\"GENERATION\":\"A\"}" );
+    {
+        auto zip = zzip::load( archive, dictionary );
+        REQUIRE( zip );
+        REQUIRE( zip->add_file( "owned-record", item ) );
+    }
+    auto old = zzip::load( archive, dictionary );
+    REQUIRE( old );
+    const auto entries = old->get_entries();
+    REQUIRE( std::count( entries.begin(), entries.end(), "owned-record" ) == 1 );
+    save_continuity::publish_complete( world, 10, "A" );
+    // Eviction is not destruction of contexts already owned by open archives.
+    zzip::invalidate_world_cache( world );
+    CHECK( old->get_file( "owned-record" ).size() == item.size() );
+    old.reset();
+    write( dictionary, std::string( 800, 'B' ) + "different working dictionary" );
+    write( world / "worldoptions.json", "{\"GENERATION\":\"B\"}" );
+    fs::remove( archive );
+    {
+        auto zip = zzip::load( archive, dictionary );
+        REQUIRE( zip );
+        REQUIRE( zip->add_file( "owned-record", "B different working custody" ) );
+    }
+    save_continuity::restore_prior( world );
+    auto restored = zzip::load( archive, dictionary );
+    REQUIRE( restored );
+    const auto bytes = restored->get_file( "owned-record" );
+    CHECK( std::string( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ) == item );
+    std::ifstream settings( world / "worldoptions.json" );
+    std::string text;
+    std::getline( settings, text );
+    CHECK( text == "{\"GENERATION\":\"A\"}" );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+
+}
+
+#ifdef __APPLE__
+TEST_CASE( "verified restore cleanup precedes another working generation",
+           "[save_continuity_067][restore_cleanup]" )
+{
+    namespace fs = std::filesystem;
+    const bool changed_after_failure = GENERATE( false, true );
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-restore-cleanup";
+    const fs::path root = world.parent_path() / ".save-continuity" / world.filename();
+    const fs::path failed = root / "restore-working";
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() {
+        std::error_code error;
+        for( const auto &directory : { failed, world, root / "restore-pending", root / "complete/world" } ) {
+            if( fs::exists( directory / "actor" ) ) {
+                ::chflags( ( directory / "actor" ).string().c_str(), 0 );
+            }
+        }
+        save_continuity::forget( world );
+        fs::remove_all( world );
+    } );
+    fs::create_directories( world );
+    const auto write = []( const fs::path &path, const std::string &text ) {
+        write_to_file( path.string(), [&]( std::ostream &out ) { out << text; } );
+    };
+    write( world / PATH_INFO::world_timestamp(), "\"restore-cleanup-owner\"" );
+    write( world / "actor", "A:actor owns one item" );
+    write( world / "player", "A:player owns none" );
+    save_continuity::publish_complete( world, 10, "A" );
+    save_continuity::begin_write( world );
+    write( world / "actor", "B:actor owns none" );
+    write( world / "player", "B:player owns one item" );
+    // The owned immutable source file can still be read/copied and its parent
+    // renamed. The real old-working cleanup fails after target replacement.
+    REQUIRE( ::chflags( ( world / "actor" ).string().c_str(), UF_IMMUTABLE ) == 0 );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    REQUIRE( fs::exists( failed ) );
+    CHECK( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 10 );
+    REQUIRE( ::chflags( ( failed / "actor" ).string().c_str(), 0 ) == 0 );
+    if( changed_after_failure ) {
+        // A valid cleanup intent cannot authorize deletion/retry after the
+        // replacement changed. Restore these disposable test premises only
+        // after proving both ordinary write and recovery refusals.
+        std::ofstream( world / "actor" ) << "foreign unverified state";
+        CHECK_THROWS( save_continuity::begin_write( world ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+        CHECK( fs::exists( failed / "actor" ) );
+        CHECK( save_continuity::prior_point( world )->turn == 10 );
+        std::ofstream( world / "actor" ) << "A:actor owns one item";
+    }
+    save_continuity::begin_write( world );
+    REQUIRE_FALSE( fs::exists( failed ) );
+    CHECK_FALSE( fs::exists( root / "restore-base" ) );
+    write( world / "actor", "C:actor owns none" );
+    write( world / "player", "C:player owns one item" );
+    save_continuity::publish_complete( world, 12, "C" );
+    save_continuity::begin_write( world );
+    save_continuity::restore_prior( world );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 12 );
+}
+#endif
+
+#ifndef _WIN32
+TEST_CASE( "protection creation failure precedes any working mutation",
+           "[save_continuity_067][protection_creation]" )
+{
+    namespace fs = std::filesystem;
+    const bool initial = GENERATE( false, true );
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-protection-creation";
+    const fs::path root = world.parent_path() / ".save-continuity" / world.filename();
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() {
+        std::error_code error;
+        fs::permissions( root, fs::perms::owner_all, fs::perm_options::add, error );
+        save_continuity::forget( world );
+        fs::remove_all( world );
+    } );
+    fs::create_directories( world );
+    std::ofstream( world / PATH_INFO::world_timestamp() ) << "\"creation-owner\"";
+    std::ofstream( world / "actor" ) << "A:actor owns one item";
+    if( !initial ) {
+        save_continuity::publish_complete( world, 10, "A" );
+    } else {
+        fs::create_directories( root );
+    }
+    fs::permissions( root, fs::perms::owner_read | fs::perms::owner_exec,
+                     fs::perm_options::replace );
+    CHECK_THROWS( save_continuity::begin_write( world ) );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world ).has_value() == !initial );
+    std::ifstream original( world / "actor" );
+    std::string bytes;
+    std::getline( original, bytes );
+    CHECK( bytes == "A:actor owns one item" );
+    fs::permissions( root, fs::perms::owner_all, fs::perm_options::add );
+    save_continuity::begin_write( world );
+    std::ofstream( world / "actor" ) << "B:actor owns none";
+    save_continuity::publish_complete( world, 11, "B" );
+    CHECK( save_continuity::prior_point( world )->turn == 11 );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+}
+
+TEST_CASE( "complete recovery preserves an owned world root link and its target",
+           "[save_continuity_067][world_link]" )
+{
+    namespace fs = std::filesystem;
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-linked-world";
+    const fs::path target = fs::u8path( PATH_INFO::user_dir() ) / "r067-owned-world-target";
+    const fs::path restore = target.parent_path() / ".save-continuity" / world.filename();
+    REQUIRE_FALSE( fs::exists( world ) );
+    REQUIRE_FALSE( fs::exists( target ) );
+    on_out_of_scope cleanup( [&]() {
+        save_continuity::forget( world );
+        fs::remove( world );
+        fs::remove_all( target );
+        fs::remove_all( restore );
+    } );
+    fs::create_directories( target );
+    fs::create_directory_symlink( target, world );
+    std::ofstream( world / PATH_INFO::world_timestamp() ) << "\"linked-owner\"";
+    std::ofstream( world / "actor" ) << "A:actor owns one item";
+    save_continuity::publish_complete( world, 10, "A" );
+    save_continuity::begin_write( world );
+    std::ofstream( target / "actor" ) << "B:actor owns none";
+    save_continuity::restore_prior( world );
+    CHECK( fs::is_symlink( world ) );
+    CHECK( fs::canonical( world ) == fs::canonical( target ) );
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    std::ifstream restored( target / "actor" );
+    std::string bytes;
+    std::getline( restored, bytes );
+    CHECK( bytes == "A:actor owns one item" );
+    save_continuity::begin_write( world );
+    std::ofstream( target / "actor" ) << "C:actor owns none";
+    save_continuity::publish_complete( world, 12, "C" );
+    save_continuity::begin_write( world );
+    save_continuity::restore_prior( world );
+    CHECK( fs::is_symlink( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 12 );
+}
+#endif
+
+TEST_CASE( "retirement excludes the character only after verified archival and complete publication",
+           "[save_continuity_067][retirement_files]" )
+{
+    namespace fs = std::filesystem;
+    const std::string failure = GENERATE( "none", "transfer", "exclusion", "publication", "source_missing", "intent", "hold", "finalize" );
+    CAPTURE( failure );
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-retirement-files";
+    const fs::path root = world.parent_path() / ".save-continuity" / world.filename();
+    const fs::path graveyard = PATH_INFO::graveyarddir_path().get_unrelative_path() / "r067-owned-retirement";
+    REQUIRE_FALSE( fs::exists( world ) );
+    REQUIRE_FALSE( fs::exists( graveyard ) );
+    on_out_of_scope cleanup( [&]() {
+        save_continuity::forget( world );
+        fs::remove_all( world );
+        fs::remove_all( graveyard );
+    } );
+    fs::create_directories( world / "dimension" );
+    const auto write = []( const fs::path &path, const std::string &bytes ) {
+        std::ofstream stream( path, std::ios::binary );
+        stream << bytes;
+        REQUIRE( stream.good() );
+    };
+    const std::string dead = "r067 retired character";
+    const fs::path dead_file = base64_encode( dead ) + ".sav";
+    const fs::path memory_file = fs::path( "dimension" ) / ( base64_encode( dead ) + ".mm1" ) / "memory";
+    fs::create_directories( ( world / memory_file ).parent_path() );
+    write( world / PATH_INFO::world_timestamp(), "\"retirement-world-owned\"" );
+    write( world / dead_file, "living character owns marker" );
+    write( world / memory_file, "owned character map memory" );
+    write( world / "survivor.sav", "another living character owns none" );
+    write( world / "dimension/map", "no corpse yet" );
+    save_continuity::publish_complete( world, 10, dead );
+    if( failure == "source_missing" ) {
+        fs::remove( world / dead_file );
+        fs::remove( world / memory_file );
+        CHECK_THROWS( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+        CHECK_THROWS( save_continuity::publish_complete( world, 11, "survivor" ) );
+        CHECK( fs::exists( root / "retirement-held/world" / dead_file ) );
+        return;
+    }
+    if( failure == "intent" ) {
+        fs::create_directory( root / "retirement.pending" );
+        CHECK_THROWS( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+        CHECK_FALSE( fs::exists( root / "retirement" ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+        CHECK( save_continuity::prior_point( world )->turn == 10 );
+        CHECK( fs::exists( root / "retirement-held/world" / dead_file ) );
+        fs::remove( root / "retirement.pending" );
+    }
+#ifdef __APPLE__
+    if( failure == "hold" ) {
+        REQUIRE( chflags( ( root / "complete" ).c_str(), UF_IMMUTABLE ) == 0 );
+        on_out_of_scope unlock( [&]() { chflags( ( root / "complete" ).c_str(), 0 ); } );
+        CHECK_THROWS( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+        CHECK( fs::exists( root / "retirement" ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+        CHECK( fs::exists( root / "complete/world" / dead_file ) );
+    }
+#endif
+    REQUIRE_FALSE( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+    // A recorded retirement cannot be substituted by a different physical owner.
+    CHECK_THROWS( save_continuity::begin_retirement( world, dead, 967002, graveyard, true ) );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK_THROWS( save_continuity::publish_complete( world, 11, "survivor" ) );
+    write( world / "dimension/map", "one corpse owns the marker" );
+    fs::create_directories( graveyard );
+    const fs::path stage = ( graveyard / dead_file ).string() + ".retirement-pending";
+    if( failure == "transfer" ) {
+        fs::create_directory( stage );
+        CHECK_THROWS( save_continuity::archive_retirement( world ) );
+        CHECK( fs::exists( world / dead_file ) );
+        CHECK_FALSE( fs::exists( graveyard / dead_file ) );
+        fs::remove( stage );
+    }
+#ifdef __APPLE__
+    if( failure == "exclusion" ) {
+        REQUIRE( chflags( ( world / dead_file ).c_str(), UF_IMMUTABLE ) == 0 );
+        on_out_of_scope unlock( [&]() { chflags( ( world / dead_file ).c_str(), 0 ); } );
+        CHECK_THROWS( save_continuity::archive_retirement( world ) );
+        CHECK( fs::exists( world / dead_file ) );
+        CHECK( fs::exists( graveyard / dead_file ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+    }
+#endif
+    save_continuity::archive_retirement( world );
+    CHECK_FALSE( fs::exists( world / dead_file ) );
+    CHECK( fs::exists( graveyard / memory_file ) );
+    // Repeated partial/complete transfer never recopies a character into the world.
+    CHECK_NOTHROW( save_continuity::archive_retirement( world ) );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    if( failure == "publication" ) {
+        fs::remove( root / "incomplete" );
+        fs::create_directory( root / "incomplete" );
+        write( root / "incomplete/blocked", "actual late commit obstruction" );
+        CHECK_THROWS( save_continuity::publish_retirement( world, 11, dead, 967001 ) );
+        CHECK_THROWS( save_continuity::restore_prior( world ) );
+        CHECK( fs::exists( root / "previous/world" / dead_file ) );
+        fs::remove_all( root / "incomplete" );
+    }
+#ifdef __APPLE__
+    if( failure == "finalize" ) {
+        // The complete world/archive can commit before pending-intent removal
+        // fails. A retry must finish that exact commit, not repeat world writes.
+        REQUIRE( chflags( ( root / "retirement" ).c_str(), UF_IMMUTABLE ) == 0 );
+        on_out_of_scope unlock( [&]() { chflags( ( root / "retirement" ).c_str(), 0 ); } );
+        CHECK_THROWS( save_continuity::publish_retirement( world, 11, dead, 967001 ) );
+        CHECK( save_continuity::prior_point( world )->turn == 11 );
+        CHECK_THROWS( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+        REQUIRE( chflags( ( root / "retirement" ).c_str(), 0 ) == 0 );
+        REQUIRE( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+    } else
+#endif
+    {
+        save_continuity::publish_retirement( world, 11, dead, 967001 );
+    }
+    CHECK_FALSE( save_continuity::incomplete( world ) );
+    CHECK( save_continuity::prior_point( world )->turn == 11 );
+    CHECK( save_continuity::begin_retirement( world, dead, 967001, graveyard, true ) );
+    for( int repeat = 0; repeat < 2; ++repeat ) {
+        save_continuity::begin_write( world );
+        write( world / "dimension/map", "failed later mixed working data" );
+        save_continuity::restore_prior( world );
+        CHECK_FALSE( fs::exists( world / dead_file ) );
+        CHECK( fs::exists( world / "survivor.sav" ) );
+        CHECK_FALSE( save_continuity::incomplete( world ) );
+    }
+    // The affected external archive is authority, not an unrelated global file.
+    write( graveyard / dead_file, "changed archive" );
+    save_continuity::begin_write( world );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK_FALSE( fs::exists( world / dead_file ) );
+}
+
+TEST_CASE( "intentional world erasure never authorizes fallback resurrection",
+           "[save_continuity_067][retirement_erase]" )
+{
+    namespace fs = std::filesystem;
+    const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-erasure-owned";
+    REQUIRE_FALSE( fs::exists( world ) );
+    on_out_of_scope cleanup( [&]() { save_continuity::forget( world ); fs::remove_all( world ); } );
+    fs::create_directories( world );
+    std::ofstream( world / PATH_INFO::world_timestamp() ) << "\"erase-owned\"";
+    std::ofstream( world / "character.sav" ) << "living";
+    save_continuity::publish_complete( world, 10, "character" );
+    save_continuity::begin_erase( world );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK_THROWS( save_continuity::publish_complete( world, 11, "character" ) );
+    CHECK_THROWS( save_continuity::begin_write( world ) );
+    fs::remove_all( world );
+    CHECK_THROWS( save_continuity::restore_prior( world ) );
+    CHECK_FALSE( fs::exists( world ) );
+}
+
+#if !defined(TILES)
+namespace
+{
+std::string r067_control_executable()
+{
+#if defined(__APPLE__)
+    uint32_t size = 0;
+    _NSGetExecutablePath( nullptr, &size );
+    std::string path( size, '\0' );
+    REQUIRE( _NSGetExecutablePath( path.data(), &size ) == 0 );
+    path.resize( std::strlen( path.c_str() ) );
+    return path;
+#elif defined(_WIN32)
+    std::wstring path( 32768, L'\0' );
+    const DWORD size = GetModuleFileNameW( nullptr, path.data(), path.size() );
+    REQUIRE( size > 0 );
+    path.resize( size );
+    return std::filesystem::path( path ).u8string();
+#else
+    return std::filesystem::read_symlink( "/proc/self/exe" ).string();
+#endif
+}
+
+std::string r067_shell_argument( const std::string &value )
+{
+#if defined(_WIN32)
+    REQUIRE( value.find_first_of( "\"%\r\n" ) == std::string::npos );
+    return "\"" + value + "\"";
+#else
+    std::string result = "'";
+    for( char ch : value ) { result += ch == '\'' ? "'\\''" : std::string( 1, ch ); }
+    return result + "'";
+#endif
+}
+} // namespace
+
+TEST_CASE( "fresh process rejects the exact durable retirement through public world load",
+           "[.][retirement_fresh_process_probe]" )
+{
+    const char *world = std::getenv( "CAOL_R067_REFUSAL_WORLD" );
+    REQUIRE( world != nullptr );
+    REQUIRE( world_generator->has_world( world ) );
+    const auto turn = calendar::turn;
+    const auto id = get_avatar().getID();
+    CHECK_FALSE( g->load( std::string( world ) ) );
+    main_menu menu;
+    CHECK_FALSE( menu.start_new_character( world, character_type::NOW ) );
+    CHECK( calendar::turn == turn );
+    CHECK( get_avatar().getID() == id );
+    CHECK( save_continuity::retirement_refusal_persisted(
+               world_generator->get_world( world )->folder_path().get_unrelative_path() ) );
+    std::cout << "R067_FRESH_REFUSAL world=" << world
+              << " public_load=false new_character=false durable_refusal=true" << std::endl;
+}
+
+namespace
+{
+void r067_native_retirement_control( const std::string &failure, const std::string &final_policy )
+{
+    namespace fs = std::filesystem;
+    CAPTURE( failure, final_policy );
+    if( ImGui::GetCurrentContext() == nullptr ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    restore_on_out_of_scope<quit_status> restore_quit( g->uquit );
+    // This starts a new living fixture, rather than inheriting the prior
+    // generated case's confirmed death before its first normal menu load.
+    g->uquit = QUIT_NO;
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    test_mode = false;
+    const int previous_timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 1 );
+    on_out_of_scope renderer_cleanup( [&]() {
+        inp_mngr.set_timeout( previous_timeout );
+        catacurses::endwin();
+    } );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    override_option deathcam( "DEATHCAM", "never" );
+    const std::string original_world_name = world_generator->active_world->world_name;
+    const auto original_mods = world_generator->active_world->active_mod_order;
+    r055_scene scene;
+    // Native world switching clears the previous world's overmap ownership.
+    // Retained actor/terrain records below belong only to this disposable world.
+    overmap_buffer.clear();
+    WORLD *const owned_world = world_generator->make_new_world( "r067-native-retirement",
+                               original_mods );
+    REQUIRE( owned_world );
+    world_generator->set_active_world( owned_world );
+    tripoint_abs_sm restoration_origin = get_map().get_abs_sub();
+    on_out_of_scope restore_world( [&]() {
+        test_mode = true;
+        // Full loading rediscovers the registry and replaces WORLD objects.
+        // Its identity survives; a captured pre-load pointer does not.
+        world_generator->set_active_world( world_generator->get_world( original_world_name ) );
+        if( world_generator->has_world( "r067-native-retirement" ) ) {
+            world_generator->delete_world( "r067-native-retirement", true );
+        }
+        // cleanup_at_end intentionally evicts MAPBUFFER; the map owner must
+        // reload before the retained-scene fixture touches its submap pointers.
+        // Intentional deletion/recreation may move the new avatar elsewhere.
+        // Restore the fixture bubble before its retained submaps, not that
+        // unrelated new character's current bubble.
+        if( failure == "initial_both" ) {
+            // Normal menu close reloads core definitions. Restore this fixture's
+            // actual mod definitions before touching its retained terrain IDs.
+            g->load_world_modfiles();
+        }
+        get_map().load( restoration_origin, false );
+    } );
+    override_option retain_world( "WORLD_END", "keep" );
+    override_option generated_monsters( "SPAWN_DENSITY", "0" );
+    scene.load( false, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    restoration_origin = get_map().get_abs_sub();
+    const std::string world_name = world_generator->active_world->world_name;
+    const fs::path world_path = world_generator->active_world->folder_path().get_unrelative_path();
+    const fs::path root = world_path.parent_path() / ".save-continuity" / world_path.filename();
+    save_continuity::forget( world_path );
+    avatar &player = get_avatar();
+    const std::string dead_name = "r067-retirement-A";
+    const std::string living_name = "r067-retirement-B";
+    // The interactive mode belongs to the native chain, not the fixture's
+    // restoration of its previous test scene after definition/map reloads.
+    on_out_of_scope fixture_mode( [&]() { test_mode = true; } );
+    player.set_save_id( dead_name );
+    player.name = dead_name;
+    player.setID( character_id( 967101 ), true );
+    item token( itype_id( "rock" ) );
+    token.set_var( "r067_retirement", "corpse-one" );
+    item_location token_location = player.i_add( token );
+    REQUIRE( g->save() );
+    token_location.remove_item();
+    player.set_save_id( living_name );
+    player.name = living_name;
+    player.setID( character_id( 967102 ), true );
+    REQUIRE( g->save() );
+    const auto retirement_ledger = [&]( const std::string &phase ) {
+        std::cout << "R067_RETIREMENT_LEDGER phase=" << phase << " failure=" << failure
+                  << " policy=" << final_policy << " save_id=" << get_avatar().get_save_id()
+                  << " current_id=" << get_avatar().getID().get_value()
+                  << " world_end=" << get_option<std::string>( "WORLD_END" )
+                  << " registry=";
+        for( const auto &saved : world_generator->active_world->world_saves ) {
+            std::cout << saved.decoded_name() << ",";
+        }
+        std::cout << " files=";
+        for( const auto &entry : fs::directory_iterator( world_path ) ) {
+            std::cout << entry.path().filename().u8string() << ",";
+        }
+        std::cout << std::endl;
+    };
+    retirement_ledger( "two-saves" );
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    // Use the existing queued normal-menu loader for exact selection; the
+    // player-specific game loader is private to that owning caller.
+    main_menu::queued_world_to_load = world_name;
+    main_menu::queued_save_id_to_load = dead_name;
+    main_menu load_dead;
+    REQUIRE( load_dead.opening_screen() );
+    CHECK( player.getID() == character_id( 967101 ) );
+    retirement_ledger( "loaded-A" );
+    const auto death_position = player.pos_abs();
+    const auto ids = scene.site().active_outing.member_ids;
+    std::map<character_id, std::pair<tripoint_abs_ms, int>> bodies;
+    for( const auto id : ids ) {
+        bodies.emplace( id, std::make_pair( scene.actor( id.get_value() ).pos_abs(), scene.actor( id.get_value() ).get_hp() ) );
+    }
+    const auto live_point = save_continuity::prior_point( world_path );
+    REQUIRE( live_point );
+    // This control isolates retirement custody from random world populations;
+    // the explicit real handoff below separately exercises native refusal.
+    clear_creatures();
+    monster *handoff_monster = nullptr;
+    if( failure == "monster_handoff" ) {
+        handoff_monster = g->place_critter_around( mtype_id( "mon_zombie" ), player.pos_bub(), 4 );
+        REQUIRE( handoff_monster );
+        REQUIRE( overmap_buffer.despawn_monster( *handoff_monster ) );
+    }
+    const fs::path initial_intent_block = root / "retirement.pending";
+    const fs::path initial_held_block = root / "retirement-held";
+    semantic_surface_manager manager( "retirement-connected" );
+    semantic_surface_manager_session session( manager );
+    int callbacks = 0;
+    int score_screens = 0;
+    bool restore_complete = false;
+    std::vector<fs::path> owned_graveyards;
+    on_out_of_scope remove_owned_graveyards( [&]() {
+        save_continuity::forget( world_path );
+        for( const auto &path : owned_graveyards ) { fs::remove_all( path ); }
+    } );
+    // Keep the trusted generation readable/valid while denying its actual
+    // rename. A malformed held directory would fail before either writer.
+    bool prior_locked = false;
+#if defined(_WIN32)
+    HANDLE prior_handle = INVALID_HANDLE_VALUE;
+#endif
+    const auto unlock_prior = [&]() {
+        if( !prior_locked ) { return; }
+#ifdef __APPLE__
+        REQUIRE( chflags( ( root / "complete" ).c_str(), 0 ) == 0 );
+#elif defined(_WIN32)
+        REQUIRE( CloseHandle( prior_handle ) );
+#endif
+        prior_locked = false;
+    };
+    on_out_of_scope prior_lock_cleanup( unlock_prior );
+    if( failure == "initial_both" ) {
+        REQUIRE( fs::create_directory( initial_intent_block ) );
+#ifdef __APPLE__
+        REQUIRE( chflags( ( root / "complete" ).c_str(), UF_IMMUTABLE ) == 0 );
+        prior_locked = true;
+#elif defined(_WIN32)
+        prior_handle = CreateFileW( ( root / "complete" ).c_str(), FILE_READ_ATTRIBUTES,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+                                   FILE_FLAG_BACKUP_SEMANTICS, nullptr );
+        REQUIRE( prior_handle != INVALID_HANDLE_VALUE );
+        prior_locked = true;
+#endif
+        REQUIRE_FALSE( fs::exists( initial_held_block ) );
+    }
+    fs::path obstruction;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+        [&]( const semantic_action_descriptor &a ) {
+            return a.enabled && ( a.id == "scores.close" || a.id == "message_log.close" ||
+                                  a.id == "scrollable_text.close" || a.id == "terminal.confirm" ||
+                                  ( a.id == "prompt.choose" && a.label == ( restore_complete ? "YES" : "NO" ) ) ||
+                                  a.id == "prompt.cancel" );
+        } );
+        REQUIRE( action != descriptor.valid_actions.end() );
+        score_screens += descriptor.kind == "scores";
+        if( descriptor.kind == "scores" ) {
+            std::ifstream input( root / "retirement" );
+            const std::string bytes( std::istreambuf_iterator<char>( input ), {} );
+            const auto document = json_loader::from_string( bytes ).get_object();
+            document.allow_omitted_members();
+            const auto record = document.get_object( "retirement" );
+            record.allow_omitted_members();
+            const fs::path destination = fs::u8path( record.get_string( "graveyard" ) );
+            owned_graveyards.push_back( destination );
+            if( failure == "source_loss" ) {
+                const std::string filename = base64_encode( dead_name ) + SAVE_EXTENSION +
+                    ( world_generator->active_world->has_compression_enabled() ? std::string( zzip_suffix ) : "" );
+                REQUIRE( fs::remove( world_path / filename ) );
+            }
+            if( failure == "graveyard" ) {
+                const std::string filename = base64_encode( dead_name ) + SAVE_EXTENSION +
+                    ( world_generator->active_world->has_compression_enabled() ? std::string( zzip_suffix ) : "" );
+                obstruction = ( destination / filename ).string() + ".retirement-pending";
+            }
+            // Faults belong to the actual post-intent writer/transfer boundary,
+            // not to the character source inventory captured before death UI.
+            if( !obstruction.empty() ) {
+                REQUIRE_FALSE( fs::exists( obstruction ) );
+                fs::create_directories( obstruction );
+                std::ofstream( obstruction / "owned-obstruction" ) << "actual boundary failure";
+            }
+        }
+        REQUIRE( manager.submit_request( { "retirement-connected", descriptor.surface_id, descriptor.frame_id,
+                                           "close-" + std::to_string( ++callbacks ), action->id,
+                                           action->stable_id.empty() ? std::optional<std::string>() : action->stable_id, {} } ) );
+    } );
+    if( failure == "master" || failure == "dimension" || failure == "maps" ) {
+        const fs::path destination = ( failure == "master" ?
+                                      PATH_INFO::world_base_save_path() / SAVE_MASTER :
+                                      failure == "dimension" ?
+                                      PATH_INFO::current_dimension_save_path() / SAVE_DIMENSION_DATA :
+                                      overmapbuffer::player_filename( project_to<coords::om>( player.pos_abs_omt() ).xy() ) ).get_unrelative_path();
+        std::string suffix = ".temp";
+#if defined(_WIN32)
+        suffix = "." + std::to_string( GetCurrentProcessId() ) + suffix;
+#elif defined(__linux__)
+        suffix = "." + std::to_string( getpid() ) + suffix;
+#endif
+        obstruction = destination.string() + suffix;
+    } else if( failure == "publication" ) {
+        obstruction = root / "publication-base.pending";
+    }
+    on_out_of_scope unblock( [&]() { if( !obstruction.empty() ) { fs::remove_all( obstruction ); } } );
+    player.set_part_hp_cur( bodypart_id( "head" ), 0 );
+    // The actual native lethal-HP transition records last words, places the
+    // corpse and runs death cleanup. No forced confirmed-death shortcut.
+    g->uquit = QUIT_NO;
+    if( failure == "monster_handoff" ) {
+        bool ended = false;
+        std::string message;
+        {
+            restore_on_out_of_scope<bool> capture_mode( test_mode );
+            test_mode = true; // The deliberate refusal has no interactive debug owner.
+            message = capture_debugmsg_during( [&]() { ended = g->do_turn(); } );
+        }
+        CHECK( ended );
+        CHECK( message.find( "Refusing to delete local monster" ) != std::string::npos );
+        CHECK( g->last_save_result() == "failed_retirement_monster_handoff" );
+        CHECK_FALSE( handoff_monster->is_dead() );
+        CHECK( get_creature_tracker().creature_at<monster>( handoff_monster->pos_bub() ) == handoff_monster );
+        // The deliberately duplicated test local owner is removed by its own
+        // fixture; the accepted abstract owner survives. Not a product repair.
+        g->remove_zombie( *handoff_monster );
+    } else {
+        CHECK( g->do_turn() );
+    }
+    if( failure == "initial_both" ) {
+        CHECK( score_screens == 0 );
+        CHECK_FALSE( g->last_confirmed_save_turn() );
+        CHECK_FALSE( save_continuity::retirement_refusal_persisted( world_path ) );
+        CHECK_FALSE( g->save() );
+        const auto frozen_turn = calendar::turn;
+        main_menu new_character;
+        CHECK_FALSE( new_character.start_new_character( world_name, character_type::NOW ) );
+        CHECK( calendar::turn == frozen_turn );
+        CHECK( get_avatar().getID() == character_id( 967101 ) );
+        int explicit_retries = 0;
+        manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+            const bool query = std::any_of( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &a ) { return a.id == "prompt.choose"; } );
+            std::string answer = "YES";
+            if( query ) {
+                ++explicit_retries;
+                answer = explicit_retries == 1 ? "NO" : "YES";
+                if( explicit_retries == 2 ) { fs::remove_all( initial_intent_block ); }
+            }
+            const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            [&]( const semantic_action_descriptor &a ) {
+                return a.enabled && ( ( a.id == "prompt.choose" && a.label == answer ) || a.id == "terminal.confirm" || a.id == "prompt.cancel" );
+            } );
+            REQUIRE( action != descriptor.valid_actions.end() );
+            REQUIRE( manager.submit_request( { "retirement-connected", descriptor.surface_id, descriptor.frame_id,
+                                               "retry-" + std::to_string( ++callbacks ), action->id,
+                                               action->stable_id.empty() ? std::optional<std::string>() : action->stable_id, {} } ) );
+        } );
+        // The actual normal menu owns the pending retry before disposing the
+        // avatar. Its own semantic session is entered only after that boundary.
+        const fs::path menu_transport = root / "normal-close-requests.jsonl";
+        std::ofstream( menu_transport ).close();
+        const std::map<std::string, std::string> close_environment = {
+            { "OPENCLAW_HARNESS_RUN_ID", "retirement-normal-close" },
+            { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", "retirement-normal-close" },
+            { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", menu_transport.string() }
+        };
+        std::map<std::string, std::optional<std::string>> prior_environment;
+        for( const auto &[key, value] : close_environment ) {
+            const char *old = std::getenv( key.c_str() );
+            prior_environment[key] = old ? std::optional<std::string>( old ) : std::nullopt;
+            setenv( key.c_str(), value.c_str(), 1 );
+        }
+        semantic_surface_manager &menu_manager = openclaw_harness_semantic_surface_manager();
+        on_out_of_scope restore_close_environment( [&]() {
+            menu_manager.set_descriptor_observer( {} );
+            for( const auto &[key, value] : prior_environment ) {
+                if( value ) { setenv( key.c_str(), value->c_str(), 1 ); }
+                else { unsetenv( key.c_str() ); }
+            }
+        } );
+        menu_manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+            const auto action = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &a ) {
+                return a.enabled && ( a.id == "main_menu.quit" || a.id == "terminal.confirm" || a.id == "prompt.cancel" ||
+                                      ( a.id == "prompt.choose" && a.label == "YES" ) );
+            } );
+            REQUIRE( action != descriptor.valid_actions.end() );
+            REQUIRE( menu_manager.submit_request( { "retirement-normal-close", descriptor.surface_id,
+                    descriptor.frame_id, "close-" + std::to_string( ++callbacks ), action->id,
+                    action->stable_id.empty() ? std::optional<std::string>() : action->stable_id, {} } ) );
+        } );
+        main_menu close;
+        CHECK_FALSE( close.opening_screen() );
+        CHECK( explicit_retries == 2 );
+        CHECK( calendar::turn == frozen_turn );
+        CHECK( score_screens == 0 );
+        CHECK_FALSE( g->last_confirmed_save_turn() );
+        CHECK( g->last_save_result() != "retired" );
+        CHECK( save_continuity::retirement_refusal_persisted( world_path ) );
+        CHECK_FALSE( fs::exists( initial_held_block ) ); // Intent alone is the durable refusal.
+        CHECK( save_continuity::retirement_refusal_persisted( world_path ) );
+        const char *old_world = std::getenv( "CAOL_R067_REFUSAL_WORLD" );
+        const std::optional<std::string> previous = old_world ? std::optional<std::string>( old_world ) : std::nullopt;
+        setenv( "CAOL_R067_REFUSAL_WORLD", world_name.c_str(), 1 );
+        on_out_of_scope restore_probe_environment( [&]() {
+            if( previous ) { setenv( "CAOL_R067_REFUSAL_WORLD", previous->c_str(), 1 ); }
+            else { unsetenv( "CAOL_R067_REFUSAL_WORLD" ); }
+        } );
+        // A fresh process has no controller/session or runtime retirement map.
+        // Its public readers inspect the same untouched world bytes instead.
+        for( const auto &[key, value] : close_environment ) {
+            ( void )value;
+            unsetenv( key.c_str() );
+        }
+        const char *old_cache = std::getenv( "OPENCLAW_HARNESS_CACHE_DIR" );
+        const std::optional<std::string> previous_cache = old_cache ?
+                std::optional<std::string>( old_cache ) : std::nullopt;
+        const std::string fresh_cache = PATH_INFO::user_dir() + "/fresh-refusal-cache";
+        setenv( "OPENCLAW_HARNESS_CACHE_DIR", fresh_cache.c_str(), 1 );
+        on_out_of_scope restore_probe_cache( [&]() {
+            if( previous_cache ) { setenv( "OPENCLAW_HARNESS_CACHE_DIR", previous_cache->c_str(), 1 ); }
+            else { unsetenv( "OPENCLAW_HARNESS_CACHE_DIR" ); }
+        } );
+        const std::string command = r067_shell_argument( r067_control_executable() ) +
+                                    " " + r067_shell_argument( "[retirement_fresh_process_probe]" ) + " --rng-seed 48151 --user-dir " +
+                                    r067_shell_argument( PATH_INFO::user_dir() );
+        CHECK( std::system( command.c_str() ) == 0 );
+        return;
+    }
+
+    if( failure != "none" ) {
+        const std::map<std::string, std::string> expected = {
+            { "master", "failed_retirement_master" },
+            { "dimension", "failed_retirement_dimension" },
+            { "maps", "failed_retirement_maps" },
+            { "graveyard", "failed_character_archive_or_exclusion" },
+            { "source_loss", "failed_character_archive_or_exclusion" },
+            { "publication", "failed_retirement_publication" },
+            { "monster_handoff", "failed_retirement_monster_handoff" }
+        };
+        CHECK( g->last_save_result() == expected.at( failure ) );
+        CHECK_FALSE( g->last_confirmed_save_turn() );
+        CHECK( save_continuity::incomplete( world_path ) );
+        CHECK_THROWS( save_continuity::restore_prior( world_path ) );
+        CHECK_FALSE( g->load( world_name ) );
+        CHECK_FALSE( g->save() );
+        CHECK( save_continuity::prior_point( world_path )->turn == live_point->turn );
+        if( failure == "source_loss" ) {
+            // Uncertain retirement remains refused. Explicit intentional world
+            // deletion is different from restoring that dead character; a new
+            // world with the same name must use its new native identity.
+            const std::string previous_owner = world_generator->active_world->timestamp;
+            world_generator->delete_world( world_name, true );
+            CHECK_FALSE( world_generator->has_world( world_name ) );
+            CHECK_THROWS( save_continuity::restore_prior( world_path ) );
+            WORLD *const fresh = world_generator->make_new_world( world_name, original_mods );
+            REQUIRE( fresh );
+            REQUIRE( fresh->timestamp != previous_owner );
+            world_generator->set_active_world( fresh );
+            MAPBUFFER.clear();
+            overmap_buffer.clear();
+            g->setup();
+            clear_avatar();
+            get_avatar().set_save_id( "r067-fresh-after-delete" );
+            get_avatar().name = "r067-fresh-after-delete";
+            get_avatar().setID( character_id( 967103 ), true );
+            g->place_player_overmap( tripoint_abs_omt( 0, 0, 0 ), false );
+            wipe_map_terrain();
+            clear_creatures();
+            REQUIRE( g->save() );
+            const int saved_hp = get_avatar().get_part_hp_cur( bodypart_id( "head" ) );
+            get_avatar().set_part_hp_cur( bodypart_id( "head" ), saved_hp - 1 );
+            REQUIRE( turn_handler::cleanup_at_end() );
+            world_generator->set_active_world( nullptr );
+            REQUIRE( g->load( world_name ) );
+            CHECK( get_avatar().getID() == character_id( 967103 ) );
+            CHECK( get_avatar().get_part_hp_cur( bodypart_id( "head" ) ) == saved_hp );
+            CHECK_FALSE( world_generator->active_world->save_exists( save_t::from_save_id( dead_name ) ) );
+            CHECK_FALSE( world_generator->active_world->save_exists( save_t::from_save_id( living_name ) ) );
+            int possessions = 0;
+            get_avatar().visit_items( [&]( const item *value, const item * ) {
+                possessions += value->get_var( "r067_retirement" ) == "corpse-one";
+                return VisitResponse::NEXT;
+            } );
+            for( const auto &point : get_map().points_on_zlevel( 0 ) ) {
+                for( const item &value : get_map().i_at( point ) ) {
+                    value.visit_items( [&]( const item *member, const item * ) {
+                        possessions += member->get_var( "r067_retirement" ) == "corpse-one";
+                        return VisitResponse::NEXT;
+                    } );
+                }
+            }
+            CHECK( possessions == 0 );
+            return;
+        }
+        fs::remove_all( obstruction );
+        // Same in-memory retirement can finish, without calling is_game_over
+        // again and placing a second corpse or repeating the death UI/event.
+        REQUIRE( turn_handler::cleanup_at_end() );
+    }
+    retirement_ledger( "retired-A" );
+    CHECK( score_screens == 1 );
+    CHECK( g->last_save_result() == "retired" );
+    CHECK_FALSE( save_continuity::incomplete( world_path ) );
+    CHECK_FALSE( world_generator->active_world->save_exists( save_t::from_save_id( dead_name ) ) );
+    CHECK( world_generator->active_world->save_exists( save_t::from_save_id( living_name ) ) );
+    const fs::path retirement_manifest = root / "complete/manifest.json";
+    std::ifstream manifest_stream( retirement_manifest );
+    std::string manifest_bytes( std::istreambuf_iterator<char>( manifest_stream ), {} );
+    const auto manifest = json_loader::from_string( manifest_bytes ).get_object();
+    manifest.allow_omitted_members();
+    const auto retired_record = manifest.get_object( "retirement" );
+    retired_record.allow_omitted_members();
+    const fs::path graveyard = fs::u8path( retired_record.get_string( "graveyard" ) );
+    REQUIRE( fs::exists( graveyard ) );
+    const std::string retired_filename = base64_encode( dead_name ) + SAVE_EXTENSION +
+        ( world_generator->active_world->has_compression_enabled() ? std::string( zzip_suffix ) : "" );
+    CHECK( fs::exists( graveyard / retired_filename ) );
+    CHECK_FALSE( fs::exists( world_path / retired_filename ) );
+    const auto custody = [&]() {
+        int count = 0;
+        const auto visitor = [&]( const item *value, const item * ) {
+            count += value->get_var( "r067_retirement" ) == "corpse-one";
+            return VisitResponse::NEXT;
+        };
+        get_avatar().visit_items( visitor );
+        for( const auto id : ids ) { scene.actor( id.get_value() ).visit_items( visitor ); }
+        const auto local = get_map().get_bub( death_position );
+        for( const item &value : get_map().i_at( local ) ) { value.visit_items( visitor ); }
+        return count;
+    };
+    for( int repeat = 0; repeat < 2; ++repeat ) {
+        if( failure == "none" && final_policy == "keep" ) {
+            // Disposable working-generation interruption after committed death.
+            // Use the real normal load prompt/restore twice; it must never
+            // recover the old living character or copy corpse possessions.
+            save_continuity::begin_write( world_path );
+            std::ofstream( world_path / "owned-working-only" ) << "incomplete working generation";
+            CHECK_FALSE( g->load( world_name ) ); // Native NO: no deserialize.
+            CHECK( save_continuity::incomplete( world_path ) );
+            restore_complete = true;
+        }
+        world_generator->set_active_world( nullptr );
+        main_menu::queued_world_to_load = world_name;
+        main_menu::queued_save_id_to_load = living_name;
+        main_menu load_survivor;
+        REQUIRE( load_survivor.opening_screen() );
+        restore_complete = false;
+        CHECK_FALSE( save_continuity::incomplete( world_path ) );
+        CHECK_FALSE( fs::exists( world_path / "owned-working-only" ) );
+        CHECK( get_avatar().getID() == character_id( 967102 ) );
+        CHECK( custody() == 1 );
+        for( const auto id : ids ) {
+            CHECK( scene.actor( id.get_value() ).pos_abs() == bodies.at( id ).first );
+            CHECK( scene.actor( id.get_value() ).get_hp() == bodies.at( id ).second );
+        }
+        CHECK_FALSE( world_generator->active_world->save_exists( save_t::from_save_id( dead_name ) ) );
+        if( repeat == 0 ) {
+            REQUIRE( turn_handler::cleanup_at_end() );
+        }
+    }
+    if( final_policy != "keep" ) {
+        // After the second character's real death, no living character remains.
+        // Exercise the actual cleanup branch, not just delete_world in isolation.
+        override_option world_end( "WORLD_END", final_policy );
+        clear_creatures();
+        get_avatar().set_part_hp_cur( bodypart_id( "head" ), 0 );
+        g->uquit = QUIT_NO;
+        CHECK( g->do_turn() );
+        CHECK( g->last_save_result() == "retired" );
+        CHECK( score_screens == 2 );
+        CHECK( fs::exists( world_path ) == ( final_policy == "reset" ) );
+        CHECK_FALSE( fs::exists( root ) );
+        CHECK_THROWS( save_continuity::restore_prior( world_path ) );
+        if( final_policy == "reset" ) {
+            CHECK( world_generator->get_world( world_name )->world_saves.empty() );
+        } else {
+            CHECK_FALSE( world_generator->has_world( world_name ) );
+        }
+    }
+}
+
+} // namespace
+
+TEST_CASE( "native death retirement protects corpse custody and a surviving character through reload",
+           "[save_continuity_067][retirement_connected]" )
+{
+    const std::string failure = GENERATE( "none", "master", "dimension", "maps", "graveyard", "publication", "monster_handoff", "source_loss" );
+    const std::string policy = failure == "none" ? GENERATE( "keep", "reset", "delete" ) : "keep";
+    r067_native_retirement_control( failure, policy );
+}
+
+#if defined(__APPLE__) || defined(_WIN32)
+TEST_CASE( "memory-only retirement blocks normal menu disposal until explicit durable retry",
+           "[save_continuity_067][retirement_connected][retirement_memory_close]" )
+{
+    r067_native_retirement_control( "initial_both", "keep" );
+}
+
+#endif
+
+#endif
+
+TEST_CASE( "worldfactory reset and deletion retire their fallback before erasure",
+           "[save_continuity_067][retirement_worldfactory]" )
+{
+    namespace fs = std::filesystem;
+    const bool delete_folder = GENERATE( false, true );
+    const bool fail = GENERATE( false, true );
+    CAPTURE( delete_folder, fail );
+    const std::string name = "r067-retirement-reset-delete";
+    worldfactory factory;
+    WORLD *world = factory.make_new_world( name, std::vector<mod_id>{ mod_id( "dda" ) } );
+    REQUIRE( world );
+    const fs::path path = world->folder_path().get_unrelative_path();
+    on_out_of_scope cleanup( [&]() {
+        save_continuity::forget( path );
+        fs::remove_all( path );
+    } );
+    const fs::path character = path / "owned.sav";
+    std::ofstream( character ) << "character to be intentionally erased";
+    const fs::path nested = path / "maps" / "deep";
+    fs::create_directories( nested );
+    const fs::path map_file = nested / "map.zzip";
+    std::ofstream( map_file ) << "world-local nested contents";
+    const fs::path dictionary = nested / "maps.dict";
+    std::ofstream( dictionary ) << "retained compression dictionary";
+    save_continuity::publish_complete( path, 10, "owned" );
+#ifdef __APPLE__
+    if( fail ) {
+        REQUIRE( chflags( character.c_str(), UF_IMMUTABLE ) == 0 );
+        on_out_of_scope unlock( [&]() { chflags( character.c_str(), 0 ); } );
+        CHECK_THROWS( factory.delete_world( name, delete_folder ) );
+        CHECK_THROWS( save_continuity::restore_prior( path ) );
+        CHECK( fs::exists( character ) );
+    }
+#else
+    if( fail ) { return; } // The ordinary path below remains platform-neutral.
+#endif
+    factory.delete_world( name, delete_folder );
+    CHECK_FALSE( fs::exists( character ) );
+    CHECK_FALSE( fs::exists( map_file ) );
+    CHECK( fs::exists( dictionary ) == !delete_folder );
+    CHECK_FALSE( fs::exists( path.parent_path() / ".save-continuity" / path.filename() ) );
+    CHECK_THROWS( save_continuity::restore_prior( path ) );
+    CHECK( fs::exists( path ) == !delete_folder );
+}
+
+TEST_CASE( "normal New Game admits an existing failed-save world before consuming its actors",
+           "[save_continuity_067][world_admission_067]" )
+{
+    namespace fs = std::filesystem;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    override_option monsters( "SPAWN_DENSITY", "0" );
+    if( ImGui::GetCurrentContext() == nullptr ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    restore_on_out_of_scope<bool> testing( test_mode );
+    test_mode = false;
+    const int previous_timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 1 );
+    on_out_of_scope renderer( [&]() { inp_mngr.set_timeout( previous_timeout ); catacurses::endwin(); } );
+    // Use a normally generated world for native new-character startup. The
+    // retained outing fixture has partial overmap terrain but no complete
+    // mapgen-argument context outside its loaded bubble.
+    const std::string original_world = world_generator->active_world->world_name;
+    const auto original_mods = world_generator->active_world->active_mod_order;
+    REQUIRE( g->save() );
+    const std::string world = "r067-new-character-admission";
+    on_out_of_scope restore_world( [&]() {
+        test_mode = true;
+        get_avatar() = avatar();
+        clear_creatures();
+        overmap_buffer.clear();
+        MAPBUFFER.clear();
+        if( world_generator->has_world( world ) ) {
+            world_generator->delete_world( world, true );
+        }
+        REQUIRE( g->load( original_world ) );
+    } );
+    get_avatar() = avatar();
+    clear_creatures();
+    overmap_buffer.clear();
+    MAPBUFFER.clear();
+    WORLD *owned = world_generator->make_new_world( world, original_mods );
+    REQUIRE( owned );
+    semantic_surface_manager manager( "world-admission" );
+    semantic_surface_manager_session session( manager );
+    std::string answer = "YES";
+    int questions = 0;
+    int callbacks = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &d ) {
+        const auto a = std::find_if( d.valid_actions.begin(), d.valid_actions.end(),
+        [&]( const semantic_action_descriptor &action ) {
+            return action.enabled && ( ( action.id == "prompt.choose" && action.label == answer ) || action.id == "terminal.confirm" || action.id == "prompt.cancel" );
+        } );
+        REQUIRE( a != d.valid_actions.end() );
+        if( a->id == "prompt.choose" ) { ++questions; }
+        REQUIRE( manager.submit_request( { "world-admission", d.surface_id, d.frame_id,
+                                           "admission-" + std::to_string( ++callbacks ), a->id,
+                                           a->stable_id.empty() ? std::optional<std::string>() : a->stable_id, {} } ) );
+    } );
+    main_menu initial;
+    REQUIRE( initial.start_new_character( world, character_type::NOW ) );
+    const fs::path path = world_generator->active_world->folder_path().get_unrelative_path();
+    auto body = make_shared_fast<npc>();
+    body->randomize( npc_class_id::NULL_ID() ); // Native ID allocation, no imported counter.
+    map &here = get_map();
+    const auto positions = here.points_in_radius( get_avatar().pos_bub(), 4 );
+    const auto position = std::find_if( positions.begin(), positions.end(), [&]( const auto &point ) {
+        return here.passable( point ) && point != get_avatar().pos_bub() &&
+               get_creature_tracker().creature_at( point ) == nullptr;
+    } );
+    REQUIRE( position != positions.end() );
+    body->spawn_at_precise( here.get_abs( *position ) );
+    const character_id carrier = body->getID();
+    const auto carrier_position = body->pos_abs();
+    const int carrier_hp = body->get_hp();
+    overmap_buffer.insert_npc( body );
+    g->load_npcs();
+    REQUIRE( overmap_buffer.find_npc( carrier ) );
+    get_avatar().set_save_id( "r067-admission-A" );
+    get_avatar().name = "r067-admission-A";
+    const auto count = []( const Character &actor ) {
+        int result = 0;
+        actor.visit_items( [&]( const item *i, const item * ) {
+            result += i->get_var( "r067_admission" ) == "one";
+            return VisitResponse::NEXT;
+        } );
+        return result;
+    };
+    // A real native transfer template avoids any interactive creation shortcut.
+    const character_id old_id = get_avatar().getID();
+    const std::string old_name = get_avatar().name;
+    const std::string old_save = get_avatar().get_save_id();
+    const string_id<scenario> old_scenario = get_scenario()->ident();
+    const auto old_start = get_avatar().start_location;
+    const bool old_random = get_avatar().random_start_location;
+    get_avatar().name = "r067-admission-B";
+    get_avatar().set_save_id( "r067-admission-B" );
+    set_scenario( &string_id<scenario>( "wilderness" ).obj() );
+    get_avatar().start_location = start_location_id( "sloc_field" );
+    get_avatar().random_start_location = false;
+    // This is a pre-start new-character template, not an already assigned
+    // avatar identity transplanted into the native start_game ID allocator.
+    get_avatar().setID( character_id(), true );
+    get_avatar().save_template( "r067-admission-B", pool_type::TRANSFER );
+    get_avatar().setID( old_id, true );
+    get_avatar().name = old_name;
+    get_avatar().set_save_id( old_save );
+    set_scenario( &old_scenario.obj() );
+    get_avatar().start_location = old_start;
+    get_avatar().random_start_location = old_random;
+    on_out_of_scope remove_template( [&]() { fs::remove( fs::u8path( PATH_INFO::templatedir() ) / "r067-admission-B.template" ); } );
+    item token( itype_id( "rock" ) );
+    token.set_var( "r067_admission", "one" );
+    item_location original = overmap_buffer.find_npc( carrier )->i_add( token );
+    REQUIRE( g->save() );
+    const auto prior = save_continuity::prior_point( path );
+    REQUIRE( prior );
+    const fs::path saved_a = path / ( base64_encode( "r067-admission-A" ) + SAVE_EXTENSION +
+        ( world_generator->active_world->has_compression_enabled() ? std::string( zzip_suffix ) : "" ) );
+    const auto read = []( const fs::path &p ) {
+        std::ifstream f( p, std::ios::binary );
+        REQUIRE( f.good() );
+        return std::string( std::istreambuf_iterator<char>( f ), {} );
+    };
+    const auto prior_a_bytes = read( saved_a );
+    original.remove_item();
+    get_avatar().i_add( token );
+    calendar::turn += 1_turns;
+    const fs::path master = ( PATH_INFO::world_base_save_path() / SAVE_MASTER ).get_unrelative_path();
+    std::string suffix = ".temp";
+#if defined(_WIN32)
+    suffix = "." + std::to_string( GetCurrentProcessId() ) + suffix;
+#elif defined(__linux__)
+    suffix = "." + std::to_string( getpid() ) + suffix;
+#endif
+    const fs::path blocked = master.string() + suffix;
+    REQUIRE( fs::create_directory( blocked ) );
+    REQUIRE_FALSE( g->save() ); // Player A changed before the actual master failed.
+    CHECK( g->last_save_result() == "failed_factions_missions_npcs" );
+    CHECK( read( saved_a ) != prior_a_bytes );
+    fs::remove( blocked );
+    REQUIRE( save_continuity::incomplete( path ) );
+    main_menu menu;
+    answer = "NO";
+    const int before_questions = questions;
+    const auto current_turn = calendar::turn;
+    CHECK_FALSE( menu.start_new_character( world, character_type::TEMPLATE, "r067-admission-B" ) );
+    CHECK( questions == before_questions + 1 );
+    CHECK( get_avatar().get_save_id() == "r067-admission-A" );
+    CHECK( calendar::turn == current_turn );
+    CHECK( count( get_avatar() ) == 1 );
+    CHECK( count( *overmap_buffer.find_npc( carrier ) ) == 0 );
+    CHECK( save_continuity::incomplete( path ) );
+    CHECK( save_continuity::prior_point( path )->turn == prior->turn );
+    answer = "YES";
+    REQUIRE( menu.start_new_character( world, character_type::TEMPLATE, "r067-admission-B" ) );
+    CHECK_FALSE( save_continuity::incomplete( path ) );
+    CHECK( get_avatar().get_save_id() == "r067-admission-B" );
+    CHECK( get_avatar().getID() != old_id );
+    CHECK( get_avatar().getID() != carrier );
+    CHECK( count( get_avatar() ) == 0 );
+    REQUIRE( overmap_buffer.find_npc( carrier ) );
+    CHECK( count( *overmap_buffer.find_npc( carrier ) ) == 1 );
+    CHECK( world_generator->active_world->save_exists( save_t::from_save_id( "r067-admission-A" ) ) );
+    const auto a_bytes = read( saved_a );
+    CHECK( a_bytes == prior_a_bytes );
+    REQUIRE( g->save() );
+    CHECK( read( saved_a ) == a_bytes );
+    CHECK( count( get_avatar() ) == 0 );
+    CHECK( count( *overmap_buffer.find_npc( carrier ) ) == 1 );
+    CHECK_FALSE( save_continuity::incomplete( path ) );
+    CHECK( overmap_buffer.find_npc( carrier )->pos_abs() == carrier_position );
+    CHECK( overmap_buffer.find_npc( carrier )->get_hp() == carrier_hp );
 }

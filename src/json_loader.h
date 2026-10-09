@@ -8,6 +8,7 @@
 class json_loader
 {
     public:
+        static void invalidate_save_cache( const std::string &world );
         // Create a JsonValue from the given json source file, optionally starting parsing
         // at the given offset in the file (eg. because it starts with some non-json
         // content like a version header). Throws if the file cannot be found or fails to parse.

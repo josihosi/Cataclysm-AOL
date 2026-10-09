@@ -131,6 +131,11 @@ std::optional<JsonValue> from_path_at_offset_opt_impl( const cata_path &source_f
 
 } // namespace
 
+void json_loader::invalidate_save_cache( const std::string &world )
+{
+    save_caches.erase( world );
+}
+
 std::optional<JsonValue> json_loader::from_path_at_offset_opt( const cata_path &source_file,
         size_t offset ) noexcept( false )
 {

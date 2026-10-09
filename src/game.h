@@ -1102,7 +1102,7 @@ class game
          * it from the creature tracker. Keep in mind that any monster index may
          * point to a different monster after calling this (or to no monster at all).
          */
-        void despawn_monster( monster &critter );
+        bool despawn_monster( monster &critter );
         // Despawn all monsters not in the reality bubble
         void despawn_nonlocal_monsters();
     private:
@@ -1179,7 +1179,10 @@ class game
         Creature *is_hostile_within( int distance, bool dangerous = false );
 
         static std::string timestamp_now();
-        void move_save_to_graveyard();
+        bool move_save_to_graveyard();
+        bool admit_world( const std::string &world, bool &restored );
+        void await_retirement_protection();
+        bool can_load_world_after_retirement( const std::string &world ) const;
         bool save_player_data();
         bool save_achievements();
         // ########################## DATA ################################
@@ -1315,6 +1318,13 @@ class game
         std::string last_save_result_ = "unattempted"; // NOLINT(cata-serialize)
         // A failed multi-file write can leave the prior disk state uncertain.
         std::optional<int> last_confirmed_save_turn_; // NOLINT(cata-serialize)
+        // Current cleanup attempt only: prevent repeated native mutations/UI
+        // on I/O retry. Durable retirement authority is publication metadata.
+        // Also retain a failed-intent refusal in this process when the disk
+        // cannot persist it. setup of another world cannot silently erase it.
+        std::map<std::string, std::string> incomplete_retirement_worlds_; // NOLINT(cata-serialize)
+        bool retirement_prepared_ = false; // NOLINT(cata-serialize)
+        bool retirement_presented_ = false; // NOLINT(cata-serialize)
 
         mutable std::array<float, OVERMAP_LAYERS> latest_lightlevels; // NOLINT(cata-serialize)
         // remoteveh() cache

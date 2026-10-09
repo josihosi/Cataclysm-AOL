@@ -1,3 +1,4 @@
+#include "save_continuity.h"
 #include "worldfactory.h"
 
 #include <algorithm>
@@ -2109,6 +2110,7 @@ bool WORLD::set_compression_enabled( bool enabled )
     if( enabled == is_compressed ) {
         return true;
     }
+    save_continuity::before_file_write( ( folder_path() / "maps.dict" ).get_unrelative_path() );
     static_popup popup;
     cata_path world_folder_path = folder_path();
     if( enabled ) {
@@ -2458,10 +2460,14 @@ static bool isForbidden( const cata_path &candidate )
 void worldfactory::delete_world( const std::string &worldname, const bool delete_folder )
 {
     cata_path worldpath = get_world( worldname )->folder_path();
+    // Persist intentional erasure before a partial removal can expose its old
+    // protection as a supposedly recoverable world.
+    save_continuity::begin_erase( worldpath.get_unrelative_path() );
     std::set<std::filesystem::path> directory_paths;
 
     if( delete_folder ) {
         std::filesystem::remove_all( worldpath.get_unrelative_path() );
+        save_continuity::forget( worldpath.get_unrelative_path() );
         remove_world( worldname );
         return;
     }
@@ -2475,7 +2481,11 @@ void worldfactory::delete_world( const std::string &worldname, const bool delete
     file_paths.erase( end, file_paths.end() );
 
     for( cata_path &file_path : file_paths ) {
-        std::filesystem::path folder_path = file_path.get_unrelative_path().parent_path();
+        const std::filesystem::path path = file_path.get_unrelative_path();
+        // The recursive finder includes directory entries.  They belong to the
+        // bottom-up directory pass, after their removable contents are gone.
+        std::filesystem::path folder_path = std::filesystem::is_directory( path ) ?
+                                            path : path.parent_path();
         while( folder_path.filename() != std::filesystem::u8path( worldname ) ) {
             directory_paths.insert( folder_path );
             folder_path = folder_path.parent_path();
@@ -2483,14 +2493,24 @@ void worldfactory::delete_world( const std::string &worldname, const bool delete
     }
 
     for( cata_path &file : file_paths ) {
-        remove_file( file );
+        if( std::filesystem::is_directory( file.get_unrelative_path() ) ) {
+            continue;
+        }
+        if( !remove_file( file ) ) {
+            throw std::runtime_error( "World reset could not remove " + file.get_unrelative_path().u8string() );
+        }
     }
 
     // Trying to remove a non-empty parent directory before a child
     // directory will fail.  Removing directories in reverse order
     // will prevent this situation from arising.
     for( auto it = directory_paths.rbegin(); it != directory_paths.rend(); ++it ) {
-        remove_directory( *it );
+        // A retained compression dictionary can keep an ancestor nonempty.
+        // Only directories with no remaining retained entries should vanish.
+        if( std::filesystem::is_empty( *it ) && !remove_directory( *it ) ) {
+            throw std::runtime_error( "World reset could not remove directory " + it->u8string() );
+        }
     }
+    save_continuity::forget( worldpath.get_unrelative_path() );
     get_world( worldname )->world_saves.clear();
 }

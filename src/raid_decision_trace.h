@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+#include "character_id.h"
+
 namespace bandit_live_world
 {
 struct site_record;
@@ -125,6 +127,36 @@ void record_sleep_edge( const Character &actor, std::string_view edge,
                         std::string_view available_reason );
 void record_alarm_edge( const npc &actor, const npc_alarm &alarm,
                         std::string_view reason, bool was_sleeping );
+// Decision-local operands, not another threat cache. Null means the owning
+// guard returned before that native calculation was needed.
+struct scout_threat_read {
+    std::optional<int> native_attitude;
+    std::optional<character_id> threatened_member;
+    std::optional<int> distance;
+    std::optional<bool> approaching;
+    std::optional<bool> melee_reach;
+    std::optional<bool> route_reachable;
+    std::optional<int> special_range;
+    bool response = true;
+    std::string_view reason;
+};
+void record_scout_threat_read( const npc &observer, const Creature &creature,
+                              const bandit_live_world::site_record &site,
+                              std::string_view caller, const scout_threat_read &read );
+
+struct scout_alarm_response_read {
+    std::optional<bool> source_available;
+    std::optional<bool> source_incapacitated;
+    std::optional<bool> source_flight;
+    std::optional<bool> incident_visible;
+    std::optional<bool> incident_field;
+    std::optional<bool> source_field;
+    bool response = true;
+    std::string_view reason;
+};
+void record_scout_alarm_response( const npc &observer, const npc_alarm &alarm,
+                                  const bandit_live_world::site_record &site,
+                                  const npc *source, const scout_alarm_response_read &read );
 
 } // namespace raid_decision_trace
 

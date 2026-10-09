@@ -25,6 +25,10 @@ class main_menu
         // Shows the main menu and returns whether a game was started or not
         bool opening_screen();
 
+        // Shared normal New Game route after native world selection.
+        bool start_new_character( const std::string &world, character_type type,
+                                  const std::string &character_template = {} );
+
         static std::string queued_world_to_load;
         static std::string queued_save_id_to_load;
 
