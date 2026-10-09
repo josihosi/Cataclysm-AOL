@@ -54249,8 +54249,11 @@ TEST_CASE( "save protection first generation and verified restore failures retai
     namespace fs = std::filesystem;
     const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-protection-files";
     const fs::path protected_root = fs::u8path( PATH_INFO::savedir() ) / ".save-continuity" / world.filename();
+    const std::string world_name = world.filename().string();
     REQUIRE_FALSE( fs::exists( world ) );
+    REQUIRE_FALSE( world_generator->has_world( world_name ) );
     on_out_of_scope cleanup( [&]() {
+        world_generator->remove_world( world_name );
         save_continuity::forget( world );
         fs::remove_all( world );
     } );
@@ -54277,9 +54280,21 @@ TEST_CASE( "save protection first generation and verified restore failures retai
             REQUIRE( manager.submit_request( { "no-baseline-control", descriptor.surface_id, descriptor.frame_id,
                                                "no-baseline-close", action->id, action->stable_id, {} } ) );
         } );
-        // The real public loader refuses before creating registry/game state.
-        REQUIRE_FALSE( g->load( world.filename().string() ) );
+        // Files alone are not a registered world: admission stops before the
+        // recovery prompt. Preserve that refusal as a separate negative control.
+        REQUIRE_FALSE( g->load( world_name ) );
+        CHECK( prompts == 0 );
+        REQUIRE( world_generator->active_world );
+        WORLD *const previous_world = world_generator->active_world;
+        REQUIRE( world_generator->make_new_world( world_name, previous_world->active_mod_order ) );
+        REQUIRE( world_generator->has_world( world_name ) );
+        CHECK( save_continuity::incomplete( world ) );
+        CHECK_FALSE( save_continuity::prior_point( world ) );
+        // The real public loader now reaches no-baseline recovery and refuses
+        // before changing the active world or deserializing these marker files.
+        REQUIRE_FALSE( g->load( world_name ) );
         CHECK( prompts == 1 );
+        CHECK( world_generator->active_world == previous_world );
         CHECK( save_continuity::incomplete( world ) );
     }
     save_continuity::publish_complete( world, 10, "prior character" );
@@ -55889,4 +55904,388 @@ TEST_CASE( "normal New Game admits an existing failed-save world before consumin
     CHECK_FALSE( save_continuity::incomplete( path ) );
     CHECK( overmap_buffer.find_npc( carrier )->pos_abs() == carrier_position );
     CHECK( overmap_buffer.find_npc( carrier )->get_hp() == carrier_hp );
+}
+
+TEST_CASE( "completed reconnaissance survives actual return cohesion and full game reload",
+           "[bandit_live_world][completed_return_safety_067]" )
+{
+    using namespace bandit_live_world;
+    const bool cannibal = GENERATE( false, true );
+    const std::string result = GENERATE( "normal", "signal", "inconclusive", "unfinished", "unstarted" );
+    CAPTURE( cannibal, result );
+    const auto old_world = overmap_buffer.global_state.bandit_live_world;
+    const auto old_turn = calendar::turn;
+    const auto old_player = get_avatar().pos_abs_omt();
+    std::vector<character_id> actors;
+    on_out_of_scope restore( [&]() {
+        overmap_buffer.global_state.bandit_live_world.clear();
+        for( character_id id : actors ) {
+            g->remove_npc( id );
+            if( overmap_buffer.find_npc( id ) ) {
+                overmap_buffer.remove_npc( id );
+            }
+        }
+        clear_creatures();
+        sounds::reset_sounds();
+        overmap_buffer.global_state.bandit_live_world = old_world;
+        calendar::turn = old_turn;
+        g->place_player_overmap( old_player );
+    } );
+    clear_avatar();
+    clear_npcs();
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    restore_on_out_of_scope<quit_status> quit( g->uquit );
+    g->uquit = QUIT_NO;
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world = make_abstract_threat_test_world( cannibal, 979600, 6, "shelter" );
+    auto &site = world.sites.front();
+    auto &outing = site.active_outing;
+    const std::string site_id = site.site_id;
+    const auto watch = outing.target_omt + point( -3, 0 );
+    const auto approach = watch + point( -1, 0 );
+    outing.schema_version = 10;
+    outing.shared_route = { site.anchor, approach, watch, approach, site.anchor };
+    REQUIRE( apply_structural_watch_route_selection( site,
+                 require_current_simulation_cursor( site ), { outing.target_omt },
+                 { { watch, true, true, true, 1 } }, {} ) == structural_watch_route_apply_result::applied );
+    // This controlled three-OMT watch uses the existing 100+75 outward+30
+    // homeward clock (the same admitted geometry as interrupted-watch controls).
+    // Route selection without an alternate does not rewrite its caller's clock.
+    outing.expected_return_minutes = 205;
+    outing.missing_deadline_minutes = 205 + 1440;
+    advance_structural_bounty_outings( world, 220, {} );
+    REQUIRE( outing.phase == scout_phase::observing );
+    actors = outing.member_ids;
+    calendar::turn = calendar::start_of_cataclysm + 220_minutes;
+    g->place_player_overmap( watch );
+    clear_map_with_vision( -1, 1, false );
+    clear_creatures();
+    const auto origin = project_to<coords::ms>( approach );
+    std::vector<local_handoff_member_read> arrival;
+    for( std::size_t i = 0; i < actors.size(); ++i ) {
+        auto actor = make_shared_fast<npc>();
+        actor->normalize();
+        actor->load_npc_template( npc_template_id( "test_talker" ) );
+        clear_character( *actor, true );
+        actor->setID( actors[i], true );
+        actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
+        const auto position = origin + point( 8 + i, 8 );
+        actor->spawn_at_precise( position );
+        overmap_buffer.insert_npc( actor );
+        arrival.push_back( { actors[i], true, false, 100, position, position + point( 0, -1 ), position } );
+    }
+    g->load_npcs();
+    const auto handoff = plan_local_pair_handoff( site, require_current_simulation_cursor( site ),
+                         220, arrival );
+    CAPTURE( handoff.notes );
+    REQUIRE( handoff.valid );
+    REQUIRE( commit_local_pair_handoff( site, handoff, []( const auto & ) { return true; },
+                                      []( const auto & ) {} ) == local_handoff_commit_result::applied );
+    std::vector<local_cohesion_member_read> together;
+    for( const auto &read : arrival ) {
+        together.push_back( { read.npc_id, true, false, read.staging_position } );
+    }
+    if( result != "unstarted" ) {
+        const auto assembled = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ),
+                               220, together );
+        REQUIRE( assembled.valid );
+        REQUIRE( assembled.snapshot.cohesion_assembled );
+        REQUIRE( commit_local_pair_cohesion( site, assembled, false, false ) );
+    }
+    std::vector<local_route_arrival_member_read> watch_arrival;
+    if( result != "unstarted" ) {
+        for( std::size_t i = 0; i < actors.size(); ++i ) {
+            const auto position = project_to<coords::ms>( watch ) + point( 8 + i, 8 );
+            overmap_buffer.find_npc( actors[i] )->spawn_at_precise( position );
+            watch_arrival.push_back( { actors[i], true, false, true, 100, position } );
+            together[i].current_position = position;
+        }
+        REQUIRE( commit_scout_pair_watch_arrival( site, require_current_simulation_cursor( site ),
+                     221, watch_arrival ) == local_handoff_commit_result::applied );
+    }
+    const int started = outing.assessment.observation_started_minutes;
+    REQUIRE( started == ( result == "unstarted" ? -1 : 221 ) );
+    REQUIRE( persist_live_bandit_local_projection_leases_for_test( site ) );
+    world.acknowledge_persisted_crossings();
+    const site_record bound_site = site;
+    // Admit bounded current typed reads through the real observation producer;
+    // the watch reducer, not the fixture, decides readiness and completion.
+    if( result == "normal" || result == "signal" || result == "unfinished" ) {
+        const std::vector<int> reads_at = result == "unfinished" ?
+                                        std::vector<int>{ started + 1 } :
+                                        std::vector<int>{ started + 1, started + 31, started + 61, started + 91 };
+        for( int minute : reads_at ) {
+            auto observation = make_typed_visual_observation( actors.front(), outing.target_lead_revision,
+                               minute, "return-watch-" + std::to_string( minute ), sortie_observation_share_state::shared );
+            observation.source_omt = outing.target_omt;
+            observation.receiver_omt = watch;
+            observation.observed_site_id = site_id;
+            if( result != "normal" ) {
+                observation.sense = sortie_observation_sense::smoke;
+                observation.source_id = "structural-smoke@" + outing.target_omt.to_string();
+                observation.fact_key = "structural-signal:" + observation.source_id;
+                observation.state_key = "structural-smoke-signal";
+                observation.visual_quality = 0;
+                observation.defender_ids.clear();
+                observation.observed_power_low = observation.observed_power_high = 0;
+                observation.equipment_detail = 0;
+            }
+            REQUIRE( record_active_typed_observations( site, require_current_simulation_cursor( site ),
+                         actors.front(), outing.target_lead_revision, { observation }, minute ).valid );
+        }
+    }
+    const bool finished = result != "unfinished" && result != "unstarted";
+    const int completed_at = result == "unstarted" ? 221 : started + ( finished ? 120 : 30 );
+    if( result != "unstarted" ) {
+        const auto acquired = advance_structural_scout_assessment( site, outing.activity_id, outing.generation,
+                              outing.target_lead_revision, completed_at );
+        REQUIRE( acquired != scout_assessment_result::rejected );
+    }
+    REQUIRE( outing.phase == ( finished ? scout_phase::returning_report : scout_phase::observing ) );
+    const auto acquired_assessment = outing.assessment;
+    const auto acquired_records = outing.observations;
+    const int acquisition_clock = outing.last_progress_minutes;
+    const int acquisition_deadline = outing.expected_return_minutes;
+    const int acquisition_missing = outing.missing_deadline_minutes;
+    CHECK( outing.waypoint_index == ( result == "unstarted" ? 1 : 2 ) );
+    CHECK( outing.shared_route[outing.waypoint_index] ==
+           ( result == "unstarted" ? approach : watch ) );
+    CHECK( outing.waypoint_index != static_cast<int>( outing.shared_route.size() ) - 2 );
+    if( finished ) {
+        CHECK( acquisition_clock == completed_at );
+        // The real completed reducer has secured knowledge, but has not yet
+        // initialized the route's home leg. Its outward deadline remains bound.
+        CHECK( acquisition_deadline == 205 );
+        auto home_world = world;
+        auto &home_site = home_world.sites.front();
+        auto &home = home_site.active_outing;
+        std::vector<local_dematerialization_member_read> exits;
+        for( std::size_t i = 0; i < actors.size(); ++i ) {
+            // The controlled physical exit is the actual next homeward route
+            // waypoint, confirmed by the normal dematerialization read.
+            exits.push_back( { actors[i], true, false, true, 100,
+                               project_to<coords::ms>( approach ) + point( 8 + i, 8 ) } );
+        }
+        const auto dematerialize = plan_local_pair_dematerialization( home_site,
+                                   require_current_simulation_cursor( home_site ), completed_at + 1,
+                                   exits, home.cargo );
+        CAPTURE( dematerialize.notes );
+        REQUIRE( dematerialize.valid );
+        REQUIRE( commit_local_pair_dematerialization( home_site, dematerialize,
+                 []( const auto & ) { return true; }, []( const auto & ) {} ) ==
+                 local_handoff_commit_result::applied );
+        home_world.acknowledge_persisted_crossings();
+        CHECK( home.phase == scout_phase::returning_report );
+        CHECK( home.last_progress_minutes == acquisition_clock );
+        advance_structural_bounty_outings( home_world, completed_at + 2, {} );
+        REQUIRE( home.phase == scout_phase::returning_home );
+        REQUIRE( home.waypoint_index == static_cast<int>( home.shared_route.size() ) - 2 );
+        CHECK( home.last_progress_minutes == completed_at + 2 );
+        CHECK( home.expected_return_minutes == completed_at + 2 + 30 );
+        CHECK( home.missing_deadline_minutes == home.expected_return_minutes + 1440 );
+        const int home_clock = home.last_progress_minutes;
+        const int home_deadline = home.expected_return_minutes;
+        const int home_missing = home.missing_deadline_minutes;
+        // Reenter through the owning handoff using the actual retained physical
+        // position; neither phase nor route cursor is injected by the fixture.
+        std::vector<local_handoff_member_read> reentry;
+        for( const auto &member : exits ) {
+            reentry.push_back( { member.npc_id, true, false, 100, member.current_position,
+                                member.current_position + point( 0, -1 ), member.current_position } );
+        }
+        const auto rehandoff = plan_local_pair_handoff( home_site,
+                              require_current_simulation_cursor( home_site ), completed_at + 3, reentry );
+        CAPTURE( rehandoff.notes );
+        REQUIRE( rehandoff.valid );
+        REQUIRE( commit_local_pair_handoff( home_site, rehandoff,
+                 []( const auto & ) { return true; }, []( const auto & ) {} ) ==
+                 local_handoff_commit_result::applied );
+        home_world.acknowledge_persisted_crossings();
+        std::vector<local_cohesion_member_read> separated;
+        for( const auto &member : reentry ) {
+            separated.push_back( { member.npc_id, true, false, member.staging_position } );
+        }
+        separated.back().current_position += point( 16, 0 );
+        const auto home_regroup = plan_local_pair_cohesion( home_site,
+                                  require_current_simulation_cursor( home_site ), completed_at + 4, separated );
+        REQUIRE( home_regroup.valid );
+        REQUIRE_FALSE( home_regroup.abort_return );
+        REQUIRE( commit_local_pair_cohesion( home_site, home_regroup, false, false ) );
+        const int home_abort_at = home.local_handoff.cohesion_deadline_minutes;
+        REQUIRE( home_abort_at > completed_at + 4 );
+        const auto home_abort = plan_local_pair_cohesion( home_site,
+                               require_current_simulation_cursor( home_site ), home_abort_at, separated );
+        REQUIRE( home_abort.valid );
+        REQUIRE( home_abort.abort_return );
+        REQUIRE( commit_local_pair_cohesion( home_site, home_abort, false, false ) );
+        CHECK( home.last_progress_minutes == home_clock );
+        CHECK( home.expected_return_minutes == home_deadline );
+        CHECK( home.missing_deadline_minutes == home_missing );
+        CHECK( home.assessment.exit_reason == acquired_assessment.exit_reason );
+        CHECK_FALSE( home.assessment.interruption );
+        const auto reloaded_home = round_trip_world( home_world );
+        CHECK( reloaded_home.sites.front().active_outing.last_progress_minutes == home_clock );
+        CHECK( reloaded_home.sites.front().active_outing.expected_return_minutes == home_deadline );
+    }
+    // Assembling is a hostile-operation phase, not a production-admitted
+    // structural watch phase. Existing cursor/roster/lead checks alone do not
+    // validate that fabricated phase; both strict load and this entry refuse it.
+    auto assembling = site;
+    assembling.active_outing.phase = scout_phase::assembling;
+    assembling.active_outing.local_handoff.phase = scout_phase::assembling;
+    auto assembling_world = world;
+    assembling_world.sites.front() = assembling;
+    CHECK_THROWS( round_trip_world( assembling_world ) );
+    const auto assembling_before = serialize_world( assembling_world );
+    CHECK_FALSE( remember_scout_watch_interruption( assembling,
+                 require_current_simulation_cursor( assembling ), "unadmitted assembly", completed_at ) );
+    assembling_world.sites.front() = assembling;
+    CHECK( serialize_world( assembling_world ) == assembling_before );
+    // Actual safety planner sees a separated pair and an expired rendezvous,
+    // rather than injecting an abort flag or clearing survival state.
+    together.back().current_position += point( 16, 0 );
+    overmap_buffer.find_npc( actors.back() )->spawn_at_precise( together.back().current_position );
+    const auto regroup = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ),
+                         completed_at + 1, together );
+    REQUIRE( regroup.valid );
+    REQUIRE_FALSE( regroup.abort_return );
+    REQUIRE( commit_local_pair_cohesion( site, regroup, false, false ) );
+    CHECK( outing.last_progress_minutes == acquisition_clock );
+    CHECK( outing.expected_return_minutes == acquisition_deadline );
+    CHECK( outing.missing_deadline_minutes == acquisition_missing );
+    const int abort_at = outing.local_handoff.cohesion_deadline_minutes;
+    REQUIRE( abort_at > completed_at );
+    const auto abort = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ), abort_at, together );
+    REQUIRE( abort.valid );
+    REQUIRE( abort.abort_return );
+    const auto before_abort = serialize_world( world );
+    auto foreign_abort = abort;
+    foreign_abort.expected_cursor.generation++;
+    CHECK_FALSE( commit_local_pair_cohesion( site, foreign_abort, false, false ) );
+    CHECK( serialize_world( world ) == before_abort );
+    REQUIRE( commit_local_pair_cohesion( site, abort, false, false ) );
+    REQUIRE( outing.local_handoff.cohesion_abort_return );
+    REQUIRE( outing.phase == scout_phase::returning_home );
+    // Still at the watch cursor, this is the first physical withdrawal, not
+    // an already-owned penultimate home-leg clock. Do not freeze real progress.
+    CHECK( outing.last_progress_minutes == abort_at );
+    CHECK( outing.expected_return_minutes == acquisition_deadline );
+    CHECK( outing.missing_deadline_minutes == acquisition_missing );
+    CHECK( outing.assessment.readiness_latched == acquired_assessment.readiness_latched );
+    CHECK( outing.assessment.threshold_class == acquired_assessment.threshold_class );
+    CHECK( outing.assessment.observation_started_minutes == acquired_assessment.observation_started_minutes );
+    CHECK( outing.assessment.pinned_target_revision == acquired_assessment.pinned_target_revision );
+    if( finished ) {
+        CHECK_FALSE( outing.assessment.interruption );
+        CHECK( outing.assessment.exit_reason == acquired_assessment.exit_reason );
+    } else {
+        REQUIRE( outing.assessment.interruption );
+        CHECK( outing.assessment.interruption->pending() );
+    }
+    const auto committed_abort = serialize_world( world );
+    // The public survival caller cannot reopen a watch that is already
+    // withdrawing. Genuine pending reconnaissance retains its original cause.
+    CHECK_FALSE( remember_scout_watch_interruption( site,
+                 require_current_simulation_cursor( site ), "later received danger", abort_at ) );
+    CHECK( serialize_world( world ) == committed_abort );
+    const auto retained = outing.assessment;
+    const auto retained_clock = outing.last_progress_minutes;
+    const auto retained_deadline = outing.expected_return_minutes;
+    const auto duplicate = plan_local_pair_cohesion( site, require_current_simulation_cursor( site ), abort_at, together );
+    REQUIRE( duplicate.valid );
+    commit_local_pair_cohesion( site, duplicate, false, false );
+    CHECK( outing.last_progress_minutes == retained_clock );
+    CHECK( outing.expected_return_minutes == retained_deadline );
+    // Keep the real actor IDs and possessions through the ordinary full save,
+    // cleanup and public load, including current leases and return difficulty.
+    calendar::turn = calendar::start_of_cataclysm + time_duration::from_minutes( abort_at );
+    REQUIRE( persist_live_bandit_local_progress_for_test( bound_site, site ) );
+    const std::string world_name = world_generator->active_world->world_name;
+    const auto full_reload = [&]() {
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+    };
+    full_reload();
+    auto *loaded_site = world.find_site( site_id );
+    REQUIRE( loaded_site );
+    CHECK( loaded_site->active_outing.assessment.exit_reason == retained.exit_reason );
+    CHECK( loaded_site->active_outing.assessment.readiness_latched == acquired_assessment.readiness_latched );
+    CHECK( loaded_site->active_outing.local_handoff.cohesion_abort_return );
+    // Controlled physical arrival into the real return receiver. This is not
+    // native motor travel credit, and cannot return an absent or foreign body.
+    auto &returning = loaded_site->active_outing;
+    returning.actor_departure_observed = true;
+    returning.actor_route_waypoint = returning.shared_route.size() - 1;
+    for( std::size_t i = 0; i < actors.size(); ++i ) {
+        auto actor = overmap_buffer.find_npc( actors[i] );
+        REQUIRE( actor );
+        actor->spawn_at_precise( project_to<coords::ms>( loaded_site->anchor ) + point( 8 + i, 8 ) );
+        const auto before_return = *loaded_site;
+        const auto bytes = serialize_world( world );
+        CHECK_FALSE( record_structural_member_physical_return( *loaded_site,
+                     require_current_simulation_cursor( *loaded_site ), actor->getID(),
+                     loaded_site->anchor + point( 4, 4 ), abort_at + 1 + i ) );
+        CHECK( serialize_world( world ) == bytes );
+        REQUIRE( record_structural_member_physical_return( *loaded_site,
+                     require_current_simulation_cursor( *loaded_site ), actor->getID(), actor->pos_abs_omt(), abort_at + 1 + i ) );
+        REQUIRE( persist_live_bandit_local_progress_for_test( before_return, *loaded_site ) );
+        if( i == 0 ) {
+            REQUIRE_FALSE( loaded_site->current_scout_report.is_present() );
+        }
+    }
+    advance_structural_bounty_outings( world, std::max( abort_at + 3, returning.expected_return_minutes ), {} );
+    REQUIRE( loaded_site->current_scout_report.is_present() );
+    CHECK( loaded_site->current_scout_report.carrier_ids == actors );
+    CHECK( loaded_site->current_scout_report.assessment.readiness_latched == ( result == "normal" || result == "signal" ) );
+    CHECK( loaded_site->current_scout_report.assessment.interruption.has_value() == !finished );
+    CHECK( loaded_site->current_scout_report.observations.size() == acquired_records.size() );
+    const auto report_bytes = r067_return_record_bytes( loaded_site->current_scout_report );
+    advance_structural_bounty_outings( world, std::max( abort_at + 4, loaded_site->active_outing.expected_return_minutes ), {} );
+    CHECK( r067_return_record_bytes( loaded_site->current_scout_report ) == report_bytes );
+    // Public reload must retain the delivered, once-only report as well as the
+    // preceding local safety episode. Leases were retired by physical arrival.
+    calendar::turn = calendar::start_of_cataclysm + time_duration::from_minutes(
+                         loaded_site->current_scout_report.delivered_minutes );
+    full_reload();
+    loaded_site = world.find_site( site_id );
+    REQUIRE( loaded_site );
+    CHECK( r067_return_record_bytes( loaded_site->current_scout_report ) == report_bytes );
+    REQUIRE( loaded_site->acted_reports.size() == 1 );
+    std::vector<response_member_power_read> reads;
+    for( const auto id : loaded_site->roster().physically_present_ids ) {
+        reads.push_back( { id, true, true, true, 10 } );
+    }
+    const int consumer_at = loaded_site->current_scout_report.delivered_minutes + 1;
+    const auto party = select_capable_response_party( *loaded_site, loaded_site->current_scout_report.action_policy,
+                       evaluate_scout_report_at( loaded_site->current_scout_report, consumer_at ).danger_high, reads );
+    const auto authorization = evaluate_response_authorization( *loaded_site, consumer_at, party, reads );
+    CAPTURE( authorization.rejection_reason );
+    REQUIRE( authorization.valid );
+    CHECK( authorization.report_current );
+    CHECK( authorization.report_unexpired );
+    CHECK( authorization.assessment_ready == ( result == "normal" || result == "signal" ) );
+    auto foreign_report = *loaded_site;
+    foreign_report.current_scout_report.source_generation++;
+    CHECK_FALSE( evaluate_response_authorization( foreign_report, consumer_at, party, reads ).valid );
+    const auto expired_at = loaded_site->current_scout_report.delivered_minutes + 48 * 60 + 1;
+    CHECK_FALSE( evaluate_response_authorization( *loaded_site, expired_at, party, reads ).report_unexpired );
+    if( result == "inconclusive" || !finished ) {
+        const int routine_due = loaded_site->next_routine_dispatch_eligible_minutes;
+        const bool routine_already_due = consumer_at >= routine_due;
+        CAPTURE( routine_due, consumer_at );
+        CHECK( resolve_response_authorization_denial( *loaded_site, consumer_at, party, reads ) ==
+               ( finished || !routine_already_due ? response_denial_resolution::held :
+                 response_denial_resolution::rescout_ready ) );
+        if( finished || !routine_already_due ) {
+            const int later = std::max( routine_due, consumer_at + 1 );
+            const auto effective = evaluate_scout_report_at( loaded_site->current_scout_report, later );
+            const auto due_party = select_capable_response_party( *loaded_site,
+                                   loaded_site->current_scout_report.action_policy, effective.danger_high, reads );
+            CHECK( resolve_response_authorization_denial( *loaded_site, later, due_party, reads ) ==
+                   ( finished ? response_denial_resolution::held : response_denial_resolution::rescout_ready ) );
+        }
+    }
 }

@@ -5365,9 +5365,23 @@ bool record_local_pair_abstract_resume_progress( site_record &site,
 
 namespace
 {
+bool scout_reconnaissance_is_in_progress( const active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie && outing.job_type == "scout" &&
+           outing.selected_watch_kind != structural_watch_kind::none &&
+           ( outing.phase == scout_phase::outbound || outing.phase == scout_phase::searching ||
+             outing.phase == scout_phase::observing );
+}
+
 void remember_current_scout_interruption( active_outing_state &outing,
         const std::string &cause, const int minutes )
 {
+    // Reconnaissance owns its result until it finishes or is interrupted.
+    // Later homeward danger/cohesion belongs to the existing travel state;
+    // it cannot reopen or erase the acquired assessment.
+    if( !scout_reconnaissance_is_in_progress( outing ) ) {
+        return;
+    }
     if( outing.assessment.interruption && outing.assessment.interruption->pending() ) {
         return; // Repeated callbacks preserve this pending episode's first cause.
     }
@@ -17711,7 +17725,9 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     // Reconcile the old lead-based completion label only from actual carriers'
     // current watch records. A finite inconclusive private watch can become useful
     // when its observer reports; danger and observed people are not retuned here.
-    const bool finite_watch = reported_outing.selected_watch_kind != structural_watch_kind::none &&
+    const bool finite_watch = !scout_reconnaissance_is_in_progress( reported_outing ) &&
+            ( !report.assessment.interruption || !report.assessment.interruption->pending() ) &&
+            reported_outing.selected_watch_kind != structural_watch_kind::none &&
             report.assessment.observation_started_minutes >= 0 &&
             reported_outing.last_advanced_minutes - report.assessment.observation_started_minutes >= 120 &&
             report.assessment.burned_minutes < 0 &&
@@ -21282,12 +21298,9 @@ bool remember_scout_watch_interruption( site_record &site,
 {
     active_outing_state &outing = site.active_outing;
     const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
-    if( outing.kind != outing_kind::structural_sortie || outing.job_type != "scout" ||
+    if( !scout_reconnaissance_is_in_progress( outing ) ||
         !simulation_cursor_matches( outing, cursor ) || !site.roster().valid ||
         lead == nullptr || !structural_watch_lead_is_current( site, outing, *lead ) ||
-        ( outing.phase != scout_phase::outbound && outing.phase != scout_phase::searching &&
-          outing.phase != scout_phase::observing ) ||
-        outing.selected_watch_kind == structural_watch_kind::none ||
         outing.selected_watch_omt.is_invalid() || cause.empty() ||
         cause.size() > max_sortie_summary_length || current_minutes < outing.last_advanced_minutes ||
         current_minutes < 0 || !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ) {
