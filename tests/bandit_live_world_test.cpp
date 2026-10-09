@@ -48206,9 +48206,9 @@ TEST_CASE( "same robbery operation recovers real delivery without callback shout
         alternative->fall_asleep( 1_hours );
     }
     if( mode == "unheard_approach" ) {
-        auto far = scene.collector->pos_bub();
-        while( get_map().inbounds( far + point( 1, 0 ) ) ) { far += point( 1, 0 ); }
-        receiver.setpos( get_map().get_abs( far ), false );
+        auto distant_tile = scene.collector->pos_bub();
+        while( get_map().inbounds( distant_tile + point( 1, 0 ) ) ) { distant_tile += point( 1, 0 ); }
+        receiver.setpos( get_map().get_abs( distant_tile ), false );
         REQUIRE_FALSE( receiver.can_hear( scene.collector->pos_bub(), scene.collector->get_shout_volume() ) );
     }
     const auto operation_id = scene.site().active_hostile_operation.reservation.activity_id;
@@ -48523,16 +48523,16 @@ TEST_CASE( "overmap visit waits across serialization until actual local admissio
 {
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     r066_visit_scene scene( true );
-    const auto far = scene.target;
+    const auto remote_site = scene.target;
     const auto id = scene.collector->getID();
     const auto party = scene.site().active_hostile_operation.reservation.member_ids;
     for( npc *actor : { scene.collector, scene.escort } ) {
         g->remove_npc( actor->getID() );
-        actor->spawn_at_precise( project_to<coords::ms>( far ) + point( 14, actor == scene.collector ? 12 : 13 ) );
+        actor->spawn_at_precise( project_to<coords::ms>( remote_site ) + point( 14, actor == scene.collector ? 12 : 13 ) );
     }
     auto &outing = scene.site().active_hostile_operation.reservation;
-    outing.target_omt = far;
-    outing.shared_route = { scene.site().anchor, far };
+    outing.target_omt = remote_site;
+    outing.shared_route = { scene.site().anchor, remote_site };
     const auto position = scene.collector->pos_abs();
     REQUIRE_FALSE( scene.collector->is_active() );
     REQUIRE_FALSE( get_map().inbounds( scene.collector->pos_bub() ) );
@@ -48563,8 +48563,8 @@ TEST_CASE( "overmap visit waits across serialization until actual local admissio
     restored_escort->deserialize( json_loader::from_string( escort_bytes ).get_object() );
     overmap_buffer.insert_npc( restored_escort );
     scene.escort = restored_escort.get();
-    g->place_player_overmap( far, false );
-    get_avatar().setpos( project_to<coords::ms>( far ) + point( 12, 12 ), false );
+    g->place_player_overmap( remote_site, false );
+    get_avatar().setpos( project_to<coords::ms>( remote_site ) + point( 12, 12 ), false );
     for( const auto &tile : get_map().points_on_zlevel( 0 ) ) { get_map().ter_set( tile, ter_id( "t_grass" ) ); }
     g->load_npcs();
     REQUIRE( scene.collector->is_active() );
