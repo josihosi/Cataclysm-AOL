@@ -7,6 +7,7 @@
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
 #include "game_inventory.h"
+#include "faction.h"
 #include "imgui/imgui.h"
 #include "item.h"
 #include "item_location.h"
@@ -18,6 +19,7 @@
 #include "player_helpers.h"
 #include "semantic_surface.h"
 #include "translations.h"
+#include "ui_manager.h"
 #include "uistate.h"
 
 TEST_CASE( "pickup explains a native pocket denial and permits read-only details",
@@ -171,6 +173,7 @@ TEST_CASE( "pickup explains a native pocket denial and permits read-only details
 #include <cstdlib>
 #include <optional>
 #include <map>
+#include <fstream>
 #include "compatibility.h"
 #include "cached_options.h"
 #include "do_turn.h"
@@ -244,11 +247,9 @@ TEST_CASE( "queued pickup after Wield owns a fresh native cancel and World succe
     const std::string locale = std::setlocale( LC_CTYPE, nullptr );
     REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) );
     on_out_of_scope restore_locale( [&]() { std::setlocale( LC_CTYPE, locale.c_str() ); } );
-    static bool initialized = false;
-    if( !initialized ) {
+    if( !imclient ) {
         catacurses::init_interface();
         catacurses::resizeterm();
-        initialized = true;
     }
     restore_on_out_of_scope<bool> restore_test_mode( test_mode );
     test_mode = false;
@@ -356,5 +357,263 @@ TEST_CASE( "queued pickup after Wield owns a fresh native cancel and World succe
     CHECK( active_semantic_surface_manager() == expected_manager );
     REQUIRE( receipts.count( "world-successor" ) == 1 );
     CHECK( receipts.at( "world-successor" ).accepted );
+}
+
+TEST_CASE( "pickup wield activity publishes its native disposal successor outside input ownership",
+           "[semantic_surface][pickup_disposal_diagnostic_067][pickup_disposal_067]" )
+{
+    const bool retained_session = GENERATE( false, true );
+    const std::string choice = GENERATE( std::string( "drop" ), std::string( "cancel" ),
+                                        std::string( "steal-no" ), std::string( "steal-drop" ),
+                                        std::string( "off-drop" ) );
+    const bool stealing = choice == "steal-no" || choice == "steal-drop";
+    const bool off_mode = choice == "off-drop";
+    const bool semantic_disposal = choice != "steal-no" && ( !off_mode || retained_session );
+    const bool changed_weapon = choice == "drop" || choice == "steal-drop" || off_mode;
+    CAPTURE( retained_session, choice );
+    const std::string run = std::string( retained_session ? "disposal-enclosing-" :
+                                       "disposal-native-" ) + choice;
+    pickup_environment run_env( "OPENCLAW_HARNESS_RUN_ID", run );
+    pickup_environment bound_env( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run );
+    pickup_environment request_env( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", "" );
+    auto &manager = openclaw_harness_semantic_surface_manager();
+    REQUIRE( manager.stack().empty() );
+    REQUIRE( active_semantic_surface_manager() == nullptr );
+    semantic_surface_manager enclosing( run );
+    clear_avatar();
+    clear_map();
+    REQUIRE( world_generator->active_world );
+    const std::string world_name = world_generator->active_world->world_name;
+    REQUIRE( g->save() );
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    REQUIRE( g->load( world_name ) );
+    clear_avatar();
+    clear_map();
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    override_option autosave( "AUTOSAVE", "false" );
+    restore_on_out_of_scope<time_point> restore_turn( calendar::turn );
+    restore_on_out_of_scope<decltype( g->uquit )> restore_quit( g->uquit );
+    g->uquit = QUIT_NO;
+    const std::string locale = std::setlocale( LC_CTYPE, nullptr );
+    REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) );
+    on_out_of_scope restore_locale( [&]() { std::setlocale( LC_CTYPE, locale.c_str() ); } );
+    if( !imclient ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    const int timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 1 );
+    on_out_of_scope cleanup( [&]() {
+        uistate.open_menu.reset();
+        manager.set_descriptor_observer( {} );
+        manager.set_receipt_observer( {} );
+        enclosing.set_descriptor_observer( {} );
+        enclosing.set_receipt_observer( {} );
+        inp_mngr.set_timeout( timeout );
+        ::flushinp();
+        catacurses::endwin();
+    } );
+    avatar &you = get_avatar();
+    you.wear_item( item( itype_id( "pants" ) ) );
+    item old_gun( itype_id( "m240" ) );
+    old_gun.set_owner( you );
+    REQUIRE( you.wield( old_gun ) );
+    const int64_t old_uid = you.get_wielded_item()->uid().get_value();
+    map &here = get_map();
+    const auto position = you.pos_bub();
+    item gun( itype_id( "m240" ) );
+    if( stealing ) {
+        gun.set_owner( faction_id( "hells_raiders" ) );
+    } else {
+        gun.set_owner( you );
+    }
+    you.set_value( "THIEF_MODE", "THIEF_ASK" );
+    item &replacement = here.add_item_or_charges( position, std::move( gun ) );
+    const int64_t new_uid = replacement.uid().get_value();
+    const std::string new_stable = std::to_string( new_uid );
+    here.add_item_or_charges( position, item( itype_id( "smart_phone" ) ) );
+    REQUIRE_FALSE( you.can_stash( *you.get_wielded_item() ) );
+    REQUIRE( you.can_wield( replacement ).success() );
+    std::ofstream evidence;
+    if( const char *path = std::getenv( "CAOL_R067_DISPOSAL_EVIDENCE" ) ) {
+        evidence.open( path, std::ios::app );
+    }
+    const auto record = [&]( const std::string &stage, const std::string &detail ) {
+        if( evidence ) {
+            evidence << run << " " << stage << " " << detail << "\n";
+            evidence.flush();
+        }
+    };
+    int phase = 0;
+    int disposal_descriptors = 0;
+    int stealing_descriptors = 0;
+    int accepted_disposals = 0;
+    int guards = 0;
+    std::map<std::string, semantic_action_receipt> receipts;
+    const auto receipt = [&]( const semantic_action_receipt &value ) {
+        receipts[value.request_id] = value;
+        if( value.request_id == "dispose-choice" && value.accepted ) {
+            ++accepted_disposals;
+        }
+        record( "receipt", value.request_id + " accepted=" + ( value.accepted ? "true" : "false" ) + " reason=" + value.rejection_reason );
+    };
+    const auto observe = [&]( const semantic_surface_descriptor &descriptor ) {
+        record( "descriptor", descriptor.kind + " " + descriptor.surface_id + " " + descriptor.frame_id );
+        auto *owner = active_semantic_surface_manager();
+        REQUIRE( owner != nullptr );
+        const auto submit = [&]( const std::string &id, const std::string &action,
+                                 std::optional<std::string> stable = std::nullopt ) {
+            REQUIRE( owner->submit_request( { run, descriptor.surface_id, descriptor.frame_id,
+                                               id, action, stable, {} } ) );
+        };
+        if( descriptor.kind == "world" && phase == 0 ) {
+            phase = 1;
+            submit( "pickup", "world.pickup" );
+        } else if( descriptor.kind == "inventory" && phase == 1 ) {
+            phase = 2;
+            for( const auto &action : descriptor.valid_actions ) {
+                if( action.id == "inventory.wield" ) {
+                    record( "wield-action", action.stable_id + " enabled=" +
+                            ( action.enabled ? "true" : "false" ) );
+                }
+            }
+            record( "requested-uid", new_stable );
+            submit( "replace-wield", "inventory.wield", new_stable );
+            // This is a scheduling control, not action authority. The native
+            // input consumes the request and assigns its own wield actor; the
+            // next real turn executes it after handle_action has returned.
+            you.set_moves( 0 );
+        } else if( descriptor.kind == "prompt" && phase == 2 ) {
+            ++stealing_descriptors;
+            REQUIRE( stealing );
+            CHECK( owner == ( retained_session ? &enclosing : &manager ) );
+            CHECK( descriptor.payload.at( "text" ).find( "stealing" ) != std::string::npos );
+            const auto answer = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            [&]( const semantic_action_descriptor &action ) {
+                return action.id == "prompt.choose" && action.enabled &&
+                       action.label == ( choice == "steal-no" ? "NO" : "YES" );
+            } );
+            REQUIRE( answer != descriptor.valid_actions.end() );
+            submit( "stealing-choice", answer->id, answer->stable_id );
+        } else if( descriptor.kind == "menu" && phase == 2 ) {
+            ++disposal_descriptors;
+            CHECK( owner == ( retained_session ? &enclosing : &manager ) );
+            CHECK( descriptor.payload.at( "text" ).find( "Stop wielding" ) != std::string::npos );
+            const auto drop = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &action ) {
+                return action.id == "menu.choose" && action.enabled &&
+                       action.label.find( "Drop item" ) != std::string::npos;
+            } );
+            REQUIRE( drop != descriptor.valid_actions.end() );
+            // Exercise the actual current modal's refusal path without a
+            // keyboard fallback or mutating the native selected option.
+            const auto reject = [&]( semantic_action_request request ) {
+                REQUIRE( owner->submit_request( std::move( request ) ) );
+                CHECK_FALSE( owner->consume_top_request() );
+                ++guards;
+            };
+            reject( { "wrong-run", descriptor.surface_id, descriptor.frame_id,
+                      "foreign-disposal", drop->id, drop->stable_id, {} } );
+            reject( { run, descriptor.surface_id, "stale-frame", "stale-disposal",
+                      drop->id, drop->stable_id, {} } );
+            const auto store = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &action ) {
+                return action.id == "menu.choose" && !action.enabled &&
+                       action.label.find( "Store in inventory" ) != std::string::npos;
+            } );
+            REQUIRE( store != descriptor.valid_actions.end() );
+            reject( { run, descriptor.surface_id, descriptor.frame_id, "denied-store",
+                      store->id, store->stable_id, {} } );
+            record( "disposal", descriptor.payload.at( "text" ) );
+            if( choice == "cancel" ) {
+                submit( "dispose-choice", "menu.cancel" );
+            } else {
+                submit( "dispose-choice", drop->id, drop->stable_id );
+            }
+        } else if( descriptor.kind == "inventory" &&
+                   ( phase == 3 || ( phase == 2 && you.activity.is_null() ) ) ) {
+            phase = 4;
+            submit( "reopened-cancel", "inventory.cancel" );
+        } else if( descriptor.kind == "world" && phase >= 3 ) {
+            phase = 5;
+            submit( "world-successor", "world.pause" );
+        }
+    };
+    manager.set_receipt_observer( receipt );
+    manager.set_descriptor_observer( observe );
+    enclosing.set_receipt_observer( receipt );
+    enclosing.set_descriptor_observer( observe );
+    test_mode = false;
+    // Public World -> Pickup -> actual item dispatch. Ending moves in the
+    // descriptor observer separates input ownership from next-turn execution.
+    you.set_moves( 100 );
+    CHECK_FALSE( g->do_turn() );
+    REQUIRE( phase == 2 );
+    REQUIRE_FALSE( you.activity.is_null() );
+    REQUIRE( you.get_wielded_item()->uid().get_value() == old_uid );
+    REQUIRE( active_semantic_surface_manager() == nullptr );
+    record( "before-do-turn", "active_manager=null activity=" + you.activity.id().str() );
+    {
+        std::optional<pickup_environment> ordinary_binding;
+        if( off_mode ) {
+            ordinary_binding.emplace( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", "" );
+            record( "mode", "unbound native keyboard control" );
+            if( !retained_session ) {
+                // Ordinary off-mode input, not a fallback for a bound session.
+                REQUIRE( ::ungetch( '2' ) != -1 );
+            }
+        }
+        std::optional<semantic_surface_manager_session> control_session;
+        if( retained_session ) {
+            control_session.emplace( enclosing );
+        }
+        you.set_moves( 1 );
+        // Actual pre-input activity caller; no copied activity loop or
+        // private handle_action access shim is used.
+        CHECK_FALSE( g->do_turn() );
+        CHECK( active_semantic_surface_manager() == ( retained_session ? &enclosing : nullptr ) );
+        ::flushinp();
+    }
+    REQUIRE( ( phase == 2 || phase == 5 ) );
+    record( "after-activity", "menu_descriptors=" + std::to_string( disposal_descriptors ) );
+    REQUIRE( you.get_wielded_item() );
+    CHECK( you.get_wielded_item()->typeId() == itype_id( "m240" ) );
+    CHECK( ( you.get_wielded_item()->uid().get_value() != old_uid ) == changed_weapon );
+    CHECK( std::none_of( here.i_at( position ).begin(), here.i_at( position ).end(),
+    [&]( const item &it ) { return it.uid().get_value() == new_uid; } ) == changed_weapon );
+    CHECK( you.activity.is_null() );
+    CHECK( std::count_if( here.i_at( position ).begin(), here.i_at( position ).end(),
+    [&]( const item &it ) { return it.typeId() == itype_id( "m240" ); } ) == 1 );
+    if( phase == 2 ) {
+        REQUIRE( uistate.open_menu );
+        phase = 3;
+        you.set_moves( 100 );
+        CHECK_FALSE( g->do_turn() );
+    }
+    CHECK( phase == 5 );
+    CHECK_FALSE( uistate.open_menu );
+    CHECK( manager.stack().empty() );
+    CHECK( active_semantic_surface_manager() == nullptr );
+    CHECK( disposal_descriptors == ( semantic_disposal ? 1 : 0 ) );
+    CHECK( stealing_descriptors == ( stealing ? 1 : 0 ) );
+    CHECK( accepted_disposals == ( semantic_disposal ? 1 : 0 ) );
+    CHECK( guards == ( semantic_disposal ? 3 : 0 ) );
+    if( semantic_disposal ) {
+        auto &owner = retained_session ? enclosing : manager;
+        const auto &accepted = receipts.at( "dispose-choice" );
+        CHECK_FALSE( owner.submit_request( { run, accepted.requested_surface_id,
+                                            accepted.requested_frame_id, "dispose-choice",
+                                            "menu.cancel", std::nullopt, {} } ) );
+        CHECK_FALSE( owner.has_pending_request() );
+        CHECK( receipts.at( "foreign-disposal" ).rejection_reason == "wrong_run" );
+        CHECK( receipts.at( "stale-disposal" ).rejection_reason == "stale_frame" );
+        CHECK_FALSE( receipts.at( "denied-store" ).accepted );
+    }
+    REQUIRE( receipts.count( "replace-wield" ) == 1 );
+    CHECK( receipts.at( "replace-wield" ).accepted );
+    REQUIRE( receipts.count( "reopened-cancel" ) == 1 );
+    CHECK( receipts.at( "reopened-cancel" ).accepted );
 }
 #endif

@@ -9673,6 +9673,15 @@ void wield_activity_actor::do_turn( player_activity &, Character &who )
 {
     if( who.get_moves() > 0 ) {
         if( target_item ) {
+            // This activity can own native prompts after handle_action's input
+            // session has ended. Keep stealing, disposal and changed-pocket
+            // follow-ups under one bound owner without replacing an enclosing one.
+            std::optional<semantic_surface_manager_session> semantic_session;
+            if( who.is_avatar() && active_semantic_surface_manager() == nullptr &&
+                openclaw_harness_semantic_session_active() ) {
+                semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+            }
+
             // Make copies so the original remains untouched if wielding fails
             item newit = *target_item;
             item leftovers = newit;
