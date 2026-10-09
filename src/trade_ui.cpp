@@ -27,9 +27,11 @@
 #include "npctrade_utils.h"
 #include "options.h"
 #include "output.h"
+#include "pathfinding.h"
 #include "point.h"
 #include "ret_val.h"
 #include "string_formatter.h"
+#include "trap.h"
 #include "type_id.h"
 #include "vehicle.h"
 
@@ -121,9 +123,131 @@ bool trade_preset::cat_sort_compare( const inventory_entry &lhs, const inventory
     return fudge_rank( lhs ) < fudge_rank( rhs );
 }
 
+namespace
+{
+// Use native route ownership, not a visibility ray through a floor. The route
+// stays inside this encounter and may open usable doors, but may not bash,
+// climb a wall, cross an unsafe tile or load a remote store.
+bool encounter_goods_reachable( Character &payer, const tripoint_bub_ms &target,
+                                int radius, int z_radius )
+{
+    map &here = get_map();
+    const auto origin = payer.pos_bub();
+    const auto in_area = [&]( const tripoint_bub_ms &p ) {
+        return here.inbounds( p ) && ( here.supports_zlevels() || p.z() == origin.z() ) &&
+               here.ter( p ) != ter_str_id::NULL_ID() &&
+               rl_dist( origin.xy(), p.xy() ) <= radius && std::abs( p.z() - origin.z() ) <= z_radius;
+    };
+    if( !in_area( origin ) || !in_area( target ) ) {
+        return false;
+    }
+    const auto native_avoid = payer.get_path_avoid();
+    const auto avoid = [&]( const tripoint_bub_ms &p ) {
+        const trap &candidate = here.tr_at( p );
+        return !in_area( p ) || native_avoid( p ) ||
+               payer.is_dangerous_fields( here.field_at( p ) ) ||
+               ( candidate.can_see( p, payer ) && !candidate.is_benign() );
+    };
+    // Ordinary item interaction may reach from an adjacent tile on its level.
+    const auto can_access = [&]( const tripoint_bub_ms &p ) {
+        return p.z() == target.z() && rl_dist( p, target ) <= 1 &&
+               ( p == target || here.clear_path( p, target, 1, 1, 100 ) );
+    };
+    if( can_access( origin ) ) {
+        return true;
+    }
+    pathfinding_settings settings = payer.get_pathfinding_settings();
+    settings.bash_strength.clear();
+    settings.climb_cost = 0;
+    settings.avoid_traps = true;
+    settings.avoid_dangerous_fields = true;
+    // Native radius targets include adjacent z-levels. Use native point targets
+    // on the goods' level so stopping underneath a floor is not access.
+    for( const tripoint_bub_ms &interaction : closest_points_first( target, 1 ) ) {
+        if( !in_area( interaction ) || avoid( interaction ) || !can_access( interaction ) ) {
+            continue;
+        }
+        const auto route = here.route( origin, pathfinding_target::point( interaction ), settings, avoid );
+        if( !route.empty() && std::none_of( route.begin(), route.end(), avoid ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+class encounter_item_selector : public inventory_selector
+{
+    public:
+        using inventory_selector::inventory_selector;
+        std::vector<item_location> eligible_items() const {
+            std::vector<item_location> result;
+            std::set<const item *> seen;
+            for( const auto *column : get_all_columns() ) {
+                for( const auto *entry : column->get_entries( []( const inventory_entry &e ) {
+                    return e.is_item() && !e.is_collation_header();
+                }, true ) ) {
+                    for( const item_location &loc : entry->locations ) {
+                        if( loc && preset.is_shown( loc ) && preset.get_denial( loc ).empty() &&
+                            seen.insert( loc.get_item() ).second ) {
+                            result.push_back( loc );
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+};
+} // namespace
+
+void add_encounter_trade_sources( inventory_selector &selector, Character &payer,
+                                  const Character &buyer, int item_radius, int ally_radius, int z_radius )
+{
+    map &here = get_map();
+    if( payer.is_dead_state() || buyer.is_dead_state() || !here.inbounds( payer.pos_bub() ) ||
+        ( payer.is_npc() && !payer.as_npc()->is_active() ) ) {
+        return;
+    }
+    selector.add_character_items( payer );
+    if( item_radius >= 0 ) {
+        for( const auto &tile : here.points_in_radius( payer.pos_bub(), item_radius, z_radius ) ) {
+            if( !here.inbounds( tile ) ||
+                ( !here.supports_zlevels() && tile.z() != payer.pos_bub().z() ) ) {
+                continue;
+            }
+            const auto cargo = here.veh_at( tile ).cargo();
+            // Run a route only for an actual source, rather than every empty cell.
+            if( here.i_at( tile ).empty() && ( !cargo || cargo->items().empty() ) ) {
+                continue;
+            }
+            if( encounter_goods_reachable( payer, tile, item_radius, z_radius ) ) {
+                selector.add_map_items( tile );
+                selector.add_vehicle_items( tile );
+            }
+        }
+    }
+    if( ally_radius > 0 ) {
+        for( npc &ally : g->all_npcs() ) {
+            if( &ally != &payer && &ally != &buyer && ally.is_player_ally() &&
+                ally.is_active() && !ally.is_dead() &&
+                encounter_goods_reachable( payer, ally.pos_bub(), ally_radius, z_radius ) ) {
+                selector.add_character_items( ally );
+            }
+        }
+    }
+}
+
+std::vector<item_location> encounter_trade_items( Character &payer, const Character &buyer,
+        int item_radius, int ally_radius, int z_radius )
+{
+    const trade_preset preset( payer, buyer );
+    encounter_item_selector selector( payer, preset );
+    add_encounter_trade_sources( selector, payer, buyer, item_radius, ally_radius, z_radius );
+    return selector.eligible_items();
+}
+
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
                     const int you_nearby_item_radius, const int you_nearby_ally_radius,
-                    basecamp *you_basecamp, const bool encounter_only, const bool goods_to_stash )
+                    basecamp *you_basecamp, const bool encounter_only, const bool goods_to_stash, const int nearby_z_radius )
     : _upreset{ you, trader }, _tpreset{ trader, you },
       _panes{ std::make_unique<pane_t>( this, trader, _tpreset, std::string(), _pane_size(),
                                         _pane_orig( -1 ) ),
@@ -133,8 +257,13 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
       _title( std::move( title ) )
 
 {
-    _panes[_you]->add_character_items( you );
-    _panes[_you]->add_nearby_items( you_nearby_item_radius );
+    if( encounter_only ) {
+        add_encounter_trade_sources( *_panes[_you], you, trader, you_nearby_item_radius,
+                                     you_nearby_ally_radius, nearby_z_radius );
+    } else {
+        _panes[_you]->add_character_items( you );
+        _panes[_you]->add_nearby_items( you_nearby_item_radius );
+    }
     if( you_basecamp != nullptr && !encounter_only ) {
         _panes[_you]->add_basecamp_items( *you_basecamp, you_nearby_item_radius );
         std::set<character_id> added_basecamp_workers;
@@ -166,20 +295,11 @@ trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string titl
             add_basecamp_worker_items( assigned );
         }
     }
-    if( you_nearby_ally_radius > 0 ) {
+    if( you_nearby_ally_radius > 0 && !encounter_only ) {
         for( npc &guy : g->all_npcs() ) {
             if( &guy == &trader || &guy == &you || !guy.is_player_ally() ||
                 rl_dist( guy.pos_abs(), you.pos_abs() ) > you_nearby_ally_radius ) {
                 continue;
-            }
-            if( encounter_only ) {
-                const auto from = you.pos_bub();
-                const auto to = guy.pos_bub();
-                map &here = get_map();
-                if( !guy.is_active() || guy.is_dead() || !here.inbounds( to ) ||
-                    !here.clear_path( from, to, rl_dist( from, to ), 1, 100 ) ) {
-                    continue;
-                }
             }
             _panes[_you]->add_character_items( guy );
         }

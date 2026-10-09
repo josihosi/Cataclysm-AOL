@@ -77,6 +77,9 @@
 #include "overmapbuffer.h"
 #include "path_info.h"
 #include "pathfinding.h"
+#include "vehicle.h"
+#include "vehicle_selector.h"
+#include "visitable.h"
 #include "player_helpers.h"
 #include "options_helpers.h"
 #include "point.h"
@@ -48392,7 +48395,7 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
     get_avatar().i_add( item( itype_id( "diamond" ), calendar::turn ) );
     const auto distant_inventory = r054_actor_bytes( get_avatar() );
     const auto tile = receiver.pos_bub() + point( 1, 0 );
-    get_map().add_item_or_charges( tile, item( itype_id( "knife_combat" ), calendar::turn ) );
+    get_map().add_item_or_charges( tile, item( itype_id( "knife_combat" ), calendar::turn ) ).set_owner( receiver );
     REQUIRE( scene.communicate() );
     CHECK( scene.collector->attitude_to( receiver ) == Creature::Attitude::NEUTRAL );
     CHECK( receiver.attitude_to( *scene.collector ) == Creature::Attitude::NEUTRAL );
@@ -56288,4 +56291,504 @@ TEST_CASE( "completed reconnaissance survives actual return cohesion and full ga
                    ( finished ? response_denial_resolution::held : response_denial_resolution::rescout_ready ) );
         }
     }
+}
+
+TEST_CASE( "encounter demand and native payment share current physical eligibility",
+           "[bandit_live_world][payment_eligibility_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    const std::string outcome = GENERATE( std::string( "paid" ), std::string( "cancel" ),
+                                         std::string( "authority" ), std::string( "access" ),
+                                         std::string( "storage_retry" ) );
+    INFO( resident << " " << outcome );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) {
+        payer = &scene.camp_receiver();
+        scene.distant_adjacent_avatar();
+    }
+    REQUIRE( scene.communicate() );
+    bandit_live_world::local_gate_input input;
+    input.basecamp_or_camp_scene = true;
+    const auto initial = bandit_encounter_goods_pool_for_test( input, *payer );
+    const int initial_value = initial.player_carried_value + initial.companion_carried_value + initial.reachable_basecamp_value;
+    const auto source = payer->pos_bub() + tripoint( 0, 2, 0 );
+    get_map().i_clear( source );
+    item gun( itype_id( "m240" ) );
+    gun.set_owner( *payer );
+    item &goods = get_map().add_item( source, gun );
+    for( int copy = 1; copy < 8; ++copy ) { get_map().add_item( source, gun ); }
+    const std::string uid = std::to_string( goods.uid().get_value() );
+    const int eligible_value = 8 * goods.price( true );
+    std::vector<std::string> excluded;
+    for( const std::string &reason : { "unowned", "foreign", "denied" } ) {
+        item other( itype_id( "coin_gold" ) );
+        if( reason == "foreign" ) { other.set_owner( *scene.collector ); }
+        if( reason == "denied" ) {
+            other.set_owner( *payer );
+            other.set_var( VAR_TRADE_IGNORE, 1 );
+        }
+        item &placed = get_map().add_item( source, other );
+        excluded.push_back( std::to_string( placed.uid().get_value() ) );
+    }
+    const auto pool = bandit_encounter_goods_pool_for_test( input, *payer );
+    CHECK( pool.reachable_basecamp_value == eligible_value );
+    const auto surface = scene.surface( *payer );
+    REQUIRE( surface.valid );
+    CHECK( surface.reachable_goods_value == initial_value + eligible_value );
+    // Use the actual demand amount, not a directly injected trade_result.
+    const tripoint_abs_omt home = scene.site().anchor;
+    tinymap home_map;
+    home_map.load( home, false );
+    for( const auto &tile : home_map.cast_to_map()->points_on_zlevel( home.z() ) ) {
+        home_map.cast_to_map()->i_clear( tile );
+        home_map.cast_to_map()->ter_set( tile, ter_str_id( outcome == "storage_retry" ? "t_wall" : "t_floor" ) );
+        home_map.cast_to_map()->furn_set( tile, furn_str_id::NULL_ID() );
+    }
+    home_map.save();
+    const bool owns_imgui = ImGui::GetCurrentContext() == nullptr;
+    if( owns_imgui ) {
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        io.DisplaySize = ImVec2( 800.0f, 600.0f ); io.DeltaTime = 1.0f / 60.0f;
+        io.Fonts->AddFontDefault(); io.Fonts->Build(); ImGui::NewFrame();
+    }
+    on_out_of_scope restore_imgui( [&]() {
+        if( owns_imgui ) { ImGui::EndFrame(); ImGui::DestroyContext(); }
+    } );
+    semantic_surface_manager manager( "payment-eligibility" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope world( manager, "world", "World" );
+    int seq = 0;
+    int stage = 0;
+    int confirmations = 0;
+    int failures = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &d ) {
+        const auto submit = [&]( const std::string &action, const std::string &target = "" ) {
+            REQUIRE( manager.submit_request( { manager.run_id(), d.surface_id, d.frame_id,
+                std::to_string( ++seq ), action, target.empty() ? std::nullopt : std::optional<std::string>( target ), {} } ) );
+        };
+        if( d.kind == "inventory" ) {
+            REQUIRE( ++stage < 20 );
+            if( stage == 1 ) { submit( "trade.switch_pane" ); }
+            else if( stage == 2 ) {
+                for( const auto &bad : excluded ) {
+                    CHECK( std::none_of( d.valid_actions.begin(), d.valid_actions.end(), [&]( const auto &a ) {
+                        return a.id == "inventory.toggle" && a.stable_id == bad;
+                    } ) );
+                }
+                submit( "inventory.toggle", uid );
+            } else {
+                submit( outcome == "cancel" || ( failures && outcome != "storage_retry" ) ?
+                        "inventory.cancel" : "inventory.commit" );
+            }
+        } else if( d.kind == "prompt" ) {
+            const std::string text = d.payload.at( "text" );
+            INFO( text );
+            if( ( text.find( "Accept this trade" ) != std::string::npos || text.find( "Continue with trade" ) != std::string::npos ) ) {
+                ++confirmations;
+                if( outcome == "authority" ) { goods.set_owner( *scene.collector ); }
+                if( outcome == "access" ) {
+                    for( int dx = -1; dx <= 1; ++dx ) {
+                        for( int dy = -1; dy <= 1; ++dy ) {
+                            if( dx || dy ) { get_map().ter_set( source + point( dx, dy ), ter_str_id( "t_wall" ) ); }
+                        }
+                    }
+                }
+                const auto yes = std::find_if( d.valid_actions.begin(), d.valid_actions.end(), []( const auto &a ) { return a.label == "YES"; } );
+                REQUIRE( yes != d.valid_actions.end() );
+                submit( yes->id, yes->stable_id );
+            } else {
+                REQUIRE( ++failures == 1 );
+                CHECK( text.find( outcome == "storage_retry" ? "cannot store" : "no longer eligible" ) != std::string::npos );
+                if( outcome == "storage_retry" ) {
+                    tinymap retry;
+                    retry.load( home, false );
+                    retry.cast_to_map()->ter_set( tripoint_bub_ms( SEEX, SEEY, home.z() ), ter_str_id( "t_floor" ) );
+                    retry.save();
+                }
+                const auto ack = d.valid_actions.front(); submit( ack.id, ack.stable_id );
+            }
+        }
+    } );
+    const bool paid = outcome == "paid" || outcome == "storage_retry";
+    CHECK( npc_trading::trade_to_stash( *scene.collector, *payer, home, surface.demanded_value,
+                                     "Pay:", 30, 12, nullptr, true ) == paid );
+    CHECK( failures == ( outcome == "paid" || outcome == "cancel" ? 0 : 1 ) );
+    CHECK( confirmations == ( outcome == "cancel" ? 0 : outcome == "storage_retry" ? 2 : 1 ) );
+    CHECK( scene.collector->amount_of( itype_id( "m240" ) ) == 0 );
+    CHECK( manager.top()->surface_id == world.surface_id() );
+    tinymap deposited;
+    deposited.load( home, false );
+    int guns = 0;
+    for( const auto &tile : deposited.cast_to_map()->points_on_zlevel( home.z() ) ) {
+        for( const item &it : deposited.cast_to_map()->i_at( tile ) ) { guns += it.typeId() == itype_id( "m240" ); }
+    }
+    CHECK( guns == ( paid ? 8 : 0 ) );
+    CHECK( get_map().i_at( source ).size() == ( paid ? 3 : 11 ) );
+}
+
+TEST_CASE( "connected encounter floors preserve native payment and saved custody",
+           "[bandit_live_world][payment_floors_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    const std::string geometry = GENERATE( std::string( "upper" ), std::string( "lower" ),
+        std::string( "upper2" ), std::string( "lower2" ), std::string( "blocked" ),
+        std::string( "disconnected" ), std::string( "outside_z" ), std::string( "outside_xy" ),
+        std::string( "hazard" ), std::string( "stale_connector" ),
+        std::string( "standing_connected" ), std::string( "standing_missing" ) );
+    CAPTURE( resident, geometry );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) {
+        payer = &scene.camp_receiver();
+        scene.distant_adjacent_avatar();
+    } else {
+        overmap_buffer.add_camp( basecamp( "R067 payment camp", scene.target ) );
+        scene.camp_added = true;
+    }
+    REQUIRE( scene.communicate() );
+    map &here = get_map();
+    const auto origin = payer->pos_bub();
+    const int sign = geometry == "lower" || geometry == "lower2" ? -1 : 1;
+    const int height = geometry == "outside_z" ? 3 : geometry == "upper2" || geometry == "lower2" ? 2 : 1;
+    const bool admitted = geometry == "upper" || geometry == "lower" || geometry == "upper2" || geometry == "lower2" || geometry == "stale_connector" || geometry == "standing_connected";
+    const auto source = geometry == "outside_xy" ? origin + tripoint( 31, 0, 0 ) : origin + tripoint( 6, 2, sign * height );
+    std::map<tripoint_abs_ms, ter_id> old_terrain;
+    const auto terrain = [&]( const tripoint_bub_ms &p, const ter_str_id &id ) {
+        REQUIRE( here.inbounds( p ) );
+        old_terrain.emplace( here.get_abs( p ), here.ter( p ) );
+        here.ter_set( p, id );
+    };
+    const auto landing = origin + tripoint( 4, 0, sign );
+    on_out_of_scope restore_terrain( [&]() {
+        if( geometry == "hazard" ) {
+            get_map().delete_field( landing, field_type_id( "fd_fire" ) );
+            get_map().set_pathfinding_cache_dirty( landing );
+            CHECK( get_map().field_at( landing ).find_field( field_type_id( "fd_fire" ) ) == nullptr );
+        }
+        for( const auto &entry : old_terrain ) { get_map().ter_set( get_map().get_bub( entry.first ), entry.second ); }
+        for( int z = origin.z() - 3; z <= origin.z() + 3; ++z ) { get_map().invalidate_map_cache( z ); }
+    } );
+    for( int step = 0; step <= height; ++step ) {
+        for( int x = -2; x <= 10; ++x ) {
+            for( int y = -4; y <= 4; ++y ) {
+                terrain( origin + tripoint( x, y, sign * step ), ter_str_id( "t_floor" ) );
+            }
+        }
+    }
+    if( geometry != "disconnected" && geometry != "standing_missing" ) {
+        for( int step = 0; step < height; ++step ) {
+            const auto stair = origin + tripoint( 4 + step, 0, sign * step );
+            terrain( stair, ter_str_id( sign > 0 ? "t_stairs_up" : "t_stairs_down" ) );
+            terrain( stair + tripoint( 0, 0, sign ), ter_str_id( sign > 0 ? "t_stairs_down" : "t_stairs_up" ) );
+        }
+    }
+    if( geometry == "standing_connected" || geometry == "standing_missing" ) {
+        terrain( origin, ter_str_id( "t_stairs_up" ) );
+        if( geometry == "standing_connected" ) {
+            terrain( origin + tripoint::above, ter_str_id( "t_stairs_down" ) );
+        }
+    }
+    if( geometry == "blocked" ) { terrain( landing, ter_str_id( "t_wall" ) ); }
+    if( geometry == "hazard" ) {
+        REQUIRE( here.field_at( landing ).find_field( field_type_id( "fd_fire" ) ) == nullptr );
+        here.add_field( landing, field_type_id( "fd_fire" ), 3 );
+    }
+    for( int step = 0; step <= height; ++step ) {
+        here.invalidate_map_cache( origin.z() + sign * step );
+        here.build_map_cache( origin.z() + sign * step, true );
+    }
+    here.i_clear( source );
+    bandit_live_world::local_gate_input input;
+    input.basecamp_or_camp_scene = true;
+    const auto initial = bandit_encounter_goods_pool_for_test( input, *payer );
+    item gun( itype_id( "m240" ) ); gun.set_owner( *payer );
+    for( int n = 0; n < 8; ++n ) { here.add_item( source, gun ); }
+    item &first = *here.i_at( source ).begin();
+    const std::string uid = std::to_string( first.uid().get_value() );
+    const auto pool = bandit_encounter_goods_pool_for_test( input, *payer );
+    CHECK( pool.reachable_basecamp_value - initial.reachable_basecamp_value == ( admitted ? 8 * gun.price( true ) : 0 ) );
+    {
+    const auto eligible = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
+    CHECK( std::any_of( eligible.begin(), eligible.end(), [&]( const auto &loc ) { return loc.get_item() == &first; } ) == admitted );
+    }
+    if( geometry == "outside_z" || geometry == "outside_xy" ) {
+        // It is physically reachable when not constrained to this encounter.
+        CHECK_FALSE( here.route( *payer, pathfinding_target::point( source ) ).empty() );
+    }
+    if( !admitted ) { return; }
+    CHECK_FALSE( here.valid_move( source - tripoint( 0, 0, sign ), source ) );
+    const auto surface = scene.surface( *payer );
+    REQUIRE( surface.valid );
+    const auto home = scene.site().anchor;
+    {
+    tinymap store; store.load( home, false );
+    for( const auto &tile : store.cast_to_map()->points_on_zlevel( home.z() ) ) {
+        store.cast_to_map()->i_clear( tile ); store.cast_to_map()->ter_set( tile, ter_str_id( "t_floor" ) );
+        store.cast_to_map()->furn_set( tile, furn_str_id::NULL_ID() );
+    }
+    store.save();
+    }
+    const bool owns_imgui = ImGui::GetCurrentContext() == nullptr;
+    if( owns_imgui ) {
+        ImGui::CreateContext(); auto &io = ImGui::GetIO();
+        io.DisplaySize = ImVec2( 800, 600 ); io.DeltaTime = 1.0f / 60.0f;
+        io.Fonts->AddFontDefault(); io.Fonts->Build(); ImGui::NewFrame();
+    }
+    on_out_of_scope imgui( [&]() { if( owns_imgui ) { ImGui::EndFrame(); ImGui::DestroyContext(); } } );
+    semantic_surface_manager manager( "floor-payment" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope world( manager, "world", "World" );
+    int seq = 0;
+    int stage = 0;
+    int demands = 0;
+    int source_refusals = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &d ) {
+        const auto submit = [&]( const std::string &action, const std::string &target = "" ) {
+            REQUIRE( manager.submit_request( { manager.run_id(), d.surface_id, d.frame_id,
+                std::to_string( ++seq ), action, target.empty() ? std::nullopt : std::optional<std::string>( target ), {} } ) );
+        };
+        if( d.kind == "shakedown_demand" ) {
+            REQUIRE( ++demands == 1 );
+            CHECK( d.payload.at( "receiver_id" ) == std::to_string( payer->getID().get_value() ) );
+            submit( "shakedown.pay" );
+        } else if( d.kind == "inventory" ) {
+            REQUIRE( ++stage <= 4 );
+            if( stage == 1 ) { submit( "trade.switch_pane" ); }
+            else if( stage == 2 ) { submit( "inventory.toggle", uid ); }
+            else { submit( source_refusals ? "inventory.cancel" : "inventory.commit" ); }
+        } else if( d.kind == "prompt" ) {
+            const std::string text = d.payload.at( "text" );
+            INFO( text );
+            if( text.find( "no longer eligible" ) != std::string::npos ) {
+                REQUIRE( geometry == "stale_connector" );
+                REQUIRE( ++source_refusals == 1 );
+                const auto ack = d.valid_actions.front();
+                submit( ack.id, ack.stable_id );
+                return;
+            }
+            if( geometry == "stale_connector" ) { terrain( landing, ter_str_id( "t_wall" ) ); }
+            const auto yes = std::find_if( d.valid_actions.begin(), d.valid_actions.end(), []( const auto &a ) { return a.label == "YES"; } );
+            REQUIRE( yes != d.valid_actions.end() ); submit( yes->id, yes->stable_id );
+        }
+    } );
+    REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( demands == 1 );
+    if( geometry == "stale_connector" ) {
+        CHECK( source_refusals == 1 );
+        CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "fight" );
+        CHECK( here.i_at( source ).size() == 8 );
+        tinymap refused; refused.load( home, false );
+        for( const auto &tile : refused.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            CHECK( refused.cast_to_map()->i_at( tile ).empty() );
+        }
+        CHECK( scene.collector->amount_of( itype_id( "m240" ) ) == 0 );
+        return;
+    }
+    CHECK( source_refusals == 0 );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "paid" );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_surrendered_value ==
+           scene.site().active_hostile_operation.shakedown_pending_demanded_value );
+    manager.set_descriptor_observer( {} );
+    CHECK( here.i_at( source ).empty() );
+    CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
+    const character_id collector_id = scene.collector->getID();
+    const character_id payer_id = payer->getID();
+    const auto goods_count = [&]() {
+        tinymap check; check.load( home, false ); int count = 0;
+        for( const auto &tile : check.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            for( const item &it : check.cast_to_map()->i_at( tile ) ) { count += it.typeId() == itype_id( "m240" ); }
+        }
+        return count;
+    };
+    CHECK( goods_count() == 8 );
+    const auto source_abs = here.get_abs( source );
+    if( geometry == "upper2" ) {
+        const std::string world_name = world_generator->active_world->world_name;
+        for( int reload = 0; reload < 2; ++reload ) {
+            REQUIRE( g->save() ); REQUIRE( turn_handler::cleanup_at_end() );
+            world_generator->set_active_world( nullptr ); REQUIRE( g->load( world_name ) );
+            CHECK( get_map().i_at( get_map().get_bub( source_abs ) ).empty() ); CHECK( goods_count() == 8 );
+            REQUIRE( g->find_npc( collector_id ) );
+            CHECK( g->find_npc( collector_id )->amount_of( itype_id( "m240" ) ) == 0 );
+            CHECK( ( !resident || g->find_npc( payer_id ) != nullptr ) );
+            CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "paid" );
+            CHECK_FALSE( commit_bandit_shakedown_payment_for_test( scene.site(), surface, surface.demanded_value ) );
+            CHECK( goods_count() == 8 );
+        }
+    }
+}
+
+TEST_CASE( "encounter ally cargo and nested native quantities share eligibility",
+           "[bandit_live_world][payment_sources_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    const std::string kind = GENERATE( std::string( "ground" ), std::string( "ally" ), std::string( "cargo" ) );
+    const std::string selection = GENERATE( std::string( "container" ), std::string( "charges" ),
+        std::string( "stale" ), std::string( "stale_identity" ) );
+    CAPTURE( resident, kind, selection );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) { payer = &scene.camp_receiver(); scene.distant_adjacent_avatar(); }
+    REQUIRE( scene.communicate() );
+    bandit_live_world::local_gate_input input; input.basecamp_or_camp_scene = true;
+    const auto total = []( const bandit_live_world::shakedown_goods_pool &p ) {
+        return p.player_carried_value + p.companion_carried_value + p.reachable_basecamp_value;
+    };
+    const int initial = total( bandit_encounter_goods_pool_for_test( input, *payer ) );
+    item wallet( itype_id( "backpack" ) ); wallet.set_owner( *payer );
+    item bullets( itype_id( "9mm" ), calendar::turn, 5 ); bullets.set_owner( *payer );
+    REQUIRE( wallet.put_in( bullets, pocket_type::CONTAINER ).success() );
+    item coin( itype_id( "coin_gold" ) ); coin.set_owner( *payer );
+    REQUIRE( wallet.put_in( coin, pocket_type::CONTAINER ).success() );
+    REQUIRE( wallet.put_in( coin, pocket_type::CONTAINER ).success() );
+    const auto tile = payer->pos_bub() + tripoint( -3, 0, 0 );
+    vehicle *cart = nullptr;
+    item_location bag;
+    on_out_of_scope vehicle_cleanup( [&]() { if( cart ) { get_map().destroy_vehicle( cart ); } } );
+    if( kind == "ground" ) {
+        item &placed = get_map().add_item( tile, wallet ); bag = item_location( map_cursor( tile ), &placed );
+    } else if( kind == "ally" ) {
+        npc &ally = spawn_npc( tile.xy(), "test_talker" );
+        clear_character( ally );
+        ally.setpos( get_map(), tile );
+        ally.set_fac( faction_id( "your_followers" ) );
+        bag = ally.i_add( wallet, false );
+    } else {
+        cart = get_map().add_vehicle( vproto_id( "test_shopping_cart" ), tile, 0_degrees, 0, veh_spawn_status::UNDAMAGED );
+        REQUIRE( cart ); cart->set_owner( *payer );
+        const auto cargo = get_map().veh_at( tile ).cargo(); REQUIRE( cargo );
+        const auto added = cart->add_item( get_map(), cargo->part(), wallet ); REQUIRE( added );
+        bag = item_location( vehicle_cursor( *cart, cargo->part_index() ), &**added );
+    }
+    REQUIRE( bag );
+    item *ammo = nullptr;
+    for( item *it : bag->all_items_top() ) { if( it->typeId() == itype_id( "9mm" ) ) { ammo = it; } }
+    REQUIRE( ammo );
+    item_location ammo_loc( bag, ammo );
+    CHECK( total( bandit_encounter_goods_pool_for_test( input, *payer ) ) - initial == bag->price( true ) );
+    const auto home = scene.site().anchor;
+    {
+        tinymap store; store.load( home, false );
+        for( const auto &p : store.cast_to_map()->points_on_zlevel( home.z() ) ) {
+            store.cast_to_map()->i_clear( p ); store.cast_to_map()->ter_set( p, ter_str_id( "t_floor" ) );
+            store.cast_to_map()->furn_set( p, furn_str_id::NULL_ID() );
+        }
+        store.save();
+    }
+    const bool owns_imgui = ImGui::GetCurrentContext() == nullptr;
+    if( owns_imgui ) {
+        ImGui::CreateContext(); auto &io = ImGui::GetIO();
+        io.DisplaySize = ImVec2( 800, 600 ); io.DeltaTime = 1.0f / 60.0f;
+        io.Fonts->AddFontDefault(); io.Fonts->Build(); ImGui::NewFrame();
+    }
+    on_out_of_scope imgui( [&]() { if( owns_imgui ) { ImGui::EndFrame(); ImGui::DestroyContext(); } } );
+    semantic_surface_manager manager( "source-payment" ); semantic_surface_manager_session session( manager );
+    semantic_surface_scope world( manager, "world", "World" ); int seq = 0; int stage = 0;
+    const std::string uid = std::to_string( ( selection == "container" ? bag->uid() : ammo->uid() ).get_value() );
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &d ) {
+        const auto submit = [&]( const std::string &action, const std::string &target = "" ) {
+            REQUIRE( manager.submit_request( { manager.run_id(), d.surface_id, d.frame_id,
+                std::to_string( ++seq ), action, target.empty() ? std::nullopt : std::optional<std::string>( target ), {} } ) );
+        };
+        if( d.kind == "inventory" ) {
+            REQUIRE( ++stage < 7 );
+            if( stage == 1 ) { submit( "trade.switch_pane" ); }
+            else if( selection == "container" && stage == 2 ) { submit( "inventory.toggle", uid ); }
+            else if( selection != "container" && ( stage == 2 || stage == 3 ) ) { submit( "inventory.increase_quantity", uid ); }
+            else { submit( "inventory.commit" ); }
+        } else if( d.kind == "prompt" ) {
+            INFO( d.payload.at( "text" ) );
+            const auto yes = std::find_if( d.valid_actions.begin(), d.valid_actions.end(), []( const auto &a ) { return a.label == "YES"; } );
+            REQUIRE( yes != d.valid_actions.end() ); submit( yes->id, yes->stable_id );
+        }
+    } );
+    trade_ui::trade_result_t result;
+    {
+        trade_ui ui( *payer, *scene.collector, 0, "Pay:", 30, 12, nullptr, true, true, 2 );
+        result = ui.perform_trade();
+    }
+    manager.set_descriptor_observer( {} );
+    REQUIRE( result.traded ); REQUIRE( result.items_you.size() == 1 );
+    CHECK( result.items_you.front().first == ( selection == "container" ? bag : ammo_loc ) );
+    CHECK( result.items_you.front().second == ( selection == "container" ? 1 : 2 ) );
+    const bool refused = selection == "stale" || selection == "stale_identity";
+    if( selection == "stale" ) { ammo->charges = 1; }
+    if( selection == "stale_identity" ) {
+        const auto selected_uid = ammo->uid();
+        ammo_loc.remove_item(); // UI has retired; native safe-reference becomes invalid.
+        REQUIRE_FALSE( result.items_you.front().first );
+        REQUIRE( bag->put_in( bullets, pocket_type::CONTAINER ).success() );
+        for( item *it : bag->all_items_top() ) {
+            if( it->typeId() == itype_id( "9mm" ) ) { ammo = it; }
+        }
+        REQUIRE( ammo );
+        CHECK( ammo->uid() != selected_uid );
+    }
+    npc_trading::stash_trade_failure reason;
+    CHECK( npc_trading::complete_trade_to_stash( *scene.collector, *payer, result, home, 30, 12, 2, &reason ) == !refused );
+    CHECK( reason == ( refused ? npc_trading::stash_trade_failure::source : npc_trading::stash_trade_failure::none ) );
+    if( selection != "container" ) { CHECK( bag ); CHECK( ammo->charges == ( selection == "stale" ? 1 : selection == "stale_identity" ? 5 : 3 ) ); }
+    if( !refused ) { CHECK_FALSE( npc_trading::complete_trade_to_stash( *scene.collector, *payer, result, home, 30, 12, 2 ) ); }
+    tinymap check; check.load( home, false ); int rounds = 0; int coins = 0; int wallets = 0;
+    for( const auto &p : check.cast_to_map()->points_on_zlevel( home.z() ) ) {
+        for( const item &it : check.cast_to_map()->i_at( p ) ) {
+            wallets += it.typeId() == itype_id( "backpack" );
+            it.visit_items( [&]( const item *part, const item * ) {
+                if( part->typeId() == itype_id( "9mm" ) ) { rounds += part->charges; }
+                if( part->typeId() == itype_id( "coin_gold" ) ) { ++coins; }
+                return VisitResponse::NEXT;
+            } );
+        }
+    }
+    CHECK( wallets == ( selection == "container" ? 1 : 0 ) );
+    CHECK( coins == ( selection == "container" ? 2 : 0 ) );
+    CHECK( rounds == ( selection == "container" ? 5 : selection == "charges" ? 2 : 0 ) );
+}
+
+TEST_CASE( "encounter appraisal on missing stairs is noninteractive",
+           "[bandit_live_world][payment_stairs_067]" )
+{
+    const bool resident = GENERATE( false, true );
+    CAPTURE( resident );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    Character *payer = &get_avatar();
+    if( resident ) {
+        payer = &scene.camp_receiver();
+        scene.distant_adjacent_avatar();
+    }
+    REQUIRE( scene.communicate() );
+    map &here = get_map();
+    const auto origin = payer->pos_bub();
+    std::map<tripoint_bub_ms, ter_id> previous;
+    const auto set_terrain = [&]( const tripoint_bub_ms &p, const ter_str_id &id ) {
+        previous.emplace( p, here.ter( p ) );
+        here.ter_set( p, id );
+    };
+    on_out_of_scope restore( [&]() {
+        for( const auto &entry : previous ) { here.ter_set( entry.first, entry.second ); }
+        here.set_pathfinding_cache_dirty( origin.z() );
+        here.set_pathfinding_cache_dirty( origin.z() + 1 );
+    } );
+    const auto base = here.get_bub( project_to<coords::ms>( payer->pos_abs_omt() ) ) + tripoint::above;
+    for( const auto &p : here.points_in_rectangle( base, base + point( 23, 23 ) ) ) {
+        set_terrain( p, ter_str_id( "t_floor" ) );
+    }
+    set_terrain( origin, ter_str_id( "t_stairs_up" ) );
+    REQUIRE_FALSE( g->find_stairs( here, origin.z() + 1, origin ) );
+    const auto source = origin + tripoint( 2, 0, 1 );
+    item gun( itype_id( "m240" ) ); gun.set_owner( *payer );
+    here.add_item( source, gun );
+    bandit_live_world::local_gate_input input; input.basecamp_or_camp_scene = true;
+    CHECK( bandit_encounter_goods_pool_for_test( input, *payer ).reachable_basecamp_value == 0 );
+    const auto eligible = encounter_trade_items( *payer, *scene.collector, 30, 12, 2 );
+    CHECK( std::none_of( eligible.begin(), eligible.end(), [&]( const auto &loc ) {
+        return loc->typeId() == itype_id( "m240" );
+    } ) );
+    CHECK_FALSE( g->find_stairs( here, origin.z() + 1, origin ) );
 }

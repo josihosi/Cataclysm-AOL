@@ -478,11 +478,13 @@ TEST_CASE( "shakedown stash payment conserves the exact basket and survives map 
     avatar &avatar_payer = get_avatar();
     npc &trader = spawn_npc( avatar_payer.pos_bub().xy() + point::east, "test_talker" );
     clear_character( trader );
+    trader.setpos( get_map(), get_avatar().pos_bub() + tripoint::east );
     trader.set_fac( faction_id( "your_followers" ) );
     Character *payer = &avatar_payer;
     if( resident ) {
         npc &receiver = spawn_npc( avatar_payer.pos_bub().xy() + point::south, "test_talker" );
         clear_character( receiver );
+        receiver.setpos( get_map(), get_avatar().pos_bub() + tripoint::south );
         receiver.set_fac( faction_id( "your_followers" ) );
         payer = &receiver;
     }
@@ -531,6 +533,7 @@ TEST_CASE( "shakedown stash payment conserves the exact basket and survives map 
     std::vector<item_location> guns;
     for( int i = 0; i < 100; ++i ) {
         item &gun = get_map().add_item( loose, item( itype_id( "m240" ) ) );
+        gun.set_owner( *payer );
         guns.emplace_back( map_cursor( loose ), &gun );
         result.items_you.emplace_back( guns.back(), 1 );
     }
@@ -613,11 +616,13 @@ TEST_CASE( "native shakedown trade uses home stash rather than collector capacit
     avatar &you = get_avatar();
     npc &trader = spawn_npc( you.pos_bub().xy() + point::east, "test_talker" );
     clear_character( trader );
+    trader.setpos( get_map(), get_avatar().pos_bub() + tripoint::east );
     trader.set_fac( faction_id( "your_followers" ) );
     Character *payer = &you;
     if( resident ) {
         npc &receiver = spawn_npc( you.pos_bub().xy() + point::south, "test_talker" );
         clear_character( receiver );
+        receiver.setpos( get_map(), get_avatar().pos_bub() + tripoint::south );
         receiver.set_fac( faction_id( "your_followers" ) );
         payer = &receiver;
     }

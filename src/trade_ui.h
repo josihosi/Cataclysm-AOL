@@ -73,6 +73,12 @@ class trade_preset : public inventory_selector_preset
         Character const &_u, &_trader;
 };
 
+// Encounter-only source population is shared with demand and commit.
+void add_encounter_trade_sources( inventory_selector &selector, Character &payer,
+                                  const Character &buyer, int item_radius, int ally_radius, int z_radius );
+std::vector<item_location> encounter_trade_items( Character &payer, const Character &buyer,
+        int item_radius, int ally_radius, int z_radius );
+
 class trade_ui
 {
     public:
@@ -96,7 +102,7 @@ class trade_ui
         trade_ui( party_t &you, npc &trader, currency_t cost = 0, std::string title = _( "Trade" ),
                   int you_nearby_item_radius = 1, int you_nearby_ally_radius = 0,
                   basecamp *you_basecamp = nullptr, bool encounter_only = false,
-                  bool goods_to_stash = false );
+                  bool goods_to_stash = false, int nearby_z_radius = 0 );
 
         void pushevent( event const &ev );
 

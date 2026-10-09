@@ -74,11 +74,15 @@ bool complete_trade( npc &trader, Character &payer, trade_ui::trade_result_t &re
 // the validated home camp instead of testing or filling the collector's pockets.
 bool trade_to_stash( npc &trader, Character &payer, const tripoint_abs_omt &home,
                      int cost, const std::string &deal, int nearby_item_radius,
-                     int nearby_ally_radius, basecamp *payer_basecamp, bool encounter_only );
+                     int nearby_ally_radius, basecamp *payer_basecamp, bool encounter_only, int nearby_z_radius = 0 );
+enum class stash_trade_failure { none, source, storage };
+
 // Placement failure leaves both the accepted selection and its sources intact.
 // A successful application consumes the result, just like complete_trade.
 bool complete_trade_to_stash( npc &trader, Character &payer,
-                              trade_ui::trade_result_t &result, const tripoint_abs_omt &home );
+                              trade_ui::trade_result_t &result, const tripoint_abs_omt &home,
+                              int nearby_item_radius = 1, int nearby_ally_radius = 0,
+                              int nearby_z_radius = 0, stash_trade_failure *failure = nullptr );
 std::vector<item_pricing> init_selling( npc &p );
 } // namespace npc_trading
 

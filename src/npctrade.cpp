@@ -312,30 +312,47 @@ bool npc_trading::trade( npc &np, int cost, const std::string &deal,
 bool npc_trading::trade_to_stash( npc &np, Character &payer, const tripoint_abs_omt &home,
                                   const int cost, const std::string &deal,
                                   const int nearby_item_radius, const int nearby_ally_radius,
-                                  basecamp *payer_basecamp, const bool encounter_only )
+                                  basecamp *payer_basecamp, const bool encounter_only, const int nearby_z_radius )
 {
     np.shop_restock();
     np.drop_invalid_inventory();
     ui_adaptor modal( ui_adaptor::disable_uis_below{} );
-    trade_ui tradeui( payer, np, cost, deal, nearby_item_radius, nearby_ally_radius,
-                      payer_basecamp, encounter_only, true );
+    const auto make_ui = [&]() {
+        return std::make_unique<trade_ui>( payer, np, cost, deal, nearby_item_radius, nearby_ally_radius,
+                                          payer_basecamp, encounter_only, true, nearby_z_radius );
+    };
+    auto tradeui = make_ui();
     while( true ) {
-        trade_ui::trade_result_t result = tradeui.perform_trade();
+        trade_ui::trade_result_t result = tradeui->perform_trade();
         if( !result.traded ) {
             return false;
         }
-        if( complete_trade_to_stash( np, payer, result, home ) ) {
+        stash_trade_failure failure;
+        if( complete_trade_to_stash( np, payer, result, home, nearby_item_radius,
+                                    nearby_ally_radius, nearby_z_radius, &failure ) ) {
             return true;
         }
-        popup( _( "The bandit home camp cannot store this payment.  No goods changed hands.  Change the offer or cancel." ) );
+        if( failure == stash_trade_failure::source ) {
+            // Discard stale selector locations before drawing/retrying them.
+            tradeui.reset();
+            popup( _( "The selected goods are no longer eligible or accessible.  No goods changed hands.  Choose a new offer or cancel." ) );
+            tradeui = make_ui();
+        } else {
+            popup( _( "The bandit home camp cannot store this payment.  No goods changed hands.  Change the offer or cancel." ) );
+        }
         // perform_trade resets only the exit/confirmation flags. It preserves
         // the offer and publishes a fresh authenticated native selector.
     }
 }
 
 bool npc_trading::complete_trade_to_stash( npc &np, Character &payer,
-        trade_ui::trade_result_t &result, const tripoint_abs_omt &home )
+        trade_ui::trade_result_t &result, const tripoint_abs_omt &home,
+        const int nearby_item_radius, const int nearby_ally_radius, const int nearby_z_radius,
+        stash_trade_failure *failure )
 {
+    if( failure ) {
+        *failure = stash_trade_failure::source;
+    }
     if( !result.traded ) {
         return false;
     }
@@ -363,6 +380,22 @@ bool npc_trading::complete_trade_to_stash( npc &np, Character &payer,
             }
             sources.push_back( source );
         }
+    }
+
+    const auto payer_sources = encounter_trade_items( payer, np, nearby_item_radius,
+                               nearby_ally_radius, nearby_z_radius );
+    const auto trader_sources = encounter_trade_items( np, payer, np.is_player_ally() ? -1 : 1, 0, 0 );
+    const auto eligible = []( const trade_selector::select_t &selected,
+    const std::vector<item_location> &current ) {
+        return std::all_of( selected.begin(), selected.end(), [&]( const auto &entry ) {
+            return std::find( current.begin(), current.end(), entry.first ) != current.end();
+        } );
+    };
+    if( !eligible( result.items_you, payer_sources ) || !eligible( result.items_trader, trader_sources ) ) {
+        return false;
+    }
+    if( failure ) {
+        *failure = stash_trade_failure::storage;
     }
 
     const tripoint_abs_ms origin = project_to<coords::ms>( home );
@@ -445,6 +478,9 @@ bool npc_trading::complete_trade_to_stash( npc &np, Character &payer,
                                << " home=" << home.to_string()
                                << " first_tile=" << ( placed.empty() ? "none" :
                                        stash.get_abs( placed.front().first ).to_string() );
+    if( failure ) {
+        *failure = stash_trade_failure::none;
+    }
     return completed;
 }
 

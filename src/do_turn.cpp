@@ -1060,53 +1060,40 @@ npc *live_bandit_shakedown_local_speaker( const bandit_live_world::site_record &
     return nullptr;
 }
 
-bool live_bandit_encounter_reachable( const Character &receiver,
-                                    const tripoint_abs_ms &position, const int radius )
-{
-    map &here = get_map();
-    const auto from = receiver.pos_bub( here );
-    const auto to = here.get_bub( position );
-    return here.inbounds( from ) && here.inbounds( to ) &&
-           rl_dist( from, to ) <= radius &&
-           ( from == to || here.clear_path( from, to, rl_dist( from, to ), 1, 100 ) );
-}
-
 bandit_live_world::shakedown_goods_pool live_bandit_encounter_goods_pool(
-    const bandit_live_world::local_gate_input &input, Character &receiver )
+    const bandit_live_world::local_gate_input &input, Character &receiver, const Character &trader )
 {
     bandit_live_world::shakedown_goods_pool pool;
     pool.basecamp_or_camp_scene = input.basecamp_or_camp_scene;
-    pool.player_carried_value = receiver.is_avatar() ? live_bandit_character_goods_value( receiver ) : 0;
-    pool.companion_carried_value = receiver.is_npc() ? live_bandit_character_goods_value( receiver ) : 0;
-    // Match the encounter trade selector: only physically reachable local
-    // goods and allies. Neither remote assigned workers nor remote vehicles
-    // contribute merely by being registered to the camp.
-    for( const npc &ally : g->all_npcs() ) {
-        if( &ally != &receiver && ally.is_player_ally() && !ally.is_dead() &&
-            ally.is_active() && live_bandit_encounter_reachable( receiver, ally.pos_abs(), 12 ) ) {
-            pool.companion_carried_value += live_bandit_character_goods_value( ally );
+    const auto sources = encounter_trade_items( receiver, trader,
+                         input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
+                         12, input.basecamp_or_camp_scene ? 2 : 0 );
+    for( const item_location &loc : sources ) {
+        // A selectable container's native price includes its contents. Keep
+        // separately selectable contents, but never count them twice as wealth.
+        bool covered = false;
+        for( item_location parent = loc; parent.has_parent(); ) {
+            parent = parent.parent_item();
+            if( std::find( sources.begin(), sources.end(), parent ) != sources.end() ) {
+                covered = true;
+                break;
+            }
         }
-    }
-    const int radius = input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1;
-    map &here = get_map();
-    for( const auto &tile : here.points_in_radius( receiver.pos_bub( here ), radius ) ) {
-        if( !live_bandit_encounter_reachable( receiver, here.get_abs( tile ), radius ) ) {
+        if( covered ) {
             continue;
         }
-        if( here.accessible_items( tile ) ) {
-            for( const item &it : here.i_at( tile ) ) {
-                pool.reachable_basecamp_value += live_bandit_item_value( it );
+        const int value = std::max( 0, loc->price( true ) );
+        if( loc.where_recursive() == item_location::type::character ) {
+            if( receiver.is_avatar() && loc.held_by( receiver ) ) {
+                pool.player_carried_value += value;
+            } else {
+                pool.companion_carried_value += value;
             }
+        } else if( input.basecamp_or_camp_scene ) {
+            pool.reachable_basecamp_value += value;
+        } else {
+            pool.vehicle_carried_value += value;
         }
-        if( const auto cargo = here.veh_at( tile ).cargo() ) {
-            for( const item &it : cargo->items() ) {
-                pool.reachable_basecamp_value += live_bandit_item_value( it );
-            }
-        }
-    }
-    if( !input.basecamp_or_camp_scene ) {
-        pool.vehicle_carried_value = pool.reachable_basecamp_value;
-        pool.reachable_basecamp_value = 0;
     }
     return pool;
 }
@@ -1270,7 +1257,7 @@ int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &
     const bool paid = npc_trading::trade_to_stash( *trader, payer, site.anchor,
                                           surface.demanded_value, _( "Pay:" ),
                                           input.basecamp_or_camp_scene ? live_bandit_basecamp_reach_radius : 1,
-                                          12, payment_basecamp, encounter_only );
+                                          12, payment_basecamp, encounter_only, input.basecamp_or_camp_scene ? 2 : 0 );
     DebugLog( D_INFO, DC_ALL ) << "shakedown_trade_ui result=" << ( paid ? "paid" : "cancel_or_short" )
                                << " demanded=" << surface.demanded_value
                                << " payer=" << payer.getID().get_value();
@@ -1807,7 +1794,7 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         g->wait_popup_reset();
     }
     const bandit_live_world::shakedown_goods_pool pool = receiver != nullptr ?
-        live_bandit_encounter_goods_pool( input, *receiver ) :
+        live_bandit_encounter_goods_pool( input, *receiver, *live_bandit_shakedown_local_speaker( site ) ) :
         live_bandit_make_shakedown_goods_pool( input, u );
     bandit_live_world::shakedown_surface surface =
         bandit_live_world::build_shakedown_surface( site, input, decision, pool );
@@ -17759,7 +17746,14 @@ std::optional<character_id> bandit_shakedown_speaker_id_for_test( const bandit_l
 bandit_live_world::shakedown_goods_pool bandit_encounter_goods_pool_for_test(
     const bandit_live_world::local_gate_input &input, Character &receiver )
 {
-    return live_bandit_encounter_goods_pool( input, receiver );
+    for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        if( site.active_hostile_operation.shakedown_receiver_id == receiver.getID() ) {
+            if( const npc *speaker = live_bandit_shakedown_local_speaker( site ) ) {
+                return live_bandit_encounter_goods_pool( input, receiver, *speaker );
+            }
+        }
+    }
+    return {};
 }
 
 bool advance_live_bandit_hostile_approaches_for_test()
