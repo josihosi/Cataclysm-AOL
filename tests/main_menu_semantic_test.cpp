@@ -33,6 +33,9 @@ extern "C" int ungetch( int );
 #include "game.h"
 #include "do_turn.h"
 #include "diary.h"
+#include "inventory_ui.h"
+#include "item.h"
+#include "item_location.h"
 #include "ui_manager.h"
 #include "faction.h"
 #include "npc.h"
@@ -1037,6 +1040,194 @@ TEST_CASE( "public activity Manager closes through native QUIT and returns to it
             CHECK( u.activity.moves_left == activity_moves );
             CHECK( u.activity.is_distraction_ignored( distraction_type::noise ) == ( mode == "ignore" ) );
         }
+    }
+}
+
+
+TEST_CASE( "inventory contents selection settles at its real parent and leaves child-opening controls intact",
+           "[semantic_surface][inventory_contents_settlement_067]" )
+{
+    const std::string mode = GENERATE( std::string( "contents_select" ),
+                                      std::string( "contents_commit" ),
+                                      std::string( "details_child" ), std::string( "off_mode" ) );
+    DYNAMIC_SECTION( mode ) {
+        clear_avatar();
+        avatar &u = get_avatar();
+        item pack( itype_id( "backpack" ) );
+        REQUIRE( pack.put_in( item( itype_id( "rock" ) ), pocket_type::CONTAINER ).success() );
+        REQUIRE( u.wield( pack ) );
+        item_location parent_item = u.get_wielded_item();
+        REQUIRE( parent_item );
+        const auto locations = u.all_items_loc();
+        const auto child = std::find_if( locations.begin(), locations.end(), []( const item_location &loc ) {
+            return loc && loc->typeId() == itype_id( "rock" );
+        } );
+        REQUIRE( child != locations.end() );
+        const int64_t parent_uid = parent_item->uid().get_value();
+        const int64_t child_uid = ( *child )->uid().get_value();
+        const std::string parent_id = std::to_string( parent_uid );
+        const std::string child_id = std::to_string( child_uid );
+        const int moves_before = u.get_moves();
+        if( ImGui::GetCurrentContext() == nullptr ) {
+            catacurses::init_interface();
+            catacurses::resizeterm();
+        }
+        restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+        test_mode = false;
+        const int previous_timeout = inp_mngr.get_timeout();
+        inp_mngr.set_timeout( 1 );
+        on_out_of_scope restore_input( [&] {
+            inp_mngr.set_timeout( previous_timeout );
+            catacurses::endwin();
+        } );
+        semantic_surface_manager manager( "contents-settlement" );
+        std::optional<semantic_surface_manager_session> session;
+        if( mode != "off_mode" ) {
+            session.emplace( manager );
+        }
+        std::vector<semantic_surface_descriptor> descriptors;
+        std::vector<semantic_action_receipt> receipts;
+        std::optional<semantic_surface_descriptor> original_parent;
+        std::optional<semantic_surface_descriptor> child_frame;
+        std::optional<semantic_surface_descriptor> resumed_parent;
+        int stage = 0;
+        bool duplicate_checked = false;
+        int child_consumptions = 0;
+        manager.set_transport_observer( [&]( const semantic_request_transport_event &event ) {
+            if( event.event == "request_consumed" && event.request_id == "close-child" ) {
+                ++child_consumptions;
+            }
+        } );
+        const bool diagnostic_cleanup = std::getenv( "CAOL_R067_OLD_CONTENTS_CLEANUP" ) != nullptr &&
+                                        mode == "contents_select";
+        const auto native_key = [&]( const std::string &action ) {
+            const auto &keys = inp_mngr.get_input_for_action( action, "INVENTORY" );
+            const auto key = std::find_if( keys.begin(), keys.end(), []( const input_event &event ) {
+                return event.type == input_event_t::keyboard_char && event.sequence.size() == 1 &&
+                       event.get_first_input() >= 0 && event.get_first_input() < 128;
+            } );
+            REQUIRE( key != keys.end() );
+            REQUIRE( ::ungetch( key->get_first_input() ) != -1 );
+        };
+        const auto submit = [&]( const semantic_surface_descriptor &descriptor,
+                                 const std::string &id, const std::string &action,
+                                 const std::optional<std::string> &stable = std::nullopt,
+                                 const std::map<std::string, std::string> &parameters = {} ) {
+            CAPTURE( mode, id, action, parent_id, child_id );
+            std::ostringstream advertised_controls;
+            for( const auto &advertised : descriptor.valid_actions ) {
+                advertised_controls << advertised.id << ":" << advertised.stable_id << ":" << advertised.enabled << ";";
+            }
+            INFO( advertised_controls.str() );
+            REQUIRE( std::any_of( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            [&]( const semantic_action_descriptor &a ) {
+                return a.id == action && a.enabled && ( !stable || a.stable_id == *stable );
+            } ) );
+            REQUIRE( manager.submit_request( { manager.run_id(), descriptor.surface_id,
+                                               descriptor.frame_id, id, action, stable, parameters } ) );
+        };
+        manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+            descriptors.push_back( descriptor );
+            if( descriptor.kind == "inventory" && descriptor.payload.at( "title" ) == "Parent inventory" ) {
+                if( stage == 0 ) {
+                    original_parent = descriptor;
+                    stage = 1;
+                    submit( descriptor, "open-child", mode == "details_child" ? "inventory.details" :
+                            "inventory.contents", parent_id );
+                } else if( stage == 2 ) {
+                    resumed_parent = descriptor;
+                    stage = 3;
+                    REQUIRE( child_frame );
+                    REQUIRE( manager.submit_request( { manager.run_id(), child_frame->surface_id,
+                               child_frame->frame_id, "stale-child", "inventory.select", child_id, {} } ) );
+                } else if( stage == 3 && descriptor.payload.at( "filter" ) == "backpack" ) {
+                    stage = 4;
+                    submit( descriptor, "parent-cancel", "inventory.cancel" );
+                }
+            } else if( stage == 1 && ( descriptor.kind == "inventory" ||
+                                      descriptor.kind == "item_info" ) ) {
+                child_frame = descriptor;
+                stage = 2;
+                if( mode == "details_child" ) {
+                    submit( descriptor, "close-child", "item_info.close" );
+                } else {
+                    submit( descriptor, "close-child", mode == "contents_select" ? "inventory.select" :
+                            "inventory.commit", mode == "contents_select" ?
+                            std::optional<std::string>( child_id ) : std::nullopt );
+                    // Diagnostic-only old-source escape collects failed assertions instead
+                    // of hanging Catch. Passing repaired controls never use native fallback.
+                    if( diagnostic_cleanup ) {
+                        native_key( "QUIT" );
+                    }
+                }
+            }
+        } );
+        manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+            receipts.push_back( receipt );
+            if( receipt.request_id == "stale-child" ) {
+                CHECK_FALSE( receipt.accepted );
+                CHECK( receipt.rejection_reason == "wrong_surface" );
+                REQUIRE( manager.top() );
+                submit( *manager.top(), "parent-filter", "inventory.filter", std::nullopt,
+                        { { "text", "backpack" } } );
+            }
+            if( receipt.request_id == "close-child" && receipt.accepted && !duplicate_checked ) {
+                duplicate_checked = true;
+                REQUIRE( child_frame );
+                REQUIRE_FALSE( manager.submit_request( { manager.run_id(), child_frame->surface_id,
+                                   child_frame->frame_id, "close-child", receipt.action_id,
+                                   mode == "contents_select" ? std::optional<std::string>( child_id ) :
+                                   std::nullopt, {} } ) );
+            }
+        } );
+        inventory_pick_selector selector( u );
+        selector.set_title( "Parent inventory" );
+        selector.add_character_items( u );
+        REQUIRE( selector.highlight( parent_item ) );
+        if( mode == "off_mode" ) {
+            native_key( "QUIT" );
+            native_key( "CONFIRM" );
+            native_key( "EXAMINE_CONTENTS" );
+        }
+        CHECK_FALSE( selector.execute() );
+        if( mode != "off_mode" ) {
+            REQUIRE( original_parent );
+            REQUIRE( child_frame );
+            CHECK( stage == 4 );
+            REQUIRE( resumed_parent );
+            CHECK( resumed_parent->surface_id == original_parent->surface_id );
+            CHECK( resumed_parent->frame_id != original_parent->frame_id );
+            CHECK( selector.get_filter() == "backpack" );
+            CHECK( duplicate_checked );
+            CHECK( child_consumptions == 1 );
+            const auto accepted_close = std::find_if( receipts.begin(), receipts.end(),
+            []( const semantic_action_receipt &r ) {
+                return r.request_id == "close-child" && r.accepted;
+            } );
+            REQUIRE( accepted_close != receipts.end() );
+            CHECK( accepted_close->consuming_surface_id == child_frame->surface_id );
+            CHECK( accepted_close->resulting_frame_id == resumed_parent->frame_id );
+            CHECK( std::count_if( receipts.begin(), receipts.end(), []( const semantic_action_receipt &r ) {
+                return r.request_id == "parent-filter" && r.accepted;
+            } ) == 1 );
+            CHECK( std::count_if( receipts.begin(), receipts.end(), []( const semantic_action_receipt &r ) {
+                return r.request_id == "parent-cancel" && r.accepted;
+            } ) == 1 );
+            if( mode == "details_child" ) {
+                const auto opened = std::find_if( receipts.begin(), receipts.end(),
+                []( const semantic_action_receipt &r ) { return r.request_id == "open-child"; } );
+                REQUIRE( opened != receipts.end() );
+                CHECK( opened->resulting_frame_id == child_frame->frame_id );
+            }
+        } else {
+            CHECK( descriptors.empty() );
+            CHECK( receipts.empty() );
+        }
+        CHECK( manager.stack().empty() );
+        CHECK_FALSE( manager.has_pending_request() );
+        CHECK( parent_item->uid().get_value() == parent_uid );
+        CHECK( ( *child )->uid().get_value() == child_uid );
+        CHECK( u.get_moves() == moves_before );
     }
 }
 

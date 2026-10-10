@@ -5962,7 +5962,13 @@ int inventory_examiner::execute()
         std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
         semantic_actions( { { "inventory.commit", "", _( "Close contents" ), true } } ),
         [this, &semantic_input]( const semantic_action_request &request ) {
-            return handle_semantic_request( request, semantic_input );
+            semantic_action_dispatch_result result = handle_semantic_request( request, semantic_input );
+            if( result.accepted && request.action_id == "inventory.select" ) {
+                // CONFIRM closes this examiner to its existing parent. Other
+                // selectors and EXAMINE still open a new child owner.
+                result.await_child_successor = false;
+            }
+            return result;
         } );
     }
 
