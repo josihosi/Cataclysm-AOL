@@ -32103,8 +32103,6 @@ def load_scenario(name: str, *, source_path: Path | str | None = None,
                   expected_sha256: str = "") -> Dict[str, Any]:
     """Load the selected declaration itself when a registry path is supplied."""
     path = Path(source_path).resolve() if source_path else scenario_path(name)
-    if source_path and path.stem != name:
-        raise SystemExit(f"Selected scenario identity differs from its source path: {path}")
     if not path.exists():
         raise SystemExit(f"Scenario not found: {path}")
     source_bytes = path.read_bytes()
@@ -32119,6 +32117,8 @@ def load_scenario(name: str, *, source_path: Path | str | None = None,
         raise SystemExit(str(exc)) from exc
     if expected_sha256 and registry["source"]["sha256"] != expected_sha256:
         raise SystemExit(f"Selected scenario source changed during validation: {path}")
+    if source_path and registry["declaration"].get("name") != name:
+        raise SystemExit(f"Selected scenario identity differs from its declared name: {path}")
     loaded.setdefault("name", name)
     loaded["path"] = str(path)
     loaded["_scenario_registry"] = registry

@@ -1459,6 +1459,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     binding=binding,
                 )
                 self.assertTrue(repair.accepted, repair.reason)
+                self.assertEqual(repair.scenario, self.strict_manifest()["name"])
+                self.assertEqual(repair.source_path, str(manifest_path.resolve()))
                 return registry_path, scenarios, repair.token_id, binding
             finally:
                 connection.close()
@@ -1483,6 +1485,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     red_verification_id=issued["verification_id"], binding=binding,
                 )
                 self.assertTrue(successor.accepted, successor.reason)
+                self.assertEqual(successor.scenario, self.strict_manifest()["name"])
                 self.assertNotEqual(successor.token_id, token_id)
                 successor_details = json.loads(connection.execute(
                     "SELECT details_json FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued'",
@@ -1508,6 +1511,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ])
             self.assertEqual(result, 31)
             run_probe.assert_called_once()
+            self.assertEqual(run_probe.call_args.args[0].scenario, self.strict_manifest()["name"])
+            self.assertEqual(Path(run_probe.call_args.args[0].registry_selected_source_path).name, "repair.json")
             self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
             receipt = json.loads(run_probe.call_args.args[0].registry_launch_receipt)
             self.assertEqual(receipt["authority_kind"], "registry_repair_exact_contradiction")
@@ -2469,8 +2474,15 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
             def run_probe(namespace: argparse.Namespace) -> int:
                 seen_namespaces.append(namespace)
+                loaded = startup_harness.load_scenario(
+                    namespace.scenario, source_path=namespace.registry_selected_source_path,
+                    expected_sha256=namespace.registry_selected_source_sha256,
+                )
+                self.assertEqual(loaded["name"], self.strict_manifest()["name"])
+                self.assertEqual(loaded["path"], str(manifest_path.resolve()))
                 run_dir = root / "finalized"
                 report = self.migration_report(manifest_path, namespace.profile)
+                report["scenario"] = namespace.scenario
                 with redirect_stdout(io.StringIO()):
                     finalize_probe_report(
                         run_dir,
@@ -2491,7 +2503,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(len(seen_namespaces), 1)
             namespace = seen_namespaces[0]
             expected = startup_harness.build_parser().parse_args([
-                "probe", "valid", "--profile", namespace.profile,
+                "probe", self.strict_manifest()["name"], "--profile", namespace.profile,
             ])
             received = vars(namespace).copy()
             receipt = json.loads(received.pop("registry_migration_receipt"))

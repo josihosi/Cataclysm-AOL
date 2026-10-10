@@ -53,7 +53,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.registry = self.root / 'registry.sqlite3'
-        self.scenario = self.root / 'same-save.json'
+        self.scenario = self.root / 'scenario.json'
         self.save = self.root / 'save'; self.save.mkdir()
         (self.save / 'avatar').write_bytes(b'unchanged saved player')
         declaration = fixtures.ScenarioRegistryCliTest().strict_manifest()
@@ -121,6 +121,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
             with contextlib.closing(open_registry(str(self.registry))) as db:
                 token=reload_selection_token_for_launch(db,selected['token_id'])
             self.assertTrue(token.accepted,token)
+            self.assertEqual(token.scenario, self.declaration['name'])
             ns=cli._registry_launch_probe_namespace(token)
             expected=json.loads(receipt.read_text())['executable_path']
             self.assertEqual(ns.executable,expected)
@@ -141,6 +142,8 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.assertTrue(selected['accepted'],selected)
         with contextlib.closing(open_registry(str(self.registry))) as db:
             token=reload_bootstrap_token_for_launch(db,selected['token_id'])
+        self.assertEqual(selected['scenario'], self.declaration['name'])
+        self.assertEqual(token.scenario, self.declaration['name'])
         ns=cli._registry_bootstrap_probe_namespace(token)
         ns.dry_run=True
         ns.registry_launch_receipt=json.dumps({'runtime_binding':token.runtime_binding})
@@ -275,6 +278,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.assertEqual((self.save/'avatar').read_bytes(),b'unchanged saved player')
 
     def test_complete_public_launch_carries_one_run_binding_to_start_before_mutation(self):
+        # The selected declaration need not be named after its scenario identity.
         selected=self.select(self.receipts[0])
         captured=[]
         def harmless_probe(namespace):
@@ -283,6 +287,10 @@ class ScenarioRunBuildTest(unittest.TestCase):
             captured.append(receipt)
             def harmless_start(argv,**kwargs):
                 args=harness.build_parser().parse_args(argv[2:])
+                self.assertEqual(args.scenario_identity, self.declaration['name'])
+                self.assertEqual(args.scenario_contract_path, str(self.scenario))
+                self.assertEqual(args.scenario_source_sha256,
+                                 hashlib.sha256(self.scenario_bytes).hexdigest())
                 with mock.patch.object(harness,'_run_startup',return_value=0) as body:
                     self.assertEqual(harness.run_startup(args),0)
                     body.assert_called_once()
@@ -295,6 +303,8 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.assertEqual(len(captured),1)
         self.assertEqual(captured[0]['runtime_binding']['selected_product_build']['receipt_path'],str(self.receipts[0]))
         self.assertEqual(captured[0]['source_path'],str(self.scenario))
+        self.assertEqual(self.scenario.read_bytes(), self.scenario_bytes)
+        self.assertFalse((self.root / 'same-save.json').exists())
 
     def test_run_build_receipt_and_terminal_configuration_are_bound(self):
         binding=cli._resolve_run_build(type('Args',(),{'run_build_receipt':str(self.receipts[0])})())

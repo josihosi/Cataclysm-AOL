@@ -988,7 +988,9 @@ def _dispatch_migration_item(
             },
         )
         return {"source_path": current.source_path, "status": terminal.status, "action": "imported"}
-    scenario_name = source_path.stem
+    scenario_name = declaration.get("name")
+    if not isinstance(scenario_name, str) or not scenario_name.strip():
+        raise ScenarioRegistryStoreError("Selected migration declaration name is missing")
     current = claim_migration_item_launch(
         connection,
         migration_run_id=migration_run_id,
@@ -1312,7 +1314,7 @@ def _bootstrap_selected_executable(connection: sqlite3.Connection, request: Any,
     source_sha256 = str(manifest.get("sha256", ""))
     if not source_path or not source_sha256:
         raise ScenarioRegistryStoreError("bootstrap selected source identity is missing")
-    selected = RegistryBootstrapToken("", True, "inspected", Path(source_path).stem,
+    selected = RegistryBootstrapToken("", True, "inspected", str(manifest.get("name", "")),
                                       source_path, runtime_binding, source_sha256)
     return (_selected_executable(selected), source_path, source_sha256,
             _selected_product_build(selected))
@@ -2827,7 +2829,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if selected_manifest is not None:
                     selected_stub = RegistryBootstrapToken(
                         "", True, "inspected",
-                        Path(str(selected_manifest.get("source_path", ""))).stem,
+                        str(selected_manifest.get("name", "")),
                         str(selected_manifest.get("source_path", "")), runtime_binding,
                         str(selected_manifest.get("sha256", "")),
                     )

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import json
@@ -25,6 +26,7 @@ from startup_harness import (  # noqa: E402
     scenario_manifest_binding,
 )
 import scenario_registry_store as registry_store  # noqa: E402
+import startup_harness as harness  # noqa: E402
 
 
 class ScenarioRegistryIntegrationTest(unittest.TestCase):
@@ -129,6 +131,81 @@ class ScenarioRegistryIntegrationTest(unittest.TestCase):
             validation = listed[0]["scenario_manifest"]["validation"]
             self.assertEqual(validation["status"], "invalid")
             self.assertIn("capabilities is required", validation["error"])
+
+    def test_selected_source_uses_validated_name_and_exact_bytes_not_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self.write_manifest(Path(temp_dir), "scenario", {
+                "name": "selected.journey", "profile": "disposable", "steps": [],
+            })
+            before = path.read_bytes()
+            digest = hashlib.sha256(before).hexdigest()
+            loaded = load_scenario("selected.journey", source_path=path, expected_sha256=digest)
+            self.assertEqual(loaded["name"], "selected.journey")
+            self.assertEqual(loaded["path"], str(path.resolve()))
+            self.assertEqual(scenario_manifest_binding(loaded)["source"], {
+                "path": str(path.resolve()), "sha256": digest,
+            })
+            self.assertEqual(path.read_bytes(), before)
+            self.assertEqual(list(Path(temp_dir).iterdir()), [path])
+
+    def test_selected_source_refuses_wrong_or_missing_declared_name_even_when_filename_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for declaration in ({"name": "another.journey", "steps": []}, {"steps": []}):
+                with self.subTest(declaration=declaration):
+                    path = self.write_manifest(Path(temp_dir), "selected.journey", declaration)
+                    before = path.read_bytes()
+                    with self.assertRaisesRegex(SystemExit, "identity differs from its declared name"):
+                        load_scenario("selected.journey", source_path=path,
+                                      expected_sha256=hashlib.sha256(before).hexdigest())
+                    self.assertEqual(path.read_bytes(), before)
+
+    def test_selected_source_keeps_hash_and_manifest_validation_refusals(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            path = self.write_manifest(root, "selected.journey", {"name": "selected.journey", "steps": []})
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            path.write_bytes(path.read_bytes() + b" ")
+            with self.assertRaisesRegex(SystemExit, "Selected scenario source changed"):
+                load_scenario("selected.journey", source_path=path, expected_sha256=digest)
+            invalid = self.write_manifest(root, "selected.journey", {
+                "manifest_version": 1, "name": "selected.journey", "steps": [],
+            })
+            with self.assertRaisesRegex(SystemExit, "capabilities is required"):
+                load_scenario("selected.journey", source_path=invalid,
+                              expected_sha256=hashlib.sha256(invalid.read_bytes()).hexdigest())
+
+    def test_selected_validation_reread_cannot_certify_changed_exact_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self.write_manifest(Path(temp_dir), "selected.journey", {
+                "name": "selected.journey", "steps": [],
+            })
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            validate = harness.validate_manifest
+            def changed_during_validation(declaration, *, path):
+                # JSON meaning is identical; selected byte authority is not.
+                path.write_bytes(path.read_bytes() + b" ")
+                return validate(declaration, path=path)
+            with mock.patch.object(harness, "validate_manifest", side_effect=changed_during_validation):
+                with self.assertRaisesRegex(SystemExit, "source changed during validation"):
+                    load_scenario("selected.journey", source_path=path, expected_sha256=digest)
+
+    def test_probe_refuses_wrong_selected_name_or_hash_before_downstream_start(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self.write_manifest(Path(temp_dir), "scenario", {
+                "name": "selected.journey", "steps": [],
+            })
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            for name, selected_hash, error in (
+                ("another.journey", digest, "identity differs from its declared name"),
+                ("selected.journey", "0" * 64, "Selected scenario source changed"),
+            ):
+                with self.subTest(name=name, selected_hash=selected_hash):
+                    args = argparse.Namespace(scenario=name, registry_selected_source_path=str(path),
+                                              registry_selected_source_sha256=selected_hash)
+                    with mock.patch.object(harness, "_run_probe_mode") as downstream:
+                        with self.assertRaisesRegex(SystemExit, error):
+                            harness.run_probe_mode(args)
+                    downstream.assert_not_called()
 
     def test_run_owned_report_carries_exact_manifest_binding(self) -> None:
         legacy = {

@@ -3297,8 +3297,8 @@ def reload_selection_token_for_launch(
             declaration = _json_object(str(manifest["declaration_json"]), "current manifest declaration")
         except ScenarioRegistryStoreError as exc:
             return reject("manifest_declaration_malformed", error=str(exc))
-        scenario = source_path.stem
-        if not scenario or not isinstance(declaration.get("name", ""), str):
+        scenario = declaration.get("name")
+        if not isinstance(scenario, str) or not scenario.strip():
             return reject("manifest_scenario_unavailable")
 
         if authority_kind == "coordinator_brief_charter":
@@ -3489,6 +3489,7 @@ def issue_registry_bootstrap_token(
     manifest = selected.explanation["manifest"]
     manifest_id = str(manifest["manifest_id"])
     manifest_sha256 = str(manifest["sha256"])
+    scenario = _string(manifest.get("name"), "manifest scenario name")
     token_details = {
         "authority_kind": "registry_bootstrap_first_compatible_run",
         "query_json": json.loads(request_json),
@@ -3538,7 +3539,7 @@ def issue_registry_bootstrap_token(
                 result={"kind": "bootstrap", "token_id": token_id, "selected_scenario_id": selected.scenario_id},
             )
     return RegistryBootstrapToken(
-        token_id, True, "issued", Path(str(manifest["source_path"])).stem,
+        token_id, True, "issued", scenario,
         str(manifest["source_path"]), runtime, manifest_sha256,
     )
 
@@ -3630,8 +3631,12 @@ def reload_bootstrap_token_for_launch(
             return reject("query_authority_changed")
         if _current_verified_route(selected) is not None:
             return reject("compatible_run_evidence_already_exists")
+        try:
+            scenario = _string(selected.explanation["manifest"].get("name"), "manifest scenario name")
+        except ScenarioRegistryStoreError as exc:
+            return reject("manifest_scenario_unavailable", error=str(exc))
         return RegistryBootstrapToken(
-            token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
+            token_id, True, "claimed" if claimed else "current", scenario,
             str(manifest["source_path"]), runtime, expected_sha256,
         )
 
@@ -3994,6 +3999,7 @@ def issue_registry_repair_token(
     declaration = _json_object(str(manifest["declaration_json"]), "repair manifest declaration")
     try:
         current_binding = _repair_binding(binding, declaration)
+        scenario = _string(declaration.get("name"), "manifest scenario name")
     except ScenarioRegistryStoreError as exc:
         return RegistryRepairToken("", False, "binding_invalid:" + str(exc))
     source_path = Path(str(manifest["source_path"]))
@@ -4079,7 +4085,7 @@ def issue_registry_repair_token(
                     ).fetchone()
                 else:
                     return RegistryRepairToken(
-                        current_token_id, True, "current", source_path.stem,
+                        current_token_id, True, "current", scenario,
                         str(source_path.resolve()), current_binding["runtime"],
                     )
             current_details = _json_object(str(current["details_json"]), "repair token details")
@@ -4119,7 +4125,8 @@ def issue_registry_repair_token(
                         "attempt_sequence": attempt_sequence},
             )
     return RegistryRepairToken(
-        token_id, True, "issued", source_path.stem, str(source_path.resolve()), current_binding["runtime"],
+        token_id, True, "issued", scenario,
+        str(source_path.resolve()), current_binding["runtime"],
         source_sha256,
     )
 
@@ -4217,8 +4224,9 @@ def reload_repair_token_for_launch(
         if not _repair_query_matches_manifest(connection, manifest_id=expected_manifest_id, request=request):
             return reject("query_authority_changed")
         try:
-            normalized_expected = _repair_binding(expected_binding, _json_object(
-                str(manifest["declaration_json"]), "repair manifest declaration"))
+            declaration = _json_object(str(manifest["declaration_json"]), "repair manifest declaration")
+            scenario = _string(declaration.get("name"), "manifest scenario name")
+            normalized_expected = _repair_binding(expected_binding, declaration)
         except ScenarioRegistryStoreError as exc:
             return reject("receipt_malformed", error=str(exc))
         if binding is not None:
@@ -4230,7 +4238,7 @@ def reload_repair_token_for_launch(
             if _json_text(current_binding) != _json_text(normalized_expected):
                 return reject("binding_changed")
         return RegistryRepairToken(
-            token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
+            token_id, True, "claimed" if claimed else "current", scenario,
             str(Path(str(manifest["source_path"])).resolve()), normalized_expected["runtime"],
             expected_sha256,
         )
