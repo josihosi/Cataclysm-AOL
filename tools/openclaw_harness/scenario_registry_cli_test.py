@@ -15,7 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import ExitStack, closing, redirect_stderr, redirect_stdout
 from unittest import mock
 
 
@@ -639,7 +639,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             "token", True, "current", "curses", runtime_binding={"executable_path": "/exact/cataclysm"})
         with mock.patch.object(startup_harness, "load_scenario", side_effect=AssertionError("scenario build is obsolete")), \
                 mock.patch.object(startup_harness, "detect_executable", side_effect=AssertionError("wrong renderer")):
-            self.assertEqual(scenario_registry_cli._selected_executable(selected), Path("/exact/cataclysm"))
+            self.assertEqual(scenario_registry_cli._selected_executable(selected), Path("/exact/cataclysm").resolve())
 
     def run_registry_launch(
         self,
@@ -669,7 +669,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         return result, run_probe
 
     def test_unreported_native_launch_exception_revokes_selection_authority(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_dir, ExitStack() as connection_cleanup:
             root = Path(temp_dir)
             registry_path, scenarios, token_id = self.issue_selection_token(root)
             executable = root / "selected-runtime"
@@ -679,7 +679,16 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
                                "runtime_source_sha256": "test-runtime-source"}
             errors = io.StringIO()
-            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+            opened = []
+
+            def track_connection(*args, **kwargs):
+                connection = open_registry(*args, **kwargs)
+                opened.append(connection)
+                connection_cleanup.callback(connection.close)
+                return connection
+
+            with mock.patch.object(scenario_registry_cli, "open_registry", side_effect=track_connection), \
+                    mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                     mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
                     mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime_binding), \
                     mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
@@ -696,12 +705,67 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("peekaboo missing after game launch", errors.getvalue())
             self.assertIn('"selection_invalidated": true', errors.getvalue())
             self.assertIn('"cleanup": "unconfirmed', errors.getvalue())
+            self.assertEqual(len(opened), 2)
+            for connection in opened:
+                with self.assertRaisesRegex(sqlite3.ProgrammingError, "closed"):
+                    connection.execute("SELECT 1")
             self.assertIn(("invalidated", "registry_launch_adapter_failed_before_report"),
                           self.token_events(registry_path, token_id))
-            with open_registry(str(registry_path)) as connection:
+            with closing(open_registry(str(registry_path))) as connection:
                 reused = reload_selection_token_for_launch(connection, token_id)
             self.assertFalse(reused.accepted)
             self.assertEqual(reused.reason, "token_invalidated")
+
+    def test_failed_launch_invalidation_rolls_back_and_closes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir, ExitStack() as connection_cleanup:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "selected-runtime"
+            executable.write_bytes(b"selected runtime")
+            runtime = self.bootstrap_runtime(executable)
+            opened = []
+
+            def track_connection(*args, **kwargs):
+                connection = open_registry(*args, **kwargs)
+                opened.append(connection)
+                connection_cleanup.callback(connection.close)
+                return connection
+
+            def fail_invalidation(connection, *args, **kwargs):
+                connection.execute("BEGIN")
+                connection.execute("CREATE TABLE fixture_failed_invalidation (marker TEXT)")
+                raise OSError("invalidation storage failure")
+
+            errors = io.StringIO()
+            with mock.patch.object(scenario_registry_cli, "open_registry", side_effect=track_connection), \
+                    mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
+                    mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime), \
+                    mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                      return_value={"status": "ready"}), \
+                    mock.patch.object(startup_harness, "run_probe_mode", side_effect=RuntimeError("adapter failed")), \
+                    mock.patch.object(scenario_registry_cli, "record_selection_token_rejection",
+                                      side_effect=fail_invalidation), \
+                    redirect_stdout(io.StringIO()), redirect_stderr(errors):
+                result = scenario_registry_cli.main([
+                    "--json", "--registry", str(registry_path), "registry-launch", token_id,
+                ])
+            self.assertEqual(result, 1)
+            self.assertIn('"selection_invalidation_error": "invalidation storage failure"', errors.getvalue())
+            self.assertIn('"cleanup": "unconfirmed', errors.getvalue())
+            self.assertEqual(len(opened), 2)
+            for connection in opened:
+                with self.assertRaisesRegex(sqlite3.ProgrammingError, "closed"):
+                    connection.execute("SELECT 1")
+            with closing(open_registry(str(registry_path))) as connection:
+                self.assertIsNone(connection.execute(
+                    "SELECT name FROM sqlite_master WHERE name='fixture_failed_invalidation'",
+                ).fetchone())
+                reused = reload_selection_token_for_launch(connection, token_id)
+            # This injected failure preserves existing CLI degradation: the
+            # invalidation error is explicit; no invalidation was committed.
+            self.assertTrue(reused.accepted)
+            self.assertEqual(reused.reason, "current")
 
     def bootstrap_runtime(self, executable: Path) -> dict:
         source = runtime_source_binding()

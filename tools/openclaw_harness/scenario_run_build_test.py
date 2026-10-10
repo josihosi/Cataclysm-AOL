@@ -3,7 +3,10 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -15,6 +18,36 @@ from scenario_registry_store import open_registry, reload_bootstrap_token_for_la
 
 
 class ScenarioRunBuildTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Readiness executes --version: use a native binary on every host.
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        cls.native_builds = {}
+        compiler = (shutil.which(os.environ['CXX']) if os.environ.get('CXX') else
+                    shutil.which('c++') or shutil.which('g++') or shutil.which('clang++'))
+        if not compiler:
+            raise RuntimeError('The native run-build fixture requires the host C++ compiler')
+        for label in ('one', 'two'):
+            source = Path(temporary.name) / ('version-' + label + '.cpp')
+            executable = source.with_suffix('.exe' if os.name == 'nt' else '')
+            source.write_text(
+                '#include <cstdio>\n#include <cstring>\n'
+                'int main(int argc, char **argv) {\n'
+                '  if (argc != 2 || std::strcmp(argv[1], "--version")) return 2;\n'
+                '  std::puts(' + json.dumps(harness.current_head_short()) + ');\n'
+                '  std::puts(' + json.dumps('# fixture ' + label) + ');\n'
+                '  return 0;\n}\n', encoding='utf-8',
+            )
+            command = [compiler, '-O2']
+            if os.name == 'nt':
+                command.append('-static')
+            command += [str(source), '-o', str(executable)]
+            built = subprocess.run(command, capture_output=True, text=True)
+            if built.returncode:
+                raise RuntimeError(f'Fixture compile failed: {command!r}\n{built.stdout}\n{built.stderr}')
+            cls.native_builds[label] = executable
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -35,10 +68,8 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.receipts = [self.build('one'), self.build('two')]
 
     def build(self, label):
-        executable = self.root / ('game-' + label)
-        # Actual harmless executable --version, not a mocked readiness response.
-        executable.write_text('#!/bin/sh\necho ' + harness.current_head_short() + '\n# ' + label + '\n')
-        executable.chmod(0o700)
+        executable = self.root / ('game-' + label + self.native_builds[label].suffix)
+        shutil.copy2(self.native_builds[label], executable)
         receipt = self.root / ('receipt-' + label + '.json')
         receipt.write_text(json.dumps({
             'schema': harness.PRODUCT_BUILD_RECEIPT_SCHEMA,
@@ -65,6 +96,20 @@ class ScenarioRunBuildTest(unittest.TestCase):
             argv += ['--coordinator-brief',str(p)]
         return self.call(*argv)['result']
 
+    def test_native_builds_execute_version_and_have_distinct_identity(self):
+        hashes = []
+        for label, receipt in zip(('one', 'two'), self.receipts):
+            binding = json.loads(receipt.read_text())
+            executable = binding['executable_path']
+            version = subprocess.run([executable, '--version'], capture_output=True, text=True)
+            self.assertEqual(version.returncode, 0, version.stderr)
+            self.assertEqual(version.stdout.splitlines(), [harness.current_head_short(), '# fixture ' + label])
+            denied = subprocess.run([executable], capture_output=True, text=True)
+            self.assertEqual(denied.returncode, 2)
+            self.assertEqual(denied.stdout, '')
+            hashes.append(binding['executable_sha256'])
+        self.assertNotEqual(*hashes)
+
     def test_same_unchanged_save_two_builds_through_query_reload_and_probe(self):
         tokens=[]
         for receipt in self.receipts:
@@ -73,7 +118,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
             self.assertEqual(selected['source_executable_readiness']['status'],'ready')
             self.assertEqual(selected['next_action']['kind'],'launch_selected_scenario')
             self.assertNotIn('--witness-charter', selected['next_action']['command']['argv'])
-            with open_registry(str(self.registry)) as db:
+            with contextlib.closing(open_registry(str(self.registry))) as db:
                 token=reload_selection_token_for_launch(db,selected['token_id'])
             self.assertTrue(token.accepted,token)
             ns=cli._registry_launch_probe_namespace(token)
@@ -94,7 +139,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.call('rebuild','--source',str(self.scenario))
         selected=self.select(self.receipts[1],command='registry-bootstrap')
         self.assertTrue(selected['accepted'],selected)
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             token=reload_bootstrap_token_for_launch(db,selected['token_id'])
         ns=cli._registry_bootstrap_probe_namespace(token)
         ns.dry_run=True
@@ -116,7 +161,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
 
     def test_outcome_prose_is_not_second_selector_or_launch_hash_gate(self):
         selected=self.select(self.receipts[0],brief={'outcome':'Try the journey','scenario':'unrelated prose name','query':{'not':'typed request'}})
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             token=reload_selection_token_for_launch(db,selected['token_id'],witness_charter={'claim':'Changed wording'})
         self.assertTrue(token.accepted,token)
         self.assertEqual(token.outcome_brief['outcome'],'Try the journey')
@@ -133,7 +178,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
                          'material_proof': 'Retained bound observations',
                          'current_uncertainty': 'The journey remains unproved'}
                 selected = self.select(self.receipts[0], brief=brief)
-                with open_registry(str(self.registry)) as db:
+                with contextlib.closing(open_registry(str(self.registry))) as db:
                     token = reload_selection_token_for_launch(db, selected['token_id'])
                 self.assertTrue(token.accepted, token)
                 environment = cli._witness_launch_environment(type('Args', (), {
@@ -185,14 +230,14 @@ class ScenarioRunBuildTest(unittest.TestCase):
 
     def test_changed_run_binary_refuses_before_probe_and_same_token_cannot_replay(self):
         selected=self.select(self.receipts[0])
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             token=reload_selection_token_for_launch(db,selected['token_id'])
         game=Path(token.runtime_binding['executable_path'])
         game.write_bytes(game.read_bytes()+b'# changed\n')
         with mock.patch.object(harness,'run_probe_mode',side_effect=AssertionError('must not launch')):
             result=self.call('registry-launch',token.token_id,okay=False)
         self.assertEqual(result['result']['reason'],'source_matching_executable_required')
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             again=reload_selection_token_for_launch(db,token.token_id)
         self.assertFalse(again.accepted)
 
@@ -200,7 +245,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         selected=self.select(self.receipts[0])
         self.declaration['runtime_contract']['requirements']['fixture']='another-save'
         self.scenario.write_text(json.dumps(self.declaration))
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             token=reload_selection_token_for_launch(db,selected['token_id'])
         self.assertFalse(token.accepted)
         self.assertEqual(token.reason,'manifest_source_changed')
@@ -215,7 +260,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         self.scenario.write_text(json.dumps(declaration))
         self.call('rebuild','--source',str(self.scenario))
         selected = self.select(self.receipts[0])
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             token = reload_selection_token_for_launch(db, selected['token_id'])
         destination = self.root/'writable'/'world'
         destination.mkdir(parents=True)
@@ -225,7 +270,7 @@ class ScenarioRunBuildTest(unittest.TestCase):
         with mock.patch.object(harness,'save_dir_for_profile',return_value=destination.parent):
             with self.assertRaisesRegex(cli.ScenarioRegistryStoreError,'different data'):
                 cli._preflight_selected_save_setup(token,args)
-        with open_registry(str(self.registry)) as db:
+        with contextlib.closing(open_registry(str(self.registry))) as db:
             self.assertTrue(reload_selection_token_for_launch(db,token.token_id).accepted)
         self.assertEqual((self.save/'avatar').read_bytes(),b'unchanged saved player')
 

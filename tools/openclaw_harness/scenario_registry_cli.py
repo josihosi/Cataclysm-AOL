@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 from dataclasses import asdict
 import hashlib
 import json
@@ -3552,7 +3553,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.command in {"registry-launch", "certification-launch"}:
                 failure["token_id"] = args.selection_token
                 try:
-                    with open_registry(str(registry_path), writable=True) as failed_connection:
+                    with closing(open_registry(str(registry_path), writable=True)) as failed_connection, \
+                            failed_connection:
                         failure["selection_invalidated"] = record_selection_token_rejection(
                             failed_connection, args.selection_token,
                             reason="adapter_failed_before_report",

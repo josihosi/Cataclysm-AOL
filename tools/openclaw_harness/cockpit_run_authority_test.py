@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+from contextlib import closing, contextmanager
 import json
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -99,7 +101,7 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         self.registry = self.root / "registry.sqlite3"
         self.scenarios = self.root / "scenarios"
         (self.root / "game").write_bytes(b"bound executable v1")
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             create_source_bound_scenario(
                 connection,
                 scenarios_root=self.scenarios,
@@ -110,8 +112,88 @@ class CockpitRunAuthorityTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    @contextmanager
+    def registry_connection_probe(self):
+        opened = []
+        original = cockpit.open_registry
+
+        def track(*args, **kwargs):
+            connection = original(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        with mock.patch.object(cockpit, "open_registry", side_effect=track):
+            try:
+                yield opened
+            finally:
+                # Release probe references even when the old caller fails the
+                # close assertion, before TemporaryDirectory teardown.
+                for connection in opened:
+                    connection.close()
+
+    def assert_connections_closed(self, connections):
+        self.assertTrue(connections)
+        for connection in connections:
+            with self.assertRaisesRegex(sqlite3.ProgrammingError, "closed"):
+                connection.execute("SELECT 1")
+
+    def test_registry_call_closes_on_success_and_early_refusals(self) -> None:
+        service = cockpit.CockpitService(str(self.registry))
+        requests = [
+            ({"action": "frontier"}, True),
+            ({"action": "capability.search", "requirements": "absent capability"}, True),
+            ({"action": "capability.describe", "id": "absent capability"}, False),
+            ({"action": "run.open"}, False),
+            ({"action": "run.status"}, False),
+            ({"action": "run.finish"}, False),
+            ({"action": "gap.report"}, False),
+            ({"action": "scenario.create"}, False),
+            ({"action": "scenario.prepare"}, False),
+            ({"action": "scenario.validate", "id": "absent scenario"}, False),
+            ({"action": "unknown"}, False),
+        ]
+        for request, expected_ok in requests:
+            with self.subTest(request=request), self.registry_connection_probe() as opened:
+                result = service.call(request)
+                self.assertEqual(result["ok"], expected_ok, result)
+                self.assert_connections_closed(opened)
+
+    def test_registry_call_keeps_commit_and_rollback_before_closing(self) -> None:
+        with closing(open_registry(str(self.registry))) as connection:
+            connection.execute("CREATE TABLE fixture_transaction (marker TEXT)")
+        service = cockpit.CockpitService(str(self.registry))
+
+        def write(connection, *, query):
+            connection.execute("BEGIN")
+            connection.execute("INSERT INTO fixture_transaction VALUES (?)", (query,))
+            return []
+
+        with self.registry_connection_probe() as opened, \
+                mock.patch.object(cockpit, "capability_contracts", side_effect=write):
+            result = service.call({"action": "capability.search", "requirements": "committed"})
+            self.assertTrue(result["ok"], result)
+            self.assert_connections_closed(opened)
+
+        for error in (ValueError("invalid value"), registry_store.ScenarioRegistryStoreError("invalid authority"),
+                      OSError("storage unavailable"), RuntimeError("outer adapter failure")):
+            def fail(connection, *, query):
+                write(connection, query=query)
+                raise error
+
+            with self.subTest(error=type(error).__name__), self.registry_connection_probe() as opened, \
+                    mock.patch.object(cockpit, "capability_contracts", side_effect=fail):
+                request = {"action": "capability.search", "requirements": "rolled back"}
+                result = service.call(request)
+                self.assertFalse(result["ok"], result)
+                self.assertEqual(result["error"], str(error))
+                self.assert_connections_closed(opened)
+
+        with closing(open_registry(str(self.registry))) as connection:
+            self.assertEqual([row[0] for row in connection.execute("SELECT marker FROM fixture_transaction")],
+                             ["committed"])
+
     def test_valid_unverified_selection_opens_zero_credit_run_without_token(self) -> None:
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             selection = self._select(connection, "first")
             before = final_gate_eligibility(connection)
         service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
@@ -127,11 +209,11 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         encoded = json.dumps(opened).lower()
         for private in ("token", "source_path", "executable", "sha256", "owner_id"):
             self.assertNotIn(private, encoded)
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             self.assertEqual(final_gate_eligibility(connection), before)
 
     def test_conflicting_owner_is_rejected_and_finish_releases_exact_scope(self) -> None:
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             first_selection = self._select(connection, "first")
             second_selection = self._select(connection, "second")
         service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
@@ -151,7 +233,7 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         original = source.read_bytes()
         second_game = self.root / "game-v2"
         second_game.write_bytes(b"independently selected build v2")
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             first_selection = self._select(connection, "first")
             second_selection = self._select(connection, "second")
         first_service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
@@ -162,12 +244,12 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         second = second_service.call({"action": "run.open", "selection_id": second_selection})
         self.assertTrue(second["ok"], second)
         self.assertEqual(source.read_bytes(), original)
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             rows = connection.execute("SELECT executable_path FROM cockpit_run_authority ORDER BY rowid").fetchall()
         self.assertEqual([row[0] for row in rows], [str((self.root / "game").resolve()), str(second_game.resolve())])
 
     def test_changed_executable_invalidates_open_run_without_proof_promotion(self) -> None:
-        with open_registry(str(self.registry)) as connection:
+        with closing(open_registry(str(self.registry))) as connection:
             selection = self._select(connection, "drift")
         service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
         with mock.patch.object(registry_store, "repository_root", return_value=self.root):

@@ -6,6 +6,7 @@ the typed registry CLI.
 """
 from __future__ import annotations
 
+from contextlib import closing
 from cockpit_archive import ArchiveMap, ArchiveSequence
 
 import json
@@ -4242,7 +4243,8 @@ class CockpitService:
                 witness=witness if isinstance(witness, Mapping) else None,
             )
         try:
-            with open_registry(self.registry, writable=True) as connection:
+            # Finish the SQLite transaction before closing, including early returns.
+            with closing(open_registry(self.registry, writable=True)) as connection, connection:
                 if request.get("frontier") is True or action == "frontier":
                     return {"ok": True, "result": _frontier(connection)}
                 if action == "capability.search":
