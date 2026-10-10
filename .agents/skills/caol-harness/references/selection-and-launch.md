@@ -67,13 +67,19 @@ This is a changed-header/cache condition, not a mandatory clean rebuild on every
 A stale executable may support an explicitly isolated
 harness diagnosis only; current-product conclusions require a source-matching executable.
 
-For a selected playtest, the coordinator brief and matching validated charter are the execution
-request. The registry token is single-use technical authority, not human permission:
+For an ordinary selected playtest, one outcome brief supplies context. The typed query and
+optional `--scenario-id` select the save/scenario; outcome prose is not a second selector.
+Select the build for this run with `registry-query` or `registry-bootstrap`
+`--run-build-receipt`, or `--executable` for an ordinary build. The resolved run binding carries
+that exact build through readiness and launch. Legacy scenario executable/build fields do not
+select it, so the same saved scenario can be used with a separately selected coherent build.
+The registry token remains single-use technical authority, not human permission.
 
-Use the returned `next_action`: a ready selected route supplies its launch argument array,
-including the witness charter and, for a live cockpit, `registry-detached-launch` with a new session
-path. Do not pre-create that directory. A build, repair, or missing-charter response identifies the
-prerequisite instead. Saved query readiness is a snapshot; launch revalidates current state.
+Use the returned `next_action`: a ready selected route supplies its launch argument array and,
+for a live cockpit, `registry-detached-launch` with a new session path. Do not pre-create that
+directory. A legacy witness charter is optional journal metadata; matching duplicated prose is
+not a launch prerequisite. The actual run journal remains evidence, with acceptance judged
+separately. Saved query readiness is a snapshot; launch revalidates current state.
 
 For a task-local saved start, carry `saved_world_snapshot` from the verified current checkpoint
 and the chosen destination profile in the selected source. When its initial `steps` are exactly
@@ -100,8 +106,8 @@ empty userdir. Before game input, compare the effective userdir and intended sav
 require a same-run World descriptor. The [game manual](../GAME-MANUAL.md#check-the-effective-profile)
 records the failed R010 example and its evidence.
 
-Launch revalidates source, executable, scenario, world, ownership, and runtime. Missing charter,
-stale binding, fixture defects, or tool defects are agent-owned repair when the outcome remains in
+Launch revalidates source, executable, scenario, world, ownership, and runtime. Stale binding,
+fixture defects, or tool defects are agent-owned repair when the outcome remains in
 scope. The worker may change strategy, repair, obtain fresh authority, and rerun without another
 human request.
 

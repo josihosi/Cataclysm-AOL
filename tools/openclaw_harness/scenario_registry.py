@@ -44,7 +44,6 @@ PROOF_DEPTHS = (
 RUNTIME_REQUIREMENT_KEYS = (
     "os",
     "source",
-    "executable",
     "profile",
     "fixture",
     "helper",
@@ -318,28 +317,8 @@ def _validate_runtime_contract(
         if not _is_capability_value(requirements[key]):
             raise _error(path, f"runtime_contract.requirements.{key} has an unsupported JSON shape")
 
-    selected_build = value.get("selected_product_build")
-    if selected_build is not None:
-        fields = {
-            "schema", "receipt_path", "receipt_sha256", "executable_sha256",
-            "product_source_sha256",
-        }
-        if not isinstance(selected_build, dict) or set(selected_build) != fields:
-            raise _error(path, "runtime_contract.selected_product_build must use the supported exact fields")
-        if selected_build.get("schema") != SELECTED_PRODUCT_BUILD_SCHEMA:
-            raise _error(path, "runtime_contract.selected_product_build.schema is unsupported")
-        receipt_path = selected_build.get("receipt_path")
-        if not isinstance(receipt_path, str) or not receipt_path.strip():
-            raise _error(path, "runtime_contract.selected_product_build.receipt_path must be a non-empty workspace-relative path")
-        receipt_relative = Path(receipt_path)
-        if receipt_relative.is_absolute() or ".." in receipt_relative.parts:
-            raise _error(path, "runtime_contract.selected_product_build.receipt_path must stay within the workspace")
-        for key in ("receipt_sha256", "executable_sha256", "product_source_sha256"):
-            digest = selected_build.get(key)
-            if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
-                raise _error(path, f"runtime_contract.selected_product_build.{key} must be a lowercase SHA-256")
-        if not isinstance(requirements.get("executable"), str) or not requirements["executable"].strip():
-            raise _error(path, "runtime_contract.selected_product_build requires an exact executable path string")
+    # Builds are selected per run. Historical declaration build fields are
+    # retained as source evidence but are not executable selection or authority.
 
 
 def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path) -> None:

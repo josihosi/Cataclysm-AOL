@@ -79,7 +79,7 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
         "certification_save_capability",
     }
 
-    def test_coordinator_authorization_requires_exact_outcome_and_typed_query(self) -> None:
+    def test_outcome_context_does_not_duplicate_typed_query_or_charter_permission(self) -> None:
         request = parse_registry_query_request({"requirements": [], "preferences": []})
         candidate = RegistryQueryCandidateSnapshot(
             scenario_id="scenario-a", lifecycle_state="active", token_eligible=True,
@@ -93,14 +93,16 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                  "scenario_id": "scenario-a"}
         authorization = _coordinator_authorization(request, candidate, brief, charter)
         self.assertEqual(len(str(authorization["brief_sha256"])), 64)
+        changed = _coordinator_authorization(request, candidate, {**brief, "outcome": "different"}, charter)
+        self.assertEqual(changed["outcome"], "different")
+        changed_query = _coordinator_authorization(request, candidate, {
+            **brief, "query": {"requirements": [{"key": "x", "op": "present"}], "preferences": []},
+        }, charter)
+        self.assertEqual(changed_query["outcome"], brief["outcome"])
         with self.assertRaisesRegex(ScenarioRegistryStoreError, "outcome"):
-            _coordinator_authorization(request, candidate, {**brief, "outcome": "different"}, charter)
-        with self.assertRaisesRegex(ScenarioRegistryStoreError, "typed query"):
-            _coordinator_authorization(request, candidate, {
-                **brief, "query": {"requirements": [{"key": "x", "op": "present"}], "preferences": []},
-            }, charter)
+            _coordinator_authorization(request, candidate, {"outcome": ""}, None)
 
-    def test_named_brief_selects_only_one_eligible_query_candidate(self) -> None:
+    def test_typed_selector_selects_only_one_eligible_query_candidate(self) -> None:
         facts = {
             "capability": {"present": True, "evidence_state": "declared", "value": "same"},
         }
@@ -117,19 +119,19 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             candidates=(first, second),
             evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=("manifest-a", "manifest-b")),
         )
-        self.assertIs(_select_coordinator_query_candidate(evaluation, {"scenario": "saved-copy"}), second)
-        self.assertIs(_select_coordinator_query_candidate(evaluation, {"scenario_id": "manifest-a"}), first)
+        self.assertIs(_select_coordinator_query_candidate(evaluation, None, scenario_id="saved-copy"), second)
+        self.assertIs(_select_coordinator_query_candidate(evaluation, None, scenario_id="manifest-a"), first)
         self.assertIs(_select_coordinator_query_candidate(evaluation, None), first)
         self.assertIs(_select_coordinator_query_candidate(evaluation, {"outcome": "unnamed"}), first)
 
         with self.assertRaisesRegex(ScenarioRegistryStoreError, "missing"):
-            _select_coordinator_query_candidate(evaluation, {"scenario": "not-published"})
+            _select_coordinator_query_candidate(evaluation, None, scenario_id="not-published")
         ineligible = RegistryStoredQueryEvaluation(
             candidates=(first, second),
             evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=("manifest-a",)),
         )
         with self.assertRaisesRegex(ScenarioRegistryStoreError, "typed-query match"):
-            _select_coordinator_query_candidate(ineligible, {"scenario_id": "manifest-b"})
+            _select_coordinator_query_candidate(ineligible, None, scenario_id="manifest-b")
         duplicate_name = candidate("manifest-c", "saved-copy")
         ambiguous = RegistryStoredQueryEvaluation(
             candidates=(first, second, duplicate_name),
@@ -138,11 +140,9 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             ),
         )
         with self.assertRaisesRegex(ScenarioRegistryStoreError, "ambiguous"):
-            _select_coordinator_query_candidate(ambiguous, {"scenario": "saved-copy"})
-        with self.assertRaisesRegex(ScenarioRegistryStoreError, "conflicting"):
-            _select_coordinator_query_candidate(
-                evaluation, {"scenario_id": "manifest-a", "scenario": "saved-copy"},
-            )
+            _select_coordinator_query_candidate(ambiguous, None, scenario_id="saved-copy")
+        self.assertIs(_select_coordinator_query_candidate(
+            evaluation, {"scenario_id": "manifest-a", "scenario": "saved-copy"}), first)
         for invalid in (
             candidate("manifest-d", "inactive-copy", lifecycle="quarantined"),
             candidate("manifest-e", "unowned-copy", token_eligible=False),
@@ -153,9 +153,9 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                 evaluation=RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=(invalid.scenario_id,)),
             )
             with self.assertRaisesRegex(ScenarioRegistryStoreError, "launch eligible"):
-                _select_coordinator_query_candidate(invalid_evaluation, {"scenario_id": invalid.scenario_id})
+                _select_coordinator_query_candidate(invalid_evaluation, None, scenario_id=invalid.scenario_id)
 
-    def test_execute_query_binds_token_and_selected_identity_to_named_rank_two_candidate(self) -> None:
+    def test_execute_query_binds_token_to_typed_rank_two_selector_not_outcome_prose(self) -> None:
         def candidate(identity: str, name: str):
             return RegistryQueryCandidateSnapshot(
                 scenario_id=identity, lifecycle_state="active", token_eligible=True,
@@ -194,7 +194,7 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                         mock.patch.object(registry_store, "_append_query_audit"), \
                         mock.patch.object(registry_store, "_append_scenario_selection", return_value="selection"):
                     result = execute_registry_query(
-                        connection, request, coordinator_brief=brief, witness_charter=charter,
+                        connection, request, scenario_id="saved-copy", coordinator_brief=brief, witness_charter=charter,
                     )
                 self.assertIsNotNone(result.token_id)
                 self.assertEqual(result.selected_scenario_id, "manifest-b")
@@ -221,7 +221,7 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                             mock.patch.object(registry_store, "_append_scenario_selection", return_value="selection"):
                         with self.assertRaises(ScenarioRegistryStoreError):
                             execute_registry_query(
-                                connection, request, coordinator_brief=request_brief,
+                                connection, request, scenario_id=choice.get("scenario_id", choice.get("scenario")), coordinator_brief=request_brief,
                                 witness_charter=charter,
                             )
                     return connection.execute(
@@ -236,12 +236,6 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                 self.assertEqual(reject_without_fallback((first, second, duplicate),
                                                          ("manifest-a", "manifest-b", "manifest-c"),
                                                          {"scenario": "saved-copy"}), 1)
-                self.assertEqual(reject_without_fallback((first, second), ("manifest-a", "manifest-b"),
-                                                         {"scenario": "saved-copy"},
-                                                         selected_brief={"query": {
-                                                             "requirements": [{"key": "other", "op": "present"}],
-                                                             "preferences": [],
-                                                         }}), 1)
             finally:
                 connection.close()
 

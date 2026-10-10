@@ -67,6 +67,7 @@ from scenario_registry_store import (
     reload_repair_token_for_launch,
     reload_selection_token_for_launch,
     parse_registry_query_request,
+    normalize_outcome_brief,
     path_sha256,
     record_migration_run_success,
     record_playtest_witness,
@@ -148,9 +149,6 @@ def _query_launch_action(result: Mapping[str, Any], args: argparse.Namespace,
         return {"kind": "inspect_selected_declaration", "source_path": str(source),
                 "reason": str(error)}
     charter = str(args.witness_charter or "").strip()
-    if detached and not charter:
-        return {"kind": "provide_witness_charter", "scenario_id": selected_id,
-                "action": "Supply the matching witness charter for the selected live-cockpit launch."}
     command = [sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
                "registry-detached-launch" if detached else "registry-launch", result["token_id"]]
     if charter:
@@ -521,7 +519,8 @@ def _current_source_executable_readiness(
         readiness_options["selected_product_build"] = selected_product_build
     readiness = dict(startup_harness.executable_source_readiness(candidate, **readiness_options))
     if terminal_scenario is not None:
-        mode_readiness = startup_harness.terminal_mode_readiness(terminal_scenario, candidate.resolve())
+        mode_readiness = startup_harness.terminal_mode_readiness(
+            terminal_scenario, candidate.resolve(), selected_product_build=selected_product_build)
         readiness["mode_readiness"] = mode_readiness
         if mode_readiness["status"] != "ready":
             readiness.update(status="unsupported_terminal_mode", reason=mode_readiness["reason"],
@@ -534,10 +533,14 @@ def _current_source_executable_readiness(
     return _with_build_entrypoint(readiness)
 
 
-def _runtime_status(*, executable: str, isolated_harness_diagnosis: bool) -> Mapping[str, Any]:
+def _runtime_status(
+    *, executable: str, isolated_harness_diagnosis: bool,
+    selected_product_build: Mapping[str, Any] | None = None,
+) -> Mapping[str, Any]:
     """Return one exact build/runtime binding observation without launching gameplay."""
     readiness = dict(_current_source_executable_readiness(
         executable=executable,
+        selected_product_build=selected_product_build,
         isolated_harness_diagnosis=isolated_harness_diagnosis,
     ))
     executable_path = str(readiness.get("executable_path", "")).strip()
@@ -1237,26 +1240,48 @@ def _selected_declaration(scenario: str | Any) -> Dict[str, Any]:
             else _load_selected_scenario(scenario))
 
 
+def _resolve_run_build(args: argparse.Namespace) -> Dict[str, Any]:
+    """Resolve one build for this run; scenario save/setup never selects it."""
+    receipt_text = str(getattr(args, "run_build_receipt", "") or "").strip()
+    selected = None
+    if receipt_text:
+        path = Path(receipt_text).expanduser().resolve()
+        receipt = _load_json_object_file(str(path), "run build receipt")
+        executable = Path(str(receipt.get("executable_path", ""))).resolve()
+        selected = {
+            "schema": startup_harness.SELECTED_PRODUCT_BUILD_SCHEMA,
+            "receipt_path": str(path), "receipt_sha256": path_sha256(path),
+            "executable_sha256": receipt.get("executable_sha256", ""),
+            "product_source_sha256": receipt.get("product_source_sha256", ""),
+        }
+    else:
+        executable_text = str(getattr(args, "executable", "") or "").strip()
+        executable = Path(executable_text).resolve() if executable_text else startup_harness.detect_executable()
+    binding = startup_harness.build_runtime_binding(executable, selected_product_build=selected)
+    if not binding.get("ok"):
+        raise ScenarioRegistryStoreError("run build unavailable: " + str(binding.get("error", "unknown")))
+    return binding
+
+
 def _selected_executable(scenario: str | Any) -> Path:
-    declaration = _selected_declaration(scenario)
-    declared = declaration.get("runtime_contract", {}).get("requirements", {}).get("executable", "")
-    return (startup_harness.repo_root() / declared).resolve() if declared else startup_harness.detect_executable()
+    binding = getattr(scenario, "runtime_binding", {})
+    executable = str(binding.get("executable_path", "")) if isinstance(binding, Mapping) else ""
+    return Path(executable).resolve() if executable else startup_harness.detect_executable()
 
 
 def _selected_product_build(scenario: str | Any) -> Mapping[str, Any] | None:
-    declaration = _selected_declaration(scenario)
-    runtime_contract = declaration.get("runtime_contract", {})
-    selected = runtime_contract.get("selected_product_build") if isinstance(runtime_contract, Mapping) else None
+    binding = getattr(scenario, "runtime_binding", {})
+    selected = binding.get("selected_product_build") if isinstance(binding, Mapping) else None
     return dict(selected) if isinstance(selected, Mapping) else None
 
 
 def _selected_readiness_options(scenario: str | Any) -> Dict[str, Any]:
+    selected = _selected_product_build(scenario)
+    options = {"selected_product_build": selected} if selected is not None else {}
     if not isinstance(scenario, str) and not (
             str(getattr(scenario, "source_path", "")).strip() and
             str(getattr(scenario, "source_sha256", "")).strip()):
-        return {}
-    selected = _selected_product_build(scenario)
-    options = {"selected_product_build": selected} if selected is not None else {}
+        return options
     declaration = _selected_declaration(scenario)
     if startup_harness.scenario_playtest_mode(declaration) == "terminal":
         options["terminal_scenario"] = declaration
@@ -1264,14 +1289,17 @@ def _selected_readiness_options(scenario: str | Any) -> Dict[str, Any]:
 
 
 def _selected_runtime_binding(executable: Path, scenario: str | Any) -> Dict[str, Any]:
-    selected = _selected_product_build(scenario)
-    if selected is None:
-        return startup_harness.build_runtime_binding(executable)
-    return startup_harness.build_runtime_binding(executable, selected_product_build=selected)
+    binding = getattr(scenario, "runtime_binding", {})
+    if binding:
+        comparison = startup_harness.compare_runtime_binding(binding)
+        if comparison.get("status") != "matched":
+            raise ScenarioRegistryStoreError("selected run build changed: " + str(comparison.get("error", comparison)))
+        return {"ok": True, **dict(binding)}
+    return startup_harness.build_runtime_binding(executable)
 
 
 def _bootstrap_selected_executable(connection: sqlite3.Connection, request: Any,
-                                   scenario_id: str | None) -> tuple[Path, str, str, Mapping[str, Any] | None] | None:
+                                   scenario_id: str | None, runtime_binding: Mapping[str, Any]) -> tuple[Path, str, str, Mapping[str, Any] | None] | None:
     """Read the same eligible manifest that token issuance will bind."""
     candidate = _select_registry_bootstrap_candidate(connection, request, scenario_id=scenario_id)
     if candidate is None:
@@ -1284,13 +1312,15 @@ def _bootstrap_selected_executable(connection: sqlite3.Connection, request: Any,
     if not source_path or not source_sha256:
         raise ScenarioRegistryStoreError("bootstrap selected source identity is missing")
     selected = RegistryBootstrapToken("", True, "inspected", Path(source_path).stem,
-                                      source_path, {}, source_sha256)
+                                      source_path, runtime_binding, source_sha256)
     return (_selected_executable(selected), source_path, source_sha256,
             _selected_product_build(selected))
 
 
 def _bind_selected_probe_source(namespace: argparse.Namespace, selection: Any) -> argparse.Namespace:
     declaration = _load_selected_scenario(selection)
+    if getattr(selection, "runtime_binding", None):
+        namespace.executable = str(_selected_executable(selection))
     namespace.registry_selected_source_path = declaration["path"]
     namespace.registry_selected_source_sha256 = declaration["_scenario_registry"]["source"]["sha256"]
     selected_product_build = _selected_product_build(selection)
@@ -1564,8 +1594,9 @@ def build_parser() -> argparse.ArgumentParser:
             "diagnosis; no playtest outcome authority is issued"
         ),
     )
-    query.add_argument("--coordinator-brief", help="coordinator brief JSON for explicit playtest authority")
-    query.add_argument("--witness-charter", help="validated witness charter JSON for explicit playtest authority")
+    query.add_argument("--scenario-id", help="exact eligible scenario ID/name selected by this query")
+    query.add_argument("--coordinator-brief", help="one outcome brief JSON, independent of typed selection and evidence review")
+    query.add_argument("--witness-charter", help="optional legacy witness metadata JSON")
     query.add_argument("--page-size", type=_positive_page_size, default=5,
                        help="matches per page (default: 5; owner-selected presentation preference)")
     query.add_argument("--full", action="store_true", help="export the complete query evaluation as a file; return its receipt")
@@ -1608,6 +1639,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--full", action="store_true",
         help="explicitly print the complete runtime-status payload instead of its artifact receipt",
     )
+    for run_parser in (query, bootstrap):
+        run_parser.add_argument("--executable", default="", help="executable selected for this run")
+    for run_parser in (query, bootstrap, runtime_status):
+        run_parser.add_argument("--run-build-receipt", default="",
+                                help="immutable build receipt selected for this run, independent of scenario")
     runtime_artifact = commands.add_parser(
         "runtime-status-artifact",
         help="retrieve one digest-bound runtime-status payload",
@@ -1658,8 +1694,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="new private file-backed bridge session directory",
     )
     detached_launch.add_argument(
-        "--witness-charter", required=True,
-        help="coordinator-authored compact playtest witness charter JSON",
+        "--witness-charter",
+        help="optional legacy witness metadata JSON",
     )
     detached_launch.add_argument("--post-relaunch-continuation", action="store_true",
                                  help="continue only declared post-relaunch steps from the saved world")
@@ -2027,15 +2063,22 @@ def _declared_live_session_reentries(
 
 
 def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
-    """Validate the coordinator charter before any launch authority is claimed."""
+    """Carry outcome context into the evidence journal; prose is not a launch grant."""
     environment = dict(os.environ)
     charter_path = str(getattr(args, "witness_charter", "") or "").strip()
-    if not charter_path:
-        return environment
-    try:
-        value = json.loads(Path(charter_path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ScenarioRegistryStoreError("witness charter is unreadable") from exc
+    if charter_path:
+        value = _load_json_object_file(charter_path, "witness charter")
+    else:
+        context = getattr(args, "outcome_brief", {}) or {}
+        # Older accepted tokens may still contain only an alias. Use the same
+        # normalization as issuance without rewriting their retained receipt.
+        if context:
+            context = normalize_outcome_brief(context)
+        value = {
+            "claim": context.get("outcome", context.get("claim", "Retain the actual run outcome")),
+            "material_proof": context.get("material_proof", "Actual native observations, receipts and saved state"),
+            "current_uncertainty": context.get("current_uncertainty", "The native outcome is not yet established"),
+        }
     if not isinstance(value, Mapping):
         raise ScenarioRegistryStoreError("witness charter must be a JSON object")
     from playtest_witness import WitnessError, normalize_witness_charter
@@ -2076,7 +2119,7 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
     """Start a brief-requested session while the bridge preserves the technical claim."""
     session_dir = Path(args.session_dir).resolve()
     registry_path = registry_path.resolve()
-    witness_charter_path = Path(args.witness_charter).resolve()
+    witness_charter_path = Path(args.witness_charter).resolve() if args.witness_charter else None
     if session_dir.exists():
         _write_result({"ok": False, "command": args.command,
                        "error": "bridge session directory already exists",
@@ -2084,7 +2127,7 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         return 1
     connection = open_registry(str(registry_path))
     try:
-        charter = _load_json_object_file(str(witness_charter_path), "witness charter")
+        charter = _load_json_object_file(str(witness_charter_path), "witness charter") if witness_charter_path else None
         selection = reload_selection_token_for_launch(
             connection, args.selection_token, witness_charter=charter,
         )
@@ -2096,7 +2139,8 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         # executable.  Checking the ambient default here would reject that
         # ready selection before its launch path gets to validate the exact
         # declared binary.
-        selected_executable = _selected_executable( selection )
+        selected_executable = _selected_executable(selection)
+        _selected_runtime_binding(selected_executable, selection)
         readiness = _current_source_executable_readiness(
             executable=str(selected_executable),
             **_selected_readiness_options(selection),
@@ -2138,9 +2182,12 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
     )
     cockpit_command = [
         sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
-        "registry-launch", selection.token_id, "--witness-charter", str(witness_charter_path),
+        "registry-launch", selection.token_id,
         "--cockpit-bridge-binding-id", bridge_binding_id, "--cockpit-live-session",
     ]
+    if witness_charter_path:
+        cockpit_command.extend(["--witness-charter", str(witness_charter_path)])
+    args.outcome_brief = selection.outcome_brief
     if getattr(args, "profile", ""):
         cockpit_command.extend(["--profile", str(args.profile)])
     if initial_post_relaunch_continuation:
@@ -2733,13 +2780,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                     if str(args.coordinator_brief or "").strip() else None
                 charter = _load_json_object_file(args.witness_charter, "witness charter") \
                     if str(args.witness_charter or "").strip() else None
+                runtime_binding: Dict[str, Any] = {}
+                def selected_run_binding() -> Mapping[str, Any]:
+                    nonlocal runtime_binding
+                    runtime_binding = _resolve_run_build(args)
+                    return runtime_binding
                 query_result = asdict(execute_registry_query(
                     connection,
                     request,
                     include_lifecycle_states=tuple(args.include_state),
+                    scenario_id=str(args.scenario_id or "").strip() or None,
                     drafts_root=registry_path.parent / "drafts",
                     coordinator_brief=brief,
                     witness_charter=charter,
+                    runtime_binding=selected_run_binding,
                 ))
                 # Query-time readiness must describe the selected declaration,
                 # not whichever tiles binary happens to be the ambient default.
@@ -2766,30 +2820,36 @@ def main(argv: Sequence[str] | None = None) -> int:
                             break
                 readiness_options: Dict[str, Any] = {
                     "isolated_harness_diagnosis": bool(args.isolated_harness_diagnosis),
+                    "executable": str(runtime_binding.get("executable_path", "")),
+                    "selected_product_build": runtime_binding.get("selected_product_build"),
                 }
                 if selected_manifest is not None:
                     selected_stub = RegistryBootstrapToken(
                         "", True, "inspected",
                         Path(str(selected_manifest.get("source_path", ""))).stem,
-                        str(selected_manifest.get("source_path", "")), {},
+                        str(selected_manifest.get("source_path", "")), runtime_binding,
                         str(selected_manifest.get("sha256", "")),
                     )
                     if selected_stub.source_path and selected_stub.source_sha256:
                         selected_executable = _selected_executable(selected_stub)
                         readiness_options["executable"] = str(selected_executable)
                         readiness_options.update(_selected_readiness_options(selected_stub))
-                readiness = _current_source_executable_readiness(**readiness_options)
+                readiness = (_current_source_executable_readiness(**readiness_options)
+                             if runtime_binding else {"status": "not_selected"})
                 result = _apply_source_readiness_to_query(query_result, readiness)
                 result["next_action"] = _query_launch_action(result, args, registry_path)
             elif args.command == "registry-bootstrap":
                 request = parse_registry_query_request(_load_query_request(args))
                 scenario_id = str(args.scenario_id or "").strip() or None
-                selected = _bootstrap_selected_executable(connection, request, scenario_id)
+                runtime_binding = _resolve_run_build(args)
+                selected = _bootstrap_selected_executable(connection, request, scenario_id, runtime_binding)
                 if selected is None:
                     result = asdict(RegistryBootstrapToken(
                         "", False, "query_has_no_active_compatible_manifest"))
                 else:
-                    executable, source_path, source_sha256, selected_product_build = selected
+                    _, source_path, source_sha256, _ = selected
+                    executable = Path(runtime_binding["executable_path"])
+                    selected_product_build = runtime_binding.get("selected_product_build")
                     readiness_options = {"executable": str(executable)}
                     if selected_product_build is not None:
                         readiness_options["selected_product_build"] = selected_product_build
@@ -2799,13 +2859,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "", False, "source_matching_executable_required")),
                             "source_executable_readiness": dict(readiness)}
                     else:
-                        runtime_binding = (
-                            startup_harness.build_runtime_binding(executable)
-                            if selected_product_build is None else
-                            startup_harness.build_runtime_binding(
-                                executable, selected_product_build=selected_product_build,
-                            )
-                        )
                         if not runtime_binding.get("ok"):
                             raise ScenarioRegistryStoreError(
                                 "bootstrap runtime binding unavailable: "
@@ -2947,8 +3000,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     command="registry-status", sha256=args.sha256,
                 )
             elif args.command == "runtime-status":
+                runtime_binding = _resolve_run_build(args) if args.run_build_receipt else {}
                 result = _runtime_status(
-                    executable=args.executable,
+                    executable=str(runtime_binding.get("executable_path", args.executable)),
+                    selected_product_build=runtime_binding.get("selected_product_build"),
                     isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
                 )
             elif args.command == "runtime-status-artifact":
@@ -2988,6 +3043,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not selection.accepted:
                     result = asdict(selection)
                 else:
+                    args.outcome_brief = selection.outcome_brief
                     selected_executable = _selected_executable(selection)
                     readiness = _current_source_executable_readiness(
                         executable=str(selected_executable),
@@ -3054,7 +3110,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 reason="selected_probe_source_mismatch",
                             ))
                         else:
-                            runtime_binding = startup_harness.build_runtime_binding(selected_executable)
+                            runtime_binding = _selected_runtime_binding(selected_executable, selection)
                             if not runtime_binding.get("ok"):
                                 record_selection_token_rejection(
                                     connection,

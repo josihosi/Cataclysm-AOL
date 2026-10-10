@@ -429,7 +429,7 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
             self.assertNotIn( "cells", observation["minimap"] )
             self.assertNotIn( "overmap", observation )
 
-    def test_partial_or_oversized_native_json_is_ignored_without_decoder_stall( self ) -> None:
+    def test_partial_owner_refuses_but_complete_oversized_authority_is_lossless( self ) -> None:
         run_id = "r009-bounded-json"
         valid = {
             "event": "surface_descriptor",
@@ -443,9 +443,8 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
             "valid_actions": [],
         }
         oversized = {
-            "event": "frame", "run_id": run_id, "frame_id": "frame-large",
-            "state": "world", "valid_actions": [],
-            "padding": "x" * 20000,
+            **valid, "surface_id": "surface-large", "frame_id": "frame-large",
+            "payload": {"title": "Large inventory", "facts": "x" * 600000},
         }
         partial = (
             SEMANTIC_STEP_PREFIX
@@ -463,15 +462,25 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
                  + SEMANTIC_STEP_PREFIX + json.dumps(valid) + "\n").encode("utf-8")
                 + partial
             )
-            with patch( "startup_harness.semantic_step_source_trace", return_value=source ), \
-                    patch( "startup_harness.SEMANTIC_STEP_MAX_BYTES", 1024 ):
+            with patch( "startup_harness.semantic_step_source_trace", return_value=source ):
+                with self.assertRaisesRegex(ValueError, "incomplete_native_semantic_record"):
+                    refresh_semantic_step_trace(
+                        profile="r009-m095", run_dir=run_dir, run_id=run_id, start_offset=0,
+                    )
+                # Receipt polling can retain the complete prefix, while strict
+                # action reads refuse the unfinished newer owner above.
                 _, owned = refresh_semantic_step_trace(
                     profile="r009-m095", run_dir=run_dir, run_id=run_id, start_offset=0,
+                    require_complete=False,
                 )
-
             events, status = read_semantic_step_trace( owned, run_dir, run_id )
+            full = [json.loads(line.split(SEMANTIC_STEP_PREFIX, 1)[1])
+                    for line in (run_dir / "semantic.native.full.log").read_text().splitlines()]
         self.assertEqual( status, "ok" )
         self.assertEqual( [event["frame_id"] for event in events], ["frame-world"] )
+        # Historical authority remains exact in its source-bound full record;
+        # only the current World owner is dispatchable.
+        self.assertEqual(full[0]["payload"], oversized["payload"])
 
     def test_thousand_item_pickup_keeps_every_action_discoverable(self) -> None:
         run_id = "pickup-thousand-items"

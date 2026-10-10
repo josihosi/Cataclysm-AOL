@@ -50,7 +50,7 @@ HARD_STOP = {
     "src/advanced_inv.cpp", "src/armor_layers.cpp", "src/auto_note.cpp",
     "src/auto_pickup.cpp", "src/bionics_ui.cpp", "src/bodygraph.cpp", "src/character_health.cpp",
     "src/color.cpp", "src/computer_session.cpp", "src/construction.cpp", "src/crafting_gui.cpp",
-    "src/debug_console.cpp", "src/diary_ui.cpp",
+    "src/debug_console.cpp",
     "src/do_turn.cpp", "src/end_screen.cpp", "src/faction_camp.cpp",
     "src/faction_ui.cpp", "src/game_inventory.cpp", "src/help.cpp", "src/iexamine.cpp",
     "src/imgui_demo.cpp", "src/input_popup.cpp", "src/iuse.cpp", "src/iuse_software_kitten.cpp",
@@ -67,6 +67,13 @@ HARD_STOP = {
 }
 
 MIXED_OWNER_SITES = {
+    # Only Diary's view loop advertises native QUIT. Page editing retains its
+    # existing child/string editor boundary and ordinary keyboard behavior.
+    "src/diary_ui.cpp": {
+        "scope": '"diary"',
+        "direct_input": 'action = semantic_action.empty() ? ctxt.handle_input() : "";',
+        "reject_guard": "if( semantic_scope )",
+    },
     # Only the epilogue/shared scrollable-text loop is adapted.  Other output
     # loops retain input_context's actionless boundary; no whole-file credit.
     "src/output.cpp": {

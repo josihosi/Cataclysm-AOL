@@ -272,7 +272,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         self.assertTrue(namespace.post_relaunch_continuation)
         self.assertEqual(namespace.saved_world_snapshot, snapshot)
 
-    def test_selected_probe_namespace_retains_declared_immutable_product_build(self) -> None:
+    def test_selected_probe_namespace_retains_run_selected_immutable_product_build(self) -> None:
         scenario = "cli.selected-product-build"
         source_path = Path("/tmp/selected-product-build.json")
         source_hash = "a" * 64
@@ -284,7 +284,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             "product_source_sha256": "d" * 64,
         }
         selection = scenario_registry_cli.RegistryBootstrapToken(
-            "token", True, "current", scenario, str(source_path), {}, source_hash,
+            "token", True, "current", scenario, str(source_path),
+            {"executable_path": "/exact/run/game", "selected_product_build": selected_build}, source_hash,
         )
         declaration = {
             "name": scenario,
@@ -531,7 +532,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                        "executable_path": str(selected_executable),
                        "executable_sha256": "selected-test-binary",
                        "runtime_source_sha256": "selected-test-source"}
-            with mock.patch.object(startup_harness, "scenarios_root", return_value=canonical), \
+            with mock.patch.object(startup_harness, "detect_executable", return_value=selected_executable), \
+                    mock.patch.object(startup_harness, "scenarios_root", return_value=canonical), \
                     mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
                                       return_value={"status": "ready"}) as readiness, \
                     mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime), \
@@ -632,12 +634,12 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_selected_renderer_identity_does_not_use_default_executable(self) -> None:
-        with mock.patch.object(startup_harness, "load_scenario", return_value={
-                "runtime_contract": {"requirements": {"executable": "cataclysm"}}}), \
+    def test_selected_renderer_identity_uses_run_binding_not_scenario_or_default(self) -> None:
+        selected = scenario_registry_cli.RegistryLaunchToken(
+            "token", True, "current", "curses", runtime_binding={"executable_path": "/exact/cataclysm"})
+        with mock.patch.object(startup_harness, "load_scenario", side_effect=AssertionError("scenario build is obsolete")), \
                 mock.patch.object(startup_harness, "detect_executable", side_effect=AssertionError("wrong renderer")):
-            self.assertEqual(scenario_registry_cli._selected_executable("curses"),
-                             (startup_harness.repo_root() / "cataclysm").resolve())
+            self.assertEqual(scenario_registry_cli._selected_executable(selected), Path("/exact/cataclysm"))
 
     def run_registry_launch(
         self,
@@ -723,7 +725,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             "preferences": [],
         }
 
-    def test_bootstrap_binds_selected_manifest_executable_before_token_issue(self) -> None:
+    def test_bootstrap_binds_run_executable_and_ignores_legacy_scenario_build(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             scenarios = root / "selected scenarios"
@@ -767,15 +769,15 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                     return_value={"status": "ready"}) as readiness,
                   redirect_stdout(output)):
                 code = scenario_registry_cli.main(["--json", "--registry", str(registry),
-                    "registry-bootstrap", "--query-json", json.dumps(self.bootstrap_request())])
+                    "registry-bootstrap", "--executable", str(selected), "--query-json", json.dumps(self.bootstrap_request())])
             self.assertEqual(code, 0)
             result = json.loads(output.getvalue())["result"]
             self.assertTrue(result["accepted"])
             self.assertEqual(result["runtime_binding"]["executable_path"], str(selected.resolve()))
-            self.assertEqual(result["runtime_binding"]["selected_product_build"], selected_product_build)
-            built.assert_called_once_with(selected.resolve(), selected_product_build=selected_product_build)
+            self.assertIsNone(result["runtime_binding"].get("selected_product_build"))
+            built.assert_called_once_with(selected.resolve(), selected_product_build=None)
             readiness.assert_called_once_with(
-                executable=str(selected.resolve()), selected_product_build=selected_product_build,
+                executable=str(selected.resolve()),
             )
 
     def test_bootstrap_rejects_stale_selected_executable_without_token(self) -> None:
@@ -797,13 +799,15 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             finally:
                 connection.close()
             output = io.StringIO()
+            runtime = self.bootstrap_runtime(selected)
             with (mock.patch.object(startup_harness, "repo_root", return_value=root),
                   mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
                                     return_value={"status": "build_required", "reason": "stale"}),
+                  mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime),
                   mock.patch.object(scenario_registry_cli, "issue_registry_bootstrap_token") as issue,
                   redirect_stdout(output)):
                 code = scenario_registry_cli.main(["--json", "--registry", str(registry),
-                    "registry-bootstrap", "--query-json", json.dumps(self.bootstrap_request())])
+                    "registry-bootstrap", "--executable", str(selected), "--query-json", json.dumps(self.bootstrap_request())])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(output.getvalue())["result"]["reason"],
                              "source_matching_executable_required")
@@ -1305,7 +1309,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(scenario_registry_cli.startup_harness, "load_scenario", return_value=self.strict_manifest()), \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
                 query_exit = scenario_registry_cli.main(["--json",
-                    "--registry", str(registry_path), "registry-query",
+                    "--registry", str(registry_path), "registry-query", "--executable", str(executable),
                     "--query-json", json.dumps(query),
                     "--coordinator-brief", str(brief_path), "--witness-charter", str(charter_path),
                 ])
@@ -1982,7 +1986,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             # This fixture lives outside the canonical scenario directory.
             def run_query(*arguments):
                 out, err = io.StringIO(), io.StringIO()
-                with mock.patch.object(scenario_registry_cli, "_selected_executable", return_value=executable_path), \
+                with mock.patch.object(startup_harness, "detect_executable", return_value=executable_path), \
                         redirect_stdout(out), redirect_stderr(err):
                     code = scenario_registry_cli.main(["--json", *arguments])
                 return subprocess.CompletedProcess([], code, out.getvalue(), err.getvalue())
@@ -2374,7 +2378,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             })
             self.assertNotIn("full-only-payload", compact_stdout.getvalue())
             status.assert_called_once_with(
-                executable="/exact/cataclysm-tiles", isolated_harness_diagnosis=False,
+                executable="/exact/cataclysm-tiles", selected_product_build=None, isolated_harness_diagnosis=False,
             )
 
             full_stdout = io.StringIO()

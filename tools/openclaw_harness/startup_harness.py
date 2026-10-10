@@ -1940,11 +1940,11 @@ def _current_product_build_receipt(
 def validate_selected_product_build(
     executable: Path, selected_product_build: Any,
 ) -> Tuple[Dict[str, Any], str]:
-    """Validate one scenario-declared immutable product publication.
+    """Validate one run-selected immutable product publication.
 
     The selected source identity is independent of today's mutable product
-    worktree.  Authority comes from the scenario bytes, which bind the receipt
-    path and digest; the receipt then binds the exact executable path, binary,
+    worktree. The resolved run selection binds the receipt path and digest;
+    the receipt binds the exact executable path, binary,
     product source digest, and compiled Git head.
     """
     if not isinstance(selected_product_build, Mapping):
@@ -1969,15 +1969,9 @@ def validate_selected_product_build(
     raw_receipt_path = str(selected_product_build.get("receipt_path", "")).strip()
     if not raw_receipt_path:
         return {}, "selected immutable product build receipt path is missing"
-    receipt_relative = Path(raw_receipt_path)
-    if receipt_relative.is_absolute() or ".." in receipt_relative.parts:
-        return {}, "selected immutable product build receipt path must stay within the workspace"
-    root = repo_root().resolve()
-    receipt_path = (root / receipt_relative).resolve()
-    try:
-        receipt_path.relative_to(root)
-    except ValueError:
-        return {}, "selected immutable product build receipt path escaped the workspace"
+    # The explicit run selection may reference a product in another owned build
+    # root. Its receipt and executable bytes remain hash-bound, not scenario-bound.
+    receipt_path = (repo_root() / raw_receipt_path).resolve()
 
     actual_receipt_sha256, receipt_error = sha256_file(receipt_path)
     if receipt_error:
@@ -5056,25 +5050,25 @@ def read_latest_activity_query_trace(
 
 
 def latest_semantic_source_descriptor(path: Path) -> Optional[Mapping[str, Any]]:
-    """Inspect a bounded complete suffix for the native input owner."""
+    """Inspect a sampled suffix, including its complete first physical record."""
     try:
         size = path.stat().st_size
         with path.open("rb") as stream:
             start = max(0, size - SEMANTIC_STEP_MAX_BYTES * 16)
+            # The current descriptor itself can exceed the suffix window.
+            # Align backwards to its record boundary rather than discard it.
+            while start:
+                previous = max(0, start - 64 * 1024)
+                stream.seek(previous)
+                prefix = stream.read(start - previous)
+                newline = prefix.rfind(b"\n")
+                if newline >= 0:
+                    start = previous + newline + 1
+                    break
+                start = previous
             stream.seek(start)
-            if start:
-                stream.readline()  # discard a possibly partial first record
             latest = None
-            for raw in iter_bounded_semantic_trace_lines(
-                    stream, size, SEMANTIC_STEP_MAX_BYTES * 16):
-                marker = raw.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
-                if marker < 0:
-                    continue
-                try:
-                    event = decode_semantic_step_event(
-                        raw[marker + len(SEMANTIC_STEP_PREFIX):].strip())
-                except (ValueError, UnicodeError):
-                    continue
+            for event, _, _ in iter_complete_semantic_trace_records(stream, size):
                 if event.get("event") == "surface_descriptor":
                     latest = event
             return latest
@@ -5112,17 +5106,34 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
                     # its first semantic record.  Inspect the bounded current
                     # suffix too; a header-only probe otherwise substitutes
                     # debug.log for a complete current input owner.
-                    if SEMANTIC_STEP_PREFIX.encode("utf-8") not in native_prefix:
-                        stream.seek(max(0, native_trace.stat().st_size - 64 * 1024))
-                        native_prefix = stream.read(64 * 1024)
-                if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_prefix:
+                    size = native_trace.stat().st_size
+                    has_records = SEMANTIC_STEP_PREFIX.encode("utf-8") in native_prefix
+                    if not has_records:
+                        stream.seek(max(0, size - 64 * 1024))
+                        has_records = SEMANTIC_STEP_PREFIX.encode("utf-8") in stream.read(64 * 1024)
+                    if not has_records:
+                        # An oversized first descriptor after actor output can
+                        # place its marker outside both probe windows. Scan the
+                        # sampled bytes in fixed chunks, not a whole-file read.
+                        stream.seek(0)
+                        has_records = semantic_trace_has_records(stream, size)
+                if has_records:
                     # The same producer mirrors descriptors to debug.log. A
                     # historical live roll could erase its current successor
                     # from the primary stream. Prefer that exact newer mirror,
                     # never another run/process or an older observational frame.
                     debug_trace = config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
-                    native_owner = latest_semantic_source_descriptor(native_trace)
-                    mirrored_owner = latest_semantic_source_descriptor(debug_trace)
+                    try:
+                        native_owner = latest_semantic_source_descriptor(native_trace)
+                        mirrored_owner = latest_semantic_source_descriptor(debug_trace)
+                    except ValueError as error:
+                        if str(error) != "incomplete_native_semantic_record":
+                            raise
+                        # A sampled write is not a missing primary or evidence
+                        # for switching to an older mirror. Receipt collection
+                        # can read its complete prefix; action reads still refuse
+                        # this partial owner through the strict record reader.
+                        return native_trace
                     if native_owner and mirrored_owner and \
                             native_owner.get("run_id") and \
                             native_owner.get("run_id") == mirrored_owner.get("run_id") and \
@@ -5203,6 +5214,72 @@ def iter_bounded_semantic_trace_lines(
                 if not oversized:
                     yield bytes(line)
                 break
+
+
+def semantic_trace_has_records(handle: Any, size: int) -> bool:
+    """Find a semantic marker in sampled bytes with a fixed-size buffer."""
+    marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
+    remaining = max(0, int(size) - int(handle.tell()))
+    overlap = b""
+    while remaining:
+        chunk = handle.read(min(remaining, 64 * 1024))
+        if not chunk:
+            break
+        remaining -= len(chunk)
+        if marker in overlap + chunk:
+            return True
+        overlap = chunk[-(len(marker) - 1):]
+    return False
+
+
+def iter_complete_semantic_trace_records(
+    handle: Any, size: int, *, require_complete: bool = True,
+) -> Iterable[tuple[Mapping[str, Any], int, int]]:
+    """Decode complete sampled records before lossless catalog compaction.
+
+    The wire channel stays bounded; a native descriptor's action set does not.
+    Spool one physical record in bounded chunks, never the growing source log.
+    Parsing starts only after its terminator is present in the sampled range.
+    Malformed or incomplete semantic records cannot restore an older owner.
+    """
+    marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
+    remaining = max(0, int(size) - int(handle.tell()))
+    while remaining:
+        start = handle.tell()
+        first = handle.readline(min(remaining, 64 * 1024))
+        if not first:
+            return
+        remaining -= len(first)
+        marker_offset = first.find(marker)
+        with tempfile.SpooledTemporaryFile(max_size=SEMANTIC_STEP_MAX_BYTES) as record:
+            if marker_offset >= 0:
+                record.write(first[marker_offset + len(marker):])
+            complete = first.endswith(b"\n")
+            while not complete and remaining:
+                chunk = handle.readline(min(remaining, 64 * 1024))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+                if marker_offset >= 0:
+                    record.write(chunk)
+                complete = chunk.endswith(b"\n")
+            end = handle.tell()
+            if marker_offset < 0:
+                continue
+            if not complete:
+                if require_complete:
+                    raise ValueError("incomplete_native_semantic_record")
+                # Receipt collection may keep complete facts while a successor
+                # is being appended. Never yield that partial input owner.
+                return
+            record.seek(0)
+            try:
+                event = json.load(record)
+            except (ValueError, UnicodeError) as error:
+                raise ValueError("malformed_native_semantic_record") from error
+            if not isinstance(event, Mapping):
+                raise ValueError("malformed_native_semantic_record")
+        yield event, start + marker_offset, end
 
 
 def compact_semantic_step_channel_event(event: Mapping[str, Any]) -> Dict[str, Any]:
@@ -5298,6 +5375,7 @@ def compact_current_surface_descriptor_payload(event: Mapping[str, Any]) -> Dict
 def refresh_semantic_step_trace(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
     event_filter: Optional[Set[str]] = None, source_trace: Optional[Path] = None,
+    require_complete: bool = True,
 ) -> tuple[Path, Path]:
     """Copy only the current run's bounded native trace into its owned artifact."""
     run_dir = Path(run_dir).resolve()
@@ -5310,10 +5388,9 @@ def refresh_semantic_step_trace(
         # is bound by run_id when the copied trace is read below, so restart
         # only when this new log generation actually contains semantic data.
         with source.open("rb") as handle:
-            if SEMANTIC_STEP_PREFIX.encode("utf-8") not in handle.read():
+            if not semantic_trace_has_records(handle, size):
                 raise ValueError("semantic trace start offset is stale")
         start_offset = 0
-    marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
     selected_events = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
     latest_duration_receipt: Optional[Dict[str, Any]] = None
     latest_movement_receipt: Optional[Dict[str, Any]] = None
@@ -5325,16 +5402,9 @@ def refresh_semantic_step_trace(
         # only the byte range sampled above so appended lines cannot extend
         # this refresh, while keeping one line at a time in memory instead of
         # materializing the complete history and its split-line list.
-        for raw_line in iter_bounded_semantic_trace_lines(
-                handle, size, SEMANTIC_STEP_MAX_BYTES * 16):
-            marker_offset = raw_line.find(marker)
-            if marker_offset < 0:
-                continue
-            payload = raw_line[marker_offset + len(marker):].strip()
-            try:
-                event = dict(decode_semantic_step_event(payload))
-            except (TypeError, ValueError, json.JSONDecodeError):
-                continue
+        for decoded, source_offset, source_end in iter_complete_semantic_trace_records(
+                handle, size, require_complete=require_complete):
+            event = dict(decoded)
             if not isinstance(event, Mapping) or str(event.get("run_id", "")) != str(run_id):
                 continue
             # ``semantic.native.log`` is a filtered projection, so its local
@@ -5342,8 +5412,8 @@ def refresh_semantic_step_trace(
             # the original marker position with each retained event.  The
             # registry child can then advance its cursor without re-reading
             # and splitting the complete source log to rediscover one frame.
-            event["_source_offset"] = handle.tell() - len(raw_line) + marker_offset
-            event["_source_end"] = handle.tell()
+            event["_source_offset"] = source_offset
+            event["_source_end"] = source_end
             event["_source_path"] = str(source)
             # Legacy duration selections publish a semantic ``receipt`` and
             # then an actionless wait_activity frame.  The bounded suffix can
@@ -5613,22 +5683,12 @@ def semantic_step_frame_source_offset(
         return -1
     if start_offset > size:
         start_offset = 0
-    marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
     try:
         with source.open("rb") as handle:
             handle.seek(start_offset)
-            cursor = start_offset
-            for raw_line in handle.read(size - start_offset).splitlines(keepends=True):
-                marker_offset = raw_line.find(marker)
-                if marker_offset >= 0:
-                    payload = raw_line[marker_offset + len(marker):].strip()
-                    try:
-                        event = decode_semantic_step_event(payload)
-                    except (TypeError, ValueError, json.JSONDecodeError):
-                        event = None
-                    if isinstance(event, Mapping) and event.get("frame_id") == frame_id:
-                        return cursor + marker_offset
-                cursor += len(raw_line)
+            for event, offset, _end in iter_complete_semantic_trace_records(handle, size):
+                if event.get("frame_id") == frame_id:
+                    return offset
     except OSError:
         return -1
     return -1
@@ -6905,7 +6965,7 @@ def execute_semantic_act(
         cursor = semantic_step_effective_source_offset(source, transaction_cursor["offset"])
         source, owned = refresh_semantic_step_trace(
             profile=profile, run_dir=run_dir, run_id=run_id, start_offset=cursor,
-            source_trace=source,
+            source_trace=source, require_complete=False,
         )
         delta, status = read_semantic_step_trace(owned, run_dir, run_id)
         if status != "ok":
@@ -24010,7 +24070,8 @@ def scenario_playtest_mode(scenario: Mapping[str, Any]) -> str:
     return mode
 
 
-def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path) -> Dict[str, Any]:
+def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path, *,
+                            selected_product_build: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
     """Validate the additive mechanical lane, without GUI or save substitution."""
     mode = scenario_playtest_mode(scenario)
     row = {"status": "ready", "mode": mode, "host": __import__("socket").gethostname(),
@@ -24027,7 +24088,7 @@ def terminal_mode_readiness(scenario: Mapping[str, Any], executable: Path) -> Di
     elif any(step.get("kind") not in {"native_semantic_bootstrap", "cockpit_live_session"}
              for step in scenario.get("steps", []) if isinstance(step, Mapping)):
         reason = "terminal launch requires native semantic bootstrap/live steps; other scripted startup controls are unvalidated"
-    selected = contract.get("selected_product_build")
+    selected = selected_product_build
     if not reason:
         receipt, error = validate_selected_product_build(executable, selected)
         if error:
@@ -39311,11 +39372,33 @@ def require_managed_terminal_root(root: Path) -> None:
         raise WritableRootConflict(f"existing terminal root has no supported owner binding: {root}")
 
 
+def registry_run_binding(args: argparse.Namespace, executable: Optional[Path]) -> Mapping[str, Any]:
+    """Recheck the one selected run before mutable setup or native launch."""
+    text = str(getattr(args, "registry_launch_receipt", "") or "").strip()
+    if not text:
+        return {}
+    receipt = json.loads(text)
+    expected = receipt.get("runtime_binding", {})
+    if not isinstance(expected, dict):
+        raise SystemExit("registry launch runtime binding is malformed")
+    comparison = compare_runtime_binding(expected)
+    if comparison.get("status") != "matched" or (executable is not None and str(executable.resolve()) != expected.get("executable_path")):
+        # Use the registry's existing rejection owner to invalidate an actual
+        # token before mutable setup. The final launch check remains necessary
+        # for changes during setup, and records the same exact binding.
+        validate_registry_launch_receipt_before_launch(
+            text, executable or Path(str(expected.get("executable_path", ""))))
+        raise SystemExit("runtime_binding_changed before startup: " + json.dumps(comparison))
+    return expected
+
+
 def run_startup(args: argparse.Namespace) -> int:
     """Reserve the mutable profile before installation/config/cache writes."""
     profile = resolve_profile_name(args.profile)
     run_id = str(getattr(args, "harness_run_id", "") or uuid.uuid4().hex)
     args.harness_run_id = run_id
+    executable_text = str(getattr(args, "executable", "") or "").strip()
+    expected_runtime = registry_run_binding(args, Path(executable_text) if executable_text else None)
     scenario_contract_path = str(getattr(args, "scenario_contract_path", "") or "").strip()
     if scenario_contract_path:
         declaration = load_scenario(
@@ -39323,8 +39406,9 @@ def run_startup(args: argparse.Namespace) -> int:
             source_path=scenario_contract_path,
             expected_sha256=str(getattr(args, "scenario_source_sha256", "") or "") or None)
         if scenario_playtest_mode(declaration) == "terminal":
-            executable = Path(str(getattr(args, "executable", "") or "")).resolve()
-            mode_readiness = terminal_mode_readiness(declaration, executable)
+            executable = Path(executable_text or expected_runtime.get("executable_path", "") or detect_executable()).resolve()
+            mode_readiness = terminal_mode_readiness(
+                declaration, executable, selected_product_build=expected_runtime.get("selected_product_build"))
             if mode_readiness["status"] != "ready":
                 raise SystemExit("terminal mode refused before profile writes: " + json.dumps(mode_readiness))
             require_managed_terminal_root(userdir_for_profile(profile))
@@ -39453,11 +39537,8 @@ def _run_startup(args: argparse.Namespace) -> int:
             )
         except (OSError, SystemExit, ValueError) as exc:
             raise SystemExit(f"selected scenario source changed before executable binding: {exc}") from exc
-        selected_runtime_contract = selected_declaration.get("runtime_contract", {})
-        selected_value = selected_runtime_contract.get("selected_product_build") \
-            if isinstance(selected_runtime_contract, Mapping) else None
-        if isinstance(selected_value, Mapping):
-            selected_product_build = selected_value
+    expected_runtime = registry_run_binding(args, Path(plan.executable))
+    selected_product_build = expected_runtime.get("selected_product_build")
     runtime_binding = build_runtime_binding(
         Path(plan.executable), selected_product_build=selected_product_build,
     )
@@ -42012,8 +42093,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     mode = scenario_playtest_mode(scenario)
     if mode != "terminal":
         return _run_probe_mode(args, handoff=handoff)
-    executable = str(getattr(args, "executable", "") or scenario.get("runtime_contract", {}).get("requirements", {}).get("executable", ""))
-    readiness = terminal_mode_readiness(scenario, (repo_root() / executable).resolve())
+    executable = str(getattr(args, "executable", "") or detect_executable())
+    readiness = terminal_mode_readiness(
+        scenario, (repo_root() / executable).resolve(),
+        selected_product_build=getattr(args, "registry_selected_product_build", None))
     if readiness["status"] != "ready":
         raise SystemExit("terminal mode unavailable before launch: " + json.dumps(readiness))
     run_id = registry_authority_transition_run_id(str(getattr(args, "registry_launch_receipt", "") or "")) or uuid.uuid4().hex
@@ -42323,17 +42406,7 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
     explicit_executable = str(getattr(args, "executable", "") or "").strip()
     if not explicit_executable:
-        runtime_contract = scenario.get("runtime_contract", {})
-        requirements = runtime_contract.get("requirements", {}) if isinstance(runtime_contract, Mapping) else {}
-        declared_executable = str(requirements.get("executable", "")).strip() \
-                            if isinstance(requirements, Mapping) else ""
-        if declared_executable:
-            candidate = (repo_root() / declared_executable).resolve()
-            if not candidate.is_file() or not os.access(candidate, os.X_OK):
-                raise ValueError(
-                    f"scenario runtime executable is unavailable: {declared_executable}"
-                )
-            explicit_executable = str(candidate)
+        explicit_executable = str(detect_executable())
     if explicit_executable:
         start_cmd.extend(["--executable", explicit_executable])
     if profile_snapshot:

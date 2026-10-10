@@ -48,7 +48,6 @@ def _manifest(name: str) -> dict[str, object]:
             "requirements": {
                 "os": "macos",
                 "source": "current-worktree",
-                "executable": "game",
                 "profile": "dev-harness",
                 "fixture": "fixture",
                 "helper": "none",
@@ -115,7 +114,7 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         with open_registry(str(self.registry)) as connection:
             selection = self._select(connection, "first")
             before = final_gate_eligibility(connection)
-        service = cockpit.CockpitService(str(self.registry))
+        service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
         with mock.patch.object(registry_store, "repository_root", return_value=self.root):
             opened = service.call({"action": "run.open", "selection_id": selection})
             replay = service.call({"action": "run.open", "selection_id": selection})
@@ -135,7 +134,7 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         with open_registry(str(self.registry)) as connection:
             first_selection = self._select(connection, "first")
             second_selection = self._select(connection, "second")
-        service = cockpit.CockpitService(str(self.registry))
+        service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
         with mock.patch.object(registry_store, "repository_root", return_value=self.root):
             first = service.call({"action": "run.open", "selection_id": first_selection})
             conflict = service.call({"action": "run.open", "selection_id": second_selection})
@@ -147,10 +146,30 @@ class CockpitRunAuthorityTest(unittest.TestCase):
         self.assertEqual(finished["result"]["state"], "finished")
         self.assertTrue(second["ok"])
 
+    def test_same_saved_scenario_opens_two_run_selected_builds_without_declaration_change(self) -> None:
+        source = self.scenarios / "authority.json"
+        original = source.read_bytes()
+        second_game = self.root / "game-v2"
+        second_game.write_bytes(b"independently selected build v2")
+        with open_registry(str(self.registry)) as connection:
+            first_selection = self._select(connection, "first")
+            second_selection = self._select(connection, "second")
+        first_service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
+        second_service = cockpit.CockpitService(str(self.registry), run_executable=str(second_game))
+        first = first_service.call({"action": "run.open", "selection_id": first_selection})
+        self.assertTrue(first["ok"], first)
+        self.assertTrue(first_service.call({"action": "run.finish", "run_id": first["result"]["run_id"]})["ok"])
+        second = second_service.call({"action": "run.open", "selection_id": second_selection})
+        self.assertTrue(second["ok"], second)
+        self.assertEqual(source.read_bytes(), original)
+        with open_registry(str(self.registry)) as connection:
+            rows = connection.execute("SELECT executable_path FROM cockpit_run_authority ORDER BY rowid").fetchall()
+        self.assertEqual([row[0] for row in rows], [str((self.root / "game").resolve()), str(second_game.resolve())])
+
     def test_changed_executable_invalidates_open_run_without_proof_promotion(self) -> None:
         with open_registry(str(self.registry)) as connection:
             selection = self._select(connection, "drift")
-        service = cockpit.CockpitService(str(self.registry))
+        service = cockpit.CockpitService(str(self.registry), run_executable=str(self.root / "game"))
         with mock.patch.object(registry_store, "repository_root", return_value=self.root):
             opened = service.call({"action": "run.open", "selection_id": selection})
         (self.root / "game").write_bytes(b"changed executable v2")

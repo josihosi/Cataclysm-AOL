@@ -10,6 +10,7 @@ from cockpit_archive import ArchiveMap, ArchiveSequence
 
 import json
 import secrets
+from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional
 
 import startup_harness
@@ -3749,7 +3750,14 @@ class CockpitRunChannel:
         if refusal is not None:
             return refusal
         if self._witness_charter is None:
-            return {"ok": False, "error": "playtest_has_no_witness_charter"}
+            # An ordinary selected experiment still owns an honest immutable
+            # journal. Proof acceptance remains the later witness validation;
+            # missing duplicate prose cannot erase the actual run evidence.
+            self._witness_charter = normalize_witness_charter({
+                "claim": "Retain the actual selected run outcome",
+                "material_proof": "Bound native observations, requests, receipts and saved state",
+                "current_uncertainty": "Outcome acceptance requires review of this journal",
+            })
         if self._state != "active":
             return {"ok": False, "error": "live_session_not_actionable"}
         observed = self._observations.get(str(observation_id))
@@ -4052,7 +4060,9 @@ class CockpitService:
     """Stateless request/response boundary for human-facing exploration."""
 
     def __init__(self, registry: str | None = None, run_channel: Optional[CockpitRunChannel] = None,
-                 allowed_live_operations: Optional[set[str]] = None):
+                 allowed_live_operations: Optional[set[str]] = None,
+                 run_executable: Optional[str] = None):
+        self._run_executable = run_executable
         self.registry = registry
         self.run_channel = run_channel
         self._allowed_live_operations = allowed_live_operations
@@ -4257,6 +4267,8 @@ class CockpitService:
                         return {"ok": False, "error": "run.open needs a scenario selection"}
                     result = open_cockpit_run(
                         connection, selection_id=selection_id, owner_id=self._run_owner_id,
+                        executable=(Path(self._run_executable)
+                                    if self._run_executable else None),
                     )
                     return {"ok": True, "result": _public(result)}
                 if action == "run.status":

@@ -49,6 +49,18 @@ class CockpitWitnessTest(unittest.TestCase):
         )
         return CockpitService(run_channel=channel)
 
+    def test_ordinary_run_seals_real_journal_without_duplicate_charter_prose(self) -> None:
+        service = self.service()
+        service.run_channel._witness_charter = None
+        observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._read_process_state = lambda: {"run_id": "run-a", "pid": 123, "alive": False}
+        result = service.call({"action": "run.witness", "observation_id": observed["observation_id"],
+                               "stop_reason": "actual diagnostic boundary", "unused_authority": "none"})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["result"]["evidence_journal"]["identity"]["run_id"], "run-a")
+        self.assertFalse(service.call({"action": "game.act", "observation_id": observed["observation_id"],
+                                       "action_id": "world.wait"})["ok"])
+
     def test_witness_seals_input_then_finish_validates_citations(self) -> None:
         service = self.service()
         observed = service.call({"action": "game.observe"})["result"]

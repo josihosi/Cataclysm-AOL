@@ -9,7 +9,7 @@ deliberately separate later slices.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import secrets
@@ -224,92 +224,61 @@ def _canonical_hash(value: Any, label: str) -> str:
     return hashlib.sha256((label + ":" + _json_text(value)).encode("utf-8")).hexdigest()
 
 
+def normalize_outcome_brief(value: Mapping[str, Any]) -> Dict[str, Any]:
+    """Resolve accepted aliases once, retaining the supplied context fields."""
+    if not isinstance(value, Mapping):
+        raise ScenarioRegistryStoreError("outcome brief must be an object")
+    context = dict(value)
+    outcome = str(context.get("outcome", context.get("desired_outcome", context.get("claim", "")))).strip()
+    if not outcome:
+        raise ScenarioRegistryStoreError("outcome brief is missing its outcome")
+    context["outcome"] = outcome
+    return context
+
+
 def _coordinator_authorization(
-    request: RegistryQueryRequest, candidate: RegistryQueryCandidateSnapshot,
-    brief: Any, charter: Any,
+    request: RegistryQueryRequest,
+    candidate: RegistryQueryCandidateSnapshot,
+    brief: Optional[Mapping[str, Any]],
+    charter: Optional[Mapping[str, Any]],
 ) -> Optional[Mapping[str, Any]]:
-    """Validate the explicit brief/charter escape hatch without inferring intent."""
+    """Retain one outcome context, independently of selection and proof acceptance."""
     if brief is None and charter is None:
         return None
-    if not isinstance(brief, Mapping) or not isinstance(charter, Mapping):
-        raise ScenarioRegistryStoreError("coordinator brief and witness charter are both required")
-    try:
-        from playtest_witness import normalize_witness_charter
-        normalized = normalize_witness_charter(charter)
-    except (ValueError, WitnessError) as exc:
-        raise ScenarioRegistryStoreError("witness charter is invalid") from exc
-    outcome = str(brief.get("outcome", brief.get("desired_outcome", ""))).strip()
-    if not outcome or outcome != str(normalized.get("claim", "")):
-        raise ScenarioRegistryStoreError("coordinator brief outcome does not match witness charter claim")
-    brief_query = brief.get("query", brief.get("typed_query"))
-    if brief_query is None:
-        raise ScenarioRegistryStoreError("coordinator brief typed query is missing")
-    try:
-        brief_request = parse_registry_query_request(brief_query)
-    except ScenarioRegistryQueryError as exc:
-        raise ScenarioRegistryStoreError("coordinator brief typed query is invalid") from exc
-    if _query_request_json(brief_request) != _query_request_json(request):
-        raise ScenarioRegistryStoreError("coordinator brief typed query does not match registry query")
-    named_candidate = str(brief.get("scenario_id", brief.get("scenario", ""))).strip()
-    if named_candidate and named_candidate not in {candidate.scenario_id,
-                                                    str(candidate.explanation.get("manifest", {}).get("name", ""))}:
-        raise ScenarioRegistryStoreError("coordinator brief candidate does not match selection")
-    if candidate.lifecycle_state != "active" or not candidate.token_eligible or \
-            not bool(candidate.explanation.get("manifest", {}).get("executable")):
-        raise ScenarioRegistryStoreError("coordinator authorization requires current active executable candidate")
-    charter_id = str(brief.get("charter_id", brief.get("witness_charter_id", ""))).strip()
-    if charter_id and charter_id != str(normalized["charter_id"]):
-        raise ScenarioRegistryStoreError("coordinator brief charter does not match validated charter")
-    return {
-        "brief_sha256": _canonical_hash(dict(brief), "caol-coordinator-brief-v1"),
-        "charter_sha256": _canonical_hash(normalized, "caol-witness-charter-v1"),
-        "charter_id": normalized["charter_id"],
-        "outcome": outcome,
-    }
+    if brief is not None and not isinstance(brief, Mapping):
+        raise ScenarioRegistryStoreError("outcome brief must be an object")
+    if charter is not None and not isinstance(charter, Mapping):
+        raise ScenarioRegistryStoreError("witness metadata must be an object")
+    context = dict(brief) if brief is not None else dict(charter or {})
+    normalized = normalize_outcome_brief(context)
+    return {"outcome": normalized["outcome"], "outcome_brief": normalized,
+            # The evidence hash still identifies the original supplied brief.
+            "brief_sha256": _canonical_hash(context, "caol-outcome-brief-v1")}
 
 
 def _select_coordinator_query_candidate(
     evaluation: RegistryStoredQueryEvaluation,
     brief: Optional[Mapping[str, Any]],
+    *, scenario_id: Optional[str] = None,
 ) -> Optional[RegistryQueryCandidateSnapshot]:
-    """Honor a named brief choice only among unique, eligible typed-query matches."""
-    ranked_ids = evaluation.evaluation.ranked_scenario_ids
-    if brief is None:
-        selected_id = ranked_ids[0] if ranked_ids else None
-        return next((candidate for candidate in evaluation.candidates
-                     if candidate.scenario_id == selected_id), None)
-    if not isinstance(brief, Mapping):
-        raise ScenarioRegistryStoreError("coordinator brief must be an object")
-
-    names = [str(brief[key]).strip() for key in ("scenario_id", "scenario")
-             if key in brief and str(brief[key]).strip()]
-    if len(set(names)) > 1:
-        raise ScenarioRegistryStoreError("coordinator brief names conflicting scenario choices")
-    if not names:
-        selected_id = ranked_ids[0] if ranked_ids else None
-        return next((candidate for candidate in evaluation.candidates
-                     if candidate.scenario_id == selected_id), None)
-
-    requested = names[0]
-    def matches_choice(candidate: RegistryQueryCandidateSnapshot) -> bool:
-        manifest = candidate.explanation.get("manifest", {})
-        name = str(manifest.get("name", "")) if isinstance(manifest, Mapping) else ""
-        return candidate.scenario_id == requested or name == requested
-
-    matches = [candidate for candidate in evaluation.candidates if matches_choice(candidate)]
-    if not matches:
-        raise ScenarioRegistryStoreError("coordinator brief named candidate is missing")
-    if len(matches) != 1:
-        raise ScenarioRegistryStoreError("coordinator brief named candidate is ambiguous")
-    selected = matches[0]
-    if selected.scenario_id not in ranked_ids:
-        raise ScenarioRegistryStoreError(
-            "coordinator brief named candidate is not an eligible typed-query match"
-        )
-    manifest = selected.explanation.get("manifest", {})
-    if (selected.lifecycle_state != "active" or not selected.token_eligible or
-            not isinstance(manifest, Mapping) or not bool(manifest.get("executable"))):
-        raise ScenarioRegistryStoreError("coordinator brief named candidate is not launch eligible")
+    """The typed query/optional exact selector owns selection, not outcome prose."""
+    ranked = evaluation.evaluation.ranked_scenario_ids
+    if scenario_id:
+        matches = [candidate for candidate in evaluation.candidates
+                   if candidate.scenario_id == scenario_id or
+                   candidate.explanation.get("manifest", {}).get("name") == scenario_id]
+        if len(matches) != 1:
+            raise ScenarioRegistryStoreError("selected scenario is missing or ambiguous")
+        selected = matches[0]
+        if selected.scenario_id not in ranked:
+            raise ScenarioRegistryStoreError("selected scenario is not an eligible typed-query match")
+    else:
+        selected_id = ranked[0] if ranked else None
+        selected = next((candidate for candidate in evaluation.candidates
+                         if candidate.scenario_id == selected_id), None)
+    if selected is not None and (selected.lifecycle_state != "active" or not selected.token_eligible or
+                                 not selected.explanation.get("manifest", {}).get("executable")):
+        raise ScenarioRegistryStoreError("selected scenario is not launch eligible")
     return selected
 
 
@@ -323,6 +292,8 @@ class RegistryLaunchToken:
     scenario: str = ""
     source_path: str = ""
     source_sha256: str = ""
+    runtime_binding: Mapping[str, Any] = field(default_factory=dict)
+    outcome_brief: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -2735,9 +2706,9 @@ def _append_run_authority_event(connection: sqlite3.Connection, *, receipt_id: s
 
 def open_cockpit_run(
     connection: sqlite3.Connection, *, selection_id: str, owner_id: str,
-    workspace_root: Optional[Path] = None,
+    workspace_root: Optional[Path] = None, executable: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Open one source-bound run without borrowing evidence-token eligibility."""
+    """Open one run-selected build without borrowing evidence-token eligibility."""
     selection = str(selection_id).strip()
     owner = str(owner_id).strip()
     if not selection or not owner:
@@ -2777,14 +2748,12 @@ def open_cockpit_run(
     source_sha256 = path_sha256(source_path)
     if source_sha256 != str(selected["manifest_sha256"]):
         raise ScenarioRegistryStoreError("run.open scenario bytes changed after selection")
-    requirements = runtime.get("requirements")
-    executable_name = str(requirements.get("executable", "")).strip() \
-        if isinstance(requirements, Mapping) else ""
-    if not executable_name:
-        raise ScenarioRegistryStoreError("run.open runtime has no executable")
-    executable_path = Path(executable_name)
-    if not executable_path.is_absolute():
-        executable_path = (workspace_root or repository_root()) / executable_path
+    # The service selects the build for this run, independently of the
+    # scenario's saved setup. Legacy declaration executable prose is inert.
+    if executable is None:
+        from startup_harness import detect_executable
+        executable = detect_executable()
+    executable_path = Path(executable).resolve()
     executable_sha256 = path_sha256(executable_path)
     profile = str(declaration.get("profile", runtime.get("profile", ""))).strip()
     world = str(declaration.get("world", "")).strip()
@@ -2942,9 +2911,11 @@ def execute_registry_query(
     request: RegistryQueryRequest,
     *,
     include_lifecycle_states: Sequence[str] = (),
+    scenario_id: Optional[str] = None,
     drafts_root: Optional[Path] = None,
     coordinator_brief: Optional[Mapping[str, Any]] = None,
     witness_charter: Optional[Mapping[str, Any]] = None,
+    runtime_binding: Optional[Mapping[str, Any] | Callable[[], Mapping[str, Any]]] = None,
 ) -> RegistryQueryExecution:
     """Audit a fixed query and issue one technical token or a deterministic inert draft."""
     request_json = _query_request_json(request)
@@ -2956,12 +2927,11 @@ def execute_registry_query(
         include_lifecycle_states=include_lifecycle_states,
         allow_current_manifest_retry=True,
     )
-    selected = _select_coordinator_query_candidate(evaluation, coordinator_brief)
+    selected = _select_coordinator_query_candidate(evaluation, coordinator_brief, scenario_id=scenario_id)
     selected_id = selected.scenario_id if selected is not None else None
     coordinator_authorization = None
     if selected is not None and (coordinator_brief is not None or witness_charter is not None):
-        # Validate every supplied brief/charter pair, including when an existing
-        # route would otherwise make the coordinator route unnecessary.
+        # Retain supplied context independently of the selected evidence route.
         coordinator_authorization = _coordinator_authorization(
             request, selected, coordinator_brief, witness_charter,
         )
@@ -3005,7 +2975,7 @@ def execute_registry_query(
             # This is technical authority only.  It deliberately carries no
             # verification evidence and cannot promote bootstrap/setup facts.
             route = {
-                "route_key": "coordinator:" + str(coordinator_authorization["charter_sha256"]),
+                "route_key": "outcome-context",
                 "evidence_state": "first_run",
                 "internal_resolution_state": "first_run",
                 "details": {"source": "coordinator_brief", **dict(coordinator_authorization)},
@@ -3095,6 +3065,10 @@ def execute_registry_query(
         authority_kind = "current_bootstrap_revalidation"
     if coordinator_authorization is not None:
         authority_kind = "coordinator_brief_charter"
+    # Resolve a build only for an actual compatible selection. Inspect-only
+    # queries still produce their inert draft without demanding a game binary.
+    if callable(runtime_binding):
+        runtime_binding = runtime_binding()
     token_details = {
         "authority_kind": authority_kind,
         "query_id": query_id,
@@ -3106,6 +3080,7 @@ def execute_registry_query(
         "lifecycle": selected.explanation["lifecycle"],
         "selected_values": selected.facts,
         "route_evidence": route,
+        "runtime_binding": _bootstrap_runtime_binding(runtime_binding) if runtime_binding is not None else {},
     }
     if authority_kind == "current_bootstrap_revalidation":
         token_details["bootstrap_authority"] = dict(bootstrap_authority)
@@ -3295,20 +3270,6 @@ def reload_selection_token_for_launch(
         if str(expected_route.get("route_key", "")) != str(issued["route_key"]):
             return reject("receipt_route_mismatch")
 
-        if authority_kind == "coordinator_brief_charter":
-            if not isinstance(expected_coordinator, Mapping) or not isinstance(witness_charter, Mapping):
-                return reject("coordinator_charter_missing")
-            try:
-                from playtest_witness import normalize_witness_charter
-                current_charter = normalize_witness_charter(witness_charter)
-            except (ValueError, WitnessError):
-                return reject("coordinator_charter_invalid")
-            if _canonical_hash(current_charter, "caol-witness-charter-v1") != \
-                    str(expected_coordinator.get("charter_sha256", "")):
-                return reject("coordinator_charter_stale")
-            if str(expected_route.get("route_key", "")) != \
-                    "coordinator:" + str(expected_coordinator.get("charter_sha256", "")):
-                return reject("coordinator_route_mismatch")
 
         manifest = connection.execute(
             "SELECT manifest_id, source_path, present, revision, current_sha256, validation_json, declaration_json FROM manifest_current "
@@ -3358,13 +3319,14 @@ def reload_selection_token_for_launch(
             )
             if lifecycle != "active" or not bool(review.get("executable")):
                 return reject("coordinator_candidate_not_current")
-            if not bool(expected_coordinator.get("charter_id")) or \
-                    not str(expected_coordinator.get("outcome", "")).strip():
+            if not isinstance(expected_coordinator, Mapping) or not str(expected_coordinator.get("outcome", "")).strip():
                 return reject("coordinator_authorization_malformed")
             return RegistryLaunchToken(
                 token_id=token_id, accepted=True, reason=authority_kind,
                 scenario=scenario, source_path=str(source_path.resolve()),
                 source_sha256=expected_sha256,
+                runtime_binding=dict(receipt.get("runtime_binding", {})),
+                outcome_brief=dict((expected_coordinator or {}).get("outcome_brief", {})),
             )
 
         if authority_kind in {"first_run_certification", "first_run_bootstrap"}:
@@ -3410,6 +3372,8 @@ def reload_selection_token_for_launch(
                 scenario=scenario,
                 source_path=str(source_path.resolve()),
                 source_sha256=expected_sha256,
+                runtime_binding=dict(receipt.get("runtime_binding", {})),
+                outcome_brief=dict((expected_coordinator or {}).get("outcome_brief", {})),
             )
 
         current_routes = _current_route_evidence(connection, expected_manifest_id)
@@ -3438,6 +3402,8 @@ def reload_selection_token_for_launch(
                 scenario=scenario,
                 source_path=str(source_path.resolve()),
                 source_sha256=expected_sha256,
+                runtime_binding=dict(receipt.get("runtime_binding", {})),
+                outcome_brief=dict((expected_coordinator or {}).get("outcome_brief", {})),
             )
         current_authoritative_route = _authoritative_current_route(current_route)
         if current_authoritative_route is None:
@@ -3473,6 +3439,8 @@ def reload_selection_token_for_launch(
             scenario=scenario,
             source_path=str(source_path.resolve()),
             source_sha256=expected_sha256,
+            runtime_binding=dict(receipt.get("runtime_binding", {})),
+            outcome_brief=dict((expected_coordinator or {}).get("outcome_brief", {})),
         )
 
 

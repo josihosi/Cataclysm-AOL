@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "output.h"
 #include "point.h"
 #include "scores_ui.h"
+#include "semantic_surface.h"
 #include "string_editor_window.h"
 #include "string_formatter.h"
 #include "translations.h"
@@ -321,6 +323,28 @@ void diary::show_diary_ui( diary *c_diary )
         wnoutrefresh( w_info );
     } );
 
+    // Diary owns native QUIT across redraws and timeout polls.  Closing it
+    // resumes its caller, including the remaining death/retirement screens.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    std::string semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "diary", _( "Diary" ),
+        std::map<std::string, std::string>{ { "native_owner", "DIARY" } },
+        std::vector<semantic_action_descriptor>{
+            { "diary.close", "", _( "Close diary" ), true }
+        }, [&semantic_action]( const semantic_action_request &request ) {
+            if( request.action_id != "diary.close" || request.stable_id.has_value() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = "QUIT";
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+    }
+
     while( true ) {
 
         if( ( !c_diary->pages.empty() &&
@@ -334,7 +358,13 @@ void diary::show_diary_ui( diary *c_diary )
         ui_desc.invalidate_ui();
         ui_info.invalidate_ui();
         ui_manager::redraw_invalidated();
-        const std::string action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        std::string action = semantic_action.empty() ? ctxt.handle_input() : "";
+        if( !semantic_action.empty() ) {
+            action = std::exchange( semantic_action, std::string() );
+        }
         if( action == "LEFT" || action == "PREV_TAB" || action == "RIGHT" || action == "NEXT_TAB" ) {
             // necessary to use inc_clamp_wrap()
             static_assert( static_cast<int>( window_mode::FIRST_WIN ) == 0 );

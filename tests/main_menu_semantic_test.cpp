@@ -32,6 +32,7 @@ extern "C" int ungetch( int );
 #include "cursesdef.h"
 #include "game.h"
 #include "do_turn.h"
+#include "diary.h"
 #include "ui_manager.h"
 #include "faction.h"
 #include "npc.h"
@@ -318,9 +319,10 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
            "[semantic_surface][scores_closeout_067]" )
 {
     const std::string mode = GENERATE( "semantic", "keyboard", "death_chain", "death_no",
-                                      "watch_semantic", "watch_keyboard" );
+                                      "watch_semantic", "watch_keyboard", "diary_semantic", "diary_keyboard" );
     const bool watching = mode == "watch_semantic" || mode == "watch_keyboard";
     const bool death_chain = mode != "semantic" && mode != "keyboard";
+    const bool open_diary = mode == "diary_semantic" || mode == "diary_keyboard";
     CAPTURE( mode );
     const std::string run = "scores-" + mode;
     const std::filesystem::path transport = std::filesystem::temp_directory_path() /
@@ -376,6 +378,14 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     };
     semantic_surface_descriptor scores;
     std::vector<semantic_action_receipt> receipts;
+    int diary_publications = 0;
+    int diary_rejections = 0;
+    bool diary_duplicate_checked = false;
+    semantic_surface_descriptor diary_owner;
+    const auto diary_request = [&]( const std::string &id ) {
+        return semantic_action_request{ run, diary_owner.surface_id, diary_owner.frame_id, id,
+                                        "diary.close", std::nullopt, {} };
+    };
     int score_publications = 0;
     int camera_publications = 0;
     int camera_rejections = 0;
@@ -428,7 +438,45 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         append( request );
     };
     manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
-        if( !descriptor.breadcrumbs.empty() && descriptor.breadcrumbs.back() == "Death camera" ) {
+        if( ( !descriptor.breadcrumbs.empty() && descriptor.breadcrumbs.back() == "Diary" ) ||
+            ( descriptor.kind == "unsupported" && descriptor.payload.at( "owner" ) == "DIARY" ) ) {
+            ++diary_publications;
+            diary_owner = descriptor;
+            CHECK( open_diary );
+            CHECK( descriptor.kind == "diary" );
+            if( descriptor.kind != "diary" ) {
+                native_quit( "DIARY" ); // Bounded old-source failure, ordinary native cleanup.
+                return;
+            }
+            REQUIRE( descriptor.valid_actions.size() == 1 );
+            CHECK( descriptor.valid_actions.front().id == "diary.close" );
+            CHECK( descriptor.payload.at( "native_owner" ) == "DIARY" );
+            ui_manager::redraw();
+            input_context idle( "DIARY" );
+            CHECK( idle.handle_input( 1 ) == "TIMEOUT" );
+            REQUIRE( manager.top() );
+            CHECK( manager.top()->frame_id == descriptor.frame_id );
+            CHECK( manager.top()->surface_id == descriptor.surface_id );
+            if( mode == "diary_keyboard" ) {
+                native_quit( "DIARY" );
+            } else {
+                for( int index = 0; index < 4; ++index ) {
+                    auto request = diary_request( "diary-reject-" + std::to_string( index ) );
+                    if( index == 0 ) {
+                        request.run_id = "foreign-run";
+                    } else if( index == 1 ) {
+                        request.frame_id = "stale-frame";
+                    } else if( index == 2 ) {
+                        request.surface_id = "foreign-owner";
+                    } else {
+                        request.action_id = "scores.close";
+                    }
+                    REQUIRE( manager.submit_request( request ) );
+                    CHECK_FALSE( manager.consume_top_request() );
+                }
+                append( diary_request( "diary-close" ) );
+            }
+        } else if( !descriptor.breadcrumbs.empty() && descriptor.breadcrumbs.back() == "Death camera" ) {
             ++camera_publications;
             camera = descriptor;
             REQUIRE( watching );
@@ -481,6 +529,9 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                 if( watching ) {
                     append( camera_request( "stale-camera-successor" ) );
                 }
+                if( mode == "diary_semantic" ) {
+                    append( diary_request( "diary-stale-successor" ) );
+                }
                 append( close_request( "close" ) );
             }
         } else if( descriptor.kind == "terminal" ) {
@@ -500,11 +551,11 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                      descriptor.payload.at( "text" ).find( "Really quit?" ) == 0 ) );
             const auto no = std::find_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
             [&]( const semantic_action_descriptor &action ) {
-                return action.id == "prompt.choose" && action.label == ( diary || switch_character || ( watch && !watching ) ? "NO" : "YES" );
+                return action.id == "prompt.choose" && action.label == ( ( diary && !open_diary ) || switch_character || ( watch && !watching ) ? "NO" : "YES" );
             } );
             REQUIRE( no != descriptor.valid_actions.end() );
             REQUIRE( manager.submit_request( { run, descriptor.surface_id, descriptor.frame_id,
-                                               diary ? "diary-no" : switch_character ? "death-followers-no" : watch ? "watch-choice" : "menu-yes", no->id, no->stable_id, {} } ) );
+                                               diary ? "diary-choice" : switch_character ? "death-followers-no" : watch ? "watch-choice" : "menu-yes", no->id, no->stable_id, {} } ) );
         } else if( descriptor.kind == "scrollable_text" ) {
             CHECK( descriptor.payload.at( "native_owner" ) == "SCROLLABLE_TEXT" );
             const auto stack = manager.stack();
@@ -546,7 +597,18 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     } );
     manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
         receipts.push_back( receipt );
-        if( receipt.request_id.rfind( "camera-reject-", 0 ) == 0 ) {
+        if( receipt.request_id.rfind( "diary-reject-", 0 ) == 0 ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.consuming_surface_id == diary_owner.surface_id );
+            ++diary_rejections;
+        } else if( receipt.request_id == "diary-close" && !diary_duplicate_checked ) {
+            CHECK( receipt.accepted );
+            diary_duplicate_checked = true;
+            CHECK_FALSE( manager.submit_request( diary_request( "diary-close" ) ) );
+        } else if( receipt.request_id == "diary-stale-successor" ) {
+            CHECK_FALSE( receipt.accepted );
+            CHECK( receipt.rejection_reason == "wrong_surface" );
+        } else if( receipt.request_id.rfind( "camera-reject-", 0 ) == 0 ) {
             CHECK_FALSE( receipt.accepted );
             CHECK( receipt.consuming_surface_id == camera.surface_id );
             ++camera_rejections;
@@ -604,7 +666,7 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
         with_epilogue->known_by_u = true;
         override_option retain_world( "WORLD_END", "keep" );
         override_option animations( "ANIMATIONS", "false" );
-        override_option deathcam( "DEATHCAM", mode == "death_chain" ? "never" : "ask" );
+        override_option deathcam( "DEATHCAM", mode == "death_chain" || open_diary ? "never" : "ask" );
         restore_on_out_of_scope<quit_status> restore_quit( g->uquit );
 
         const tripoint_abs_sm previous_map_origin = get_map().get_abs_sub();
@@ -655,6 +717,9 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
                              "Paging control", long_text );
         }
     }
+    CHECK( diary_publications == ( open_diary ? 1 : 0 ) );
+    CHECK( diary_rejections == ( mode == "diary_semantic" ? 4 : 0 ) );
+    CHECK( diary_duplicate_checked == ( mode == "diary_semantic" ) );
     CHECK( score_publications == 1 );
     CHECK( camera_publications == ( watching ? 1 : 0 ) );
     CHECK( camera_duplicate_checked == ( mode == "watch_semantic" ) );
@@ -664,6 +729,68 @@ TEST_CASE( "Scores close uses native QUIT and retires before death epilogues",
     CHECK( rejected == ( mode == "semantic" ? 4 : 0 ) );
     CHECK( duplicate_checked == ( mode != "keyboard" ) );
     CHECK( active_semantic_surface_manager() == &manager );
+}
+
+TEST_CASE( "Diary direct caller preserves native off mode and owns a bound close session",
+           "[semantic_surface][diary_closeout_067]" )
+{
+    const bool bound = GENERATE( false, true );
+    scoped_environment run_env( "OPENCLAW_HARNESS_RUN_ID", bound ? "diary-direct" : "" );
+    scoped_environment bound_env( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", bound ? "diary-direct" : "" );
+    scoped_environment transport_env( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", "" );
+    semantic_surface_manager &manager = openclaw_harness_semantic_surface_manager();
+    REQUIRE( active_semantic_surface_manager() == nullptr );
+    REQUIRE( manager.stack().empty() );
+    if( ImGui::GetCurrentContext() == nullptr ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    test_mode = false;
+    const int previous_timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 1 );
+    on_out_of_scope cleanup( [&] {
+        manager.set_descriptor_observer( {} );
+        manager.set_receipt_observer( {} );
+        inp_mngr.set_timeout( previous_timeout );
+        catacurses::endwin();
+    } );
+    const auto native_quit = [&] {
+        const auto &keys = inp_mngr.get_input_for_action( "QUIT", "DIARY" );
+        const auto key = std::find_if( keys.begin(), keys.end(), []( const input_event &event ) {
+            return event.type == input_event_t::keyboard_char && event.sequence.size() == 1 &&
+                   event.get_first_input() >= 0 && event.get_first_input() < 128;
+        } );
+        REQUIRE( key != keys.end() );
+        REQUIRE( ::ungetch( key->get_first_input() ) != -1 );
+    };
+    int publications = 0;
+    int accepted = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        ++publications;
+        CHECK( bound );
+        CHECK( active_semantic_surface_manager() == &manager );
+        CHECK( descriptor.kind == "diary" );
+        if( descriptor.kind != "diary" ) {
+            native_quit();
+            return;
+        }
+        REQUIRE( manager.submit_request( { "diary-direct", descriptor.surface_id, descriptor.frame_id,
+                                           "direct-close", "diary.close", std::nullopt, {} } ) );
+    } );
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        CHECK( receipt.accepted );
+        ++accepted;
+    } );
+    if( !bound ) {
+        native_quit();
+    }
+    diary::show_diary_ui( get_avatar().get_avatar_diary() );
+    CHECK( publications == ( bound ? 1 : 0 ) );
+    CHECK( accepted == ( bound ? 1 : 0 ) );
+    CHECK( active_semantic_surface_manager() == nullptr );
+    CHECK( manager.stack().empty() );
+    CHECK_FALSE( manager.has_pending_request() );
 }
 
 TEST_CASE( "menu fixture restores avatar variant identity after real definition reload",
