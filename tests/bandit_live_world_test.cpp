@@ -54462,6 +54462,15 @@ TEST_CASE( "real empty payment contact settles exact remembered place once",
     }
     here.invalidate_map_cache( goods.z() );
     here.build_map_cache( goods.z() );
+    // Known buyer-excluded stones are not eligible goods. The real contact
+    // still owns the subsequent return and once-only settlement.
+    here.add_item_or_charges( goods, item( itype_id( "rock" ) ) );
+    const tripoint_bub_ms other_goods = goods + point( 1, 0 );
+    here.add_item_or_charges( other_goods, item( itype_id( "m240" ) ) );
+    complete = false;
+    CHECK_FALSE( encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2, true,
+                                        &complete ).empty() );
+    here.i_clear( other_goods );
     REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
     CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "contact_empty" );
     REQUIRE( apply_terminal_hostile_shakedown_aftermath( world, scene.site(), activity, generation ) );
@@ -54489,6 +54498,44 @@ TEST_CASE( "refused payment item is not an empty encounter receipt",
     bool complete = true;
     CHECK( encounter_trade_items( get_avatar(), trader, 30, 12, 2, true, &complete ).empty() );
     CHECK_FALSE( complete );
+    clear_npcs();
+}
+
+TEST_CASE( "buyer exclusion does not hide a container or seller refusal",
+           "[bandit_live_world][empty_contact_repeat]" )
+{
+    clear_map( -2, 2 );
+    clear_avatar();
+    npc &trader = spawn_npc( get_avatar().pos_bub().xy() + point( 2, 0 ), "test_npc_trader" );
+    const auto tile = get_avatar().pos_bub() + point( 1, 0 );
+    item hazard( itype_id( "rock" ) );
+    hazard.set_flag( flag_id( "DANGEROUS" ) );
+    item &placed_hazard = get_map().add_item_or_charges( tile, hazard );
+    trade_preset buyer_check( get_avatar(), trader, true );
+    bool excluded = true;
+    CHECK_FALSE( buyer_check.get_denial_for_empty_check(
+                     item_location( map_cursor( tile ), &placed_hazard ), excluded ).empty() );
+    CHECK_FALSE( excluded );
+    get_map().i_clear( tile );
+    item bag( itype_id( "backpack" ) );
+    bag.set_flag( flag_id( "TRADER_AVOID" ) );
+    REQUIRE( bag.put_in( item( itype_id( "coin_gold" ) ), pocket_type::CONTAINER ).success() );
+    item &placed = get_map().add_item_or_charges( tile, bag );
+    item_location location( map_cursor( tile ), &placed );
+    excluded = true;
+    CHECK_FALSE( buyer_check.get_denial_for_empty_check( location, excluded ).empty() );
+    CHECK_FALSE( excluded );
+    bool complete = true;
+    const auto sources = encounter_trade_items( get_avatar(), trader, 30, 12, 2, true, &complete );
+    CHECK( ( !complete || !sources.empty() ) );
+
+    // The same avoid flag must not turn an NPC seller's refusal into a
+    // buyer-policy exclusion.
+    placed.set_flag( flag_id( "TRADER_KEEP" ) );
+    trade_preset seller_check( trader, get_avatar(), true );
+    excluded = true;
+    CHECK_FALSE( seller_check.get_denial_for_empty_check( location, excluded ).empty() );
+    CHECK_FALSE( excluded );
     clear_npcs();
 }
 

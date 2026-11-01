@@ -40,6 +40,9 @@
 static const faction_id faction_your_followers( "your_followers" );
 
 static const flag_id json_flag_NO_UNWIELD( "NO_UNWIELD" );
+static const flag_id json_flag_BOMB( "BOMB" );
+static const flag_id json_flag_DANGEROUS( "DANGEROUS" );
+static const flag_id json_flag_TRADER_AVOID( "TRADER_AVOID" );
 
 static const item_category_id item_category_ITEMS_WORN( "ITEMS_WORN" );
 static const item_category_id item_category_WEAPON_HELD( "WEAPON_HELD" );
@@ -92,6 +95,14 @@ bool trade_preset::is_shown( item_location const &loc ) const
 
 std::string trade_preset::get_denial( const item_location &loc ) const
 {
+    bool ignored = false;
+    return get_denial_for_empty_check( loc, ignored );
+}
+
+std::string trade_preset::get_denial_for_empty_check( const item_location &loc,
+        bool &known_buyer_excluded ) const
+{
+    known_buyer_excluded = false;
     int const price = npc_trading::trading_price( _trader, _u, { loc, 1 } );
 
     if( _u.is_npc() ) {
@@ -109,6 +120,17 @@ std::string trade_preset::get_denial( const item_location &loc ) const
         npc const &np = *_trader.as_npc();
         ret_val<void> const ret = np.wants_to_buy( *loc, price );
         if( !ret.success() ) {
+            // A buyer-policy exclusion is evidence only for an individual
+            // item, never for a container whose contents may be eligible.
+            // A worn item can also have a distinct takeoff obstruction.
+            const Character *carrier = loc.carrier();
+            known_buyer_excluded = _encounter_payment &&
+                                   ( loc->has_flag( json_flag_TRADER_AVOID ) ||
+                                     loc->has_var( VAR_TRADE_IGNORE ) ) &&
+                                   !loc->has_flag( json_flag_DANGEROUS ) &&
+                                   !( loc->has_flag( json_flag_BOMB ) && loc->active ) &&
+                                   loc->all_items_ptr().empty() &&
+                                   ( !carrier || !carrier->is_worn( *loc ) );
             if( ret.str().empty() ) {
                 return string_format( _( "%s does not want to buy this" ), np.get_name() );
             }
@@ -205,7 +227,8 @@ class encounter_item_selector : public inventory_selector
 {
     public:
         using inventory_selector::inventory_selector;
-        std::vector<item_location> eligible_items( bool *complete = nullptr ) const {
+        std::vector<item_location> eligible_items( const trade_preset &trade,
+                bool *complete = nullptr ) const {
             std::vector<item_location> result;
             std::set<const item *> seen;
             for( const auto *column : get_all_columns() ) {
@@ -213,14 +236,16 @@ class encounter_item_selector : public inventory_selector
                 return e.is_item() && !e.is_collation_header();
                 }, true ) ) {
                     for( const item_location &loc : entry->locations ) {
-                        if( complete && loc && preset.is_shown( loc ) &&
-                            !preset.get_denial( loc ).empty() ) {
-                            // A refusal is not an observation that goods are absent.
-                            *complete = false;
-                        }
-                        if( loc && preset.is_shown( loc ) && preset.get_denial( loc ).empty() &&
-                            seen.insert( loc.get_item() ).second ) {
-                            result.push_back( loc );
+                        if( loc && trade.is_shown( loc ) ) {
+                            bool excluded = false;
+                            const std::string denial = trade.get_denial_for_empty_check( loc, excluded );
+                            if( !denial.empty() ) {
+                                if( complete && !excluded ) {
+                                    *complete = false;
+                                }
+                            } else if( seen.insert( loc.get_item() ).second ) {
+                                result.push_back( loc );
+                            }
                         }
                     }
                 }
@@ -346,7 +371,7 @@ std::vector<item_location> encounter_trade_items( Character &payer, const Charac
     const trade_preset preset( payer, buyer, encounter_payment );
     encounter_item_selector selector( payer, preset );
     add_encounter_trade_sources( selector, payer, buyer, item_radius, ally_radius, z_radius, complete );
-    return selector.eligible_items( complete );
+    return selector.eligible_items( preset, complete );
 }
 
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,
