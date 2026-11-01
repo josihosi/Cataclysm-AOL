@@ -166,6 +166,22 @@ class ProductionCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(production_capture.ProductionCaptureError, "non-feature"):
             production_capture.prepare_setup_only_capture(report_path=self.report, runtime_binding=self.runtime)
 
+    def test_setup_capture_rejects_an_unrelated_runtime(self) -> None:
+        self.report.write_text(json.dumps({
+            "run_id": "sealed-setup", "feature_proof": False,
+            "binding_id": self.executable_hash,
+            "cleanup": {"status": "already_exited"},
+        }), encoding="utf-8")
+        provenance = production_capture.prepare_setup_only_capture(
+            report_path=self.report, runtime_binding=self.runtime,
+        )
+        self.assertEqual(provenance["runtime"]["executable_sha256"], self.executable_hash)
+        with self.assertRaisesRegex(production_capture.ProductionCaptureError, "binding differs"):
+            production_capture.prepare_setup_only_capture(
+                report_path=self.report,
+                runtime_binding=dict(self.runtime, executable_sha256="c" * 64),
+            )
+
     def test_declared_registry_setup_contract_can_capture_without_promotion(self) -> None:
         self.report.write_text(json.dumps({
             "feature_proof": True,

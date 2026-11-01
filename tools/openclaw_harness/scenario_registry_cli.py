@@ -1790,6 +1790,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup_capture_command.add_argument("--report", required=True, help="sealed setup-only scenario report")
     setup_capture_command.add_argument("--profile", default="", help="profile containing the saved setup world")
     setup_capture_command.add_argument("--world", default="", help="explicit source world name")
+    setup_capture_command.add_argument("--executable", default="", help="executable bound to the sealed setup run")
     setup_capture_command.add_argument("--overwrite", action="store_true", help="replace an existing fixture")
     observation = commands.add_parser(
         "production-observe",
@@ -2756,9 +2757,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }
             elif args.command == "capture-setup-fixture":
                 report_path = Path(args.report).resolve()
-                runtime_binding = startup_harness.build_runtime_binding(
+                executable = Path(args.executable).resolve() if args.executable else \
                     startup_harness.detect_executable()
-                )
+                runtime_binding = startup_harness.build_runtime_binding(executable)
                 provenance = production_capture.prepare_setup_only_capture(
                     report_path=report_path, runtime_binding=runtime_binding,
                 )

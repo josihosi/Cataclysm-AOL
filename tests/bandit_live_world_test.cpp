@@ -12254,6 +12254,7 @@ TEST_CASE( "bandit_live_world_atomically_rehomes_scout_report_and_cargo_before_c
     CHECK( site.current_scout_report.source_generation == 1 );
     CHECK( site.current_scout_report.target_id == "target-for-return-receipt" );
     CHECK( site.current_scout_report.target_omt == tripoint_abs_omt( 18, 20, 0 ) );
+    CHECK( site.current_scout_report.carrier_ids == std::vector<character_id>( { scout_id, escort_id } ) );
     CHECK_FALSE( site.current_scout_report.target_lead_id.empty() );
     CHECK( site.current_scout_report.target_lead_revision == 1 );
     REQUIRE( site.current_scout_report.observations.size() == 1 );
@@ -40562,6 +40563,13 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
         CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( contact, camp,
                repeat_op, repeat_gen ) );
         CHECK( serialize_world( contact ) == once );
+        REQUIRE( bandit_live_world::release_matching_external_reservation( camp, repeat_op,
+                 repeat_gen, "empty repeat returned" ) );
+        const int later = due + 62 + static_cast<int>( normal_delay_turns / 60 ) + 60;
+        camp.home_activation.evaluate( later * 60, true, camp.home_activation_anchors(), {},
+                                       initial_minutes * 60 );
+        CHECK( advance_scheduler( contact, later ).response_operations_applied == 0 );
+        CHECK_FALSE( camp.active_hostile_operation.is_active() );
     }
     {
         auto costly = revisit;
@@ -79763,7 +79771,7 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     using namespace bandit_live_world;
     // Produce both physical sightings through the existing typed observation
     // writer; reporting and the first paid visit are controlled fixture setup.
-    auto observation_world = make_structural_signal_test_world( false, 895000 );
+    auto observation_world = make_structural_signal_test_world( false, 896000 );
     auto &observer_site = observation_world.sites.front();
     auto &outing = observer_site.active_outing;
     const auto target = outing.target_omt;
@@ -79828,6 +79836,7 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     report.target_lead_revision = lead.revision;
     report.application_key = report.source_activity_id + ":report:2";
     report.delivered_minutes = observed + 1;
+    report.carrier_ids = outing.member_ids;
     report.observations = { original };
     report.assessment.observation_started_minutes = observed;
     report.assessment.last_progress_minutes = observed;
@@ -79898,6 +79907,34 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
         REQUIRE( accept_current_scout_report_for_assessment( camp ) == camp_decision_transition_result::applied );
         return next;
     };
+    for( const int invalid : { 0, 1, 2, 3, 4 } ) {
+        auto next = world;
+        auto &camp = next.sites.front();
+        auto &candidate = camp.current_scout_report;
+        candidate.revision++;
+        candidate.source_generation = camp.next_outing_generation++;
+        candidate.source_activity_id = camp.site_id + "#scout:" +
+                                       std::to_string( candidate.source_generation );
+        candidate.application_key = candidate.source_activity_id + ":report:" +
+                                    std::to_string( candidate.source_generation );
+        candidate.delivered_minutes = observed + 91;
+        candidate.observations = { later };
+        camp.applied_report_generation = candidate.source_generation;
+        if( invalid == 0 ) {
+            candidate.carrier_ids.clear();
+        } else if( invalid == 1 ) {
+            candidate.carrier_ids = { character_id( 1234567 ) };
+        } else if( invalid == 2 ) {
+            candidate.carrier_ids.push_back( candidate.carrier_ids.front() );
+        } else if( invalid == 3 ) {
+            candidate.observations.front().observer_id = character_id( 1234567 );
+        } else {
+            candidate.application_key = "foreign-report-key";
+        }
+        REQUIRE( accept_current_scout_report_for_assessment( camp ) ==
+                 camp_decision_transition_result::applied );
+        CHECK_FALSE( camp.intelligence_map.robbery_places.front().later_physical_evidence );
+    }
     auto copied = with_later_report( original );
     CHECK_FALSE( copied.sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
     auto early = with_later_report( before_visit_ended );

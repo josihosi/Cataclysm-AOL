@@ -97,6 +97,10 @@ def prepare_setup_only_capture(*, report_path: Path, runtime_binding: Mapping[st
         raise ProductionCaptureError("setup fixture requires accepted isolated cleanup")
     if runtime_binding.get("ok") is not True:
         raise ProductionCaptureError("setup fixture runtime binding is unavailable")
+    report_binding = report.get("binding_id")
+    if report_binding and _sha256(report_binding, "setup report binding") != _sha256(
+            runtime_binding.get("executable_sha256"), "setup executable hash"):
+        raise ProductionCaptureError("setup report executable binding differs from capture runtime")
     return {
         "schema": "setup-origin-capture-v1",
         "credit": "setup_only_non_feature",

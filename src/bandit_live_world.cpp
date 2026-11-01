@@ -8019,11 +8019,21 @@ static bool robbery_evidence_is_bound( const robbery_physical_evidence &evidence
 }
 
 static std::optional<robbery_physical_evidence> reported_robbery_physical_evidence(
-    const scout_report_record &report )
+    const site_record &site, const scout_report_record &report )
 {
     if( report.provisional || report.application_key.empty() || report.source_generation <= 0 ||
         report.revision <= 0 || report.target_id.empty() || report.target_lead_revision <= 0 ||
-        report.assessment.observation_started_minutes < 0 || report.delivered_minutes < 0 ) {
+        report.assessment.observation_started_minutes < 0 || report.delivered_minutes < 0 ||
+        report.source_activity_id.rfind( site.site_id + "#", 0 ) != 0 ||
+        report.application_key != bandit_pursuit_handoff::make_operation_component_key(
+            report.source_activity_id, report.source_generation, "report" ) ||
+        site.applied_report_generation != report.source_generation || report.carrier_ids.empty() ||
+        !std::all_of( report.carrier_ids.begin(), report.carrier_ids.end(),
+    [&site, &report]( const character_id id ) {
+        const member_record *member = site.find_member( id );
+        return member != nullptr && member->state == member_state::at_home &&
+               std::count( report.carrier_ids.begin(), report.carrier_ids.end(), id ) == 1;
+    } ) ) {
         return std::nullopt;
     }
     std::optional<robbery_physical_evidence> result;
@@ -8031,6 +8041,7 @@ static std::optional<robbery_physical_evidence> reported_robbery_physical_eviden
         robbery_physical_evidence candidate{ observation, report.application_key,
                                              report.source_generation, report.revision };
         if( !robbery_evidence_is_bound( candidate, report.target_id, report.target_omt ) ||
+            site.find_member( observation.observer_id ) == nullptr ||
             observation.target_revision != report.target_lead_revision ||
             observation.observed_minutes < report.assessment.observation_started_minutes ||
             observation.observed_minutes > report.delivered_minutes ) {
@@ -8150,7 +8161,7 @@ camp_decision_transition_result accept_current_scout_report_for_assessment( site
                     report.assessment.next_eligible_minutes );
     }
     remember_acted_report( candidate, report );
-    const auto later = reported_robbery_physical_evidence( report );
+    const auto later = reported_robbery_physical_evidence( site, report );
     if( later ) {
         for( robbery_place_memory &place : candidate.intelligence_map.robbery_places ) {
             if( place.target_id != report.target_id || place.target_omt != report.target_omt ||
@@ -21220,7 +21231,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     candidate.active_hostile_operation.verified_response_danger = effective.danger_high;
                     candidate.active_hostile_operation.verified_response_minutes = now_minutes;
                     candidate.active_hostile_operation.verified_physical_evidence =
-                        reported_robbery_physical_evidence( report );
+                        reported_robbery_physical_evidence( site, report );
                 }
                 site = std::move( candidate );
                 state.hostile_target_opportunities = std::move( claim_candidate.hostile_target_opportunities );
@@ -28200,6 +28211,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
                 carrier_ids.push_back( member_id );
             }
         }
+        report.carrier_ids = carrier_ids;
         report.observations = make_reportable_sortie_observations(
                                   site.active_outing.observations, carrier_ids );
         report.casualty_ids = site.active_outing.casualty_ids;
