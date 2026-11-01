@@ -40365,6 +40365,63 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
         REQUIRE( advance_report( late_report, late_now ).response_operations_applied == 1 );
         CHECK_FALSE( late_report.sites.front().active_hostile_operation.repeat_place );
         CHECK( late_report.find_hostile_target_opportunity( target_id, target )->consumed_generation > 0 );
+        // A fresh report does not turn a costly return to an already
+        // remembered place into an unrelated first visit.
+        auto &late_camp = late_report.sites.front();
+        const auto activity = late_camp.active_hostile_operation.reservation.activity_id;
+        const int generation = late_camp.active_hostile_operation.reservation.generation;
+        const character_id casualty = late_camp.active_hostile_operation.reservation.member_ids.back();
+        REQUIRE( transition_test_hostile_operation( late_camp,
+                 bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound, late_now + 1,
+                 "report-backed revisit departed" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( bandit_live_world::record_matching_external_outing_casualty( late_camp,
+                 activity, generation, casualty, bandit_live_world::member_state::dead,
+                 late_now + 2, "report-backed revisit casualty" ) );
+        REQUIRE( transition_test_hostile_operation( late_camp,
+                 bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::returning_home, late_now + 3,
+                 "report-backed revisit returned" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        late_camp.active_hostile_operation.shakedown_pending_branch = "flight";
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( late_report, late_camp,
+                 activity, generation ) );
+        const auto &costly_place = late_camp.intelligence_map.robbery_places.front();
+        CHECK( costly_place.caution == 1 );
+        CHECK( costly_place.last_operation_id == activity );
+        CHECK( costly_place.last_generation == generation );
+        CHECK( costly_place.last_outcome == "flight" );
+        CHECK( costly_place.casualty_ids == std::vector<int> { casualty.get_value() } );
+        CHECK( costly_place.next_eligible_active_turn - costly_place.last_settled_active_turn ==
+               2 * normal_delay_turns );
+        CHECK( late_camp.shakedown_bandit_losses == 1 );
+        const auto once = serialize_world( late_report );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( late_report, late_camp,
+               activity, generation ) );
+        CHECK( serialize_world( late_report ) == once );
+
+        auto cleared_report = prepare_fresh( late_now, false );
+        auto &cleared_camp = cleared_report.sites.front();
+        cleared_camp.intelligence_map.robbery_places.front().eligible = false;
+        REQUIRE( advance_report( cleared_report, late_now ).response_operations_applied == 1 );
+        const auto cleared_activity = cleared_camp.active_hostile_operation.reservation.activity_id;
+        const int cleared_generation = cleared_camp.active_hostile_operation.reservation.generation;
+        REQUIRE( transition_test_hostile_operation( cleared_camp,
+                 bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound, late_now + 1,
+                 "cleared place fresh visit departed" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation( cleared_camp,
+                 bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::returning_home, late_now + 2,
+                 "cleared place fresh visit returned" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        cleared_camp.active_hostile_operation.shakedown_pending_branch = "search_unresolved";
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( cleared_report,
+                 cleared_camp, cleared_activity, cleared_generation ) );
+        CHECK_FALSE( cleared_camp.intelligence_map.robbery_places.front().eligible );
+        CHECK( cleared_camp.intelligence_map.robbery_places.front().last_outcome == "search_unresolved" );
     }
     const auto source_receipt = *revisit.find_hostile_target_opportunity( target_id, target );
     home.current_scout_report.clear();
@@ -79698,4 +79755,296 @@ TEST_CASE( "legacy four-site producer requests local owners without body leases"
     // empty claim set the startup collector supplies, not a gameplay path test.
     CHECK( reconcile_loaded_local_projections( world, {} ) ==
            local_projection_reconciliation_result::rejected );
+}
+
+TEST_CASE( "repeat memory retains reported physical provenance without reopening caution",
+           "[bandit_live_world][repeat_physical_provenance]" )
+{
+    using namespace bandit_live_world;
+    // Produce both physical sightings through the existing typed observation
+    // writer; reporting and the first paid visit are controlled fixture setup.
+    auto observation_world = make_structural_signal_test_world( false, 895000 );
+    auto &observer_site = observation_world.sites.front();
+    auto &outing = observer_site.active_outing;
+    const auto target = outing.target_omt;
+    const std::string target_id = outing.target_id;
+    REQUIRE_FALSE( target_id.empty() );
+    const auto physical_at = project_to<coords::ms>( target );
+    const auto observe = [&]( const int now ) {
+        const auto cursor = current_external_simulation_cursor( observer_site );
+        REQUIRE( cursor );
+        const auto recorded = record_covert_visible_defender_observations(
+                                  observer_site, *cursor, outing.leader_id, outing.selected_watch_omt,
+        { { "avatar", target, 4, 0, physical_at } }, now, true );
+        REQUIRE( recorded.valid );
+        REQUIRE( recorded.changed );
+        const auto found = std::find_if( outing.observations.begin(), outing.observations.end(),
+        [now]( const sortie_observation &observation ) {
+            return observation.state_key == "simultaneous-visible-defenders" &&
+                   observation.observed_minutes == now;
+        } );
+        REQUIRE( found != outing.observations.end() );
+        auto result = *found;
+        // Controlled return setup: real report production changes a shared
+        // physical receipt to reported when a carrier delivers it.
+        result.share_state = sortie_observation_share_state::reported;
+        return result;
+    };
+    const int observed = outing.last_advanced_minutes + 1;
+    const auto original = observe( observed );
+    const auto before_visit_ended = observe( observed + 1 );
+    const auto later = observe( observed + 90 );
+    const int newer_revision = original.target_revision + 1;
+    outing.target_lead_revision = newer_revision;
+    const auto newer_report_observation = observe( observed + 120 );
+
+    world_state world;
+    for( int index = 0; index < 7; ++index ) {
+        add_bandit_camp_member( world, index, 896000 );
+    }
+    auto &site = world.sites.front();
+    camp_map_lead lead;
+    lead.lead_id = site.site_id + ":physical-target";
+    lead.revision = original.target_revision;
+    lead.kind = camp_lead_kind::basecamp_activity;
+    lead.origin = camp_lead_origin::observer;
+    lead.status = camp_lead_status::scout_confirmed;
+    lead.target_id = target_id;
+    lead.omt = target;
+    lead.bounty = 1000;
+    lead.threat = 1;
+    lead.confidence = 4;
+    lead.threat_confirmed = true;
+    REQUIRE( upsert_camp_map_lead( site, lead ) );
+    auto &report = site.current_scout_report;
+    report.revision = 5;
+    report.action_policy = camp_report_policy::bandit_shakedown;
+    report.source_activity_id = site.site_id + "#scout:2";
+    report.source_generation = 2;
+    report.source_job_type = "scout";
+    report.target_id = target_id;
+    report.target_omt = target;
+    report.target_lead_id = lead.lead_id;
+    report.target_lead_revision = lead.revision;
+    report.application_key = report.source_activity_id + ":report:2";
+    report.delivered_minutes = observed + 1;
+    report.observations = { original };
+    report.assessment.observation_started_minutes = observed;
+    report.assessment.last_progress_minutes = observed;
+    report.assessment.certainty = 95;
+    report.assessment.readiness_latched = true;
+    report.assessment.threshold_class = scout_assessment_threshold_class::normal;
+    report.assessment.danger_high = 15;
+    report.assessment.bounty_estimate = 2;
+    site.applied_report_generation = report.source_generation;
+    site.next_outing_generation = 3;
+    site.intelligence_map.last_daily_cleanup_minutes = 0;
+    REQUIRE( accept_current_scout_report_for_assessment( site ) == camp_decision_transition_result::applied );
+    const int now = observed + 2;
+    REQUIRE( advance_camp_supply( site, now ) );
+    site.routine_activated_minutes = now;
+    site.home_activation.evaluate( now * 60, true, site.home_activation_anchors(), {}, now * 60 );
+    REQUIRE( observe_authoritative_hostile_target_opportunity( world, target_id, target, { 100, 3, 1 } ) );
+    const auto reads = []( const site_record &camp ) {
+        std::vector<response_member_power_read> result;
+        for( const character_id id : camp.roster().physically_present_ids ) {
+            result.push_back( { id, true, true, true, 10 } );
+        }
+        return result;
+    };
+    const auto route = [&target]( const site_record &camp ) {
+        return std::optional<canonical_hostile_operation_route>(
+                   canonical_hostile_operation_route{ { camp.anchor, target }, camp.anchor } );
+    };
+    REQUIRE( advance_structural_bounty_maintenance( world, now, 0, 0, {}, {}, {}, {}, {}, {},
+             reads, {}, route ).response_operations_applied == 1 );
+    REQUIRE( site.active_hostile_operation.verified_physical_evidence );
+    CHECK( site.active_hostile_operation.verified_physical_evidence->observation.observed_minutes == observed );
+    world = round_trip_world( world );
+    auto &home = world.sites.front();
+    REQUIRE( home.active_hostile_operation.verified_physical_evidence );
+    const auto activity = home.active_hostile_operation.reservation.activity_id;
+    const int generation = home.active_hostile_operation.reservation.generation;
+    REQUIRE( transition_test_hostile_operation( home, hostile_operation_phase::assembling,
+             hostile_operation_phase::outbound, now + 1, "departed" ) ==
+             hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation( home, hostile_operation_phase::outbound,
+             hostile_operation_phase::returning_home, now + 2, "returned" ) ==
+             hostile_operation_transition_result::applied );
+    home.active_hostile_operation.shakedown_pending_branch = "paid";
+    home.active_hostile_operation.shakedown_pending_demanded_value = 100;
+    home.active_hostile_operation.shakedown_pending_surrendered_value = 75;
+    REQUIRE( apply_terminal_hostile_shakedown_aftermath( world, home, activity, generation ) );
+    REQUIRE( release_matching_external_reservation( home, activity, generation, "home" ) );
+    REQUIRE( home.intelligence_map.robbery_places.size() == 1 );
+    REQUIRE( home.intelligence_map.robbery_places.front().original_physical_evidence );
+    CHECK( home.intelligence_map.robbery_places.front().original_physical_evidence->report_key ==
+           home.site_id + "#scout:2:report:2" );
+    world = round_trip_world( world );
+
+    const auto with_later_report = [&]( const sortie_observation &candidate ) {
+        auto next = world;
+        auto &camp = next.sites.front();
+        auto &new_report = camp.current_scout_report;
+        new_report.revision++;
+        new_report.source_generation = camp.next_outing_generation++;
+        new_report.source_activity_id = camp.site_id + "#scout:" +
+                                        std::to_string( new_report.source_generation );
+        new_report.application_key = new_report.source_activity_id + ":report:" +
+                                     std::to_string( new_report.source_generation );
+        new_report.delivered_minutes = observed + 91;
+        new_report.observations = { candidate };
+        camp.applied_report_generation = new_report.source_generation;
+        REQUIRE( accept_current_scout_report_for_assessment( camp ) == camp_decision_transition_result::applied );
+        return next;
+    };
+    auto copied = with_later_report( original );
+    CHECK_FALSE( copied.sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto early = with_later_report( before_visit_ended );
+    CHECK_FALSE( early.sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto stale = world;
+    CHECK( accept_current_scout_report_for_assessment( stale.sites.front() ) !=
+           camp_decision_transition_result::applied );
+    CHECK_FALSE( stale.sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto undated = later;
+    undated.observed_minutes = -1;
+    CHECK_FALSE( with_later_report( undated ).sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto foreign = later;
+    foreign.observed_site_id = "another-place";
+    CHECK_FALSE( with_later_report( foreign ).sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto other_kind = later;
+    other_kind.state_key = "physical-player-opportunity";
+    CHECK_FALSE( with_later_report( other_kind ).sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto private_observation = later;
+    private_observation.share_state = sortie_observation_share_state::observer_private;
+    CHECK_FALSE( with_later_report( private_observation ).sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    auto compared = with_later_report( later );
+    const auto &place = compared.sites.front().intelligence_map.robbery_places.front();
+    REQUIRE( place.later_physical_evidence );
+    CHECK( place.later_physical_evidence->observation.observed_minutes == observed + 90 );
+    CHECK( place.later_physical_evidence->report_key != place.original_physical_evidence->report_key );
+    compared = round_trip_world( compared );
+    REQUIRE( compared.sites.front().intelligence_map.robbery_places.front().later_physical_evidence );
+    {
+        // A report-backed return to the same place owns its newer physical
+        // baseline even when it ends in casualties rather than success.
+        auto reported_visit = compared;
+        auto &camp = reported_visit.sites.front();
+        auto &fresh = camp.current_scout_report;
+        fresh.revision++;
+        fresh.source_generation = camp.next_outing_generation++;
+        fresh.source_activity_id = camp.site_id + "#scout:" + std::to_string( fresh.source_generation );
+        fresh.application_key = fresh.source_activity_id + ":report:" +
+                                std::to_string( fresh.source_generation );
+        fresh.target_lead_revision = newer_revision;
+        fresh.delivered_minutes = observed + 121;
+        fresh.observations = { newer_report_observation };
+        camp.intelligence_map.find_lead( fresh.target_lead_id )->revision = newer_revision;
+        camp.applied_report_generation = fresh.source_generation;
+        REQUIRE( accept_current_scout_report_for_assessment( camp ) ==
+                 camp_decision_transition_result::applied );
+        REQUIRE( observe_authoritative_hostile_target_opportunity( reported_visit,
+                 target_id, target, { 101, 3, 1 } ) );
+        camp.home_activation.evaluate( ( observed + 122 ) * 60, true, camp.home_activation_anchors(), {},
+                                       now * 60 );
+        // Cooldown was covered by the separate boundary test; make this
+        // controlled fixture due to isolate the report-backed aftermath.
+        camp.intelligence_map.robbery_places.front().next_eligible_active_turn =
+            camp.home_activation.active_turns;
+        REQUIRE( advance_structural_bounty_maintenance( reported_visit, observed + 122, 0, 0,
+                 {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 1 );
+        REQUIRE_FALSE( camp.active_hostile_operation.repeat_place );
+        REQUIRE( camp.active_hostile_operation.verified_physical_evidence );
+        const auto activity = camp.active_hostile_operation.reservation.activity_id;
+        const int generation = camp.active_hostile_operation.reservation.generation;
+        const character_id casualty = camp.active_hostile_operation.reservation.member_ids.back();
+        REQUIRE( transition_test_hostile_operation( camp, hostile_operation_phase::assembling,
+                 hostile_operation_phase::outbound, observed + 123, "new report departed" ) ==
+                 hostile_operation_transition_result::applied );
+        REQUIRE( record_matching_external_outing_casualty( camp, activity, generation, casualty,
+                 member_state::dead, observed + 124, "new report casualty" ) );
+        REQUIRE( transition_test_hostile_operation( camp, hostile_operation_phase::outbound,
+                 hostile_operation_phase::returning_home, observed + 125, "new report returned" ) ==
+                 hostile_operation_transition_result::applied );
+        camp.active_hostile_operation.shakedown_pending_branch = "flight";
+        REQUIRE( apply_terminal_hostile_shakedown_aftermath( reported_visit, camp, activity, generation ) );
+        const auto &failed = camp.intelligence_map.robbery_places.front();
+        CHECK( failed.caution == 1 );
+        CHECK( failed.verified_danger == camp.active_hostile_operation.verified_response_danger );
+        CHECK( failed.verified_party_power == camp.active_hostile_operation.verified_response_power );
+        REQUIRE( failed.original_physical_evidence );
+        CHECK( failed.original_physical_evidence->observation.observed_minutes == observed + 120 );
+        CHECK_FALSE( failed.later_physical_evidence );
+        CHECK( failed.last_visit_event_minutes == observed + 125 );
+        CHECK( failed.casualty_ids == std::vector<int> { casualty.get_value() } );
+    }
+    {
+        // The fresh report expires naturally before the place becomes due.
+        // Exercise the actual repeat scheduler and interrupted release with a
+        // physical receipt already recorded for the preceding visit.
+        auto interrupted = compared;
+        auto &camp = interrupted.sites.front();
+        const auto &remembered = camp.intelligence_map.robbery_places.front();
+        const int due = now + static_cast<int>( ( remembered.next_eligible_active_turn -
+                        remembered.last_settled_active_turn ) / 60 ) + 120;
+        camp.home_activation.evaluate( due * 60, true, camp.home_activation_anchors(), {}, now * 60 );
+        advance_structural_bounty_maintenance( interrupted, due, 0, 0, {}, {}, {}, {}, {}, {},
+                                               reads, {}, route );
+        camp.home_activation.evaluate( ( due + 60 ) * 60, true, camp.home_activation_anchors(), {},
+                                       now * 60 );
+        REQUIRE( advance_structural_bounty_maintenance( interrupted, due + 60, 0, 0,
+                 {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 1 );
+        REQUIRE( camp.active_hostile_operation.repeat_place );
+        REQUIRE( camp.intelligence_map.robbery_places.front().later_physical_evidence );
+        const auto repeat_activity = camp.active_hostile_operation.reservation.activity_id;
+        const int repeat_generation = camp.active_hostile_operation.reservation.generation;
+        const character_id casualty = camp.active_hostile_operation.reservation.member_ids.back();
+        REQUIRE( transition_test_hostile_operation( camp, hostile_operation_phase::assembling,
+                 hostile_operation_phase::outbound, due + 61, "repeat departed" ) ==
+                 hostile_operation_transition_result::applied );
+        REQUIRE( record_matching_external_outing_casualty( camp, repeat_activity, repeat_generation,
+                 casualty, member_state::dead, due + 62, "repeat casualty" ) );
+        REQUIRE( transition_test_hostile_operation( camp, hostile_operation_phase::outbound,
+                 hostile_operation_phase::returning_home, due + 63, "repeat interrupted" ) ==
+                 hostile_operation_transition_result::applied );
+        REQUIRE( release_matching_external_reservation( camp, repeat_activity, repeat_generation,
+                 "interrupted repeat released" ) );
+        const auto &after = camp.intelligence_map.robbery_places.front();
+        REQUIRE( after.original_physical_evidence );
+        CHECK_FALSE( after.later_physical_evidence );
+        CHECK( after.last_visit_event_minutes == due + 63 );
+        CHECK( after.caution == 1 );
+        CHECK( after.last_outcome == "interrupted_travel" );
+        CHECK( camp.shakedown_bandit_losses == 1 );
+        CHECK_FALSE( release_matching_external_reservation( camp, repeat_activity, repeat_generation,
+                     "stale repeat replay" ) );
+        interrupted = round_trip_world( interrupted );
+        auto &reloaded = interrupted.sites.front();
+        CHECK_FALSE( reloaded.intelligence_map.robbery_places.front().later_physical_evidence );
+        auto &old_report = reloaded.current_scout_report;
+        old_report.revision++;
+        old_report.source_generation = reloaded.next_outing_generation++;
+        old_report.source_activity_id = reloaded.site_id + "#scout:" +
+                                        std::to_string( old_report.source_generation );
+        old_report.application_key = old_report.source_activity_id + ":report:" +
+                                     std::to_string( old_report.source_generation );
+        old_report.delivered_minutes = due + 64;
+        old_report.observations = { later };
+        reloaded.applied_report_generation = old_report.source_generation;
+        REQUIRE( accept_current_scout_report_for_assessment( reloaded ) ==
+                 camp_decision_transition_result::applied );
+        CHECK_FALSE( reloaded.intelligence_map.robbery_places.front().later_physical_evidence );
+    }
+    auto &cautious = compared.sites.front();
+    cautious.intelligence_map.robbery_places.front().caution = 1;
+    cautious.intelligence_map.robbery_places.front().next_eligible_active_turn =
+        cautious.home_activation.active_turns;
+    const auto selection = select_capable_response_party( cautious, camp_report_policy::bandit_shakedown,
+                           cautious.current_scout_report.assessment.danger_high, reads( cautious ) );
+    REQUIRE( selection.eligible );
+    const auto cautious_result = evaluate_response_authorization( cautious, observed + 91, selection,
+                                 reads( cautious ) );
+    CHECK_FALSE( cautious_result.authorized );
+    CHECK( cautious_result.rejection_reason ==
+           "costly robbery place requires favorable evidence and repeat admission" );
 }

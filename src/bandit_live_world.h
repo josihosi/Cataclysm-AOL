@@ -408,59 +408,6 @@ struct camp_map_lead {
 };
 
 // Durable knowledge of a place, not a fresh observation of its occupants or goods.
-struct robbery_place_memory {
-    std::string target_id;
-    tripoint_abs_omt target_omt;
-    std::string last_operation_id;
-    std::string last_report_key;
-    int last_generation = 0;
-    std::string last_outcome;
-    std::string last_admission_refusal;
-    std::int64_t last_settled_active_turn = 0;
-    std::int64_t next_eligible_active_turn = 0;
-    // Preflight retry is separate from the protection for a settled visit.
-    std::int64_t admission_retry_active_turn = 0;
-    int caution = 0;
-    bool eligible = false;
-    int verified_party_power = -1;
-    int verified_danger = -1;
-    int verified_minutes = -1;
-    // Time of the original report evaluation, not a new observation time.
-    int danger_evaluated_minutes = -1;
-    std::vector<int> party_ids;
-    std::vector<int> casualty_ids;
-    std::string active_operation_id;
-    int active_generation = 0;
-
-    void serialize( JsonOut &json ) const;
-    void deserialize( const JsonObject &jo );
-};
-
-struct camp_intelligence_map {
-    int schema_version = 6;
-    int last_daily_cleanup_minutes = -1;
-    int next_near_tick_minutes = -1;
-    int next_mid_tick_minutes = -1;
-    int next_far_tick_minutes = -1;
-    int next_frontier_tick_minutes = -1;
-    int known_radius_omt = 0;
-    int terrain_scan_cursor = 0;
-    std::string last_routine_target_lead_id;
-    std::string previous_routine_target_lead_id;
-    int frontier_radius_omt = 0;
-    int frontier_sector_cursor = 0;
-    int frontier_search_cursor = 0;
-    std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
-    std::vector<camp_map_lead> leads;
-    std::vector<robbery_place_memory> robbery_places;
-
-    void serialize( JsonOut &json ) const;
-    void deserialize( const JsonObject &jo );
-
-    camp_map_lead *find_lead( const std::string &lead_id );
-    const camp_map_lead *find_lead( const std::string &lead_id ) const;
-};
-
 struct sortie_observation {
     sortie_observation() = default;
     sortie_observation( const std::string &fact_key, const std::string &summary, int confidence,
@@ -509,6 +456,76 @@ struct sortie_observation {
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 };
+
+
+struct robbery_physical_evidence {
+    sortie_observation observation;
+    std::string report_key;
+    int report_generation = 0;
+    int report_revision = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct robbery_place_memory {
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    std::string last_operation_id;
+    std::string last_report_key;
+    int last_generation = 0;
+    std::string last_outcome;
+    std::string last_admission_refusal;
+    std::int64_t last_settled_active_turn = 0;
+    std::int64_t next_eligible_active_turn = 0;
+    // Preflight retry is separate from the protection for a settled visit.
+    std::int64_t admission_retry_active_turn = 0;
+    int caution = 0;
+    bool eligible = false;
+    int verified_party_power = -1;
+    int verified_danger = -1;
+    int verified_minutes = -1;
+    // Time of the original report evaluation, not a new observation time.
+    int danger_evaluated_minutes = -1;
+    // Original reported physical evidence and a later comparable receipt.
+    // Neither record alone asserts that current danger has improved.
+    std::optional<robbery_physical_evidence> original_physical_evidence;
+    std::optional<robbery_physical_evidence> later_physical_evidence;
+    int last_visit_event_minutes = -1;
+    std::vector<int> party_ids;
+    std::vector<int> casualty_ids;
+    std::string active_operation_id;
+    int active_generation = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct camp_intelligence_map {
+    int schema_version = 6;
+    int last_daily_cleanup_minutes = -1;
+    int next_near_tick_minutes = -1;
+    int next_mid_tick_minutes = -1;
+    int next_far_tick_minutes = -1;
+    int next_frontier_tick_minutes = -1;
+    int known_radius_omt = 0;
+    int terrain_scan_cursor = 0;
+    std::string last_routine_target_lead_id;
+    std::string previous_routine_target_lead_id;
+    int frontier_radius_omt = 0;
+    int frontier_sector_cursor = 0;
+    int frontier_search_cursor = 0;
+    std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
+    std::vector<camp_map_lead> leads;
+    std::vector<robbery_place_memory> robbery_places;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+
+    camp_map_lead *find_lead( const std::string &lead_id );
+    const camp_map_lead *find_lead( const std::string &lead_id ) const;
+};
+
 
 struct sortie_observation_effect {
     bool valid = false;
@@ -992,6 +1009,7 @@ struct hostile_operation_state {
     int verified_response_power = -1;
     int verified_response_danger = -1;
     int verified_response_minutes = -1;
+    std::optional<robbery_physical_evidence> verified_physical_evidence;
     bool repeat_place = false;
     std::string repeat_origin_operation_id;
     int repeat_origin_generation = 0;

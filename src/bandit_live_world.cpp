@@ -7994,6 +7994,55 @@ bool record_hostile_operation_approach_progress(
     return true;
 }
 
+static bool robbery_evidence_is_bound( const robbery_physical_evidence &evidence,
+                                       const std::string &target_id,
+                                       const tripoint_abs_omt &target_omt )
+{
+    const sortie_observation &observation = evidence.observation;
+    const std::string source = "visible-defenders:" + target_omt.to_string();
+    return !evidence.report_key.empty() &&
+           evidence.report_key.size() <= max_operation_application_key_length &&
+           evidence.report_generation > 0 &&
+           evidence.report_revision > 0 && typed_sortie_observation_is_valid( observation ) &&
+           observation.share_state == sortie_observation_share_state::reported &&
+           observation.kind == sortie_observation_kind::certainty &&
+           observation.sense == sortie_observation_sense::visual &&
+           observation.state_key == "simultaneous-visible-defenders" &&
+           observation.fact_key == source && observation.source_id == source &&
+           observation.observed_site_id == target_id && observation.source_omt == target_omt &&
+           !observation.defender_positions.empty() &&
+           observation.defender_positions.size() == observation.defender_ids.size() &&
+           std::all_of( observation.defender_positions.begin(), observation.defender_positions.end(),
+    [&target_omt]( const tripoint_abs_ms &position ) {
+        return project_to<coords::omt>( position ) == target_omt;
+    } );
+}
+
+static std::optional<robbery_physical_evidence> reported_robbery_physical_evidence(
+    const scout_report_record &report )
+{
+    if( report.provisional || report.application_key.empty() || report.source_generation <= 0 ||
+        report.revision <= 0 || report.target_id.empty() || report.target_lead_revision <= 0 ||
+        report.assessment.observation_started_minutes < 0 || report.delivered_minutes < 0 ) {
+        return std::nullopt;
+    }
+    std::optional<robbery_physical_evidence> result;
+    for( const sortie_observation &observation : report.observations ) {
+        robbery_physical_evidence candidate{ observation, report.application_key,
+                                             report.source_generation, report.revision };
+        if( !robbery_evidence_is_bound( candidate, report.target_id, report.target_omt ) ||
+            observation.target_revision != report.target_lead_revision ||
+            observation.observed_minutes < report.assessment.observation_started_minutes ||
+            observation.observed_minutes > report.delivered_minutes ) {
+            continue;
+        }
+        if( !result || observation.observed_minutes > result->observation.observed_minutes ) {
+            result = std::move( candidate );
+        }
+    }
+    return result;
+}
+
 bool is_valid_camp_decision_transition( const camp_decision_state previous_state,
                                         const camp_decision_state next_state )
 {
@@ -8101,6 +8150,28 @@ camp_decision_transition_result accept_current_scout_report_for_assessment( site
                     report.assessment.next_eligible_minutes );
     }
     remember_acted_report( candidate, report );
+    const auto later = reported_robbery_physical_evidence( report );
+    if( later ) {
+        for( robbery_place_memory &place : candidate.intelligence_map.robbery_places ) {
+            if( place.target_id != report.target_id || place.target_omt != report.target_omt ||
+                !place.original_physical_evidence || place.last_visit_event_minutes < 0 ) {
+                continue;
+            }
+            const robbery_physical_evidence &original = *place.original_physical_evidence;
+            if( robbery_evidence_is_bound( original, place.target_id, place.target_omt ) &&
+                later->report_key != original.report_key &&
+                later->report_generation > original.report_generation &&
+                later->observation.observed_minutes > original.observation.observed_minutes &&
+                later->observation.observed_minutes > place.last_visit_event_minutes &&
+                ( !place.later_physical_evidence ||
+                  later->observation.observed_minutes >
+                  place.later_physical_evidence->observation.observed_minutes ) ) {
+                // This records comparable physical provenance only. A lower
+                // visible count is not proof that hidden danger decreased.
+                place.later_physical_evidence = later;
+            }
+        }
+    }
     site = std::move( candidate );
     record_camp_decision_transition( site, site.camp_decision, "committed",
                                      to_string( previous_state ),
@@ -8370,6 +8441,32 @@ void camp_map_lead::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void robbery_physical_evidence::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "observation", observation );
+    json.member( "report_key", report_key );
+    json.member( "report_generation", report_generation );
+    json.member( "report_revision", report_revision );
+    json.end_object();
+}
+
+void robbery_physical_evidence::deserialize( const JsonObject &jo )
+{
+    robbery_physical_evidence candidate;
+    jo.read( "observation", candidate.observation );
+    jo.read( "report_key", candidate.report_key );
+    jo.read( "report_generation", candidate.report_generation );
+    jo.read( "report_revision", candidate.report_revision );
+    if( candidate.report_key.empty() ||
+        candidate.report_key.size() > max_operation_application_key_length ||
+        candidate.report_generation <= 0 ||
+        candidate.report_revision <= 0 ) {
+        jo.throw_error( "invalid robbery physical evidence identity" );
+    }
+    *this = std::move( candidate );
+}
+
 void robbery_place_memory::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -8389,6 +8486,15 @@ void robbery_place_memory::serialize( JsonOut &json ) const
     json.member( "verified_danger", verified_danger );
     json.member( "verified_minutes", verified_minutes );
     json.member( "danger_evaluated_minutes", danger_evaluated_minutes );
+    if( original_physical_evidence ) {
+        json.member( "original_physical_evidence", original_physical_evidence );
+    }
+    if( later_physical_evidence ) {
+        json.member( "later_physical_evidence", later_physical_evidence );
+    }
+    if( last_visit_event_minutes >= 0 ) {
+        json.member( "last_visit_event_minutes", last_visit_event_minutes );
+    }
     json.member( "party_ids", party_ids );
     json.member( "casualty_ids", casualty_ids );
     json.member( "active_operation_id", active_operation_id );
@@ -8415,6 +8521,9 @@ void robbery_place_memory::deserialize( const JsonObject &jo )
     jo.read( "verified_danger", candidate.verified_danger );
     jo.read( "verified_minutes", candidate.verified_minutes );
     jo.read( "danger_evaluated_minutes", candidate.danger_evaluated_minutes );
+    jo.read( "original_physical_evidence", candidate.original_physical_evidence );
+    jo.read( "later_physical_evidence", candidate.later_physical_evidence );
+    jo.read( "last_visit_event_minutes", candidate.last_visit_event_minutes );
     jo.read( "party_ids", candidate.party_ids );
     jo.read( "casualty_ids", candidate.casualty_ids );
     jo.read( "active_operation_id", candidate.active_operation_id );
@@ -8429,7 +8538,23 @@ void robbery_place_memory::deserialize( const JsonObject &jo )
         ( ( candidate.verified_minutes < 0 ) != ( candidate.verified_party_power < 0 ) ) ||
         ( ( candidate.verified_minutes < 0 ) != ( candidate.verified_danger < 0 ) ) ||
         ( candidate.active_operation_id.empty() != ( candidate.active_generation == 0 ) ) ||
-        candidate.active_generation < 0 ) {
+        candidate.active_generation < 0 || candidate.last_visit_event_minutes < -1 ||
+        ( candidate.original_physical_evidence &&
+          ( !robbery_evidence_is_bound( *candidate.original_physical_evidence, candidate.target_id,
+                                       candidate.target_omt ) || candidate.last_visit_event_minutes < 0 ||
+            candidate.original_physical_evidence->observation.observed_minutes >
+            candidate.last_visit_event_minutes ) ) ||
+        ( candidate.later_physical_evidence &&
+          ( !candidate.original_physical_evidence || candidate.last_visit_event_minutes < 0 ||
+            !robbery_evidence_is_bound( *candidate.later_physical_evidence, candidate.target_id,
+                                        candidate.target_omt ) ||
+            candidate.later_physical_evidence->report_key == candidate.original_physical_evidence->report_key ||
+            candidate.later_physical_evidence->report_generation <=
+            candidate.original_physical_evidence->report_generation ||
+            candidate.later_physical_evidence->observation.observed_minutes <=
+            candidate.original_physical_evidence->observation.observed_minutes ||
+            candidate.later_physical_evidence->observation.observed_minutes <=
+            candidate.last_visit_event_minutes ) ) ) {
         jo.throw_error( "invalid robbery place memory" );
     }
     // Existing 24-hour test saves keep their elapsed active time.  A first
@@ -10630,6 +10755,9 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "repeat_origin_operation_id", repeat_origin_operation_id );
     json.member( "repeat_origin_generation", repeat_origin_generation );
     }
+    if( verified_physical_evidence ) {
+        json.member( "verified_physical_evidence", verified_physical_evidence );
+    }
     json.member( "reservation", reservation );
     json.member( "source_report_revision", std::max( 0, source_report_revision ) );
     json.member( "source_report_generation", std::max( 0, source_report_generation ) );
@@ -10692,6 +10820,7 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "verified_response_power", candidate.verified_response_power );
     jo.read( "verified_response_danger", candidate.verified_response_danger );
     jo.read( "verified_response_minutes", candidate.verified_response_minutes );
+    jo.read( "verified_physical_evidence", candidate.verified_physical_evidence );
     jo.read( "repeat_place", candidate.repeat_place );
     jo.read( "repeat_origin_operation_id", candidate.repeat_origin_operation_id );
     jo.read( "repeat_origin_generation", candidate.repeat_origin_generation );
@@ -10727,6 +10856,16 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "source_report_generation", candidate.source_report_generation );
     jo.read( "source_report_activity_id", candidate.source_report_activity_id );
     jo.read( "source_report_application_key", candidate.source_report_application_key );
+    if( candidate.verified_physical_evidence &&
+        ( candidate.operation_kind != hostile_operation_kind::shakedown ||
+          !robbery_evidence_is_bound( *candidate.verified_physical_evidence,
+                                      candidate.reservation.target_id, candidate.reservation.target_omt ) ||
+          ( !candidate.repeat_place &&
+            ( candidate.verified_physical_evidence->report_key != candidate.source_report_application_key ||
+              candidate.verified_physical_evidence->report_generation != candidate.source_report_generation ||
+              candidate.verified_physical_evidence->report_revision != candidate.source_report_revision ) ) ) ) {
+        jo.throw_error( "hostile operation has mismatched physical evidence" );
+    }
     jo.read( "shakedown_pending_branch", candidate.shakedown_pending_branch );
     jo.read( "shakedown_pending_pay_identity", candidate.shakedown_pending_pay_identity );
     jo.read( "shakedown_pending_demanded_value", candidate.shakedown_pending_demanded_value );
@@ -15793,6 +15932,55 @@ bool structural_lead_check_cooldown_active_for_test( const camp_map_lead &lead,
     return structural_lead_recently_checked( lead, now_minutes );
 }
 
+static void record_remembered_robbery_visit( site_record &site, robbery_place_memory &place,
+        const hostile_operation_state &operation, const shakedown_outcome &outcome )
+{
+    const active_outing_state &reservation = operation.reservation;
+    const bool success = ( outcome.paid || outcome.robbed ) && outcome.surrendered_value > 0;
+    const bool previously_eligible = place.eligible;
+    if( !success && outcome.bandit_losses > 0 ) {
+        place.caution = std::min( 2, place.caution + 1 );
+    } else if( success && outcome.bandit_losses == 0 && place.caution > 0 ) {
+        --place.caution;
+    }
+    // A failed fresh-report visit must not revive a place that an earlier
+    // authenticated empty visit cleared.
+    place.eligible = !outcome.searched_empty && place.caution < 2 &&
+                     ( success || previously_eligible );
+    place.last_operation_id = reservation.activity_id;
+    place.last_generation = reservation.generation;
+    if( !operation.repeat_place ) {
+        place.last_report_key = operation.source_report_application_key;
+        place.original_physical_evidence = operation.verified_physical_evidence &&
+                                           robbery_evidence_is_bound( *operation.verified_physical_evidence,
+                                                   place.target_id, place.target_omt ) ?
+                                           operation.verified_physical_evidence : std::nullopt;
+    }
+    place.last_outcome = site.last_shakedown_outcome;
+    place.last_settled_active_turn = site.home_activation.active_turns;
+    const int normal = robbery_place_cooldown_minutes( site.site_id );
+    const int delay = !success && outcome.bandit_losses > 0 && place.caution == 1 ?
+                      2 * normal : normal;
+    place.next_eligible_active_turn = place.last_settled_active_turn +
+                                      static_cast<std::int64_t>( delay ) * 60;
+    place.verified_party_power = operation.verified_response_power;
+    place.verified_danger = operation.verified_response_danger;
+    place.verified_minutes = operation.verified_response_minutes;
+    if( !operation.repeat_place ) {
+        place.danger_evaluated_minutes = operation.verified_response_minutes;
+    }
+    place.later_physical_evidence.reset();
+    place.last_visit_event_minutes = reservation.last_advanced_minutes;
+    place.party_ids.clear();
+    place.casualty_ids.clear();
+    for( const character_id id : reservation.member_ids ) {
+        place.party_ids.push_back( id.get_value() );
+    }
+    for( const character_id id : reservation.casualty_ids ) {
+        place.casualty_ids.push_back( id.get_value() );
+    }
+}
+
 std::optional<int> release_matching_external_reservation( site_record &site,
         const std::string &expected_activity_id, const int expected_generation,
         const std::string &summary )
@@ -15854,30 +16042,8 @@ std::optional<int> release_matching_external_reservation( site_record &site,
                 if( !apply_shakedown_outcome( candidate, interrupted ).valid ) {
                     return std::nullopt;
                 }
-                if( interrupted.bandit_losses > 0 ) {
-                    place->caution = std::min( 2, place->caution + 1 );
-                }
-                place->eligible = place->caution < 2;
-                place->last_operation_id = expected_activity_id;
-                place->last_generation = expected_generation;
-                place->last_outcome = "interrupted_travel";
-                place->last_settled_active_turn = candidate.home_activation.active_turns;
                 const int routine_delay = routine_cooldown_delay_minutes( candidate.site_id, 24 * 60 );
-                const int normal = robbery_place_cooldown_minutes( candidate.site_id );
-                const int delay = interrupted.bandit_losses > 0 && place->caution == 1 ? 2 * normal : normal;
-                place->next_eligible_active_turn = place->last_settled_active_turn +
-                                                   static_cast<std::int64_t>( delay ) * 60;
-                place->verified_party_power = operation.verified_response_power;
-                place->verified_danger = operation.verified_response_danger;
-                place->verified_minutes = operation.verified_response_minutes;
-                place->party_ids.clear();
-                place->casualty_ids.clear();
-                for( const character_id id : reservation.member_ids ) {
-                    place->party_ids.push_back( id.get_value() );
-                }
-                for( const character_id id : reservation.casualty_ids ) {
-                    place->casualty_ids.push_back( id.get_value() );
-                }
+                record_remembered_robbery_visit( candidate, *place, operation, interrupted );
                 candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
                             reservation.last_advanced_minutes, routine_delay );
                 candidate.home_activation.settle_timer( activation_timer::routine_next,
@@ -20857,6 +21023,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     candidate.active_hostile_operation.verified_response_power = selection.party_power;
                     candidate.active_hostile_operation.verified_response_danger = remembered.verified_danger;
                     candidate.active_hostile_operation.verified_response_minutes = now_minutes;
+                    candidate.active_hostile_operation.verified_physical_evidence =
+                        remembered.original_physical_evidence;
                     prepared_site = std::move( candidate );
                     result.response_operations_planned++;
                     result.response_operations_applied++;
@@ -21051,6 +21219,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     candidate.active_hostile_operation.verified_response_power = selection.party_power;
                     candidate.active_hostile_operation.verified_response_danger = effective.danger_high;
                     candidate.active_hostile_operation.verified_response_minutes = now_minutes;
+                    candidate.active_hostile_operation.verified_physical_evidence =
+                        reported_robbery_physical_evidence( report );
                 }
                 site = std::move( candidate );
                 state.hostile_target_opportunities = std::move( claim_candidate.hostile_target_opportunities );
@@ -27457,31 +27627,14 @@ void remember_successful_robbery_place( site_record &site,
         place->target_id = outing.target_id;
         place->target_omt = outing.target_omt;
     }
-    place->last_operation_id = outing.activity_id;
-    place->last_report_key = operation.source_report_application_key;
-    place->last_generation = outing.generation;
-    place->last_outcome = operation.shakedown_pending_branch;
     place->last_admission_refusal.clear();
     place->admission_retry_active_turn = 0;
-    place->last_settled_active_turn = active_now;
-    place->next_eligible_active_turn = active_now + static_cast<std::int64_t>(
-                robbery_place_cooldown_minutes( site.site_id ) ) * 60;
-    if( outing.casualty_ids.empty() && place->caution > 0 ) {
-        --place->caution;
-    }
-    place->eligible = place->caution < 2;
-    place->verified_party_power = operation.verified_response_power;
-    place->verified_danger = operation.verified_response_danger;
-    place->verified_minutes = operation.verified_response_minutes;
-    place->danger_evaluated_minutes = operation.verified_response_minutes;
-    place->party_ids.clear();
-    place->casualty_ids.clear();
-    for( const character_id id : outing.member_ids ) {
-        place->party_ids.push_back( id.get_value() );
-    }
-    for( const character_id id : outing.casualty_ids ) {
-        place->casualty_ids.push_back( id.get_value() );
-    }
+    shakedown_outcome outcome;
+    outcome.paid = operation.shakedown_pending_branch == "paid";
+    outcome.robbed = operation.shakedown_pending_branch == "robbed";
+    outcome.surrendered_value = operation.shakedown_pending_surrendered_value;
+    outcome.bandit_losses = static_cast<int>( outing.casualty_ids.size() );
+    record_remembered_robbery_visit( site, *place, operation, outcome );
 }
 
 bool apply_terminal_shakedown_outcome( site_record &site, const shakedown_outcome &outcome )
@@ -27610,15 +27763,12 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
     site.last_hostile_shakedown_operation_id = expected_activity_id;
     site.last_hostile_shakedown_report_key = operation.source_report_application_key;
     site.last_hostile_shakedown_generation = expected_generation;
-    if( authenticated_empty_contact( operation ) ) {
+    const bool success = ( outcome.paid || outcome.robbed ) && outcome.surrendered_value > 0;
+    if( !success ) {
         for( robbery_place_memory &place : site.intelligence_map.robbery_places ) {
             if( place.target_id == reservation.target_id && place.target_omt == reservation.target_omt &&
                 place.active_operation_id.empty() ) {
-                place.eligible = false;
-                place.last_operation_id = expected_activity_id;
-                place.last_generation = expected_generation;
-                place.last_report_key = operation.source_report_application_key;
-                place.last_outcome = "searched_empty";
+                record_remembered_robbery_visit( site, place, operation, outcome );
             }
         }
     }
@@ -27687,34 +27837,8 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
         if( place == places.end() ) {
             return false;
         }
-        const bool success = ( outcome.paid || outcome.robbed ) && outcome.surrendered_value > 0;
-        if( !success && outcome.bandit_losses > 0 ) {
-            place->caution = std::min( 2, place->caution + 1 );
-        } else if( success && outcome.bandit_losses == 0 && place->caution > 0 ) {
-            --place->caution;
-        }
-        place->eligible = !outcome.searched_empty && place->caution < 2;
-        place->last_operation_id = expected_activity_id;
-        place->last_generation = expected_generation;
-        place->last_outcome = candidate.last_shakedown_outcome;
-        place->last_settled_active_turn = candidate.home_activation.active_turns;
         const int routine_delay = routine_cooldown_delay_minutes( candidate.site_id, 24 * 60 );
-        const int normal_delay = robbery_place_cooldown_minutes( candidate.site_id );
-        const int delay = !success && outcome.bandit_losses > 0 && place->caution == 1 ?
-                          normal_delay * 2 : normal_delay;
-        place->next_eligible_active_turn = place->last_settled_active_turn +
-                                           static_cast<std::int64_t>( delay ) * 60;
-        place->verified_party_power = operation.verified_response_power;
-        place->verified_danger = operation.verified_response_danger;
-        place->verified_minutes = operation.verified_response_minutes;
-        place->party_ids.clear();
-        place->casualty_ids.clear();
-        for( const character_id id : reservation.member_ids ) {
-            place->party_ids.push_back( id.get_value() );
-        }
-        for( const character_id id : reservation.casualty_ids ) {
-            place->casualty_ids.push_back( id.get_value() );
-        }
+        record_remembered_robbery_visit( candidate, *place, operation, outcome );
         candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
                     reservation.last_advanced_minutes, routine_delay );
         candidate.home_activation.settle_timer( activation_timer::routine_next,
