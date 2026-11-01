@@ -6532,6 +6532,7 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
 {
     const active_outing_state &outing = site.active_outing;
     const bool local = outing.owner == simulation_owner::local;
+    const bool initial_departure = local_pair_initial_departure_is_bound( outing );
     const int destination_waypoint = structural_outing_destination_waypoint( outing );
     const auto capture_arrivals = [&outing, &member_reads](
     std::map<character_id, tripoint_abs_ms> &arrival_positions ) {
@@ -6564,7 +6565,8 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
         ( local || outing.owner == simulation_owner::abstract ) &&
         simulation_cursor_matches( outing, expected_cursor ) && current_minutes >= 0 &&
         current_minutes >= outing.last_advanced_minutes &&
-        outing.phase == scout_phase::observing && !outing.alternate_watch_reposition_pending &&
+        ( outing.phase == scout_phase::observing || initial_departure ) &&
+        !outing.alternate_watch_reposition_pending &&
         outing.member_ids.size() == 2 && member_reads.size() == 2 &&
         outing.casualty_ids.empty() &&
         outing.resolved_member_ids.empty() && destination_waypoint >= 0 &&
@@ -6594,16 +6596,23 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
                local_handoff_commit_result::rejected;
     }
     if( !cursor_arrived &&
-        ( outing.waypoint_index < 0 || outing.waypoint_index + 1 != destination_waypoint ||
+        ( outing.waypoint_index < 0 ||
+          ( outing.waypoint_index + 1 != destination_waypoint && !initial_departure ) ||
           ( local && ( outing.local_handoff.waypoint_index != outing.waypoint_index ||
                        outing.local_handoff.route_position !=
                        outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ||
-                       outing.local_handoff.egress_omt != outing.selected_watch_omt ) ) ) ) {
+                       outing.local_handoff.egress_omt != ( initial_departure ? outing.shared_route[1] :
+                               outing.selected_watch_omt ) ) ) ) ) {
         return local_handoff_commit_result::rejected;
     }
 
     site_record candidate = site;
     active_outing_state &next = candidate.active_outing;
+    next.phase = scout_phase::observing;
+    next.actor_departure_observed = next.actor_departure_observed || initial_departure;
+    if( initial_departure && next.local_contact_minutes < 0 ) {
+        next.local_contact_minutes = current_minutes;
+    }
     next.waypoint_index = destination_waypoint;
     next.last_progress_minutes = current_minutes;
     next.last_advanced_minutes = current_minutes;
@@ -6675,7 +6684,8 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
     }
     site = std::move( candidate );
     record_scout_phase_transition_event(
-        site.active_outing, scout_phase::observing, scout_phase::observing,
+        site.active_outing, initial_departure ? scout_phase::outbound : scout_phase::observing,
+        scout_phase::observing,
         "assigned pair physically reached selected watch", current_minutes );
     return local_handoff_commit_result::applied;
 }
@@ -7203,7 +7213,8 @@ local_cohesion_plan plan_local_pair_cohesion( const site_record &site,
     const int destination_waypoint = structural_outing_destination_waypoint( outing );
     const bool forward_assembly_released = snapshot.cohesion_assembled &&
                                            ( outing.schema_version >= 10 || structural_outing_uses_frontier_route( outing ) ) &&
-                                           outing.phase == scout_phase::observing &&
+                                           ( outing.phase == scout_phase::observing ||
+                                             local_pair_initial_departure_is_bound( outing ) ) &&
                                            !outing.alternate_watch_reposition_pending && outing.waypoint_index >= 0 &&
                                            outing.waypoint_index < destination_waypoint &&
                                            snapshot.waypoint_index == outing.waypoint_index &&
@@ -7468,6 +7479,21 @@ bool claim_local_pair_site_ownership( const site_record &site,
     return true;
 }
 
+bool local_pair_initial_departure_is_bound( const active_outing_state &outing )
+{
+    return outing.kind == outing_kind::structural_sortie && outing.schema_version >= 10 &&
+           outing.owner == simulation_owner::local && outing.phase == scout_phase::outbound &&
+           outing.selected_watch_kind != structural_watch_kind::none &&
+           outing.waypoint_index == 0 && outing.actor_route_waypoint <= 0 &&
+           !outing.actor_departure_observed && outing.member_ids.size() == 2 &&
+           outing.casualty_ids.empty() && outing.resolved_member_ids.empty() &&
+           outing.shared_route.size() == 5 && outing.local_handoff.is_active() &&
+           outing.local_handoff.phase == outing.phase && outing.local_handoff.members.size() == 2 &&
+           outing.local_handoff.waypoint_index == 0 &&
+           outing.local_handoff.route_position == outing.shared_route.front() &&
+           outing.local_handoff.egress_omt == outing.shared_route[1];
+}
+
 std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const active_outing_state &outing )
 {
@@ -7485,7 +7511,7 @@ std::map<character_id, tripoint_abs_ms> local_pair_assembly_orders(
     const int destination_waypoint = structural_outing_destination_waypoint( outing );
     const bool assembled_for_forward_route = ( outing.schema_version >= 10 ||
             structural_outing_uses_frontier_route( outing ) ) &&
-            outing.phase == scout_phase::observing &&
+            ( outing.phase == scout_phase::observing || local_pair_initial_departure_is_bound( outing ) ) &&
             outing.local_handoff.cohesion_assembled &&
             outing.waypoint_index >= 0 && outing.waypoint_index < destination_waypoint &&
             outing.local_handoff.waypoint_index == outing.waypoint_index &&
@@ -7647,7 +7673,8 @@ std::map<character_id, tripoint_abs_omt> local_pair_ingress_travel_destinations(
         if( site.retired_empty_site || !outing.is_active() ||
             outing.kind != outing_kind::structural_sortie ||
             ( outing.schema_version < 10 && !structural_outing_uses_frontier_route( outing ) ) ||
-            outing.owner != simulation_owner::local || outing.phase != scout_phase::observing ||
+            outing.owner != simulation_owner::local ||
+            ( outing.phase != scout_phase::observing && !local_pair_initial_departure_is_bound( outing ) ) ||
             !simulation_owner_state_is_consistent( outing ) ||
             !outing.local_handoff.is_active() || !outing.local_handoff.cohesion_assembled ||
             outing.local_handoff.cohesion_abort_return ||
@@ -25609,6 +25636,7 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
     const active_outing_state & outing ) {
         return outing.phase == scout_phase::searching ||
                outing.phase == scout_phase::observing ||
+               local_pair_initial_departure_is_bound( outing ) ||
                outing.phase == scout_phase::burned_withdrawal ||
                outing.phase == scout_phase::returning_exposed ||
                outing.phase == scout_phase::returning_report ||

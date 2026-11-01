@@ -14618,6 +14618,9 @@ TEST_CASE( "disjoint generic homeward pair survives malformed structural lease",
     CHECK( bandit_live_world::local_pair_homeward_travel_ids( world ).empty() );
 }
 
+bandit_live_world::local_projection_reconciliation_result
+reconcile_loaded_bandit_live_world_projections_for_test();
+
 std::vector<tripoint_abs_omt> live_bandit_member_route_to_for_test(
     const npc &member, const bandit_live_world::site_record &site,
     const tripoint_abs_omt &destination );
@@ -14727,6 +14730,337 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         REQUIRE( bandit_live_world::commit_local_pair_cohesion(
                      site, plan, false, false ) );
     };
+    SECTION( "initial loaded scouts acquire departure custody without changing their bodies" ) {
+        using namespace bandit_live_world;
+        const std::string condition = GENERATE( "valid", "foreign_lease", "missing_partner",
+                                               "duplicate_assignment", "future_body", "pending_valid",
+                                               "pending_missing", "pending_foreign", "pending_future_claim",
+                                               "mixed_leader_outside", "mixed_follower_outside",
+                                               "mixed_foreign_lease", "mixed_future_body" );
+        const bool nearby_watch = GENERATE( true, false );
+        CAPTURE( condition, nearby_watch );
+        clear_avatar();
+        clear_npcs();
+        clear_vehicles();
+        const auto old_turn = calendar::turn;
+        const auto old_player = get_avatar().pos_abs_omt();
+        auto old_world = std::move( overmap_buffer.global_state.bandit_live_world );
+        std::vector<character_id> ids;
+        std::vector<std::pair<tripoint_abs_omt, oter_id>> terrain;
+        on_out_of_scope cleanup( [&]() {
+            overmap_buffer.global_state.bandit_live_world.clear();
+            for( const auto id : ids ) {
+                g->remove_npc( id );
+                if( overmap_buffer.find_npc( id ) ) {
+                    overmap_buffer.remove_npc( id );
+                }
+            }
+            clear_creatures();
+            for( const auto &entry : terrain ) {
+                overmap_buffer.ter_set( entry.first, entry.second );
+            }
+            overmap_buffer.global_state.bandit_live_world = std::move( old_world );
+            calendar::turn = old_turn;
+            g->place_player_overmap( old_player );
+        } );
+        override_option llm( "LLM_INTENT_ENABLE", "false" );
+        calendar::turn = calendar::start_of_cataclysm + 100_minutes;
+        auto world = make_world( false, true, false, nearby_watch );
+        auto &site = world.sites.front();
+        const auto anchor = site.anchor;
+        for( int y = -1; y <= 4; ++y ) {
+            for( int x = -1; x <= 5; ++x ) {
+                const auto cell = anchor + point( x, y );
+                terrain.emplace_back( cell, overmap_buffer.ter( cell ) );
+                overmap_buffer.ter_set( cell, oter_id( "field" ) );
+            }
+        }
+        g->place_player_overmap( anchor );
+        clear_map();
+        const auto origin = project_to<coords::ms>( anchor );
+        std::vector<shared_ptr_fast<npc>> actors;
+        const auto prior_ids = site.active_outing.member_ids;
+        for( std::size_t index = 0; index < prior_ids.size(); ++index ) {
+            auto actor = make_shared_fast<npc>();
+            actor->normalize();
+            actor->load_npc_template( npc_template_test_talker );
+            const auto offset = condition == "mixed_follower_outside" ? 1 - index : index;
+            actor->spawn_at_precise( origin + point( 10 + offset * 2, 10 ) );
+            actor->set_mission( NPC_MISSION_GUARD );
+            actor->on_unload();
+            auto *record = site.find_member( prior_ids[index] );
+            REQUIRE( record );
+            auto *spawn = site.find_spawn_tile( record->home_spawn_tile );
+            REQUIRE( spawn );
+            spawn->tile = actor->pos_abs();
+            record->npc_id = actor->getID();
+            record->home_spawn_tile = actor->pos_abs();
+            ids.push_back( actor->getID() );
+            actors.push_back( actor );
+            overmap_buffer.insert_npc( actor );
+        }
+        site.active_outing.member_ids = ids;
+        site.active_outing.leader_id = ids.front();
+        overmap_buffer.global_state.bandit_live_world = std::move( world );
+        auto &live = overmap_buffer.global_state.bandit_live_world.sites.front();
+        const bool mixed = condition.compare( 0, 6, "mixed_" ) == 0;
+        if( mixed ) {
+            // Use the production map shift/loader, not a missing tracker entry.
+            // A submap-aligned bubble cuts this home OMT between the two bodies.
+            get_map().save();
+            g->place_player_overmap( anchor + point( 3, 0 ) );
+        }
+        g->load_npcs();
+        if( mixed ) {
+            CAPTURE( get_map().get_abs_sub(), actors.front()->pos_abs(), actors.back()->pos_abs() );
+            REQUIRE( actors.front()->is_active() != actors.back()->is_active() );
+            REQUIRE( get_map().inbounds( actors.front()->pos_abs() ) !=
+                     get_map().inbounds( actors.back()->pos_abs() ) );
+        }
+        for( const auto &actor : actors ) {
+            if( !mixed ) {
+                REQUIRE( actor->is_active() );
+            }
+            REQUIRE( g->find_npc( actor->getID() ) == actor.get() );
+        }
+        if( condition == "foreign_lease" || condition == "mixed_foreign_lease" ) {
+            auto lease = actors.back()->get_bandit_live_world_projection_lease();
+            lease.present = true;
+            lease.site_id = "foreign";
+            actors.back()->set_bandit_live_world_projection_lease( lease );
+        } else if( condition == "missing_partner" ) {
+            g->remove_npc( ids.back() );
+            overmap_buffer.remove_npc( ids.back() );
+        } else if( condition == "duplicate_assignment" ) {
+            auto other = live;
+            other.site_id += "-foreign";
+            overmap_buffer.global_state.bandit_live_world.sites.push_back( other );
+        } else if( condition == "future_body" || condition == "mixed_future_body" ) {
+            calendar::turn += 1_seconds;
+            actors.back()->on_unload();
+            calendar::turn -= 1_seconds;
+        }
+        const auto before = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        const auto first_position = actors.front()->pos_abs();
+        const auto second_position = actors.back()->pos_abs();
+        const auto first_clock = actors.front()->get_last_updated();
+        const auto second_clock = actors.back()->get_last_updated();
+        const bool admitted = materialize_live_bandit_structural_handoffs_for_test();
+        CHECK( actors.front()->pos_abs() == first_position );
+        CHECK( actors.back()->pos_abs() == second_position );
+        CHECK( actors.front()->get_last_updated() == first_clock );
+        CHECK( actors.back()->get_last_updated() == second_clock );
+        const bool pending_load = condition.compare( 0, 8, "pending_" ) == 0;
+        const bool mixed_valid = condition == "mixed_leader_outside" ||
+                                 condition == "mixed_follower_outside";
+        if( condition != "valid" && !pending_load && !mixed_valid ) {
+            CHECK_FALSE( admitted );
+            CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
+            return;
+        }
+        REQUIRE( admitted );
+        auto &departing = overmap_buffer.global_state.bandit_live_world.sites.front();
+        CHECK( departing.active_outing.owner == simulation_owner::local );
+        CHECK( departing.active_outing.phase == scout_phase::outbound );
+        CHECK( departing.active_outing.waypoint_index == 0 );
+        CHECK_FALSE( departing.active_outing.actor_departure_observed );
+        CHECK( actors.front()->pos_abs() == first_position );
+        CHECK( actors.back()->pos_abs() == second_position );
+        CHECK( actors.front()->get_last_updated() == first_clock );
+        CHECK( actors.back()->get_last_updated() == second_clock );
+        if( mixed ) {
+            CHECK( actors.front()->is_active() != actors.back()->is_active() );
+        } else {
+            CHECK( actors.front()->is_active() );
+            CHECK( actors.back()->is_active() );
+        }
+        for( const auto &actor : actors ) {
+            CHECK( overmap_buffer.find_npc( actor->getID() ).get() == actor.get() );
+            CHECK( g->find_npc( actor->getID() ) == actor.get() );
+            CHECK( actor->get_bandit_live_world_projection_lease().present );
+        }
+        const auto committed = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        CHECK_FALSE( materialize_live_bandit_structural_handoffs_for_test() );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == committed );
+        CHECK( local_pair_initial_departure_is_bound( departing.active_outing ) );
+        CHECK( departing.active_outing.assessment.observation_started_minutes == -1 );
+
+        if( pending_load ) {
+            // Reconstruct a pending owner, then use the actual native load
+            // reconciler with its real active/persistent NPC claims. A JSON
+            // object alone grants neither a native body nor durable credit.
+            CHECK( departing.active_outing.crossing.pending() );
+            const auto pending_site_id = departing.site_id;
+            const auto saved = serialize_world( overmap_buffer.global_state.bandit_live_world );
+            overmap_buffer.global_state.bandit_live_world.deserialize(
+                json_loader::from_string( saved ).get_object() );
+            auto *loaded = overmap_buffer.global_state.bandit_live_world.find_site( pending_site_id );
+            REQUIRE( loaded );
+            const auto generation = loaded->active_outing.generation;
+            const auto epoch = loaded->active_outing.handoff_epoch;
+            if( condition == "pending_missing" ) {
+                g->remove_npc( ids.back() );
+                overmap_buffer.remove_npc( ids.back() );
+            } else if( condition != "pending_valid" ) {
+                auto lease = actors.back()->get_bandit_live_world_projection_lease();
+                if( condition == "pending_foreign" ) {
+                    lease.site_id = "foreign";
+                } else {
+                    ++lease.last_advanced_minutes;
+                }
+                actors.back()->set_bandit_live_world_projection_lease( lease );
+            }
+            const auto result = reconcile_loaded_bandit_live_world_projections_for_test();
+            if( condition == "pending_valid" ) {
+                CHECK( result != local_projection_reconciliation_result::rejected );
+                CHECK_FALSE( loaded->active_outing.local_projection_reconciliation_rejected );
+            } else {
+                CHECK( result == local_projection_reconciliation_result::rejected );
+                CHECK( loaded->active_outing.local_projection_reconciliation_rejected );
+            }
+            CHECK( loaded->active_outing.owner == simulation_owner::local );
+            CHECK( loaded->active_outing.phase == scout_phase::outbound );
+            CHECK( loaded->active_outing.generation == generation );
+            CHECK( loaded->active_outing.handoff_epoch == epoch );
+            CHECK_FALSE( materialize_live_bandit_structural_handoffs_for_test() );
+            CHECK( actors.front()->pos_abs() == first_position );
+            CHECK( actors.back()->pos_abs() == second_position );
+            CHECK( actors.front()->get_last_updated() == first_clock );
+            CHECK( actors.back()->get_last_updated() == second_clock );
+            return;
+        }
+        // Save the actual loaded departure before any NPC step. Reentry must
+        // retain the owner and physical bodies, not regenerate entry slots.
+        REQUIRE( world_generator );
+        REQUIRE( world_generator->active_world );
+        const auto world_name = world_generator->active_world->world_name;
+        const auto site_id = departing.site_id;
+        CHECK( departing.active_outing.crossing.pending() );
+        const auto json_only = round_trip_world( overmap_buffer.global_state.bandit_live_world );
+        REQUIRE( json_only.find_site( site_id ) );
+        CHECK( json_only.find_site( site_id )->active_outing.crossing.pending() );
+        CHECK_FALSE( json_only.find_site( site_id )->active_outing.crossing.persistence_acknowledged );
+        REQUIRE( g->save() );
+        CHECK( departing.active_outing.crossing.persistence_acknowledged );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+        auto *reloaded = overmap_buffer.global_state.bandit_live_world.find_site( site_id );
+        REQUIRE( reloaded );
+        REQUIRE_FALSE( reloaded->active_outing.local_projection_reconciliation_rejected );
+        CHECK( reloaded->active_outing.crossing.persistence_acknowledged );
+        REQUIRE( local_pair_initial_departure_is_bound( reloaded->active_outing ) );
+        for( std::size_t index = 0; index < ids.size(); ++index ) {
+            actors[index] = overmap_buffer.find_npc( ids[index] );
+            REQUIRE( actors[index] );
+            CHECK( actors[index]->pos_abs() == ( index == 0 ? first_position : second_position ) );
+            CHECK( actors[index]->get_last_updated() == ( index == 0 ? first_clock : second_clock ) );
+            CHECK( actors[index]->get_bandit_live_world_projection_lease().present );
+        }
+        // The actual outer scheduler must retain this owner rather than
+        // handing its active bodies to the abstract reader on a repeat call.
+        process_overmap_npc_move_for_test();
+        REQUIRE( local_pair_initial_departure_is_bound( reloaded->active_outing ) );
+        CHECK( actors.front()->pos_abs() == first_position );
+        CHECK( actors.back()->pos_abs() == second_position );
+        // The real NPC action loop, including survival/combat priority, owns
+        // every step. The transfer itself did not supply travel or watch time.
+        bool moved = false;
+        for( int turn = 0; turn < ( nearby_watch && !mixed ? 160 : 3600 ); ++turn ) {
+            std::vector<tripoint_abs_ms> before_step;
+            for( const auto &actor : actors ) {
+                before_step.push_back( actor->pos_abs() );
+            }
+            calendar::turn += 1_seconds;
+            if( calendar::once_every( 5_minutes ) ) {
+                int first_steps = 0;
+                int second_steps = 0;
+                auto first_after = actors.front()->pos_abs();
+                auto second_after = actors.back()->pos_abs();
+                for( int callback = 0; callback < 3; ++callback ) {
+                    process_overmap_npc_move_for_test();
+                    first_steps += actors.front()->pos_abs() != first_after;
+                    second_steps += actors.back()->pos_abs() != second_after;
+                    first_after = actors.front()->pos_abs();
+                    second_after = actors.back()->pos_abs();
+                }
+                // Route preparation may need a subsequent callback. The one
+                // elapsed cadence can still fund at most one physical OMT step.
+                CHECK( first_steps <= 1 );
+                CHECK( second_steps <= 1 );
+                const auto first_body_after = actors.front()->get_last_updated();
+                const auto second_body_after = actors.back()->get_last_updated();
+                process_overmap_npc_move_for_test();
+                CHECK( actors.front()->pos_abs() == first_after );
+                CHECK( actors.back()->pos_abs() == second_after );
+                CHECK( actors.front()->get_last_updated() == first_body_after );
+                CHECK( actors.back()->get_last_updated() == second_body_after );
+            }
+            process_monsters_and_npcs_turn_for_test();
+            for( std::size_t index = 0; index < actors.size(); ++index ) {
+                moved |= before_step[index] != actors[index]->pos_abs();
+            }
+            if( std::all_of( actors.begin(), actors.end(), [&]( const auto & actor ) {
+            return actor->pos_abs_omt() == reloaded->active_outing.selected_watch_omt;
+            } ) ) {
+                break;
+            }
+            REQUIRE( reloaded->active_outing.owner == simulation_owner::local );
+            CHECK( reloaded->active_outing.phase == scout_phase::outbound );
+            CHECK( reloaded->active_outing.assessment.observation_started_minutes == -1 );
+        }
+        CHECK( moved );
+        if( reloaded->active_outing.owner == simulation_owner::abstract ) {
+            // A complete real remote watch arrival can immediately consume
+            // the normal dematerializer; no Local custody is required after it.
+            CHECK_FALSE( nearby_watch );
+            CHECK( reloaded->active_outing.local_handoff.is_abstract_resume() );
+            CHECK( crossing_receipt_has_current_owner( reloaded->active_outing ) );
+            for( const auto &actor : actors ) {
+                CHECK_FALSE( actor->is_active() );
+                CHECK_FALSE( actor->get_bandit_live_world_projection_lease().present );
+            }
+        } else {
+            CHECK( reloaded->active_outing.owner == simulation_owner::local );
+        }
+        const int observation_started = reloaded->active_outing.assessment.observation_started_minutes;
+        CHECK( ( observation_started == -1 ||
+                 observation_started == to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) ) );
+        std::ostringstream departure_state;
+        departure_state << "owner=" << to_string( reloaded->active_outing.owner )
+                        << " phase=" << to_string( reloaded->active_outing.phase )
+                        << " waypoint=" << reloaded->active_outing.waypoint_index
+                        << " native_waypoint=" << reloaded->active_outing.actor_route_waypoint
+                        << " assembled=" << reloaded->active_outing.local_handoff.cohesion_assembled
+                        << " quarantined=" << reloaded->active_outing.local_projection_reconciliation_rejected
+                        << " cursor=" << reloaded->active_outing.last_advanced_minutes
+                        << " committed=" << reloaded->active_outing.local_handoff.committed_minutes
+                        << " ingress=" << local_pair_ingress_travel_destinations(
+                            overmap_buffer.global_state.bandit_live_world ).size()
+                        << " assembly=" << local_pair_assembly_orders( reloaded->active_outing ).size();
+        for( const auto &actor : actors ) {
+            departure_state << " actor=" << actor->getID().get_value()
+                            << " position=" << actor->pos_abs().to_string()
+                            << " active=" << actor->is_active()
+                            << " mission=" << static_cast<int>( actor->mission )
+                            << " goal=" << actor->goal.to_string()
+                            << " route_size=" << actor->omt_path.size()
+                            << " moves=" << actor->get_moves();
+        }
+        INFO( departure_state.str() );
+        REQUIRE( std::all_of( actors.begin(), actors.end(), [&]( const auto & actor ) {
+        return actor->pos_abs_omt() == reloaded->active_outing.selected_watch_omt;
+        } ) );
+        if( reloaded->active_outing.phase == scout_phase::outbound ) {
+            REQUIRE( complete_loaded_live_bandit_route_arrivals_for_test() );
+        }
+        CHECK( reloaded->active_outing.phase == scout_phase::observing );
+        CHECK( reloaded->active_outing.waypoint_index == 2 );
+        CHECK( reloaded->active_outing.actor_departure_observed );
+        const auto arrival = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        CHECK_FALSE( complete_loaded_live_bandit_route_arrivals_for_test() );
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == arrival );
+    }
     SECTION( "saved homeward pair beyond an unstageable watch binds its actual abstract positions" ) {
         clear_avatar();
         clear_npcs();
@@ -45507,8 +45841,6 @@ TEST_CASE( "visible roof light and smoke reach the saved watch report as distinc
     CHECK( bounded_party.clears_margin );
 }
 
-bandit_live_world::local_projection_reconciliation_result
-reconcile_loaded_bandit_live_world_projections_for_test();
 
 // Each retained-save case starts with its own NPC index.  Other native tests can
 // leave inactive projections outside their loaded bubble; those are not this fixture.
@@ -49869,21 +50201,25 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
                                   reloaded, require_current_simulation_cursor( reloaded ),
                                   arrived + 1, transfer, reloaded.active_outing.cargo );
             REQUIRE( plan.valid );
-            // A JSON reload alone is not the native save acknowledgment. Preserve
-            // the pending-crossing guard, then use the game's existing save writer.
-            const auto pending = serialize_world( world );
-            CHECK( bandit_live_world::commit_local_pair_dematerialization( reloaded, plan,
-            []( const auto & ) {
-                return true;
-            }, []( const auto & ) {} ) ==
-            bandit_live_world::local_handoff_commit_result::rejected );
-            CHECK( serialize_world( world ) == pending );
-            REQUIRE( world.acknowledge_persisted_crossings().size() == 1 );
+            // These successful callbacks model an already authenticated live
+            // owner, not a native load or game-save writer. JSON reconstruction
+            // leaves durability pending; it must not block live continuation.
+            CHECK( reloaded.active_outing.crossing.pending() );
+            CHECK_FALSE( reloaded.active_outing.crossing.persistence_acknowledged );
             REQUIRE( bandit_live_world::commit_local_pair_dematerialization( reloaded, plan,
             []( const auto & ) {
                 return true;
             }, []( const auto & ) {} ) ==
             bandit_live_world::local_handoff_commit_result::applied );
+            CHECK( reloaded.active_outing.crossing.pending() );
+            CHECK_FALSE( reloaded.active_outing.crossing.persistence_acknowledged );
+            const auto transferred = serialize_world( world );
+            CHECK( bandit_live_world::commit_local_pair_dematerialization( reloaded, plan,
+            []( const auto & ) {
+                return true;
+            }, []( const auto & ) {} ) ==
+            bandit_live_world::local_handoff_commit_result::unchanged );
+            CHECK( serialize_world( world ) == transferred );
             CHECK( reloaded.active_outing.owner == bandit_live_world::simulation_owner::abstract );
             CHECK( reloaded.active_outing.assessment.observation_started_minutes == arrived );
             CHECK( reloaded.active_outing.waypoint_index == 2 );
