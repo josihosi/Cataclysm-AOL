@@ -3344,8 +3344,18 @@ snapshot.cohesion_reroutes_used > local_pair_reroute_cap ||
             living_exit_positions.push_back( member.exit_position );
         }
     }
+    // Initial scouts already exist at their own home positions.  They assemble
+    // through the native cohesion motor; their entry positions need not be a
+    // pre-assembled pair.  Later handoffs still require a cohesive entry.
+    const bool initial_home_departure = outing.schema_version >= 10 &&
+                                        snapshot.phase == scout_phase::outbound &&
+                                        snapshot.waypoint_index == 0 &&
+                                        !outing.shared_route.empty() &&
+                                        snapshot.route_position == outing.shared_route.front() &&
+                                        outing.selected_watch_kind != structural_watch_kind::none;
     if( !abstract_homeward_pair && living_entry_positions.size() == 2 ) {
-        if( rl_dist( living_entry_positions[0], living_entry_positions[1] ) >
+        if( !initial_home_departure &&
+            rl_dist( living_entry_positions[0], living_entry_positions[1] ) >
             local_pair_cohesion_radius_ms ) {
             return refuse( "snapshot_living_entry_radius" );
         }
@@ -5019,8 +5029,15 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
         entry_positions.push_back( read_iter->entry_position );
         staging_positions.push_back( read_iter->staging_position );
     }
+    const bool initial_home_departure = outing.schema_version >= 10 &&
+                                        outing.phase == scout_phase::outbound &&
+                                        outing.waypoint_index == 0 &&
+                                        outing.handoff_epoch == 0 &&
+                                        outing.selected_watch_kind != structural_watch_kind::none &&
+                                        !outing.actor_departure_observed;
     if( entry_positions.size() == 2 &&
-        ( rl_dist( entry_positions[0], entry_positions[1] ) > local_pair_cohesion_radius_ms ||
+        ( ( !initial_home_departure &&
+            rl_dist( entry_positions[0], entry_positions[1] ) > local_pair_cohesion_radius_ms ) ||
           rl_dist( staging_positions[0], staging_positions[1] ) >
           local_pair_cohesion_radius_ms ) ) {
         plan.notes.push_back( "local handoff blocked: pair slots are outside cohesion radius" );

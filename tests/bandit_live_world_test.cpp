@@ -14734,7 +14734,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         using namespace bandit_live_world;
         const std::string condition = GENERATE( "post_assembly_mixed", "post_assembly_mixed_incapacitated",
                                                "post_assembly_mixed_foreign", "post_assembly_mixed_hostile",
-                                               "post_assembly_mixed_blocked", "valid", "foreign_lease", "missing_partner",
+                                               "post_assembly_mixed_blocked", "valid", "separated_at_home", "foreign_lease", "missing_partner",
                                                "duplicate_assignment", "future_body", "pending_valid",
                                                "pending_missing", "pending_foreign", "pending_future_claim",
                                                "mixed_leader_outside", "mixed_follower_outside",
@@ -14810,7 +14810,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             actor->normalize();
             actor->load_npc_template( npc_template_test_talker );
             const auto offset = condition == "mixed_follower_outside" ? 1 - index : index;
-            actor->spawn_at_precise( origin + point( 10 + offset * 2, 10 ) );
+            actor->spawn_at_precise( origin + point( condition == "separated_at_home" ?
+                                     2 + offset * 11 : 10 + offset * 2, 10 ) );
             actor->set_mission( NPC_MISSION_GUARD );
             actor->on_unload();
             auto *record = site.find_member( prior_ids[index] );
@@ -14878,7 +14879,8 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const bool pending_load = condition.compare( 0, 8, "pending_" ) == 0;
         const bool mixed_valid = condition == "mixed_leader_outside" ||
                                  condition == "mixed_follower_outside";
-        if( condition != "valid" && !pending_load && !mixed_valid && !post_assembly_mixed ) {
+        if( condition != "valid" && condition != "separated_at_home" && !pending_load &&
+            !mixed_valid && !post_assembly_mixed ) {
             CHECK_FALSE( admitted );
             CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
             return;
@@ -15926,6 +15928,15 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         duplicate[1].entry_position = duplicate[0].entry_position;
         CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
                          site, *cursor, 100, duplicate ).valid );
+
+        // Ordinary handoffs still require a cohesive physical entry pair.
+        std::vector<bandit_live_world::local_handoff_member_read> separated_entry = make_reads( site );
+        REQUIRE( separated_entry.size() == 2 );
+        separated_entry[1].entry_position = separated_entry[0].entry_position + point( 11, 0 );
+        CHECK( project_to<coords::omt>( separated_entry[1].entry_position ) ==
+               project_to<coords::omt>( separated_entry[0].entry_position ) );
+        CHECK_FALSE( bandit_live_world::plan_local_pair_handoff(
+                         site, *cursor, 100, separated_entry ).valid );
 
         std::vector<bandit_live_world::local_handoff_member_read> split_slots =
             make_reads( site );
