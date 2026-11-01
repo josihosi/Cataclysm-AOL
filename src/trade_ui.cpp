@@ -267,6 +267,11 @@ void add_encounter_trade_sources( inventory_selector &selector, Character &payer
     selector.add_character_items( payer );
     if( item_radius >= 0 ) {
         for( const auto &tile : here.points_in_radius( payer.pos_bub(), item_radius, z_radius ) ) {
+            // points_in_radius is square; exclude tiles outside the same
+            // configured horizontal distance used by encounter_goods_reachable.
+            if( rl_dist( payer.pos_bub().xy(), tile.xy() ) > item_radius ) {
+                continue;
+            }
             if( !here.inbounds( tile ) ||
                 ( !here.supports_zlevels() && tile.z() != payer.pos_bub().z() ) ) {
                 if( complete ) {

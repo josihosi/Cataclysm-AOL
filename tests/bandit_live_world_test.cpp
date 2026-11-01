@@ -54418,6 +54418,23 @@ TEST_CASE( "real empty payment contact settles exact remembered place once",
     REQUIRE( checked_sources.empty() );
     REQUIRE( complete );
     map &here = get_map();
+    {
+        // The map iterator is square, but native payment reach is circular
+        // when CIRCLEDIST is enabled. An out-of-range object must not turn a
+        // complete in-range scan into an inaccessible-source result.
+        const bool previous_trigdist = trigdist;
+        trigdist = true;
+        on_out_of_scope restore_distance( [&]() { trigdist = previous_trigdist; } );
+        const tripoint_bub_ms outside = get_avatar().pos_bub() + point( 25, 20 );
+        REQUIRE( here.inbounds( outside ) );
+        REQUIRE( rl_dist( outside.xy(), get_avatar().pos_bub().xy() ) > 30 );
+        here.add_item_or_charges( outside, item( itype_id( "m240" ) ) );
+        complete = false;
+        CHECK( encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2, true,
+                                      &complete ).empty() );
+        CHECK( complete );
+        here.i_clear( outside );
+    }
     const tripoint_bub_ms goods = get_avatar().pos_bub() + point( 6, 0 );
     here.add_item_or_charges( goods, item( itype_id( "m240" ) ) );
     complete = false;
