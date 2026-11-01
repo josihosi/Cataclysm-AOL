@@ -14732,14 +14732,29 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
     };
     SECTION( "initial loaded scouts acquire departure custody without changing their bodies" ) {
         using namespace bandit_live_world;
-        const std::string condition = GENERATE( "valid", "foreign_lease", "missing_partner",
+        const std::string condition = GENERATE( "post_assembly_mixed", "post_assembly_mixed_incapacitated",
+                                               "post_assembly_mixed_foreign", "post_assembly_mixed_hostile",
+                                               "post_assembly_mixed_blocked", "valid", "foreign_lease", "missing_partner",
                                                "duplicate_assignment", "future_body", "pending_valid",
                                                "pending_missing", "pending_foreign", "pending_future_claim",
                                                "mixed_leader_outside", "mixed_follower_outside",
                                                "mixed_foreign_lease", "mixed_future_body" );
         const bool nearby_watch = GENERATE( true, false );
         CAPTURE( condition, nearby_watch );
+        const bool post_assembly_mixed = condition.compare( 0, 19, "post_assembly_mixed" ) == 0;
+        if( post_assembly_mixed && !nearby_watch ) {
+            return; // This boundary fixture is constructed for the near watch geometry.
+        }
         clear_avatar();
+        if( post_assembly_mixed ) {
+            // The observer must not become the scouts' incidental combat target.
+            get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+        }
+        on_out_of_scope restore_observer( [&]() {
+            if( post_assembly_mixed ) {
+                get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+            }
+        } );
         clear_npcs();
         clear_vehicles();
         const auto old_turn = calendar::turn;
@@ -14778,6 +14793,16 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         g->place_player_overmap( anchor );
         clear_map();
         const auto origin = project_to<coords::ms>( anchor );
+        if( post_assembly_mixed ) {
+            // Constrain the native staging selector to adjacent tiles on opposite
+            // sides of a real submap boundary; the route remains walkable.
+            for( int x = 0; x < 24; ++x ) {
+                if( x != 10 && x != 11 ) {
+                    get_map().ter_set( get_map().get_bub( origin + point( x, 23 ) ),
+                                       ter_str_id( "t_wall" ) );
+                }
+            }
+        }
         std::vector<shared_ptr_fast<npc>> actors;
         const auto prior_ids = site.active_outing.member_ids;
         for( std::size_t index = 0; index < prior_ids.size(); ++index ) {
@@ -14853,7 +14878,7 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const bool pending_load = condition.compare( 0, 8, "pending_" ) == 0;
         const bool mixed_valid = condition == "mixed_leader_outside" ||
                                  condition == "mixed_follower_outside";
-        if( condition != "valid" && !pending_load && !mixed_valid ) {
+        if( condition != "valid" && !pending_load && !mixed_valid && !post_assembly_mixed ) {
             CHECK_FALSE( admitted );
             CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == before );
             return;
@@ -14966,19 +14991,95 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         // The real NPC action loop, including survival/combat priority, owns
         // every step. The transfer itself did not supply travel or watch time.
         bool moved = false;
-        for( int turn = 0; turn < ( nearby_watch && !mixed ? 160 : 3600 ); ++turn ) {
+        bool observed_post_assembly_mixed = false;
+        int split_turn = -1;
+        std::vector<tripoint_abs_ms> split_positions;
+        std::vector<int> split_hp;
+        std::size_t split_inactive_index = 0;
+        bool inactive_reentered = false;
+        bool boundary_blocked = false;
+        bool hostile_spawned = false;
+        std::string split_trace;
+        for( int turn = 0; turn < ( nearby_watch && !mixed && !post_assembly_mixed ? 160 : 3600 ); ++turn ) {
             std::vector<tripoint_abs_ms> before_step;
             for( const auto &actor : actors ) {
                 before_step.push_back( actor->pos_abs() );
             }
             calendar::turn += 1_seconds;
             if( calendar::once_every( 5_minutes ) ) {
+                if( condition == "post_assembly_mixed_blocked" && split_turn >= 0 &&
+                    !boundary_blocked ) {
+                    const tripoint_abs_ms origin = project_to<coords::ms>(
+                                                       actors[split_inactive_index]->pos_abs_omt() );
+                    int blocked_tiles = 0;
+                    for( int y = 0; y < 24; ++y ) {
+                        for( int x = 0; x < 24; ++x ) {
+                            const auto point = origin + ::point( x, y );
+                            if( !get_map().inbounds( point ) ||
+                                std::any_of( actors.begin(), actors.end(), [&]( const auto &actor ) {
+                                    return actor->pos_abs() == point;
+                                } ) ) {
+                                continue;
+                            }
+                            const std::array<::point, 4> directions = {
+                                ::point( 1, 0 ), ::point( -1, 0 ), ::point( 0, 1 ), ::point( 0, -1 )
+                            };
+                            if( std::any_of( directions.begin(), directions.end(), [&]( const auto &dir ) {
+                                return !get_map().inbounds( point + dir );
+                            } ) ) {
+                                get_map().ter_set( get_map().get_bub( point ), ter_str_id( "t_wall" ) );
+                                ++blocked_tiles;
+                            }
+                        }
+                    }
+                    REQUIRE( blocked_tiles > 0 );
+                    boundary_blocked = true;
+                }
+                if( condition == "post_assembly_mixed_hostile" && split_turn >= 0 &&
+                    !hostile_spawned ) {
+                    // Introduce the live threat at this callback, before any
+                    // Native actor can acquire it or raise a faction alarm.
+                    const tripoint_abs_ms threat_position = actors[split_inactive_index]->pos_abs() +
+                                                           point( 2, 0 );
+                    REQUIRE( get_map().inbounds( threat_position ) );
+                    monster &threat = spawn_test_monster( "mon_zombie", get_map().get_bub( threat_position ) );
+                    REQUIRE( actors[split_inactive_index]->attitude_to( threat ) == Creature::Attitude::HOSTILE );
+                    hostile_spawned = true;
+                }
                 int first_steps = 0;
                 int second_steps = 0;
                 auto first_after = actors.front()->pos_abs();
                 auto second_after = actors.back()->pos_abs();
                 for( int callback = 0; callback < 3; ++callback ) {
-                    process_overmap_npc_move_for_test();
+                    if( post_assembly_mixed && split_turn >= 0 && split_trace.empty() ) {
+                        bandit_live_world_probe::session trace(
+                            bandit_live_world_probe::collection_mode::transition_events );
+                        std::ostringstream state;
+                        for( const auto &actor : actors ) {
+                            state << "actor=" << actor->getID().get_value()
+                                  << " position=" << actor->pos_abs().to_string()
+                                  << " active=" << actor->is_active()
+                                  << " inbounds=" << get_map().inbounds( actor->pos_abs() )
+                                  << " mission=" << static_cast<int>( actor->mission )
+                                  << " goal=" << actor->goal.to_string()
+                                  << " omt_path=" << actor->omt_path.size() << "\n";
+                        }
+                        process_overmap_npc_move_for_test();
+                        split_trace = state.str();
+                        bool scout_event = false;
+                        for( const auto &event : trace.result().transition_events ) {
+                            if( event.transition.find( "scout" ) != std::string::npos ) {
+                                scout_event = true;
+                                split_trace += event.transition + ":" + event.outcome + ":" +
+                                               event.reason + "\n";
+                            }
+                        }
+                        if( !scout_event ) {
+                            split_trace += "no scout transition recorded";
+                        }
+                    } else {
+                        process_overmap_npc_move_for_test();
+                    }
                     first_steps += actors.front()->pos_abs() != first_after;
                     second_steps += actors.back()->pos_abs() != second_after;
                     first_after = actors.front()->pos_abs();
@@ -14996,9 +15097,67 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                 CHECK( actors.front()->get_last_updated() == first_body_after );
                 CHECK( actors.back()->get_last_updated() == second_body_after );
             }
+            if( hostile_spawned ) {
+                break; // The caller has made its refusal before Native target acquisition.
+            }
             process_monsters_and_npcs_turn_for_test();
             for( std::size_t index = 0; index < actors.size(); ++index ) {
                 moved |= before_step[index] != actors[index]->pos_abs();
+            }
+            if( post_assembly_mixed && !observed_post_assembly_mixed &&
+                reloaded->active_outing.local_handoff.cohesion_assembled &&
+                reloaded->active_outing.phase == scout_phase::outbound ) {
+                // Shift through the real map/loader after native assembly.  A
+                // valid split must come from map bounds, not a missing tracker.
+                get_map().save();
+                const std::vector<point> observer_offsets = {
+                    point( 3, 0 ), point( -3, 0 ), point( 0, 3 ), point( 0, -3 )
+                };
+                std::ostringstream shifts;
+                for( const point &offset : observer_offsets ) {
+                    g->place_player_overmap( anchor + offset );
+                    g->load_npcs();
+                    shifts << " offset=" << offset.to_string()
+                           << " map=" << get_map().get_abs_sub().to_string()
+                           << " first=" << actors.front()->pos_abs().to_string()
+                           << "/" << actors.front()->is_active()
+                           << "/" << get_map().inbounds( actors.front()->pos_abs() )
+                           << " second=" << actors.back()->pos_abs().to_string()
+                           << "/" << actors.back()->is_active()
+                           << "/" << get_map().inbounds( actors.back()->pos_abs() );
+                    if( actors.front()->is_active() != actors.back()->is_active() &&
+                        get_map().inbounds( actors.front()->pos_abs() ) !=
+                        get_map().inbounds( actors.back()->pos_abs() ) ) {
+                        observed_post_assembly_mixed = true;
+                        break;
+                    }
+                }
+                INFO( shifts.str() );
+                REQUIRE( observed_post_assembly_mixed );
+                split_turn = turn;
+                split_inactive_index = actors.front()->is_active() ? 1 : 0;
+                if( condition == "post_assembly_mixed_incapacitated" ) {
+                    actors[split_inactive_index]->add_effect( efftype_id( "stunned" ), 30_minutes );
+                } else if( condition == "post_assembly_mixed_foreign" ) {
+                    auto lease = actors[split_inactive_index]->get_bandit_live_world_projection_lease();
+                    lease.site_id = "foreign";
+                    actors[split_inactive_index]->set_bandit_live_world_projection_lease( lease );
+                }
+                for( const auto &actor : actors ) {
+                    split_positions.push_back( actor->pos_abs() );
+                    split_hp.push_back( actor->hp_percentage() );
+                }
+                CHECK( overmap_buffer.find_npc( actors.front()->getID() ).get() == actors.front().get() );
+                CHECK( overmap_buffer.find_npc( actors.back()->getID() ).get() == actors.back().get() );
+                CHECK( actors.front()->get_bandit_live_world_projection_lease().present );
+                CHECK( actors.back()->get_bandit_live_world_projection_lease().present );
+            }
+            if( post_assembly_mixed && split_turn >= 0 ) {
+                inactive_reentered |= actors[split_inactive_index]->is_active() &&
+                                      get_map().inbounds( actors[split_inactive_index]->pos_abs() );
+                if( turn - split_turn >= 600 ) {
+                    break;
+                }
             }
             if( std::all_of( actors.begin(), actors.end(), [&]( const auto & actor ) {
             return actor->pos_abs_omt() == reloaded->active_outing.selected_watch_omt;
@@ -15010,6 +15169,38 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
             CHECK( reloaded->active_outing.assessment.observation_started_minutes == -1 );
         }
         CHECK( moved );
+        if( post_assembly_mixed ) {
+            REQUIRE( observed_post_assembly_mixed );
+            if( condition == "post_assembly_mixed_blocked" ) {
+                REQUIRE( boundary_blocked );
+            } else if( condition == "post_assembly_mixed_hostile" ) {
+                REQUIRE( hostile_spawned );
+            }
+            REQUIRE( split_positions.size() == actors.size() );
+            INFO( split_trace );
+            if( condition == "post_assembly_mixed_blocked" ) {
+                CHECK( split_trace.find( "native_route_empty_or_unsafe" ) != std::string::npos );
+            } else if( condition == "post_assembly_mixed_hostile" ) {
+                CHECK( ( split_trace.find( "visible_local_monster" ) != std::string::npos ||
+                         split_trace.find( "local_monster_geometry_unavailable" ) != std::string::npos ) );
+            }
+            for( std::size_t index = 0; index < actors.size(); ++index ) {
+                CAPTURE( index, split_positions[index], actors[index]->pos_abs(),
+                         actors[index]->is_active(), actors[index]->mission );
+                REQUIRE_FALSE( actors[index]->is_dead_state() );
+                REQUIRE( actors[index]->hp_percentage() == split_hp[index] );
+                if( index == split_inactive_index ) {
+                    if( condition == "post_assembly_mixed" ) {
+                        CHECK( actors[index]->pos_abs() != split_positions[index] );
+                        CHECK( inactive_reentered );
+                    } else {
+                        CHECK( actors[index]->pos_abs() == split_positions[index] );
+                        CHECK_FALSE( inactive_reentered );
+                    }
+                }
+            }
+            return;
+        }
         if( reloaded->active_outing.owner == simulation_owner::abstract ) {
             // A complete real remote watch arrival can immediately consume
             // the normal dematerializer; no Local custody is required after it.

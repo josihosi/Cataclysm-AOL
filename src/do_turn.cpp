@@ -770,7 +770,7 @@ int live_bandit_scout_destination_index( const bandit_live_world::active_outing_
 bool live_bandit_route_local_rendezvous(
     npc &member, const bandit_live_world::site_record &site,
     const tripoint_abs_ms &anchor, int elapsed_minutes, bool execute_motion,
-    int &routed_path_steps );
+    int &routed_path_steps, bool mixed_ingress_reentry = false );
 
 
 bandit_live_world_projection_lease live_bandit_projection_lease(
@@ -16945,7 +16945,7 @@ bool live_bandit_local_step_has_known_dangerous_trap(
 bool live_bandit_route_local_rendezvous(
     npc &member, const bandit_live_world::site_record &site,
     const tripoint_abs_ms &anchor, const int elapsed_minutes, const bool execute_motion,
-    int &routed_path_steps )
+    int &routed_path_steps, const bool mixed_ingress_reentry )
 {
     const auto &outing = site.active_outing;
     const auto refuse = [&]( const char *guard ) {
@@ -16969,12 +16969,18 @@ bool live_bandit_route_local_rendezvous(
                                       outing.local_handoff.members.end(), [&]( const auto & entry ) {
         return entry.npc_id == member.getID() && !entry.dead && entry.staging_position == anchor;
     } );
-    const tripoint_abs_omt route_omt = initial_departure ? site.anchor : outing.alternate_watch_omt;
-    const bool target_bound = initial_departure ? snapshot != outing.local_handoff.members.end() :
+    const tripoint_abs_omt route_omt = mixed_ingress_reentry ? member.pos_abs_omt() :
+                                      initial_departure ? site.anchor : outing.alternate_watch_omt;
+    const bool target_bound = mixed_ingress_reentry ?
+                              bandit_live_world::local_pair_initial_departure_is_bound( outing ) &&
+                              outing.local_handoff.cohesion_assembled && !member.is_active() &&
+                              std::find( outing.shared_route.begin(), outing.shared_route.end(), route_omt ) !=
+                              outing.shared_route.end() :
+                              initial_departure ? snapshot != outing.local_handoff.members.end() :
                               outing.alternate_watch_reposition_pending && leader &&
                               member.getID() != leader->getID() && anchor == leader->pos_abs();
     if( !target_bound || !leader || member.pos_abs_omt() != route_omt ||
-        leader->pos_abs_omt() != route_omt ||
+        ( !mixed_ingress_reentry && leader->pos_abs_omt() != route_omt ) ||
         ( !member.is_active() && execute_motion && elapsed_minutes <= 0 ) ) {
         return refuse( "owner_target_or_elapsed" );
     }
@@ -16982,7 +16988,8 @@ bool live_bandit_route_local_rendezvous(
         const auto actor = overmap_buffer.find_npc( id );
         if( !actor || !live_bandit_abstract_scout_member_can_travel( *actor ) ||
             actor->has_flag( json_flag_CANNOT_MOVE ) ||
-            ( initial_departure && actor->current_target() && actor->get_ai_danger() > 0 ) ) {
+            ( ( initial_departure || mixed_ingress_reentry ) && actor->current_target() &&
+              actor->get_ai_danger() > 0 ) ) {
             return refuse( "party_body_or_capability" );
         }
     }
@@ -17028,12 +17035,34 @@ bool live_bandit_route_local_rendezvous(
             occupied.insert( actor->pos_abs() );
         }
     }
+    if( mixed_ingress_reentry ) {
+        occupied.insert( get_avatar().pos_abs() );
+        // Local monsters have left the overmap horde representation, so the
+        // retained-entity threat read above cannot certify their absence.
+        for( const monster &actor : g->all_monsters() ) {
+            if( actor.is_dead() ) {
+                continue;
+            }
+            occupied.insert( actor.pos_abs() );
+            if( member.attitude_to( actor ) != Creature::Attitude::HOSTILE ||
+                rl_dist( member.pos_abs(), actor.pos_abs() ) > MAX_VIEW_DISTANCE ||
+                std::abs( member.pos_abs().z() - actor.pos_abs().z() ) > fov_3d_z_range ) {
+                continue;
+            }
+            const auto sight = optics.read_actor( member, actor, { MAX_VIEW_DISTANCE, 1.0f } );
+            if( !sight.known || sight.visible ) {
+                return refuse( sight.known ? "visible_local_monster" :
+                               "local_monster_geometry_unavailable" );
+            }
+        }
+    }
     map &native_map = get_map();
     const auto route = [&]( map & body_map ) {
         if( !body_map.inbounds( member.pos_abs() ) || !body_map.inbounds( anchor ) ) {
             return refuse( "route_map_bounds" );
         }
-        const int radius = initial_departure ? 0 : bandit_live_world::local_pair_cohesion_radius();
+        const int radius = initial_departure || mixed_ingress_reentry ? 0 :
+                           bandit_live_world::local_pair_cohesion_radius();
         const auto native_avoid = member.get_path_avoid();
         const auto avoid = [&]( const tripoint_bub_ms & step ) {
             return !body_map.inbounds( step ) || native_avoid( step ) ||
@@ -17047,25 +17076,72 @@ bool live_bandit_route_local_rendezvous(
                 member, body_map, member.pos_bub( body_map ) ) ) {
             return refuse( "current_field_or_known_trap" );
         }
-        auto path = body_map.route( member.pos_bub( body_map ),
-                                    pathfinding_target::radius( body_map.get_bub( anchor ), radius ),
-                                    member.get_pathfinding_settings( true ), avoid );
-        while( !path.empty() && path.front() == member.pos_bub( body_map ) ) {
-            path.erase( path.begin() );
+        const auto valid_path = [&]( std::vector<tripoint_bub_ms> &path ) {
+            while( !path.empty() && path.front() == member.pos_bub( body_map ) ) {
+                path.erase( path.begin() );
+            }
+            if( path.empty() || ( mixed_ingress_reentry ?
+                !native_map.inbounds( body_map.get_abs( path.back() ) ) :
+                rl_dist( body_map.get_abs( path.back() ), anchor ) > radius ) ) {
+                return false;
+            }
+            tripoint_bub_ms previous = member.pos_bub( body_map );
+            return std::all_of( path.begin(), path.end(), [&]( const auto & step ) {
+                const bool continuous = step != previous && rl_dist( step, previous ) <= 1;
+                previous = step;
+                return continuous && !avoid( step );
+            } );
+        };
+        std::vector<tripoint_bub_ms> path;
+        if( mixed_ingress_reentry ) {
+            // Only first-entry cells can cross this map boundary. This finite
+            // OMT frontier is searched under one existing-map load, rather than
+            // loading and saving a tinymap for every possible destination.
+            std::vector<tripoint_bub_ms> frontier;
+            for( const auto &point : body_map.points_on_zlevel( route_omt.z() ) ) {
+                const auto position = body_map.get_abs( point );
+                if( !native_map.inbounds( position ) || avoid( point ) ||
+                    !body_map.passable( point ) ) {
+                    continue;
+                }
+                bool borders_remote = false;
+                for( int y = -1; y <= 1 && !borders_remote; ++y ) {
+                    for( int x = -1; x <= 1; ++x ) {
+                        const auto neighbour = point + ::point( x, y );
+                        if( ( x != 0 || y != 0 ) && body_map.inbounds( neighbour ) &&
+                            !native_map.inbounds( body_map.get_abs( neighbour ) ) ) {
+                            borders_remote = true;
+                            break;
+                        }
+                    }
+                }
+                if( borders_remote ) {
+                    frontier.push_back( point );
+                }
+            }
+            std::sort( frontier.begin(), frontier.end(), [&]( const auto &lhs, const auto &rhs ) {
+                return std::make_tuple( rl_dist( member.pos_bub( body_map ), lhs ), lhs ) <
+                       std::make_tuple( rl_dist( member.pos_bub( body_map ), rhs ), rhs );
+            } );
+            for( const auto &entry : frontier ) {
+                auto candidate = body_map.route( member.pos_bub( body_map ),
+                                                pathfinding_target::point( entry ),
+                                                member.get_pathfinding_settings( true ), avoid );
+                if( valid_path( candidate ) ) {
+                    path = std::move( candidate );
+                    break;
+                }
+            }
+        } else {
+            path = body_map.route( member.pos_bub( body_map ),
+                                   pathfinding_target::radius( body_map.get_bub( anchor ), radius ),
+                                   member.get_pathfinding_settings( true ), avoid );
+            if( !valid_path( path ) ) {
+                path.clear();
+            }
         }
-        tripoint_bub_ms previous = member.pos_bub( body_map );
         if( path.empty() ) {
-            return refuse( "native_route_empty" );
-        }
-        if( rl_dist( body_map.get_abs( path.back() ), anchor ) > radius ) {
-            return refuse( "route_endpoint_outside_radius" );
-        }
-        if( !std::all_of( path.begin(), path.end(), [&]( const auto & step ) {
-        const bool continuous = step != previous && rl_dist( step, previous ) <= 1;
-            previous = step;
-            return continuous && !avoid( step );
-        } ) ) {
-            return refuse( "route_continuity_or_avoidance" );
+            return refuse( "native_route_empty_or_unsafe" );
         }
         routed_path_steps += static_cast<int>( path.size() );
         member.goto_to_this_pos = body_map.get_abs( path.back() );
@@ -17086,8 +17162,9 @@ bool live_bandit_route_local_rendezvous(
         } );
         while( member.get_moves() > 0 && !member.path.empty() &&
                live_bandit_abstract_scout_member_can_travel( member ) &&
-               rl_dist( member.pos_abs(), anchor ) > radius &&
-               ( !initial_departure || !native_map.inbounds( member.pos_abs() ) ) ) {
+               ( mixed_ingress_reentry || rl_dist( member.pos_abs(), anchor ) > radius ) &&
+               ( ( !initial_departure && !mixed_ingress_reentry ) ||
+                 !native_map.inbounds( member.pos_abs() ) ) ) {
             const int before = member.get_moves();
             const auto step = member.path.front();
             if( avoid( step ) ) {
@@ -17106,7 +17183,8 @@ bool live_bandit_route_local_rendezvous(
     if( get_map().inbounds( member.pos_abs() ) && get_map().inbounds( anchor ) ) {
         return route( get_map() );
     }
-    if( member.is_active() || ( !initial_departure && leader->is_active() ) ) {
+    if( member.is_active() ||
+        ( !initial_departure && !mixed_ingress_reentry && leader->is_active() ) ) {
         return refuse( "active_remote_body" );
     }
     const tripoint_abs_sm origin = project_to<coords::sm>( route_omt );
@@ -17121,7 +17199,9 @@ bool live_bandit_route_local_rendezvous(
     body_map.load( route_omt, false );
     swap_map current( *body_map.cast_to_map() );
     const bool routed = route( *body_map.cast_to_map() );
-    body_map.save();
+    if( !mixed_ingress_reentry || execute_motion ) {
+        body_map.save();
+    }
     return routed;
 }
 
@@ -20857,6 +20937,97 @@ void overmap_npc_move()
                 << " surviving_members=" << members.size()
                 << " moved=" << complete_party_can_move
                 << '\n';
+    }
+    // A loaded forward scout can reach the watch while its authenticated
+    // partner remains just outside the bubble. The regular ingress preflight
+    // correctly holds the early arrival, but cannot put an inactive body into
+    // the local motor. Reenter through a real safe Native route, consuming the
+    // existing Local cadence once; never relocate the already active partner.
+    for( bandit_live_world::site_record &site : bandit_state.sites ) {
+        using namespace bandit_live_world;
+        const auto &outing = site.active_outing;
+        if( !live_bandit_site_party_active( site ) || site.retired_empty_site ||
+            outing.local_projection_reconciliation_rejected ||
+            !local_pair_initial_departure_is_bound( outing ) ||
+            !outing.local_handoff.cohesion_assembled || outing.member_ids.size() != 2 ||
+            !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ) {
+            continue;
+        }
+        std::vector<shared_ptr_fast<npc>> members;
+        for( const character_id id : outing.member_ids ) {
+            members.push_back( overmap_buffer.find_npc( id ) );
+        }
+        if( !members[0] || !members[1] || members[0]->is_active() == members[1]->is_active() ||
+            !live_bandit_handoff_bodies_are_authenticated( site, members ) ) {
+            continue;
+        }
+        const auto inactive = members[0]->is_active() ? members[1] : members[0];
+        const auto active = members[0]->is_active() ? members[0] : members[1];
+        if( get_map().inbounds( inactive->pos_abs() ) ||
+            !get_map().inbounds( active->pos_abs() ) ||
+            std::any_of( members.begin(), members.end(), [&]( const auto &body ) {
+                return body_catch_up_blocked.count( body->getID() ) != 0 ||
+                       !live_bandit_member_can_take_homeward_step( *body ) ||
+                       !live_bandit_abstract_scout_member_can_travel( *body ) ||
+                       ( body->current_target() && body->get_ai_danger() > 0 );
+            } ) ) {
+            continue;
+        }
+        const auto cursor = current_external_simulation_cursor( site );
+        const int now = live_bandit_current_minutes();
+        const int elapsed = std::clamp( outing.activation.elapsed_minutes(
+            activation_timer::cohesion_commit, outing.local_handoff.committed_minutes, now ),
+            0, to_minutes<int>( time_between_npc_OM_moves ) );
+        if( !cursor || elapsed <= 0 || now <= outing.last_advanced_minutes ) {
+            continue;
+        }
+        const tripoint_abs_omt body_omt = inactive->pos_abs_omt();
+        if( std::find( outing.shared_route.begin(), outing.shared_route.end(), body_omt ) ==
+            outing.shared_route.end() ) {
+            continue;
+        }
+        const auto old_destination = inactive->goto_to_this_pos;
+        const auto old_guard = inactive->get_ai_guard_pos();
+        const auto old_path = inactive->path;
+        int planned_steps = 0;
+        const bool route_ready = live_bandit_route_local_rendezvous(
+                                     *inactive, site, inactive->pos_abs(), elapsed,
+                                     false, planned_steps, true );
+        inactive->goto_to_this_pos = old_destination;
+        if( old_guard ) {
+            inactive->set_ai_guard_pos( *old_guard );
+        } else {
+            inactive->clear_ai_guard_pos();
+        }
+        inactive->path = old_path;
+        if( !route_ready ) {
+            continue;
+        }
+        local_cohesion_plan cadence;
+        cadence.valid = true;
+        cadence.expected_cursor = *cursor;
+        cadence.leader_id = outing.leader_id;
+        cadence.snapshot = outing.local_handoff;
+        cadence.snapshot.committed_minutes = now;
+        if( !commit_live_bandit_local_progress( site, [&]( auto &candidate ) {
+            // Validate through the existing reducer, but this operation owns
+            // only the consumed Local cadence, not progress or forecast dates.
+            auto prior_outing = candidate.active_outing;
+            if( !commit_local_pair_cohesion( candidate, cadence, false, false ) ) {
+                return false;
+            }
+            candidate.active_outing = std::move( prior_outing );
+            candidate.active_outing.local_handoff.committed_minutes = now;
+            candidate.active_outing.last_advanced_minutes = now;
+            return candidate.roster().valid && current_external_simulation_cursor( candidate ).has_value();
+        }, false ) ) {
+            continue;
+        }
+        int steps = 0;
+        if( live_bandit_route_local_rendezvous( *inactive, site, inactive->pos_abs(), elapsed, true, steps, true ) &&
+            get_map().inbounds( inactive->pos_abs() ) ) {
+            g->load_npcs();
+        }
     }
     std::vector<npc *> travelling_npcs;
     bool local_pair_needs_reload = false;
