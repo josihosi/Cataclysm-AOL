@@ -80149,3 +80149,232 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     CHECK( cautious_result.rejection_reason ==
            "costly robbery place requires favorable evidence and repeat admission" );
 }
+
+TEST_CASE( "human raid activation follows actual living split members",
+           "[bandit_live_world][activation][human_split_party]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene( false, true );
+    auto &site = scene.site();
+    auto &hostile = site.active_hostile_operation.reservation;
+    REQUIRE( hostile.member_ids.size() == 2 );
+    const auto ids = hostile.member_ids;
+    const auto center = site.anchor - point( 45, 0 );
+    const auto relocate = [&]( const character_id id, const tripoint_abs_omt &omt ) {
+        const auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        if( actor->is_active() ) {
+            actor->on_unload();
+            g->remove_npc( id );
+        }
+        overmap_buffer.remove_npc( id );
+        actor->spawn_at_precise( project_to<coords::ms>( omt ) + point( 12, 12 ) );
+        overmap_buffer.insert_npc( actor );
+        REQUIRE( overmap_buffer.find_npc( id ) == actor );
+    };
+    // Eligibility-only setup places the leased bodies on opposite sides of the
+    // boundary. Raw avatar setpos retains the old map; this is not a map
+    // unload, representation transfer, native journey or consumer proof.
+    relocate( ids[0], center + point( 39, 0 ) );
+    relocate( ids[1], center + point( 41, 0 ) );
+    get_avatar().setpos( project_to<coords::ms>( center ) + point( 12, 12 ), false );
+    refresh_live_bandit_activation();
+    REQUIRE_FALSE( site.home_activation.active );
+    REQUIRE( hostile.activation.active );
+    const auto active_before = hostile.activation.active_turns;
+    calendar::turn += 1_minutes;
+    refresh_live_bandit_activation();
+    CHECK( hostile.activation.active_turns == active_before + 60 );
+    CHECK_FALSE( site.home_activation.active );
+    const auto inside = overmap_buffer.find_npc( ids[0] );
+    REQUIRE( inside );
+    inside->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+    REQUIRE( inside->is_dead() );
+    calendar::turn += 1_turns;
+    refresh_live_bandit_activation();
+    CHECK_FALSE( hostile.activation.active ); // A corpse cannot activate the outside survivor.
+    const auto frozen = hostile.activation.active_turns;
+    calendar::turn += 2_hours;
+    refresh_live_bandit_activation();
+    CHECK( hostile.activation.active_turns == frozen );
+    get_avatar().setpos( project_to<coords::ms>( center + point( 1, 0 ) ) + point( 12, 12 ), false );
+    refresh_live_bandit_activation();
+    CHECK( hostile.activation.active ); // The actual survivor is exactly 40 OMT away.
+    CHECK( hostile.activation.active_delta_turns == 0 );
+    calendar::turn += 1_turns;
+    refresh_live_bandit_activation();
+    CHECK( hostile.activation.active_turns == frozen + 1 );
+    get_avatar().setpos( project_to<coords::ms>( center + point( 82, 0 ) ) + point( 12, 12 ), false );
+    refresh_live_bandit_activation();
+    CHECK_FALSE( hostile.activation.active );
+    const auto last = overmap_buffer.find_npc( ids[1] );
+    REQUIRE( last );
+    last->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+    REQUIRE( last->is_dead() );
+    refresh_live_bandit_activation();
+    CHECK( hostile.activation.active ); // Confirmed deaths can reach ordinary settlement.
+    CHECK( hostile.activation.active_delta_turns == 0 );
+}
+
+TEST_CASE( "cleaned up last scout deaths remain eligible for terminal settlement",
+           "[bandit_live_world][activation][cleaned_scout_deaths]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true, true );
+    journey.reach_watch();
+    journey.reach_loaded_watch();
+    const auto ids = journey.members();
+    REQUIRE( ids.size() == 2 );
+    for( const character_id id : ids ) {
+        npc *body = g->find_npc( id );
+        REQUIRE( body );
+        body->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+        REQUIRE( body->is_dead() );
+    }
+    // Actual native cleanup must publish the death facts before removing the
+    // bodies. Absence without matching character_dies is never death credit.
+    g->cleanup_dead();
+    const auto &deaths = get_stats().get_events( event_type::character_dies ).counts();
+    for( const character_id id : ids ) {
+        REQUIRE_FALSE( overmap_buffer.find_npc( id ) );
+        const bool recorded = std::any_of( deaths.begin(), deaths.end(), [&]( const auto &entry ) {
+            const auto found = entry.first.find( "character" );
+            return found != entry.first.end() && found->second.template get<character_id>() == id;
+        } );
+        REQUIRE( recorded );
+    }
+    journey.move_player( journey.target + point( 41, 0 ) );
+    refresh_live_bandit_activation();
+    REQUIRE( journey.site().active_outing.activation.active );
+    const int due = ( journey.minute() / 60 + 1 ) * 60;
+    while( journey.minute() <= due && journey.site().active_outing.is_active() ) {
+        journey.next_minute();
+    }
+    REQUIRE_FALSE( journey.site().active_outing.is_active() );
+    for( const character_id id : ids ) {
+        CHECK( journey.site().find_member( id )->state == member_state::dead );
+    }
+    CHECK_FALSE( journey.site().current_scout_report.is_present() );
+    const auto settled = r067_return_record_bytes( journey.site() );
+    journey.service();
+    journey.service();
+    REQUIRE( r067_return_record_bytes( journey.site() ) == settled );
+    journey.reload();
+    CHECK( r067_return_record_bytes( journey.site() ) == settled );
+}
+
+TEST_CASE( "two real scout parties keep independent activation intervals",
+           "[bandit_live_world][activation][independent_real_parties]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true, false, true );
+    journey.reach_watch();
+    const int due = journey.peer_site().active_outing.expected_return_minutes + 60;
+    while( journey.minute() <= due && journey.peer_site().active_outing.phase != scout_phase::observing ) {
+        journey.next_minute();
+    }
+    REQUIRE( journey.site().active_outing.phase == scout_phase::observing );
+    REQUIRE( journey.peer_site().active_outing.phase == scout_phase::observing );
+    for( const character_id id : journey.members() ) {
+        REQUIRE( overmap_buffer.find_npc( id )->pos_abs_omt() == journey.legal_watch );
+    }
+    for( const character_id id : journey.peer_members() ) {
+        REQUIRE( overmap_buffer.find_npc( id )->pos_abs_omt() == journey.peer_watch );
+    }
+    // Move only the avatar: the two physically established parties have
+    // independent homes, reservations, bodies and ordinary scout ownership.
+    journey.move_player( journey.target + point( -43, 0 ) );
+    refresh_live_bandit_activation();
+    REQUIRE( journey.site().active_outing.activation.active );
+    REQUIRE_FALSE( journey.peer_site().active_outing.activation.active );
+    const auto first_before = journey.site().active_outing.activation.active_turns;
+    const auto second_before = journey.peer_site().active_outing.activation.active_turns;
+    journey.next_minute();
+    // The fixture invokes the overmap owner only on its coarser cadence;
+    // publish the ordinary per-turn activation evaluation at this boundary.
+    refresh_live_bandit_activation();
+    CHECK( journey.site().active_outing.activation.active_turns == first_before + 60 );
+    CHECK( journey.peer_site().active_outing.activation.active_turns == second_before );
+    for( const character_id id : journey.peer_members() ) {
+        CHECK( overmap_buffer.find_npc( id )->pos_abs_omt() == journey.peer_watch );
+    }
+    journey.move_player( journey.target + point( 0, -43 ) );
+    refresh_live_bandit_activation();
+    REQUIRE_FALSE( journey.site().active_outing.activation.active );
+    REQUIRE( journey.peer_site().active_outing.activation.active );
+    const auto first_frozen = journey.site().active_outing.activation.active_turns;
+    const auto second_resumed = journey.peer_site().active_outing.activation.active_turns;
+    journey.next_minute();
+    refresh_live_bandit_activation();
+    CHECK( journey.site().active_outing.activation.active_turns == first_frozen );
+    CHECK( journey.peer_site().active_outing.activation.active_turns == second_resumed + 60 );
+    for( const character_id id : journey.members() ) {
+        CHECK( overmap_buffer.find_npc( id )->pos_abs_omt() == journey.legal_watch );
+    }
+}
+
+TEST_CASE( "hostile member settles at a frozen home while its partner stays active",
+           "[bandit_live_world][activation][frozen_home_settlement]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene( false, true );
+    scene.distant_adjacent_avatar();
+    calendar::turn += 1_minutes;
+    auto cursor = require_current_simulation_cursor( scene.site() );
+    REQUIRE( transition_hostile_operation_phase( scene.site(), cursor,
+             hostile_operation_phase::approaching, hostile_operation_phase::committed_contact,
+             cursor.last_advanced_minutes + 1, "controlled independent return" ) ==
+             hostile_operation_transition_result::applied );
+    const auto ids = scene.site().active_hostile_operation.reservation.member_ids;
+    REQUIRE( ids.size() == 2 );
+    scene.site().active_hostile_operation.withdrawing_member_ids = { ids.front() };
+    const auto home = scene.site().anchor;
+    const auto center = home - point( 45, 0 );
+    const auto relocate = [&]( const character_id id, const tripoint_abs_omt &omt ) {
+        const auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        if( actor->is_active() ) {
+            actor->on_unload();
+            g->remove_npc( id );
+        }
+        overmap_buffer.remove_npc( id );
+        actor->spawn_at_precise( project_to<coords::ms>( omt ) + point( 12, 12 ) );
+        overmap_buffer.insert_npc( actor );
+        REQUIRE( overmap_buffer.find_npc( id ) == actor );
+    };
+    // Test setup establishes a physical return at home, with its living
+    // partner at 25 OMT. It does not claim either actor traveled here.
+    relocate( ids.front(), home );
+    relocate( ids.back(), center + point( 25, 0 ) );
+    // Transfer the player and reality map through the real map owner before
+    // the overmap consumer runs; raw avatar setpos would retain the old map.
+    g->place_player_overmap( center );
+    refresh_live_bandit_activation();
+    REQUIRE_FALSE( scene.site().home_activation.active );
+    REQUIRE( scene.site().active_hostile_operation.reservation.activation.active );
+    const auto home_before = scene.site().home_activation.active_turns;
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    REQUIRE_FALSE( scene.site().home_activation.active );
+    REQUIRE( scene.site().active_hostile_operation.is_active() );
+    CHECK( scene.site().active_hostile_operation.reservation.member_is_resolved( ids.front() ) );
+    CHECK_FALSE( scene.site().active_hostile_operation.reservation.member_is_resolved( ids.back() ) );
+    CHECK( scene.site().find_member( ids.front() )->state == member_state::at_home );
+    CHECK( scene.site().home_activation.active_turns == home_before );
+    CHECK( live_bandit_body_activation( ids.front() ) == &scene.site().home_activation );
+    CHECK( live_bandit_body_activation( ids.back() ) ==
+           &scene.site().active_hostile_operation.reservation.activation );
+    const auto settled = r067_return_record_bytes( scene.site() );
+    process_overmap_npc_move_for_test();
+    CHECK( r067_return_record_bytes( scene.site() ) == settled );
+}

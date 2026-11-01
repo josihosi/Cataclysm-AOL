@@ -7207,3 +7207,122 @@ TEST_CASE( "active_native_migo_plan_separates_hostile_recognition_from_targeting
     CHECK( row_seen );
 #endif
 }
+
+TEST_CASE( "migo same tower operation and recall use independent actual body intervals",
+           "[migo_tower][migo_activation][independent_native_owners]" )
+{
+    clear_avatar();
+    clear_map_with_vision( -1, 4, false );
+    clear_creatures();
+    const auto old_turn = calendar::turn;
+    const auto old_populations = overmap_buffer.global_state.migo_populations;
+    const auto old_towers = overmap_buffer.global_state.migo_towers;
+    overmap_buffer.global_state.migo_populations.clear();
+    overmap_buffer.global_state.migo_towers.clear();
+    set_time_to_day();
+    map &here = get_map();
+    get_avatar().setpos( here, tripoint_bub_ms( 1, 1, 0 ), false );
+    get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+    const auto anchor = project_to<coords::omt>( here.get_abs( tripoint_bub_ms( 60, 60, 0 ) ) );
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> terrain;
+    on_out_of_scope restore( [&]() {
+        clear_creatures();
+        for( const auto &entry : terrain ) {
+            overmap_buffer.ter_set( entry.first, entry.second );
+        }
+        overmap_buffer.global_state.migo_populations = old_populations;
+        overmap_buffer.global_state.migo_towers = old_towers;
+        clear_avatar();
+        clear_map_without_vision( -1, 4 );
+        set_time( old_turn );
+    } );
+    for( int z = 0; z < 4; ++z ) {
+        const tripoint_abs_omt p( anchor.xy(), z );
+        terrain.emplace_back( p, overmap_buffer.ter( p ) );
+        overmap_buffer.ter_set( p, oter_str_id( "mi-go_scout_tower_" +
+                                                std::to_string( z + 1 ) + "_north" ) );
+    }
+    const auto geometry = migo_population::geometry_at( anchor );
+    REQUIRE( geometry );
+    migo_population::site_record population;
+    population.id = geometry->id;
+    population.anchor = anchor;
+    std::vector<migo_population::member_record> members;
+    std::vector<monster *> bodies;
+    for( int i = 0; i < 5; ++i ) {
+        const tripoint_bub_ms position( i == 4 ? 85 : 60 + i, 60, i == 0 ? 1 : 0 );
+        here.ter_set( position, ter_str_id( "t_floor" ) );
+        monster *body = g->place_critter_at( mtype_id( "mon_mi_go" ), position );
+        REQUIRE( body );
+        migo_population::member_record member;
+        member.token = { geometry->id, "independent-owner-" + std::to_string( i ), 1, anchor };
+        member.type = body->type->id;
+        member.home = here.get_abs( tripoint_bub_ms( 60 + i, 60, 0 ) );
+        member.hp = body->get_hp();
+        member.owner = migo_population::representation::local;
+        member.current_position = body->pos_abs();
+        body->population_identity() = member.token;
+        members.push_back( member );
+        bodies.push_back( body );
+    }
+    REQUIRE( population.commit_seed( members, std::nullopt, "", 0, true, false ) );
+    overmap_buffer.global_state.migo_populations.sites.push_back( population );
+    migo_tower::site_state state;
+    state.site_id = geometry->id;
+    state.anchor = anchor;
+    const int now = to_turn<int>( calendar::turn );
+    state.signal = migo_tower::signal_record{ "independent-owner-signal", "smoke",
+                   anchor + point( 2, 0 ), std::nullopt, members.front().token.member_id,
+                   bodies.front()->pos_abs(), now };
+    overmap_buffer.global_state.migo_towers.sites.push_back( state );
+    for( int z : { 0, 1 } ) {
+        here.build_map_cache( z );
+    }
+    REQUIRE( migo_tower::begin_response( geometry->id, now ) );
+    auto site_now = [&]() -> migo_tower::site_state & {
+        return *overmap_buffer.global_state.migo_towers.find( geometry->id );
+    };
+    REQUIRE( site_now().operation );
+    REQUIRE( site_now().response_home_rally );
+    const auto recalled_id = members.back().token.member_id;
+    REQUIRE( site_now().response_home_rally->find( recalled_id ) );
+    REQUIRE_FALSE( site_now().operation->contains( recalled_id ) );
+    REQUIRE( site_now().operation->generation != site_now().response_home_rally->generation );
+    const auto recalled_omt = project_to<coords::omt>( bodies.back()->pos_abs() );
+    REQUIRE( recalled_omt.xy() == anchor.xy() + point( 1, 0 ) );
+    monster *operation_body = nullptr;
+    for( monster *body : bodies ) {
+        if( site_now().operation->contains( body->population_identity().member_id ) ) {
+            operation_body = body;
+            break;
+        }
+    }
+    REQUIRE( operation_body );
+    REQUIRE( project_to<coords::omt>( operation_body->pos_abs() ).xy() == anchor.xy() );
+    // This is an isolated local-adapter test, not a reality-map unload or
+    // local-to-abstract transfer: raw avatar setpos leaves these bodies in the
+    // tracker. Both owners were legitimately admitted by begin_response, and
+    // each retains its authenticated native lease. Real transfer/reentry is
+    // qualified separately by native and representation-handoff evidence.
+    get_avatar().setpos( project_to<coords::ms>( anchor - point( 40, 0 ) ), false );
+    migo_tower::refresh_activation( now );
+    REQUIRE( site_now().operation->activity.active );
+    REQUIRE_FALSE( site_now().response_home_rally->find( recalled_id )->active );
+    const auto frozen = site_now().response_home_rally->find( recalled_id )->active_turns;
+    set_time( calendar::turn + 1_turns );
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    CHECK( site_now().operation->activity.active_delta_turns == 1 );
+    CHECK( site_now().response_home_rally->find( recalled_id )->active_turns == frozen );
+    CHECK_FALSE( migo_tower::activity_for( *bodies.back(), migo_population::representation::local,
+                 to_turn<int>( calendar::turn ), migo_tower::activity_boundary::process ) );
+    get_avatar().setpos( project_to<coords::ms>( recalled_omt + point( 40, 0 ) ), false );
+    migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+    REQUIRE_FALSE( site_now().operation->activity.active );
+    REQUIRE( site_now().response_home_rally->find( recalled_id )->active );
+    set_time( calendar::turn + 1_turns );
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    CHECK( site_now().response_home_rally->find( recalled_id )->active_turns == frozen + 1 );
+    CHECK( site_now().operation->activity.active_delta_turns == 0 );
+    CHECK_FALSE( migo_tower::activity_for( *operation_body, migo_population::representation::local,
+                 to_turn<int>( calendar::turn ), migo_tower::activity_boundary::process ) );
+}
