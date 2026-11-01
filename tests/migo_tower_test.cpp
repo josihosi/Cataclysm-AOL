@@ -1699,6 +1699,103 @@ TEST_CASE( "migo_actual_search_motor_excludes_fire_reopens_once_and_visits_conne
     CHECK( restored.find_source( anchor )->observed_active == contained );
 }
 
+TEST_CASE( "migo issued sweep approach responds to newly burning intermediate ground",
+           "[migo_tower][raid_sweep][native][ownership]" )
+{
+    clear_avatar();
+    clear_creatures();
+    clear_map_with_vision( -1, 1, false );
+    const auto old_turn = calendar::turn;
+    const auto old_populations = overmap_buffer.global_state.migo_populations;
+    const auto old_towers = overmap_buffer.global_state.migo_towers;
+    on_out_of_scope restore( [&]() {
+        clear_creatures();
+        clear_map_without_vision( -1, 1 );
+        overmap_buffer.global_state.migo_populations = old_populations;
+        overmap_buffer.global_state.migo_towers = old_towers;
+        set_time( old_turn );
+    } );
+    set_time_to_day();
+    map &here = get_map();
+    get_avatar().setpos( here, tripoint_bub_ms( 1, 1, 0 ), false );
+    const tripoint_bub_ms start( 55, 60, 0 );
+    const tripoint_bub_ms gap( 61, 60, 0 );
+    const tripoint_bub_ms goal( 68, 60, 0 );
+    for( int y = 0; y < here.getmapsize() * SEEY; ++y ) {
+        here.ter_set( tripoint_bub_ms( gap.x(), y, 0 ), ter_str_id( "t_wall" ) );
+    }
+    here.ter_set( gap, ter_str_id( "t_floor" ) );
+    const auto anchor = project_to<coords::omt>( here.get_abs( start ) );
+    migo_population::member_record member;
+    member.token = {"new-approach-fire", "member", 1, anchor};
+    member.type = mtype_id( "mon_mi_go" );
+    member.home = here.get_abs( start );
+    member.owner = migo_population::representation::local;
+    member.assignment = migo_population::duty::dispatched;
+    member.hp = member.type->hp;
+    migo_population::site_record population;
+    population.id = member.token.site_id;
+    population.anchor = anchor;
+    REQUIRE( population.commit_seed( {member}, std::nullopt, "", 0, true, false ) );
+    overmap_buffer.global_state.migo_populations.sites.push_back( population );
+    migo_tower::site_state site;
+    site.site_id = population.id;
+    site.anchor = anchor;
+    migo_tower::operation_record operation;
+    operation.generation = 1;
+    operation.source.source_omt = anchor;
+    operation.members = {{member.token.member_id, false, false, member.home}};
+    operation.sweep.source = anchor;
+    operation.sweep.generation = 1;
+    operation.sweep.candidates = {{here.get_abs( goal )}, {here.get_abs( start + point::south * 5 )}};
+    operation.overdue_after_active = 100000;
+    operation.advance( to_turn<int>( calendar::turn ), 0 );
+    site.operation = operation;
+    overmap_buffer.global_state.migo_towers.sites.push_back( site );
+    monster *body = g->place_critter_at( member.type, start );
+    REQUIRE( body );
+    body->population_identity() = member.token;
+    migo_tower::member_intent intent;
+    intent.generation = 1;
+    intent.home = member.home;
+    body->set_migo_intent( intent );
+    auto *current = overmap_buffer.global_state.migo_towers.find( population.id );
+    REQUIRE( current );
+    REQUIRE( migo_tower::owns_intent( *body, migo_population::representation::local ) );
+    const auto initial = migo_tower::prepare_step( *body, migo_population::representation::local );
+    REQUIRE( initial.next == physical_navigation::action::walk );
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 0 );
+    const auto progress = current->operation->sweep.last_progress;
+    const auto original_position = body->pos_abs();
+    here.add_field( gap, field_type_id( "fd_fire" ), 3 );
+    calendar::turn += 1_turns;
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    CHECK( here.get_field_intensity( goal, field_type_id( "fd_fire" ) ) == 0 );
+    CHECK( current->operation->sweep.candidates.front().state == raid_sweep::disposition::hazardous );
+    CHECK( current->operation->sweep.candidates.front().geometry_revision != 0 );
+    CHECK( current->operation->sweep.last_progress == progress );
+    CHECK( body->pos_abs() == original_position );
+    const auto cursor = current->operation->sweep.cursor;
+    const auto retry_deadline = current->operation->sweep.retry_after_active;
+    calendar::turn += 1_turns;
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    CHECK( current->operation->sweep.cursor == cursor );
+    CHECK( current->operation->sweep.candidates.front().state == raid_sweep::disposition::hazardous );
+    CHECK( current->operation->sweep.last_progress == progress );
+    CHECK( current->operation->sweep.retry_after_active == retry_deadline );
+    here.remove_field( gap, field_type_id( "fd_fire" ) );
+    // Removal marks the field dead; native field cleanup then erases it.
+    here.delete_field( gap, field_type_id( "fd_fire" ) );
+    here.set_pathfinding_cache_dirty( gap );
+    const auto reopened = physical_navigation::read_step( *body, here.get_abs( goal ) );
+    INFO( reopened.reason );
+    REQUIRE( reopened.next == physical_navigation::action::walk );
+    calendar::turn += 1_turns;
+    migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+    CHECK( current->operation->sweep.pending() == here.get_abs( goal ) );
+    CHECK( current->operation->sweep.candidates.front().reconsidered );
+}
+
 TEST_CASE( "migo_queued_native_migrations_preserve_rejected_source_owners",
            "[migo_tower][native][ownership]" )
 {
@@ -3693,6 +3790,13 @@ TEST_CASE( "migo_native_return_resolves_distant_floors_and_occupied_approaches",
                     }
                 }
             }
+        }
+        // Tinymaps edit shared submaps but not the owning map's route caches.
+        // As in the native-floorplan branch, refresh after constructing the
+        // synthetic stair geometry and before creating the returning actor.
+        here.load( here.get_abs_sub(), false );
+        for( int z = 0; z <= home.z(); ++z ) {
+            here.build_map_cache( z, true );
         }
     }
     migo_population::site_record population;

@@ -513,6 +513,63 @@ TEST_CASE( "committed raid separates actual target choice from raw sight before 
         CHECK( loaded.sweep.candidates.front().state == raid_sweep::disposition::searched );
     }
 
+    SECTION( "new fire on an issued approach invalidates the raid route until reopening" ) {
+        get_avatar().setpos( here, tripoint_bub_ms( 0, 0, 0 ) );
+        sighted.setpos( here, tripoint_bub_ms( 58, 60, 0 ) );
+        REQUIRE( live_cannibal_raid_advance_site_search_for_test( live_site ) );
+        auto &sweep = live_operation.sweep;
+        REQUIRE( sweep.pending() );
+        const auto target = here.get_bub( *sweep.pending() );
+        const auto barrier = target + point( -3, 0 );
+        REQUIRE( here.inbounds( target + point( -10, -2 ) ) );
+        for( int y = 0; y < here.getmapsize() * SEEY; ++y ) {
+            here.ter_set( tripoint_bub_ms( barrier.x(), y, 0 ), ter_str_id( "t_wall" ) );
+        }
+        here.ter_set( barrier, ter_str_id( "t_floor" ) );
+        for( std::size_t i = 0; i < party.size(); ++i ) {
+            party[i]->setpos( here, target + point( -8, static_cast<int>( i ) - 1 ) );
+            party[i]->goto_to_this_pos.reset();
+            party[i]->path.clear();
+        }
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0, true );
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        REQUIRE( sighted.goto_to_this_pos == sweep.pending() );
+        REQUIRE_FALSE( sighted.path.empty() );
+        const auto progress = sweep.last_progress;
+        here.add_field( barrier, field_type_id( "fd_fire" ), 3 );
+        calendar::turn += 1_turns;
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( here.get_field_intensity( target, field_type_id( "fd_fire" ) ) == 0 );
+        CHECK( sweep.candidates.front().state == raid_sweep::disposition::hazardous );
+        CHECK( sweep.candidates.front().geometry_revision != 0 );
+        CHECK( sweep.last_progress == progress );
+        CHECK_FALSE( sighted.goto_to_this_pos == here.get_abs( target ) );
+        const auto cursor = sweep.cursor;
+        const auto retry_deadline = sweep.retry_after_active;
+        calendar::turn += 1_turns;
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sweep.cursor == cursor );
+        CHECK( sweep.candidates.front().state == raid_sweep::disposition::hazardous );
+        CHECK( sweep.last_progress == progress );
+        CHECK( sweep.retry_after_active == retry_deadline );
+        here.remove_field( barrier, field_type_id( "fd_fire" ) );
+        // Removal marks the field dead; native processing erases that entry.
+        // Complete that physical cleanup before asserting a reopened route.
+        here.delete_field( barrier, field_type_id( "fd_fire" ) );
+        here.set_pathfinding_cache_dirty( barrier );
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0, true );
+        const auto reopened_path = here.route( sighted.pos_bub( here ),
+                                   pathfinding_target::point( target ),
+                                   sighted.get_pathfinding_settings( false ), sighted.get_path_avoid() );
+        REQUIRE_FALSE( reopened_path.empty() );
+        calendar::turn += 1_turns;
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sweep.pending() == here.get_abs( target ) );
+        CHECK( sweep.candidates.front().reconsidered );
+    }
+
     SECTION( "shared raid sweep retains safe ground beside contained fires and excludes spreading fire" ) {
         get_avatar().setpos( here, tripoint_bub_ms( 0, 0, 0 ) );
         sighted.setpos( here, tripoint_bub_ms( 58, 60, 0 ) );
