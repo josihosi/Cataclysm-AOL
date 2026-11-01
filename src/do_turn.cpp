@@ -3081,6 +3081,8 @@ bool live_bandit_reconcile_hostile_approach_deaths( bandit_live_world::site_reco
     return changed;
 }
 
+void live_bandit_retire_hostile_approach_guard( npc &member_npc );
+
 bool advance_live_bandit_hostile_rallies()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -3114,6 +3116,7 @@ bool advance_live_bandit_hostile_rallies()
             std::vector<tripoint_abs_omt> route;
         };
         std::vector<hostile_rally_travel_order> travel_orders;
+        std::vector<npc *> departing_members;
         bool ready_to_depart = true;
         bool all_at_rally = true;
         int capable_members = 0;
@@ -3137,6 +3140,7 @@ bool advance_live_bandit_hostile_rallies()
                 continue;
             }
             all_at_rally = false;
+            departing_members.push_back( member_npc );
             if( member_npc->goal == operation.rally_omt && !member_npc->omt_path.empty() &&
                 member_npc->is_travelling() ) {
                 continue;
@@ -3153,6 +3157,16 @@ bool advance_live_bandit_hostile_rallies()
         }
         if( capable_members == 0 || !ready_to_depart || !all_at_rally ) {
             if( ready_to_depart ) {
+                // A selected member may already have a valid rally route but
+                // still own its home guard post.  Retire that obsolete post
+                // only after the entire real party has passed route preflight.
+                // A current local order retains its own native priority.
+                for( npc *member : departing_members ) {
+                    if( !member->goto_to_this_pos &&
+                        ( member->guard_pos || member->get_ai_guard_pos() ) ) {
+                        live_bandit_retire_hostile_approach_guard( *member );
+                    }
+                }
                 for( hostile_rally_travel_order &order : travel_orders ) {
                     order.member_npc->goal = operation.rally_omt;
                     order.member_npc->omt_path = std::move( order.route );

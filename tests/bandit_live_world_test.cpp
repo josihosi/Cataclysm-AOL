@@ -38707,6 +38707,88 @@ TEST_CASE( "loaded hostile approach retires the saved rally guard for the reserv
              bandit_live_world::hostile_operation_phase::outbound, 3,
              "saved approach departed" ) ==
              bandit_live_world::hostile_operation_transition_result::applied );
+    SECTION( "loaded outbound rally retires the home guard before native travel" ) {
+        const bool preserve_local_order = GENERATE( false, true );
+        CAPTURE( preserve_local_order );
+        const bool was_cloaked = get_avatar().has_trait( trait_id( "DEBUG_CLOAK" ) );
+        on_out_of_scope restore_cloak( [was_cloaked]() {
+            if( !was_cloaked ) {
+                get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+            }
+        } );
+        get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
+        g->place_player_overmap( live_site.anchor, false );
+        for( const auto &p : get_map().points_on_zlevel( 0 ) ) {
+            get_map().ter_set( p, ter_str_id( "t_grass" ) );
+            get_map().furn_set( p, furn_str_id::NULL_ID() );
+        }
+        clear_fields( 0 );
+        get_map().invalidate_map_cache( 0 );
+        get_map().build_map_cache( 0 );
+        g->reload_npcs();
+        const auto ids = live_site.active_hostile_operation.reservation.member_ids;
+        REQUIRE( ids.size() >= 2 );
+        const auto other_id = std::find_if( generated_npc_ids.begin(), generated_npc_ids.end(),
+        [&ids]( const character_id id ) {
+            return std::find( ids.begin(), ids.end(), id ) == ids.end();
+        } );
+        REQUIRE( other_id != generated_npc_ids.end() );
+        const auto other = overmap_buffer.find_npc( *other_id );
+        REQUIRE( other );
+        other->set_guard_pos( other->pos_abs() );
+        const auto other_guard = other->guard_pos;
+        const auto origin = project_to<coords::ms>( live_site.anchor );
+        get_avatar().setpos( get_map(), get_map().get_bub( origin + point( 5, 8 ) ) );
+        std::vector<tripoint_abs_ms> before;
+        for( std::size_t index = 0; index < ids.size(); ++index ) {
+            const auto actor = overmap_buffer.find_npc( ids[index] );
+            REQUIRE( actor );
+            actor->spawn_at_precise( origin + point( 5 + static_cast<int>( index ), 5 ) );
+            actor->set_guard_pos( actor->pos_abs() );
+            before.push_back( actor->pos_abs() );
+        }
+        g->load_npcs();
+        for( const auto id : ids ) {
+            REQUIRE( g->find_npc( id ) );
+            REQUIRE( g->find_npc( id )->is_active() );
+            REQUIRE( rl_dist( get_avatar().pos_abs(), g->find_npc( id )->pos_abs() ) <= SEEX * 2 );
+            REQUIRE( g->find_npc( id )->pos_abs_omt() != rally );
+        }
+        const auto local_order = before.front() + point( 0, 1 );
+        if( preserve_local_order ) {
+            g->find_npc( ids.front() )->goto_to_this_pos = local_order;
+        }
+        calendar::turn = calendar::turn_zero + 12_hours;
+        process_overmap_npc_move_for_test();
+        CHECK( other->guard_pos == other_guard );
+        for( const auto id : ids ) {
+            npc *actor = g->find_npc( id );
+            REQUIRE( actor );
+            CHECK( actor->is_travelling() );
+            CHECK( actor->goal == rally );
+            if( preserve_local_order && id == ids.front() ) {
+                CHECK( actor->goto_to_this_pos == local_order );
+                CHECK( actor->guard_pos );
+                CHECK( actor->get_ai_guard_pos() );
+            } else {
+                CHECK_FALSE( actor->guard_pos );
+                CHECK_FALSE( actor->get_ai_guard_pos() );
+            }
+        }
+        bool moved = false;
+        for( int tick = 0; tick < 30 && !moved; ++tick ) {
+            calendar::turn += 1_turns;
+            for( const auto id : ids ) {
+                g->find_npc( id )->set_moves( 100 );
+            }
+            process_monsters_and_npcs_turn_for_test();
+            for( std::size_t index = 0; index < ids.size(); ++index ) {
+                moved |= g->find_npc( ids[index] )->pos_abs() != before[index];
+            }
+        }
+        CHECK( moved );
+        return;
+    }
     REQUIRE( transition_test_hostile_operation( live_site,
              bandit_live_world::hostile_operation_phase::outbound,
              bandit_live_world::hostile_operation_phase::rallying, 4,
@@ -38751,6 +38833,9 @@ TEST_CASE( "loaded hostile approach retires the saved rally guard for the reserv
         clear_fields( 0 );
         get_map().invalidate_map_cache( 0 );
         get_map().build_map_cache( 0 );
+        // This section exercises the loaded route owner, not ambient combat
+        // spawned when the test map was shifted to the rally.
+        clear_creatures();
     }
     lagging = g->find_npc( party_ids[0] );
     REQUIRE( lagging != nullptr );
