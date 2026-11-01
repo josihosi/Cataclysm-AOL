@@ -447,6 +447,11 @@ int routine_cooldown_delay_minutes( const std::string &site_id, const int base_m
     return base_minutes + static_cast<int>( jitter_hash % 7U ) * 60;
 }
 
+int robbery_place_cooldown_minutes( const std::string &site_id )
+{
+    return routine_cooldown_delay_minutes( site_id, 72 * 60 );
+}
+
 int routine_no_candidate_base_delay_minutes( const int streak )
 {
     if( streak <= 1 ) {
@@ -2440,6 +2445,9 @@ std::string shakedown_outcome_label( const bandit_live_world::shakedown_outcome 
     }
     if( outcome.paid ) {
         return "paid";
+    }
+    if( !outcome.unresolved_reason.empty() ) {
+        return outcome.unresolved_reason;
     }
     if( outcome.fought && outcome.bandit_losses > 0 ) {
         return "fight_bandit_loss";
@@ -8362,6 +8370,103 @@ void camp_map_lead::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void robbery_place_memory::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "target_id", target_id );
+    json.member( "target_omt", target_omt );
+    json.member( "last_operation_id", last_operation_id );
+    json.member( "last_report_key", last_report_key );
+    json.member( "last_generation", last_generation );
+    json.member( "last_outcome", last_outcome );
+    json.member( "last_admission_refusal", last_admission_refusal );
+    json.member( "last_settled_active_turn", last_settled_active_turn );
+    json.member( "next_eligible_active_turn", next_eligible_active_turn );
+    json.member( "admission_retry_active_turn", admission_retry_active_turn );
+    json.member( "caution", caution );
+    json.member( "eligible", eligible );
+    json.member( "verified_party_power", verified_party_power );
+    json.member( "verified_danger", verified_danger );
+    json.member( "verified_minutes", verified_minutes );
+    json.member( "danger_evaluated_minutes", danger_evaluated_minutes );
+    json.member( "party_ids", party_ids );
+    json.member( "casualty_ids", casualty_ids );
+    json.member( "active_operation_id", active_operation_id );
+    json.member( "active_generation", active_generation );
+    json.end_object();
+}
+
+void robbery_place_memory::deserialize( const JsonObject &jo )
+{
+    robbery_place_memory candidate;
+    jo.read( "target_id", candidate.target_id );
+    jo.read( "target_omt", candidate.target_omt );
+    jo.read( "last_operation_id", candidate.last_operation_id );
+    jo.read( "last_report_key", candidate.last_report_key );
+    jo.read( "last_generation", candidate.last_generation );
+    jo.read( "last_outcome", candidate.last_outcome );
+    jo.read( "last_admission_refusal", candidate.last_admission_refusal );
+    jo.read( "last_settled_active_turn", candidate.last_settled_active_turn );
+    jo.read( "next_eligible_active_turn", candidate.next_eligible_active_turn );
+    jo.read( "admission_retry_active_turn", candidate.admission_retry_active_turn );
+    jo.read( "caution", candidate.caution );
+    jo.read( "eligible", candidate.eligible );
+    jo.read( "verified_party_power", candidate.verified_party_power );
+    jo.read( "verified_danger", candidate.verified_danger );
+    jo.read( "verified_minutes", candidate.verified_minutes );
+    jo.read( "danger_evaluated_minutes", candidate.danger_evaluated_minutes );
+    jo.read( "party_ids", candidate.party_ids );
+    jo.read( "casualty_ids", candidate.casualty_ids );
+    jo.read( "active_operation_id", candidate.active_operation_id );
+    jo.read( "active_generation", candidate.active_generation );
+    if( candidate.target_id.empty() || candidate.target_id.size() > max_camp_lead_target_id_length ||
+        candidate.last_operation_id.empty() || candidate.last_report_key.empty() ||
+        candidate.last_generation <= 0 || candidate.last_outcome.empty() ||
+        candidate.last_settled_active_turn < 0 ||
+        candidate.next_eligible_active_turn < candidate.last_settled_active_turn ||
+        candidate.admission_retry_active_turn < 0 ||
+        candidate.caution < 0 || candidate.caution > 2 ||
+        ( ( candidate.verified_minutes < 0 ) != ( candidate.verified_party_power < 0 ) ) ||
+        ( ( candidate.verified_minutes < 0 ) != ( candidate.verified_danger < 0 ) ) ||
+        ( candidate.active_operation_id.empty() != ( candidate.active_generation == 0 ) ) ||
+        candidate.active_generation < 0 ) {
+        jo.throw_error( "invalid robbery place memory" );
+    }
+    // Existing 24-hour test saves keep their elapsed active time.  A first
+    // costly failure needs the doubled minimum from the original settlement,
+    // not a fresh cooldown starting at load.  Preserve later saved deadlines.
+    const bool costly_failure = candidate.caution == 1 && !candidate.casualty_ids.empty() &&
+                                candidate.last_outcome != "paid" && candidate.last_outcome != "robbed";
+    const std::int64_t minimum_turns = static_cast<std::int64_t>( costly_failure ? 144 : 72 ) * 60 * 60;
+    const std::int64_t minimum_due = candidate.last_settled_active_turn >
+                                     std::numeric_limits<std::int64_t>::max() - minimum_turns ?
+                                     std::numeric_limits<std::int64_t>::max() :
+                                     candidate.last_settled_active_turn + minimum_turns;
+    candidate.next_eligible_active_turn = std::max( candidate.next_eligible_active_turn, minimum_due );
+    *this = std::move( candidate );
+}
+
+static bool repeat_place_reservation_matches( const site_record &site,
+        const hostile_operation_state &operation )
+{
+    if( !operation.repeat_place || operation.operation_kind != hostile_operation_kind::shakedown ) {
+        return false;
+    }
+    const auto &outing = operation.reservation;
+    return std::any_of( site.intelligence_map.robbery_places.begin(),
+                        site.intelligence_map.robbery_places.end(), [&]( const robbery_place_memory & place ) {
+        return place.target_id == outing.target_id && place.target_omt == outing.target_omt &&
+               place.active_operation_id == outing.activity_id &&
+               place.active_generation == outing.generation &&
+               ( ( place.last_operation_id == operation.repeat_origin_operation_id &&
+                   place.last_generation == operation.repeat_origin_generation ) ||
+                 ( place.last_operation_id == outing.activity_id &&
+                   place.last_generation == outing.generation &&
+                   site.last_hostile_shakedown_operation_id == outing.activity_id &&
+                   site.last_hostile_shakedown_generation == outing.generation ) );
+    } );
+}
+
 void camp_intelligence_map::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -8382,6 +8487,9 @@ void camp_intelligence_map::serialize( JsonOut &json ) const
     json.member( "frontier_search_cursor", frontier_search_cursor );
     json.member( "frontier_last_resolved_minutes", frontier_last_resolved_minutes );
     json.member( "leads", leads );
+    if( !robbery_places.empty() ) {
+        json.member( "robbery_places", robbery_places );
+    }
     json.end_object();
 }
 
@@ -8451,6 +8559,18 @@ void camp_intelligence_map::deserialize( const JsonObject &jo )
         jo.throw_error( "legacy camp intelligence cannot contain schema-v3 frontier memory" );
     }
     jo.read( "leads", candidate.leads );
+    jo.read( "robbery_places", candidate.robbery_places );
+    if( candidate.robbery_places.size() > 16 ) {
+        jo.throw_error( "too many robbery place memories" );
+    }
+    for( std::size_t i = 0; i < candidate.robbery_places.size(); ++i ) {
+        for( std::size_t j = 0; j < i; ++j ) {
+            if( candidate.robbery_places[i].target_id == candidate.robbery_places[j].target_id &&
+                candidate.robbery_places[i].target_omt == candidate.robbery_places[j].target_omt ) {
+                jo.throw_error( "duplicate robbery place memory" );
+            }
+        }
+    }
     candidate.schema_version = 6;
     *this = std::move( candidate );
 }
@@ -10503,6 +10623,12 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "phase", to_string( phase ) );
     if( response_home_reserve >= 0 ) {
         json.member( "response_home_reserve", response_home_reserve );
+    json.member( "verified_response_power", verified_response_power );
+    json.member( "verified_response_danger", verified_response_danger );
+    json.member( "verified_response_minutes", verified_response_minutes );
+    json.member( "repeat_place", repeat_place );
+    json.member( "repeat_origin_operation_id", repeat_origin_operation_id );
+    json.member( "repeat_origin_generation", repeat_origin_generation );
     }
     json.member( "reservation", reservation );
     json.member( "source_report_revision", std::max( 0, source_report_revision ) );
@@ -10542,6 +10668,8 @@ void hostile_operation_state::serialize( JsonOut &json ) const
     json.member( "site_search_waypoint", site_search_waypoint );
     json.member( "site_search_initial_goods_value", site_search_initial_goods_value );
     json.member( "site_search_waypoint_attempted", site_search_waypoint_attempted );
+    json.member( "site_search_inaccessible", site_search_inaccessible );
+    json.member( "site_search_interrupted", site_search_interrupted );
     json.member( "site_search_retry_after_turn", site_search_retry_after_turn );
     std::vector<int> withdrawing_ids;
     withdrawing_ids.reserve( withdrawing_member_ids.size() );
@@ -10561,6 +10689,20 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
 {
     hostile_operation_state candidate;
     jo.read( "response_home_reserve", candidate.response_home_reserve );
+    jo.read( "verified_response_power", candidate.verified_response_power );
+    jo.read( "verified_response_danger", candidate.verified_response_danger );
+    jo.read( "verified_response_minutes", candidate.verified_response_minutes );
+    jo.read( "repeat_place", candidate.repeat_place );
+    jo.read( "repeat_origin_operation_id", candidate.repeat_origin_operation_id );
+    jo.read( "repeat_origin_generation", candidate.repeat_origin_generation );
+    if( candidate.repeat_place != ( !candidate.repeat_origin_operation_id.empty() &&
+                                    candidate.repeat_origin_generation > 0 ) ) {
+        jo.throw_error( "invalid repeat robbery origin" );
+    }
+    if( ( ( candidate.verified_response_minutes < 0 ) != ( candidate.verified_response_power < 0 ) ) ||
+        ( ( candidate.verified_response_minutes < 0 ) != ( candidate.verified_response_danger < 0 ) ) ) {
+        jo.throw_error( "incomplete verified response power" );
+    }
     if( candidate.response_home_reserve < -1 ) {
         jo.throw_error( "invalid response-specific home reserve" );
     }
@@ -10637,6 +10779,8 @@ void hostile_operation_state::deserialize( const JsonObject &jo )
     jo.read( "site_search_waypoint", candidate.site_search_waypoint );
     jo.read( "site_search_initial_goods_value", candidate.site_search_initial_goods_value );
     jo.read( "site_search_waypoint_attempted", candidate.site_search_waypoint_attempted );
+    jo.read( "site_search_inaccessible", candidate.site_search_inaccessible );
+    jo.read( "site_search_interrupted", candidate.site_search_interrupted );
     jo.read( "site_search_retry_after_turn", candidate.site_search_retry_after_turn );
     std::vector<int> raw_withdrawing_ids;
     jo.read( "withdrawing_member_ids", raw_withdrawing_ids );
@@ -11688,6 +11832,7 @@ void site_record::deserialize( const JsonObject &jo,
             active_hostile_operation.operation_kind, hostile_reservation.job_type ) ||
                                            legacy_withdrawal_only;
     const bool hostile_report_is_consistent = legacy_withdrawal_only ||
+            repeat_place_reservation_matches( *this, active_hostile_operation ) ||
             ( camp_decision.state == camp_decision_state::preparing_follow_on &&
               camp_decision.report_policy == report_policy_for_profile(
                   effective_profile( *this ) ) &&
@@ -14938,6 +15083,11 @@ response_authorization_evaluation evaluate_response_authorization(
     result.required_power = expected_power.required_power;
     result.power_sufficient = 100 * result.party_power >=
                               expected_power.margin_percent * effective.danger_high;
+    const auto remembered_place = std::find_if( site.intelligence_map.robbery_places.begin(),
+                                  site.intelligence_map.robbery_places.end(),
+    [&]( const robbery_place_memory & place ) {
+        return place.target_id == report.target_id && place.target_omt == report.target_omt;
+    } );
     if( !result.report_unexpired ) {
         result.rejection_reason = "response report authorization has expired";
     } else if( !result.assessment_ready ) {
@@ -14946,6 +15096,17 @@ response_authorization_evaluation evaluate_response_authorization(
         result.rejection_reason = "response opportunity is below the authorization floor";
     } else if( !result.power_sufficient ) {
         result.rejection_reason = "selected response party no longer clears the faction margin";
+    } else if( policy == camp_report_policy::bandit_shakedown &&
+               remembered_place != site.intelligence_map.robbery_places.end() &&
+               ( !site.home_activation.initialized() || !site.home_activation.active ||
+                 site.home_activation.active_turns < remembered_place->next_eligible_active_turn ) ) {
+        result.rejection_reason = "robbery place cooldown has not elapsed";
+    } else if( policy == camp_report_policy::bandit_shakedown &&
+               remembered_place != site.intelligence_map.robbery_places.end() &&
+               remembered_place->caution > 0 ) {
+        // A fresh report must not bypass a costly place's pending repeat
+        // policy. Reopening needs favorable evidence and the selected margin.
+        result.rejection_reason = "costly robbery place requires favorable evidence and repeat admission";
     } else {
         result.authorized = true;
     }
@@ -15671,6 +15832,65 @@ std::optional<int> release_matching_external_reservation( site_record &site,
     candidate.applied_return_generation = std::max(
             candidate.applied_return_generation, expected_generation );
     if( hostile_operation ) {
+        if( candidate.active_hostile_operation.repeat_place ) {
+            auto &places = candidate.intelligence_map.robbery_places;
+            auto place = std::find_if( places.begin(), places.end(), [&]( const robbery_place_memory & item ) {
+                return item.active_operation_id == expected_activity_id &&
+                       item.active_generation == expected_generation;
+            } );
+            if( place == places.end() ) {
+                return std::nullopt;
+            }
+            if( place->last_operation_id != expected_activity_id ||
+                place->last_generation != expected_generation ) {
+                const auto &operation = candidate.active_hostile_operation;
+                const auto &reservation = operation.reservation;
+                if( !operation.shakedown_pending_branch.empty() ) {
+                    return std::nullopt;
+                }
+                shakedown_outcome interrupted;
+                interrupted.unresolved_reason = "interrupted_travel";
+                interrupted.bandit_losses = static_cast<int>( reservation.casualty_ids.size() );
+                if( !apply_shakedown_outcome( candidate, interrupted ).valid ) {
+                    return std::nullopt;
+                }
+                if( interrupted.bandit_losses > 0 ) {
+                    place->caution = std::min( 2, place->caution + 1 );
+                }
+                place->eligible = place->caution < 2;
+                place->last_operation_id = expected_activity_id;
+                place->last_generation = expected_generation;
+                place->last_outcome = "interrupted_travel";
+                place->last_settled_active_turn = candidate.home_activation.active_turns;
+                const int routine_delay = routine_cooldown_delay_minutes( candidate.site_id, 24 * 60 );
+                const int normal = robbery_place_cooldown_minutes( candidate.site_id );
+                const int delay = interrupted.bandit_losses > 0 && place->caution == 1 ? 2 * normal : normal;
+                place->next_eligible_active_turn = place->last_settled_active_turn +
+                                                   static_cast<std::int64_t>( delay ) * 60;
+                place->verified_party_power = operation.verified_response_power;
+                place->verified_danger = operation.verified_response_danger;
+                place->verified_minutes = operation.verified_response_minutes;
+                place->party_ids.clear();
+                place->casualty_ids.clear();
+                for( const character_id id : reservation.member_ids ) {
+                    place->party_ids.push_back( id.get_value() );
+                }
+                for( const character_id id : reservation.casualty_ids ) {
+                    place->casualty_ids.push_back( id.get_value() );
+                }
+                candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                            reservation.last_advanced_minutes, routine_delay );
+                candidate.home_activation.settle_timer( activation_timer::routine_next,
+                        candidate.next_routine_dispatch_eligible_minutes );
+                candidate.last_hostile_shakedown_aftermath_key = expected_activity_id + "|repeat|" +
+                        std::to_string( expected_generation );
+                candidate.last_hostile_shakedown_operation_id = expected_activity_id;
+                candidate.last_hostile_shakedown_report_key.clear();
+                candidate.last_hostile_shakedown_generation = expected_generation;
+            }
+            place->active_operation_id.clear();
+            place->active_generation = 0;
+        }
         candidate.active_hostile_operation.clear();
         if( candidate.camp_decision.state == camp_decision_state::preparing_follow_on ) {
             candidate.camp_decision.state = camp_decision_state::abandoned;
@@ -20366,6 +20586,19 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
 
     for( const std::size_t site_index : routine_site_indices ) {
         site_record &site = state.sites[site_index];
+        // A settled shakedown's cooldown remains a home-active timer.  Release
+        // it through the same decision transition used by other report paths;
+        // neither a frozen home nor an unresolved party may be bypassed.
+        if( site.camp_decision.state == camp_decision_state::cooldown &&
+            !site.has_active_outside_pressure() &&
+            site.home_activation.elapsed_turns( activation_timer::decision_next,
+                site.camp_decision.next_eligible_minutes, now_minutes ) >= 0 ) {
+            transition_camp_decision_state( site, camp_decision_state::cooldown,
+                                            camp_decision_state::idle,
+                                            site.camp_decision.source_report_revision,
+                                            site.camp_decision.source_report_generation,
+                                            now_minutes, -1, "settled response cooldown elapsed" );
+        }
         if( !site.active_hostile_operation.is_active() ||
             site.active_hostile_operation.phase != hostile_operation_phase::assembling ) {
             continue;
@@ -20474,6 +20707,162 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
     }
     if( response_member_read_lookup ) {
         for( const std::size_t site_index : dispatch_site_indices ) {
+            // A settled success is permission to investigate that exact place,
+            // not a report that its former occupants or goods are still there.
+            // The old global opportunity remains consumed; the place owns a
+            // separate operation reservation and the ordinary party checks.
+            site_record &repeat_site = state.sites[site_index];
+            if( repeat_site.camp_decision.state == camp_decision_state::idle &&
+                effective_profile( repeat_site ) == hostile_site_profile::camp_style &&
+                !repeat_site.retired_empty_site && !repeat_site.has_active_outside_pressure() &&
+                repeat_site.home_activation.initialized() && repeat_site.home_activation.active &&
+                ( repeat_site.next_routine_dispatch_eligible_minutes < 0 ||
+                  repeat_site.home_activation.elapsed_turns( activation_timer::routine_next,
+                      repeat_site.next_routine_dispatch_eligible_minutes, now_minutes ) >= 0 ) ) {
+                const auto eligible_place = [&]() -> std::optional<std::size_t> {
+                    const site_record &current = state.sites[site_index];
+                    const auto found = std::find_if( current.intelligence_map.robbery_places.begin(),
+                                         current.intelligence_map.robbery_places.end(),
+                    [&]( const robbery_place_memory & place ) {
+                        return place.eligible && place.caution == 0 && place.verified_danger >= 0 &&
+                               place.danger_evaluated_minutes >= 0 &&
+                               place.active_operation_id.empty() &&
+                               current.home_activation.active_turns >= place.next_eligible_active_turn &&
+                               current.home_activation.active_turns >= place.admission_retry_active_turn;
+                    } );
+                    return found == current.intelligence_map.robbery_places.end() ? std::nullopt :
+                           std::optional<std::size_t>( static_cast<std::size_t>( std::distance(
+                                   current.intelligence_map.robbery_places.begin(), found ) ) );
+                };
+                if( eligible_place() ) {
+                    if( prepare_home_admission && !prepare_home_admission( state, site_index ) ) {
+                        continue;
+                    }
+                    if( materialize_for_response ) {
+                        materialize_for_response( state, site_index );
+                        if( prepare_home_admission && !prepare_home_admission( state, site_index ) ) {
+                            continue;
+                        }
+                    }
+                    const auto place = eligible_place();
+                    site_record &prepared_site = state.sites[site_index];
+                    if( !place || prepared_site.camp_decision.state != camp_decision_state::idle ||
+                        prepared_site.has_active_outside_pressure() ) {
+                        continue;
+                    }
+                    const robbery_place_memory remembered = prepared_site.intelligence_map.robbery_places[*place];
+                    const auto repeat_site_bytes = []( const site_record & value ) {
+                        std::ostringstream out;
+                        JsonOut json( out );
+                        value.serialize( json );
+                        return out.str();
+                    };
+                    const std::string site_before = repeat_site_bytes( prepared_site );
+                    const auto reads = response_member_read_lookup( prepared_site );
+                    const auto selection = select_capable_response_party( prepared_site,
+                                           camp_report_policy::bandit_shakedown,
+                                           remembered.verified_danger, reads );
+                    if( !selection.eligible || !hostile_route_lookup ||
+                        prepared_site.next_outing_generation <= remembered.last_generation ) {
+                        continue;
+                    }
+                    site_record route_site = prepared_site;
+                    route_site.camp_decision.target_omt = remembered.target_omt;
+                    const auto route = hostile_route_lookup( route_site );
+                    if( !route ) {
+                        if( repeat_site_bytes( prepared_site ) == site_before ) {
+                            auto &refused = prepared_site.intelligence_map.robbery_places[*place];
+                            refused.last_admission_refusal = "route_unavailable";
+                            refused.admission_retry_active_turn = prepared_site.home_activation.active_turns +
+                                    static_cast<std::int64_t>( routine_cooldown_delay_minutes(
+                                            prepared_site.site_id, 24 * 60 ) ) * 60;
+                        }
+                        continue;
+                    }
+                    site_record candidate = prepared_site;
+                    auto reserved = std::find_if( candidate.intelligence_map.robbery_places.begin(),
+                                                  candidate.intelligence_map.robbery_places.end(),
+                    [&]( const robbery_place_memory & value ) {
+                        return value.target_id == remembered.target_id && value.target_omt == remembered.target_omt;
+                    } );
+                    if( reserved == candidate.intelligence_map.robbery_places.end() ) {
+                        continue;
+                    }
+                    authorized_hostile_operation_plan plan;
+                    plan.selection = selection;
+                    plan.plan.valid = true;
+                    auto &operation = plan.plan.operation;
+                    auto &outing = operation.reservation;
+                    operation.operation_kind = hostile_operation_kind::shakedown;
+                    operation.phase = hostile_operation_phase::assembling;
+                    operation.repeat_place = true;
+                    operation.repeat_origin_operation_id = remembered.last_operation_id;
+                    operation.repeat_origin_generation = remembered.last_generation;
+                    operation.response_home_reserve = selection.required_local_reserve;
+                    operation.has_rally = true;
+                    operation.rally_omt = route->rally_omt;
+                    operation.last_transition_reason = "investigate remembered robbery place";
+                    outing.kind = outing_kind::hostile_operation;
+                    outing.activity_id = candidate.site_id + "#hostile:" +
+                                         std::to_string( candidate.next_outing_generation );
+                    outing.camp_id = candidate.site_id;
+                    outing.generation = candidate.next_outing_generation;
+                    outing.member_ids = selection.member_ids;
+                    outing.leader_id = selection.member_ids.front();
+                    outing.shared_route = route->route;
+                    outing.target_id = remembered.target_id;
+                    outing.target_omt = remembered.target_omt;
+                    outing.job_type = "toll";
+                    outing.phase = scout_phase::assembling;
+                    outing.started_minutes = now_minutes;
+                    outing.last_progress_minutes = now_minutes;
+                    outing.last_advanced_minutes = now_minutes;
+                    outing.owner = simulation_owner::abstract;
+                    outing.return_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                outing.activity_id, outing.generation, "return" );
+                    outing.report_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                outing.activity_id, outing.generation, "report" );
+                    outing.cargo_application_key = bandit_pursuit_handoff::make_operation_component_key(
+                                outing.activity_id, outing.generation, "cargo" );
+                    reserved->active_operation_id = outing.activity_id;
+                    reserved->active_generation = outing.generation;
+                    const bool applied = hostile_operation_apply ? hostile_operation_apply( candidate, plan ) :
+                                         apply_hostile_operation_plan_with_authorized_response( candidate, plan );
+                    const auto fresh = select_capable_response_party( prepared_site,
+                                       camp_report_policy::bandit_shakedown, remembered.verified_danger,
+                                       response_member_read_lookup( prepared_site ) );
+                    if( !applied || repeat_site_bytes( prepared_site ) != site_before ||
+                        !fresh.eligible || fresh.member_ids != selection.member_ids ||
+                        fresh.reserve_member_ids != selection.reserve_member_ids ||
+                        fresh.party_power != selection.party_power ||
+                        fresh.required_power != selection.required_power ||
+                        !candidate.active_hostile_operation.is_active() ||
+                        candidate.active_hostile_operation.phase != hostile_operation_phase::assembling ||
+                        candidate.active_hostile_operation.reservation.activity_id != outing.activity_id ||
+                        candidate.active_hostile_operation.reservation.generation != outing.generation ||
+                        candidate.active_hostile_operation.reservation.member_ids != selection.member_ids ||
+                        !repeat_place_reservation_matches( candidate, candidate.active_hostile_operation ) ) {
+                        continue;
+                    }
+                    auto accepted_place = std::find_if( candidate.intelligence_map.robbery_places.begin(),
+                                          candidate.intelligence_map.robbery_places.end(),
+                    [&]( const robbery_place_memory & value ) {
+                        return value.active_operation_id == outing.activity_id &&
+                               value.active_generation == outing.generation;
+                    } );
+                    // The reservation identity was checked above, even if an
+                    // application callback rearranged the place collection.
+                    accepted_place->last_admission_refusal.clear();
+                    accepted_place->admission_retry_active_turn = 0;
+                    candidate.active_hostile_operation.verified_response_power = selection.party_power;
+                    candidate.active_hostile_operation.verified_response_danger = remembered.verified_danger;
+                    candidate.active_hostile_operation.verified_response_minutes = now_minutes;
+                    prepared_site = std::move( candidate );
+                    result.response_operations_planned++;
+                    result.response_operations_applied++;
+                    continue;
+                }
+            }
             if( state.sites[site_index].camp_decision.state !=
                 camp_decision_state::report_awaiting_assessment ) {
                 scheduler_exit_diagnostic( &state.sites[site_index],
@@ -20657,6 +21046,11 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                                                       commit_reads ).authorized ) {
                     result.response_operation_rejections++;
                     continue;
+                }
+                if( operation_kind == hostile_operation_kind::shakedown ) {
+                    candidate.active_hostile_operation.verified_response_power = selection.party_power;
+                    candidate.active_hostile_operation.verified_response_danger = effective.danger_high;
+                    candidate.active_hostile_operation.verified_response_minutes = now_minutes;
                 }
                 site = std::move( candidate );
                 state.hostile_target_opportunities = std::move( claim_candidate.hostile_target_opportunities );
@@ -21927,14 +22321,16 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
 static bool authorized_response_selection_is_current( const site_record &site,
         const hostile_operation_kind operation_kind,
-        const response_party_selection_result &selection )
+        const response_party_selection_result &selection, const int repeat_danger = -1 )
 {
-    const camp_report_policy policy = site.camp_decision.report_policy;
+    const camp_report_policy policy = repeat_danger >= 0 ? camp_report_policy::bandit_shakedown :
+                                      site.camp_decision.report_policy;
     const bandit_dry_run::job_template expected_job =
         operation_kind == hostile_operation_kind::raid ?
         bandit_dry_run::job_template::raid : bandit_dry_run::job_template::toll;
     const response_power_evaluation power = evaluate_response_party_power(
-            policy, site.current_scout_report.assessment.danger_high, { 1 } );
+            policy, repeat_danger >= 0 ? repeat_danger :
+            site.current_scout_report.assessment.danger_high, { 1 } );
     if( !selection.eligible || policy == camp_report_policy::none ||
         selection.job != expected_job || selection.party_size < 2 ||
         selection.party_size > static_cast<int>( max_hostile_operation_members ) ||
@@ -22423,21 +22819,62 @@ bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
                                    std::find( reservation.shared_route.begin(),
                                            reservation.shared_route.end(), operation.rally_omt ) !=
                                    reservation.shared_route.end();
+    const auto repeat = std::find_if( site.intelligence_map.robbery_places.begin(),
+                                     site.intelligence_map.robbery_places.end(),
+    [&]( const robbery_place_memory & place ) {
+        return place.target_id == reservation.target_id && place.target_omt == reservation.target_omt;
+    } );
+    const bool repeat_source_valid = operation.repeat_place &&
+                                     repeat != site.intelligence_map.robbery_places.end() &&
+                                     repeat_place_reservation_matches( site, operation ) &&
+                                     repeat->eligible && repeat->caution == 0 &&
+                                     repeat->verified_danger >= 0 && repeat->danger_evaluated_minutes >= 0 &&
+                                     site.home_activation.initialized() &&
+                                     site.home_activation.active &&
+                                     site.home_activation.active_turns >= repeat->next_eligible_active_turn &&
+                                     site.home_activation.active_turns >= repeat->admission_retry_active_turn &&
+                                     reservation.generation > operation.repeat_origin_generation &&
+                                     operation.source_report_revision == 0 &&
+                                     operation.source_report_generation == 0 &&
+                                     operation.source_report_activity_id.empty() &&
+                                     operation.source_report_application_key.empty() &&
+                                     reservation.return_application_key ==
+                                     bandit_pursuit_handoff::make_operation_component_key(
+                                         reservation.activity_id, reservation.generation, "return" ) &&
+                                     reservation.report_application_key ==
+                                     bandit_pursuit_handoff::make_operation_component_key(
+                                         reservation.activity_id, reservation.generation, "report" ) &&
+                                     reservation.cargo_application_key ==
+                                     bandit_pursuit_handoff::make_operation_component_key(
+                                         reservation.activity_id, reservation.generation, "cargo" ) &&
+                                     site.camp_decision.state == camp_decision_state::idle &&
+                                     effective_profile( site ) == hostile_site_profile::camp_style;
+    const bool report_place_ready = operation.operation_kind != hostile_operation_kind::shakedown ||
+                                    repeat == site.intelligence_map.robbery_places.end() ||
+                                    ( repeat->caution == 0 && site.home_activation.initialized() &&
+                                      site.home_activation.active &&
+                                      site.home_activation.active_turns >= repeat->next_eligible_active_turn );
+    const bool report_source_valid = !operation.repeat_place && report_place_ready &&
+                                     site.camp_decision.state == camp_decision_state::preparing_follow_on &&
+                                     site.camp_decision.report_policy == expected_policy &&
+                                     report_matches_camp_decision( site.current_scout_report, site.camp_decision ) &&
+                                     report_matches_hostile_operation( site.current_scout_report, operation ) &&
+                                     operation.operation_kind == expected_kind &&
+                                     reservation.target_id == site.camp_decision.target_id &&
+                                     reservation.target_omt == site.camp_decision.target_omt &&
+                                     reservation.target_lead_id == site.camp_decision.target_lead_id &&
+                                     reservation.target_lead_revision == site.camp_decision.target_lead_revision;
     if( !plan.valid || site.retired_empty_site ||
         !raid_sweep_matches_report( operation, site ) ||
         !raid_source_ready( site, operation.operation_kind ) || site.has_active_outside_pressure() ||
-        site.camp_decision.state != camp_decision_state::preparing_follow_on ||
-        site.camp_decision.report_policy != expected_policy ||
-        !report_matches_camp_decision( site.current_scout_report, site.camp_decision ) ||
-        !report_matches_hostile_operation( site.current_scout_report, operation ) ||
-        operation.operation_kind != expected_kind || operation.legacy_unpinned ||
+        ( !repeat_source_valid && !report_source_valid ) || operation.legacy_unpinned ||
         operation.phase != hostile_operation_phase::assembling ||
         reservation.kind != outing_kind::hostile_operation ||
         reservation.phase != scout_phase::assembling || reservation.camp_id != site.site_id ||
         reservation.activity_id != expected_activity_id ||
         reservation.generation != site.next_outing_generation ||
         !authorized_response_selection_is_current( site, operation.operation_kind,
-                authorized_plan.selection ) ||
+                authorized_plan.selection, repeat_source_valid ? repeat->verified_danger : -1 ) ||
         reservation.member_ids != authorized_plan.selection.member_ids ||
         operation.response_home_reserve != authorized_plan.selection.required_local_reserve ||
         !hostile_operation_party_preserves_home( site, reservation.member_ids.size(),
@@ -22446,11 +22883,8 @@ bool apply_hostile_operation_plan_with_authorized_response( site_record &site,
         reservation.shared_route.size() > max_active_outing_route_steps ||
         reservation.shared_route.front() != site.anchor ||
         !hostile_approach_matches_report( reservation.shared_route.back(),
-                                          site.camp_decision.target_omt ) ||
-        !rally_is_on_route || reservation.target_id != site.camp_decision.target_id ||
-        reservation.target_omt != site.camp_decision.target_omt ||
-        reservation.target_lead_id != site.camp_decision.target_lead_id ||
-        reservation.target_lead_revision != site.camp_decision.target_lead_revision ||
+                                          reservation.target_omt ) ||
+        !rally_is_on_route ||
         !hostile_operation_job_matches( operation.operation_kind, reservation.job_type ) ||
         reservation.started_minutes < site.camp_decision.last_transition_minutes ||
         reservation.started_minutes != reservation.last_progress_minutes ||
@@ -25480,7 +25914,12 @@ hostile_operation_player_relationship hostile_operation_player_relationship_for(
         const bool paid_return = operation.phase == hostile_operation_phase::returning_home &&
                                  ( operation.shakedown_pending_branch == "paid" ||
                                    operation.shakedown_pending_branch == "robbed" ||
-                                   operation.shakedown_pending_branch == "searched_empty" );
+                                   operation.shakedown_pending_branch == "searched_empty" ||
+                                   operation.shakedown_pending_branch == "contact_empty" ||
+                                   operation.shakedown_pending_branch == "flight" ||
+                                   operation.shakedown_pending_branch == "access_failed" ||
+                                   operation.shakedown_pending_branch == "search_interrupted" ||
+                                   operation.shakedown_pending_branch == "search_unresolved" );
         if( std::find( outing->member_ids.begin(), outing->member_ids.end(), npc_id ) ==
             outing->member_ids.end() || outing->member_is_resolved( npc_id ) ||
             ( !outing->camp_id.empty() && outing->camp_id != site.site_id ) ) {
@@ -25596,8 +26035,18 @@ const site_record *active_hostile_withdrawal_site_for( const world_state &state,
         const hostile_operation_state &operation = site.active_hostile_operation;
         const active_outing_state &reservation = operation.reservation;
         const bool fight = hostile_shakedown_fight_identity_matches( site );
+        const bool peaceful_flight = operation.operation_kind == hostile_operation_kind::shakedown &&
+                                     operation.phase == hostile_operation_phase::returning_home &&
+                                     operation.shakedown_pending_branch == "flight" &&
+                                     site.active_external_outing() == &reservation &&
+                                     reservation.camp_id == site.site_id &&
+                                     reservation.generation > site.applied_return_generation &&
+                                     current_external_simulation_cursor( site ).has_value() &&
+                                     reservation.owner == simulation_owner::abstract &&
+                                     simulation_owner_state_is_consistent( reservation ) &&
+                                     std::count( reservation.member_ids.begin(), reservation.member_ids.end(), npc_id ) == 1;
         if( site.retired_empty_site || !operation.is_active() ||
-            ( operation.operation_kind != hostile_operation_kind::raid && !fight ) ||
+            ( operation.operation_kind != hostile_operation_kind::raid && !fight && !peaceful_flight ) ||
             ( fight && ( ( operation.phase == hostile_operation_phase::committed_contact ?
                            reservation.owner != simulation_owner::local :
                            reservation.owner != simulation_owner::abstract ) ||
@@ -26882,7 +27331,14 @@ shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
         const shakedown_outcome &outcome )
 {
     shakedown_aftermath_effect effect;
-    if( ( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty ) ||
+    const bool unresolved = outcome.unresolved_reason == "interrupted_travel" ||
+                            outcome.unresolved_reason == "flight" ||
+                            outcome.unresolved_reason == "access_failed" ||
+                            outcome.unresolved_reason == "search_interrupted" ||
+                            outcome.unresolved_reason == "search_unresolved";
+    if( ( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty &&
+          !unresolved ) ||
+        ( !outcome.unresolved_reason.empty() && !unresolved ) ||
         ( ( outcome.paid || outcome.fought ) && outcome.demanded_value <= 0 ) ) {
         effect.notes.push_back( "shakedown aftermath ignored: no concrete paid/fought outcome" );
         return effect;
@@ -26959,6 +27415,107 @@ bool terminal_hostile_shakedown_aftermath_was_applied( const site_record &site,
            site.last_hostile_shakedown_generation == expected_generation;
 }
 
+// Settlement owns this place memory.  It never resets or reuses the global
+// report/opportunity receipt and does not imply anything about current goods.
+void remember_successful_robbery_place( site_record &site,
+                                        const hostile_operation_state &operation )
+{
+    if( ( operation.shakedown_pending_branch != "paid" &&
+          operation.shakedown_pending_branch != "robbed" ) ||
+        operation.shakedown_pending_surrendered_value <= 0 ) {
+        return;
+    }
+    const active_outing_state &outing = operation.reservation;
+    auto &places = site.intelligence_map.robbery_places;
+    auto place = std::find_if( places.begin(), places.end(), [&]( const robbery_place_memory & item ) {
+        return item.target_id == outing.target_id && item.target_omt == outing.target_omt;
+    } );
+    const std::int64_t active_now = site.home_activation.active_turns;
+    if( place == places.end() ) {
+        if( places.size() >= 16 ) {
+            auto oldest = places.end();
+            for( auto it = places.begin(); it != places.end(); ++it ) {
+                const bool reserved = !it->active_operation_id.empty() ||
+                                      ( site.active_hostile_operation.is_active() &&
+                                        site.active_hostile_operation.reservation.target_id == it->target_id &&
+                                        site.active_hostile_operation.reservation.target_omt == it->target_omt );
+                if( !reserved && it->next_eligible_active_turn <= active_now &&
+                    ( oldest == places.end() ||
+                      it->last_settled_active_turn < oldest->last_settled_active_turn ) ) {
+                    oldest = it;
+                }
+            }
+            if( oldest == places.end() ) {
+                debugmsg( "Cannot retain settled robbery place for %s: all 16 memories are protected",
+                          site.site_id );
+                return;
+            }
+            places.erase( oldest );
+        }
+        places.emplace_back();
+        place = std::prev( places.end() );
+        place->target_id = outing.target_id;
+        place->target_omt = outing.target_omt;
+    }
+    place->last_operation_id = outing.activity_id;
+    place->last_report_key = operation.source_report_application_key;
+    place->last_generation = outing.generation;
+    place->last_outcome = operation.shakedown_pending_branch;
+    place->last_admission_refusal.clear();
+    place->admission_retry_active_turn = 0;
+    place->last_settled_active_turn = active_now;
+    place->next_eligible_active_turn = active_now + static_cast<std::int64_t>(
+                robbery_place_cooldown_minutes( site.site_id ) ) * 60;
+    if( outing.casualty_ids.empty() && place->caution > 0 ) {
+        --place->caution;
+    }
+    place->eligible = place->caution < 2;
+    place->verified_party_power = operation.verified_response_power;
+    place->verified_danger = operation.verified_response_danger;
+    place->verified_minutes = operation.verified_response_minutes;
+    place->danger_evaluated_minutes = operation.verified_response_minutes;
+    place->party_ids.clear();
+    place->casualty_ids.clear();
+    for( const character_id id : outing.member_ids ) {
+        place->party_ids.push_back( id.get_value() );
+    }
+    for( const character_id id : outing.casualty_ids ) {
+        place->casualty_ids.push_back( id.get_value() );
+    }
+}
+
+bool apply_terminal_shakedown_outcome( site_record &site, const shakedown_outcome &outcome )
+{
+    if( outcome.fought && outcome.demanded_value <= 0 ) {
+        site.last_shakedown_outcome = "fight_unresolved";
+        site.shakedown_last_demanded_value = 0;
+        site.shakedown_last_surrendered_value = 0;
+        site.shakedown_last_reachable_value = 0;
+        site.shakedown_anger++;
+        if( outcome.bandit_losses > 0 ) {
+            site.shakedown_bandit_losses += outcome.bandit_losses;
+            site.shakedown_caution += std::max( 1, outcome.bandit_losses );
+            site.remembered_retreat_bias += std::max( 1, outcome.bandit_losses );
+            site.remembered_pressure =
+                bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+        }
+        return true;
+    }
+    return apply_shakedown_outcome( site, outcome ).valid;
+}
+
+bool authenticated_empty_contact( const hostile_operation_state &operation )
+{
+    return operation.shakedown_pending_branch == "contact_empty" &&
+           operation.shakedown_contact_established && operation.shakedown_receiver_id.is_valid() &&
+           operation.shakedown_pending_basecamp_scene &&
+           operation.shakedown_pending_demanded_value == 0 &&
+           operation.shakedown_pending_surrendered_value == 0 &&
+           operation.shakedown_pending_reachable_value == 0 &&
+           operation.reservation.casualty_ids.empty() && !operation.site_search_inaccessible &&
+           !operation.site_search_interrupted;
+}
+
 bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
         const std::string &expected_activity_id, const int expected_generation,
         const hostile_target_opportunity_record &consumed_opportunity )
@@ -27000,29 +27557,27 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
     outcome.paid = operation.shakedown_pending_branch == "paid";
     outcome.fought = operation.shakedown_pending_branch == "fight";
     outcome.robbed = operation.shakedown_pending_branch == "robbed";
-    outcome.searched_empty = operation.shakedown_pending_branch == "searched_empty";
+    outcome.searched_empty = authenticated_empty_contact( operation );
+    const bool access_failed = operation.shakedown_pending_branch == "access_failed";
+    const bool search_interrupted = operation.shakedown_pending_branch == "search_interrupted";
+    const bool search_unresolved = operation.shakedown_pending_branch == "search_unresolved" ||
+                                   operation.shakedown_pending_branch == "searched_empty";
+    if( access_failed || search_interrupted || search_unresolved ||
+        operation.shakedown_pending_branch == "flight" ) {
+        outcome.unresolved_reason = search_unresolved ? "search_unresolved" :
+                                    operation.shakedown_pending_branch;
+    }
     outcome.demanded_value = operation.shakedown_pending_demanded_value;
     outcome.surrendered_value = operation.shakedown_pending_surrendered_value;
     outcome.reachable_goods_value = operation.shakedown_pending_reachable_value;
     outcome.basecamp_or_camp_scene = operation.shakedown_pending_basecamp_scene;
     outcome.bandit_losses = static_cast<int>( reservation.casualty_ids.size() );
-    if( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty ) {
+    if( !outcome.paid && !outcome.fought && !outcome.robbed && !outcome.searched_empty &&
+        !access_failed && !search_interrupted && !search_unresolved &&
+        operation.shakedown_pending_branch != "flight" ) {
         return false;
     }
-    if( outcome.fought && outcome.demanded_value <= 0 ) {
-        site.last_shakedown_outcome = "fight_unresolved";
-        site.shakedown_last_demanded_value = 0;
-        site.shakedown_last_surrendered_value = 0;
-        site.shakedown_last_reachable_value = 0;
-        site.shakedown_anger++;
-        if( outcome.bandit_losses > 0 ) {
-            site.shakedown_bandit_losses += outcome.bandit_losses;
-            site.shakedown_caution += std::max( 1, outcome.bandit_losses );
-            site.remembered_retreat_bias += std::max( 1, outcome.bandit_losses );
-            site.remembered_pressure =
-                bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
-        }
-    } else if( !apply_shakedown_outcome( site, outcome ).valid ) {
+    if( !apply_terminal_shakedown_outcome( site, outcome ) ) {
         return false;
     }
     camp_map_lead *lead = site.intelligence_map.find_lead( reservation.target_lead_id );
@@ -27055,6 +27610,19 @@ bool apply_terminal_hostile_shakedown_aftermath_local( site_record &site,
     site.last_hostile_shakedown_operation_id = expected_activity_id;
     site.last_hostile_shakedown_report_key = operation.source_report_application_key;
     site.last_hostile_shakedown_generation = expected_generation;
+    if( authenticated_empty_contact( operation ) ) {
+        for( robbery_place_memory &place : site.intelligence_map.robbery_places ) {
+            if( place.target_id == reservation.target_id && place.target_omt == reservation.target_omt &&
+                place.active_operation_id.empty() ) {
+                place.eligible = false;
+                place.last_operation_id = expected_activity_id;
+                place.last_generation = expected_generation;
+                place.last_report_key = operation.source_report_application_key;
+                place.last_outcome = "searched_empty";
+            }
+        }
+    }
+    remember_successful_robbery_place( site, operation );
     return true;
 }
 
@@ -27065,6 +27633,100 @@ bool apply_terminal_hostile_shakedown_aftermath( world_state &state, site_record
 {
     const hostile_operation_state &operation = site.active_hostile_operation;
     const active_outing_state &reservation = operation.reservation;
+    if( operation.repeat_place ) {
+        if( !operation.is_active() || reservation.activity_id != expected_activity_id ||
+            reservation.generation != expected_generation ||
+            !repeat_place_reservation_matches( site, operation ) ||
+            ( operation.phase != hostile_operation_phase::returning_home &&
+              operation.phase != hostile_operation_phase::lost ) ||
+            reservation.last_advanced_minutes < 0 ) {
+            return false;
+        }
+        if( site.last_hostile_shakedown_operation_id == expected_activity_id &&
+            site.last_hostile_shakedown_generation == expected_generation &&
+            site.last_hostile_shakedown_aftermath_key == expected_activity_id + "|repeat|" +
+            std::to_string( expected_generation ) ) {
+            return true;
+        }
+        shakedown_outcome outcome;
+        outcome.paid = operation.shakedown_pending_branch == "paid";
+        outcome.robbed = operation.shakedown_pending_branch == "robbed";
+        outcome.fought = operation.shakedown_pending_branch == "fight";
+        outcome.searched_empty = authenticated_empty_contact( operation );
+        if( operation.shakedown_pending_branch == "access_failed" ||
+            operation.shakedown_pending_branch == "flight" ||
+            operation.shakedown_pending_branch == "search_interrupted" ||
+            operation.shakedown_pending_branch == "search_unresolved" ) {
+            outcome.unresolved_reason = operation.shakedown_pending_branch;
+        }
+        if( operation.shakedown_pending_branch == "searched_empty" ) {
+            outcome.unresolved_reason = "search_unresolved";
+        }
+        if( operation.shakedown_pending_branch.empty() ) {
+            outcome.unresolved_reason = "interrupted_travel";
+        }
+        // Legacy/forced searched_empty has no native absence provenance yet.
+        if( !outcome.paid && !outcome.robbed && !outcome.fought && !outcome.searched_empty &&
+            outcome.unresolved_reason.empty() ) {
+            return false;
+        }
+        outcome.demanded_value = operation.shakedown_pending_demanded_value;
+        outcome.surrendered_value = operation.shakedown_pending_surrendered_value;
+        outcome.reachable_goods_value = operation.shakedown_pending_reachable_value;
+        outcome.basecamp_or_camp_scene = operation.shakedown_pending_basecamp_scene;
+        outcome.bandit_losses = static_cast<int>( reservation.casualty_ids.size() );
+        site_record candidate = site;
+        if( !apply_terminal_shakedown_outcome( candidate, outcome ) ) {
+            return false;
+        }
+        auto &places = candidate.intelligence_map.robbery_places;
+        auto place = std::find_if( places.begin(), places.end(), [&]( const robbery_place_memory & item ) {
+            return item.active_operation_id == expected_activity_id &&
+                   item.active_generation == expected_generation;
+        } );
+        if( place == places.end() ) {
+            return false;
+        }
+        const bool success = ( outcome.paid || outcome.robbed ) && outcome.surrendered_value > 0;
+        if( !success && outcome.bandit_losses > 0 ) {
+            place->caution = std::min( 2, place->caution + 1 );
+        } else if( success && outcome.bandit_losses == 0 && place->caution > 0 ) {
+            --place->caution;
+        }
+        place->eligible = !outcome.searched_empty && place->caution < 2;
+        place->last_operation_id = expected_activity_id;
+        place->last_generation = expected_generation;
+        place->last_outcome = candidate.last_shakedown_outcome;
+        place->last_settled_active_turn = candidate.home_activation.active_turns;
+        const int routine_delay = routine_cooldown_delay_minutes( candidate.site_id, 24 * 60 );
+        const int normal_delay = robbery_place_cooldown_minutes( candidate.site_id );
+        const int delay = !success && outcome.bandit_losses > 0 && place->caution == 1 ?
+                          normal_delay * 2 : normal_delay;
+        place->next_eligible_active_turn = place->last_settled_active_turn +
+                                           static_cast<std::int64_t>( delay ) * 60;
+        place->verified_party_power = operation.verified_response_power;
+        place->verified_danger = operation.verified_response_danger;
+        place->verified_minutes = operation.verified_response_minutes;
+        place->party_ids.clear();
+        place->casualty_ids.clear();
+        for( const character_id id : reservation.member_ids ) {
+            place->party_ids.push_back( id.get_value() );
+        }
+        for( const character_id id : reservation.casualty_ids ) {
+            place->casualty_ids.push_back( id.get_value() );
+        }
+        candidate.next_routine_dispatch_eligible_minutes = minutes_after_saturated(
+                    reservation.last_advanced_minutes, routine_delay );
+        candidate.home_activation.settle_timer( activation_timer::routine_next,
+                candidate.next_routine_dispatch_eligible_minutes );
+        candidate.last_hostile_shakedown_aftermath_key = expected_activity_id + "|repeat|" +
+                std::to_string( expected_generation );
+        candidate.last_hostile_shakedown_operation_id = expected_activity_id;
+        candidate.last_hostile_shakedown_report_key.clear();
+        candidate.last_hostile_shakedown_generation = expected_generation;
+        site = std::move( candidate );
+        return true;
+    }
     if( !terminal_hostile_shakedown_identity_matches( operation, expected_activity_id,
             expected_generation ) ) {
         return false;
@@ -28005,6 +28667,8 @@ bool begin_matching_hostile_shakedown_combat( site_record &site,
     candidate.active_hostile_operation.site_search_waypoint = 0;
     candidate.active_hostile_operation.site_search_initial_goods_value = -1;
     candidate.active_hostile_operation.site_search_waypoint_attempted = false;
+    candidate.active_hostile_operation.site_search_inaccessible = false;
+    candidate.active_hostile_operation.site_search_interrupted = false;
     candidate.active_hostile_operation.site_search_retry_after_turn = 0;
     for( const character_id member_id : candidate.active_hostile_operation.reservation.member_ids ) {
         member_record *member = candidate.find_member( member_id );

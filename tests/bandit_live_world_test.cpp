@@ -7155,6 +7155,22 @@ TEST_CASE( "bandit_live_world_authorized_hostile_response_preserves_named_party_
     stale_generation.sites.front().next_outing_generation++;
     requires_identical_rejection( stale_generation );
 
+    // A place can settle after a report plan was prepared. Commit must check
+    // the current exact-place deadline rather than trusting that stale plan.
+    bandit_live_world::world_state newly_cooled = world;
+    auto &cooled_site = newly_cooled.sites.front();
+    cooled_site.home_activation.evaluate( 902 * 60, true, cooled_site.home_activation_anchors(), {},
+                                          902 * 60 );
+    bandit_live_world::robbery_place_memory place;
+    place.target_id = "authorized-target";
+    place.target_omt = target;
+    place.next_eligible_active_turn = cooled_site.home_activation.active_turns + 1;
+    cooled_site.intelligence_map.robbery_places.push_back( place );
+    requires_identical_rejection( newly_cooled );
+    cooled_site.intelligence_map.robbery_places.front().next_eligible_active_turn =
+        cooled_site.home_activation.active_turns;
+    CHECK( bandit_live_world::apply_hostile_operation_plan_with_authorized_response( cooled_site, plan ) );
+
     REQUIRE( bandit_live_world::apply_hostile_operation_plan_with_authorized_response( site, plan ) );
     CHECK( site.active_hostile_operation.reservation.member_ids == selection.member_ids );
     for( const character_id &member_id : selection.member_ids ) {
@@ -39924,6 +39940,74 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
              winner.active_hostile_operation.reservation.target_lead_revision,
              winner_operation, winner_report, winner_generation ) ==
              bandit_live_world::hostile_target_claim_result::applied );
+    for( const std::string &branch : { std::string( "access_failed" ),
+                                      std::string( "search_interrupted" ),
+                                      std::string( "search_unresolved" ),
+                                      std::string( "searched_empty" ) } ) {
+        CAPTURE( branch );
+        auto candidate = state;
+        auto &camp = candidate.sites[0];
+        auto &outing = camp.active_hostile_operation.reservation;
+        const character_id casualty = outing.member_ids.back();
+        REQUIRE( camp.find_member( casualty ) );
+        camp.find_member( casualty )->state = bandit_live_world::member_state::dead;
+        --camp.living_total;
+        outing.casualty_ids.push_back( casualty );
+        outing.resolved_member_ids.push_back( casualty );
+        camp.active_hostile_operation.shakedown_pending_branch = branch;
+        camp.active_hostile_operation.shakedown_pending_surrendered_value = 0;
+        auto wrong = candidate;
+        wrong.hostile_target_opportunities.front().consumed_report_key += "-wrong";
+        const auto before_wrong = serialize_world( wrong );
+        CHECK_FALSE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath(
+                         wrong, wrong.sites[0], winner_operation, winner_generation ) );
+        CHECK( serialize_world( wrong ) == before_wrong );
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath(
+                     candidate, camp, winner_operation, winner_generation ) );
+        CHECK( camp.last_shakedown_outcome ==
+               ( branch == "searched_empty" ? "search_unresolved" : branch ) );
+        CHECK( camp.shakedown_loot_value == 0 );
+        CHECK( camp.intelligence_map.robbery_places.empty() );
+        CHECK( camp.shakedown_bandit_losses == 1 );
+        CHECK( camp.shakedown_caution == 1 );
+        CHECK( camp.remembered_retreat_bias == 1 );
+        CHECK( camp.remembered_pressure ==
+               bandit_pursuit_handoff::remaining_return_pressure_state::collapsed );
+        const auto settled_once = serialize_world( candidate );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath(
+                   candidate, camp, winner_operation, winner_generation ) );
+        CHECK( serialize_world( candidate ) == settled_once );
+    }
+    {
+        auto bounded = state;
+        auto &camp = bounded.sites[0];
+        auto &places = camp.intelligence_map.robbery_places;
+        for( int i = 0; i < 16; ++i ) {
+            bandit_live_world::robbery_place_memory old;
+            old.target_id = "old-" + std::to_string( i );
+            old.target_omt = tripoint_abs_omt( i, 0, 0 );
+            old.last_operation_id = "old-operation";
+            old.last_report_key = "old-report";
+            old.last_generation = 1;
+            old.last_outcome = "paid";
+            old.eligible = true;
+            old.next_eligible_active_turn = i == 0 ? 1 : 0;
+            places.push_back( old );
+        }
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( bounded, camp,
+                 winner_operation, winner_generation ) );
+        const auto &retained_places = camp.intelligence_map.robbery_places;
+        REQUIRE( retained_places.size() == 16 );
+        CHECK( std::any_of( retained_places.begin(), retained_places.end(), []( const auto & p ) {
+            return p.target_id == "old-0";
+        } ) );
+        CHECK_FALSE( std::any_of( retained_places.begin(), retained_places.end(), []( const auto & p ) {
+            return p.target_id == "old-1";
+        } ) );
+        CHECK( std::any_of( retained_places.begin(), retained_places.end(), [&target]( const auto & p ) {
+            return p.target_id == "shared-target" && p.target_omt == target;
+        } ) );
+    }
     REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( state, winner,
              winner_operation, winner_generation ) );
     const bandit_live_world::hostile_target_opportunity_record *receipt =
@@ -39934,6 +40018,15 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     CHECK( receipt->consumed_generation == winner_generation );
     CHECK( winner.last_shakedown_outcome == "paid" );
     CHECK( winner.shakedown_loot_value == 75 );
+    REQUIRE( winner.intelligence_map.robbery_places.size() == 1 );
+    const auto &place = winner.intelligence_map.robbery_places.front();
+    CHECK( place.target_id == "shared-target" );
+    CHECK( place.target_omt == target );
+    CHECK( place.last_operation_id == winner_operation );
+    CHECK( place.last_report_key == winner_report );
+    CHECK( place.last_generation == winner_generation );
+    CHECK( place.eligible );
+    CHECK( place.next_eligible_active_turn >= place.last_settled_active_turn + 24 * 60 * 60 );
     CHECK( winner.camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
     CHECK( winner.camp_decision.next_eligible_minutes >
            winner.active_hostile_operation.reservation.last_advanced_minutes );
@@ -39964,6 +40057,64 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     bandit_live_world::world_state reloaded;
     reloaded.deserialize( claimed_json );
     CHECK( serialize_world( reloaded ) == settled );
+    REQUIRE( reloaded.sites[0].intelligence_map.robbery_places.size() == 1 );
+    CHECK( reloaded.sites[0].intelligence_map.robbery_places.front().target_omt == target );
+    {
+        // An actual fresh opportunity cannot be adopted during the preceding
+        // settlement's decision cooldown. Both that cooldown and place
+        // retention are measured by the same active home clock.
+        auto adoption = reloaded;
+        adoption.sites.erase( adoption.sites.begin() + 1 );
+        auto &camp = adoption.sites.front();
+        const int settled_at = camp.camp_decision.last_transition_minutes;
+        const int due = camp.camp_decision.next_eligible_minutes;
+        const tripoint_abs_omt fresh_target = target + point( 3, 0 );
+        REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity(
+                     adoption, "player@retention-adoption", fresh_target, { 100, 2, 1 } ) );
+        const auto route_ok = []( const bandit_live_world::site_record &,
+                                  const bandit_live_world::hostile_target_opportunity_record & ) {
+            return true;
+        };
+        camp.home_activation.evaluate( settled_at * 60, true, camp.home_activation_anchors(), {},
+                                       settled_at * 60 );
+        camp.home_activation.evaluate( ( due - 1 ) * 60, true, camp.home_activation_anchors(), {},
+                                       settled_at * 60 );
+        CHECK( bandit_live_world::adopt_observed_hostile_player_opportunities( adoption, due - 1,
+                route_ok ) == 0 );
+        CHECK( camp.home_activation.active_turns <
+               camp.intelligence_map.robbery_places.front().next_eligible_active_turn );
+        camp.home_activation.evaluate( ( due + 1 ) * 60, true, camp.home_activation_anchors(), {},
+                                       settled_at * 60 );
+        bandit_live_world::advance_structural_bounty_maintenance( adoption, due + 1, 0, 0, {}, {} );
+        REQUIRE( camp.camp_decision.state == bandit_live_world::camp_decision_state::idle );
+        CHECK( camp.home_activation.active_turns <
+               camp.intelligence_map.robbery_places.front().next_eligible_active_turn );
+        CHECK( bandit_live_world::adopt_observed_hostile_player_opportunities( adoption, due + 1,
+                route_ok ) == 1 );
+    }
+    // Exercise the real scheduler against the home clock, not elapsed wall time.
+    auto frozen = reloaded;
+    frozen.sites.erase( frozen.sites.begin() + 1 );
+    auto &home = frozen.sites.front();
+    const int due = home.camp_decision.next_eligible_minutes;
+    const int settled_at = home.camp_decision.last_transition_minutes;
+    home.home_activation.evaluate( settled_at * 60, true, home.home_activation_anchors(), {},
+                                   settled_at * 60 );
+    home.home_activation.evaluate( ( settled_at + 1 ) * 60, false,
+                                   home.home_activation_anchors(), {}, settled_at * 60 );
+    home.home_activation.evaluate( ( due + 60 ) * 60, false,
+                                   home.home_activation_anchors(), {}, settled_at * 60 );
+    bandit_live_world::advance_structural_bounty_maintenance( frozen, due + 60, 0, 0, {}, {} );
+    CHECK( home.camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
+    home.home_activation.evaluate( ( due + 120 ) * 60, true,
+                                   home.home_activation_anchors(), {}, settled_at * 60 );
+    bandit_live_world::advance_structural_bounty_maintenance( frozen, due + 120, 0, 0, {}, {} );
+    CHECK( home.camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
+    const int active_due = due + 120 + ( due - settled_at );
+    home.home_activation.evaluate( active_due * 60, true, home.home_activation_anchors(), {},
+                                   settled_at * 60 );
+    bandit_live_world::advance_structural_bounty_maintenance( frozen, active_due, 0, 0, {}, {} );
+    CHECK( home.camp_decision.state == bandit_live_world::camp_decision_state::idle );
 }
 
 TEST_CASE( "scheduler arbitrates one authoritative hostile target across two real camps",
@@ -40074,6 +40225,9 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
     const bandit_live_world::site_record *loser = winner == &state.sites[0] ?
             &state.sites[1] : &state.sites[0];
     REQUIRE( winner->active_hostile_operation.is_active() );
+    CHECK( winner->active_hostile_operation.verified_response_power > 0 );
+    CHECK( winner->active_hostile_operation.verified_response_danger >= 0 );
+    CHECK( winner->active_hostile_operation.verified_response_minutes == initial_minutes );
     CHECK_FALSE( loser->active_hostile_operation.is_active() );
     CHECK( serialize_site( *loser ) == ( loser == &state.sites[0] ?
                                          first_site_before : second_site_before ) );
@@ -40092,6 +40246,332 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
     bandit_live_world::world_state reloaded;
     reloaded.deserialize( json_loader::from_string( first_serialized ) );
     CHECK( serialize_world( reloaded ) == first_serialized );
+
+    // First response and its consumed source are genuine scheduler products.
+    // Finish that operation, then revisit the same OMT with no new report.
+    auto revisit = reloaded;
+    const std::size_t winner_index = winner == &state.sites[0] ? 0 : 1;
+    revisit.sites.erase( revisit.sites.begin() + ( winner_index == 0 ? 1 : 0 ) );
+    auto &home = revisit.sites.front();
+    home.home_activation.evaluate( initial_minutes * 60, true, home.home_activation_anchors(), {},
+                                   initial_minutes * 60 );
+    REQUIRE( transition_test_hostile_operation( home, bandit_live_world::hostile_operation_phase::assembling,
+             bandit_live_world::hostile_operation_phase::outbound, initial_minutes + 1,
+             "first response departed" ) == bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation( home, bandit_live_world::hostile_operation_phase::outbound,
+             bandit_live_world::hostile_operation_phase::returning_home, initial_minutes + 2,
+             "first response returned" ) == bandit_live_world::hostile_operation_transition_result::applied );
+    const auto first_op = home.active_hostile_operation.reservation.activity_id;
+    const int first_gen = home.active_hostile_operation.reservation.generation;
+    home.active_hostile_operation.shakedown_pending_branch = "paid";
+    home.active_hostile_operation.shakedown_pending_demanded_value = 100;
+    home.active_hostile_operation.shakedown_pending_surrendered_value = 75;
+    REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( revisit, home,
+             first_op, first_gen ) );
+    REQUIRE( bandit_live_world::release_matching_external_reservation( home, first_op, first_gen,
+             "first response home" ) );
+    REQUIRE( home.intelligence_map.robbery_places.size() == 1 );
+    CHECK( home.intelligence_map.robbery_places.front().verified_party_power > 0 );
+    const auto normal_delay_turns = home.intelligence_map.robbery_places.front().next_eligible_active_turn -
+                                    home.intelligence_map.robbery_places.front().last_settled_active_turn;
+    CHECK( normal_delay_turns >= 72 * 60 * 60 );
+    CHECK( normal_delay_turns <= 78 * 60 * 60 );
+    {
+        // A save written at the former 24-hour test cadence must retain its
+        // elapsed active time but cannot admit a retry at that old deadline.
+        auto upgrade = revisit;
+        auto &old_place = upgrade.sites.front().intelligence_map.robbery_places.front();
+        old_place.next_eligible_active_turn = old_place.last_settled_active_turn + 29 * 60 * 60;
+        upgrade = round_trip_world( upgrade );
+        auto &upgraded_home = upgrade.sites.front();
+        REQUIRE( upgraded_home.intelligence_map.robbery_places.front().next_eligible_active_turn ==
+                 upgraded_home.intelligence_map.robbery_places.front().last_settled_active_turn +
+                 72 * 60 * 60 );
+        upgraded_home.home_activation.evaluate( ( initial_minutes + 29 * 60 + 1 ) * 60, true,
+                upgraded_home.home_activation_anchors(), {}, initial_minutes * 60 );
+        CHECK( advance_scheduler( upgrade, initial_minutes + 29 * 60 + 1 ).response_operations_applied == 0 );
+        CHECK_FALSE( upgraded_home.active_hostile_operation.is_active() );
+        upgraded_home.home_activation.evaluate( ( initial_minutes + 72 * 60 ) * 60, true,
+                upgraded_home.home_activation_anchors(), {}, initial_minutes * 60 );
+        CHECK( advance_scheduler( upgrade, initial_minutes + 72 * 60 ).response_operations_applied == 1 );
+        CHECK( upgraded_home.active_hostile_operation.repeat_place );
+    }
+    {
+        // Fresh reports and global receipts do not override the exact-place
+        // cooldown. A different place and a post-deadline report remain valid.
+        const tripoint_abs_omt other_target( 42, 52, 0 );
+        const std::string other_id = "scheduler-other-target";
+        const auto prepare_fresh = [&]( const int now, const bool other ) {
+            auto fresh = revisit;
+            auto &camp = fresh.sites.front();
+            camp.home_activation.evaluate( now * 60, true, camp.home_activation_anchors(), {},
+                                           initial_minutes * 60 );
+            auto &report = camp.current_scout_report;
+            report.revision += 1;
+            report.source_generation = camp.next_outing_generation++;
+            report.source_activity_id = camp.site_id + "#scout:" + std::to_string( report.source_generation );
+            report.application_key = report.source_activity_id + ":report:" +
+                                     std::to_string( report.source_generation );
+            report.delivered_minutes = now;
+            auto lead = std::find_if( camp.intelligence_map.leads.begin(), camp.intelligence_map.leads.end(),
+            [&report]( const bandit_live_world::camp_map_lead & candidate ) {
+                return candidate.lead_id == report.target_lead_id;
+            } );
+            REQUIRE( lead != camp.intelligence_map.leads.end() );
+            if( other ) {
+                auto other_lead = *lead;
+                other_lead.lead_id += ":other";
+                other_lead.target_id = other_id;
+                other_lead.omt = other_target;
+                REQUIRE( bandit_live_world::upsert_camp_map_lead( camp, other_lead ) );
+                report.target_id = other_id;
+                report.target_omt = other_target;
+                report.target_lead_id = other_lead.lead_id;
+                report.target_lead_revision = other_lead.revision;
+            } else {
+                report.target_lead_revision = 2;
+                lead->revision = report.target_lead_revision;
+            }
+            camp.applied_report_generation = report.source_generation;
+            REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( camp ) ==
+                     bandit_live_world::camp_decision_transition_result::applied );
+            REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( fresh,
+                     other ? other_id : target_id, other ? other_target : target, { now, 3, 1 } ) );
+            return fresh;
+        };
+        const auto report_route = []( const bandit_live_world::site_record & site ) {
+            return std::optional<bandit_live_world::canonical_hostile_operation_route>(
+                bandit_live_world::canonical_hostile_operation_route{
+                    { site.anchor, site.current_scout_report.target_omt }, site.anchor } );
+        };
+        const auto advance_report = [&]( bandit_live_world::world_state & world, const int now ) {
+            return bandit_live_world::advance_structural_bounty_maintenance( world, now, 0, 0,
+                    {}, {}, {}, {}, {}, {}, reads, {}, report_route );
+        };
+        const int early_now = initial_minutes + 40 * 60;
+        auto early_report = prepare_fresh( early_now, false );
+        REQUIRE( early_report.find_hostile_target_opportunity( target_id, target )->consumed_generation == 0 );
+        CHECK( advance_report( early_report, early_now ).response_operations_applied == 0 );
+        CHECK_FALSE( early_report.sites.front().active_hostile_operation.is_active() );
+        CHECK( early_report.find_hostile_target_opportunity( target_id, target )->consumed_generation == 0 );
+
+        auto other_report = prepare_fresh( early_now, true );
+        REQUIRE( advance_report( other_report, early_now ).response_operations_applied == 1 );
+        CHECK( other_report.sites.front().active_hostile_operation.reservation.target_omt == other_target );
+        CHECK( other_report.find_hostile_target_opportunity( other_id, other_target )->consumed_generation > 0 );
+
+        const int late_now = initial_minutes + static_cast<int>( normal_delay_turns / 60 ) + 1;
+        auto late_report = prepare_fresh( late_now, false );
+        REQUIRE( advance_report( late_report, late_now ).response_operations_applied == 1 );
+        CHECK_FALSE( late_report.sites.front().active_hostile_operation.repeat_place );
+        CHECK( late_report.find_hostile_target_opportunity( target_id, target )->consumed_generation > 0 );
+    }
+    const auto source_receipt = *revisit.find_hostile_target_opportunity( target_id, target );
+    home.current_scout_report.clear();
+    CHECK( home.camp_decision.next_eligible_minutes < initial_minutes + 40 * 60 );
+    const int due = initial_minutes + static_cast<int>( normal_delay_turns / 60 );
+    auto early = revisit;
+    early.sites.front().home_activation.evaluate( ( due - 1 ) * 60, true,
+            early.sites.front().home_activation_anchors(), {}, initial_minutes * 60 );
+    CHECK( advance_scheduler( early, due - 1 ).response_operations_applied == 0 );
+    CHECK_FALSE( early.sites.front().active_hostile_operation.is_active() );
+    auto weak = revisit;
+    weak.sites.front().home_activation.evaluate( ( due + 60 ) * 60, true,
+            weak.sites.front().home_activation_anchors(), {}, initial_minutes * 60 );
+    const auto weak_reads = []( const bandit_live_world::site_record & site ) {
+        std::vector<bandit_live_world::response_member_power_read> result;
+        for( const character_id id : site.roster().physically_present_ids ) {
+            result.push_back( { id, true, true, true, 1 } );
+        }
+        return result;
+    };
+    const auto rejected_weak = bandit_live_world::advance_structural_bounty_maintenance(
+                                   weak, due + 60, 0, 0, {}, {}, {}, {}, {}, {}, weak_reads, {}, route );
+    CHECK( rejected_weak.response_operations_applied == 0 );
+    CHECK_FALSE( weak.sites.front().active_hostile_operation.is_active() );
+    auto inaccessible = revisit;
+    inaccessible.sites.front().home_activation.evaluate( ( due + 60 ) * 60, true,
+            inaccessible.sites.front().home_activation_anchors(), {}, initial_minutes * 60 );
+    int route_reads = 0;
+    const auto no_route = [&route_reads]( const bandit_live_world::site_record & ) {
+        ++route_reads;
+        return std::optional<bandit_live_world::canonical_hostile_operation_route>();
+    };
+    const auto settled_due = inaccessible.sites.front().intelligence_map.robbery_places.front().next_eligible_active_turn;
+    CHECK( bandit_live_world::advance_structural_bounty_maintenance( inaccessible, due + 60,
+           0, 0, {}, {}, {}, {}, {}, {}, reads, {}, no_route ).response_operations_applied == 0 );
+    REQUIRE( route_reads == 1 );
+    CHECK( inaccessible.sites.front().intelligence_map.robbery_places.front().last_admission_refusal ==
+           "route_unavailable" );
+    CHECK( inaccessible.sites.front().intelligence_map.robbery_places.front().next_eligible_active_turn ==
+           settled_due );
+    CHECK( inaccessible.sites.front().intelligence_map.robbery_places.front().admission_retry_active_turn >
+           inaccessible.sites.front().home_activation.active_turns );
+    inaccessible.sites.front().home_activation.evaluate( ( due + 120 ) * 60, true,
+            inaccessible.sites.front().home_activation_anchors(), {}, initial_minutes * 60 );
+    CHECK( bandit_live_world::advance_structural_bounty_maintenance( inaccessible, due + 120,
+           0, 0, {}, {}, {}, {}, {}, {}, reads, {}, no_route ).response_operations_applied == 0 );
+    CHECK( route_reads == 1 );
+    home.home_activation.evaluate( due * 60, true, home.home_activation_anchors(), {},
+                                   initial_minutes * 60 );
+    const auto repeated = advance_scheduler( revisit, due );
+    REQUIRE( repeated.response_operations_applied == 1 );
+    REQUIRE( home.active_hostile_operation.repeat_place );
+    CHECK( home.active_hostile_operation.reservation.target_id == target_id );
+    CHECK( home.active_hostile_operation.reservation.target_omt == target );
+    CHECK( home.active_hostile_operation.source_report_application_key.empty() );
+    const auto *unchanged_receipt = revisit.find_hostile_target_opportunity( target_id, target );
+    REQUIRE( unchanged_receipt );
+    CHECK( unchanged_receipt->consumed_operation_id == source_receipt.consumed_operation_id );
+    CHECK( unchanged_receipt->consumed_report_key == source_receipt.consumed_report_key );
+    CHECK( unchanged_receipt->consumed_generation == source_receipt.consumed_generation );
+    revisit = round_trip_world( revisit );
+    auto &repeated_home = revisit.sites.front();
+    REQUIRE( repeated_home.active_hostile_operation.repeat_place );
+    const auto repeat_op = repeated_home.active_hostile_operation.reservation.activity_id;
+    const int repeat_gen = repeated_home.active_hostile_operation.reservation.generation;
+    REQUIRE( transition_test_hostile_operation( repeated_home,
+             bandit_live_world::hostile_operation_phase::assembling,
+             bandit_live_world::hostile_operation_phase::outbound, due + 61,
+             "repeat departed" ) == bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation( repeated_home,
+             bandit_live_world::hostile_operation_phase::outbound,
+             bandit_live_world::hostile_operation_phase::returning_home, due + 62,
+             "repeat returned" ) == bandit_live_world::hostile_operation_transition_result::applied );
+    {
+        auto paid_again = revisit;
+        auto &camp = paid_again.sites.front();
+        camp.active_hostile_operation.shakedown_pending_branch = "paid";
+        camp.active_hostile_operation.shakedown_pending_demanded_value = 100;
+        camp.active_hostile_operation.shakedown_pending_surrendered_value = 50;
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( paid_again, camp,
+                 repeat_op, repeat_gen ) );
+        CHECK( camp.shakedown_loot_value == 125 );
+        CHECK( camp.intelligence_map.robbery_places.front().last_outcome == "paid" );
+        const auto once = serialize_world( paid_again );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( paid_again, camp,
+               repeat_op, repeat_gen ) );
+        CHECK( serialize_world( paid_again ) == once );
+        CHECK( paid_again.find_hostile_target_opportunity( target_id, target )->consumed_operation_id == first_op );
+    }
+    {
+        auto successor = revisit;
+        auto &camp = successor.sites.front();
+        REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity( successor,
+                 target_id, target, { 101, 3, 1 } ) );
+        const auto *new_source = successor.find_hostile_target_opportunity( target_id, target );
+        REQUIRE( new_source );
+        REQUIRE( new_source->revision == 2 );
+        REQUIRE( new_source->consumed_generation == 0 );
+        camp.active_hostile_operation.shakedown_pending_branch = "search_unresolved";
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( successor, camp,
+                 repeat_op, repeat_gen ) );
+        new_source = successor.find_hostile_target_opportunity( target_id, target );
+        REQUIRE( new_source );
+        CHECK( new_source->revision == 2 );
+        CHECK( new_source->consumed_generation == 0 );
+        CHECK( new_source->consumed_operation_id.empty() );
+    }
+    {
+        auto legacy_empty = revisit;
+        auto &camp = legacy_empty.sites.front();
+        camp.active_hostile_operation.shakedown_pending_branch = "searched_empty";
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( legacy_empty, camp,
+                 repeat_op, repeat_gen ) );
+        CHECK( camp.intelligence_map.robbery_places.front().eligible );
+        CHECK( camp.intelligence_map.robbery_places.front().last_outcome == "search_unresolved" );
+        const auto once = serialize_world( legacy_empty );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( legacy_empty, camp,
+               repeat_op, repeat_gen ) );
+        CHECK( serialize_world( legacy_empty ) == once );
+    }
+    {
+        // Controlled receipt setup isolates the repeat settlement consumer;
+        // the real contact producer is exercised separately below.
+        auto contact = revisit;
+        auto &camp = contact.sites.front();
+        camp.active_hostile_operation.shakedown_pending_branch = "contact_empty";
+        camp.active_hostile_operation.shakedown_pending_basecamp_scene = true;
+        camp.active_hostile_operation.shakedown_receiver_id = character_id( 42 );
+        const auto unauthenticated = serialize_world( contact );
+        CHECK_FALSE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( contact, camp,
+                     repeat_op, repeat_gen ) );
+        CHECK( serialize_world( contact ) == unauthenticated );
+        camp.active_hostile_operation.shakedown_contact_established = true;
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( contact, camp,
+                 repeat_op, repeat_gen ) );
+        CHECK_FALSE( camp.intelligence_map.robbery_places.front().eligible );
+        const auto once = serialize_world( contact );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( contact, camp,
+               repeat_op, repeat_gen ) );
+        CHECK( serialize_world( contact ) == once );
+    }
+    {
+        auto costly = revisit;
+        auto &camp = costly.sites.front();
+        auto &outing = camp.active_hostile_operation.reservation;
+        const character_id casualty = outing.member_ids.back();
+        REQUIRE( camp.find_member( casualty ) );
+        camp.find_member( casualty )->state = bandit_live_world::member_state::dead;
+        --camp.living_total;
+        outing.casualty_ids.push_back( casualty );
+        outing.resolved_member_ids.push_back( casualty );
+        camp.active_hostile_operation.shakedown_pending_branch = "search_unresolved";
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( costly, camp,
+                 repeat_op, repeat_gen ) );
+        const auto &place = camp.intelligence_map.robbery_places.front();
+        CHECK( place.caution == 1 );
+        CHECK( place.eligible );
+        CHECK( place.next_eligible_active_turn - place.last_settled_active_turn ==
+               2 * normal_delay_turns );
+        CHECK( camp.shakedown_bandit_losses == 1 );
+        const auto once = serialize_world( costly );
+        CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( costly, camp,
+               repeat_op, repeat_gen ) );
+        CHECK( serialize_world( costly ) == once );
+        REQUIRE( bandit_live_world::release_matching_external_reservation( camp, repeat_op,
+                 repeat_gen, "costly repeat returned" ) );
+        const int after_cooldown = due + 62 + static_cast<int>( 2 * normal_delay_turns / 60 ) + 60;
+        camp.home_activation.evaluate( after_cooldown * 60, true, camp.home_activation_anchors(), {},
+                                       initial_minutes * 60 );
+        CHECK( advance_scheduler( costly, after_cooldown ).response_operations_applied == 0 );
+        CHECK_FALSE( camp.active_hostile_operation.is_active() );
+    }
+    {
+        auto interrupted = revisit;
+        auto &camp = interrupted.sites.front();
+        REQUIRE( camp.active_hostile_operation.shakedown_pending_branch.empty() );
+        REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( interrupted, camp,
+                 repeat_op, repeat_gen ) );
+        CHECK( camp.intelligence_map.robbery_places.front().last_outcome == "interrupted_travel" );
+        CHECK( camp.intelligence_map.robbery_places.front().eligible );
+        CHECK( camp.shakedown_loot_value == 75 );
+        REQUIRE( bandit_live_world::release_matching_external_reservation( camp, repeat_op,
+                 repeat_gen, "interrupted repeat returned" ) );
+    }
+    {
+        auto stale = revisit;
+        auto &camp = stale.sites.front();
+        ++camp.active_hostile_operation.repeat_origin_generation;
+        camp.active_hostile_operation.shakedown_pending_branch = "search_unresolved";
+        const auto before = serialize_world( stale );
+        CHECK_FALSE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( stale, camp,
+                     repeat_op, repeat_gen ) );
+        CHECK( serialize_world( stale ) == before );
+    }
+    repeated_home.active_hostile_operation.shakedown_pending_branch = "search_unresolved";
+    REQUIRE( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( revisit, repeated_home,
+             repeat_op, repeat_gen ) );
+    const auto settled_repeat = serialize_world( revisit );
+    CHECK( bandit_live_world::apply_terminal_hostile_shakedown_aftermath( revisit, repeated_home,
+           repeat_op, repeat_gen ) );
+    CHECK( serialize_world( revisit ) == settled_repeat );
+    CHECK( repeated_home.intelligence_map.robbery_places.front().eligible );
+    CHECK( repeated_home.intelligence_map.robbery_places.front().last_outcome == "search_unresolved" );
+    REQUIRE( bandit_live_world::release_matching_external_reservation( repeated_home, repeat_op,
+             repeat_gen, "repeat home" ) );
+    CHECK( repeated_home.intelligence_map.robbery_places.front().active_operation_id.empty() );
+    CHECK( revisit.find_hostile_target_opportunity( target_id, target )->consumed_operation_id == first_op );
 
     for( bandit_live_world::site_record &site : state.sites ) {
         REQUIRE( bandit_live_world::advance_camp_supply( site, initial_minutes + 60 ) );
@@ -40137,6 +40617,19 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
                                         fresh_report.source_generation + 1 );
     REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( fresh_site ) ==
              bandit_live_world::camp_decision_transition_result::applied );
+    for( const int caution : { 1, 2 } ) {
+        auto costly_fresh_report = state;
+        auto &costly_site = costly_fresh_report.sites[winner == &state.sites[0] ? 1 : 0];
+        auto remembered = revisit.sites.front().intelligence_map.robbery_places.front();
+        remembered.caution = caution;
+        remembered.eligible = caution < 2;
+        costly_site.intelligence_map.robbery_places.push_back( remembered );
+        CHECK( advance_scheduler( costly_fresh_report, initial_minutes + 120 ).response_operations_applied == 0 );
+        CHECK_FALSE( costly_site.active_hostile_operation.is_active() );
+        const auto *untouched = costly_fresh_report.find_hostile_target_opportunity( target_id, target );
+        REQUIRE( untouched );
+        CHECK( untouched->consumed_generation == 0 );
+    }
     const bandit_live_world::structural_bounty_maintenance_result renewed =
         advance_scheduler( state, initial_minutes + 120 );
     CHECK( renewed.response_operations_applied == 1 );
@@ -53685,10 +54178,236 @@ TEST_CASE( "empty locally simulated visit physically searches then returns witho
     CHECK( scene.collector->pos_abs() != before );
     CHECK( scene.site().active_hostile_operation.phase ==
            bandit_live_world::hostile_operation_phase::returning_home );
-    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "searched_empty" );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "search_unresolved" );
     CHECK_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
     CHECK( scene.site().active_hostile_operation.shakedown_pending_surrendered_value == 0 );
     CHECK( scene.collector->goal == scene.site().anchor );
+}
+
+TEST_CASE( "hidden search preserves a competing native order",
+           "[bandit_live_world][encounter_066][empty_search_066]" )
+{
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    scene.distant_adjacent_avatar();
+    calendar::turn += 1_minutes;
+    advance_live_bandit_hostile_approaches_for_test();
+    REQUIRE( scene.site().active_hostile_operation.phase ==
+             bandit_live_world::hostile_operation_phase::committed_contact );
+    REQUIRE( advance_bandit_hidden_shakedown_search_for_test( scene.site() ) );
+    const int waypoint = scene.site().active_hostile_operation.site_search_waypoint;
+    const tripoint_abs_ms foreign = scene.collector->pos_abs() + point( 1, 0 );
+    REQUIRE( foreign != *scene.collector->goto_to_this_pos );
+    scene.collector->goto_to_this_pos = foreign;
+    scene.collector->path.clear();
+    scene.collector->path.push_back( get_map().get_bub( foreign ) );
+    const auto path = scene.collector->path;
+    CHECK_FALSE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( scene.collector->goto_to_this_pos == foreign );
+    CHECK( scene.collector->path == path );
+    CHECK( scene.site().active_hostile_operation.site_search_waypoint == waypoint );
+    CHECK( scene.site().active_hostile_operation.site_search_interrupted );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
+    overmap_buffer.global_state.bandit_live_world = round_trip_world(
+                overmap_buffer.global_state.bandit_live_world );
+    CHECK( scene.site().active_hostile_operation.site_search_interrupted );
+    CHECK_FALSE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( scene.collector->goto_to_this_pos == foreign );
+    CHECK( scene.collector->path == path );
+    // Flight can begin before native AI has issued any explicit destination.
+    scene.collector->goto_to_this_pos.reset();
+    scene.collector->path.clear();
+    scene.collector->set_attitude( NPCATT_FLEE );
+    // The native setter normalizes deprecated FLEE to FLEE_TEMP.
+    const auto fleeing_attitude = scene.collector->get_attitude();
+    REQUIRE( fleeing_attitude == NPCATT_FLEE_TEMP );
+    scene.collector->goto_to_this_pos = foreign;
+    scene.collector->path.push_back( get_map().get_bub( foreign ) );
+    REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( scene.collector->get_attitude() == fleeing_attitude );
+    CHECK( scene.collector->goto_to_this_pos == foreign );
+    CHECK( scene.collector->path == path );
+    CHECK( scene.site().active_hostile_operation.site_search_waypoint == waypoint );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "flight" );
+    CHECK( scene.site().active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::returning_home );
+}
+
+TEST_CASE( "legacy search progress does not invent an interruption",
+           "[bandit_live_world][empty_search_066][search_legacy]" )
+{
+    bandit_live_world::hostile_operation_state legacy;
+    legacy.deserialize( json_loader::from_string( R"({"site_search_waypoint":2})" ).get_object() );
+    CHECK( legacy.site_search_waypoint == 2 );
+    CHECK_FALSE( legacy.site_search_inaccessible );
+    CHECK_FALSE( legacy.site_search_interrupted );
+    std::ostringstream saved;
+    JsonOut json( saved );
+    legacy.serialize( json );
+    bandit_live_world::hostile_operation_state restored;
+    restored.deserialize( json_loader::from_string( saved.str() ).get_object() );
+    CHECK( restored.site_search_waypoint == 2 );
+    CHECK_FALSE( restored.site_search_inaccessible );
+    CHECK_FALSE( restored.site_search_interrupted );
+}
+
+TEST_CASE( "repeat robbery upgrades saved deadlines from the original settlement",
+           "[bandit_live_world][repeat_cadence_72]" )
+{
+    using namespace bandit_live_world;
+    robbery_place_memory old;
+    old.target_id = "remembered-target";
+    old.target_omt = tripoint_abs_omt( 31, 42, 0 );
+    old.last_operation_id = "camp#hostile:2";
+    old.last_report_key = "camp#scout:report:1";
+    old.last_generation = 2;
+    old.last_outcome = "paid";
+    old.last_settled_active_turn = 12345;
+    old.next_eligible_active_turn = old.last_settled_active_turn + 29 * 60 * 60;
+    old.eligible = true;
+    old.active_operation_id = "camp#hostile:3";
+    old.active_generation = 3;
+    const auto reload = []( const robbery_place_memory & saved ) {
+        std::ostringstream out;
+        JsonOut json( out );
+        saved.serialize( json );
+        robbery_place_memory restored;
+        restored.deserialize( json_loader::from_string( out.str() ).get_object() );
+        return restored;
+    };
+    const auto migrated = reload( old );
+    CHECK( migrated.last_settled_active_turn == old.last_settled_active_turn );
+    CHECK( migrated.next_eligible_active_turn == old.last_settled_active_turn + 72 * 60 * 60 );
+    CHECK( migrated.active_operation_id == old.active_operation_id );
+    CHECK( migrated.active_generation == old.active_generation );
+    CHECK( migrated.target_id == old.target_id );
+    CHECK( migrated.target_omt == old.target_omt );
+    CHECK( migrated.last_report_key == old.last_report_key );
+    old.last_outcome = "search_interrupted";
+    old.caution = 1;
+    old.casualty_ids = { 17 };
+    old.next_eligible_active_turn = old.last_settled_active_turn + 58 * 60 * 60;
+    const auto costly = reload( old );
+    CHECK( costly.last_settled_active_turn == old.last_settled_active_turn );
+    CHECK( costly.next_eligible_active_turn == old.last_settled_active_turn + 144 * 60 * 60 );
+    CHECK( costly.casualty_ids == std::vector<int> { 17 } );
+    old.next_eligible_active_turn = old.last_settled_active_turn + 150 * 60 * 60;
+    CHECK( reload( old ).next_eligible_active_turn == old.next_eligible_active_turn );
+    old.last_outcome = "paid";
+    old.next_eligible_active_turn = old.last_settled_active_turn + 29 * 60 * 60;
+    CHECK( reload( old ).next_eligible_active_turn == old.last_settled_active_turn + 72 * 60 * 60 );
+}
+
+TEST_CASE( "real empty payment contact settles exact remembered place once",
+           "[bandit_live_world][empty_contact_repeat]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r066_visit_scene scene;
+    clear_avatar();
+    clear_items( 1 );
+    clear_items( 2 );
+    overmap_buffer.add_camp( basecamp( "empty contact camp", scene.target ) );
+    scene.camp_added = true;
+    REQUIRE( scene.communicate() );
+    calendar::turn += 1_minutes;
+    REQUIRE( scene.site().active_hostile_operation.phase == hostile_operation_phase::committed_contact );
+    auto &operation = scene.site().active_hostile_operation;
+    const auto activity = operation.reservation.activity_id;
+    const int generation = operation.reservation.generation;
+    const auto target_id = operation.reservation.target_id;
+    const auto target = operation.reservation.target_omt;
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    // The previous paid visit and the current repeat are controlled setup;
+    // the actual receiver/selector/return/settlement path below is exercised.
+    operation.repeat_place = true;
+    operation.repeat_origin_operation_id = "previous-success";
+    operation.repeat_origin_generation = 1;
+    operation.source_report_revision = 0;
+    operation.source_report_generation = 0;
+    operation.source_report_activity_id.clear();
+    operation.source_report_application_key.clear();
+    robbery_place_memory remembered;
+    remembered.target_id = target_id;
+    remembered.target_omt = target;
+    remembered.last_operation_id = "previous-success";
+    remembered.last_report_key = "previous-report";
+    remembered.last_generation = 1;
+    remembered.last_outcome = "paid";
+    remembered.eligible = true;
+    remembered.active_operation_id = activity;
+    remembered.active_generation = generation;
+    scene.site().intelligence_map.robbery_places.push_back( remembered );
+    const auto ordinary_started = std::chrono::steady_clock::now();
+    const auto ordinary_sources = encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2 );
+    const auto ordinary_done = std::chrono::steady_clock::now();
+    bool complete = false;
+    const auto checked_sources = encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2,
+                                 true, &complete );
+    const auto checked_done = std::chrono::steady_clock::now();
+    std::cout << "EMPTY_CONTACT_SCAN ordinary_us=" <<
+              std::chrono::duration_cast<std::chrono::microseconds>( ordinary_done - ordinary_started ).count() <<
+              " complete_us=" <<
+              std::chrono::duration_cast<std::chrono::microseconds>( checked_done - ordinary_done ).count() << '\n';
+    REQUIRE( ordinary_sources.empty() );
+    REQUIRE( checked_sources.empty() );
+    REQUIRE( complete );
+    map &here = get_map();
+    const tripoint_bub_ms goods = get_avatar().pos_bub() + point( 6, 0 );
+    here.add_item_or_charges( goods, item( itype_id( "m240" ) ) );
+    complete = false;
+    CHECK_FALSE( encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2, true,
+                                        &complete ).empty() );
+    CHECK( complete );
+    for( const auto &tile : here.points_in_radius( goods, 1 ) ) {
+        if( tile != goods ) {
+            here.ter_set( tile, ter_str_id( "t_rock" ) );
+        }
+    }
+    here.invalidate_map_cache( goods.z() );
+    here.build_map_cache( goods.z() );
+    complete = true;
+    CHECK( encounter_trade_items( get_avatar(), *scene.collector, 30, 12, 2, true,
+                                  &complete ).empty() );
+    CHECK_FALSE( complete );
+    CHECK_FALSE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch.empty() );
+    here.i_clear( goods );
+    for( const auto &tile : here.points_in_radius( goods, 1 ) ) {
+        if( tile != goods ) {
+            here.ter_set( tile, ter_str_id( "t_grass" ) );
+        }
+    }
+    here.invalidate_map_cache( goods.z() );
+    here.build_map_cache( goods.z() );
+    REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "contact_empty" );
+    REQUIRE( apply_terminal_hostile_shakedown_aftermath( world, scene.site(), activity, generation ) );
+    REQUIRE( scene.site().intelligence_map.robbery_places.size() == 1 );
+    CHECK_FALSE( scene.site().intelligence_map.robbery_places.front().eligible );
+    CHECK( scene.site().intelligence_map.robbery_places.front().last_outcome == "searched_empty" );
+    const auto once = serialize_world( world );
+    CHECK_FALSE( apply_terminal_hostile_shakedown_aftermath( world, scene.site(), activity,
+                 generation + 1 ) );
+    CHECK( apply_terminal_hostile_shakedown_aftermath( world, scene.site(), activity, generation ) );
+    CHECK( serialize_world( world ) == once );
+}
+
+TEST_CASE( "refused payment item is not an empty encounter receipt",
+           "[bandit_live_world][empty_contact_repeat]" )
+{
+    clear_map( -2, 2 );
+    clear_avatar();
+    npc &trader = spawn_npc( get_avatar().pos_bub().xy() + point( 2, 0 ), "test_npc_trader" );
+    const auto tile = get_avatar().pos_bub() + point( 1, 0 );
+    item &saw = get_map().add_item_or_charges( tile, item( itype_id( "bow_saw" ) ) );
+    REQUIRE( trader.wants_to_buy( saw ) );
+    trader.set_value( "bool_bigotry_hates_bow_saws", "yes" );
+    REQUIRE_FALSE( trader.wants_to_buy( saw ) );
+    bool complete = true;
+    CHECK( encounter_trade_items( get_avatar(), trader, 30, 12, 2, true, &complete ).empty() );
+    CHECK_FALSE( complete );
+    clear_npcs();
 }
 
 TEST_CASE( "hidden search skips a genuinely unreachable waypoint",
@@ -53721,6 +54440,222 @@ TEST_CASE( "hidden search skips a genuinely unreachable waypoint",
     advance_bandit_hidden_shakedown_search_for_test( scene.site() );
     CHECK( scene.site().active_hostile_operation.site_search_waypoint > first );
     CHECK( scene.collector->pos_bub() == origin );
+    CHECK( scene.site().active_hostile_operation.site_search_inaccessible );
+    overmap_buffer.global_state.bandit_live_world = round_trip_world(
+                overmap_buffer.global_state.bandit_live_world );
+    CHECK( scene.site().active_hostile_operation.site_search_inaccessible );
+    for( const tripoint_bub_ms &tile : here.points_in_radius( origin, 1 ) ) {
+        if( tile != origin ) {
+            here.ter_set( tile, ter_id( "t_grass" ) );
+        }
+    }
+    here.invalidate_map_cache( origin.z() );
+    here.build_map_cache( origin.z() );
+    for( int step = 0; step < 512 && scene.site().active_hostile_operation.phase !=
+         bandit_live_world::hostile_operation_phase::returning_home; ++step ) {
+        advance_bandit_hidden_shakedown_search_for_test( scene.site() );
+        scene.collector->set_moves( 100 );
+        scene.collector->move();
+        calendar::turn += 1_turns;
+    }
+    REQUIRE( scene.site().active_hostile_operation.phase ==
+             bandit_live_world::hostile_operation_phase::returning_home );
+    CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "access_failed" );
+}
+
+TEST_CASE( "peaceful shakedown accounts for actual flight or death",
+           "[bandit_live_world][peaceful_withdrawal_repeat]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool dead = GENERATE( false, true );
+    r066_visit_scene scene;
+    scene.distant_adjacent_avatar();
+    calendar::turn += 1_minutes;
+    advance_live_bandit_hostile_approaches_for_test();
+    REQUIRE( scene.site().active_hostile_operation.phase == hostile_operation_phase::committed_contact );
+    REQUIRE_FALSE( scene.site().active_hostile_operation.shakedown_contact_established );
+    const character_id id = scene.collector->getID();
+    const character_id partner = scene.escort->getID();
+    const std::string activity = scene.site().active_hostile_operation.reservation.activity_id;
+    const int generation = scene.site().active_hostile_operation.reservation.generation;
+    // Controlled previous success and repeat reservation; flight, deaths,
+    // actual movement and terminal settlement below are produced by callers.
+    auto &operation = scene.site().active_hostile_operation;
+    operation.repeat_place = true;
+    operation.repeat_origin_operation_id = "previous-success";
+    operation.repeat_origin_generation = 1;
+    operation.source_report_revision = 0;
+    operation.source_report_generation = 0;
+    operation.source_report_activity_id.clear();
+    operation.source_report_application_key.clear();
+    robbery_place_memory remembered;
+    remembered.target_id = operation.reservation.target_id;
+    remembered.target_omt = operation.reservation.target_omt;
+    remembered.last_operation_id = operation.repeat_origin_operation_id;
+    remembered.last_report_key = "previous-report";
+    remembered.last_generation = operation.repeat_origin_generation;
+    remembered.last_outcome = "paid";
+    remembered.eligible = true;
+    remembered.active_operation_id = activity;
+    remembered.active_generation = generation;
+    scene.site().intelligence_map.robbery_places.push_back( remembered );
+    if( dead ) {
+        scene.collector->die( &get_map(), nullptr );
+        REQUIRE( scene.collector->is_dead() );
+        g->cleanup_dead();
+        REQUIRE_FALSE( overmap_buffer.find_npc( id ) );
+        calendar::turn += 1_minutes;
+        handle_bandit_shakedown_contact_for_test( scene.site() );
+        REQUIRE( scene.site().active_hostile_operation.is_active() );
+        CHECK( scene.site().active_hostile_operation.reservation.activity_id == activity );
+        CHECK( scene.site().active_hostile_operation.reservation.generation == generation );
+        CHECK( scene.site().find_member( id )->state == member_state::dead );
+        CHECK( scene.site().active_hostile_operation.reservation.casualty_ids ==
+               std::vector<character_id> { id } );
+        CHECK_FALSE( scene.site().active_hostile_operation.reservation.member_is_resolved( partner ) );
+        REQUIRE( handle_bandit_shakedown_contact_for_test( scene.site() ) );
+        REQUIRE( scene.site().active_hostile_operation.phase == hostile_operation_phase::returning_home );
+        CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "search_interrupted" );
+    } else {
+        npc &actor = *scene.collector;
+        actor.set_attitude( NPCATT_FLEE );
+        REQUIRE( actor.get_attitude() == NPCATT_FLEE_TEMP );
+        const auto start = actor.pos_abs();
+        bool moved = false;
+        for( int turn = 0; turn < 30; ++turn ) {
+            handle_bandit_shakedown_contact_for_test( scene.site() );
+            actor.set_moves( 100 );
+            actor.move();
+            moved |= actor.pos_abs() != start;
+            calendar::turn += 1_turns;
+        }
+        CHECK( moved );
+        CHECK( actor.get_attitude() == NPCATT_FLEE_TEMP );
+        CHECK( scene.site().active_hostile_operation.reservation.activity_id == activity );
+        CHECK( scene.site().active_hostile_operation.reservation.generation == generation );
+        CHECK( std::find( scene.site().active_hostile_operation.withdrawing_member_ids.begin(),
+                          scene.site().active_hostile_operation.withdrawing_member_ids.end(), id ) !=
+               scene.site().active_hostile_operation.withdrawing_member_ids.end() );
+        CHECK( std::find( scene.site().active_hostile_operation.withdrawing_member_ids.begin(),
+                          scene.site().active_hostile_operation.withdrawing_member_ids.end(), partner ) ==
+               scene.site().active_hostile_operation.withdrawing_member_ids.end() );
+        CHECK_FALSE( scene.site().active_hostile_operation.reservation.member_is_resolved( id ) );
+        CHECK( scene.site().active_hostile_operation.phase == hostile_operation_phase::returning_home );
+        CHECK( scene.site().active_hostile_operation.shakedown_pending_branch == "flight" );
+        world_state copied = overmap_buffer.global_state.bandit_live_world;
+        REQUIRE( active_hostile_withdrawal_site_for( copied, id ) != nullptr );
+        copied.sites.front().active_hostile_operation.reservation.camp_id = "foreign camp";
+        CHECK( active_hostile_withdrawal_site_for( copied, id ) == nullptr );
+        copied = overmap_buffer.global_state.bandit_live_world;
+        copied.sites.front().applied_return_generation = generation;
+        CHECK( active_hostile_withdrawal_site_for( copied, id ) == nullptr );
+        copied = overmap_buffer.global_state.bandit_live_world;
+        copied.sites.front().active_outing.member_ids.push_back( id );
+        CHECK( active_hostile_withdrawal_site_for( copied, id ) == nullptr );
+    }
+    // Native actor movement and the real return scheduler must reach home;
+    // no party position, terminal branch, casualty or receipt is forced here.
+    for( int turn = 0; turn < 900 && scene.site().active_hostile_operation.is_active(); ++turn ) {
+        for( const character_id member : { id, partner } ) {
+            npc *actor = g->find_npc( member );
+            if( actor != nullptr && actor->is_active() && !actor->is_dead() ) {
+                actor->set_moves( 100 );
+                actor->move();
+            }
+        }
+        calendar::turn += 1_turns;
+        if( calendar::once_every( 5_minutes ) ) {
+            process_overmap_npc_move_for_test();
+            advance_live_bandit_hostile_returns_for_test();
+        }
+    }
+    REQUIRE_FALSE( scene.site().active_hostile_operation.is_active() );
+    CHECK( scene.site().last_hostile_shakedown_operation_id == activity );
+    CHECK( scene.site().last_hostile_shakedown_generation == generation );
+    CHECK( scene.site().last_shakedown_outcome == ( dead ? "search_interrupted" : "flight" ) );
+    REQUIRE( scene.site().intelligence_map.robbery_places.size() == 1 );
+    CHECK( scene.site().intelligence_map.robbery_places.front().eligible );
+    CHECK( scene.site().intelligence_map.robbery_places.front().caution == ( dead ? 1 : 0 ) );
+    CHECK( scene.site().shakedown_bandit_losses == ( dead ? 1 : 0 ) );
+    const auto settled = serialize_world( overmap_buffer.global_state.bandit_live_world );
+    advance_live_bandit_hostile_returns_for_test();
+    CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == settled );
+}
+
+TEST_CASE( "peaceful shakedown distinguishes all deaths from a missing actor",
+           "[bandit_live_world][peaceful_all_dead_repeat]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const bool missing = GENERATE( false, true );
+    r066_visit_scene scene;
+    scene.distant_adjacent_avatar();
+    calendar::turn += 1_minutes;
+    advance_live_bandit_hostile_approaches_for_test();
+    REQUIRE( scene.site().active_hostile_operation.phase == hostile_operation_phase::committed_contact );
+    const character_id first = scene.collector->getID();
+    const character_id second = scene.escort->getID();
+    auto &operation = scene.site().active_hostile_operation;
+    const std::string activity = operation.reservation.activity_id;
+    const int generation = operation.reservation.generation;
+    operation.repeat_place = true;
+    operation.repeat_origin_operation_id = "previous-success";
+    operation.repeat_origin_generation = 1;
+    operation.source_report_revision = 0;
+    operation.source_report_generation = 0;
+    operation.source_report_activity_id.clear();
+    operation.source_report_application_key.clear();
+    robbery_place_memory place;
+    place.target_id = operation.reservation.target_id;
+    place.target_omt = operation.reservation.target_omt;
+    place.last_operation_id = operation.repeat_origin_operation_id;
+    place.last_report_key = "previous-report";
+    place.last_generation = operation.repeat_origin_generation;
+    place.last_outcome = "paid";
+    place.eligible = true;
+    place.active_operation_id = activity;
+    place.active_generation = generation;
+    scene.site().intelligence_map.robbery_places.push_back( place );
+    if( missing ) {
+        g->remove_npc( first );
+        overmap_buffer.remove_npc( first );
+        REQUIRE_FALSE( overmap_buffer.find_npc( first ) );
+    } else {
+        scene.collector->die( &get_map(), nullptr );
+        scene.escort->die( &get_map(), nullptr );
+        REQUIRE( scene.collector->is_dead() );
+        REQUIRE( scene.escort->is_dead() );
+        g->cleanup_dead();
+        REQUIRE_FALSE( overmap_buffer.find_npc( first ) );
+        REQUIRE_FALSE( overmap_buffer.find_npc( second ) );
+    }
+    calendar::turn += 1_minutes;
+    handle_bandit_shakedown_contact_for_test( scene.site() );
+    if( missing ) {
+        CHECK( scene.site().active_hostile_operation.is_active() );
+        CHECK( scene.site().active_hostile_operation.reservation.activity_id == activity );
+        CHECK( scene.site().active_hostile_operation.reservation.generation == generation );
+        CHECK( scene.site().active_hostile_operation.reservation.casualty_ids.empty() );
+        CHECK( scene.site().find_member( first )->state == member_state::local_contact );
+        CHECK( scene.site().last_hostile_shakedown_operation_id.empty() );
+        CHECK( scene.site().intelligence_map.robbery_places.front().caution == 0 );
+    } else {
+        REQUIRE_FALSE( scene.site().active_hostile_operation.is_active() );
+        CHECK( scene.site().find_member( first )->state == member_state::dead );
+        CHECK( scene.site().find_member( second )->state == member_state::dead );
+        CHECK( scene.site().last_hostile_shakedown_operation_id == activity );
+        CHECK( scene.site().last_hostile_shakedown_generation == generation );
+        CHECK( scene.site().last_shakedown_outcome == "search_interrupted" );
+        CHECK( scene.site().shakedown_bandit_losses == 2 );
+        REQUIRE( scene.site().intelligence_map.robbery_places.size() == 1 );
+        CHECK( scene.site().intelligence_map.robbery_places.front().caution == 1 );
+        CHECK( scene.site().intelligence_map.robbery_places.front().eligible );
+        const auto settled = serialize_world( overmap_buffer.global_state.bandit_live_world );
+        handle_bandit_shakedown_contact_for_test( scene.site() );
+        advance_live_bandit_hostile_returns_for_test();
+        CHECK( serialize_world( overmap_buffer.global_state.bandit_live_world ) == settled );
+    }
 }
 
 TEST_CASE( "hostile physical return preserves frozen predecessor body time",
@@ -56511,13 +57446,15 @@ TEST_CASE( "paid home return settles its exact consumed opportunity despite camp
            "[bandit_live_world][terminal_claim_return_067][retained_save]" )
 {
     const std::string condition = GENERATE( std::string( "retained" ), std::string( "normalization" ),
-                                            std::string( "lead_refresh" ),
+                                            std::string( "lead_refresh" ), std::string( "access_failed" ),
+                                            std::string( "search_unresolved" ), std::string( "search_interrupted" ),
                                             std::string( "wrong_target" ), std::string( "wrong_omt" ), std::string( "wrong_operation" ),
                                             std::string( "wrong_report" ), std::string( "wrong_generation" ), std::string( "unconsumed_stale" ),
                                             std::string( "successor_opportunity" ), std::string( "non_home" ) );
     CAPTURE( condition );
     const bool accepted = condition == "retained" || condition == "normalization" ||
-                          condition == "lead_refresh";
+                          condition == "lead_refresh" || condition == "access_failed" ||
+                          condition == "search_unresolved" || condition == "search_interrupted";
     r054_clear_previous_test_projections();
     auto &world = overmap_buffer.global_state.bandit_live_world;
     const auto old_world = world;
@@ -56630,6 +57567,11 @@ TEST_CASE( "paid home return settles its exact consumed opportunity despite camp
         g->find_npc( character_id( 4 ) )->setpos(
             project_to<coords::ms>( site->anchor + tripoint( 1, 0, 0 ) ), false );
     }
+    if( condition == "access_failed" || condition == "search_unresolved" ||
+        condition == "search_interrupted" ) {
+        site->active_hostile_operation.shakedown_pending_branch = condition;
+        site->active_hostile_operation.shakedown_pending_surrendered_value = 0;
+    }
     world = round_trip_world( world );
     site = world.find_site( site_id );
     REQUIRE( site );
@@ -56646,9 +57588,21 @@ TEST_CASE( "paid home return settles its exact consumed opportunity despite camp
     REQUIRE( site );
     if( accepted ) {
         CHECK_FALSE( site->active_hostile_operation.is_active() );
-        CHECK( site->last_shakedown_outcome == "paid" );
+        CHECK( site->last_shakedown_outcome ==
+               ( condition == "access_failed" || condition == "search_unresolved" ||
+                 condition == "search_interrupted" ? condition : "paid" ) );
+        if( condition == "retained" || condition == "normalization" || condition == "lead_refresh" ) {
+            REQUIRE( site->intelligence_map.robbery_places.size() == 1 );
+            CHECK( site->intelligence_map.robbery_places.front().target_id == target_id );
+            CHECK( site->intelligence_map.robbery_places.front().target_omt == target_omt );
+        } else {
+            CHECK( site->intelligence_map.robbery_places.empty() );
+        }
         CHECK( site->shakedown_loot_value == prior_loot + paid_value );
-        CHECK( site->remembered_bounty_estimate == prior_bounty + std::max( 1, paid_value / 1000 ) );
+        CHECK( site->remembered_bounty_estimate == prior_bounty +
+               ( condition == "access_failed" || condition == "search_unresolved" ||
+                 condition == "search_interrupted" ?
+                 0 : std::max( 1, paid_value / 1000 ) ) );
         CHECK( site->applied_return_generation == generation );
         CHECK( site->camp_decision.state == bandit_live_world::camp_decision_state::cooldown );
         for( int id : {
@@ -56671,6 +57625,7 @@ TEST_CASE( "paid home return settles its exact consumed opportunity despite camp
         CHECK( site->active_hostile_operation.is_active() );
         CHECK( site->shakedown_loot_value == prior_loot );
         CHECK( site->last_hostile_shakedown_generation == 0 );
+        CHECK( site->intelligence_map.robbery_places.empty() );
         for( int id : {
                  4, 6
              } ) {

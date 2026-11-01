@@ -205,7 +205,7 @@ class encounter_item_selector : public inventory_selector
 {
     public:
         using inventory_selector::inventory_selector;
-        std::vector<item_location> eligible_items() const {
+        std::vector<item_location> eligible_items( bool *complete = nullptr ) const {
             std::vector<item_location> result;
             std::set<const item *> seen;
             for( const auto *column : get_all_columns() ) {
@@ -213,6 +213,11 @@ class encounter_item_selector : public inventory_selector
                 return e.is_item() && !e.is_collation_header();
                 }, true ) ) {
                     for( const item_location &loc : entry->locations ) {
+                        if( complete && loc && preset.is_shown( loc ) &&
+                            !preset.get_denial( loc ).empty() ) {
+                            // A refusal is not an observation that goods are absent.
+                            *complete = false;
+                        }
                         if( loc && preset.is_shown( loc ) && preset.get_denial( loc ).empty() &&
                             seen.insert( loc.get_item() ).second ) {
                             result.push_back( loc );
@@ -226,19 +231,51 @@ class encounter_item_selector : public inventory_selector
 } // namespace
 
 void add_encounter_trade_sources( inventory_selector &selector, Character &payer,
-                                  const Character &buyer, int item_radius, int ally_radius, int z_radius )
+                                  const Character &buyer, int item_radius, int ally_radius, int z_radius,
+                                  bool *complete )
 {
     map &here = get_map();
+    if( complete ) {
+        *complete = true;
+        if( item_radius < 0 || z_radius < 0 || ( z_radius > 0 && !here.supports_zlevels() ) ) {
+            *complete = false;
+        }
+    }
     if( payer.is_dead_state() || buyer.is_dead_state() || !here.inbounds( payer.pos_bub() ) ||
         ( payer.is_npc() && !payer.as_npc()->is_active() ) ) {
+        if( complete ) {
+            *complete = false;
+        }
         return;
+    }
+    if( complete && ( payer.is_dangerous_fields( here.field_at( payer.pos_bub() ) ) ||
+                      ( here.tr_at( payer.pos_bub() ).can_see( payer.pos_bub(), payer ) &&
+                        !here.tr_at( payer.pos_bub() ).is_benign() ) ) ) {
+        *complete = false;
+    }
+    if( complete && *complete ) {
+        for( const int dx : { -item_radius, item_radius } ) {
+            for( const int dy : { -item_radius, item_radius } ) {
+                for( const int dz : { -z_radius, z_radius } ) {
+                    if( !here.inbounds( payer.pos_bub() + tripoint( dx, dy, dz ) ) ) {
+                        *complete = false;
+                    }
+                }
+            }
+        }
     }
     selector.add_character_items( payer );
     if( item_radius >= 0 ) {
         for( const auto &tile : here.points_in_radius( payer.pos_bub(), item_radius, z_radius ) ) {
             if( !here.inbounds( tile ) ||
                 ( !here.supports_zlevels() && tile.z() != payer.pos_bub().z() ) ) {
+                if( complete ) {
+                    *complete = false;
+                }
                 continue;
+            }
+            if( complete && here.ter( tile ) == ter_str_id::NULL_ID() ) {
+                *complete = false;
             }
             const auto cargo = here.veh_at( tile ).cargo();
             // Run a route only for an actual source, rather than every empty cell.
@@ -246,23 +283,48 @@ void add_encounter_trade_sources( inventory_selector &selector, Character &payer
                 continue;
             }
             if( encounter_goods_reachable( payer, tile, item_radius, z_radius ) ) {
+                if( complete && !here.i_at( tile ).empty() && !here.accessible_items( tile ) ) {
+                    *complete = false;
+                }
                 selector.add_map_items( tile );
                 const auto vehicle = here.veh_at( tile );
+                if( complete && cargo && !cargo->items().empty() &&
+                    ( cargo->has_feature( "LOCKED" ) ||
+                      vehicle.part_with_feature( "CARGO_LOCKING", true ) ) ) {
+                    *complete = false;
+                }
                 if( cargo && !cargo->has_feature( "LOCKED" ) &&
                     !vehicle.part_with_feature( "CARGO_LOCKING", true ) ) {
                     selector.add_vehicle_items( tile );
                 }
+            } else if( complete ) {
+                *complete = false;
             }
         }
     }
     if( ally_radius > 0 ) {
         avatar &local_avatar = get_avatar();
+        const auto unavailable_in_area = [&]( const Character & actor ) {
+            return rl_dist( payer.pos_bub().xy(), actor.pos_bub().xy() ) <=
+                   std::max( item_radius, ally_radius ) &&
+                   std::abs( payer.pos_bub().z() - actor.pos_bub().z() ) <= z_radius &&
+                   !encounter_goods_reachable( payer, actor.pos_bub(),
+                           std::max( item_radius, ally_radius ), z_radius );
+        };
+        if( complete && &payer != &local_avatar && &buyer != &local_avatar &&
+            !local_avatar.is_dead_state() && unavailable_in_area( local_avatar ) ) {
+            *complete = false;
+        }
         if( &payer != &local_avatar && &buyer != &local_avatar && !local_avatar.is_dead_state() &&
             encounter_goods_reachable( payer, local_avatar.pos_bub(), std::max( item_radius, ally_radius ),
                                        z_radius ) ) {
             selector.add_character_items( local_avatar );
         }
         for( npc &ally : g->all_npcs() ) {
+            if( complete && &ally != &payer && &ally != &buyer && ally.is_player_ally() &&
+                ally.is_active() && !ally.is_dead() && unavailable_in_area( ally ) ) {
+                *complete = false;
+            }
             if( &ally != &payer && &ally != &buyer && ally.is_player_ally() &&
                 ally.is_active() && !ally.is_dead() &&
                 encounter_goods_reachable( payer, ally.pos_bub(), std::max( item_radius, ally_radius ),
@@ -274,12 +336,12 @@ void add_encounter_trade_sources( inventory_selector &selector, Character &payer
 }
 
 std::vector<item_location> encounter_trade_items( Character &payer, const Character &buyer,
-        int item_radius, int ally_radius, int z_radius, const bool encounter_payment )
+        int item_radius, int ally_radius, int z_radius, const bool encounter_payment, bool *complete )
 {
     const trade_preset preset( payer, buyer, encounter_payment );
     encounter_item_selector selector( payer, preset );
-    add_encounter_trade_sources( selector, payer, buyer, item_radius, ally_radius, z_radius );
-    return selector.eligible_items();
+    add_encounter_trade_sources( selector, payer, buyer, item_radius, ally_radius, z_radius, complete );
+    return selector.eligible_items( complete );
 }
 
 trade_ui::trade_ui( party_t &you, npc &trader, currency_t cost, std::string title,

@@ -79,9 +79,11 @@ class trade_preset : public inventory_selector_preset
 
 // Encounter-only source population is shared with demand and commit.
 void add_encounter_trade_sources( inventory_selector &selector, Character &payer,
-                                  const Character &buyer, int item_radius, int ally_radius, int z_radius );
+                                  const Character &buyer, int item_radius, int ally_radius, int z_radius,
+                                  bool *complete = nullptr );
 std::vector<item_location> encounter_trade_items( Character &payer, const Character &buyer,
-        int item_radius, int ally_radius, int z_radius, bool encounter_payment = true );
+        int item_radius, int ally_radius, int z_radius, bool encounter_payment = true,
+        bool *complete = nullptr );
 
 struct trade_source_snapshot {
     item_location location;

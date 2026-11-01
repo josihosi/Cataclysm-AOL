@@ -407,6 +407,35 @@ struct camp_map_lead {
     void deserialize( const JsonObject &jo );
 };
 
+// Durable knowledge of a place, not a fresh observation of its occupants or goods.
+struct robbery_place_memory {
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    std::string last_operation_id;
+    std::string last_report_key;
+    int last_generation = 0;
+    std::string last_outcome;
+    std::string last_admission_refusal;
+    std::int64_t last_settled_active_turn = 0;
+    std::int64_t next_eligible_active_turn = 0;
+    // Preflight retry is separate from the protection for a settled visit.
+    std::int64_t admission_retry_active_turn = 0;
+    int caution = 0;
+    bool eligible = false;
+    int verified_party_power = -1;
+    int verified_danger = -1;
+    int verified_minutes = -1;
+    // Time of the original report evaluation, not a new observation time.
+    int danger_evaluated_minutes = -1;
+    std::vector<int> party_ids;
+    std::vector<int> casualty_ids;
+    std::string active_operation_id;
+    int active_generation = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct camp_intelligence_map {
     int schema_version = 6;
     int last_daily_cleanup_minutes = -1;
@@ -423,6 +452,7 @@ struct camp_intelligence_map {
     int frontier_search_cursor = 0;
     std::vector<int> frontier_last_resolved_minutes = std::vector<int>( 8, -1 );
     std::vector<camp_map_lead> leads;
+    std::vector<robbery_place_memory> robbery_places;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -958,6 +988,13 @@ struct hostile_operation_state {
     // -1 retains legacy/unrelated policy; a freshly authorized response pins
     // its explicit preferred or fallback decision through assembly/reload.
     int response_home_reserve = -1;
+    // Populated only by the scheduler after its final authoritative recheck.
+    int verified_response_power = -1;
+    int verified_response_danger = -1;
+    int verified_response_minutes = -1;
+    bool repeat_place = false;
+    std::string repeat_origin_operation_id;
+    int repeat_origin_generation = 0;
     int source_report_revision = 0;
     int source_report_generation = 0;
     std::string source_report_activity_id;
@@ -998,6 +1035,9 @@ struct hostile_operation_state {
     int site_search_waypoint = 0;
     int site_search_initial_goods_value = -1;
     bool site_search_waypoint_attempted = false;
+    // A skipped or unreachable waypoint cannot prove an empty site.
+    bool site_search_inaccessible = false;
+    bool site_search_interrupted = false;
     int site_search_retry_after_turn = 0;
     // Members physically withdrawing after fear or completed search while
     // companions can still own committed contact.
@@ -1903,6 +1943,8 @@ struct shakedown_outcome {
     bool fought = false;
     bool robbed = false;
     bool searched_empty = false;
+    // A completed visit can remain inconclusive without asserting emptiness.
+    std::string unresolved_reason;
     bool basecamp_or_camp_scene = false;
     bool extraction_failed = false;
     int demanded_value = 0;

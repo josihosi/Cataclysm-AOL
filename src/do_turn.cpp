@@ -1812,7 +1812,8 @@ void live_bandit_apply_hostile_return_orders( bandit_live_world::site_record &si
                                              bandit_live_world::hostile_operation_kind::shakedown ) &&
                                            ( order.member_npc->get_attitude() == NPCATT_FLEE ||
                                              order.member_npc->get_attitude() == NPCATT_FLEE_TEMP ||
-                                             order.member_npc->has_effect( effect_npc_run_away ) );
+                                             order.member_npc->has_effect( effect_npc_run_away ) ||
+                                             order.member_npc->has_effect( effect_npc_flee_player ) );
         for( const shared_ptr_fast<npc> &persistent_member : overmap_buffer.get_overmap_npcs() ) {
             if( persistent_member && persistent_member->getID() == order.member_npc->getID() &&
                 persistent_member.get() != order.member_npc ) {
@@ -2237,6 +2238,42 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_shakedown_surface_report( site,
                                surface );
     if( !surface.valid ) {
+        if( !pending_pay && receiver != nullptr && operation.is_active() &&
+            operation.shakedown_contact_established && input.basecamp_or_camp_scene &&
+            decision.valid && decision.opens_shakedown_surface &&
+            decision.posture == bandit_live_world::local_gate_posture::open_shakedown &&
+            operation.reservation.casualty_ids.empty() &&
+            !operation.site_search_inaccessible && !operation.site_search_interrupted &&
+            std::all_of( operation.reservation.member_ids.begin(), operation.reservation.member_ids.end(),
+            []( const character_id id ) {
+                const npc *actor = g->find_npc( id );
+                return actor != nullptr && actor->is_active() && !actor->is_dead() &&
+                       live_bandit_shakedown_speaker_ready( *actor );
+            } ) ) {
+            bool complete = false;
+            const auto sources = encounter_trade_items( *receiver,
+                                 *live_bandit_shakedown_local_speaker( site ),
+                                 live_bandit_basecamp_reach_radius, 12, 2, true, &complete );
+            if( !complete || !sources.empty() ) {
+                return false;
+            }
+            auto return_plan = live_bandit_prepare_hostile_return( site, true );
+            if( !return_plan ) {
+                return false;
+            }
+            if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+            return bandit_live_world::transition_hostile_operation_phase( next, return_plan->cursor,
+                    bandit_live_world::hostile_operation_phase::committed_contact,
+                    bandit_live_world::hostile_operation_phase::returning_home,
+                    live_bandit_current_minutes(), "receiver contact found no eligible payment goods", true );
+            } ) != bandit_live_world::hostile_operation_transition_result::applied ) {
+                return false;
+            }
+            site.active_hostile_operation.shakedown_pending_branch = "contact_empty";
+            site.active_hostile_operation.shakedown_pending_basecamp_scene = true;
+            live_bandit_apply_hostile_return_orders( site, *return_plan );
+            return true;
+        }
         return false;
     }
     // Activity-driven contact has no enclosing World session. Keep the native
@@ -3559,11 +3596,14 @@ bool advance_live_bandit_hostile_returns()
         }
         bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
         bandit_live_world::active_outing_state &reservation = operation.reservation;
-        const auto finish_dead_fight = [&]() {
+        const auto finish_dead_shakedown = [&]() {
             if( operation.operation_kind != bandit_live_world::hostile_operation_kind::shakedown ||
                 operation.phase != bandit_live_world::hostile_operation_phase::lost ||
                 reservation.owner != bandit_live_world::simulation_owner::abstract ||
-                operation.shakedown_pending_branch != "fight" || reservation.member_ids.empty() ||
+                ( operation.shakedown_pending_branch != "fight" &&
+                  operation.shakedown_pending_branch != "flight" &&
+                  operation.shakedown_pending_branch != "search_interrupted" ) ||
+                reservation.member_ids.empty() ||
                 !std::all_of( reservation.member_ids.begin(), reservation.member_ids.end(),
             [&]( const character_id id ) {
                 const auto *member = site.find_member( id );
@@ -3581,17 +3621,20 @@ bool advance_live_bandit_hostile_returns()
             }
             return commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
                 return bandit_live_world::release_matching_external_reservation( next, activity_id,
-                        generation, "all Fight return participants authoritatively died" );
+                        generation, "all shakedown return participants authoritatively died" );
             } ).has_value();
         };
-        changed |= finish_dead_fight();
+        changed |= finish_dead_shakedown();
         if( site.retired_empty_site || !operation.is_active() ||
             operation.phase != bandit_live_world::hostile_operation_phase::returning_home ||
             reservation.owner != bandit_live_world::simulation_owner::abstract ) {
             continue;
         }
         const bool fight_return = live_bandit_returning_fight( site );
-        if( fight_return ) {
+        if( fight_return || ( operation.operation_kind ==
+                              bandit_live_world::hostile_operation_kind::shakedown &&
+                              ( operation.shakedown_pending_branch == "flight" ||
+                                operation.shakedown_pending_branch == "search_interrupted" ) ) ) {
             const std::string activity_id = reservation.activity_id;
             const int generation = reservation.generation;
             // Each accepted casualty replaces the site candidate, including
@@ -3603,13 +3646,13 @@ bool advance_live_bandit_hostile_returns()
                     changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
                         return bandit_live_world::record_matching_external_outing_casualty(
                                    next, activity_id, generation, id, bandit_live_world::member_state::dead,
-                                   current_minutes, "authoritative Fight homeward death" );
+                                   current_minutes, "authoritative shakedown homeward death" );
                     } );
                 }
             }
         }
         if( operation.phase == bandit_live_world::hostile_operation_phase::lost ) {
-            changed |= finish_dead_fight();
+            changed |= finish_dead_shakedown();
             continue;
         }
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -5733,8 +5776,15 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
     for( const character_id member_id : outing.member_ids ) {
         const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
         if( active_committed_bandit_shakedown_member( site, member_id, member_npc ) ) {
-            searcher = member_npc.get();
-            break;
+            if( live_hostile_member_is_fleeing( *member_npc ) ) {
+                // The native survival action owns this actor, even before it
+                // has issued a destination. Do not turn flight into a search.
+                operation.site_search_interrupted = true;
+                return false;
+            }
+            if( searcher == nullptr ) {
+                searcher = member_npc.get();
+            }
         }
     }
     if( searcher == nullptr ) {
@@ -5761,8 +5811,15 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
         const tripoint_abs_ms goal = project_to<coords::ms>( outing.target_omt ) +
                                      live_bandit_site_search_waypoints[static_cast<std::size_t>(
                                              operation.site_search_waypoint )];
+        // Another native order owns the actor until it completes.  Record the
+        // interruption but do not cancel it or run the search underneath it.
+        if( searcher->goto_to_this_pos && searcher->goto_to_this_pos != goal ) {
+            operation.site_search_interrupted = true;
+            return false;
+        }
         const tripoint_bub_ms local_goal = here.get_bub( goal );
         if( !here.inbounds( local_goal ) || !here.passable( local_goal ) ) {
+            operation.site_search_inaccessible = true;
             operation.site_search_waypoint++;
             operation.site_search_waypoint_attempted = false;
             continue;
@@ -5788,6 +5845,9 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
             }
             if( searcher->pos_abs() == goal || searcher->goto_to_this_pos != goal ||
                 searcher->path.empty() ) {
+                if( searcher->pos_abs() != goal ) {
+                    operation.site_search_inaccessible = true;
+                }
                 searcher->goto_to_this_pos.reset();
                 // Ordered movement takes priority over the normal idle-item scan.
                 // Probe from the reached waypoint before moving on; the NPC's
@@ -5825,7 +5885,11 @@ bool live_bandit_advance_hidden_shakedown_search( bandit_live_world::site_record
         return false;
     }
     bandit_live_world::hostile_operation_state &returned_operation = site.active_hostile_operation;
-    returned_operation.shakedown_pending_branch = taken_value > 0 ? "robbed" : "searched_empty";
+    // No acquisition does not prove absence: native pickup can decline or
+    // miss goods because of capacity, visibility, cache or pickup policy.
+    returned_operation.shakedown_pending_branch = taken_value > 0 ? "robbed" :
+            returned_operation.site_search_interrupted ? "search_interrupted" :
+            returned_operation.site_search_inaccessible ? "access_failed" : "search_unresolved";
     returned_operation.shakedown_pending_demanded_value = 0;
     returned_operation.shakedown_pending_surrendered_value = taken_value;
     returned_operation.shakedown_pending_reachable_value = taken_value;
@@ -6060,6 +6124,120 @@ bool live_bandit_establish_shakedown_communication( bandit_live_world::site_reco
     return true;
 }
 
+bool live_bandit_reconcile_peaceful_shakedown( bandit_live_world::site_record &site )
+{
+    auto &operation = site.active_hostile_operation;
+    const auto &outing = operation.reservation;
+    if( !operation.is_active() || operation.operation_kind !=
+        bandit_live_world::hostile_operation_kind::shakedown ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        outing.owner != bandit_live_world::simulation_owner::local ||
+        site.active_external_outing() != &outing || !site.last_shakedown_outcome.empty() ||
+        !operation.shakedown_pending_branch.empty() ) {
+        return false;
+    }
+    const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+    const int now = live_bandit_current_minutes();
+    if( !cursor ) {
+        return false;
+    }
+    std::vector<character_id> deaths;
+    for( const character_id id : outing.member_ids ) {
+        if( !outing.member_is_resolved( id ) && live_bandit_confirmed_member_death( outing, id, now ) ) {
+            deaths.push_back( id );
+        }
+    }
+    if( !deaths.empty() ) {
+        if( now <= cursor->last_advanced_minutes ) {
+            return false;
+        }
+        const std::string activity = outing.activity_id;
+        const int generation = outing.generation;
+        if( !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+        return bandit_live_world::reconcile_matching_hostile_operation_deaths( next, *cursor,
+                deaths, now, "authoritative peaceful shakedown death" );
+        } ) ) {
+            return false;
+        }
+        site.active_hostile_operation.site_search_interrupted = true;
+        if( site.active_hostile_operation.phase == bandit_live_world::hostile_operation_phase::lost ) {
+            site.active_hostile_operation.shakedown_pending_branch = "search_interrupted";
+            if( bandit_live_world::apply_terminal_hostile_shakedown_aftermath(
+                    overmap_buffer.global_state.bandit_live_world, site, activity, generation ) ) {
+                commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+                return bandit_live_world::release_matching_external_reservation( next, activity, generation,
+                        "peaceful shakedown party died" );
+                } );
+            }
+        }
+        return true;
+    }
+
+    std::vector<character_id> fleeing;
+    for( const character_id id : outing.member_ids ) {
+        if( outing.member_is_resolved( id ) ) {
+            continue;
+        }
+        const shared_ptr_fast<npc> actor = overmap_buffer.find_npc( id );
+        if( !active_committed_bandit_shakedown_member( site, id, actor ) ) {
+            return false; // Absence or a partial local handoff is not death or flight.
+        }
+        if( live_hostile_member_is_fleeing( *actor ) ) {
+            fleeing.push_back( id );
+        } else if( !live_bandit_shakedown_speaker_ready( *actor ) ) {
+            return false; // Preserve native combat, incapacity and survival actions.
+        }
+    }
+    if( fleeing.empty() && outing.casualty_ids.empty() ) {
+        return false;
+    }
+    auto plan = live_bandit_prepare_hostile_return( site );
+    if( !plan ) {
+        return false; // No safe physical return order has been admitted.
+    }
+    const std::string branch = fleeing.empty() ? "search_interrupted" : "flight";
+    const int carried = operation.site_search_initial_goods_value < 0 ? 0 :
+                        std::max( 0, live_bandit_shakedown_party_goods_value( site ) -
+                                  operation.site_search_initial_goods_value );
+    const std::optional<tripoint_abs_ms> owned_goal = operation.site_search_waypoint_attempted &&
+            operation.site_search_waypoint >= 0 && operation.site_search_waypoint <
+            static_cast<int>( live_bandit_site_search_waypoints.size() ) ?
+            std::optional<tripoint_abs_ms>( project_to<coords::ms>( outing.target_omt ) +
+                    live_bandit_site_search_waypoints[static_cast<std::size_t>( operation.site_search_waypoint )] ) :
+            std::nullopt;
+    if( commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
+    const auto result = bandit_live_world::transition_hostile_operation_phase( next, plan->cursor,
+                        bandit_live_world::hostile_operation_phase::committed_contact,
+                        bandit_live_world::hostile_operation_phase::returning_home, now,
+                        "peaceful shakedown interrupted by flight or casualty", true );
+    if( result == bandit_live_world::hostile_operation_transition_result::applied ) {
+        auto &returned = next.active_hostile_operation;
+        returned.site_search_interrupted = true;
+        returned.shakedown_pending_branch = branch;
+        returned.shakedown_pending_surrendered_value = carried;
+        returned.shakedown_pending_reachable_value = carried;
+        for( const character_id id : fleeing ) {
+            if( std::find( returned.withdrawing_member_ids.begin(), returned.withdrawing_member_ids.end(), id ) ==
+                returned.withdrawing_member_ids.end() ) {
+                returned.withdrawing_member_ids.push_back( id );
+            }
+        }
+    }
+    return result;
+    } ) != bandit_live_world::hostile_operation_transition_result::applied ) {
+        return false;
+    }
+    for( const auto &order : plan->travel_orders ) {
+        if( owned_goal && order.member_npc->goto_to_this_pos == owned_goal &&
+            std::find( fleeing.begin(), fleeing.end(), order.member_npc->getID() ) == fleeing.end() ) {
+            order.member_npc->goto_to_this_pos.reset();
+            order.member_npc->path.clear();
+        }
+    }
+    live_bandit_apply_hostile_return_orders( site, *plan );
+    return true;
+}
+
 bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_record &site,
         const avatar &u )
 {
@@ -6103,6 +6281,9 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
     // Invalidate the deferred response before a stale reservation can be
     // rejected by admission. It can never revive as trade after later loading.
     if( live_bandit_cancel_stale_pending_pay( site ) ) {
+        return true;
+    }
+    if( live_bandit_reconcile_peaceful_shakedown( site ) ) {
         return true;
     }
     if( !materialize_committed_bandit_shakedown( site ) ) {
