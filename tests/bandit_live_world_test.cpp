@@ -71374,6 +71374,159 @@ TEST_CASE( "restored first leg reforecasts when scouts reach its waypoint",
     CHECK( journey.site().active_outing.expected_return_minutes == forecast );
 }
 
+TEST_CASE( "outbound reroute remains unqualified while its future home route is blocked",
+           "[bandit_live_world][expedition_future_return_unavailable]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true );
+    const auto initial = journey.site().active_outing;
+    REQUIRE( initial.route_clock_enrolled );
+    const auto approach = initial.shared_route[1];
+    const auto watch = initial.selected_watch_omt;
+    bool departed = false;
+    for( int minute = 0; minute < 20; ++minute ) {
+        journey.next_minute();
+        if( std::all_of( journey.members().begin(), journey.members().end(),
+        [&]( const character_id id ) {
+            const auto body = overmap_buffer.find_npc( id );
+            return body && body->pos_abs_omt() != journey.home;
+        } ) ) {
+            departed = true;
+            break;
+        }
+    }
+    REQUIRE( departed );
+    REQUIRE( journey.site().active_outing.phase == scout_phase::outbound );
+    REQUIRE( journey.site().active_outing.actor_route_waypoint == 0 );
+    const auto first = overmap_buffer.find_npc( journey.members().front() );
+    REQUIRE( first );
+    const auto position = first->pos_abs_omt();
+    const auto previous_path = first->omt_path;
+    REQUIRE( previous_path.size() >= 3 );
+    REQUIRE( previous_path.back() == position );
+    const auto blocked_step = previous_path[previous_path.size() - 2];
+    REQUIRE( blocked_step != journey.home );
+    REQUIRE( blocked_step != approach );
+    const auto old_step_terrain = overmap_buffer.ter( blocked_step );
+    const auto old_home_terrain = overmap_buffer.ter( journey.home );
+    on_out_of_scope restore_terrain( [&]() {
+        overmap_buffer.ter_set( blocked_step, old_step_terrain );
+        overmap_buffer.ter_set( journey.home, old_home_terrain );
+    } );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE( body->pos_abs_omt() == position );
+        REQUIRE( body->omt_path == previous_path );
+        REQUIRE_FALSE( body->get_bandit_live_world_projection_lease().present );
+    }
+    const int previous_return = journey.site().active_outing.expected_return_minutes;
+    const int previous_missing = journey.site().active_outing.missing_deadline_minutes;
+    // Alter actual terrain after departure. Unlike an impassable starting
+    // OMT, an impassable return destination must be rejected by the native
+    // solver. The outbound path remains passable by a different next step.
+    overmap_buffer.ter_set( blocked_step, oter_id( "river_center" ) );
+    overmap_buffer.ter_set( journey.home, oter_id( "river_center" ) );
+    const auto return_path = overmap_buffer.get_travel_path(
+                                 watch, journey.home, overmap_path_params::for_npc() ).points;
+    REQUIRE( return_path.empty() );
+    REQUIRE( live_bandit_clock_homeward_path_for_test( journey.site(), return_path ).empty() );
+    const auto detour = overmap_buffer.get_travel_path(
+                            position, approach, overmap_path_params::for_npc() ).points;
+    REQUIRE_FALSE( detour.empty() );
+    REQUIRE( detour != previous_path );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    REQUIRE( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.route_clock_outbound_unavailable );
+    CHECK( journey.site().active_outing.expected_return_minutes == previous_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == previous_missing );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        CHECK( body->goal == approach );
+        REQUIRE( body->omt_path.size() >= 2 );
+        CHECK( body->omt_path != previous_path );
+        CHECK( body->omt_path.front() == approach );
+        CHECK( body->omt_path.back() == body->pos_abs_omt() );
+        const auto next_step = body->omt_path[body->omt_path.size() - 2];
+        CHECK( next_step != blocked_step );
+        CHECK( overmap_travel_step_valid( body->pos_abs_omt(), next_step,
+                                          overmap_path_params::for_npc() ) );
+    }
+    bool moved = false;
+    for( int minute = 0; minute < 10; ++minute ) {
+        journey.next_minute();
+        if( std::all_of( journey.members().begin(), journey.members().end(),
+        [&]( const character_id id ) {
+            const auto body = overmap_buffer.find_npc( id );
+            return body && body->pos_abs_omt() != position;
+        } ) ) {
+            moved = true;
+            break;
+        }
+    }
+    REQUIRE( moved );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE( body->pos_abs_omt() != approach );
+    }
+    CHECK( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == previous_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == previous_missing );
+    overmap_buffer.ter_set( journey.home, old_home_terrain );
+    const auto restored_home = overmap_buffer.get_travel_path(
+                                   watch, journey.home, overmap_path_params::for_npc() ).points;
+    REQUIRE_FALSE( restored_home.empty() );
+    REQUIRE_FALSE( live_bandit_clock_homeward_path_for_test( journey.site(), restored_home ).empty() );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == previous_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == previous_missing );
+    std::map<character_id, tripoint_abs_omt> restored_positions;
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        restored_positions.emplace( id, body->pos_abs_omt() );
+    }
+    bool requalified = false;
+    for( int minute = 0; minute < 10; ++minute ) {
+        std::map<character_id, tripoint_abs_omt> before_step;
+        for( const auto id : journey.members() ) {
+            const auto body = overmap_buffer.find_npc( id );
+            REQUIRE( body );
+            before_step.emplace( id, body->pos_abs_omt() );
+        }
+        journey.next_minute();
+        if( !journey.site().active_outing.route_clock_stale ) {
+            const bool moved_this_service = std::any_of( journey.members().begin(), journey.members().end(),
+            [&]( const character_id id ) {
+                const auto body = overmap_buffer.find_npc( id );
+                return body && body->pos_abs_omt() != before_step.at( id ) &&
+                       body->pos_abs_omt() != restored_positions.at( id );
+            } );
+            CHECK( moved_this_service );
+            requalified = true;
+            break;
+        }
+    }
+    REQUIRE( requalified );
+    const auto &after = journey.site().active_outing;
+    CHECK_FALSE( after.route_clock_outbound_unavailable );
+    CHECK( after.activity_id == initial.activity_id );
+    CHECK( after.generation == initial.generation );
+    CHECK( after.member_ids == initial.member_ids );
+    const int requalified_return = after.expected_return_minutes;
+    const int requalified_missing = after.missing_deadline_minutes;
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.expected_return_minutes == requalified_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == requalified_missing );
+}
+
 TEST_CASE( "scouts retain an honest clock when their lookout leg becomes unavailable",
            "[bandit_live_world][expedition_lookout_leg_clock]" )
 {
