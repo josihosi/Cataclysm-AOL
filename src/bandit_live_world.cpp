@@ -18111,10 +18111,16 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const bool observed_party_progress )
 {
     active_outing_state &outing = site.active_outing;
+    const bool first_leg = outing.phase == scout_phase::outbound &&
+                           outing.actor_route_waypoint == 0;
+    const bool unstarted_watch_leg = outing.phase == scout_phase::observing &&
+                                    outing.actor_route_waypoint == 1 &&
+                                    structural_outing_uses_watch_route( outing ) &&
+                                    outing.assessment.observation_started_minutes < 0 &&
+                                    !outing.alternate_watch_reposition_pending;
     if( !outing.route_clock_enrolled || outing.route_clock_anchor_minutes < 0 ||
         ( outing.route_clock_stale && !outing.route_clock_outbound_unavailable ) ||
-        outing.kind != outing_kind::structural_sortie ||
-        outing.phase != scout_phase::outbound || outing.actor_route_waypoint != 0 ||
+        outing.kind != outing_kind::structural_sortie || !( first_leg || unstarted_watch_leg ) ||
         outing.route_clock_anchor_minutes != outing.started_minutes ||
         outing.shared_route.size() < 3 || !simulation_cursor_matches( outing, cursor ) ||
         now_minutes < outing.last_advanced_minutes ||
@@ -18122,7 +18128,8 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         member_ids.empty() || member_ids.size() != old_paths.size() ||
         member_ids.size() != new_paths.size() || downstream_path.empty() ||
         downstream_path.front() != structural_outing_travel_destination( outing ) ||
-        downstream_path.back() != outing.shared_route[1] || homeward_path.empty() ||
+        downstream_path.back() != ( first_leg ? outing.shared_route[1] :
+                                    structural_outing_travel_destination( outing ) ) || homeward_path.empty() ||
         homeward_path.front() != site.anchor ||
         homeward_path.back() != structural_outing_travel_destination( outing ) ) {
         return false;
@@ -18153,7 +18160,8 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const auto &old_path = old_paths[i];
         const auto &new_path = new_paths[i];
         if( old_path.empty() || new_path.empty() ||
-            old_path.front() != outing.shared_route[1] ||
+            old_path.front() != ( first_leg ? outing.shared_route[1] :
+                                  structural_outing_travel_destination( outing ) ) ||
             new_path.front() != old_path.front() || new_path.back() != old_path.back() ) {
             return false;
         }
@@ -18187,7 +18195,7 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     // reverse order, so an otherwise shorter path cannot skip a required leg.
     const int destination_index = structural_outing_destination_waypoint( outing );
     auto waypoint = downstream_path.rbegin();
-    for( int i = 1; i <= destination_index; ++i ) {
+    for( int i = first_leg ? 1 : destination_index; i <= destination_index; ++i ) {
         waypoint = std::find( waypoint, downstream_path.rend(), outing.shared_route[i] );
         if( waypoint == downstream_path.rend() ) {
             return false;
@@ -18204,8 +18212,10 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     if( elapsed < 0 || cadence <= 0 ) {
         return false;
     }
-    const int gate_remaining = std::max( 0, structural_stalking_delay_minutes(
-                                   site.anchor, structural_outing_travel_destination( outing ) ) - elapsed );
+    // Entering the observing phase has already consumed the stalking gate.
+    // Physical watch arrival owns assessment start without another time gate.
+    const int gate_remaining = first_leg ? std::max( 0, structural_stalking_delay_minutes(
+                                   site.anchor, structural_outing_travel_destination( outing ) ) - elapsed ) : 0;
     const std::int64_t old_travel = old_edges * cadence;
     const std::int64_t new_travel = new_edges * cadence;
     const std::int64_t new_homeward = static_cast<std::int64_t>( homeward_path.size() - 1 ) * cadence;
@@ -18215,19 +18225,20 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
                                  std::max<std::int64_t>( gate_remaining, old_travel ) + homeward_change;
     // The original anchor remains authoritative. A detour discovered after a
     // long hold must include the active time already spent and the work that
-    // still follows this first leg. These service allowances are forecasts,
+    // still follows this leg. These service allowances are forecasts,
     // not physical body time.
     const std::int64_t later_outbound = static_cast<std::int64_t>(
                                             downstream_path.size() - 1 ) * cadence;
     const bool watch = structural_outing_uses_watch_route( outing );
-    const int phase_gate = watch ? structural_stalking_delay_minutes( site.anchor,
-                           structural_outing_travel_destination( outing ) ) :
+    const int phase_gate = unstarted_watch_leg ? 0 :
+                           watch ? structural_stalking_delay_minutes( site.anchor,
+                                   structural_outing_travel_destination( outing ) ) :
                            structural_arrival_delay_minutes( site.anchor,
                                    structural_outing_travel_destination( outing ) );
     const std::int64_t floor = static_cast<std::int64_t>( elapsed ) +
                                std::max<std::int64_t>( std::max( 0, phase_gate - elapsed ),
                                        new_travel + ( watch ? 0 : later_outbound ) ) +
-                               ( watch ? 60 + later_outbound + 120 + 60 : 60 ) +
+                               ( watch ? ( first_leg ? 60 + later_outbound : 0 ) + 120 + 60 : 60 ) +
                                new_homeward + 60;
     const std::int64_t remaining = std::max( revised, floor );
     const std::int64_t travel = std::max(

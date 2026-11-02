@@ -10852,6 +10852,12 @@ std::vector<tripoint_abs_omt> live_bandit_clock_homeward_path(
 std::vector<tripoint_abs_omt> live_bandit_clock_downstream_path(
     const bandit_live_world::active_outing_state &outing )
 {
+    if( outing.phase == bandit_live_world::scout_phase::observing &&
+        outing.actor_route_waypoint == 1 &&
+        outing.selected_watch_kind != bandit_live_world::structural_watch_kind::none &&
+        outing.assessment.observation_started_minutes < 0 ) {
+        return { outing.selected_watch_omt };
+    }
     const int last = outing.selected_watch_kind != bandit_live_world::structural_watch_kind::none ?
                      2 : static_cast<int>( outing.shared_route.size() ) - 2;
     if( last < 1 || last >= static_cast<int>( outing.shared_route.size() ) ) {
@@ -11026,15 +11032,21 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
         // an early withdrawal must never finish the outbound watch leg first.
         const int destination_index = live_bandit_scout_destination_index( outing );
         const tripoint_abs_omt destination = outing.shared_route[destination_index];
+        const bool first_clock_leg = outing.phase == bandit_live_world::scout_phase::outbound &&
+                                     outing.actor_route_waypoint == 0;
+        const bool unstarted_watch_clock_leg = outing.phase == bandit_live_world::scout_phase::observing &&
+                outing.actor_route_waypoint == 1 &&
+                outing.selected_watch_kind != bandit_live_world::structural_watch_kind::none &&
+                outing.assessment.observation_started_minutes < 0 &&
+                !outing.alternate_watch_reposition_pending;
         const bool arrived = std::all_of( members.begin(), members.end(),
         [&destination]( const npc * member ) {
             return member->pos_abs_omt() == destination;
         } );
-        // A motor step can consume the first-waypoint order before this
+        // A motor step can consume the current waypoint order before this
         // service runs. Authenticate current bodies and complete native paths
         // before the ordinary arrival branch advances the route cursor.
-        if( outing.phase == bandit_live_world::scout_phase::outbound &&
-            outing.actor_route_waypoint == 0 && outing.route_clock_stale &&
+        if( ( first_clock_leg || unstarted_watch_clock_leg ) && outing.route_clock_stale &&
             outing.route_clock_outbound_unavailable &&
             std::any_of( members.begin(), members.end(), [&]( const npc *member ) {
                 return moved_members.count( member->getID() ) != 0;
@@ -11256,9 +11268,8 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
             routes.push_back( std::move( route ) );
         }
         if( routes.size() != members.size() ) {
-            if( outing.phase == bandit_live_world::scout_phase::outbound &&
-                outing.actor_route_waypoint == 0 && outing.route_clock_anchor_minutes >= 0 &&
-                !outing.route_clock_stale ) {
+            if( ( first_clock_leg || unstarted_watch_clock_leg ) &&
+                outing.route_clock_anchor_minutes >= 0 && !outing.route_clock_stale ) {
                 const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
                 if( cursor ) {
                     bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
@@ -11282,8 +11293,8 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
             held.insert( outing.member_ids.begin(), outing.member_ids.end() );
             continue;
         }
-        if( outing.phase == bandit_live_world::scout_phase::outbound &&
-            outing.actor_route_waypoint == 0 && outing.route_clock_anchor_minutes >= 0 &&
+        if( ( first_clock_leg || unstarted_watch_clock_leg ) &&
+            outing.route_clock_anchor_minutes >= 0 &&
             ( !outing.route_clock_stale || outing.route_clock_outbound_unavailable ) ) {
             std::vector<character_id> route_members;
             std::vector<std::vector<tripoint_abs_omt>> previous_routes;
@@ -11298,6 +11309,17 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                                          member.omt_path.front() == destination &&
                                          member.omt_path.back() == member.pos_abs_omt();
                 material_change |= member.omt_path != routes[index];
+            }
+            if( unstarted_watch_clock_leg && !previous_routes_bound && !outing.route_clock_stale ) {
+                // The preflight watch leg is not retained after the party
+                // consumes its approach orders. The newly selected route
+                // cannot authenticate the old forecast until actual motor
+                // progress supplies current party paths. Preserve the
+                // deadline and use the same recovery as an unavailable leg.
+                const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+                if( cursor ) {
+                    bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
+                }
             }
             if( material_change && previous_routes_bound ) {
                 const auto cursor = bandit_live_world::current_external_simulation_cursor( site );

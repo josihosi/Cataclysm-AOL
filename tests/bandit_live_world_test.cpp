@@ -68828,7 +68828,8 @@ class r067_fresh_scout_journey
 
         void start( const bool cannibal, const bool stay_at_source = false,
                     const bool conceal_avatar = false, const bool unarmed_encounter = false,
-                    const bool with_peer = false, const int admission_case = 0 ) {
+                    const bool with_peer = false, const int admission_case = 0,
+                    const bool diagonal_watch_approach = false ) {
             using namespace bandit_live_world;
             clear_avatar();
             clear_npcs();
@@ -68869,6 +68870,11 @@ class r067_fresh_scout_journey
                 get_map().invalidate_map_cache( 1 );
                 get_map().build_map_cache( 1 );
                 get_map().save();
+            }
+            if( diagonal_watch_approach ) {
+                // A real impassable tile makes the admitted approach diagonal
+                // while leaving the selected watch and its path passable.
+                overmap_buffer.ter_set( legal_watch + point( -1, 0 ), oter_id( "river_center" ) );
             }
             const std::string kind = cannibal ? "cannibal_camp" : "bandit_camp";
             REQUIRE( register_abstract_site( world(), anchor_source_kind::overmap_special,
@@ -71366,6 +71372,266 @@ TEST_CASE( "restored first leg reforecasts when scouts reach its waypoint",
     const int forecast = journey.site().active_outing.expected_return_minutes;
     prepare_live_bandit_abstract_scout_travel_for_test();
     CHECK( journey.site().active_outing.expected_return_minutes == forecast );
+}
+
+TEST_CASE( "scouts retain an honest clock when their lookout leg becomes unavailable",
+           "[bandit_live_world][expedition_lookout_leg_clock]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true );
+    const auto initial = journey.site().active_outing;
+    REQUIRE( initial.route_clock_enrolled );
+    REQUIRE( initial.route_clock_anchor_minutes >= 0 );
+    const auto waypoint = initial.shared_route[1];
+    const auto watch = initial.selected_watch_omt;
+    bool at_waypoint = false;
+    for( int minute = 0; minute < 240; ++minute ) {
+        const auto &outing = journey.site().active_outing;
+        if( outing.phase == scout_phase::outbound && outing.actor_route_waypoint == 1 ) {
+            at_waypoint = true;
+            break;
+        }
+        journey.next_minute();
+    }
+    REQUIRE( at_waypoint );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE_FALSE( body->is_active() );
+        REQUIRE( body->pos_abs_omt() == waypoint );
+    }
+    const auto original_path = overmap_buffer.get_travel_path(
+                                   waypoint, watch, overmap_path_params::for_npc() ).points;
+    REQUIRE_FALSE( original_path.empty() );
+    const auto original_watch_terrain = overmap_buffer.ter( watch );
+    on_out_of_scope restore_terrain( [&]() {
+        overmap_buffer.ter_set( watch, original_watch_terrain );
+    } );
+    // The selected first waypoint has actually been reached. Only then does
+    // the later lookout become impassable; no actor or phase is staged.
+    overmap_buffer.ter_set( watch, oter_id( "river_center" ) );
+    bool watching_leg = false;
+    for( int minute = 0; minute < 240; ++minute ) {
+        const auto &outing = journey.site().active_outing;
+        if( outing.phase == scout_phase::observing &&
+            outing.actor_route_waypoint == 1 &&
+            outing.assessment.observation_started_minutes < 0 ) {
+            watching_leg = true;
+            break;
+        }
+        journey.next_minute();
+    }
+    REQUIRE( watching_leg );
+    REQUIRE( overmap_buffer.get_travel_path(
+                 waypoint, watch, overmap_path_params::for_npc() ).points.empty() );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE( body->pos_abs_omt() == waypoint );
+    }
+    const int expected = journey.site().active_outing.expected_return_minutes;
+    const int missing = journey.site().active_outing.missing_deadline_minutes;
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == expected );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == missing );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.expected_return_minutes == expected );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == missing );
+    for( int minute = 0; minute < 240; ++minute ) {
+        journey.next_minute();
+        for( const auto id : journey.members() ) {
+            const auto body = overmap_buffer.find_npc( id );
+            REQUIRE( body );
+            CHECK( body->pos_abs_omt() == waypoint );
+        }
+    }
+    REQUIRE( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == expected );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == missing );
+    CHECK( journey.site().active_outing.assessment.observation_started_minutes < 0 );
+    overmap_buffer.ter_set( watch, original_watch_terrain );
+    const auto restored = overmap_buffer.get_travel_path(
+                              waypoint, watch, overmap_path_params::for_npc() ).points;
+    REQUIRE_FALSE( restored.empty() );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == expected );
+    for( int minute = 0; minute < 10; ++minute ) {
+        journey.next_minute();
+        if( std::all_of( journey.members().begin(), journey.members().end(),
+        [&]( const character_id id ) {
+            const auto body = overmap_buffer.find_npc( id );
+            return body && body->pos_abs_omt() == watch;
+        } ) ) {
+            break;
+        }
+    }
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        CHECK( body->pos_abs_omt() == watch );
+    }
+    CHECK_FALSE( journey.site().active_outing.route_clock_stale );
+    CHECK_FALSE( journey.site().active_outing.route_clock_outbound_unavailable );
+    CHECK( journey.site().active_outing.expected_return_minutes > expected );
+    const auto direct_home = overmap_buffer.get_travel_path(
+                                 watch, journey.home, overmap_path_params::for_npc() ).points;
+    const auto homeward = live_bandit_clock_homeward_path_for_test( journey.site(), direct_home );
+    REQUIRE_FALSE( homeward.empty() );
+    const int physical_minimum = journey.minute() + 120 +
+                                 static_cast<int>( homeward.size() - 1 ) *
+                                 to_minutes<int>( time_between_npc_OM_moves );
+    // The physical minimum excludes the two existing hourly service
+    // allowances. The deadline's own timer carries the actual paused time;
+    // compare its effective deadline without charging the completed gate.
+    const auto &clock = journey.site().active_outing;
+    const auto suspended = clock.activation.timers[
+                               static_cast<std::size_t>( activation_timer::expected_return )].suspended_turns;
+    REQUIRE( suspended > 0 );
+    REQUIRE( suspended % 60 == 0 );
+    CHECK( clock.expected_return_minutes + suspended / 60 == physical_minimum + 120 );
+}
+
+TEST_CASE( "initial lookout orders keep an unbound forecast honest until real progress",
+           "[bandit_live_world][expedition_lookout_initial_clock]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true, false, false, 0, true );
+    const auto initial = journey.site().active_outing;
+    REQUIRE( initial.route_clock_enrolled );
+    const auto waypoint = initial.shared_route[1];
+    const auto watch = initial.selected_watch_omt;
+    bool at_waypoint = false;
+    for( int minute = 0; minute < 240; ++minute ) {
+        const auto &outing = journey.site().active_outing;
+        if( outing.phase == scout_phase::outbound && outing.actor_route_waypoint == 1 ) {
+            at_waypoint = true;
+            break;
+        }
+        journey.next_minute();
+    }
+    REQUIRE( at_waypoint );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE( body->pos_abs_omt() == waypoint );
+        REQUIRE( body->omt_path.empty() );
+    }
+    const auto path = overmap_buffer.get_travel_path( waypoint, watch,
+                      overmap_path_params::for_npc() ).points;
+    REQUIRE( path.size() == 2 );
+    REQUIRE( std::abs( waypoint.x() - watch.x() ) == 1 );
+    REQUIRE( std::abs( waypoint.y() - watch.y() ) == 1 );
+    const auto original_terrain = overmap_buffer.ter( waypoint );
+    on_out_of_scope restore_terrain( [&]() {
+        overmap_buffer.ter_set( waypoint, original_terrain );
+    } );
+    // The party reached its genuinely admitted diagonal approach. A changed
+    // passable swamp makes the native solver prefer a longer route to the
+    // still-passable watch before any order for that leg has been assigned.
+    overmap_buffer.ter_set( waypoint, oter_id( "forest_water" ) );
+    REQUIRE( overmap_travel_step_valid( waypoint, watch, overmap_path_params::for_npc() ) );
+    const auto changed = overmap_buffer.get_travel_path( waypoint, watch,
+                         overmap_path_params::for_npc() ).points;
+    REQUIRE( changed.size() > path.size() );
+    // A finite native incapacity holds this real party beyond the original
+    // work allowance. It creates no route, arrival, or watch credit. Once
+    // recovered, the first passable watch order is still unbound.
+    load_effect_type( json_loader::from_string(
+                          R"({"id":"lookout_initial_clock_immobile","name":["immobile"],"desc":["Cannot move."],"flags":["CANNOT_MOVE"]})" ).get_object(), "test" );
+    const int before_expected = journey.site().active_outing.expected_return_minutes;
+    const int before_missing = journey.site().active_outing.missing_deadline_minutes;
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        body->add_effect( efftype_id( "lookout_initial_clock_immobile" ), 1_days );
+        REQUIRE( body->has_flag( json_character_flag( "CANNOT_MOVE" ) ) );
+    }
+    for( int minute = 0; minute < 240; ++minute ) {
+        journey.next_minute();
+    }
+    REQUIRE( journey.site().active_outing.is_active() );
+    REQUIRE( journey.site().active_outing.assessment.observation_started_minutes < 0 );
+    CHECK( journey.site().active_outing.expected_return_minutes == before_expected );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == before_missing );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE( body->pos_abs_omt() == waypoint );
+        body->remove_effect( efftype_id( "lookout_initial_clock_immobile" ) );
+    }
+    bool assigned = false;
+    for( int minute = 0; minute < 240; ++minute ) {
+        const auto &outing = journey.site().active_outing;
+        if( outing.phase == scout_phase::observing && outing.actor_route_waypoint == 1 &&
+            std::all_of( journey.members().begin(), journey.members().end(),
+        [&]( const character_id id ) {
+            const auto body = overmap_buffer.find_npc( id );
+            return body && body->pos_abs_omt() != watch && body->goal == watch &&
+                   !body->omt_path.empty();
+        } ) ) {
+            assigned = true;
+            break;
+        }
+        journey.next_minute();
+    }
+    REQUIRE( assigned );
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        // The ordinary service has already taken one genuine detour step.
+        CHECK( body->pos_abs_omt() != waypoint );
+        CHECK( body->omt_path.size() == path.size() );
+    }
+    const auto &assigned_clock = journey.site().active_outing;
+    // Assignment and the first motor step share one service. After that
+    // authenticated progress the forecast is current and includes the hold.
+    CHECK_FALSE( assigned_clock.route_clock_stale );
+    CHECK_FALSE( assigned_clock.route_clock_outbound_unavailable );
+    CHECK( assigned_clock.expected_return_minutes > before_expected );
+    CHECK( assigned_clock.missing_deadline_minutes > before_missing );
+    const int expected = assigned_clock.expected_return_minutes;
+    const int missing = assigned_clock.missing_deadline_minutes;
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.expected_return_minutes == expected );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == missing );
+    CHECK_FALSE( journey.site().active_outing.route_clock_stale );
+    for( int minute = 0; minute < 10; ++minute ) {
+        journey.next_minute();
+        if( std::all_of( journey.members().begin(), journey.members().end(),
+        [&]( const character_id id ) {
+            const auto body = overmap_buffer.find_npc( id );
+            return body && body->pos_abs_omt() == watch;
+        } ) ) {
+            break;
+        }
+    }
+    for( const auto id : journey.members() ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        CHECK( body->pos_abs_omt() == watch );
+    }
+    CHECK_FALSE( journey.site().active_outing.route_clock_stale );
+    CHECK_FALSE( journey.site().active_outing.route_clock_outbound_unavailable );
+    const auto direct_home = overmap_buffer.get_travel_path( watch, journey.home,
+                             overmap_path_params::for_npc() ).points;
+    const auto homeward = live_bandit_clock_homeward_path_for_test( journey.site(), direct_home );
+    REQUIRE_FALSE( homeward.empty() );
+    const auto &after = journey.site().active_outing;
+    const auto suspended = after.activation.timers[
+                               static_cast<std::size_t>( activation_timer::expected_return )].suspended_turns;
+    CHECK( after.expected_return_minutes + suspended / 60 >= journey.minute() + 120 + 120 +
+           static_cast<int>( homeward.size() - 1 ) *
+           to_minutes<int>( time_between_npc_OM_moves ) );
 }
 
 TEST_CASE( "C++-built normal level-one report commits only an exact authorized claim",
