@@ -271,6 +271,17 @@ class ScenarioRegistryContractTest(unittest.TestCase):
                     with self.assertRaises(ManifestValidationError):
                         validate_manifest(declaration, path=path)
 
+    def test_selected_natural_expedition_may_declare_proof_without_promoting_other_names(self) -> None:
+        declaration = self.versioned_manifest()
+        declaration["name"] = "bandit.r_caol_r050_natural_mixed_expedition_luna_20261103"
+        declaration["runtime_contract"]["grants_gameplay_proof"] = True
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self.write_manifest(Path(temp_dir), "journey.json", declaration)
+            validate_manifest(declaration, path=path)
+            declaration["name"] += "_other"
+            with self.assertRaises(ManifestValidationError):
+                validate_manifest(declaration, path=path)
+
     def test_unversioned_declared_field_round_trips_but_requires_review(self) -> None:
         declaration = {
             "name": "legacy.partial",
