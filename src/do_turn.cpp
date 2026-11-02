@@ -10846,6 +10846,27 @@ bool pending_abstract_scout_arrival_order( const npc &member,
 
 std::vector<tripoint_abs_omt> live_bandit_clock_homeward_path(
     const bandit_live_world::site_record &site, const std::vector<tripoint_abs_omt> &direct );
+std::optional<int> live_bandit_coarse_terrain_weight( const tripoint_abs_omt &destination );
+
+template<typename Members>
+bandit_live_world::structural_coarse_route_model live_bandit_coarse_route_model(
+    const Members &members )
+{
+    bandit_live_world::structural_coarse_route_model model;
+    model.slowest_speed = std::numeric_limits<int>::max();
+    for( const auto &member : members ) {
+        if( !member || member->get_speed() <= 0 ) {
+            model.slowest_speed = 0;
+            break;
+        }
+        model.slowest_speed = std::min( model.slowest_speed, member->get_speed() );
+    }
+    if( members.empty() ) {
+        model.slowest_speed = 0;
+    }
+    model.terrain_weight = live_bandit_coarse_terrain_weight;
+    return model;
+}
 
 // Solve only the selected party's still-mandatory legs, in the same
 // destination-first order used by the native overmap motor.
@@ -11099,7 +11120,7 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                         site, *cursor, ids, current_paths, current_paths,
                         live_bandit_clock_downstream_path( outing ),
                         live_bandit_clock_homeward_path( site, direct_home ),
-                        live_bandit_current_minutes(), true );
+                        live_bandit_current_minutes(), live_bandit_coarse_route_model( members ), true );
                 }
             }
         }
@@ -11294,11 +11315,21 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
             continue;
         }
         if( ( first_clock_leg || unstarted_watch_clock_leg ) &&
+            outing.route_clock_anchor_minutes >= 0 && outing.route_clock_speed == 0 &&
+            !outing.route_clock_stale ) {
+            const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+            if( cursor ) {
+                bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
+            }
+        }
+        if( ( first_clock_leg || unstarted_watch_clock_leg ) &&
             outing.route_clock_anchor_minutes >= 0 &&
             ( !outing.route_clock_stale || outing.route_clock_outbound_unavailable ) ) {
             std::vector<character_id> route_members;
             std::vector<std::vector<tripoint_abs_omt>> previous_routes;
-            bool material_change = false;
+            const bool speed_changed = outing.route_clock_speed > 0 &&
+                                       outing.route_clock_speed != live_bandit_coarse_route_model( members ).slowest_speed;
+            bool geometry_changed = false;
             bool previous_routes_bound = true;
             for( std::size_t index = 0; index < members.size(); ++index ) {
                 const npc &member = *members[index];
@@ -11308,7 +11339,23 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                                          !member.omt_path.empty() &&
                                          member.omt_path.front() == destination &&
                                          member.omt_path.back() == member.pos_abs_omt();
-                material_change |= member.omt_path != routes[index];
+                geometry_changed |= member.omt_path != routes[index];
+            }
+            std::vector<std::vector<tripoint_abs_omt>> priced_paths = routes;
+            if( first_clock_leg ) {
+                priced_paths.push_back( outing.route_clock_downstream_path );
+            }
+            priced_paths.push_back( outing.route_clock_homeward_path );
+            const auto price_change = bandit_live_world::structural_coarse_route_prices_changed(
+                                          outing, priced_paths, live_bandit_coarse_route_model( members ) );
+            const bool material_change = geometry_changed || speed_changed || ( price_change && *price_change );
+            if( !price_change && !material_change && previous_routes_bound && !outing.route_clock_stale ) {
+                // A legacy or unavailable price is not evidence that the
+                // forecast still matches; requalify only after real progress.
+                const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+                if( cursor ) {
+                    bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
+                }
             }
             if( unstarted_watch_clock_leg && !previous_routes_bound && !outing.route_clock_stale ) {
                 // The preflight watch leg is not retained after the party
@@ -11321,7 +11368,10 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                     bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
                 }
             }
-            if( material_change && previous_routes_bound ) {
+            // A price delta must not requalify an already unavailable leg:
+            // that owner requires authenticated physical progress first.
+            if( material_change && previous_routes_bound &&
+                ( !outing.route_clock_stale || ( first_clock_leg && geometry_changed ) ) ) {
                 const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
                 auto return_owner = outing;
                 return_owner.phase = bandit_live_world::scout_phase::returning_home;
@@ -11340,7 +11390,8 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                     bandit_live_world::mark_structural_coarse_route_stale( site, *cursor, true );
                 } else if( cursor && !bandit_live_world::revise_structural_coarse_outbound_clock(
                                site, *cursor, route_members, previous_routes, routes,
-                               downstream_path, homeward_path, live_bandit_current_minutes() ) ) {
+                               downstream_path, homeward_path, live_bandit_current_minutes(),
+                               live_bandit_coarse_route_model( members ) ) ) {
                     bandit_live_world::mark_structural_coarse_route_stale( site, *cursor );
                 }
             }
@@ -15368,6 +15419,7 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
             plan.preflight_outbound_path.empty() ) {
             return read;
         }
+        int slowest_speed = std::numeric_limits<int>::max();
         for( const character_id id : outing.member_ids ) {
             const auto member = overmap_buffer.find_npc( id );
             if( !member || member->is_active() || member->pos_abs_omt() != site.anchor ||
@@ -15376,6 +15428,7 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
                 !live_bandit_abstract_scout_member_can_travel( *member ) ) {
                 return read; // Loaded, absent, displaced or incapacitated is unknown.
             }
+            slowest_speed = std::min( slowest_speed, member->get_speed() );
         }
         read.outbound_path = live_bandit_clock_outbound_path( site, plan.preflight_outbound_path );
         if( read.outbound_path.empty() ) {
@@ -15393,6 +15446,22 @@ bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_str
         if( read.homeward_path.empty() ) {
             return read;
         }
+        const auto append_weights = []( const std::vector<tripoint_abs_omt> &path,
+        std::vector<int> & weights ) {
+            for( const tripoint_abs_omt &pos : path ) {
+                const auto weight = live_bandit_coarse_terrain_weight( pos );
+                if( !weight ) {
+                    return false;
+                }
+                weights.push_back( *weight );
+            }
+            return true;
+        };
+        if( !append_weights( read.outbound_path, read.outbound_weights ) ||
+            !append_weights( read.homeward_path, read.homeward_weights ) ) {
+            return read;
+        }
+        read.slowest_speed = slowest_speed;
         read.party_qualified = true;
         return read;
     }, prepare_live_bandit_home_admission );
@@ -17060,6 +17129,16 @@ int live_bandit_scout_cadence_moves( const npc &member, const int elapsed_minute
 {
     return active_time::funded_moves( member.get_moves(), member.get_speed(),
                                       to_turns<int>( elapsed_minutes * 1_minutes ) );
+}
+
+std::optional<int> live_bandit_coarse_terrain_weight( const tripoint_abs_omt &destination )
+{
+    const oter_id &terrain = overmap_buffer.ter_existing( destination );
+    if( !terrain.is_valid() ) {
+        return std::nullopt;
+    }
+    const int weight = overmap_path_params::for_npc().get_cost( terrain->get_travel_cost_type() );
+    return weight > 0 ? std::optional<int>( weight ) : std::nullopt;
 }
 
 int live_bandit_scout_unbanked_moves( const int previous_moves, const int remaining_moves )
@@ -20693,6 +20772,8 @@ std::set<character_id> catch_up_live_bandit_abstract_pair_bodies()
 }
 } // namespace
 
+static bool reject_local_coarse_candidate_for_test = false;
+
 void overmap_npc_move()
 {
     refresh_live_bandit_activation();
@@ -21026,6 +21107,14 @@ void overmap_npc_move()
             continue;
         }
         const auto refuse = [&]( const std::string_view reason ) {
+            // An unavailable/debt-held service must not be banked and then
+            // credited as fresh movement when the obstacle later clears.
+            if( outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                outing.activation.initialized() && outing.activation.active &&
+                bandit_live_world::current_external_simulation_cursor( site ) &&
+                outing.coarse_work.serviced_active_turns <= outing.activation.active_turns ) {
+                outing.coarse_work.serviced_active_turns = outing.activation.active_turns;
+            }
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world retained homeward resume refused"
                                        << " site=" << site.site_id << " generation=" << outing.generation
                                        << " epoch=" << outing.handoff_epoch
@@ -21129,6 +21218,19 @@ void overmap_npc_move()
             refuse( "complete party has no shared target-cleared native home route" );
             continue;
         }
+        auto priced_homeward_paths = routes;
+        for( std::size_t i = 0; i < members.size(); ++i ) {
+            priced_homeward_paths[i].push_back( members[i]->pos_abs_omt() );
+        }
+        const auto homeward_price_change = !forward_destination && outing.route_clock_homeward_actual &&
+                                           !outing.route_clock_stale && !material_homeward_reroute ?
+                                           bandit_live_world::structural_coarse_route_prices_changed(
+                                               outing, priced_homeward_paths,
+                                               live_bandit_coarse_route_model( members ) ) : std::nullopt;
+        const bool changed_homeward_price = homeward_price_change && *homeward_price_change;
+        const bool unknown_homeward_price = !forward_destination && outing.route_clock_homeward_actual &&
+                                            !outing.route_clock_stale && !material_homeward_reroute &&
+                                            !homeward_price_change;
         const int elapsed_minutes = static_cast<int>( std::min<int64_t>(
                 outing.activation.elapsed_minutes(
                     consumed_minutes == outing.last_advanced_minutes ?
@@ -21147,6 +21249,32 @@ void overmap_npc_move()
             previous_moves.push_back( member->get_moves() );
             funded_moves.push_back( live_bandit_scout_cadence_moves( *member, elapsed_minutes ) );
             complete_party_can_move &= funded_moves.back() > 0;
+        }
+        bandit_live_world::coarse_party_travel_work proposed_work = outing.coarse_work;
+        bool funded_edge = false;
+        if( outing.kind == bandit_live_world::outing_kind::structural_sortie ) {
+            const auto active_millis = bandit_live_world::claim_coarse_party_active_millis(
+                                           proposed_work, outing.activation );
+            if( !active_millis ) {
+                refuse( "coarse active-time owner unavailable" );
+                continue;
+            }
+            if( *active_millis == 0 ) {
+                complete_party_can_move = false;
+            } else if( complete_party_can_move ) {
+                const auto weight = live_bandit_coarse_terrain_weight( *next );
+                int slowest = std::numeric_limits<int>::max();
+                for( const auto &member : members ) {
+                    slowest = std::min( slowest, member->get_speed() );
+                }
+                if( !weight || !bandit_live_world::service_coarse_party_travel_work(
+                        proposed_work, outing.local_handoff.route_position, *next, *weight,
+                        slowest, *active_millis, funded_edge ) ) {
+                    refuse( "coarse edge terrain or capability unavailable" );
+                    continue;
+                }
+                complete_party_can_move = funded_edge;
+            }
         }
         // The recorder owns candidate validation. Preserve each actor's physical
         // offset so the proposed complete-pair state is known before either
@@ -21233,19 +21361,37 @@ void overmap_npc_move()
             refuse( "complete next operation snapshot is invalid" );
             continue;
         }
+        if( outing.kind == bandit_live_world::outing_kind::structural_sortie ) {
+            site.active_outing.coarse_work = proposed_work;
+        }
         if( complete_party_can_move && material_homeward_reroute &&
             site.active_outing.route_clock_anchor_minutes >= 0 ) {
             site.active_outing.route_clock_stale = true;
             site.active_outing.route_clock_outbound_unavailable = false;
         }
-        if( complete_party_can_move && site.active_outing.route_clock_enrolled &&
+        if( unknown_homeward_price ) {
+            site.active_outing.route_clock_stale = true;
+            site.active_outing.route_clock_outbound_unavailable = false;
+        }
+        const bool changed_homeward_speed = !complete_party_can_move &&
+                                            site.active_outing.route_clock_homeward_actual &&
+                                            !site.active_outing.route_clock_stale &&
+                                            !material_homeward_reroute &&
+                                            site.active_outing.route_clock_speed !=
+                                            live_bandit_coarse_route_model( members ).slowest_speed;
+        if( ( complete_party_can_move || changed_homeward_speed || changed_homeward_price ) &&
+            site.active_outing.route_clock_enrolled &&
             bandit_live_world::scout_phase_requires_homeward_only( site.active_outing.phase ) &&
-            ( !site.active_outing.route_clock_homeward_actual || site.active_outing.route_clock_stale ) ) {
+            ( !site.active_outing.route_clock_homeward_actual || site.active_outing.route_clock_stale ||
+              site.active_outing.route_clock_speed != live_bandit_coarse_route_model( members ).slowest_speed ||
+              changed_homeward_price ) ) {
             std::vector<character_id> clock_member_ids;
             std::vector<std::vector<tripoint_abs_omt>> clock_paths;
-            for( const auto &member : members ) {
-                auto path = member->omt_path;
-                if( path.empty() || member->goal != site.anchor ) {
+            for( std::size_t index = 0; index < members.size(); ++index ) {
+                const auto &member = members[index];
+                auto path = complete_party_can_move ? member->omt_path : routes[index];
+                if( path.empty() || ( complete_party_can_move ? member->goal : *homeward_destination ) !=
+                    site.anchor ) {
                     clock_member_ids.clear();
                     clock_paths.clear();
                     break;
@@ -21260,7 +21406,8 @@ void overmap_npc_move()
             if( refreshed_cursor && !clock_paths.empty() ) {
                 bandit_live_world::refresh_structural_coarse_homeward_clock(
                     site, *refreshed_cursor, clock_member_ids, clock_paths,
-                    live_bandit_current_minutes() );
+                    live_bandit_current_minutes(), live_bandit_coarse_route_model( members ),
+                    changed_homeward_price );
             }
         }
         DebugLog( D_INFO, DC_ALL )
@@ -21441,6 +21588,61 @@ void overmap_npc_move()
             !member_can_enter( outing.member_ids[1] ) ) {
             preflight_blocked_ingress_members.insert( outing.member_ids.begin(),
                     outing.member_ids.end() );
+        }
+    }
+    // Discarding time is site-owned bookkeeping, not an actor projection or
+    // movement transaction. A rejected actor lease must not gain travel work
+    // on recovery, and must never be changed by this bookkeeping.
+    const auto discard_unavailable_local_coarse_time = [&]( bandit_live_world::site_record &site ) {
+        const auto &outing = site.active_outing;
+        const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor || outing.kind != bandit_live_world::outing_kind::structural_sortie ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            !outing.local_handoff.is_active() || site.site_id.empty() ||
+            outing.camp_id != site.site_id || outing.generation <= site.applied_return_generation ||
+            !outing.activation.initialized() ||
+            !outing.activation.active || outing.coarse_work.serviced_active_turns >
+            outing.activation.active_turns ) {
+            return false;
+        }
+        site.active_outing.coarse_work.serviced_active_turns = outing.activation.active_turns;
+        return true;
+    };
+    for( auto &site : bandit_state.sites ) {
+        const auto &outing = site.active_outing;
+        if( !live_bandit_site_party_active( site ) ||
+            outing.owner != bandit_live_world::simulation_owner::local ||
+            ( !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
+              !bandit_live_world::local_pair_initial_departure_is_bound( outing ) ) ) {
+            continue;
+        }
+        const bool blocked = std::any_of( outing.member_ids.begin(), outing.member_ids.end(),
+        [&]( const character_id id ) {
+            if( outing.member_is_resolved( id ) ) {
+                return false;
+            }
+            const auto body = overmap_buffer.find_npc( id );
+            return body && !body->is_active() &&
+                   ( body_catch_up_blocked.count( id ) != 0 ||
+                     !live_bandit_abstract_scout_member_can_travel( *body ) );
+        } );
+        std::vector<shared_ptr_fast<npc>> inactive_members;
+        bool all_inactive = true;
+        for( const auto id : outing.member_ids ) {
+            if( outing.member_is_resolved( id ) ) {
+                continue;
+            }
+            const auto body = overmap_buffer.find_npc( id );
+            if( !body || body->is_active() ) {
+                all_inactive = false;
+                break;
+            }
+            inactive_members.push_back( body );
+        }
+        const bool unauthenticated = all_inactive && !inactive_members.empty() &&
+                                     !live_bandit_handoff_bodies_are_authenticated( site, inactive_members );
+        if( all_inactive && ( blocked || unauthenticated ) ) {
+            discard_unavailable_local_coarse_time( site );
         }
     }
     auto travel_candidates = overmap_buffer.get_npcs_near_omt( u.pos_abs_omt(), 40 );
@@ -21721,6 +21923,128 @@ void overmap_npc_move()
             blocked_ingress_members.insert( outing.member_ids.begin(), outing.member_ids.end() );
         }
     }
+    // Initial abstract outings use ordinary per-NPC native travel calls, but
+    // the selected work and active interval are owned once by the whole party.
+    // Keep each member's genuine next edge: a member already at the waypoint
+    // waits while the remaining qualified members advance their own edges.
+    std::map<character_id, int> abstract_party_motor_funding;
+    for( bandit_live_world::site_record &site : bandit_state.sites ) {
+        if( !live_bandit_site_party_active( site ) ||
+            !live_bandit_initial_abstract_body_owner_is_bound( site.active_outing ) ||
+            !site.active_outing.is_active() ) {
+            continue;
+        }
+        auto &outing = site.active_outing;
+        const auto discard_unavailable_service = [&outing]() {
+            if( outing.activation.initialized() && outing.activation.active &&
+                outing.coarse_work.serviced_active_turns <= outing.activation.active_turns ) {
+                outing.coarse_work.serviced_active_turns = outing.activation.active_turns;
+            }
+        };
+        for( const character_id id : outing.member_ids ) {
+            if( !outing.member_is_resolved( id ) ) {
+                abstract_party_motor_funding.emplace( id, 0 );
+            }
+        }
+        const auto bodies = read_live_bandit_abstract_bodies( site );
+        if( !bodies || bodies->empty() || !outing.activation.initialized() ||
+            !outing.activation.active ) {
+            discard_unavailable_service();
+            continue;
+        }
+        // The generic per-body motor rejects a zero-delta activation callback.
+        // Do not spend the party's accumulated work before that same gate.
+        if( outing.activation.active_delta_turns <= 0 ) {
+            continue;
+        }
+        std::vector<tripoint_abs_omt> from;
+        std::vector<tripoint_abs_omt> to;
+        std::vector<npc *> moving;
+        int max_weight = 0;
+        int slowest = std::numeric_limits<int>::max();
+        bool qualified = true;
+        const int destination_index = live_bandit_scout_destination_index( outing );
+        if( destination_index < 0 || destination_index >= static_cast<int>( outing.shared_route.size() ) ) {
+            discard_unavailable_service();
+            continue;
+        }
+        const tripoint_abs_omt destination = outing.shared_route[destination_index];
+        for( const auto &member : *bodies ) {
+            if( identity_held_members.count( member->getID() ) ||
+                committed_homeward_member_ids.count( member->getID() ) ||
+                blocked_ingress_members.count( member->getID() ) ||
+                body_catch_up_blocked.count( member->getID() ) ||
+                !live_bandit_abstract_scout_member_can_travel( *member ) ||
+                !live_bandit_member_can_take_homeward_step( *member ) ||
+                member->get_speed() <= 0 ) {
+                qualified = false;
+                break;
+            }
+            slowest = std::min( slowest, member->get_speed() );
+            const auto next = std::find_if( member->omt_path.rbegin(), member->omt_path.rend(),
+            [&]( const auto &pos ) {
+                return pos != member->pos_abs_omt();
+            } );
+            if( next == member->omt_path.rend() ) {
+                if( member->pos_abs_omt() != destination ) {
+                    qualified = false;
+                }
+                continue;
+            }
+            if( !member->is_travelling() || !member->has_omt_destination() ||
+                member->goal != destination || member->omt_path.front() != destination ||
+                std::find( travelling_npcs.begin(), travelling_npcs.end(), member.get() ) ==
+                travelling_npcs.end() ||
+                !overmap_travel_step_valid( member->pos_abs_omt(), *next,
+                                           overmap_path_params::for_npc() ) ) {
+                qualified = false;
+                break;
+            }
+            const auto weight = live_bandit_coarse_terrain_weight( *next );
+            if( !weight ) {
+                qualified = false;
+                break;
+            }
+            max_weight = std::max( max_weight, *weight );
+            from.push_back( member->pos_abs_omt() );
+            to.push_back( *next );
+            moving.push_back( member.get() );
+        }
+        if( !qualified || moving.empty() ) {
+            discard_unavailable_service();
+            continue;
+        }
+        auto work = outing.coarse_work;
+        const auto active_millis = bandit_live_world::claim_coarse_party_active_millis(
+                                       work, outing.activation );
+        if( !active_millis ) {
+            continue;
+        }
+        const int active_turns = static_cast<int>( static_cast<std::int64_t>( *active_millis ) *
+                                 to_turns<int>( 1_minutes ) / 60000 );
+        std::vector<int> funded;
+        bool native_ready = *active_millis > 0;
+        for( npc *member : moving ) {
+            funded.push_back( active_time::funded_moves( member->get_moves(), member->get_speed(),
+                              active_turns ) );
+            native_ready &= funded.back() > 0;
+        }
+        bool move = false;
+        if( native_ready && !bandit_live_world::service_coarse_party_travel_work_set(
+                work, from, to, max_weight, slowest, *active_millis, move ) ) {
+            discard_unavailable_service();
+            continue;
+        }
+        outing.coarse_work = work;
+        for( std::size_t i = 0; i < moving.size(); ++i ) {
+            npc &member = *moving[i];
+            if( move ) {
+                abstract_party_motor_funding[member.getID()] = funded[i];
+            } else {
+                member.set_moves( live_bandit_scout_unbanked_moves( member.get_moves(), funded[i] ) );
+            }
+        }
+    }
     // A Local purpose change does not grant another motor interval.
     // Claim the existing complete-party cursor only after a real route qualified;
     // the two actors may share that one claim, but a later callback cannot.
@@ -21754,6 +22078,7 @@ void overmap_npc_move()
                 record_live_bandit_scout_travel_trace( site, outing, diagnostic_actor, "refused",
                                                        reason.str(), "scout_homeward_footprint" );
             }
+            discard_unavailable_local_coarse_time( site );
             return claim;
         };
         const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
@@ -21787,13 +22112,6 @@ void overmap_npc_move()
                 if( member->is_active() ) {
                     return refuse( "claim_active_native_owner" );
                 }
-                if( body_catch_up_blocked.count( id ) != 0 ||
-                    ( initial_departure && local_body_blocked.count( id ) != 0 ) ) {
-                    return refuse( "claim_body_service_blocked" );
-                }
-                if( !live_bandit_abstract_scout_member_can_travel( *member ) ) {
-                    return refuse( "claim_native_capability" );
-                }
                 members.push_back( member );
             }
         }
@@ -21815,6 +22133,17 @@ void overmap_npc_move()
         {
             return refuse( "claim_leader_missing" );
         }
+        for( const auto &member : members ) {
+            if( body_catch_up_blocked.count( member->getID() ) != 0 ||
+                ( initial_departure && local_body_blocked.count( member->getID() ) != 0 ) ) {
+                diagnostic_actor = member->getID();
+                return refuse( "claim_body_service_blocked" );
+            }
+            if( !live_bandit_abstract_scout_member_can_travel( *member ) ) {
+                diagnostic_actor = member->getID();
+                return refuse( "claim_native_capability" );
+            }
+        }
         const int elapsed = static_cast<int>( std::min<int64_t>(
                 outing.activation.elapsed_minutes(
                     consumed == outing.last_advanced_minutes ?
@@ -21829,6 +22158,10 @@ void overmap_npc_move()
         const char *candidate_refusal = nullptr;
         std::vector<character_id> clock_member_ids;
         std::vector<std::vector<tripoint_abs_omt>> clock_homeward_paths;
+        std::vector<shared_ptr_fast<npc>> moving_members;
+        std::optional<bandit_live_world::coarse_party_travel_work> candidate_work;
+        bool clock_price_changed = false;
+        bool clock_price_unknown = false;
         const auto commit_interval = [&]()
         {
             bandit_live_world::local_cohesion_plan cadence_claim;
@@ -21855,6 +22188,18 @@ void overmap_npc_move()
                 candidate.active_outing.route_clock_stale = outing.route_clock_stale;
                 candidate.active_outing.route_clock_outbound_unavailable = outing.route_clock_outbound_unavailable;
                 candidate.active_outing.route_clock_homeward_actual = outing.route_clock_homeward_actual;
+                if( clock_price_unknown ) {
+                    candidate.active_outing.route_clock_stale = true;
+                    candidate.active_outing.route_clock_outbound_unavailable = false;
+                }
+                if( candidate_work ) {
+                    candidate.active_outing.coarse_work = *candidate_work;
+                }
+                if( reject_local_coarse_candidate_for_test ) {
+                    reject_local_coarse_candidate_for_test = false;
+                    candidate_refusal = "injected_coarse_candidate_rejection";
+                    return false;
+                }
                 const auto candidate_cursor = bandit_live_world::current_external_simulation_cursor( candidate );
                 if( !candidate_cursor ) {
                     candidate_refusal = "cadence_candidate_cursor";
@@ -21862,7 +22207,8 @@ void overmap_npc_move()
                 }
                 if( !clock_homeward_paths.empty() ) {
                     bandit_live_world::refresh_structural_coarse_homeward_clock(
-                        candidate, *candidate_cursor, clock_member_ids, clock_homeward_paths, now );
+                        candidate, *candidate_cursor, clock_member_ids, clock_homeward_paths, now,
+                        live_bandit_coarse_route_model( moving_members ), clock_price_changed );
                 }
                 if( !candidate.roster().valid ) {
                     candidate_refusal = "cadence_candidate_roster";
@@ -21871,13 +22217,33 @@ void overmap_npc_move()
                 return true;
             }, false, {}, &transaction_refusal );
         };
+        // A separated return can already have one physical member at camp.
+        // That body remains under the same owner and waits for the other; it
+        // has no next edge and receives no premature return receipt.
+        const auto waiting_at_home = [&]( const shared_ptr_fast<npc> & member ) {
+            return !initial_departure && outing.local_handoff.cohesion_abort_return &&
+                   !outing.local_handoff.cohesion_assembled &&
+                   bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) &&
+                   site_contains_omt( site, member->pos_abs_omt() ) &&
+                   ( !member->has_omt_destination() || member->goal == site.anchor );
+        };
+        for( const auto &member : members ) {
+            if( !waiting_at_home( member ) ) {
+                moving_members.push_back( member );
+            }
+        }
+        if( moving_members.empty() ) {
+            return refuse( "homeward_party_already_home" );
+        }
+        const auto moving_leader = std::find( moving_members.begin(), moving_members.end(), *leader );
+        const auto &frame = moving_leader != moving_members.end() ? *moving_leader : moving_members.front();
         // Native OMP travel must transport the current physical party, not
         // randomize two independent offsets while retaining an assembled receipt.
         // Every member still needs its own qualified route to the same next OMT.
         std::optional<tripoint_abs_omt> next_omt;
         point_rel_ms low( 0, 0 );
         point_rel_ms high( 0, 0 );
-        for( const auto &member : members )
+        for( const auto &member : moving_members )
         {
             diagnostic_actor = member->getID();
             const auto next = std::find_if( member->omt_path.rbegin(), member->omt_path.rend(),
@@ -21921,16 +22287,16 @@ void overmap_npc_move()
             if( !live_bandit_route_respects_covert_ring( outing, member->omt_path ) ) {
                 return refuse( "homeward_path_covert_ring" );
             }
-            if( member->pos_abs().z() != ( *leader )->pos_abs().z() ) {
+            if( member->pos_abs().z() != frame->pos_abs().z() ) {
                 return refuse( "homeward_frame_heights" );
             }
             if( outing.local_handoff.cohesion_assembled &&
-                rl_dist( member->pos_abs(), ( *leader )->pos_abs() ) >
+                rl_dist( member->pos_abs(), frame->pos_abs() ) >
                 bandit_live_world::local_pair_cohesion_radius() ) {
                 return refuse( "assembled_physical_pair_separated" );
             }
             next_omt = *next;
-            const auto relative = member->pos_abs() - ( *leader )->pos_abs();
+            const auto relative = member->pos_abs() - frame->pos_abs();
             low.x() = std::min( low.x(), relative.x() );
             low.y() = std::min( low.y(), relative.y() );
             high.x() = std::max( high.x(), relative.x() );
@@ -21941,28 +22307,88 @@ void overmap_npc_move()
         {
             return refuse( "homeward_footprint_will_not_fit" );
         }
-        const auto leader_offset = ( *leader )->pos_abs() -
-                                   project_to<coords::ms>( ( *leader )->pos_abs_omt() );
+        const auto leader_offset = frame->pos_abs() -
+                                   project_to<coords::ms>( frame->pos_abs_omt() );
         const point_rel_ms arrival_offset( std::clamp( leader_offset.x(), -low.x(), last - high.x() ),
                                            std::clamp( leader_offset.y(), -low.y(), last - high.y() ) );
         const tripoint_abs_ms arrival = project_to<coords::ms>( *next_omt ) + arrival_offset;
         std::map<character_id, tripoint_abs_ms> destinations;
-        for( const auto &member : members )
+        for( const auto &member : moving_members )
         {
             destinations.emplace( member->getID(), arrival +
-                                  ( member->pos_abs() - ( *leader )->pos_abs() ) );
+                                  ( member->pos_abs() - frame->pos_abs() ) );
         }
         std::vector<int> funded_moves;
         bool can_move = true;
         for( const auto &member : members )
         {
-            funded_moves.push_back( live_bandit_scout_cadence_moves( *member, elapsed ) );
-            can_move &= funded_moves.back() > 0;
+            funded_moves.push_back( waiting_at_home( member ) ? 0 :
+                                    live_bandit_scout_cadence_moves( *member, elapsed ) );
+            can_move &= waiting_at_home( member ) || funded_moves.back() > 0;
         }
-        if( can_move && outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+        if( outing.kind == bandit_live_world::outing_kind::structural_sortie ) {
+            auto work = outing.coarse_work;
+            const auto active_millis = bandit_live_world::claim_coarse_party_active_millis(
+                                           work, outing.activation );
+            if( !active_millis ) {
+                return refuse( "coarse_active_time_owner_unavailable" );
+            }
+            if( *active_millis == 0 ) {
+                can_move = false;
+            } else if( can_move ) {
+                const auto weight = live_bandit_coarse_terrain_weight( *next_omt );
+                int slowest = std::numeric_limits<int>::max();
+                for( const auto &member : moving_members ) {
+                    slowest = std::min( slowest, member->get_speed() );
+                }
+                bool funded_edge = false;
+                if( !weight || !bandit_live_world::service_coarse_party_travel_work(
+                        work, frame->pos_abs_omt(), *next_omt, *weight,
+                        slowest, *active_millis, funded_edge ) ) {
+                    return refuse( "coarse_edge_terrain_or_capability_unavailable" );
+                }
+                can_move = funded_edge;
+            }
+            candidate_work = work;
+        }
+        std::vector<std::vector<tripoint_abs_omt>> priced_homeward_paths;
+        for( const auto &member : members ) {
+            if( waiting_at_home( member ) ) {
+                priced_homeward_paths.push_back( { site.anchor } );
+            } else if( member->goal == site.anchor && !member->omt_path.empty() ) {
+                auto path = member->omt_path;
+                if( path.back() != member->pos_abs_omt() ) {
+                    path.push_back( member->pos_abs_omt() );
+                }
+                priced_homeward_paths.push_back( std::move( path ) );
+            }
+        }
+        const auto homeward_price_change = outing.route_clock_homeward_actual &&
+                                           !outing.route_clock_stale &&
+                                           priced_homeward_paths.size() == members.size() ?
+                                           bandit_live_world::structural_coarse_route_prices_changed(
+                                               outing, priced_homeward_paths,
+                                               live_bandit_coarse_route_model( moving_members ) ) : std::nullopt;
+        const bool changed_homeward_price = homeward_price_change && *homeward_price_change;
+        clock_price_changed = changed_homeward_price;
+        clock_price_unknown = outing.route_clock_homeward_actual && !outing.route_clock_stale &&
+                              priced_homeward_paths.size() == members.size() && !homeward_price_change;
+        const bool changed_homeward_speed = !can_move && outing.route_clock_homeward_actual &&
+                                            !outing.route_clock_stale &&
+                                            outing.route_clock_speed !=
+                                            live_bandit_coarse_route_model( moving_members ).slowest_speed;
+        if( ( can_move || changed_homeward_speed || changed_homeward_price ) &&
+            outing.kind == bandit_live_world::outing_kind::structural_sortie &&
             outing.route_clock_enrolled &&
-            ( !outing.route_clock_homeward_actual || outing.route_clock_stale ) ) {
+            ( !outing.route_clock_homeward_actual || outing.route_clock_stale ||
+              outing.route_clock_speed != live_bandit_coarse_route_model( moving_members ).slowest_speed ||
+              changed_homeward_price || ( can_move && clock_price_unknown ) ) ) {
             for( const auto &member : members ) {
+                if( waiting_at_home( member ) ) {
+                    clock_member_ids.push_back( member->getID() );
+                    clock_homeward_paths.push_back( { site.anchor } );
+                    continue;
+                }
                 auto path = member->omt_path;
                 if( path.empty() || member->goal != site.anchor ) {
                     clock_member_ids.clear();
@@ -21971,6 +22397,16 @@ void overmap_npc_move()
                 }
                 if( path.back() != member->pos_abs_omt() ) {
                     path.push_back( member->pos_abs_omt() );
+                }
+                if( can_move ) {
+                    // Candidate work paid for the proposed edge; forecast
+                    // from its destination, not from the pre-move body.
+                    path.pop_back();
+                    if( path.empty() || path.back() != *next_omt ) {
+                        clock_member_ids.clear();
+                        clock_homeward_paths.clear();
+                        break;
+                    }
                 }
                 clock_member_ids.push_back( member->getID() );
                 clock_homeward_paths.push_back( std::move( path ) );
@@ -21983,8 +22419,10 @@ void overmap_npc_move()
             claim.destinations = std::move( destinations );
             if( !can_move ) {
                 for( std::size_t index = 0; index < members.size(); ++index ) {
-                    members[index]->set_moves( live_bandit_scout_unbanked_moves(
-                                                   members[index]->get_moves(), funded_moves[index] ) );
+                    if( !waiting_at_home( members[index] ) ) {
+                        members[index]->set_moves( live_bandit_scout_unbanked_moves(
+                                                       members[index]->get_moves(), funded_moves[index] ) );
+                    }
                 }
             }
         } else
@@ -22055,6 +22493,11 @@ void overmap_npc_move()
         }
         if( identity_held_members.count( elem->getID() ) > 0 ) {
             record_live_bandit_scout_motor_service( *elem, "identity_held", elem->pos_abs() );
+            continue;
+        }
+        const auto abstract_party_funding = abstract_party_motor_funding.find( elem->getID() );
+        if( abstract_party_funding != abstract_party_motor_funding.end() &&
+            abstract_party_funding->second <= 0 ) {
             continue;
         }
         if( committed_homeward_member_ids.count( elem->getID() ) > 0 ) {
@@ -22203,6 +22646,9 @@ void overmap_npc_move()
                                                          bandit_live_world::local_pair_initial_departure_is_bound(
                                                              local_owner->active_outing ) );
                     const int previous_moves = elem->get_moves();
+                    if( abstract_party_funding != abstract_party_motor_funding.end() ) {
+                        elem->set_moves( abstract_party_funding->second );
+                    }
                     if( recalled ) {
                         elem->set_moves( active_time::funded_moves( previous_moves,
                                          elem->get_speed(), recalled_elapsed ) );
@@ -22235,7 +22681,8 @@ void overmap_npc_move()
                         elem->set_moves( live_bandit_scout_cadence_moves( *elem, claim.elapsed_minutes ) );
                     }
                     on_out_of_scope discard_homeward_credit( [&] {
-                        if( inactive_local_motion || recalled )
+                        if( inactive_local_motion || recalled ||
+                            abstract_party_funding != abstract_party_motor_funding.end() )
                         {
                             // One qualified OMT step consumes this cadence. The
                             // coarse Native motor has no move_to cost; do not bank
@@ -22781,6 +23228,14 @@ void process_monsters_and_npcs_turn_for_test()
 void process_overmap_npc_move_for_test()
 {
     overmap_npc_move();
+}
+
+bool reject_local_coarse_candidate_for_test_once()
+{
+    reject_local_coarse_candidate_for_test = true;
+    on_out_of_scope reset( []() { reject_local_coarse_candidate_for_test = false; } );
+    overmap_npc_move();
+    return !reject_local_coarse_candidate_for_test;
 }
 
 bool advance_live_bandit_hostile_returns_for_test()

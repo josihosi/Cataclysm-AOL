@@ -864,6 +864,46 @@ struct camp_decision_record {
     void deserialize( const JsonObject &jo );
 };
 
+// Unloaded work belongs to the party, not the deadline or an individual NPC.
+// A bound edge holds unfinished work; an unbound value is post-step surplus.
+struct coarse_party_travel_work {
+    std::int64_t work_millis = 0;
+    std::int64_t edge_cost_millis = 0;
+    // The existing party activation clock is the sole active-time source.
+    // -1 denotes an old save whose previous service cannot be reconstructed.
+    std::int64_t serviced_active_turns = -1;
+    bool edge_bound = false;
+    std::vector<tripoint_abs_omt> from;
+    std::vector<tripoint_abs_omt> to;
+
+    void clear();
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+// The forecast's selected OMT prices, not a second progress cursor.  Entries
+// behind all remaining legs are ignored when comparing current terrain.
+struct coarse_route_price {
+    tripoint_abs_omt omt;
+    int weight = 0;
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+// Claims at most one service from the existing active-time owner. Unknown or
+// frozen ownership earns nothing; an old save first adopts the current mark.
+std::optional<int> claim_coarse_party_active_millis( coarse_party_travel_work &work,
+        const activation_clock &activation );
+
+// Returns false for unavailable terrain, invalid speed or invalid service.
+// The caller commits the proposed work together with its actual party action.
+bool service_coarse_party_travel_work( coarse_party_travel_work &work,
+        const tripoint_abs_omt &from, const tripoint_abs_omt &to,
+        int terrain_weight, int slowest_speed, int active_millis, bool &move );
+bool service_coarse_party_travel_work_set( coarse_party_travel_work &work,
+        const std::vector<tripoint_abs_omt> &from, const std::vector<tripoint_abs_omt> &to,
+        int terrain_weight, int slowest_speed, int active_millis, bool &move );
+
 struct active_outing_state {
     activation_clock activation;
     std::array<std::int64_t, activation_timer_count> activation_anchors() const;
@@ -955,9 +995,14 @@ struct active_outing_state {
     int route_clock_remaining_minutes = -1;
     int route_clock_travel_minutes = -1;
     int route_clock_homeward_minutes = -1;
+    int route_clock_speed = 0;
     bool route_clock_stale = false;
     bool route_clock_outbound_unavailable = false;
     bool route_clock_homeward_actual = false;
+    std::vector<coarse_route_price> route_clock_prices;
+    std::vector<tripoint_abs_omt> route_clock_downstream_path;
+    std::vector<tripoint_abs_omt> route_clock_homeward_path;
+    coarse_party_travel_work coarse_work;
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = 0;
     int last_advanced_minutes = -1;
@@ -1615,7 +1660,24 @@ struct structural_coarse_clock_read {
     std::vector<tripoint_abs_omt> homeward_path;
     // Optional executor-waypoint route, in destination-to-origin order.
     std::vector<tripoint_abs_omt> outbound_path;
+    // Per-path OMT weights in the same order, from the existing NPC route
+    // reader. No weight or capable-body speed means an unknown forecast.
+    std::vector<int> outbound_weights;
+    std::vector<int> homeward_weights;
+    int slowest_speed = 0;
 };
+
+struct structural_coarse_route_model {
+    int slowest_speed = 0;
+    std::function<std::optional<int>( const tripoint_abs_omt & )> terrain_weight;
+};
+
+// Unknown includes a legacy clock without price provenance or a route whose
+// current terrain cannot be read.  It is never treated as an unchanged price.
+std::optional<bool> structural_coarse_route_prices_changed(
+    const active_outing_state &outing,
+    const std::vector<std::vector<tripoint_abs_omt>> &paths,
+    const structural_coarse_route_model &model );
 
 bool bind_structural_coarse_route_clock( site_record &site,
         const structural_outing_plan &plan, const structural_coarse_clock_read &read,
@@ -1626,6 +1688,7 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const std::vector<std::vector<tripoint_abs_omt>> &new_paths,
         const std::vector<tripoint_abs_omt> &downstream_path,
         const std::vector<tripoint_abs_omt> &homeward_path, int now_minutes,
+        const structural_coarse_route_model &model,
         bool observed_party_progress = false );
 
 // Refresh once from an authenticated current homeward route, or after a
@@ -1633,7 +1696,8 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
 bool refresh_structural_coarse_homeward_clock( site_record &site,
         const simulation_advance_cursor &cursor, const std::vector<character_id> &member_ids,
         const std::vector<std::vector<tripoint_abs_omt>> &homeward_paths,
-        int now_minutes );
+        int now_minutes, const structural_coarse_route_model &model,
+        bool material_price_change = false );
 
 bool mark_structural_coarse_route_stale( site_record &site,
         const simulation_advance_cursor &cursor, bool outbound_unavailable = false );

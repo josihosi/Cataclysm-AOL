@@ -4682,6 +4682,14 @@ namespace
 void record_committed_owner_crossing( active_outing_state &outing,
                                       const simulation_owner prior_owner )
 {
+    if( prior_owner != outing.owner ) {
+        // Physical local movement owns its own progress; neither direction of
+        // a representation handoff transfers unmatched coarse work.
+        outing.coarse_work.clear();
+        if( outing.activation.initialized() ) {
+            outing.coarse_work.serviced_active_turns = outing.activation.active_turns;
+        }
+    }
     outing.crossing.actor_ids = outing.member_ids;
     outing.crossing.run_id = current_harness_run_id();
     outing.crossing.activity_id = outing.activity_id;
@@ -10179,6 +10187,170 @@ void active_outing_state::crossing_receipt::deserialize( const JsonObject &jo )
     *this = std::move( candidate );
 }
 
+void coarse_route_price::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "omt", omt );
+    json.member( "weight", weight );
+    json.end_object();
+}
+
+void coarse_route_price::deserialize( const JsonObject &jo )
+{
+    if( !jo.has_member( "omt" ) || !jo.has_member( "weight" ) ) {
+        jo.throw_error( "incomplete coarse route price" );
+    }
+    jo.read( "omt", omt );
+    jo.read( "weight", weight );
+    if( omt.is_invalid() || weight <= 0 ) {
+        jo.throw_error( "invalid coarse route price" );
+    }
+}
+
+void coarse_party_travel_work::clear()
+{
+    *this = coarse_party_travel_work{};
+}
+
+std::optional<int> claim_coarse_party_active_millis( coarse_party_travel_work &work,
+        const activation_clock &activation )
+{
+    if( !activation.initialized() || !activation.active || activation.active_turns < 0 ||
+        work.serviced_active_turns > activation.active_turns ) {
+        return std::nullopt;
+    }
+    if( work.serviced_active_turns < 0 ) {
+        work.serviced_active_turns = activation.active_turns;
+        return 0; // An old save cannot invent an untracked service interval.
+    }
+    const auto turns_per_minute = to_turns<int>( 1_minutes );
+    if( turns_per_minute <= 0 ) {
+        return std::nullopt;
+    }
+    const std::int64_t delta = std::min<std::int64_t>(
+                                   activation.active_turns - work.serviced_active_turns,
+                                   static_cast<std::int64_t>( turns_per_minute ) * 5 );
+    work.serviced_active_turns = activation.active_turns;
+    return static_cast<int>( delta * 60000 / turns_per_minute );
+}
+
+void coarse_party_travel_work::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "work_millis", work_millis );
+    json.member( "serviced_active_turns", serviced_active_turns );
+    json.member( "edge_bound", edge_bound );
+    if( edge_bound ) {
+        json.member( "edge_cost_millis", edge_cost_millis );
+        json.member( "from", from );
+        json.member( "to", to );
+    }
+    json.end_object();
+}
+
+void coarse_party_travel_work::deserialize( const JsonObject &jo )
+{
+    coarse_party_travel_work candidate;
+    jo.read( "work_millis", candidate.work_millis );
+    jo.read( "serviced_active_turns", candidate.serviced_active_turns );
+    jo.read( "edge_bound", candidate.edge_bound );
+    if( candidate.edge_bound ) {
+        if( !jo.has_member( "edge_cost_millis" ) || !jo.has_member( "from" ) ||
+            !jo.has_member( "to" ) ) {
+            jo.throw_error( "incomplete coarse party edge work" );
+        }
+        jo.read( "edge_cost_millis", candidate.edge_cost_millis );
+        jo.read( "from", candidate.from );
+        jo.read( "to", candidate.to );
+    }
+    if( candidate.work_millis < 0 || candidate.serviced_active_turns < -1 ||
+        ( candidate.edge_bound && ( candidate.edge_cost_millis <= 0 ||
+                                    candidate.work_millis >= candidate.edge_cost_millis ||
+                                    candidate.from.empty() || candidate.from.size() > 2 ||
+                                    candidate.from.size() != candidate.to.size() ) ) ||
+        ( !candidate.edge_bound && candidate.work_millis > 300000 ) ) {
+        jo.throw_error( "invalid coarse party edge work" );
+    }
+    for( std::size_t i = 0; i < candidate.from.size(); ++i ) {
+        if( rl_dist( candidate.from[i], candidate.to[i] ) != 1 ) {
+            jo.throw_error( "invalid coarse party edge" );
+        }
+    }
+    *this = candidate;
+}
+
+namespace
+{
+std::optional<std::int64_t> coarse_party_edge_cost_millis( const int terrain_weight,
+        const int slowest_speed )
+{
+    if( terrain_weight <= 0 || slowest_speed <= 0 ) {
+        return std::nullopt;
+    }
+    const std::int64_t numerator = static_cast<std::int64_t>( terrain_weight ) * 30000000;
+    const std::int64_t denominator = static_cast<std::int64_t>( slowest_speed ) * 24;
+    return ( numerator + denominator - 1 ) / denominator;
+}
+} // namespace
+
+bool service_coarse_party_travel_work( coarse_party_travel_work &work,
+        const tripoint_abs_omt &from, const tripoint_abs_omt &to,
+        const int terrain_weight, const int slowest_speed, const int active_millis, bool &move )
+{
+    return service_coarse_party_travel_work_set( work, { from }, { to }, terrain_weight,
+            slowest_speed, active_millis, move );
+}
+
+bool service_coarse_party_travel_work_set( coarse_party_travel_work &work,
+        const std::vector<tripoint_abs_omt> &from, const std::vector<tripoint_abs_omt> &to,
+        const int terrain_weight, const int slowest_speed, const int active_millis, bool &move )
+{
+    move = false;
+    if( terrain_weight <= 0 || slowest_speed <= 0 || active_millis <= 0 ||
+        active_millis > 300000 || from.empty() || from.size() > 2 || from.size() != to.size() ||
+        work.work_millis < 0 ||
+        ( work.edge_bound && ( work.edge_cost_millis <= 0 ||
+                               work.work_millis >= work.edge_cost_millis ) ) ||
+        ( !work.edge_bound && work.work_millis > 300000 ) ) {
+        return false;
+    }
+    for( std::size_t i = 0; i < from.size(); ++i ) {
+        if( rl_dist( from[i], to[i] ) != 1 ) {
+            return false;
+        }
+    }
+    // Milliseconds of active work: 5 minutes * weight/24 * 100/speed.
+    // Round only below one millisecond, not at each five-minute service.
+    const auto cost_read = coarse_party_edge_cost_millis( terrain_weight, slowest_speed );
+    if( !cost_read || *cost_read <= 0 ) {
+        return false;
+    }
+    const std::int64_t cost = *cost_read;
+    coarse_party_travel_work next = work;
+    if( next.edge_bound ) {
+        if( next.from != from || next.to != to ) {
+            next.work_millis = 0; // A changed edge cannot inherit unfinished work.
+        } else if( next.edge_cost_millis != cost ) {
+            next.work_millis = static_cast<std::int64_t>( std::floor(
+                                   static_cast<long double>( next.work_millis ) * cost /
+                                   next.edge_cost_millis ) );
+        }
+    }
+    next.from = from;
+    next.to = to;
+    next.edge_cost_millis = cost;
+    next.edge_bound = true;
+    next.work_millis += active_millis;
+    if( next.work_millis >= cost ) {
+        next.work_millis = std::min<std::int64_t>( next.work_millis - cost, 300000 );
+        next.edge_bound = false;
+        next.edge_cost_millis = 0;
+        move = true; // One whole edge at most, even with surplus.
+    }
+    work = next;
+    return true;
+}
+
 std::array<std::int64_t, activation_timer_count> active_outing_state::activation_anchors() const
 {
     std::array<std::int64_t, activation_timer_count> anchors;
@@ -10324,11 +10496,23 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "route_clock_remaining_minutes", route_clock_remaining_minutes );
         json.member( "route_clock_travel_minutes", route_clock_travel_minutes );
         json.member( "route_clock_homeward_minutes", route_clock_homeward_minutes );
+        if( route_clock_speed > 0 ) {
+            json.member( "route_clock_speed", route_clock_speed );
+        }
         json.member( "route_clock_stale", route_clock_stale );
         if( route_clock_outbound_unavailable ) {
             json.member( "route_clock_outbound_unavailable", true );
         }
         json.member( "route_clock_homeward_actual", route_clock_homeward_actual );
+        if( !route_clock_prices.empty() ) {
+            json.member( "route_clock_prices", route_clock_prices );
+            json.member( "route_clock_downstream_path", route_clock_downstream_path );
+            json.member( "route_clock_homeward_path", route_clock_homeward_path );
+        }
+    }
+    if( coarse_work.edge_bound || coarse_work.work_millis != 0 ||
+        coarse_work.serviced_active_turns >= 0 ) {
+        json.member( "coarse_party_travel_work", coarse_work );
     }
     json.member( "simulation_owner", to_string( owner ) );
     json.member( "handoff_epoch", handoff_epoch );
@@ -10481,6 +10665,16 @@ void active_outing_state::deserialize( const JsonObject &jo )
     jo.read( "expected_return_minutes", candidate.expected_return_minutes );
     jo.read( "missing_deadline_minutes", candidate.missing_deadline_minutes );
     jo.read( "route_clock_enrolled", candidate.route_clock_enrolled );
+    if( jo.has_member( "coarse_party_travel_work" ) ) {
+        if( candidate.kind != outing_kind::structural_sortie ) {
+            jo.throw_error( "coarse party work belongs to a structural outing" );
+        }
+        jo.read( "coarse_party_travel_work", candidate.coarse_work );
+        if( candidate.activation.initialized() &&
+            candidate.coarse_work.serviced_active_turns > candidate.activation.active_turns ) {
+            jo.throw_error( "coarse party work exceeds active-time owner" );
+        }
+    }
     if( candidate.route_clock_enrolled && candidate.kind != outing_kind::structural_sortie ) {
         jo.throw_error( "route clock belongs to a structural outing" );
     }
@@ -10488,7 +10682,9 @@ void active_outing_state::deserialize( const JsonObject &jo )
     if( has_route_clock || jo.has_member( "route_clock_remaining_minutes" ) ||
         jo.has_member( "route_clock_travel_minutes" ) ||
         jo.has_member( "route_clock_homeward_minutes" ) || jo.has_member( "route_clock_stale" ) ||
-        jo.has_member( "route_clock_homeward_actual" ) ||
+        jo.has_member( "route_clock_speed" ) ||
+        jo.has_member( "route_clock_homeward_actual" ) || jo.has_member( "route_clock_prices" ) ||
+        jo.has_member( "route_clock_downstream_path" ) || jo.has_member( "route_clock_homeward_path" ) ||
         jo.has_member( "route_clock_outbound_unavailable" ) ) {
         if( !has_route_clock || !jo.has_member( "route_clock_remaining_minutes" ) ||
             !jo.has_member( "route_clock_travel_minutes" ) ||
@@ -10499,12 +10695,31 @@ void active_outing_state::deserialize( const JsonObject &jo )
         jo.read( "route_clock_remaining_minutes", candidate.route_clock_remaining_minutes );
         jo.read( "route_clock_travel_minutes", candidate.route_clock_travel_minutes );
         jo.read( "route_clock_homeward_minutes", candidate.route_clock_homeward_minutes );
+        jo.read( "route_clock_speed", candidate.route_clock_speed );
         jo.read( "route_clock_stale", candidate.route_clock_stale );
         jo.read( "route_clock_outbound_unavailable", candidate.route_clock_outbound_unavailable );
         jo.read( "route_clock_homeward_actual", candidate.route_clock_homeward_actual );
+        jo.read( "route_clock_prices", candidate.route_clock_prices );
+        jo.read( "route_clock_downstream_path", candidate.route_clock_downstream_path );
+        jo.read( "route_clock_homeward_path", candidate.route_clock_homeward_path );
+        std::set<tripoint_abs_omt> priced_omts;
+        for( const auto &price : candidate.route_clock_prices ) {
+            if( !priced_omts.insert( price.omt ).second ) {
+                jo.throw_error( "duplicate coarse route price" );
+            }
+        }
+        if( candidate.route_clock_prices.size() > 2048 ||
+            candidate.route_clock_downstream_path.size() > 2048 ||
+            candidate.route_clock_homeward_path.size() > 2048 ||
+            ( !candidate.route_clock_prices.empty() &&
+              ( !jo.has_member( "route_clock_downstream_path" ) ||
+                !jo.has_member( "route_clock_homeward_path" ) ) ) ) {
+            jo.throw_error( "too many coarse route prices" );
+        }
         if( ( candidate.route_clock_outbound_unavailable && !candidate.route_clock_stale ) ||
             candidate.kind != outing_kind::structural_sortie || !candidate.route_clock_enrolled ||
             candidate.route_clock_anchor_minutes < 0 || candidate.route_clock_remaining_minutes < 0 ||
+            candidate.route_clock_speed < 0 ||
             candidate.route_clock_travel_minutes < 0 || candidate.route_clock_homeward_minutes < 0 ||
             candidate.route_clock_homeward_minutes > candidate.route_clock_travel_minutes ||
             candidate.route_clock_remaining_minutes < candidate.route_clock_travel_minutes ||
@@ -18038,6 +18253,179 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site,
     return best;
 }
 
+namespace
+{
+// Paths are destination-first. Carry is active work left by a completed edge;
+// waiting/watch phases add none. Each edge consumes at least one service.
+std::optional<int> forecast_coarse_party_path( const std::vector<tripoint_abs_omt> &path,
+        const std::vector<int> &weights, const int speed, std::int64_t &carry_millis,
+        const tripoint_abs_omt *waypoint = nullptr, int *through_waypoint = nullptr )
+{
+    if( path.empty() || weights.size() != path.size() || speed <= 0 ||
+        carry_millis < 0 || carry_millis > 300000 ) {
+        return std::nullopt;
+    }
+    std::int64_t elapsed = 0;
+    bool waypoint_found = waypoint == nullptr || path.back() == *waypoint;
+    if( waypoint_found && through_waypoint ) {
+        *through_waypoint = 0;
+    }
+    for( std::size_t i = path.size() - 1; i > 0; --i ) {
+        if( rl_dist( path[i], path[i - 1] ) != 1 ) {
+            return std::nullopt;
+        }
+        const auto cost = coarse_party_edge_cost_millis( weights[i - 1], speed );
+        if( !cost || *cost <= 0 ) {
+            return std::nullopt;
+        }
+        const std::int64_t needed = std::max<std::int64_t>( 1,
+                                    ( *cost - carry_millis + 299999 ) / 300000 );
+        if( needed > ( INT_MAX - elapsed ) / 5 ) {
+            return std::nullopt;
+        }
+        elapsed += needed * 5;
+        carry_millis = std::min<std::int64_t>( 300000,
+                       carry_millis + needed * 300000 - *cost );
+        if( waypoint && path[i - 1] == *waypoint && !waypoint_found ) {
+            waypoint_found = true;
+            if( through_waypoint ) {
+                *through_waypoint = static_cast<int>( elapsed );
+            }
+        }
+    }
+    return waypoint_found ? std::optional<int>( static_cast<int>( elapsed ) ) : std::nullopt;
+}
+
+// The executor moves each qualified remaining member on its own native next
+// edge in a single party service. Price the most expensive concurrent edge,
+// so alternating terrain on split paths is not hidden by max(total paths).
+std::optional<int> forecast_coarse_party_group(
+    const std::vector<std::vector<tripoint_abs_omt>> &paths,
+    const structural_coarse_route_model &model, coarse_party_travel_work &work )
+{
+    if( paths.empty() || paths.size() > 2 || model.slowest_speed <= 0 || !model.terrain_weight ) {
+        return std::nullopt;
+    }
+    std::vector<std::size_t> positions;
+    for( const auto &path : paths ) {
+        if( path.empty() ) {
+            return std::nullopt;
+        }
+        positions.push_back( path.size() - 1 );
+    }
+    std::int64_t elapsed = 0;
+    while( true ) {
+        std::vector<tripoint_abs_omt> from;
+        std::vector<tripoint_abs_omt> to;
+        int max_weight = 0;
+        for( std::size_t i = 0; i < paths.size(); ++i ) {
+            if( positions[i] == 0 ) {
+                continue;
+            }
+            const auto &source = paths[i][positions[i]];
+            const auto &destination = paths[i][positions[i] - 1];
+            const auto weight = model.terrain_weight( destination );
+            if( !weight || *weight <= 0 || rl_dist( source, destination ) != 1 ) {
+                return std::nullopt;
+            }
+            from.push_back( source );
+            to.push_back( destination );
+            max_weight = std::max( max_weight, *weight );
+        }
+        if( from.empty() ) {
+            return static_cast<int>( elapsed );
+        }
+        bool moved = false;
+        if( !service_coarse_party_travel_work_set( work, from, to, max_weight,
+                model.slowest_speed, 300000, moved ) || elapsed > INT_MAX - 5 ) {
+            return std::nullopt;
+        }
+        elapsed += 5;
+        if( !moved ) {
+            // Skip identical full services arithmetically, preserving the
+            // same capped post-edge surplus as the executor.
+            const std::int64_t remaining = work.edge_cost_millis - work.work_millis;
+            const std::int64_t services = ( remaining + 299999 ) / 300000;
+            if( services > ( INT_MAX - elapsed ) / 5 ) {
+                return std::nullopt;
+            }
+            elapsed += services * 5;
+            work.work_millis = std::min<std::int64_t>( 300000,
+                               work.work_millis + services * 300000 - work.edge_cost_millis );
+            work.edge_cost_millis = 0;
+            work.edge_bound = false;
+        }
+        for( std::size_t &position : positions ) {
+            if( position > 0 ) {
+                --position;
+            }
+        }
+    }
+}
+
+std::optional<std::vector<coarse_route_price>> capture_coarse_route_prices(
+    const std::vector<std::vector<tripoint_abs_omt>> &paths,
+    const structural_coarse_route_model &model )
+{
+    if( paths.empty() || !model.terrain_weight ) {
+        return std::nullopt;
+    }
+    std::map<tripoint_abs_omt, int> prices;
+    for( const auto &path : paths ) {
+        if( path.empty() ) {
+            return std::nullopt;
+        }
+        for( std::size_t i = 0; i + 1 < path.size(); ++i ) {
+            const auto price = model.terrain_weight( path[i] );
+            if( !price || *price <= 0 || rl_dist( path[i], path[i + 1] ) != 1 ) {
+                return std::nullopt;
+            }
+            const auto inserted = prices.emplace( path[i], *price );
+            if( !inserted.second && inserted.first->second != *price ) {
+                return std::nullopt;
+            }
+        }
+    }
+    if( prices.size() > 2048 ) {
+        return std::nullopt;
+    }
+    std::vector<coarse_route_price> result;
+    result.reserve( prices.size() );
+    for( const auto &entry : prices ) {
+        result.push_back( { entry.first, entry.second } );
+    }
+    return result;
+}
+} // namespace
+
+std::optional<bool> structural_coarse_route_prices_changed(
+    const active_outing_state &outing,
+    const std::vector<std::vector<tripoint_abs_omt>> &paths,
+    const structural_coarse_route_model &model )
+{
+    if( outing.route_clock_prices.empty() ) {
+        return std::nullopt;
+    }
+    const auto current = capture_coarse_route_prices( paths, model );
+    if( !current ) {
+        return std::nullopt;
+    }
+    std::map<tripoint_abs_omt, int> old;
+    for( const auto &price : outing.route_clock_prices ) {
+        old.emplace( price.omt, price.weight );
+    }
+    for( const auto &price : *current ) {
+        const auto found = old.find( price.omt );
+        if( found == old.end() ) {
+            return std::nullopt;
+        }
+        if( found->second != price.weight ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool bind_structural_coarse_route_clock( site_record &site,
         const structural_outing_plan &plan, const structural_coarse_clock_read &read,
         const int now_minutes )
@@ -18070,16 +18458,40 @@ bool bind_structural_coarse_route_clock( site_record &site,
         !valid_path( homeward, destination, site.anchor ) ) {
         return false;
     }
+    if( read.outbound_weights.size() != outbound.size() ||
+        read.homeward_weights.size() != homeward.size() ) {
+        return false;
+    }
+    std::map<tripoint_abs_omt, int> initial_prices;
+    for( const auto &entry : { std::pair{ &outbound, &read.outbound_weights },
+                               std::pair{ &homeward, &read.homeward_weights } } ) {
+        for( std::size_t i = 0; i + 1 < entry.first->size(); ++i ) {
+            const int weight = ( *entry.second )[i];
+            const auto inserted = initial_prices.emplace( ( *entry.first )[i], weight );
+            if( weight <= 0 || ( !inserted.second && inserted.first->second != weight ) ) {
+                return false;
+            }
+        }
+    }
+    if( initial_prices.size() > 2048 ) {
+        return false;
+    }
     const auto approach = std::find( outbound.begin(), outbound.end(), outing.shared_route[1] );
     if( approach == outbound.end() ) {
         return false;
     }
-    const int cadence = to_minutes<int>( time_between_npc_OM_moves );
-    const std::int64_t outbound_minutes = static_cast<std::int64_t>( outbound.size() - 1 ) * cadence;
-    const std::int64_t homeward_minutes = static_cast<std::int64_t>( homeward.size() - 1 ) * cadence;
+    std::int64_t carry = 0;
+    int before_approach = 0;
+    const auto outbound_read = forecast_coarse_party_path( outbound, read.outbound_weights,
+                               read.slowest_speed, carry, &outing.shared_route[1], &before_approach );
+    const auto homeward_read = outbound_read ? forecast_coarse_party_path( homeward,
+                               read.homeward_weights, read.slowest_speed, carry ) : std::nullopt;
+    if( !outbound_read || !homeward_read ) {
+        return false;
+    }
+    const std::int64_t outbound_minutes = *outbound_read;
+    const std::int64_t homeward_minutes = *homeward_read;
     const std::int64_t movement_minutes = outbound_minutes + homeward_minutes;
-    const std::int64_t before_approach = static_cast<std::int64_t>(
-            std::distance( approach, outbound.end() ) - 1 ) * cadence;
     const std::int64_t after_approach = outbound_minutes - before_approach;
     // Service occurs hourly. The finite watch has a two-hour minimum; later
     // observations, native local motion and interruptions remain uncertain.
@@ -18089,7 +18501,7 @@ bool bind_structural_coarse_route_clock( site_record &site,
             std::max<std::int64_t>( structural_arrival_delay_minutes( site.anchor, destination ),
                                     outbound_minutes ) + 60;
     const std::int64_t remaining_minutes = outbound_work + homeward_minutes + 60;
-    if( cadence <= 0 || movement_minutes > INT_MAX || homeward_minutes > INT_MAX ||
+    if( movement_minutes > INT_MAX || homeward_minutes > INT_MAX ||
         remaining_minutes > INT_MAX ) {
         return false;
     }
@@ -18097,6 +18509,13 @@ bool bind_structural_coarse_route_clock( site_record &site,
     outing.route_clock_remaining_minutes = static_cast<int>( remaining_minutes );
     outing.route_clock_travel_minutes = static_cast<int>( movement_minutes );
     outing.route_clock_homeward_minutes = static_cast<int>( homeward_minutes );
+    outing.route_clock_speed = read.slowest_speed;
+    outing.route_clock_prices.clear();
+    for( const auto &entry : initial_prices ) {
+        outing.route_clock_prices.push_back( { entry.first, entry.second } );
+    }
+    outing.route_clock_downstream_path.assign( outbound.begin(), std::next( approach ) );
+    outing.route_clock_homeward_path = homeward;
     outing.expected_return_minutes = structural_expected_return_for_state( outing, site );
     outing.missing_deadline_minutes = structural_missing_deadline_for_state( outing );
     return true;
@@ -18108,6 +18527,7 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const std::vector<std::vector<tripoint_abs_omt>> &new_paths,
         const std::vector<tripoint_abs_omt> &downstream_path,
         const std::vector<tripoint_abs_omt> &homeward_path, const int now_minutes,
+        const structural_coarse_route_model &model,
         const bool observed_party_progress )
 {
     active_outing_state &outing = site.active_outing;
@@ -18153,9 +18573,17 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     if( member_ids != expected_ids ) {
         return false;
     }
-    std::int64_t old_edges = 0;
-    std::int64_t new_edges = 0;
-    bool changed = false;
+    std::vector<std::vector<tripoint_abs_omt>> priced_paths = new_paths;
+    priced_paths.push_back( downstream_path );
+    priced_paths.push_back( homeward_path );
+    const auto new_prices = capture_coarse_route_prices( priced_paths, model );
+    if( !new_prices ) {
+        return false;
+    }
+    const auto price_change = structural_coarse_route_prices_changed( outing, priced_paths, model );
+    bool changed = ( price_change && *price_change ) ||
+                   ( outing.route_clock_speed > 0 && outing.route_clock_speed != model.slowest_speed );
+    bool geometry_changed = false;
     for( std::size_t i = 0; i < member_ids.size(); ++i ) {
         const auto &old_path = old_paths[i];
         const auto &new_path = new_paths[i];
@@ -18176,9 +18604,11 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         if( !adjacent( old_path ) || !adjacent( new_path ) ) {
             return false;
         }
-        changed |= old_path != new_path;
-        old_edges = std::max<std::int64_t>( old_edges, old_path.size() - 1 );
-        new_edges = std::max<std::int64_t>( new_edges, new_path.size() - 1 );
+        geometry_changed |= old_path != new_path;
+    }
+    changed |= geometry_changed;
+    if( outing.route_clock_stale && !geometry_changed && !observed_party_progress ) {
+        return false;
     }
     if( !changed && !( outing.route_clock_stale && outing.route_clock_outbound_unavailable &&
                         observed_party_progress ) ) {
@@ -18208,27 +18638,53 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     }
     const int elapsed = outing.activation.elapsed_minutes( activation_timer::started,
                         outing.started_minutes, now_minutes );
-    const int cadence = to_minutes<int>( time_between_npc_OM_moves );
-    if( elapsed < 0 || cadence <= 0 ) {
+    if( elapsed < 0 ) {
         return false;
     }
     // Entering the observing phase has already consumed the stalking gate.
     // Physical watch arrival owns assessment start without another time gate.
     const int gate_remaining = first_leg ? std::max( 0, structural_stalking_delay_minutes(
                                    site.anchor, structural_outing_travel_destination( outing ) ) - elapsed ) : 0;
-    const std::int64_t old_travel = old_edges * cadence;
-    const std::int64_t new_travel = new_edges * cadence;
-    const std::int64_t new_homeward = static_cast<std::int64_t>( homeward_path.size() - 1 ) * cadence;
+    auto old_work = outing.coarse_work;
+    auto new_work = outing.coarse_work;
+    auto old_model = model;
+    if( outing.route_clock_speed > 0 ) {
+        old_model.slowest_speed = outing.route_clock_speed;
+    }
+    std::map<tripoint_abs_omt, int> previous_prices;
+    for( const auto &price : outing.route_clock_prices ) {
+        previous_prices.emplace( price.omt, price.weight );
+    }
+    old_model.terrain_weight = [&]( const tripoint_abs_omt &pos ) -> std::optional<int> {
+        const auto found = previous_prices.find( pos );
+        return found == previous_prices.end() ? std::nullopt : std::optional<int>( found->second );
+    };
+    const auto old_read = forecast_coarse_party_group( old_paths, old_model, old_work );
+    const auto new_read = forecast_coarse_party_group( new_paths, model, new_work );
+    const std::vector<std::vector<tripoint_abs_omt>> downstream_paths( member_ids.size(), downstream_path );
+    const std::vector<std::vector<tripoint_abs_omt>> home_paths( member_ids.size(), homeward_path );
+    const auto later_read = new_read ? forecast_coarse_party_group( downstream_paths, model, new_work ) :
+                            std::nullopt;
+    const auto old_later_read = old_read ? forecast_coarse_party_group( downstream_paths, old_model,
+                                old_work ) : std::nullopt;
+    const auto home_read = later_read ? forecast_coarse_party_group( home_paths, model, new_work ) :
+                           std::nullopt;
+    if( !new_read || !later_read || !home_read ) {
+        return false;
+    }
+    const std::int64_t old_travel = old_read.value_or( *new_read );
+    const std::int64_t new_travel = *new_read;
+    const std::int64_t new_homeward = *home_read;
     const std::int64_t homeward_change = new_homeward - outing.route_clock_homeward_minutes;
     const std::int64_t revised = static_cast<std::int64_t>( outing.route_clock_remaining_minutes ) +
                                  std::max<std::int64_t>( gate_remaining, new_travel ) -
-                                 std::max<std::int64_t>( gate_remaining, old_travel ) + homeward_change;
+                                 std::max<std::int64_t>( gate_remaining, old_travel ) +
+                                 *later_read - old_later_read.value_or( *later_read ) + homeward_change;
     // The original anchor remains authoritative. A detour discovered after a
     // long hold must include the active time already spent and the work that
     // still follows this leg. These service allowances are forecasts,
     // not physical body time.
-    const std::int64_t later_outbound = static_cast<std::int64_t>(
-                                            downstream_path.size() - 1 ) * cadence;
+    const std::int64_t later_outbound = *later_read;
     const bool watch = structural_outing_uses_watch_route( outing );
     const int phase_gate = unstarted_watch_leg ? 0 :
                            watch ? structural_stalking_delay_minutes( site.anchor,
@@ -18243,7 +18699,8 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     const std::int64_t remaining = std::max( revised, floor );
     const std::int64_t travel = std::max(
                                     static_cast<std::int64_t>( outing.route_clock_travel_minutes ) +
-                                    new_travel - old_travel + homeward_change,
+                                    new_travel - old_travel + *later_read -
+                                    old_later_read.value_or( *later_read ) + homeward_change,
                                     new_travel + later_outbound + new_homeward );
     if( remaining < travel || travel < new_homeward || new_homeward > INT_MAX ||
         remaining > INT_MAX || travel > INT_MAX ) {
@@ -18267,6 +18724,10 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     outing.route_clock_outbound_unavailable = false;
     outing.route_clock_travel_minutes = static_cast<int>( travel );
     outing.route_clock_homeward_minutes = static_cast<int>( new_homeward );
+    outing.route_clock_speed = model.slowest_speed;
+    outing.route_clock_prices = *new_prices;
+    outing.route_clock_downstream_path = downstream_path;
+    outing.route_clock_homeward_path = homeward_path;
     outing.expected_return_minutes = structural_expected_return_for_state( outing, site );
     outing.missing_deadline_minutes = structural_missing_deadline_for_state( outing );
     if( outing.activation.initialized() ) {
@@ -18304,7 +18765,8 @@ bool mark_structural_coarse_route_stale( site_record &site,
 bool refresh_structural_coarse_homeward_clock( site_record &site,
         const simulation_advance_cursor &cursor, const std::vector<character_id> &member_ids,
         const std::vector<std::vector<tripoint_abs_omt>> &homeward_paths,
-        const int now_minutes )
+        const int now_minutes, const structural_coarse_route_model &model,
+        const bool material_price_change )
 {
     active_outing_state &outing = site.active_outing;
     if( !outing.route_clock_enrolled || !outing.is_active() ||
@@ -18312,7 +18774,8 @@ bool refresh_structural_coarse_homeward_clock( site_record &site,
         !scout_phase_requires_homeward_only( outing.phase ) ||
         !simulation_cursor_matches( outing, cursor ) || now_minutes < outing.last_advanced_minutes ||
         ( outing.activation.initialized() && !outing.activation.active ) ||
-        ( outing.route_clock_homeward_actual && !outing.route_clock_stale ) ||
+        ( outing.route_clock_homeward_actual && !outing.route_clock_stale && !material_price_change &&
+          outing.route_clock_speed == model.slowest_speed ) ||
         member_ids.empty() || member_ids.size() != homeward_paths.size() ) {
         return false;
     }
@@ -18325,8 +18788,6 @@ bool refresh_structural_coarse_homeward_clock( site_record &site,
     if( member_ids != expected_ids ) {
         return false;
     }
-    const int cadence = to_minutes<int>( time_between_npc_OM_moves );
-    std::int64_t longest = 0;
     for( const auto &path : homeward_paths ) {
         if( path.empty() || path.front() != site.anchor ) {
             return false;
@@ -18336,19 +18797,28 @@ bool refresh_structural_coarse_homeward_clock( site_record &site,
                 return false;
             }
         }
-        longest = std::max<std::int64_t>( longest,
-                    static_cast<std::int64_t>( path.size() - 1 ) * cadence );
     }
-    if( cadence <= 0 || longest > INT_MAX - 60 ) {
+    auto work = outing.coarse_work;
+    const auto prices = capture_coarse_route_prices( homeward_paths, model );
+    if( !prices ) {
         return false;
     }
+    const auto forecast = forecast_coarse_party_group( homeward_paths, model, work );
+    if( !forecast || *forecast > INT_MAX - 60 ) {
+        return false;
+    }
+    const int longest = *forecast;
     outing.route_clock_anchor_minutes = now_minutes;
     outing.route_clock_homeward_minutes = static_cast<int>( longest );
+    outing.route_clock_speed = model.slowest_speed;
     outing.route_clock_travel_minutes = static_cast<int>( longest );
     outing.route_clock_remaining_minutes = static_cast<int>( longest ) + 60;
     outing.route_clock_stale = false;
     outing.route_clock_outbound_unavailable = false;
     outing.route_clock_homeward_actual = true;
+    outing.route_clock_prices = *prices;
+    outing.route_clock_downstream_path.clear();
+    outing.route_clock_homeward_path = homeward_paths.front();
     outing.expected_return_minutes = structural_expected_return_for_state( outing, site );
     outing.missing_deadline_minutes = structural_missing_deadline_for_state( outing );
     return true;
@@ -18567,6 +19037,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     candidate.active_outing.target_lead_revision = plan.lead_revision;
     candidate.active_outing.job_type = bandit_dry_run::to_string( plan.job );
     candidate.active_outing.started_minutes = now_minutes;
+    candidate.active_outing.coarse_work.serviced_active_turns = 0;
     candidate.active_outing.local_contact_minutes = -1;
     candidate.active_outing.last_progress_minutes = now_minutes;
     candidate.active_outing.expected_return_minutes = plan.expected_return_minutes;
