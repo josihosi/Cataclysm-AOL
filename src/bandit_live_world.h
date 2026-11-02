@@ -747,6 +747,28 @@ struct scout_watch_interruption {
     void deserialize( const JsonObject &jo );
 };
 
+// Bounded reducer inputs and retained witnesses; absent means unavailable.
+struct scout_assessment_provenance {
+    std::string activity_id;
+    int generation = 0;
+    int captured_minutes = -1;
+    bool reducer_known = false;
+    std::vector<sortie_observation> target_inputs;
+    std::vector<sortie_observation> route_inputs;
+    bool bounty_known = false;
+    int bounty_value = 0;
+    std::vector<sortie_observation> bounty_inputs;
+    bool returned_optical_known = false;
+    int habitation_before = 0;
+    int habitation_delta = 0;
+    int habitation_shared = 0;
+    int habitation_private_delta = 0;
+    std::vector<sortie_observation> returned_optical_inputs;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
 struct scout_assessment_state {
     int schema_version = 3;
     int observation_started_minutes = -1;
@@ -775,6 +797,7 @@ struct scout_assessment_state {
     int next_eligible_minutes = -1;
     std::string exit_reason;
     std::optional<scout_watch_interruption> interruption;
+    std::optional<scout_assessment_provenance> provenance;
 
     void clear();
     void serialize( JsonOut &json ) const;

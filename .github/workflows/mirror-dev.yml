@@ -31,6 +31,7 @@ jobs:
       - name: Mirror dev and verify the remote commit
         env:
           MIRROR_DEV_SSH_KEY: ${{ secrets.MIRROR_DEV_SSH_KEY }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -41,8 +42,10 @@ jobs:
           trap 'rm -f -- "$key" "$known_hosts"' EXIT
           printf '%s\n' "$MIRROR_DEV_SSH_KEY" > "$key"
           unset MIRROR_DEV_SSH_KEY
-          curl --fail --silent --show-error --retry 3 https://api.github.com/meta |
+          printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" |
+            curl --config - --fail --silent --show-error --retry 3 https://api.github.com/meta |
             python3 -c 'import json,sys; print("\n".join("github.com " + key for key in json.load(sys.stdin)["ssh_keys"]))' > "$known_hosts"
+          unset GH_TOKEN
           export GIT_SSH_COMMAND="ssh -i \"$key\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=\"$known_hosts\""
           target=git@github.com:josihosi/C-AOL-mirror.git
           expected=$(git ls-remote --heads "$target" refs/heads/dev | cut -f1)

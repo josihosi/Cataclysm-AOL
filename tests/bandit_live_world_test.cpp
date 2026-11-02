@@ -11049,6 +11049,71 @@ TEST_CASE( "bandit_live_world_deduplicates_and_caps_typed_observation_buckets",
     CHECK( site.active_outing.observations.size() == 16 );
 }
 
+TEST_CASE( "scout_provenance_retains_bounty_witness_after_real_observation_eviction",
+           "[bandit][live_world][scout_assessment][provenance]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 45241 );
+    auto &site = world.sites.front();
+    auto &outing = site.active_outing;
+    const character_id observer = outing.leader_id;
+    const int revision = outing.target_lead_revision;
+    outing.schema_version = 10;
+    outing.target_footprint = { outing.target_omt };
+    outing.selected_watch_kind = bandit_live_world::structural_watch_kind::exact;
+    outing.selected_watch_omt = outing.target_omt + tripoint( 0, 3, 0 );
+    const auto approach = outing.target_omt + tripoint( 0, 4, 0 );
+    outing.selected_watch_route_cost = 8;
+    outing.shared_route = { site.anchor, approach, outing.selected_watch_omt, approach, site.anchor };
+    outing.waypoint_index = 2;
+    outing.assessment.observation_started_minutes = 220;
+    outing.assessment.last_progress_minutes = 220;
+    outing.assessment.pinned_target_revision = revision;
+    auto original = make_typed_visual_observation( observer, revision, 221,
+                    "visible-defenders:retained-witness",
+                    bandit_live_world::sortie_observation_share_state::shared );
+    original.source_omt = outing.target_omt;
+    original.receiver_omt = outing.selected_watch_omt;
+    REQUIRE( bandit_live_world::record_active_typed_observations( site,
+             require_current_simulation_cursor( site ), observer, revision, { original }, 221 ).valid );
+    outing.assessment = bandit_live_world::summarize_normal_scout_assessment( outing );
+    REQUIRE( outing.assessment.bounty_estimate == 1 );
+    REQUIRE( outing.assessment.provenance );
+    REQUIRE( outing.assessment.provenance->bounty_known );
+    std::vector<bandit_live_world::sortie_observation> additions;
+    for( int index = 0; index < 16; ++index ) {
+        auto observation = make_typed_visual_observation( observer, revision, 251 + index,
+                           "later-window-" + std::to_string( index ),
+                           bandit_live_world::sortie_observation_share_state::shared );
+        observation.source_omt = outing.target_omt;
+        observation.receiver_omt = outing.selected_watch_omt;
+        additions.push_back( observation );
+    }
+    const auto effect = bandit_live_world::record_active_typed_observations( site,
+                        require_current_simulation_cursor( site ), observer, revision, additions, 280 );
+    REQUIRE( effect.valid );
+    CHECK( effect.evicted >= 1 );
+    REQUIRE( outing.observations.size() == 16 );
+    const auto after = bandit_live_world::summarize_normal_scout_assessment( outing );
+    CHECK( after.bounty_estimate == 1 );
+    REQUIRE( after.provenance );
+    REQUIRE( after.provenance->bounty_known );
+    CHECK( std::none_of( after.provenance->target_inputs.begin(), after.provenance->target_inputs.end(),
+    [&]( const auto &input ) { return input.fact_key == original.fact_key; } ) );
+    REQUIRE( after.provenance->bounty_inputs.size() == 1 );
+    CHECK( after.provenance->bounty_inputs.front().fact_key == original.fact_key );
+    CHECK( after.provenance->bounty_inputs.front().observed_minutes == 221 );
+    CHECK( after.provenance->bounty_inputs.front().visual_quality == original.visual_quality );
+    CHECK( after.provenance->bounty_inputs.front().observed_power_low == original.observed_power_low );
+    CHECK( after.provenance->bounty_inputs.front().defender_ids == original.defender_ids );
+    std::ostringstream out;
+    JsonOut json( out, true );
+    after.serialize( json );
+    bandit_live_world::scout_assessment_state loaded;
+    loaded.deserialize( json_loader::from_string( out.str() ).get_object() );
+    REQUIRE( loaded.provenance );
+    CHECK( loaded.provenance->bounty_inputs.front().fact_key == original.fact_key );
+}
+
 TEST_CASE( "bandit_live_world_migrates_unversioned_observations_and_rejects_partial_typed_records",
            "[bandit][live_world][typed_observation][migration]" )
 {
@@ -30784,6 +30849,9 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
     const character_id observer_id( 894100 );
     const auto make_outing = [&]() {
         bandit_live_world::active_outing_state outing;
+        outing.activity_id = "assessment-provenance-test";
+        outing.generation = 1;
+        outing.last_advanced_minutes = 200;
         outing.target_lead_revision = 7;
         outing.target_footprint = { target };
         outing.assessment.observation_started_minutes = 100;
@@ -30801,6 +30869,22 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
         observation.receiver_omt = watch;
         return observation;
     };
+
+    SECTION( "distinct scored records retain exact inputs without changing certainty" ) {
+        auto outing = make_outing();
+        auto first = make_window( 121, "same-window-first" );
+        auto second = make_window( 122, "same-window-second" );
+        outing.observations = { first, second };
+        const auto combined = bandit_live_world::summarize_normal_scout_assessment( outing );
+        REQUIRE( combined.provenance );
+        REQUIRE( combined.provenance->target_inputs.size() == 2 );
+        CHECK( combined.provenance->target_inputs[0].fact_key == first.fact_key );
+        CHECK( combined.provenance->target_inputs[1].fact_key == second.fact_key );
+        outing.observations = { first };
+        const auto single = bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( combined.certainty > single.certainty );
+        CHECK( combined.provenance->target_inputs[1].observed_minutes == 122 );
+    }
 
     SECTION( "two then one never collapses to one or sums historical power" ) {
         bandit_live_world::active_outing_state outing = make_outing();
@@ -30932,13 +31016,58 @@ TEST_CASE( "bandit_live_world_scout_assessment_uses_simultaneous_lower_bounds_an
         bandit_live_world::sortie_observation target_defenders =
             make_window( 122, "visible-defenders:" + target.to_string() );
         outing.observations = { target_defenders };
-        CHECK( bandit_live_world::summarize_normal_scout_assessment(
-                   outing ).bounty_estimate == 1 );
+        const auto observed = bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( observed.bounty_estimate == 1 );
+        REQUIRE( observed.provenance );
+        CHECK( observed.provenance->reducer_known );
+        REQUIRE( observed.provenance->target_inputs.size() == 1 );
+        CHECK( observed.provenance->target_inputs.front().observed_minutes == 122 );
+        REQUIRE( observed.provenance->bounty_known );
+        REQUIRE( observed.provenance->bounty_inputs.size() == 1 );
+        auto unrelated_sound = make_window( 150, "unrelated-sound" );
+        unrelated_sound.sense = bandit_live_world::sortie_observation_sense::sound;
+        unrelated_sound.visual_quality = 0;
+        unrelated_sound.defender_ids.clear();
+        unrelated_sound.observed_power_low = 0;
+        unrelated_sound.observed_power_high = 0;
+        unrelated_sound.equipment_detail = 0;
+        outing.observations.push_back( unrelated_sound );
+        const auto with_sound = bandit_live_world::summarize_normal_scout_assessment( outing );
+        REQUIRE( with_sound.provenance );
+        REQUIRE( with_sound.provenance->bounty_known );
+        REQUIRE( with_sound.provenance->bounty_inputs.size() == 1 );
+        CHECK( with_sound.provenance->bounty_inputs.front().observed_minutes == 122 );
 
-        outing.assessment.bounty_estimate = 1;
+        outing.assessment = observed;
         outing.observations.clear();
-        CHECK( bandit_live_world::summarize_normal_scout_assessment(
-                   outing ).bounty_estimate == 1 );
+        const auto retained = bandit_live_world::summarize_normal_scout_assessment( outing );
+        CHECK( retained.bounty_estimate == 1 );
+        REQUIRE( retained.provenance );
+        CHECK( retained.provenance->target_inputs.empty() );
+        REQUIRE( retained.provenance->bounty_known );
+        REQUIRE( retained.provenance->bounty_inputs.size() == 1 );
+        CHECK( retained.provenance->bounty_inputs.front().fact_key == target_defenders.fact_key );
+        std::ostringstream out;
+        JsonOut json( out, true );
+        retained.serialize( json );
+        bandit_live_world::scout_assessment_state loaded;
+        loaded.deserialize( json_loader::from_string( out.str() ).get_object() );
+        REQUIRE( loaded.provenance );
+        REQUIRE( loaded.provenance->bounty_known );
+        CHECK( loaded.provenance->bounty_inputs.front().observed_minutes == 122 );
+        std::string malformed = out.str();
+        const std::string captured = "\"captured_minutes\": 200";
+        const std::size_t captured_at = malformed.find( captured );
+        REQUIRE( captured_at != std::string::npos );
+        malformed.replace( captured_at, captured.size(), "\"captured_minutes\": 120" );
+        CHECK_THROWS( bandit_live_world::scout_assessment_state().deserialize(
+                          json_loader::from_string( malformed ).get_object() ) );
+
+        outing.assessment.provenance.reset();
+        const auto unproven = bandit_live_world::summarize_normal_scout_assessment( outing );
+        REQUIRE( unproven.provenance );
+        CHECK_FALSE( unproven.provenance->bounty_known );
+        CHECK( unproven.bounty_estimate == 1 );
     }
 
     SECTION( "more than twelve simultaneous defenders preserves the lower bound as hard unsafe" ) {
@@ -49310,6 +49439,10 @@ TEST_CASE( "legacy returning optical certainty is credited once after save migra
     const bool cannibal = GENERATE( false, true );
     const int channel = GENERATE( 0, 1, 2 );
     const bool repeated = GENERATE( false, true );
+    const bool stale_shared = GENERATE( false, true );
+    // Compare an ordinary source with a genuine elevated source.
+    const int geometry = GENERATE( 0, 2 );
+    CAPTURE( cannibal, channel, repeated, stale_shared, geometry );
     auto world = make_structural_signal_test_world( cannibal, 956500 );
     auto &site = world.sites.front();
     auto &outing = site.active_outing;
@@ -49338,7 +49471,8 @@ TEST_CASE( "legacy returning optical certainty is credited once after save migra
                     ( channel == 1 && sense != bandit_live_world::sortie_observation_sense::smoke ) ) {
                     continue;
                 }
-                auto read = make_structural_signal_read( sense, outing.target_omt, 4, 60, 1 );
+                auto read = make_structural_signal_read( sense, outing.target_omt +
+                            tripoint( 0, 0, geometry == 2 ? 1 : 0 ), 4, 60, 1 );
                 read.line_of_sight = true;
                 read.observed_minutes = minute;
                 reads.push_back( read );
@@ -49359,10 +49493,12 @@ TEST_CASE( "legacy returning optical certainty is credited once after save migra
     outing.actor_route_waypoint = static_cast<int>( outing.shared_route.size() ) - 1;
     std::string legacy = serialize_world( world );
     const std::string key = "\"habitation_certainty\"";
-    for( auto offset = legacy.find( key ); offset != std::string::npos; offset = legacy.find( key ) ) {
-        const auto comma = legacy.find( ',', offset );
-        REQUIRE( comma != std::string::npos );
-        legacy.erase( offset, comma - offset + 1 );
+    if( !stale_shared ) {
+        for( auto offset = legacy.find( key ); offset != std::string::npos; offset = legacy.find( key ) ) {
+            const auto comma = legacy.find( ',', offset );
+            REQUIRE( comma != std::string::npos );
+            legacy.erase( offset, comma - offset + 1 );
+        }
     }
     bandit_live_world::world_state loaded;
     loaded.deserialize( json_loader::from_string( legacy ).get_object() );
@@ -49380,10 +49516,18 @@ TEST_CASE( "legacy returning optical certainty is credited once after save migra
     const auto report = saved_site.current_scout_report;
     const int expected = std::min( 20, 5 * buckets );
     CHECK( report.assessment.habitation_certainty == expected );
-    CHECK( report.assessment.certainty == expected );
+    CHECK( report.assessment.certainty == expected + ( stale_shared ? ( channel == 2 ? 10 : 5 ) : 0 ) );
     CHECK( report.assessment.danger_high == 17 );
+    REQUIRE( report.assessment.provenance );
+    REQUIRE( report.assessment.provenance->returned_optical_known );
+    CHECK( report.assessment.provenance->habitation_shared == expected );
+    CHECK( report.assessment.provenance->returned_optical_inputs.size() ==
+           static_cast<std::size_t>( buckets * ( channel == 2 ? 2 : 1 ) ) );
+    CHECK( report.assessment.provenance->habitation_private_delta == 0 );
+    CHECK( report.assessment.provenance->habitation_delta == ( stale_shared ? expected : 0 ) );
     loaded = round_trip_world( loaded );
-    CHECK( loaded.sites.front().current_scout_report.assessment.certainty == expected );
+    CHECK( loaded.sites.front().current_scout_report.assessment.certainty ==
+           expected + ( stale_shared ? ( channel == 2 ? 10 : 5 ) : 0 ) );
     CHECK( loaded.sites.front().current_scout_report.carrier_ids == ids );
 }
 
@@ -49779,6 +49923,8 @@ TEST_CASE( "binocular acquisition ends with native watch interruption and reload
     }
     SECTION( "finite private current watch reaches only its living physical carrier" ) {
         const bool blind_survivor = GENERATE( false, true );
+        const bool cached_habitation = GENERATE( false, true );
+        CAPTURE( blind_survivor, cached_habitation );
         auto state = world;
         auto &saved_site = state.sites.front();
         auto &active = saved_site.active_outing;
@@ -49820,13 +49966,59 @@ TEST_CASE( "binocular acquisition ends with native watch interruption and reload
                  require_current_simulation_cursor( saved_site ), members.back()->getID(), saved_site.anchor,
                  842 ) );
         state = round_trip_world( state );
+        if( cached_habitation ) {
+            // Model a previously credited shared bucket; a returned private
+            // receipt in the same amount must not receive that credit twice.
+            auto &assessment = state.sites.front().active_outing.assessment;
+            assessment.habitation_certainty = 5;
+            assessment.certainty += 5;
+        }
         const auto result = bandit_live_world::advance_structural_bounty_outings( state, 843, {} );
         CHECK( result.sites_considered == 1 );
         const auto &report = state.sites.front().current_scout_report;
         REQUIRE( report.is_present() );
         CHECK( report.carrier_ids == std::vector<character_id> { members.back()->getID() } );
         CHECK( report.observations.size() == ( blind_survivor ? 0 : 1 ) );
-        CHECK( report.assessment.habitation_certainty == ( blind_survivor ? 0 : 5 ) );
+        const int before = cached_habitation ? 5 : 0;
+        const int increase = !blind_survivor && !cached_habitation ? 5 : 0;
+        CHECK( report.assessment.habitation_certainty == before + increase );
+        REQUIRE( report.assessment.provenance );
+        REQUIRE( report.assessment.provenance->returned_optical_known );
+        CHECK( report.assessment.provenance->habitation_before == before );
+        CHECK( report.assessment.provenance->habitation_delta == increase );
+        CHECK( report.assessment.provenance->habitation_shared == 0 );
+        CHECK( report.assessment.provenance->habitation_private_delta == increase );
+        REQUIRE( report.assessment.provenance->returned_optical_inputs.size() ==
+                 ( blind_survivor ? 0 : 1 ) );
+        if( !blind_survivor ) {
+            const auto &input = report.assessment.provenance->returned_optical_inputs.front();
+            CHECK( input.observer_id == members.back()->getID() );
+            CHECK( input.observed_minutes == 721 );
+            CHECK( input.share_state == bandit_live_world::sortie_observation_share_state::observer_private );
+        }
+        const auto report_loaded = round_trip_world( state ).sites.front().current_scout_report;
+        CAPTURE( report.provisional, report.source_job_type,
+                 state.sites.front().active_outing.job_type, report_loaded.is_present() );
+        REQUIRE( report_loaded.is_present() );
+        if( report.provisional ) {
+            auto invalid_job = state;
+            invalid_job.sites.front().current_scout_report.source_job_type = "foreign-job";
+            CHECK_FALSE( round_trip_world( invalid_job ).sites.front().current_scout_report.is_present() );
+        }
+        REQUIRE( report_loaded.assessment.provenance );
+        CHECK( report_loaded.assessment.provenance->habitation_delta == increase );
+        CHECK( report_loaded.assessment.provenance->returned_optical_inputs.size() ==
+               ( blind_survivor ? 0 : 1 ) );
+        std::ostringstream report_bytes;
+        JsonOut report_json( report_bytes, true );
+        report.serialize( report_json );
+        std::string foreign = report_bytes.str();
+        const std::string activity = "\"activity_id\": \"" + report.source_activity_id + "\"";
+        const std::size_t activity_at = foreign.find( activity );
+        REQUIRE( activity_at != std::string::npos );
+        foreign.replace( activity_at, activity.size(), "\"activity_id\": \"foreign-activity\"" );
+        CHECK_THROWS( bandit_live_world::scout_report_record().deserialize(
+                          json_loader::from_string( foreign ).get_object() ) );
         CHECK( report.assessment.readiness_latched == !blind_survivor );
         if( !blind_survivor ) {
             CHECK( report.observations.front().observer_id == members.back()->getID() );
