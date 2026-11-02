@@ -3439,8 +3439,44 @@ def _make_profile_tree_owner_writable(root: Path) -> None:
     visit(root)
 
 
+def _publish_saved_world_custody(path: Path, record: Mapping[str, Any]) -> None:
+    """Publish only a complete record; failure cannot publish partial custody."""
+    path.parent.mkdir(exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".custody-", dir=path.parent)
+    temp = Path(temporary)
+    try:
+        try:
+            output = os.fdopen(fd, "w", encoding="utf-8")
+        except BaseException:
+            os.close(fd)
+            raise
+        with output:
+            json.dump(record, output, sort_keys=True)
+            output.flush()
+            os.fsync(output.fileno())
+        if os.name == "nt":
+            os.rename(temp, path)  # Refuses an existing destination on Windows.
+        else:
+            os.link(temp, path)  # Atomic exclusive publication on POSIX.
+            try:
+                temp.unlink()
+            except OSError:
+                # Do not strand a published record when its staging link
+                # cannot be removed. Never unlink a replacement owned by
+                # another writer.
+                try:
+                    if os.path.samestat(path.lstat(), temp.lstat()):
+                        path.unlink()
+                except OSError:
+                    pass
+                raise
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def install_saved_world_snapshot(profile: str, target_world: str,
-                                 source_path: str | Path, *, replace: bool = False) -> Dict[str, Any]:
+                                 source_path: str | Path, *, replace: bool = False,
+                                 disposable_run_id: str = "") -> Dict[str, Any]:
     """Install a byte-verified snapshot without silently replacing a populated world."""
     source_world = Path(source_path).expanduser().resolve()
     if not source_world.is_dir():
@@ -3452,12 +3488,27 @@ def install_saved_world_snapshot(profile: str, target_world: str,
     if source_error:
         raise SystemExit(source_error)
 
-    destination = (save_dir_for_profile(profile) / target_world).resolve()
+    raw_destination = save_dir_for_profile(profile) / target_world
+    destination = raw_destination.resolve()
     save_root = save_dir_for_profile(profile).resolve()
     try:
         destination.relative_to(save_root)
     except ValueError as error:
         raise SystemExit("saved-world snapshot destination escaped profile save root") from error
+    custody_path = None
+    if disposable_run_id:
+        owner = current_owner(userdir_for_profile(profile))
+        if owner is None or owner.run_id != disposable_run_id:
+            raise SystemExit("disposable saved-world copy requires the exact writable run owner")
+        if raw_destination.is_symlink() or destination.parent != save_root or raw_destination.absolute() != destination:
+            raise SystemExit("disposable saved-world destination must be a safe direct child")
+        custody_dir = userdir_for_profile(profile) / ".saved-world-custody"
+        if custody_dir.is_symlink():
+            raise SystemExit("saved-world custody directory is unsafe")
+        custody_path = custody_dir / (hashlib.sha256(target_world.encode()).hexdigest() + ".json")
+    destination_existed = destination.exists()
+    if custody_path is not None and not destination_existed and (custody_path.exists() or custody_path.is_symlink()):
+        raise SystemExit("saved-world custody already exists")
     if destination.exists():
         installed_hash, installed_error = sha256_tree(destination)
         if not installed_error and installed_hash == source_hash:
@@ -3472,20 +3523,48 @@ def install_saved_world_snapshot(profile: str, target_world: str,
     # Repeating the world name here can push otherwise usable Windows save
     # paths beyond MAX_PATH. Reserve one short sibling owned by this copy.
     staging = Path(tempfile.mkdtemp(prefix=".snapshot-", dir=save_root))
+    record_published = False
+    installed = False
     try:
         shutil.copytree(source_world, staging, dirs_exist_ok=True)
         _make_profile_tree_owner_writable(staging)
         staged_hash, staged_error = sha256_tree(staging)
         if staged_error or staged_hash != source_hash:
             raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
-        if destination.exists():
+        if custody_path is not None and not destination_existed:
+            info = staging.stat()
+            record = {"schema": "caol-disposable-saved-world-v1", "purpose": "disposable_copy",
+                      "profile": profile, "world": target_world, "destination": str(destination),
+                      "run_id": disposable_run_id, "source_sha256": source_hash,
+                      "device": info.st_dev, "inode": info.st_ino}
+            _publish_saved_world_custody(custody_path, record)
+            record_published = True
+        if destination_existed:
             _make_profile_tree_owner_writable(destination)
             shutil.rmtree(destination)
-        os.replace(staging, destination)
+        if custody_path is not None and not destination_existed:
+            # Reserve the fresh name exclusively: a concurrent pre-existing
+            # world must never acquire disposal authority from this copy.
+            if os.name == "nt":
+                # Windows rename refuses an existing destination; replacing
+                # even our own empty directory is not portable there.
+                os.rename(staging, destination)
+            else:
+                destination.mkdir()
+                try:
+                    os.replace(staging, destination)
+                except BaseException:
+                    destination.rmdir()
+                    raise
+        else:
+            os.replace(staging, destination)
+        installed = True
     finally:
         if staging.exists():
             _make_profile_tree_owner_writable(staging)
             shutil.rmtree(staging)
+        if record_published and not installed:
+            custody_path.unlink(missing_ok=True)
     installed_hash, installed_error = sha256_tree(destination)
     return {
         "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
@@ -3499,6 +3578,65 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         "profile_copy_mode_policy": "owner_writable_files_and_directories",
         "source_mode_bits_changed": False,
     }
+
+
+def _validate_closed_saved_world_owner(prior: Optional[Mapping[str, Any]]) -> None:
+    if not isinstance(prior, Mapping) or not prior.get("run_id") or \
+            prior.get("launcher_state") != "returned" or prior.get("launch_state") not in {"not_started", "bound"}:
+        raise WritableRootConflict("disposable saved-world current owner is not closed")
+    if prior.get("launch_state") == "not_started" and prior.get("game_generation") is not None:
+        raise WritableRootConflict("no-launch owner has an unexpected game generation")
+    keys = ("launcher_generation", "game_generation") if prior.get("launch_state") == "bound" else ("launcher_generation",)
+    for key in keys:
+        generation = prior.get(key)
+        if not isinstance(generation, Mapping) or not generation.get("pid"):
+            raise WritableRootConflict("disposable saved-world process identity unavailable")
+        observed = process_generation_snapshot(int(generation["pid"]))
+        if observed.get("alive") is not False or pid_is_alive(int(generation["pid"])):
+            raise WritableRootConflict("disposable saved-world process is live or unknown")
+
+
+def cleanup_disposable_saved_world(profile: str, world: str, run_id: str) -> Dict[str, Any]:
+    """Remove only a fresh disposable copy under its exact closed run lease."""
+    root = userdir_for_profile(profile).absolute()
+    save_root = save_dir_for_profile(profile).absolute()
+    destination = save_root / world
+    if not world or Path(world).name != world or destination.is_symlink() or \
+            save_root.is_symlink() or destination.resolve().parent != save_root.resolve():
+        raise WritableRootConflict("unsafe disposable saved-world destination")
+    custody_dir = root / ".saved-world-custody"
+    record_path = custody_dir / (hashlib.sha256(world.encode()).hexdigest() + ".json")
+
+    def validate(prior: Optional[Mapping[str, Any]]) -> None:
+        _validate_closed_saved_world_owner(prior)
+        if custody_dir.is_symlink() or record_path.is_symlink() or not record_path.is_file():
+            raise WritableRootConflict("disposable saved-world custody record unavailable")
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise WritableRootConflict("disposable saved-world custody cannot be read") from error
+        if not isinstance(record, Mapping) or not re.fullmatch(r"[0-9a-f]{64}", str(record.get("source_sha256", ""))):
+            raise WritableRootConflict("disposable saved-world custody is malformed")
+        expected = {"schema": "caol-disposable-saved-world-v1", "purpose": "disposable_copy",
+                    "profile": profile, "world": world, "destination": str(destination), "run_id": run_id}
+        if destination.is_symlink() or any(record.get(k) != v for k, v in expected.items()):
+            raise WritableRootConflict("disposable saved-world custody mismatch")
+        if destination.exists():
+            info = destination.stat()
+            if not destination.is_dir() or record.get("device") != info.st_dev or record.get("inode") != info.st_ino:
+                raise WritableRootConflict("disposable saved-world custody mismatch")
+        elif not isinstance(record.get("device"), int) or not isinstance(record.get("inode"), int):
+            raise WritableRootConflict("disposable saved-world custody is malformed")
+
+    with own_writable_root(root, "saved-world-cleanup-" + uuid.uuid4().hex,
+                           process_generation_snapshot, process_generation_matches,
+                           prior_validator=validate, preserve_prior=True):
+        existed = destination.exists()
+        if existed:
+            shutil.rmtree(destination)
+        record_path.unlink()
+    return {"status": "removed" if existed else "already_absent", "profile": profile,
+            "world": world, "run_id": run_id}
 
 
 def create_run_dir(profile: str) -> Path:
@@ -41187,6 +41325,8 @@ def _run_startup(args: argparse.Namespace) -> int:
             raise SystemExit(f"harness new-world target already exists: {harness_new_world}")
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
     saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
+    if getattr(args, "disposable_saved_world", False) and not saved_world_snapshot:
+        raise SystemExit("disposable saved-world purpose requires a saved-world snapshot")
     profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
     artifact_run_dir_value = str(getattr(args, "harness_artifact_run_dir", "") or "").strip()
     artifact_run_dir: Optional[Path] = None
@@ -41227,6 +41367,7 @@ def _run_startup(args: argparse.Namespace) -> int:
     if saved_world_snapshot:
         saved_world_snapshot_result = install_saved_world_snapshot(
             profile, args.world, saved_world_snapshot, replace=args.replace_existing_worlds,
+            disposable_run_id=(str(args.harness_run_id) if getattr(args, "disposable_saved_world", False) else ""),
         )
         profile_snapshot = ""
     elif profile_snapshot:
@@ -43837,6 +43978,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("Registry selected scenario path and hash must travel together")
     scenario = load_scenario(args.scenario, source_path=selected_path or None,
                              expected_sha256=str(getattr(args, "registry_selected_source_sha256", "") or ""))
+    if isinstance(scenario.get("controlled_camp_setup"), Mapping) and (
+            str(getattr(args, "saved_world_snapshot", "") or scenario.get("saved_world_snapshot", "")).strip()
+            or getattr(args, "disposable_saved_world", False)):
+        raise SystemExit("controlled camp setup does not support saved-world snapshots or disposable-copy custody")
     args._loaded_scenario = scenario
     mode = scenario_playtest_mode(scenario)
     if mode != "terminal":
@@ -44151,8 +44296,12 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         if harness_new_world_scenario:
             start_cmd.extend(["--harness-new-world-scenario", harness_new_world_scenario])
     explicit_saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
+    if getattr(args, "disposable_saved_world", False) and not explicit_saved_world_snapshot:
+        raise SystemExit("disposable saved-world purpose requires a saved-world snapshot")
     if explicit_saved_world_snapshot:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
+        if getattr(args, "disposable_saved_world", False):
+            start_cmd.append("--disposable-saved-world")
     explicit_executable = str(getattr(args, "executable", "") or "").strip()
     if not explicit_executable:
         explicit_executable = str(detect_executable())
@@ -45574,6 +45723,11 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
+    cleanup_saved_p = subparsers.add_parser("cleanup-disposable-saved-world", help="Remove an explicitly disposable saved-world copy after its exact run closes.")
+    cleanup_saved_p.add_argument("--profile", required=True)
+    cleanup_saved_p.add_argument("--world", required=True)
+    cleanup_saved_p.add_argument("--run-id", required=True)
     start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")
     start_p.add_argument("--fixture", default="", help="Install this fixture before startup.")
     start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
@@ -45656,6 +45810,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--executable", default="", help="Use this source-matching executable for the probe.")
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     probe_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")
     probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
     probe_p.add_argument("--advance-turns", type=int, default=None, help="Override the deterministic turn-advance count.")
@@ -45779,6 +45934,13 @@ def main() -> int:
         return 0 if result["status"] == "ready" else 1
     if args.command == "start":
         return run_startup(args)
+    if args.command == "cleanup-disposable-saved-world":
+        try:
+            result = cleanup_disposable_saved_world(resolve_profile_name(args.profile), args.world, args.run_id)
+        except WritableRootConflict as error:
+            raise SystemExit(str(error)) from error
+        print(json.dumps(result))
+        return 0
     if args.command == "list-fixtures":
         from catalogue_view import attach_registry_status
         profile = resolve_profile_name(args.profile)

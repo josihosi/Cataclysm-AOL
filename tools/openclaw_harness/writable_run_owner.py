@@ -60,7 +60,8 @@ def reject_aliases(root: Path) -> Path:
 
 
 class WritableRunOwner:
-    def __init__(self, root: Path, run_id: str, inspect: Callable, matches: Callable | None = None):
+    def __init__(self, root: Path, run_id: str, inspect: Callable, matches: Callable | None = None,
+                 prior_validator: Callable | None = None, preserve_prior: bool = False):
         import fcntl
         if not str(run_id).strip():
             raise ValueError("writable-root owner requires a nonempty run ID")
@@ -72,6 +73,9 @@ class WritableRunOwner:
         # Startup supplies its existing exact matcher; standalone owners use
         # the same PID/birth and legacy-command/fingerprint identity below.
         self.matches = matches
+        if preserve_prior and prior_validator is None:
+            raise ValueError("preserving a prior owner requires validation")
+        self.preserve_prior = preserve_prior
         self._directory_fds = []
         self.handle = None
         try:
@@ -108,6 +112,8 @@ class WritableRunOwner:
                     f"writable root already has an inherited owner: {self.root}", reason="live_lock",
                 ) from error
             self._check_prior_owner(existed=existed)
+            if prior_validator is not None:
+                prior_validator(self.previous_record)
             launcher_generation = inspect(os.getpid())
             if not self._valid_generation(launcher_generation):
                 raise WritableRootConflict("current launcher process generation is incomplete",
@@ -117,7 +123,8 @@ class WritableRunOwner:
                            'launcher_generation': dict(launcher_generation), 'game_generation': None,
                            'launch_state': 'not_started',
                            'directory_lock_scope': 'exclusive_root_shared_ancestors'}
-            self._write()
+            if not self.preserve_prior:
+                self._write()
         except BaseException:
             if self.handle is not None:
                 self.handle.close()
@@ -194,6 +201,7 @@ class WritableRunOwner:
                                        reason="generation_mismatch")
 
     def _check_prior_owner(self, *, existed: bool):
+        self.previous_record = None
         self.handle.seek(0)
         raw = self.handle.read()
         if raw:
@@ -241,6 +249,7 @@ class WritableRunOwner:
                     raise WritableRootConflict(f"previous launcher has not returned: {self.path}",
                                                reason="incomplete_owner")
                 self._inspect_generation(launcher_generation, source=str(self.path))
+            self.previous_record = dict(prior)
         elif existed:
             # Empty files are only valid while this instance has just created
             # the stable lock inode. An existing empty record is interrupted
@@ -288,6 +297,8 @@ class WritableRunOwner:
         return self.handle.fileno()
 
     def bind_game(self, generation):
+        if getattr(self, 'preserve_prior', False):
+            raise WritableRootConflict("read-preserving lease cannot bind a game")
         if self.record.get('launch_state') != 'launching':
             raise WritableRootConflict(f"game bind requires begin_launch at {self.root}",
                                        reason="invalid_launch_transition")
@@ -315,6 +326,8 @@ class WritableRunOwner:
 
     def begin_launch(self):
         """Persist possible process creation before invoking native Popen."""
+        if getattr(self, 'preserve_prior', False):
+            raise WritableRootConflict("read-preserving lease cannot launch a game")
         if self.record.get('launch_state') != 'not_started':
             raise WritableRootConflict(f"launch already started or bound at {self.root}",
                                        reason="invalid_launch_transition")
@@ -327,26 +340,30 @@ class WritableRunOwner:
 
     def close(self):
         try:
-            self.record['launcher_state'] = 'returned'
-            self._write()
+            if not self.preserve_prior:
+                self.record['launcher_state'] = 'returned'
+                self._write()
         finally:
             self.handle.close()  # Inherited game/broker descriptors retain exclusion.
             self._close_directory_locks()
 
 
 @contextlib.contextmanager
-def own_writable_root(root: Path, run_id: str, inspect: Callable, matches: Callable | None = None):
+def own_writable_root(root: Path, run_id: str, inspect: Callable, matches: Callable | None = None,
+                      prior_validator: Callable | None = None, preserve_prior: bool = False):
     if os.name not in ('posix', 'nt'):
         raise OSError('native writable-root ownership unavailable on this platform')
     key = str(reject_aliases(root))
     if key in ACTIVE:
+        if prior_validator is not None:
+            raise WritableRootConflict(f"prior-owner validation requires a fresh lease: {root}")
         owner = ACTIVE[key]
         if owner.run_id != run_id:
             raise WritableRootConflict(f"different in-process run owns {root}", reason="in_process_collision")
         yield owner
         return
     owner_class = WindowsWritableRunOwner if os.name == 'nt' else WritableRunOwner
-    owner = owner_class(root, run_id, inspect, matches)
+    owner = owner_class(root, run_id, inspect, matches, prior_validator, preserve_prior)
     ACTIVE[key] = owner
     try:
         yield owner
@@ -361,12 +378,15 @@ def current_owner(root: Path):
 
 class WindowsWritableRunOwner(WritableRunOwner):
     """Same persisted owner/state transitions, native transferable share leases."""
-    def __init__(self, root, run_id, inspect, matches=None):
+    def __init__(self, root, run_id, inspect, matches=None, prior_validator=None, preserve_prior=False):
         from windows_native_process import WindowsDirectoryLease
         if not str(run_id).strip() or not callable(inspect):
             raise ValueError('native writable owner requires run ID and inspector')
         self.root = reject_aliases(root)
         self.run_id, self.inspect, self.matches = run_id, inspect, matches
+        if preserve_prior and prior_validator is None:
+            raise ValueError('preserving a prior owner requires validation')
+        self.preserve_prior = preserve_prior
         self.handle = None
         self._native_lease = None
         try:
@@ -382,6 +402,8 @@ class WindowsWritableRunOwner(WritableRunOwner):
             if not stat.S_ISREG(os.fstat(self.fd).st_mode):
                 raise WritableRootConflict('native writable owner is not a regular file', reason='malformed_owner')
             self._check_prior_owner(existed=existed)
+            if prior_validator is not None:
+                prior_validator(self.previous_record)
             launcher = inspect(os.getpid())
             if not self._valid_generation(launcher) or not launcher.get('executable_path'):
                 raise WritableRootConflict('native launcher process generation incomplete', reason='identity_unavailable')
@@ -390,7 +412,8 @@ class WindowsWritableRunOwner(WritableRunOwner):
                 'game_generation': None, 'launch_state': 'not_started',
                 'directory_lock_scope': 'exclusive_root_shared_ancestors',
                 'native_lease_kind': 'transferable_directory_share_handles'}
-            self._write()
+            if not self.preserve_prior:
+                self._write()
         except BaseException:
             if self.handle is not None:
                 self.handle.close()
@@ -448,8 +471,9 @@ class WindowsWritableRunOwner(WritableRunOwner):
 
     def close(self):
         try:
-            self.record['launcher_state'] = 'returned'
-            self._write()
+            if not self.preserve_prior:
+                self.record['launcher_state'] = 'returned'
+                self._write()
         finally:
             self.handle.close()
             self._native_lease.close()  # Exact duplicated broker handles retain exclusion.
