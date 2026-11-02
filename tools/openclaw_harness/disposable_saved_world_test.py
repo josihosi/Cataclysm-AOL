@@ -63,12 +63,81 @@ with h.own_writable_root(root, sys.argv[7], inspect, h.process_generation_matche
     def test_fresh_copy_closed_owner_removes_only_destination(self):
         self.assertEqual(self.create_closed_copy(), 'green_saved_world_snapshot_installed')
         self.assertEqual(h.sha256_tree(self.save / 'World'), self.source_hash)
+        # Model the native save producer's world-specific complete generation.
+        generation = self.save / '.save-continuity' / 'World' / 'complete' / 'world'
+        generation.mkdir(parents=True)
+        (generation / 'master.gsav').write_bytes(b'ordinary saved generation')
+        foreign = self.save / '.save-continuity' / 'Other' / 'complete'
+        foreign.mkdir(parents=True)
+        (foreign / 'keep').write_bytes(b'foreign')
         (self.save / 'Keep').mkdir()
         result = h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
         self.assertEqual(result['status'], 'removed')
         self.assertFalse((self.save / 'World').exists())
+        self.assertFalse(generation.exists())
+        self.assertEqual((foreign / 'keep').read_bytes(), b'foreign')
         self.assertTrue((self.save / 'Keep').is_dir())
         self.assertEqual(h.sha256_tree(self.source), self.source_hash)
+
+    def test_existing_continuity_is_never_adopted_for_fresh_copy(self):
+        from types import SimpleNamespace
+        foreign = self.save / '.save-continuity' / 'World' / 'complete'
+        foreign.mkdir(parents=True)
+        (foreign / 'keep').write_bytes(b'foreign')
+        with mock.patch.object(h, 'current_owner', return_value=SimpleNamespace(run_id='run-1')):
+            with self.assertRaises(FileExistsError):
+                h.install_saved_world_snapshot('profile', 'World', self.source, disposable_run_id='run-1')
+        self.assertEqual((foreign / 'keep').read_bytes(), b'foreign')
+        self.assertFalse((self.save / 'World').exists())
+        self.assertEqual(h.sha256_tree(self.source), self.source_hash)
+
+    def test_replaced_or_symlink_continuity_refuses_before_world_removal(self):
+        self.create_closed_copy()
+        continuity = self.save / '.save-continuity' / 'World'
+        old = continuity.with_name('original')
+        continuity.rename(old)
+        continuity.mkdir()
+        (continuity / 'keep').write_bytes(b'foreign')
+        with self.assertRaises(h.WritableRootConflict):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertEqual((continuity / 'keep').read_bytes(), b'foreign')
+        self.assertTrue((self.save / 'World').exists())
+        h.shutil.rmtree(continuity)
+        continuity.symlink_to(old, target_is_directory=True)
+        with self.assertRaises(h.WritableRootConflict):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertTrue((self.save / 'World').exists())
+
+    def test_continuity_failure_after_world_removal_retries(self):
+        self.create_closed_copy()
+        continuity = self.save / '.save-continuity' / 'World'
+        (continuity / 'complete').mkdir()
+        real = h.shutil.rmtree
+        def fail_continuity(path, *args, **kwargs):
+            if path == continuity:
+                raise OSError('controlled continuity removal failure')
+            return real(path, *args, **kwargs)
+        with mock.patch.object(h.shutil, 'rmtree', side_effect=fail_continuity):
+            with self.assertRaisesRegex(OSError, 'controlled continuity'):
+                h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertFalse((self.save / 'World').exists())
+        self.assertTrue((continuity / 'complete').exists())
+        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-1')['status'], 'removed')
+        self.assertFalse(continuity.exists())
+        self.assertEqual(h.sha256_tree(self.source), self.source_hash)
+
+    def test_old_record_does_not_adopt_unowned_continuity(self):
+        self.create_closed_copy()
+        custody = next((self.root / '.saved-world-custody').glob('*.json'))
+        record = json.loads(custody.read_text())
+        del record['continuity_device'], record['continuity_inode']
+        custody.write_text(json.dumps(record))
+        continuity = self.save / '.save-continuity' / 'World'
+        (continuity / 'foreign').write_bytes(b'keep')
+        with self.assertRaises(h.WritableRootConflict):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertEqual((continuity / 'foreign').read_bytes(), b'keep')
+        self.assertTrue((self.save / 'World').exists())
 
     def test_later_closed_profile_run_does_not_strand_original_copy(self):
         self.create_closed_copy()

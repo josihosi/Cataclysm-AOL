@@ -3525,6 +3525,8 @@ def install_saved_world_snapshot(profile: str, target_world: str,
     staging = Path(tempfile.mkdtemp(prefix=".snapshot-", dir=save_root))
     record_published = False
     installed = False
+    continuity = save_root / ".save-continuity" / target_world
+    continuity_created = False
     try:
         shutil.copytree(source_world, staging, dirs_exist_ok=True)
         _make_profile_tree_owner_writable(staging)
@@ -3532,11 +3534,22 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         if staged_error or staged_hash != source_hash:
             raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
         if custody_path is not None and not destination_existed:
+            # Reserve the native save-continuity namespace before launch.  An
+            # existing sibling belongs to someone else, even for a fresh world.
+            continuity_root = continuity.parent
+            if continuity_root.is_symlink() or (continuity_root.exists() and not continuity_root.is_dir()):
+                raise SystemExit("saved-world continuity root is unsafe")
+            continuity_root.mkdir(exist_ok=True)
+            continuity.mkdir()  # Exclusive: do not adopt a pre-existing generation.
+            continuity_created = True
+            continuity_info = continuity.stat()
             info = staging.stat()
             record = {"schema": "caol-disposable-saved-world-v1", "purpose": "disposable_copy",
                       "profile": profile, "world": target_world, "destination": str(destination),
                       "run_id": disposable_run_id, "source_sha256": source_hash,
-                      "device": info.st_dev, "inode": info.st_ino}
+                      "device": info.st_dev, "inode": info.st_ino,
+                      "continuity_device": continuity_info.st_dev,
+                      "continuity_inode": continuity_info.st_ino}
             _publish_saved_world_custody(custody_path, record)
             record_published = True
         if destination_existed:
@@ -3565,6 +3578,9 @@ def install_saved_world_snapshot(profile: str, target_world: str,
             shutil.rmtree(staging)
         if record_published and not installed:
             custody_path.unlink(missing_ok=True)
+        if continuity_created and not installed and not continuity.is_symlink() and continuity.exists():
+            if os.path.samestat(continuity.stat(), continuity_info):
+                continuity.rmdir()  # Only our still-empty reservation.
     installed_hash, installed_error = sha256_tree(destination)
     return {
         "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
@@ -3606,6 +3622,8 @@ def cleanup_disposable_saved_world(profile: str, world: str, run_id: str) -> Dic
         raise WritableRootConflict("unsafe disposable saved-world destination")
     custody_dir = root / ".saved-world-custody"
     record_path = custody_dir / (hashlib.sha256(world.encode()).hexdigest() + ".json")
+    continuity_root = save_root / ".save-continuity"
+    continuity = continuity_root / world
 
     def validate(prior: Optional[Mapping[str, Any]]) -> None:
         _validate_closed_saved_world_owner(prior)
@@ -3627,15 +3645,25 @@ def cleanup_disposable_saved_world(profile: str, world: str, run_id: str) -> Dic
                 raise WritableRootConflict("disposable saved-world custody mismatch")
         elif not isinstance(record.get("device"), int) or not isinstance(record.get("inode"), int):
             raise WritableRootConflict("disposable saved-world custody is malformed")
+        if continuity_root.is_symlink() or continuity.is_symlink():
+            raise WritableRootConflict("unsafe saved-world continuity destination")
+        if continuity.exists():
+            info = continuity.stat()
+            if not continuity.is_dir() or record.get("continuity_device") != info.st_dev or \
+                    record.get("continuity_inode") != info.st_ino:
+                raise WritableRootConflict("saved-world continuity custody mismatch")
 
     with own_writable_root(root, "saved-world-cleanup-" + uuid.uuid4().hex,
                            process_generation_snapshot, process_generation_matches,
                            prior_validator=validate, preserve_prior=True):
         existed = destination.exists()
+        continuity_existed = continuity.exists()
         if existed:
             shutil.rmtree(destination)
+        if continuity_existed:
+            shutil.rmtree(continuity)
         record_path.unlink()
-    return {"status": "removed" if existed else "already_absent", "profile": profile,
+    return {"status": "removed" if existed or continuity_existed else "already_absent", "profile": profile,
             "world": world, "run_id": run_id}
 
 
