@@ -156,6 +156,10 @@ std::vector<tripoint_abs_omt> live_bandit_clock_outbound_path_for_test(
     const bandit_live_world::site_record &site, const std::vector<tripoint_abs_omt> &preflight );
 std::vector<tripoint_abs_omt> live_bandit_clock_homeward_path_for_test(
     const bandit_live_world::site_record &site, const std::vector<tripoint_abs_omt> &direct );
+std::vector<tripoint_abs_omt> live_bandit_clock_downstream_path_for_test(
+    const bandit_live_world::site_record &site );
+void prepare_live_bandit_abstract_scout_travel_moved_for_test(
+    const std::set<character_id> &moved );
 std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
 std::string live_bandit_homeward_partner_route_read_for_test(
     character_id member_id, character_id partner_id );
@@ -70940,7 +70944,9 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
     REQUIRE( initial_leg.size() >= 3 );
     const auto prior_return = initial.expected_return_minutes;
     const auto prior_missing = initial.missing_deadline_minutes;
-    const bool blocked_destination = GENERATE( false, true );
+    const int route_case = GENERATE( 0, 1, 2 );
+    const bool blocked_destination = route_case != 0;
+    const bool restore_same_route = route_case == 2;
 
     // Change actual passability after the real scheduler has enrolled its
     // forecast but before the Native actors receive their departure orders.
@@ -70951,13 +70957,22 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
             overmap_buffer.ter_set( entry.first, entry.second );
         }
     } );
-    for( int y = journey.home.y() - 20; y <= journey.home.y() + 20; ++y ) {
-        for( int x = journey.home.x() - 2; x <= approach.x() + 2; ++x ) {
-            const tripoint_abs_omt pos( x, y, journey.home.z() );
-            changed_terrain.emplace_back( pos, overmap_buffer.ter( pos ) );
-            overmap_buffer.ter_set( pos, oter_id( x == journey.home.x() + 1 &&
-                                                 std::abs( y - journey.home.y() ) < 20 ?
-                                                 "river_center" : "field" ) );
+    const auto blocked_next = initial_leg[initial_leg.size() - 2];
+    const auto saved_next = overmap_buffer.ter( blocked_next );
+    const auto saved_approach = overmap_buffer.ter( approach );
+    if( restore_same_route ) {
+        changed_terrain.emplace_back( blocked_next, saved_next );
+        changed_terrain.emplace_back( approach, saved_approach );
+        overmap_buffer.ter_set( blocked_next, oter_id( "river_center" ) );
+    } else {
+        for( int y = journey.home.y() - 20; y <= journey.home.y() + 20; ++y ) {
+            for( int x = journey.home.x() - 2; x <= approach.x() + 2; ++x ) {
+                const tripoint_abs_omt pos( x, y, journey.home.z() );
+                changed_terrain.emplace_back( pos, overmap_buffer.ter( pos ) );
+                overmap_buffer.ter_set( pos, oter_id( x == journey.home.x() + 1 &&
+                                                     std::abs( y - journey.home.y() ) < 20 ?
+                                                     "river_center" : "field" ) );
+            }
         }
     }
     if( blocked_destination ) {
@@ -70995,15 +71010,28 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
                                           static_cast<std::size_t>( activation_timer::missing_deadline )];
         const std::vector<std::vector<tripoint_abs_omt>> old_paths( journey.members().size(), initial_leg );
         const std::vector<std::vector<tripoint_abs_omt>> new_paths( journey.members().size(), changed_leg );
+        const auto downstream = live_bandit_clock_downstream_path_for_test( journey.site() );
+        REQUIRE_FALSE( downstream.empty() );
         auto unknown_site = frozen_site;
         const auto unknown_before = r067_return_record_bytes( unknown_site );
         CHECK_FALSE( revise_structural_coarse_outbound_clock( unknown_site,
                      require_current_simulation_cursor( unknown_site ), journey.members(), old_paths,
-                     new_paths, {}, start + 25 ) );
+                     new_paths, downstream, {}, start + 25 ) );
         CHECK( r067_return_record_bytes( unknown_site ) == unknown_before );
+        CHECK_FALSE( revise_structural_coarse_outbound_clock( unknown_site,
+                     require_current_simulation_cursor( unknown_site ), journey.members(), old_paths,
+                     new_paths, {}, homeward_path, start + 25 ) );
+        CHECK( r067_return_record_bytes( unknown_site ) == unknown_before );
+        auto other_stale = frozen_site;
+        other_stale.active_outing.route_clock_stale = true;
+        const auto other_stale_before = r067_return_record_bytes( other_stale );
+        CHECK_FALSE( revise_structural_coarse_outbound_clock( other_stale,
+                     require_current_simulation_cursor( other_stale ), journey.members(), old_paths,
+                     new_paths, downstream, homeward_path, start + 25 ) );
+        CHECK( r067_return_record_bytes( other_stale ) == other_stale_before );
         REQUIRE( revise_structural_coarse_outbound_clock( frozen_site,
                  require_current_simulation_cursor( frozen_site ), journey.members(), old_paths,
-                 new_paths, homeward_path, start + 25 ) );
+                 new_paths, downstream, homeward_path, start + 25 ) );
         CHECK( frozen.activation.timers[static_cast<std::size_t>( activation_timer::expected_return )].suspended_turns ==
                old_expected_mark.suspended_turns );
         CHECK( frozen.activation.timers[static_cast<std::size_t>( activation_timer::missing_deadline )].suspended_turns ==
@@ -71016,6 +71044,81 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
         frozen_world.sites.push_back( frozen_site );
         const auto saved = round_trip_world( frozen_world );
         CHECK( saved.sites.front().active_outing.expected_return_minutes == frozen.expected_return_minutes );
+
+        // Exercise the same reforecast helper with a nonwatch frontier route.
+        // Bind a real adjacent outbound path through its required first
+        // waypoint and a native homeward path, then revise the first leg after
+        // a controlled active interval. No native body travel is claimed here.
+        auto frontier_site = journey.site();
+        auto &frontier = frontier_site.active_outing;
+        frontier.selected_watch_kind = structural_watch_kind::none;
+        frontier.selected_watch_omt = tripoint_abs_omt();
+        frontier.selected_watch_route_cost = -1;
+        frontier.alternate_watch_kind = structural_watch_kind::none;
+        frontier.alternate_watch_omt = tripoint_abs_omt();
+        frontier.alternate_watch_route_cost = -1;
+        frontier.alternate_watch_shared_route.clear();
+        frontier.alternate_watch_attempted = false;
+        frontier.alternate_watch_reposition_pending = false;
+        REQUIRE( approach == journey.home + point( 4, 0 ) );
+        const auto frontier_target = journey.home + point( 12, 0 );
+        std::vector<std::pair<tripoint_abs_omt, oter_id>> frontier_terrain;
+        on_out_of_scope restore_frontier( [&]() {
+            for( const auto &entry : frontier_terrain ) {
+                overmap_buffer.ter_set( entry.first, entry.second );
+            }
+        } );
+        for( int x = approach.x(); x <= frontier_target.x() + 1; ++x ) {
+            for( int y = approach.y() - 12; y <= approach.y() + 12; ++y ) {
+                const tripoint_abs_omt pos( x, y, approach.z() );
+                frontier_terrain.emplace_back( pos, overmap_buffer.ter( pos ) );
+                overmap_buffer.ter_set( pos, oter_id( x == approach.x() + 4 &&
+                                                      std::abs( y - approach.y() ) < 9 ?
+                                                      "river_center" : "field" ) );
+            }
+        }
+        frontier.target_omt = frontier_target;
+        frontier.target_footprint = { frontier_target };
+        frontier.target_id = "frontier_probe:2:" + frontier_target.to_string();
+        frontier.target_lead_id = frontier.target_id;
+        frontier.shared_route = { journey.home, approach, frontier_target, journey.home };
+        frontier.route_clock_anchor_minutes = -1;
+        frontier.route_clock_stale = false;
+        frontier.route_clock_outbound_unavailable = false;
+        frontier.activation = {};
+        REQUIRE( structural_outing_uses_frontier_route( frontier ) );
+        const auto last_leg = live_bandit_clock_downstream_path_for_test( frontier_site );
+        const auto frontier_home = overmap_buffer.get_travel_path(
+                                       frontier_target, journey.home, overmap_path_params::for_npc() ).points;
+        REQUIRE_FALSE( last_leg.empty() );
+        REQUIRE( last_leg.size() > static_cast<std::size_t>( rl_dist( approach, frontier_target ) + 10 ) );
+        REQUIRE_FALSE( frontier_home.empty() );
+        std::vector<tripoint_abs_omt> original_outbound = last_leg;
+        original_outbound.insert( original_outbound.end(), initial_leg.begin() + 1, initial_leg.end() );
+        structural_outing_plan frontier_plan;
+        frontier_plan.activity_id = frontier.activity_id;
+        frontier_plan.generation = frontier.generation;
+        frontier_plan.member_ids = frontier.member_ids;
+        frontier_plan.shared_route = frontier.shared_route;
+        structural_coarse_clock_read frontier_read;
+        frontier_read.party_qualified = true;
+        frontier_read.outbound_path = original_outbound;
+        frontier_read.homeward_path = frontier_home;
+        REQUIRE( bind_structural_coarse_route_clock( frontier_site, frontier_plan, frontier_read,
+                 frontier.started_minutes ) );
+        const int frontier_now = frontier.started_minutes + 300;
+        REQUIRE( revise_structural_coarse_outbound_clock( frontier_site,
+                 require_current_simulation_cursor( frontier_site ), journey.members(), old_paths,
+                 new_paths, last_leg, frontier_home, frontier_now ) );
+        const int distance = rl_dist( journey.home, frontier_target );
+        const int arrival_gate = std::clamp( distance * 15, 30, 240 ) +
+                                 std::clamp( distance * 10, 30, 180 );
+        const int remaining_outbound = ( static_cast<int>( changed_leg.size() - 1 ) +
+                                         static_cast<int>( last_leg.size() - 1 ) ) * 5;
+        const int expected_floor = frontier_now + std::max( std::max( 0, arrival_gate - 300 ),
+                                   remaining_outbound ) + 60 +
+                                   static_cast<int>( frontier_home.size() - 1 ) * 5 + 60;
+        CHECK( frontier.expected_return_minutes >= expected_floor );
     }
     prepare_live_bandit_abstract_scout_travel_for_test();
     for( const character_id id : journey.members() ) {
@@ -71029,6 +71132,26 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
         }
     }
     if( blocked_destination ) {
+        // The admitted route is no longer traversable and no replacement is
+        // available. Keep the existing active-time deadlines, but do not
+        // represent that invalid route as a current qualified forecast.
+        CHECK( journey.site().active_outing.route_clock_stale );
+        CHECK( journey.site().active_outing.route_clock_outbound_unavailable );
+        bandit_live_world::world_state stale_world;
+        stale_world.sites.push_back( journey.site() );
+        const auto stale_saved = round_trip_world( stale_world );
+        CHECK( stale_saved.sites.front().active_outing.route_clock_stale );
+        CHECK( stale_saved.sites.front().active_outing.route_clock_outbound_unavailable );
+        CHECK( stale_saved.sites.front().active_outing.expected_return_minutes == prior_return );
+        auto independently_stale = stale_saved.sites.front();
+        REQUIRE( mark_structural_coarse_route_stale( independently_stale,
+                 require_current_simulation_cursor( independently_stale ) ) );
+        CHECK( independently_stale.active_outing.route_clock_stale );
+        CHECK_FALSE( independently_stale.active_outing.route_clock_outbound_unavailable );
+        CHECK( independently_stale.active_outing.expected_return_minutes == prior_return );
+        CHECK( journey.site().active_outing.expected_return_minutes == prior_return );
+        CHECK( journey.site().active_outing.missing_deadline_minutes == prior_missing );
+        prepare_live_bandit_abstract_scout_travel_for_test();
         CHECK( journey.site().active_outing.expected_return_minutes == prior_return );
         CHECK( journey.site().active_outing.missing_deadline_minutes == prior_missing );
     } else {
@@ -71052,7 +71175,7 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
     }
     // Give the actual service an opportunity to move or replace the cached
     // route. A fresh solve alone is not evidence that either occurred.
-    for( int elapsed = 0; elapsed < 15; ++elapsed ) {
+    for( int elapsed = 0; elapsed < ( blocked_destination ? 300 : 15 ); ++elapsed ) {
         journey.next_minute();
         for( const character_id id : journey.members() ) {
             const auto body = overmap_buffer.find_npc( id );
@@ -71069,7 +71192,180 @@ TEST_CASE( "outbound scout orders recheck a changed next step",
             REQUIRE( overmap_buffer.find_npc( id ) );
             CHECK( overmap_buffer.find_npc( id )->pos_abs_omt() != journey.home );
         }
+    } else {
+        CHECK( journey.site().active_outing.route_clock_stale );
+        CHECK( journey.site().active_outing.expected_return_minutes == prior_return );
+        CHECK( journey.site().active_outing.missing_deadline_minutes == prior_missing );
+        // Restore only the destination; the original route's next step still
+        // fails and the river forces a genuine, longer route around it.
+        overmap_buffer.ter_set( approach, restore_same_route ? saved_approach : oter_id( "field" ) );
+        if( restore_same_route ) {
+            overmap_buffer.ter_set( blocked_next, saved_next );
+        }
+        const auto recovered = overmap_buffer.get_travel_path(
+                                   journey.home, approach, overmap_path_params::for_npc() ).points;
+        REQUIRE_FALSE( recovered.empty() );
+        if( restore_same_route ) {
+            REQUIRE( recovered == initial_leg );
+        } else {
+            REQUIRE( recovered.size() > initial_leg.size() + 15 );
+        }
+        prepare_live_bandit_abstract_scout_travel_for_test();
+        if( restore_same_route ) {
+            // Repeated checks and restored geometry earn no elapsed work.
+            CHECK( journey.site().active_outing.route_clock_stale );
+            CHECK( journey.site().active_outing.expected_return_minutes == prior_return );
+            CHECK( journey.site().active_outing.missing_deadline_minutes == prior_missing );
+            prepare_live_bandit_abstract_scout_travel_for_test();
+            CHECK( journey.site().active_outing.expected_return_minutes == prior_return );
+            CHECK( journey.site().active_outing.missing_deadline_minutes == prior_missing );
+            // A real qualified motor pass must move both original bodies before
+            // that same route can become a current remaining-work forecast.
+            for( int elapsed = 0; elapsed < 5; ++elapsed ) {
+                journey.next_minute();
+            }
+            for( const character_id id : journey.members() ) {
+                const auto body = overmap_buffer.find_npc( id );
+                REQUIRE( body );
+                REQUIRE( body->pos_abs_omt() != journey.home );
+            }
+        }
+        for( const character_id id : journey.members() ) {
+            const auto body = overmap_buffer.find_npc( id );
+            REQUIRE( body );
+            if( !restore_same_route ) {
+                CHECK( body->omt_path == recovered );
+            } else {
+                CHECK( body->omt_path.size() < recovered.size() );
+            }
+        }
+        CHECK_FALSE( journey.site().active_outing.route_clock_stale );
+        CHECK_FALSE( journey.site().active_outing.route_clock_outbound_unavailable );
+        CHECK( journey.site().active_outing.expected_return_minutes > prior_return );
+        const auto direct_home = overmap_buffer.get_travel_path(
+                                     initial.selected_watch_omt, journey.home,
+                                     overmap_path_params::for_npc() ).points;
+        const auto recovered_home = live_bandit_clock_homeward_path_for_test( journey.site(), direct_home );
+        REQUIRE_FALSE( recovered_home.empty() );
+        const int cadence = to_minutes<int>( time_between_npc_OM_moves );
+        const auto body_path = overmap_buffer.find_npc( journey.members().front() )->omt_path;
+        const int physical_minimum = journey.minute() + 120 + cadence *
+                                     ( static_cast<int>( body_path.size() - 1 ) + 1 +
+                                       static_cast<int>( recovered_home.size() - 1 ) );
+        INFO( "recovery minute=" << journey.minute() << " physical minimum=" << physical_minimum );
+        CHECK( journey.site().active_outing.expected_return_minutes >= physical_minimum );
+        const int revised_return = journey.site().active_outing.expected_return_minutes;
+        const int revised_missing = journey.site().active_outing.missing_deadline_minutes;
+        prepare_live_bandit_abstract_scout_travel_for_test();
+        CHECK( journey.site().active_outing.expected_return_minutes == revised_return );
+        CHECK( journey.site().active_outing.missing_deadline_minutes == revised_missing );
+        for( int elapsed = 0; elapsed < 15; ++elapsed ) {
+            journey.next_minute();
+        }
+        for( const character_id id : journey.members() ) {
+            const auto body = overmap_buffer.find_npc( id );
+            REQUIRE( body );
+            CHECK( body->pos_abs_omt() != journey.home );
+            CHECK( overmap_buffer.ter( body->pos_abs_omt() ) != oter_id( "river_center" ) );
+        }
     }
+}
+
+TEST_CASE( "restored first leg reforecasts when scouts reach its waypoint",
+           "[bandit_live_world][expedition_outbound_arrival_reforecast]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    const bool one_member = GENERATE( false, true );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true );
+    const auto initial = journey.site().active_outing;
+    REQUIRE( initial.route_clock_enrolled );
+    const auto waypoint = initial.shared_route[1];
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    bool adjacent = false;
+    for( int minute = 0; minute < 120; ++minute ) {
+        const auto first = overmap_buffer.find_npc( journey.members().front() );
+        const auto second = overmap_buffer.find_npc( journey.members().back() );
+        REQUIRE( first );
+        REQUIRE( second );
+        if( first->pos_abs_omt() != waypoint && second->pos_abs_omt() != waypoint &&
+            first->omt_path.size() == 2 && second->omt_path.size() == 2 &&
+            first->omt_path.front() == waypoint && second->omt_path.front() == waypoint ) {
+            adjacent = true;
+            break;
+        }
+        journey.next_minute();
+    }
+    REQUIRE( adjacent );
+    REQUIRE( journey.site().active_outing.actor_route_waypoint == 0 );
+    const int previous_return = journey.site().active_outing.expected_return_minutes;
+    const int previous_missing = journey.site().active_outing.missing_deadline_minutes;
+    const auto terrain = overmap_buffer.ter( waypoint );
+    on_out_of_scope restore_terrain( [&]() {
+        overmap_buffer.ter_set( waypoint, terrain );
+    } );
+    overmap_buffer.ter_set( waypoint, oter_id( "river_center" ) );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    REQUIRE( journey.site().active_outing.route_clock_stale );
+    for( int minute = 0; minute < 300; ++minute ) {
+        journey.next_minute();
+    }
+    CHECK( journey.site().active_outing.expected_return_minutes == previous_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes == previous_missing );
+    overmap_buffer.ter_set( waypoint, terrain );
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    REQUIRE( journey.site().active_outing.route_clock_stale );
+    CHECK( journey.site().active_outing.expected_return_minutes == previous_return );
+    if( one_member ) {
+        // Invoke the real native motor on one already-qualified one-edge order,
+        // then exercise the same post-motor owner with its observed identity.
+        auto first = overmap_buffer.find_npc( journey.members().front() );
+        auto second = overmap_buffer.find_npc( journey.members().back() );
+        REQUIRE( first );
+        REQUIRE( second );
+        REQUIRE( first->omt_path.size() == 2 );
+        REQUIRE( first->omt_path.back() == first->pos_abs_omt() );
+        first->omt_path.pop_back();
+        REQUIRE( first->omt_path.back() == waypoint );
+        first->travel_overmap( first->omt_path.back() );
+        REQUIRE( first->pos_abs_omt() == waypoint );
+        REQUIRE( first->omt_path.empty() );
+        REQUIRE( first->goal == npc::no_goal_point );
+        REQUIRE( second->pos_abs_omt() != waypoint );
+        CHECK_FALSE( first->get_bandit_live_world_projection_lease().present );
+        CHECK_FALSE( second->get_bandit_live_world_projection_lease().present );
+        prepare_live_bandit_abstract_scout_travel_moved_for_test( { first->getID() } );
+        CHECK( second->pos_abs_omt() != waypoint );
+    } else {
+        for( int minute = 0; minute < 5; ++minute ) {
+            journey.next_minute();
+            if( std::all_of( journey.members().begin(), journey.members().end(),
+            [&]( const character_id id ) {
+                const auto body = overmap_buffer.find_npc( id );
+                return body && body->pos_abs_omt() == waypoint;
+            } ) ) {
+                break;
+            }
+        }
+        for( const auto id : journey.members() ) {
+            const auto body = overmap_buffer.find_npc( id );
+            REQUIRE( body );
+            CHECK( body->pos_abs_omt() == waypoint );
+            CHECK( body->omt_path.empty() );
+            CHECK( body->goal == npc::no_goal_point );
+            CHECK_FALSE( body->get_bandit_live_world_projection_lease().present );
+        }
+    }
+    CHECK_FALSE( journey.site().active_outing.route_clock_stale );
+    CHECK_FALSE( journey.site().active_outing.route_clock_outbound_unavailable );
+    CHECK( journey.site().active_outing.expected_return_minutes > previous_return );
+    CHECK( journey.site().active_outing.missing_deadline_minutes > previous_missing );
+    const int forecast = journey.site().active_outing.expected_return_minutes;
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    CHECK( journey.site().active_outing.expected_return_minutes == forecast );
 }
 
 TEST_CASE( "C++-built normal level-one report commits only an exact authorized claim",

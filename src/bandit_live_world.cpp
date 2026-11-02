@@ -747,6 +747,7 @@ bool invalidate_structural_route_clock( bandit_live_world::active_outing_state &
     }
     // Keep the existing deadline; an unqualified change must not renew it.
     outing.route_clock_stale = true;
+    outing.route_clock_outbound_unavailable = false;
     return true;
 }
 
@@ -10324,6 +10325,9 @@ void active_outing_state::serialize( JsonOut &json ) const
         json.member( "route_clock_travel_minutes", route_clock_travel_minutes );
         json.member( "route_clock_homeward_minutes", route_clock_homeward_minutes );
         json.member( "route_clock_stale", route_clock_stale );
+        if( route_clock_outbound_unavailable ) {
+            json.member( "route_clock_outbound_unavailable", true );
+        }
         json.member( "route_clock_homeward_actual", route_clock_homeward_actual );
     }
     json.member( "simulation_owner", to_string( owner ) );
@@ -10484,7 +10488,8 @@ void active_outing_state::deserialize( const JsonObject &jo )
     if( has_route_clock || jo.has_member( "route_clock_remaining_minutes" ) ||
         jo.has_member( "route_clock_travel_minutes" ) ||
         jo.has_member( "route_clock_homeward_minutes" ) || jo.has_member( "route_clock_stale" ) ||
-        jo.has_member( "route_clock_homeward_actual" ) ) {
+        jo.has_member( "route_clock_homeward_actual" ) ||
+        jo.has_member( "route_clock_outbound_unavailable" ) ) {
         if( !has_route_clock || !jo.has_member( "route_clock_remaining_minutes" ) ||
             !jo.has_member( "route_clock_travel_minutes" ) ||
             !jo.has_member( "route_clock_homeward_minutes" ) ) {
@@ -10495,8 +10500,10 @@ void active_outing_state::deserialize( const JsonObject &jo )
         jo.read( "route_clock_travel_minutes", candidate.route_clock_travel_minutes );
         jo.read( "route_clock_homeward_minutes", candidate.route_clock_homeward_minutes );
         jo.read( "route_clock_stale", candidate.route_clock_stale );
+        jo.read( "route_clock_outbound_unavailable", candidate.route_clock_outbound_unavailable );
         jo.read( "route_clock_homeward_actual", candidate.route_clock_homeward_actual );
-        if( candidate.kind != outing_kind::structural_sortie || !candidate.route_clock_enrolled ||
+        if( ( candidate.route_clock_outbound_unavailable && !candidate.route_clock_stale ) ||
+            candidate.kind != outing_kind::structural_sortie || !candidate.route_clock_enrolled ||
             candidate.route_clock_anchor_minutes < 0 || candidate.route_clock_remaining_minutes < 0 ||
             candidate.route_clock_travel_minutes < 0 || candidate.route_clock_homeward_minutes < 0 ||
             candidate.route_clock_homeward_minutes > candidate.route_clock_travel_minutes ||
@@ -18099,19 +18106,35 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const simulation_advance_cursor &cursor, const std::vector<character_id> &member_ids,
         const std::vector<std::vector<tripoint_abs_omt>> &old_paths,
         const std::vector<std::vector<tripoint_abs_omt>> &new_paths,
-        const std::vector<tripoint_abs_omt> &homeward_path, const int now_minutes )
+        const std::vector<tripoint_abs_omt> &downstream_path,
+        const std::vector<tripoint_abs_omt> &homeward_path, const int now_minutes,
+        const bool observed_party_progress )
 {
     active_outing_state &outing = site.active_outing;
     if( !outing.route_clock_enrolled || outing.route_clock_anchor_minutes < 0 ||
-        outing.route_clock_stale || outing.kind != outing_kind::structural_sortie ||
+        ( outing.route_clock_stale && !outing.route_clock_outbound_unavailable ) ||
+        outing.kind != outing_kind::structural_sortie ||
         outing.phase != scout_phase::outbound || outing.actor_route_waypoint != 0 ||
+        outing.route_clock_anchor_minutes != outing.started_minutes ||
         outing.shared_route.size() < 3 || !simulation_cursor_matches( outing, cursor ) ||
         now_minutes < outing.last_advanced_minutes ||
         ( outing.activation.initialized() && !outing.activation.active ) ||
         member_ids.empty() || member_ids.size() != old_paths.size() ||
-        member_ids.size() != new_paths.size() || homeward_path.empty() ||
+        member_ids.size() != new_paths.size() || downstream_path.empty() ||
+        downstream_path.front() != structural_outing_travel_destination( outing ) ||
+        downstream_path.back() != outing.shared_route[1] || homeward_path.empty() ||
         homeward_path.front() != site.anchor ||
         homeward_path.back() != structural_outing_travel_destination( outing ) ) {
+        return false;
+    }
+    // Only the original abstract party may requalify the specific unavailable
+    // outbound route. Other stale reasons remain owned by their own handoff,
+    // casualty and watch transitions.
+    if( outing.route_clock_stale &&
+        ( outing.owner != simulation_owner::abstract || outing.handoff_epoch != 0 ||
+          !outing.crossing.empty() || !outing.local_handoff.members.empty() ||
+          outing.local_handoff.is_active() || outing.local_handoff.is_abstract_resume() ||
+          !outing.casualty_ids.empty() || !outing.resolved_member_ids.empty() ) ) {
         return false;
     }
     std::vector<character_id> expected_ids;
@@ -18149,11 +18172,24 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         old_edges = std::max<std::int64_t>( old_edges, old_path.size() - 1 );
         new_edges = std::max<std::int64_t>( new_edges, new_path.size() - 1 );
     }
-    if( !changed ) {
+    if( !changed && !( outing.route_clock_stale && outing.route_clock_outbound_unavailable &&
+                        observed_party_progress ) ) {
         return false;
     }
-    for( std::size_t i = 1; i < homeward_path.size(); ++i ) {
-        if( rl_dist( homeward_path[i - 1], homeward_path[i] ) != 1 ) {
+    for( const auto *path : { &downstream_path, &homeward_path } ) {
+        for( std::size_t i = 1; i < path->size(); ++i ) {
+            if( rl_dist( ( *path )[i - 1], ( *path )[i] ) != 1 ) {
+                return false;
+            }
+        }
+    }
+    // Paths are destination-first. Each executor waypoint must occur in
+    // reverse order, so an otherwise shorter path cannot skip a required leg.
+    const int destination_index = structural_outing_destination_waypoint( outing );
+    auto waypoint = downstream_path.rbegin();
+    for( int i = 1; i <= destination_index; ++i ) {
+        waypoint = std::find( waypoint, downstream_path.rend(), outing.shared_route[i] );
+        if( waypoint == downstream_path.rend() ) {
             return false;
         }
     }
@@ -18174,11 +18210,30 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     const std::int64_t new_travel = new_edges * cadence;
     const std::int64_t new_homeward = static_cast<std::int64_t>( homeward_path.size() - 1 ) * cadence;
     const std::int64_t homeward_change = new_homeward - outing.route_clock_homeward_minutes;
-    const std::int64_t remaining = static_cast<std::int64_t>( outing.route_clock_remaining_minutes ) +
-                                   std::max<std::int64_t>( gate_remaining, new_travel ) -
-                                   std::max<std::int64_t>( gate_remaining, old_travel ) + homeward_change;
-    const std::int64_t travel = static_cast<std::int64_t>( outing.route_clock_travel_minutes ) +
-                                new_travel - old_travel + homeward_change;
+    const std::int64_t revised = static_cast<std::int64_t>( outing.route_clock_remaining_minutes ) +
+                                 std::max<std::int64_t>( gate_remaining, new_travel ) -
+                                 std::max<std::int64_t>( gate_remaining, old_travel ) + homeward_change;
+    // The original anchor remains authoritative. A detour discovered after a
+    // long hold must include the active time already spent and the work that
+    // still follows this first leg. These service allowances are forecasts,
+    // not physical body time.
+    const std::int64_t later_outbound = static_cast<std::int64_t>(
+                                            downstream_path.size() - 1 ) * cadence;
+    const bool watch = structural_outing_uses_watch_route( outing );
+    const int phase_gate = watch ? structural_stalking_delay_minutes( site.anchor,
+                           structural_outing_travel_destination( outing ) ) :
+                           structural_arrival_delay_minutes( site.anchor,
+                                   structural_outing_travel_destination( outing ) );
+    const std::int64_t floor = static_cast<std::int64_t>( elapsed ) +
+                               std::max<std::int64_t>( std::max( 0, phase_gate - elapsed ),
+                                       new_travel + ( watch ? 0 : later_outbound ) ) +
+                               ( watch ? 60 + later_outbound + 120 + 60 : 60 ) +
+                               new_homeward + 60;
+    const std::int64_t remaining = std::max( revised, floor );
+    const std::int64_t travel = std::max(
+                                    static_cast<std::int64_t>( outing.route_clock_travel_minutes ) +
+                                    new_travel - old_travel + homeward_change,
+                                    new_travel + later_outbound + new_homeward );
     if( remaining < travel || travel < new_homeward || new_homeward > INT_MAX ||
         remaining > INT_MAX || travel > INT_MAX ) {
         return false;
@@ -18197,6 +18252,8 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         }
     }
     outing.route_clock_remaining_minutes = static_cast<int>( remaining );
+    outing.route_clock_stale = false;
+    outing.route_clock_outbound_unavailable = false;
     outing.route_clock_travel_minutes = static_cast<int>( travel );
     outing.route_clock_homeward_minutes = static_cast<int>( new_homeward );
     outing.expected_return_minutes = structural_expected_return_for_state( outing, site );
@@ -18211,15 +18268,26 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
 }
 
 bool mark_structural_coarse_route_stale( site_record &site,
-        const simulation_advance_cursor &cursor )
+        const simulation_advance_cursor &cursor, const bool outbound_unavailable )
 {
     active_outing_state &outing = site.active_outing;
     if( !outing.route_clock_enrolled || outing.route_clock_anchor_minutes < 0 ||
-        outing.route_clock_stale || outing.kind != outing_kind::structural_sortie ||
+        outing.kind != outing_kind::structural_sortie ||
         !simulation_cursor_matches( outing, cursor ) ) {
         return false;
     }
-    return invalidate_structural_route_clock( outing );
+    if( outing.route_clock_stale ) {
+        const bool changed = !outbound_unavailable && outing.route_clock_outbound_unavailable;
+        if( changed ) {
+            outing.route_clock_outbound_unavailable = false;
+        }
+        return changed;
+    }
+    if( !invalidate_structural_route_clock( outing ) ) {
+        return false;
+    }
+    outing.route_clock_outbound_unavailable = outbound_unavailable;
+    return true;
 }
 
 bool refresh_structural_coarse_homeward_clock( site_record &site,
@@ -18268,6 +18336,7 @@ bool refresh_structural_coarse_homeward_clock( site_record &site,
     outing.route_clock_travel_minutes = static_cast<int>( longest );
     outing.route_clock_remaining_minutes = static_cast<int>( longest ) + 60;
     outing.route_clock_stale = false;
+    outing.route_clock_outbound_unavailable = false;
     outing.route_clock_homeward_actual = true;
     outing.expected_return_minutes = structural_expected_return_for_state( outing, site );
     outing.missing_deadline_minutes = structural_missing_deadline_for_state( outing );

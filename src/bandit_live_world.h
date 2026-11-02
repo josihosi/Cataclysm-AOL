@@ -956,6 +956,7 @@ struct active_outing_state {
     int route_clock_travel_minutes = -1;
     int route_clock_homeward_minutes = -1;
     bool route_clock_stale = false;
+    bool route_clock_outbound_unavailable = false;
     bool route_clock_homeward_actual = false;
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = 0;
@@ -1623,7 +1624,9 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
         const simulation_advance_cursor &cursor, const std::vector<character_id> &member_ids,
         const std::vector<std::vector<tripoint_abs_omt>> &old_paths,
         const std::vector<std::vector<tripoint_abs_omt>> &new_paths,
-        const std::vector<tripoint_abs_omt> &homeward_path, int now_minutes );
+        const std::vector<tripoint_abs_omt> &downstream_path,
+        const std::vector<tripoint_abs_omt> &homeward_path, int now_minutes,
+        bool observed_party_progress = false );
 
 // Refresh once from an authenticated current homeward route, or after a
 // material change marked the previous estimate stale.
@@ -1633,7 +1636,7 @@ bool refresh_structural_coarse_homeward_clock( site_record &site,
         int now_minutes );
 
 bool mark_structural_coarse_route_stale( site_record &site,
-        const simulation_advance_cursor &cursor );
+        const simulation_advance_cursor &cursor, bool outbound_unavailable = false );
 
 // The lead and outing keep the observed source z; a watch is selected on the
 // traversable plane used by the scouts.
