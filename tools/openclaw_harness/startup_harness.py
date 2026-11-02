@@ -211,7 +211,8 @@ PRODUCT_BINARY_RELEVANT_PATHS: Tuple[str, ...] = (
     "Makefile",
     "make.sh",
 )
-PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
+PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache",
+                                 ".harness-owner.lock", ".saved-world-custody"}
 RUNTIME_BINDING_FILENAME = "runtime.binding.json"
 CONTRACT_PREFLIGHT_FILENAME = "contract.preflight.json"
 TRANSITION_EVENT_FILENAME = "transition.events.jsonl"
@@ -3476,11 +3477,15 @@ def _publish_saved_world_custody(path: Path, record: Mapping[str, Any]) -> None:
 
 def install_saved_world_snapshot(profile: str, target_world: str,
                                  source_path: str | Path, *, replace: bool = False,
-                                 disposable_run_id: str = "") -> Dict[str, Any]:
+                                 disposable_run_id: str = "",
+                                 stage_transform: Optional[Callable[[Path], Any]] = None,
+                                 require_fresh: bool = False) -> Dict[str, Any]:
     """Install a byte-verified snapshot without silently replacing a populated world."""
     source_world = Path(source_path).expanduser().resolve()
     if not source_world.is_dir():
         raise SystemExit(f"saved-world snapshot is not a directory: {source_world}")
+    if stage_transform is not None and not (disposable_run_id and require_fresh):
+        raise SystemExit("fixture transformation requires fresh disposable custody")
     target_world = str(target_world or "").strip()
     if not target_world:
         raise SystemExit("saved-world snapshot requires --world")
@@ -3507,6 +3512,8 @@ def install_saved_world_snapshot(profile: str, target_world: str,
             raise SystemExit("saved-world custody directory is unsafe")
         custody_path = custody_dir / (hashlib.sha256(target_world.encode()).hexdigest() + ".json")
     destination_existed = destination.exists()
+    if require_fresh and (destination_existed or raw_destination.is_symlink()):
+        raise SystemExit("disposable fixture requires a fresh world destination")
     if custody_path is not None and not destination_existed and (custody_path.exists() or custody_path.is_symlink()):
         raise SystemExit("saved-world custody already exists")
     if destination.exists():
@@ -3522,9 +3529,13 @@ def install_saved_world_snapshot(profile: str, target_world: str,
     ensure_dir(save_root)
     # Repeating the world name here can push otherwise usable Windows save
     # paths beyond MAX_PATH. Reserve one short sibling owned by this copy.
-    staging = Path(tempfile.mkdtemp(prefix=".snapshot-", dir=save_root))
+    staging_root = Path(tempfile.mkdtemp(prefix=".snapshot-", dir=save_root))
+    # Some fixture transforms authenticate the world name. Keep it intact in
+    # the staging directory while retaining the short ordinary snapshot path.
+    staging = staging_root / target_world if stage_transform is not None else staging_root
     record_published = False
     installed = False
+    transform_report = None
     continuity = save_root / ".save-continuity" / target_world
     continuity_created = False
     try:
@@ -3533,6 +3544,11 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         staged_hash, staged_error = sha256_tree(staging)
         if staged_error or staged_hash != source_hash:
             raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
+        if stage_transform is not None:
+            transform_report = stage_transform(staging)
+            staged_hash, staged_error = sha256_tree(staging)
+            if staged_error:
+                raise SystemExit(f"fixture transformed copy verification failed: {staged_error}")
         if custody_path is not None and not destination_existed:
             # Reserve the native save-continuity namespace before launch.  An
             # existing sibling belongs to someone else, even for a fresh world.
@@ -3576,14 +3592,35 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         if staging.exists():
             _make_profile_tree_owner_writable(staging)
             shutil.rmtree(staging)
+        staging_cleanup_error = None
+        if staging_root != staging and staging_root.exists():
+            try:
+                staging_root.rmdir()
+            except OSError as error:
+                # If publication already happened, roll back only our exact
+                # inode so the failed invocation does not strand its record
+                # or prevent a fresh retry. Never remove a replacement.
+                if installed:
+                    if destination.is_symlink() or not destination.is_dir() or \
+                            not os.path.samestat(destination.stat(), info):
+                        raise
+                    shutil.rmtree(destination)
+                    installed = False
+                staging_cleanup_error = error
+                try:
+                    staging_root.rmdir()  # Retry only the still-empty owned parent.
+                except OSError:
+                    pass
         if record_published and not installed:
             custody_path.unlink(missing_ok=True)
         if continuity_created and not installed and not continuity.is_symlink() and continuity.exists():
             if os.path.samestat(continuity.stat(), continuity_info):
                 continuity.rmdir()  # Only our still-empty reservation.
+        if staging_cleanup_error is not None and sys.exc_info()[0] is None:
+            raise staging_cleanup_error
     installed_hash, installed_error = sha256_tree(destination)
     return {
-        "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
+        "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == staged_hash else "red_saved_world_snapshot_changed",
         "source": str(source_world),
         "destination": str(destination),
         "source_sha256": source_hash,
@@ -3593,6 +3630,7 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         "profile_snapshot_skipped": True,
         "profile_copy_mode_policy": "owner_writable_files_and_directories",
         "source_mode_bits_changed": False,
+        **({"transform_report": transform_report} if stage_transform is not None else {}),
     }
 
 
@@ -39796,7 +39834,18 @@ def fixture_source_binding(
     return binding
 
 
-def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_profile: str = "") -> Dict[str, Any]:
+def preflight_disposable_fixture_destination(profile: str, world: str) -> None:
+    """Reject a pre-existing target before profile or fixture setup writes."""
+    if not world or world in {".", ".."} or Path(world).name != world:
+        raise SystemExit("disposable fixture requires an exact world")
+    save_root = save_dir_for_profile(profile)
+    destination = save_root / world
+    if save_root.is_symlink() or destination.exists() or destination.is_symlink():
+        raise SystemExit("disposable fixture requires a fresh world destination")
+
+
+def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_profile: str = "",
+                    *, disposable_world: str = "", disposable_run_id: str = "") -> Dict[str, Any]:
     source_profile = resolve_profile_name(fixture_profile or profile)
     resolved = resolve_fixture_payload(fixture_name, source_profile)
     if (
@@ -39811,11 +39860,49 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
     save_src = resolved["save_src"]
     save_transforms = list(resolved.get("save_transforms", []))
     save_dst = save_dir_for_profile(profile)
+    worlds = sorted([p for p in save_src.iterdir() if p.is_dir()], key=lambda p: p.name.lower())
+    if bool(disposable_world) != bool(disposable_run_id):
+        raise SystemExit("disposable fixture requires an exact world and run")
+    if disposable_run_id and (disposable_world in {".", ".."} or
+                              Path(disposable_world).name != disposable_world or
+                              sum(p.name == disposable_world for p in worlds) != 1):
+        raise SystemExit("disposable fixture world is not an exact fixture world")
+    if disposable_run_id:
+        owner = current_owner(userdir_for_profile(profile))
+        if owner is None or owner.run_id != disposable_run_id:
+            raise SystemExit("disposable saved-world copy requires the exact writable run owner")
+        preflight_disposable_fixture_destination(profile, disposable_world)
+        # Disposable authority covers the selected fresh world only.
+        worlds = [path for path in worlds if path.name == disposable_world]
     ensure_dir(save_dst)
     installed_worlds = []
     applied_save_transforms: List[Dict[str, Any]] = []
-    for world_dir in sorted([p for p in save_src.iterdir() if p.is_dir()], key=lambda p: p.name.lower()):
+    disposable_install: Dict[str, Any] = {}
+    for world_dir in worlds:
         dst = save_dst / world_dir.name
+        if disposable_run_id and world_dir.name == disposable_world:
+            def transform_staged_world(staged: Path) -> List[Dict[str, Any]]:
+                reports = apply_fixture_save_transforms(staged, save_transforms)
+
+                def rebase(value: Any) -> Any:
+                    if isinstance(value, str) and (value == str(staged) or
+                                                   value.startswith(str(staged) + os.sep)):
+                        return str(dst) + value[len(str(staged)):]
+                    if isinstance(value, list):
+                        return [rebase(item) for item in value]
+                    if isinstance(value, dict):
+                        return {key: rebase(item) for key, item in value.items()}
+                    return value
+                return rebase(reports)
+
+            disposable_install = install_saved_world_snapshot(
+                profile, disposable_world, world_dir, disposable_run_id=disposable_run_id,
+                stage_transform=transform_staged_world, require_fresh=True )
+            if disposable_install.get("status") != "green_saved_world_snapshot_installed":
+                raise SystemExit("disposable fixture copy verification failed")
+            applied_save_transforms.extend(disposable_install.pop("transform_report", []))
+            installed_worlds.append(world_dir.name)
+            continue
         if dst.exists() and not replace:
             raise SystemExit(f"Destination world already exists: {dst} (use --replace)")
         if dst.exists():
@@ -39839,6 +39926,7 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
         "binding": fixture_source_binding(fixture_name, source_profile),
         "installed_worlds": installed_worlds,
         "applied_save_transforms": applied_save_transforms,
+        **({"disposable_world_install": disposable_install} if disposable_install else {}),
         "destination": str(save_dst),
         "manifest": resolved["manifest"],
     }
@@ -40236,7 +40324,7 @@ def resolve_profile_snapshot_payload(
     manifest = load_fixture_manifest(snapshot_dir)
     copyable_entries = [
         entry for entry in sorted(snapshot_dir.iterdir(), key=lambda p: p.name.lower())
-        if entry.name not in PROFILE_SNAPSHOT_SKIP_ENTRIES
+        if entry.name.casefold() not in PROFILE_SNAPSHOT_SKIP_ENTRIES
     ]
     chain = list(seen or [])
     chain.append((source_profile, snapshot_name))
@@ -40294,6 +40382,8 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
     copied_entries = []
     skipped_entries = sorted(PROFILE_SNAPSHOT_SKIP_ENTRIES)
     for entry in resolved["copyable_entries"]:
+        if entry.name.casefold() in PROFILE_SNAPSHOT_SKIP_ENTRIES:
+            continue
         dst = userdir / entry.name
         if dst.exists() or dst.is_symlink():
             if dst.is_dir() and not dst.is_symlink():
@@ -41353,8 +41443,10 @@ def _run_startup(args: argparse.Namespace) -> int:
             raise SystemExit(f"harness new-world target already exists: {harness_new_world}")
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
     saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
-    if getattr(args, "disposable_saved_world", False) and not saved_world_snapshot:
-        raise SystemExit("disposable saved-world purpose requires a saved-world snapshot")
+    if getattr(args, "disposable_saved_world", False) and not (saved_world_snapshot or args.fixture):
+        raise SystemExit("disposable saved-world purpose requires a snapshot or fixture")
+    if getattr(args, "disposable_saved_world", False) and not args.world:
+        raise SystemExit("disposable saved-world purpose requires an exact world")
     profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
     artifact_run_dir_value = str(getattr(args, "harness_artifact_run_dir", "") or "").strip()
     artifact_run_dir: Optional[Path] = None
@@ -41390,6 +41482,8 @@ def _run_startup(args: argparse.Namespace) -> int:
         print(json.dumps(dry_result, indent=2, ensure_ascii=False))
         return 0
 
+    if getattr(args, "disposable_saved_world", False) and args.fixture and not saved_world_snapshot:
+        preflight_disposable_fixture_destination(profile, args.world)
     profile_snapshot_result: Dict[str, Any] = {}
     saved_world_snapshot_result: Dict[str, Any] = {}
     if saved_world_snapshot:
@@ -41408,12 +41502,12 @@ def _run_startup(args: argparse.Namespace) -> int:
         profile, profile_option_overrides, config_profile=config_profile)
     fixture_install_result: Dict[str, Any] = {}
     if args.fixture and not saved_world_snapshot:
+        fixture_options = {}
+        if getattr(args, "disposable_saved_world", False):
+            fixture_options = {"disposable_world": args.world, "disposable_run_id": str(args.harness_run_id)}
         fixture_install_result = install_fixture(
-            profile,
-            args.fixture,
-            replace=args.replace_existing_worlds,
-            fixture_profile=getattr(args, "fixture_profile", ""),
-        )
+            profile, args.fixture, replace=args.replace_existing_worlds,
+            fixture_profile=getattr(args, "fixture_profile", ""), **fixture_options )
     flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
     plan = build_plan(
         profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
@@ -43532,6 +43626,8 @@ def run_launch_only_handoff(
     capture_world_after: bool,
     portal_storm_policy: Dict[str, Any],
     report_filename: str = "handoff.report.json",
+    disposable_fixture: bool = False,
+    transition_event_run_id: str = "",
 ) -> int:
     scenario_name = str(scenario.get("name", args.scenario))
     scenario_manifest = scenario_manifest_binding(scenario)
@@ -43584,6 +43680,8 @@ def run_launch_only_handoff(
     fixture_install_result: Dict[str, Any] = {}
     run_dir: Optional[Path] = None
     try:
+        if disposable_fixture:
+            preflight_disposable_fixture_destination(profile, world)
         if profile_snapshot:
             profile_snapshot_result = install_profile_snapshot(
                 profile,
@@ -43593,11 +43691,14 @@ def run_launch_only_handoff(
         profile_option_override_result = apply_profile_option_overrides(
             profile, profile_option_overrides, config_profile=config_profile)
         if fixture:
+            fixture_options = ({"disposable_world": world, "disposable_run_id": transition_event_run_id}
+                               if disposable_fixture else {})
             fixture_install_result = install_fixture(
                 profile,
                 fixture,
                 replace=replace_existing_worlds,
                 fixture_profile=fixture_profile,
+                **fixture_options,
             )
         flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
         plan = build_plan(profile, world, fixture)
@@ -43733,7 +43834,7 @@ def run_launch_only_handoff(
             return 1
 
         ensure_dir(config_dir_for_profile(profile))
-        transition_binding = bind_transition_event_stream(run_dir)
+        transition_binding = bind_transition_event_stream(run_dir, run_id=transition_event_run_id)
         write_json(run_dir / TRANSITION_EVENT_BINDING_FILENAME, {
             "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
             **transition_binding,
@@ -44006,6 +44107,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("Registry selected scenario path and hash must travel together")
     scenario = load_scenario(args.scenario, source_path=selected_path or None,
                              expected_sha256=str(getattr(args, "registry_selected_source_sha256", "") or ""))
+    if handoff and getattr(args, "launch_only", False) and str(
+            getattr(args, "saved_world_snapshot", "") or scenario.get("saved_world_snapshot", "")).strip():
+        raise SystemExit("launch-only handoff does not support saved-world snapshots")
     if isinstance(scenario.get("controlled_camp_setup"), Mapping) and (
             str(getattr(args, "saved_world_snapshot", "") or scenario.get("saved_world_snapshot", "")).strip()
             or getattr(args, "disposable_saved_world", False)):
@@ -44013,6 +44117,25 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     args._loaded_scenario = scenario
     mode = scenario_playtest_mode(scenario)
     if mode != "terminal":
+        runtime_contract = scenario.get("runtime_contract", {})
+        declared_disposable = isinstance(runtime_contract, Mapping) and \
+                              runtime_contract.get("disposable_copy") is True
+        selected_fixture = getattr(args, "fixture", None)
+        if selected_fixture is None:
+            selected_fixture = scenario.get("fixture", "")
+        if handoff and getattr(args, "launch_only", False) and selected_fixture and \
+                (getattr(args, "disposable_saved_world", False) or declared_disposable) and \
+                not getattr(args, "dry_run", False):
+            run_id = registry_authority_transition_run_id(
+                str(getattr(args, "registry_launch_receipt", "") or "")) or uuid.uuid4().hex
+            args._terminal_run_id = run_id
+            profile = resolve_profile_name(str(getattr(args, "profile", "") or scenario.get("profile", "")))
+            try:
+                with own_writable_root(userdir_for_profile(profile), run_id,
+                                       process_generation_snapshot, process_generation_matches):
+                    return _run_probe_mode(args, handoff=handoff)
+            except WritableRootConflict as error:
+                raise SystemExit(str(error)) from error
         return _run_probe_mode(args, handoff=handoff)
     executable = str(getattr(args, "executable", "") or detect_executable())
     readiness = terminal_mode_readiness(
@@ -44124,6 +44247,13 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         profile_option_overrides = {}
         replace_existing_worlds = False
         post_relaunch = None
+    runtime_contract = scenario.get("runtime_contract", {})
+    fixture_disposable = bool(fixture and not post_relaunch_continuation and
+                              (getattr(args, "disposable_saved_world", False) or
+                               (isinstance(runtime_contract, Mapping) and
+                                runtime_contract.get("disposable_copy") is True)))
+    if fixture_disposable and not world:
+        raise SystemExit("disposable fixture requires an exact world")
     bind_pre_descriptor_bootstrap_objectives(steps, scenario)
     try:
         native_preview_requests = native_preview_segment_requests(steps)
@@ -44269,6 +44399,8 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             capture_world_after=capture_world_after,
             portal_storm_policy=portal_storm_policy,
             report_filename=report_filename,
+            disposable_fixture=fixture_disposable,
+            transition_event_run_id=transition_event_run_id if fixture_disposable else "",
         )
 
     if isinstance(scenario.get("controlled_camp_setup"), Mapping):
@@ -44324,12 +44456,12 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         if harness_new_world_scenario:
             start_cmd.extend(["--harness-new-world-scenario", harness_new_world_scenario])
     explicit_saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
-    if getattr(args, "disposable_saved_world", False) and not explicit_saved_world_snapshot:
-        raise SystemExit("disposable saved-world purpose requires a saved-world snapshot")
+    if getattr(args, "disposable_saved_world", False) and not (explicit_saved_world_snapshot or fixture):
+        raise SystemExit("disposable saved-world purpose requires a snapshot or fixture")
     if explicit_saved_world_snapshot:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
-        if getattr(args, "disposable_saved_world", False):
-            start_cmd.append("--disposable-saved-world")
+    if getattr(args, "disposable_saved_world", False) or (fixture_disposable and not explicit_saved_world_snapshot):
+        start_cmd.append("--disposable-saved-world")
     explicit_executable = str(getattr(args, "executable", "") or "").strip()
     if not explicit_executable:
         explicit_executable = str(detect_executable())
