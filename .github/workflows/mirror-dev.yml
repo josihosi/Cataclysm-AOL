@@ -16,7 +16,8 @@ jobs:
   mirror:
     if: github.repository == 'josihosi/Cataclysm-AOL'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # History fetch has exhausted the former 20-minute job budget.
+    timeout-minutes: 60
     steps:
       - name: Read the current dev frontier
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
