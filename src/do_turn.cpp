@@ -2481,6 +2481,14 @@ void evaluate_live_bandit_activation()
                 if( actor && !actor->is_dead() ) {
                     eligible |= living_nearby.count( id ) != 0;
                     bodies.emplace( id, body_clock( *actor ) );
+                } else if( !actor && !confirmed_dead ) {
+                    // A saved body may not have been loaded into the overmap
+                    // buffer yet. Retain its authenticated existing anchor;
+                    // absence neither creates a body nor settles its debt.
+                    const auto previous = outing.activation.bodies.find( id );
+                    if( previous != outing.activation.bodies.end() ) {
+                        bodies.emplace( id, static_cast<int>( previous->second.world_turn ) );
+                    }
                 }
             }
             // A dead party must remain available to ordinary casualty
@@ -2520,6 +2528,14 @@ void evaluate_live_bandit_activation()
                   std::find( site.footprint.begin(), site.footprint.end(), actor->pos_abs_omt() ) !=
                   site.footprint.end() ) ) {
                 home_bodies.emplace( member.npc_id, body_clock( *actor ) );
+            } else if( !actor ) {
+                // Preserve only a previously owned mark for an unavailable
+                // home-assigned member. Admission still authenticates its body
+                // and physical location before consuming any interval.
+                const auto previous = site.home_activation.bodies.find( member.npc_id );
+                if( previous != site.home_activation.bodies.end() ) {
+                    home_bodies.emplace( member.npc_id, static_cast<int>( previous->second.world_turn ) );
+                }
             }
         }
         site.home_activation.evaluate( now, live_bandit_inside_activation( site.anchor ),
@@ -10153,7 +10169,8 @@ std::optional<std::vector<shared_ptr_fast<npc>>> read_live_bandit_abstract_bodie
 
 bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         const std::vector<shared_ptr_fast<npc>> &members, bool &changed,
-        std::set<character_id> &blocked );
+        std::set<character_id> &blocked,
+        const std::set<character_id> &loaded_before_settlement = {} );
 
 // Body time belongs to the authenticated current owner. Finish it before a
 // transfer captures HP or issues a living return receipt. A later transfer
@@ -10194,15 +10211,18 @@ bool finish_live_bandit_loaded_handoff_bodies( bandit_live_world::site_record &s
         return false;
     }
     if( outing.owner == simulation_owner::local ) {
+        std::set<character_id> loaded_before_settlement;
         for( const auto &member : members ) {
             if( member->is_active() ) {
+                loaded_before_settlement.insert( member->getID() );
                 member->on_unload();
             }
         }
         // Reconcile the complete observed death set after finishing any active
         // interval and aging only inactive partners, in one Local transaction.
         std::set<character_id> blocked;
-        return settle_live_bandit_inactive_bodies( site, members, changed, blocked );
+        return settle_live_bandit_inactive_bodies( site, members, changed, blocked,
+                loaded_before_settlement );
     }
     if( !has_loaded_body ) {
         return true;
@@ -20594,7 +20614,8 @@ namespace
 // not also prevent recovery. Callers authenticate the complete party first.
 bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         const std::vector<shared_ptr_fast<npc>> &members, bool &changed,
-        std::set<character_id> &blocked )
+        std::set<character_id> &blocked,
+        const std::set<character_id> &loaded_before_settlement )
 {
     using namespace bandit_live_world;
     const auto cursor = current_external_simulation_cursor( site );
@@ -20719,8 +20740,12 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
     changed |= casualties_observed;
     for( const auto &member : members ) {
         if( member->is_dead() ) {
-            // An already observed active death may accompany inactive catch-up.
-            // Both representations retire only after the common casualty commit.
+            // A body that died while finishing a loaded interval remains in
+            // the native active list even though is_active() no longer sees
+            // dead creatures. Normal cleanup owns both of its representations.
+            if( loaded_before_settlement.count( member->getID() ) ) {
+                continue;
+            }
             if( member->is_active() ) {
                 g->remove_npc( member->getID() );
             }

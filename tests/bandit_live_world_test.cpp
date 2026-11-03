@@ -68593,14 +68593,10 @@ TEST_CASE( "selected native boundary settles pending body time before physical t
     }
 }
 
-TEST_CASE( "authenticated same-owner abstract resumes consume body time and paired native travel",
-           "[bandit_live_world][abstract_body_owner_067][human_activation_motor]" )
+static void r067_same_owner_abstract_body_case( const bool cannibal, const std::string &condition )
 {
     using namespace bandit_live_world;
     override_option llm( "LLM_INTENT_ENABLE", "false" );
-    const bool cannibal = GENERATE( false, true );
-    const std::string condition = GENERATE( "captured", "producer", "foreign", "stale_snapshot",
-                                            "missing", "divergent_hp", "incapacity", "unsafe", "frozen_resume" );
     CAPTURE( cannibal, condition );
     r055_scene scene;
     scene.load( cannibal, true, false, "tests/data/r067_abstract_resume_indoor_8169.json" );
@@ -68870,6 +68866,15 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
     if( condition == "frozen_resume" ) {
         // The authenticated retained pair has actually moved above. Move only
         // the observer outside40, not either actor or the mission/cursor.
+        override_option food( "NO_NPC_FOOD", "false" );
+        // A native finite effect witnesses active body work independently of
+        // position and clock stamps, without changing wounds or supplies.
+        first->add_effect( effect_invisibility, 7_days );
+        const auto needs = []( const npc &actor ) {
+            return std::make_tuple( actor.get_hunger(), actor.get_thirst(), actor.get_sleepiness() );
+        };
+        const auto first_needs = needs( *first );
+        const auto second_needs = needs( *second );
         const auto player_before = get_avatar().pos_abs_omt();
         const auto first_frozen = r067_finite_body_key( *first );
         const auto second_frozen = r067_finite_body_key( *second );
@@ -68882,6 +68887,28 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
         process_overmap_npc_move_for_test();
         CHECK( r067_finite_body_key( scene.actor( ids.front().get_value() ) ) == first_frozen );
         CHECK( r067_finite_body_key( scene.actor( ids.back().get_value() ) ) == second_frozen );
+        CHECK( needs( scene.actor( ids.front().get_value() ) ) == first_needs );
+        CHECK( needs( scene.actor( ids.back().get_value() ) ) == second_needs );
+        // An unresolved member absent from the current overmap buffer is not
+        // a death or a new body. Its prior owned suspension must survive an
+        // activation pass without loading or advancing that member.
+        const auto saved_mark = scene.site().active_outing.activation.bodies.at( ids.back() );
+        REQUIRE( saved_mark.suspended_turns >= to_turns<int>( 2_days ) );
+        overmap_buffer.remove_npc( ids.back() );
+        REQUIRE_FALSE( overmap_buffer.find_npc( ids.back() ) );
+        on_out_of_scope restore_missing( [&]() {
+            if( !overmap_buffer.find_npc( ids.back() ) ) {
+                overmap_buffer.insert_npc( second );
+            }
+        } );
+        refresh_live_bandit_activation();
+        REQUIRE( scene.site().active_outing.activation.bodies.count( ids.back() ) == 1 );
+        CHECK( scene.site().active_outing.activation.bodies.at( ids.back() ).world_turn == saved_mark.world_turn );
+        CHECK( scene.site().active_outing.activation.bodies.at( ids.back() ).suspended_turns ==
+               saved_mark.suspended_turns );
+        overmap_buffer.insert_npc( second );
+        refresh_live_bandit_activation();
+        CHECK( needs( *second ) == second_needs );
         // Compare the actual owner record with only its evaluated pause marks
         // normalized. Leases, route cursor, stock, watch and deadlines must not
         // change merely because the real production callback ran while frozen.
@@ -68894,10 +68921,16 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
         REQUIRE( g->save() );
         for( int reload = 0; reload < 2; ++reload ) {
             r067_handover_reload( frozen_world_name );
+            REQUIRE( scene.site().active_outing.activation.bodies.count( ids.back() ) == 1 );
+            CHECK( scene.site().active_outing.activation.bodies.at( ids.back() ).world_turn == saved_mark.world_turn );
+            CHECK( scene.site().active_outing.activation.bodies.at( ids.back() ).suspended_turns ==
+                   saved_mark.suspended_turns );
             process_overmap_npc_move_for_test();
             REQUIRE_FALSE( scene.site().active_outing.activation.active );
             CHECK( r067_finite_body_key( scene.actor( ids.front().get_value() ) ) == first_frozen );
             CHECK( r067_finite_body_key( scene.actor( ids.back().get_value() ) ) == second_frozen );
+            CHECK( needs( scene.actor( ids.front().get_value() ) ) == first_needs );
+            CHECK( needs( scene.actor( ids.back().get_value() ) ) == second_needs );
             CHECK( r067_return_record_bytes( scene.site() ) == r067_return_record_bytes( expected ) );
         }
         g->place_player_overmap( player_before );
@@ -68907,6 +68940,9 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
         second = overmap_buffer.find_npc( ids.back() );
         REQUIRE( first );
         REQUIRE( second );
+        CHECK( needs( *first ) == first_needs );
+        CHECK( needs( *second ) == second_needs );
+        CHECK( first->get_effect_dur( effect_invisibility ) == 7_days );
         // First reentry settles the native clock without movement/backlog;
         // the unchanged subsequent control must earn the next real cadence.
         CHECK( first->pos_abs() == std::get<1>( std::get<0>( first_frozen ) ) );
@@ -68974,6 +69010,9 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
         process_overmap_npc_move_for_test();
     }
     REQUIRE( scene.actor( ids.front().get_value() ).pos_abs_omt() != previous_omt );
+    if( condition == "frozen_resume" ) {
+        CHECK( scene.actor( ids.front().get_value() ).get_effect_dur( effect_invisibility ) < 7_days );
+    }
     CHECK( scene.actor( ids.front().get_value() ).pos_abs_omt() ==
            scene.actor( ids.back().get_value() ).pos_abs_omt() );
     REQUIRE( current_external_simulation_cursor( scene.site() ) );
@@ -69016,11 +69055,68 @@ TEST_CASE( "authenticated same-owner abstract resumes consume body time and pair
                r067_return_record_bytes( expected ) );
     }
     const auto report = r067_return_record_bytes( scene.site().current_scout_report );
+    // The actual returning-carrier producer must emit a report its own
+    // deserializer accepts, before any native save/load side effects.
+    world_state report_check;
+    report_check.sites.push_back( scene.site() );
+    INFO( "return report=" << report );
+    CHECK_NOTHROW( round_trip_world( report_check ) );
+    if( condition == "captured" ) {
+        const auto &provenance = report_check.sites.front().current_scout_report.assessment.provenance;
+        REQUIRE( provenance );
+        REQUIRE( provenance->returned_optical_known );
+        REQUIRE_FALSE( provenance->returned_optical_inputs.empty() );
+        const auto missing_receipt = provenance->returned_optical_inputs.front();
+        auto &observations = report_check.sites.front().current_scout_report.observations;
+        const auto receipt = std::find_if( observations.begin(), observations.end(),
+        [&]( const sortie_observation &candidate ) {
+            return candidate.observer_id == missing_receipt.observer_id &&
+                   candidate.fact_key == missing_receipt.fact_key &&
+                   candidate.bucket_start_minutes == missing_receipt.bucket_start_minutes;
+        } );
+        REQUIRE( receipt != observations.end() );
+        auto with_collision = report_check;
+        auto noncontributor = *receipt;
+        noncontributor.observer_id = character_id( 987654 );
+        auto &colliding = with_collision.sites.front().current_scout_report.observations;
+        colliding.insert( colliding.begin(), noncontributor );
+        const auto reloaded_collision = round_trip_world( with_collision );
+        const auto &kept = reloaded_collision.sites.front().current_scout_report.observations;
+        CHECK( kept.size() == round_trip_world( report_check ).sites.front().current_scout_report.observations.size() );
+        CHECK( std::none_of( kept.begin(), kept.end(), [&]( const sortie_observation &candidate ) {
+            return candidate.observer_id == noncontributor.observer_id;
+        } ) );
+        const auto before = observations.size();
+        observations.erase( std::remove_if( observations.begin(), observations.end(),
+        [&]( const sortie_observation &candidate ) {
+            return candidate.observer_id == missing_receipt.observer_id &&
+                   candidate.fact_key == missing_receipt.fact_key &&
+                   candidate.bucket_start_minutes == missing_receipt.bucket_start_minutes;
+        } ), observations.end() );
+        REQUIRE( observations.size() < before );
+        CHECK_THROWS( round_trip_world( report_check ) );
+    }
     REQUIRE( g->save() );
     r067_handover_reload( world_name );
     process_overmap_npc_move_for_test();
     CHECK( r067_return_record_bytes( scene.site().current_scout_report ) == report );
     CHECK( scene.site().applied_report_generation == generation );
+}
+
+TEST_CASE( "authenticated same-owner abstract resumes consume body time and paired native travel",
+           "[bandit_live_world][abstract_body_owner_067][human_activation_motor]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    const std::string condition = GENERATE( "captured", "producer", "foreign", "stale_snapshot",
+                                            "missing", "divergent_hp", "incapacity", "unsafe", "frozen_resume" );
+    r067_same_owner_abstract_body_case( cannibal, condition );
+}
+
+TEST_CASE( "frozen abstract body ownership survives missing actors and reload",
+           "[bandit_live_world][abstract_frozen_body_067]" )
+{
+    const bool cannibal = GENERATE( false, true );
+    r067_same_owner_abstract_body_case( cannibal, "frozen_resume" );
 }
 
 TEST_CASE( "retained resident homeward edge has an admitted physical pair continuation",
@@ -81991,4 +82087,28 @@ TEST_CASE( "hostile member settles at a frozen home while its partner stays acti
     const auto settled = r067_return_record_bytes( scene.site() );
     process_overmap_npc_move_for_test();
     CHECK( r067_return_record_bytes( scene.site() ) == settled );
+
+    // The returned body's home owner must survive the body being absent from
+    // loaded overmaps, without creating an anchor for unknown legacy state.
+    auto &home_clock = scene.site().home_activation;
+    REQUIRE( home_clock.bodies.count( ids.front() ) == 1 );
+    const auto before_missing = home_clock.bodies.at( ids.front() );
+    const auto returned = overmap_buffer.remove_npc( ids.front() );
+    REQUIRE( returned );
+    REQUIRE_FALSE( overmap_buffer.find_npc( ids.front() ) );
+    calendar::turn += 2_hours;
+    refresh_live_bandit_activation();
+    REQUIRE( home_clock.bodies.count( ids.front() ) == 1 );
+    const auto retained = home_clock.bodies.at( ids.front() );
+    CHECK( retained.world_turn == before_missing.world_turn );
+    CHECK( retained.suspended_turns == before_missing.suspended_turns + to_turns<int>( 2_hours ) );
+    home_clock.bodies.erase( ids.front() );
+    refresh_live_bandit_activation();
+    CHECK( home_clock.bodies.count( ids.front() ) == 0 );
+    home_clock.bodies.emplace( ids.front(), retained );
+    overmap_buffer.insert_npc( returned );
+    refresh_live_bandit_activation();
+    REQUIRE( overmap_buffer.find_npc( ids.front() ) == returned );
+    REQUIRE( home_clock.bodies.count( ids.front() ) == 1 );
+    CHECK( home_clock.bodies.at( ids.front() ).suspended_turns == retained.suspended_turns );
 }

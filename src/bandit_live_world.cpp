@@ -1184,10 +1184,21 @@ bool sortie_observations_equal( const bandit_live_world::sortie_observation &lhs
 }
 
 std::vector<bandit_live_world::sortie_observation> make_bounded_sortie_observations(
-    const std::vector<bandit_live_world::sortie_observation> &observations )
+    const std::vector<bandit_live_world::sortie_observation> &observations,
+    const std::vector<bandit_live_world::sortie_observation> *report_receipts = nullptr )
 {
     std::vector<bandit_live_world::sortie_observation> deduplicated;
     deduplicated.reserve( std::min( observations.size(), max_active_outing_observations ) );
+    const auto is_required_receipt = [&]( const bandit_live_world::sortie_observation &record ) {
+        return report_receipts && std::any_of( report_receipts->begin(), report_receipts->end(),
+        [&]( const bandit_live_world::sortie_observation &input ) {
+            auto reported = input;
+            reported.share_state = bandit_live_world::sortie_observation_share_state::reported;
+            return sortie_observations_equal( reported, record ) &&
+                   reported.emitter_ms == record.emitter_ms &&
+                   reported.observable_ms == record.observable_ms;
+        } );
+    };
     for( bandit_live_world::sortie_observation observation : observations ) {
         normalize_sortie_observation( observation );
         if( observation.fact_key.empty() ||
@@ -1198,13 +1209,24 @@ std::vector<bandit_live_world::sortie_observation> make_bounded_sortie_observati
             continue;
         }
         const auto existing = std::find_if( deduplicated.begin(), deduplicated.end(),
-        [&observation]( const bandit_live_world::sortie_observation & retained ) {
-            return sortie_observation_identity_matches( retained, observation );
+        [&]( const bandit_live_world::sortie_observation & retained ) {
+            if( !sortie_observation_identity_matches( retained, observation ) ) {
+                return false;
+            }
+            // Two different contributors used by the report remain distinct
+            // after delivery changes their share state. Other duplicates keep
+            // the normal identity and retention rules.
+            return retained.observer_id == observation.observer_id ||
+                   !( is_required_receipt( retained ) && is_required_receipt( observation ) );
         } );
         if( existing == deduplicated.end() ) {
             deduplicated.push_back( std::move( observation ) );
         } else if( observation.record_schema_version == 1 ) {
-            if( sortie_observation_is_better_retention( observation, *existing ) ) {
+            const bool incoming_required = is_required_receipt( observation );
+            const bool existing_required = is_required_receipt( *existing );
+            if( ( incoming_required && !existing_required ) ||
+                ( incoming_required == existing_required &&
+                  sortie_observation_is_better_retention( observation, *existing ) ) ) {
                 *existing = std::move( observation );
             }
         } else if( existing->kind == observation.kind &&
@@ -9700,7 +9722,9 @@ void scout_report_record::serialize( JsonOut &json ) const
         raw_carrier_ids.push_back( carrier_id.get_value() );
     }
     json.member( "carrier_ids", raw_carrier_ids );
-    json.member( "observations", make_bounded_sortie_observations( observations ) );
+    const auto *receipts = assessment.provenance && assessment.provenance->returned_optical_known ?
+                           &assessment.provenance->returned_optical_inputs : nullptr;
+    json.member( "observations", make_bounded_sortie_observations( observations, receipts ) );
     json.member( "assessment", assessment );
     std::vector<int> raw_casualty_ids;
     raw_casualty_ids.reserve( std::min( casualty_ids.size(), max_active_outing_casualties ) );
@@ -9747,13 +9771,16 @@ void scout_report_record::deserialize( const JsonObject &jo )
         }
     }
     jo.read( "observations", candidate.observations );
-    candidate.observations = make_bounded_sortie_observations( candidate.observations );
     if( loaded_schema_version >= 5 ) {
         if( !jo.has_member( "assessment" ) ) {
             jo.throw_error( "schema-v5 scout report is missing assessment state" );
         }
         jo.read( "assessment", candidate.assessment );
     }
+    const auto *receipts = candidate.assessment.provenance &&
+                           candidate.assessment.provenance->returned_optical_known ?
+                           &candidate.assessment.provenance->returned_optical_inputs : nullptr;
+    candidate.observations = make_bounded_sortie_observations( candidate.observations, receipts );
     std::vector<int> raw_casualty_ids;
     jo.read( "casualty_ids", raw_casualty_ids );
     for( const int raw_casualty_id : raw_casualty_ids ) {
