@@ -72202,6 +72202,107 @@ TEST_CASE( "abstract expedition earns field work before its party crosses",
     CHECK( saw_crossing );
 }
 
+TEST_CASE( "abstract scout party pays actual mixed terrain across its selected outbound leg",
+           "[bandit][expedition_coarse_native_caller][mixed_terrain]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true );
+    const auto fast = overmap_buffer.find_npc( journey.members().front() );
+    const auto slow = overmap_buffer.find_npc( journey.members().back() );
+    REQUIRE( fast );
+    REQUIRE( slow );
+    fast->set_speed_base( 100 );
+    fast->set_speed_bonus( 0 );
+    slow->set_speed_base( 80 );
+    slow->set_speed_bonus( 0 );
+    REQUIRE( fast->get_speed() == 100 );
+    REQUIRE( slow->get_speed() == 80 );
+
+    // The ordinary pathfinder must choose a route across these real passable
+    // terrain bands; no member position or travel result is supplied by the test.
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> changed;
+    on_out_of_scope restore( [&]() {
+        for( const auto &entry : changed ) {
+            overmap_buffer.ter_set( entry.first, entry.second );
+        }
+    } );
+    for( int y = journey.home.y() - 5; y <= journey.home.y() + 5; ++y ) {
+        for( int band = 1; band <= 2; ++band ) {
+            const tripoint_abs_omt tile( journey.home.x() + band, y, journey.home.z() );
+            changed.emplace_back( tile, overmap_buffer.ter( tile ) );
+            overmap_buffer.ter_set( tile, oter_id( band == 1 ? "road_nesw" : "forest" ) );
+        }
+    }
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    const auto &initial = journey.site().active_outing;
+    REQUIRE( initial.owner == simulation_owner::abstract );
+    REQUIRE( initial.route_clock_speed == 80 );
+    REQUIRE( fast->omt_path.size() >= 4 );
+    REQUIRE( fast->omt_path == slow->omt_path );
+    const auto leg_goal = fast->omt_path.front();
+    const auto initial_active = initial.activation.active_turns;
+    const auto forecast_prices = initial.route_clock_prices;
+    REQUIRE( initial.coarse_work.work_millis == 0 );
+    auto previous = fast->pos_abs_omt();
+    REQUIRE( previous == journey.home );
+    std::set<int> traversed_weights;
+    std::set<int> charged_weights;
+    std::int64_t spent = 0;
+    int edges = 0;
+    for( int minute = 0; minute < 120 && previous != leg_goal; ++minute ) {
+        journey.next_minute();
+        const auto &outing = journey.site().active_outing;
+        REQUIRE( outing.is_active() );
+        const auto position = fast->pos_abs_omt();
+        CHECK( slow->pos_abs_omt() == position );
+        if( outing.coarse_work.edge_bound ) {
+            REQUIRE_FALSE( outing.coarse_work.to.empty() );
+            const auto next_terrain = overmap_buffer.ter_existing( outing.coarse_work.to.front() );
+            REQUIRE( next_terrain.is_valid() );
+            const int next_weight = overmap_path_params::for_npc().get_cost(
+                                        next_terrain->get_travel_cost_type() );
+            const std::int64_t numerator = static_cast<std::int64_t>( next_weight ) * 30000000;
+            const std::int64_t denominator = 80 * 24;
+            CHECK( outing.coarse_work.edge_cost_millis ==
+                   ( numerator + denominator - 1 ) / denominator );
+            charged_weights.insert( next_weight );
+        }
+        if( position == previous ) {
+            continue;
+        }
+        REQUIRE( outing.owner == simulation_owner::abstract );
+        REQUIRE( rl_dist( previous, position ) == 1 );
+        const oter_id terrain = overmap_buffer.ter_existing( position );
+        REQUIRE( terrain.is_valid() );
+        const int weight = overmap_path_params::for_npc().get_cost( terrain->get_travel_cost_type() );
+        REQUIRE( weight > 0 );
+        const auto forecast = std::find_if( forecast_prices.begin(), forecast_prices.end(),
+        [&]( const coarse_route_price &price ) {
+            return price.omt == position;
+        } );
+        REQUIRE( forecast != forecast_prices.end() );
+        CHECK( forecast->weight == weight );
+        traversed_weights.insert( weight );
+        const std::int64_t numerator = static_cast<std::int64_t>( weight ) * 30000000;
+        const std::int64_t denominator = 80 * 24;
+        spent += ( numerator + denominator - 1 ) / denominator;
+        CHECK( ( outing.activation.active_turns - initial_active ) * 1000 >= spent );
+        previous = position;
+        ++edges;
+    }
+    CHECK( previous == leg_goal );
+    CHECK( edges >= 3 );
+    CHECK( traversed_weights.count( 24 ) == 1 );
+    CHECK( traversed_weights.count( 36 ) == 1 );
+    CHECK( traversed_weights.count( 72 ) == 1 );
+    CHECK( charged_weights.count( 24 ) == 1 );
+    CHECK( charged_weights.count( 72 ) == 1 );
+}
+
 TEST_CASE( "live home admission authenticates available and newly materialized members",
            "[bandit][live_world][home_admission][native_preparation]" )
 {
