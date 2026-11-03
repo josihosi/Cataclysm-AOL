@@ -32226,7 +32226,8 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     CHECK( loaded.assessment.strong_visual_windows == 3 );
 
     const auto publish_physical_camp_resume = [](
-    bandit_live_world::site_record & return_site, const int receipt_minutes ) {
+    bandit_live_world::site_record & return_site, const int receipt_minutes,
+    const bool share_at_cohesion = false ) {
         const int return_clock_minutes = return_site.active_outing.last_progress_minutes;
         const int expected_return_minutes = return_site.active_outing.expected_return_minutes;
         const std::optional<bandit_live_world::simulation_advance_cursor> abstract_cursor =
@@ -32268,6 +32269,47 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
         CHECK( return_site.active_outing.expected_return_minutes == expected_return_minutes );
         CHECK( return_site.active_outing.local_handoff.committed_minutes == receipt_minutes );
         REQUIRE( return_site.active_outing.local_handoff.cohesion_assembled );
+        if( share_at_cohesion ) {
+            std::vector<bandit_live_world::local_cohesion_member_read> physical_reads;
+            for( const auto &member : return_site.active_outing.local_handoff.members ) {
+                physical_reads.push_back( { member.npc_id, true, false, member.staging_position } );
+            }
+            REQUIRE( physical_reads.size() == 2 );
+            auto absent_reads = physical_reads;
+            absent_reads.back().present = false;
+            const auto absent = bandit_live_world::plan_local_pair_cohesion(
+                                    return_site, require_current_simulation_cursor( return_site ),
+                                    receipt_minutes, absent_reads );
+            REQUIRE( absent.valid );
+            CHECK_FALSE( absent.share_private_observations );
+            auto distant_reads = physical_reads;
+            distant_reads.back().current_position += tripoint_rel_ms( 20, 0, 0 );
+            const auto distant = bandit_live_world::plan_local_pair_cohesion(
+                                     return_site, require_current_simulation_cursor( return_site ),
+                                     receipt_minutes, distant_reads );
+            REQUIRE( distant.valid );
+            CHECK_FALSE( distant.share_private_observations );
+            auto dead_site = return_site;
+            REQUIRE( bandit_live_world::record_local_pair_member_death(
+                         dead_site, require_current_simulation_cursor( dead_site ),
+                         physical_reads.back().npc_id, physical_reads.back().current_position,
+                         receipt_minutes + 1 ) );
+            auto dead_reads = physical_reads;
+            dead_reads.back().dead = true;
+            dead_reads.back().present = false;
+            const auto dead = bandit_live_world::plan_local_pair_cohesion(
+                                  dead_site, require_current_simulation_cursor( dead_site ),
+                                  receipt_minutes + 1, dead_reads );
+            REQUIRE( dead.valid );
+            CHECK_FALSE( dead.share_private_observations );
+            const auto together = bandit_live_world::plan_local_pair_cohesion(
+                                      return_site, require_current_simulation_cursor( return_site ),
+                                      receipt_minutes, physical_reads );
+            REQUIRE( together.valid );
+            REQUIRE( together.share_private_observations );
+            REQUIRE( bandit_live_world::commit_local_pair_cohesion(
+                         return_site, together, false, false ) );
+        }
         const std::optional<bandit_live_world::simulation_advance_cursor> local_cursor =
             bandit_live_world::current_external_simulation_cursor( return_site );
         REQUIRE( local_cursor );
@@ -32465,7 +32507,8 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     {
         const bool shared_after_watch = GENERATE( false, true );
         const bool capped_watch = GENERATE( false, true );
-        CAPTURE( shared_after_watch, capped_watch );
+        const bool expired_at_return = GENERATE( false, true );
+        CAPTURE( shared_after_watch, capped_watch, expired_at_return );
         auto &carrier_site = carrier_lanes_world.sites.front();
         auto &carrier_outing = carrier_site.active_outing;
         auto shared = make_typed_visual_observation( observer_id, carrier_outing.target_lead_revision,
@@ -32526,6 +32569,9 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
             private_light.simultaneity_end_minutes = 332;
             private_light.expiry_minutes = 511;
         }
+        if( expired_at_return ) {
+            private_light.expiry_minutes = capped_watch ? 350 : 320;
+        }
         REQUIRE( bandit_live_world::record_active_typed_observations(
                      carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
                      carrier_outing.target_lead_revision, { private_light },
@@ -32536,18 +32582,13 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
                      carrier_outing.target_lead_revision, watch_end ) ==
                  bandit_live_world::scout_assessment_result::normal_success );
         REQUIRE( carrier_outing.assessment.certainty == ( capped_watch ? 95 : 85 ) );
-        if( shared_after_watch ) {
-            // The actual typed producer can receive a pair-shared receipt
-            // after the completed watch but before physical report delivery.
-            private_light.share_state = bandit_live_world::sortie_observation_share_state::shared;
-            REQUIRE( bandit_live_world::record_active_typed_observations(
-                         carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
-                         carrier_outing.target_lead_revision, { private_light }, watch_end + 1 ).valid );
-        }
         bandit_live_world::advance_structural_bounty_outings( carrier_lanes_world,
-                watch_end + ( shared_after_watch ? 2 : 1 ), {} );
+                watch_end + 1, {} );
         const int home_time = carrier_outing.expected_return_minutes;
-        publish_physical_camp_resume( carrier_site, home_time - 1 );
+        if( expired_at_return ) {
+            REQUIRE( home_time > private_light.expiry_minutes );
+        }
+        publish_physical_camp_resume( carrier_site, home_time - 1, shared_after_watch );
         REQUIRE( bandit_live_world::advance_structural_bounty_outings(
                      carrier_lanes_world, home_time, {} ).members_returned == 2 );
         REQUIRE( carrier_site.current_scout_report.is_present() );
@@ -32556,17 +32597,39 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
         REQUIRE( carrier_report.assessment.provenance );
         REQUIRE( carrier_report.assessment.provenance->habitation_before == ( capped_watch ? 10 : 5 ) );
         REQUIRE( carrier_report.assessment.provenance->habitation_private_delta ==
-                 ( shared_after_watch ? 0 : 5 ) );
+                 ( shared_after_watch || expired_at_return ? 0 : 5 ) );
         CHECK( std::count_if( carrier_report.assessment.provenance->returned_optical_inputs.begin(),
                               carrier_report.assessment.provenance->returned_optical_inputs.end(),
         []( const auto &input ) {
             return input.share_state == bandit_live_world::sortie_observation_share_state::observer_private;
-        } ) == ( shared_after_watch ? 1 : 2 ) );
-        REQUIRE( carrier_report.assessment.certainty == ( capped_watch ? 95 : 90 ) );
+        } ) == ( shared_after_watch ? 0 : expired_at_return ? 1 : 2 ) );
+        const auto returned_light = std::find_if(
+                                        carrier_report.assessment.provenance->returned_optical_inputs.begin(),
+                                        carrier_report.assessment.provenance->returned_optical_inputs.end(),
+        [&]( const auto &input ) {
+            return input.sense == bandit_live_world::sortie_observation_sense::light &&
+                   input.bucket_start_minutes == ( capped_watch ? 330 : 300 );
+        } );
+        if( expired_at_return ) {
+            CHECK( returned_light == carrier_report.assessment.provenance->returned_optical_inputs.end() );
+        } else {
+            REQUIRE( returned_light != carrier_report.assessment.provenance->returned_optical_inputs.end() );
+            CHECK( returned_light->observed_minutes == ( capped_watch ? 331 : 301 ) );
+            CHECK( returned_light->share_state == ( shared_after_watch ?
+                   bandit_live_world::sortie_observation_share_state::shared :
+                   bandit_live_world::sortie_observation_share_state::observer_private ) );
+        }
+        REQUIRE( carrier_report.assessment.certainty == ( capped_watch ? 95 : expired_at_return ? 85 : 90 ) );
         if( capped_watch ) {
             // The new bucket increases habitation but contributes no score:
             // a fresh receipt must not rejuvenate the already capped watch.
             CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1050 ).certainty == 85 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1051 ).certainty == 85 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1770 ).certainty == 75 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1771 ).certainty == 75 );
+        } else if( expired_at_return ) {
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 991 ).certainty == 75 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1741 ).certainty == 65 );
         } else {
             CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 991 ).certainty == 81 );
             CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1021 ).certainty == 80 );
