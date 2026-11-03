@@ -77,6 +77,7 @@ _RELATION_PROOF_DEPTHS = {
 _GAMEPLAY_PROOF_ALLOWED_V1 = frozenset({
     "bandit.r_caol_r050_natural_mixed_expedition_luna_20261103",
     "bandit.r_caol_r050_saved99302_cabin_service_20261103",
+    "bandit.r_rel_expedition_r050_sustained_source_decision_20261103",
     "cannibal.night_raid_natural_transition_validation_mcw",
     "horde.predator_lifecycle_abstract_to_physical_mcw",
     "r018.raw_wait_acceptance_mcw",

@@ -166,6 +166,20 @@ class CockpitRunAuthorityTest(unittest.TestCase):
             self.assertEqual(registry_store._run_evidence_ceiling(
                 connection, created["manifest_id"], declaration), "zero-credit")
 
+    def test_sustained_expedition_source_starts_diagnostic_without_prior_witness(self) -> None:
+        name = "bandit.r_rel_expedition_r050_sustained_source_decision_20261103"
+        declaration = _manifest(name)
+        declaration["runtime_contract"]["grants_gameplay_proof"] = True
+        with closing(open_registry(str(self.registry))) as connection:
+            created = create_source_bound_scenario(
+                connection, scenarios_root=self.scenarios, name=name, declaration=declaration,
+            )
+            self.assertEqual(registry_store._run_evidence_ceiling(
+                connection, created["manifest_id"], declaration), "diagnostic")
+            declaration["runtime_contract"]["grants_gameplay_proof"] = False
+            self.assertEqual(registry_store._run_evidence_ceiling(
+                connection, created["manifest_id"], declaration), "zero-credit")
+
     def test_registry_call_closes_on_success_and_early_refusals(self) -> None:
         service = cockpit.CockpitService(str(self.registry))
         requests = [
