@@ -1,0 +1,127 @@
+{
+  "manifest_version": 1,
+  "name": "caol.reference_camp_open_focused_mcw",
+  "description": "Prospective isolated owner open-window reference camp journey. Original TestSetup00 archive save is installed unchanged as zero-credit footing; native observations answer only the exercised parts of the selected reference outcome.",
+  "profile": "reference-camp-open-001-luna",
+  "config_profile": "dev-harness",
+  "world": "TestSetup00",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/save/TestSetup00",
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.world": "TestSetup00",
+    "runtime.reference_variant": "open",
+    "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
+    "runtime.reference_save_tree_sha256": "6fea3569c798fb27375e24398fde64470b71b68255c8dc8c3cc3cae2474ee73c",
+    "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
+    "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/save/TestSetup00"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
+      "direct save edits after install",
+      "synthetic receipts",
+      "hostile teleport",
+      "guessed input"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "reference-camp-open-001-luna",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "current source-bound native executable",
+      "profile": "reference-camp-open-001-luna",
+      "fixture": "owner-reference saved-world snapshot",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_reference_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_reference_camp",
+      "cleanup_on_finish": true,
+      "objective": "Observe actual owner-reference camp gear collection and conservation, day/night patrol service, physical open-window and roof source behavior, and where eligible the same-site natural signal, knowledge, dispatch and physical arrival. Distinguish independent prerequisites, current source conditions and later outcomes; preserve actual failures and run continuity.",
+      "proof_targets": [
+        "source archive and installed save identity, same native World and current camp/actor/site identities",
+        "actual item tile-to-NPC collection, usable equipment and conservation through reload",
+        "actual day/night patrol roster and service through reload",
+        "physical source fuel and intensity, window/door/roof geometry, weather and observed light escape versus smoke positions",
+        "eligible native observer opportunity and source-off or occluded comparison as needed",
+        "same-site natural signal to knowledge/stalking to dispatch to physical arrival with timestamps and actors",
+        "actual outcomes and any eligible departure and return, with material gaps explicit",
+        "native exit and accepted cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "archive installation, equipment or fuel placement, and avatar setup are zero-credit preparation",
+        "no direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
+        "a physical source or precommitted fixture does not prove knowledge, dispatch or arrival",
+        "do not infer observation from absence without an eligible observer and actual source opportunity",
+        "do not invent return deadlines or force actor outcome; retain losses and failed observations",
+        "disclose source, geometry, date, weather and continuity; distinguish signal emission, receipt and physical travel"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_reference_world"
+    ],
+    "production_behavior": [
+      "observe_reference_camp"
+    ],
+    "terminal_persistence": [
+      "observe_reference_camp"
+    ],
+    "artifact_verdict": [
+      "observe_reference_camp"
+    ],
+    "disallowed_shortcuts": [
+      "bind_reference_world"
+    ]
+  }
+}

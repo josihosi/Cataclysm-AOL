@@ -1,0 +1,21 @@
+{
+  "outcome": "Observe the owner open-window reference camp through actual equipment, duty, physical-source and eligible natural signal-to-arrival behavior.",
+  "scenario": "caol.reference_camp_open_focused_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.caol.reference_camp",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_reference_camp_equipment_patrol_physical_signal_journey"
+      },
+      {
+        "key": "runtime.reference_variant",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "open"
+      }
+    ],
+    "preferences": []
+  }
+}

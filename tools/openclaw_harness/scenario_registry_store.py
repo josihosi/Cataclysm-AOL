@@ -1612,7 +1612,37 @@ def _first_run_certification_route(
             manifest.get("validation", {}).get("status") != "valid" or manifest.get("validation", {}).get("review_required"):
         return None
     name = manifest.get("name")
-    if name == "caol.patrol_sound_focused_mcw":
+    if name in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw"}:
+        variant = "open" if name == "caol.reference_camp_open_focused_mcw" else "closed"
+        archive = {"open": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
+                   "closed": "4b11469931507c49f0b373934730fed6b729b7a29b87c6f78eca0f728e8320c3"}
+        tree = {"open": "6fea3569c798fb27375e24398fde64470b71b68255c8dc8c3cc3cae2474ee73c",
+                "closed": "2ed10f8f99cdff2972eae23b750a00030fbd53e21dac4ee31c1cba3f4bdce202"}
+        valid = (
+            facts.get("capabilities.caol.reference_camp", {}).get("value") ==
+            "native_reference_camp_equipment_patrol_physical_signal_journey"
+            and facts.get("runtime.reference_variant", {}).get("value") == variant
+            and facts.get("runtime.reference_archive_sha256", {}).get("value") == archive[variant]
+            and facts.get("runtime.reference_save_tree_sha256", {}).get("value") == tree[variant]
+        )
+        if valid:
+            try:
+                declaration = json.loads(Path(str(manifest["source_path"])).read_text(encoding="utf-8"))
+                saved_path = str(declaration.get("saved_world_snapshot", ""))
+                reference_path = facts.get("runtime.reference_save_path", {}).get("value")
+                source = Path(saved_path).resolve()
+                reference_root = source.parents[2]
+                expected_dir = {"open": "josef-basecamp-open-windows-20260924-122356",
+                                "closed": "josef-basecamp-closed-windows-20260924-122642"}[variant]
+                from startup_harness import sha256_tree
+                actual_tree, tree_error = sha256_tree(source)
+                valid = (saved_path == reference_path and source.name == "TestSetup00" and
+                         source.parent.name == "save" and source.parents[1].name == expected_dir and
+                         not tree_error and actual_tree == tree[variant] and
+                         path_sha256(reference_root / "archives" / (expected_dir + ".zip")) == archive[variant])
+            except (OSError, ValueError, KeyError, IndexError, ScenarioRegistryStoreError):
+                valid = False
+    elif name == "caol.patrol_sound_focused_mcw":
         valid = (
             facts.get("capabilities.caol.patrol_sound", {}).get("value") ==
             "native_personal_rule_duty_sound_release_reload"
@@ -3320,6 +3350,20 @@ def reload_selection_token_for_launch(
         if not isinstance(scenario, str) or not scenario.strip():
             return reject("manifest_scenario_unavailable")
 
+        # These owner-reference scenes bind their physical source even after
+        # they acquire ordinary verified history or coordinator authority.
+        reference_route = None
+        if scenario in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw"}:
+            reference_snapshot = RegistryQueryCandidateSnapshot(
+                scenario_id=expected_manifest_id, lifecycle_state="active", token_eligible=True,
+                facts={key: {"value": value} for key, value in declaration.get("capabilities", {}).items()},
+                explanation={"manifest": {"name": scenario, "source_path": str(source_path),
+                    "sha256": expected_sha256, "validation": {"status": "valid", "review_required": False}}},
+            )
+            reference_route = _first_run_certification_route(reference_snapshot)
+            if reference_route is None:
+                return reject("reference_source_not_authorized")
+
         if authority_kind == "coordinator_brief_charter":
             current_routes = _current_route_evidence(connection, expected_manifest_id)
             lifecycle, lifecycle_reason = _current_lifecycle_state(
@@ -3361,7 +3405,7 @@ def reload_selection_token_for_launch(
                     "validation": {"status": "valid", "review_required": False},
                 }},
             )
-            expected_first_run_route = _first_run_certification_route(snapshot)
+            expected_first_run_route = reference_route or _first_run_certification_route(snapshot)
             if expected_first_run_route is None:
                 return reject("first_run_manifest_not_authorized")
             expected_first_run_route = {
