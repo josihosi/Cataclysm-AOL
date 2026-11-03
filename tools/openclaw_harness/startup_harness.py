@@ -44460,7 +44460,12 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("disposable saved-world purpose requires a snapshot or fixture")
     if explicit_saved_world_snapshot:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
-    if getattr(args, "disposable_saved_world", False) or (fixture_disposable and not explicit_saved_world_snapshot):
+    declared_snapshot_disposable = bool(
+        explicit_saved_world_snapshot and not post_relaunch_continuation and
+        isinstance(runtime_contract, Mapping) and runtime_contract.get("disposable_copy") is True )
+    if ( getattr(args, "disposable_saved_world", False) or
+         (fixture_disposable and not explicit_saved_world_snapshot) or
+         declared_snapshot_disposable ):
         start_cmd.append("--disposable-saved-world")
     explicit_executable = str(getattr(args, "executable", "") or "").strip()
     if not explicit_executable:

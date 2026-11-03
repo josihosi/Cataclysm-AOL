@@ -544,6 +544,110 @@ with h.own_writable_root(root, 'real-fixture-run', h.process_generation_snapshot
             with self.assertRaises(ReachedStart):
                 h.run_probe_mode(args)
 
+    def test_registry_snapshot_declared_disposable_reaches_owned_installer(self):
+        import scenario_registry_cli_test as registry_tests
+        declaration = registry_tests.ScenarioRegistryCliTest().strict_manifest()
+        declaration.update({'name': 'snapshot.selected', 'profile': 'profile', 'world': 'World'})
+        scenario = self.base / 'selected.json'
+        scenario.write_text(json.dumps(declaration))
+        args = h.build_parser().parse_args([
+            'probe', 'snapshot.selected', '--profile', 'profile',
+            '--saved-world-snapshot', str(self.source)])
+        args.registry_selected_source_path = str(scenario)
+        args.registry_selected_source_sha256 = hashlib.sha256(scenario.read_bytes()).hexdigest()
+        class Installed(Exception):
+            pass
+        def stop_after_install(profile):
+            self.assertEqual(h.current_owner(self.root).run_id, 'snapshot-run')
+            raise Installed()
+        with mock.patch.object(h, 'registry_authority_transition_run_id', return_value='snapshot-run'), \
+                mock.patch.object(h, 'detect_executable', return_value=self.base / 'fake-game'), \
+                mock.patch.object(h, 'load_profile_config', return_value={}), \
+                mock.patch.object(h, 'apply_profile_option_overrides', return_value={}), \
+                mock.patch.object(h, 'purge_profile_flexbuffer_cache', side_effect=stop_after_install):
+            with self.assertRaises(Installed):
+                h.run_probe_mode(args)
+        record = json.loads(next((self.root / '.saved-world-custody').glob('*.json')).read_text())
+        self.assertEqual((record['world'], record['run_id']), ('World', 'snapshot-run'))
+        self.assertEqual(h.sha256_tree(self.source), self.source_hash)
+        # This test's owner process is still alive; cleanup must not erase its world.
+        with self.assertRaises(h.WritableRootConflict):
+            h.cleanup_disposable_saved_world('profile', 'World', 'snapshot-run')
+        self.assertTrue((self.save / 'World').is_dir())
+
+    def test_registry_snapshot_without_disposable_declaration_is_not_claimed(self):
+        import scenario_registry_cli_test as registry_tests
+        declaration = registry_tests.ScenarioRegistryCliTest().strict_manifest()
+        declaration.update({'name': 'snapshot.selected', 'profile': 'profile', 'world': 'World'})
+        declaration['runtime_contract']['disposable_copy'] = False
+        scenario = self.base / 'selected.json'
+        scenario.write_text(json.dumps(declaration))
+        args = h.build_parser().parse_args([
+            'probe', 'snapshot.selected', '--profile', 'profile',
+            '--saved-world-snapshot', str(self.source)])
+        args.registry_selected_source_path = str(scenario)
+        args.registry_selected_source_sha256 = hashlib.sha256(scenario.read_bytes()).hexdigest()
+        class ReachedStart(Exception):
+            pass
+        def capture(command, **kwargs):
+            self.assertNotIn('--disposable-saved-world', command)
+            raise ReachedStart()
+        with mock.patch.object(h, 'detect_executable', return_value=self.base / 'fake-game'), \
+                mock.patch.object(h, 'run_startup_in_process', side_effect=capture):
+            with self.assertRaises(ReachedStart):
+                h.run_probe_mode(args)
+
+    def test_registry_disposable_snapshot_reuse_keeps_existing_world_unclaimed(self):
+        import scenario_registry_cli_test as registry_tests
+        declaration = registry_tests.ScenarioRegistryCliTest().strict_manifest()
+        declaration.update({'name': 'snapshot.selected', 'profile': 'profile', 'world': 'World'})
+        scenario = self.base / 'selected.json'
+        scenario.write_text(json.dumps(declaration))
+        destination = self.save / 'World'
+        destination.mkdir(parents=True)
+        (destination / 'master.gsav').write_bytes(b'original world')
+        args = h.build_parser().parse_args([
+            'probe', 'snapshot.selected', '--profile', 'profile',
+            '--saved-world-snapshot', str(self.source)])
+        args.registry_selected_source_path = str(scenario)
+        args.registry_selected_source_sha256 = hashlib.sha256(scenario.read_bytes()).hexdigest()
+        class ReachedExisting(Exception):
+            pass
+        with mock.patch.object(h, 'registry_authority_transition_run_id', return_value='snapshot-run'), \
+                mock.patch.object(h, 'detect_executable', return_value=self.base / 'fake-game'), \
+                mock.patch.object(h, 'load_profile_config', return_value={}), \
+                mock.patch.object(h, 'apply_profile_option_overrides', return_value={}), \
+                mock.patch.object(h, 'purge_profile_flexbuffer_cache', side_effect=ReachedExisting):
+            with self.assertRaises(ReachedExisting):
+                h.run_probe_mode(args)
+        self.assertEqual(h.sha256_tree(destination), self.source_hash)
+        self.assertEqual(h.sha256_tree(self.source), self.source_hash)
+        self.assertFalse((self.root / '.saved-world-custody').exists())
+
+    def test_relaunch_snapshot_does_not_inherit_disposable_purpose(self):
+        import scenario_registry_cli_test as registry_tests
+        declaration = registry_tests.ScenarioRegistryCliTest().strict_manifest()
+        declaration.update({'name': 'snapshot.selected', 'profile': 'profile', 'world': 'World'})
+        declaration['steps'] = [{'label': 'bootstrap', 'kind': 'native_semantic_bootstrap'},
+                                {'label': 'live', 'kind': 'cockpit_live_session'}]
+        declaration['proof_route'] = {key: ['live'] for key in declaration['proof_route']}
+        scenario = self.base / 'selected.json'
+        scenario.write_text(json.dumps(declaration))
+        args = h.build_parser().parse_args([
+            'probe', 'snapshot.selected', '--profile', 'profile',
+            '--saved-world-snapshot', str(self.source), '--post-relaunch-continuation'])
+        args.registry_selected_source_path = str(scenario)
+        args.registry_selected_source_sha256 = hashlib.sha256(scenario.read_bytes()).hexdigest()
+        class ReachedStart(Exception):
+            pass
+        def capture(command, **kwargs):
+            self.assertNotIn('--disposable-saved-world', command)
+            raise ReachedStart()
+        with mock.patch.object(h, 'detect_executable', return_value=self.base / 'fake-game'), \
+                mock.patch.object(h, 'run_startup_in_process', side_effect=capture):
+            with self.assertRaises(ReachedStart):
+                h.run_probe_mode(args)
+
     def test_registry_selected_launch_only_handoff_owns_fixture_before_launch(self):
         import scenario_registry_cli_test as registry_tests
         payload = self.fixture_payload()
