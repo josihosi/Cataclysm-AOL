@@ -1729,6 +1729,57 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             finally:
                 other_connection.close()
 
+    def test_fresh_expedition_launch_keeps_setup_and_focused_authority_distinct(self) -> None:
+        from scenario_registry_store import _run_evidence_ceiling
+
+        for setup_only, claims_proof, ceiling, authority in (
+            (True, True, "diagnostic", "setup support"),
+            (True, False, "zero-credit", "setup support"),
+            (False, True, "diagnostic", "focused feature proof"),
+        ):
+            with self.subTest(setup_only=setup_only, claims_proof=claims_proof), \
+                    tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                scenarios = root / "scenarios"
+                scenarios.mkdir()
+                declaration = self.strict_manifest()
+                declaration["name"] = "bandit.r_caol_r050_lazy_mapgen_7896_ownership_20261103"
+                declaration["runtime_contract"]["setup_only_debug"] = setup_only
+                declaration["runtime_contract"]["grants_gameplay_proof"] = claims_proof
+                self.write_json(scenarios / "fresh.json", declaration)
+                registry = root / "registry.sqlite3"
+                connection = open_registry(str(registry))
+                try:
+                    rebuild_manifest_projection(connection, scenarios)
+                    manifest_id = connection.execute(
+                        "SELECT manifest_id FROM manifest_current"
+                    ).fetchone()[0]
+                    self.assertEqual(_run_evidence_ceiling(connection, manifest_id, declaration), ceiling)
+                    self.assertEqual(connection.execute(
+                        "SELECT COUNT(*) FROM verification_history"
+                    ).fetchone()[0], 0)
+                    selected = execute_registry_query(
+                        connection,
+                        parse_registry_query_request({"requirements": [{"key": "player.injured", "op": "eq",
+                            "value": False, "minimum_evidence": "declared"}], "preferences": []}),
+                        scenario_id=manifest_id,
+                        coordinator_brief={"outcome": "Observe a fresh bounded expedition."},
+                    )
+                    self.assertIsNotNone(selected.token_id)
+                finally:
+                    connection.close()
+                result, probe = self.run_registry_launch(registry, scenarios, selected.token_id)
+                self.assertEqual(result, 23)
+                receipt = json.loads(probe.call_args.args[0].registry_launch_receipt)
+                self.assertEqual(receipt["wec_authority"]["evidence_class"], authority)
+                self.assertEqual(receipt["wec_authority"]["run_id"], selected.token_id)
+                self.assertEqual(receipt["wec_authority"]["source_sha256"],
+                                 receipt["source_sha256"])
+                with closing(open_registry(str(registry))) as connection:
+                    self.assertEqual(connection.execute(
+                        "SELECT COUNT(*) FROM verification_history"
+                    ).fetchone()[0], 0)
+
     def test_registry_launch_rejects_changed_source_without_requery_or_probe_call(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

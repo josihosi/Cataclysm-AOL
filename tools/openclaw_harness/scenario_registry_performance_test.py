@@ -20,6 +20,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import cockpit
+import playtest_witness
 import cockpit_file_bridge
 import evidence_events
 import process_performance
@@ -796,7 +797,7 @@ class PerformanceRouteTest(unittest.TestCase):
             unrelated["evidence_contract"].pop("performance_witness")
             self.assertIn("graphical observability", startup_harness.terminal_mode_readiness(unrelated, self.root / "game.exe")["reason"])
 
-    def lower_ceiling_through_live_producer(self, charter):
+    def lower_ceiling_through_live_producer(self, charter, *, authority=None, gameplay=False):
         """Exercise execute_probe_steps' actual ceiling choice, then the real journal producer."""
         self.write(self.run / startup_harness.TRANSITION_EVENT_BINDING_FILENAME, {"run_id": self.run_id})
         channels = []
@@ -821,6 +822,7 @@ class PerformanceRouteTest(unittest.TestCase):
             initial = {key: value for key, value in self.statement.items() if key != "performance_evidence"}
             initial.update(verdict="inconclusive", recommended_disposition="continue", evidence_ceiling=channel._witness_evidence_ceiling,
                            citations=[{"citation_id": citation, "meaning": "bound exit", "checks": ["value.surface.facts"]}])
+            self.live_statement = copy.deepcopy(initial)
             result = channel.finish(observation_id=observed["observation_id"], stop_reason="done", unused_authority="none", witness=initial)
             self.assertTrue(result["ok"], result)
             return 0
@@ -830,14 +832,45 @@ class PerformanceRouteTest(unittest.TestCase):
                 mock.patch.object(startup_harness, "open_cockpit_game_service", side_effect=factory), \
                 mock.patch.object(startup_harness, "serve_cockpit_live", side_effect=serve), \
                 mock.patch.object(startup_harness, "read_completed_cockpit_final", side_effect=lambda service, *args, **kwargs: service.run_channel._final_report):
-            startup_harness.execute_probe_steps(123, self.run, [{"kind": "cockpit_live_session", "label": "work"}],
+            self.live_reports = startup_harness.execute_probe_steps(123, self.run, [{"kind": "cockpit_live_session", "label": "work"}],
                 profile=self.report["contract"]["profile"], world="", scenario_identity=SCENARIO,
-                runtime_binding=self.runtime, grants_gameplay_proof=False, semantic_only=True)
+                runtime_binding=self.runtime, registry_authority=authority or {},
+                grants_gameplay_proof=gameplay, semantic_only=True)
         self.final = channels[0]._final_report
         self.charter = channels[0]._witness_charter
         self.report["steps"] = [{"cockpit_live_session": {"final": self.final}}]
         self.write(self.report_path, self.report)
         return channels[0]._witness_evidence_ceiling
+
+    def test_setup_authority_caps_focused_charter_in_live_descriptor_and_journal(self):
+        for evidence_class, requested, gameplay, expected, credit in (
+                ("setup support", "focused", True, "setup-only", False),
+                ("setup support", "setup-only", False, "setup-only", False),
+                ("setup support", "zero-credit", False, "zero-credit", False),
+                ("focused feature proof", "focused", True, "focused", True)):
+            with self.subTest(evidence_class=evidence_class, requested=requested):
+                fixture = PerformanceRouteTest("test_setup_authority_caps_focused_charter_in_live_descriptor_and_journal")
+                fixture.setUp()
+                try:
+                    ceiling = fixture.lower_ceiling_through_live_producer(
+                        {**CHARTER, "requested_evidence_ceiling": requested},
+                        authority=store.issue_wec_authority(
+                            fixture.connection, evidence_class=evidence_class, authority="registry",
+                            run_id=fixture.run_id, binding_id=fixture.binding_id, source_sha256="a" * 64),
+                        gameplay=gameplay)
+                    self.assertEqual(ceiling, expected)
+                    self.assertEqual(fixture.journal["evidence_ceiling"], expected)
+                    self.assertEqual(fixture.charter["requested_evidence_ceiling"], requested)
+                    live = fixture.live_reports[0]
+                    self.assertIs(live["cockpit_live_session"]["descriptor"]["gameplay_credit"], credit)
+                    self.assertIs(live["metadata"]["gameplay_credit"], credit)
+                    if expected in ("setup-only", "zero-credit"):
+                        statement = {**fixture.live_statement, "evidence_ceiling": "focused"}
+                        with self.assertRaisesRegex(playtest_witness.WitnessError, "witness_evidence_promotion_rejected"):
+                            playtest_witness.validate_witness_statement(
+                                charter=fixture.charter, journal=fixture.journal, statement=statement)
+                finally:
+                    fixture.tearDown()
 
     def test_lower_launch_authority_cannot_borrow_later_focused_collection(self):
         for ceiling in ("setup-only", "diagnostic"):

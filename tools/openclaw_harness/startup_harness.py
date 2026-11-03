@@ -35004,6 +35004,21 @@ def execute_probe_steps(
             if not session_id:
                 session_id, _ = adaptive_semantic_session_identity()
             witness_charter = active_playtest_witness_charter()
+            # A requested charter cannot grant authority above the registry's
+            # selected setup-support run. Keep the charter intact for audit,
+            # while capping the journal and live credit at their actual source.
+            setup_support = isinstance(registry_authority, Mapping) and \
+                registry_authority.get("evidence_class") == "setup support"
+            live_gameplay_credit = grants_gameplay_proof and not setup_support
+            witness_ceiling = (
+                str(witness_charter.get("requested_evidence_ceiling", "focused"))
+                if isinstance(witness_charter, Mapping) else
+                ("focused" if live_gameplay_credit else "diagnostic")
+            )
+            if setup_support:
+                from playtest_witness import EVIDENCE_CEILINGS
+                if EVIDENCE_CEILINGS[witness_ceiling] > EVIDENCE_CEILINGS["setup-only"]:
+                    witness_ceiling = "setup-only"
             declared_operations = step.get("live_operations")
             if declared_operations is not None and (
                     not isinstance(declared_operations, list) or
@@ -35063,13 +35078,7 @@ def execute_probe_steps(
                 ) else None,
                 witness_charter=witness_charter,
                 witness_identity=witness_identity,
-                # Evidence authority is fixed by the selected witness charter;
-                # gameplay-credit policy is a separate, zero-credit firewall.
-                witness_evidence_ceiling=(
-                    str(witness_charter.get("requested_evidence_ceiling", "focused"))
-                    if isinstance(witness_charter, Mapping) else
-                    ("focused" if grants_gameplay_proof else "diagnostic")
-                ),
+                witness_evidence_ceiling=witness_ceiling,
                 causal_boundary_precondition=causal_boundary_precondition,
                 allowed_live_operations=allowed_live_operations,
             )
@@ -35083,7 +35092,7 @@ def execute_probe_steps(
                 "step_label": label,
                 "step_index": index,
                 "gameplay_credit": False if step.get( "bootstrap_only" ) is True or
-                    pending_selection_bootstrap is not None else grants_gameplay_proof,
+                    pending_selection_bootstrap is not None else live_gameplay_credit,
                 "initial_world_readiness_pending": pending_selection_bootstrap is not None,
                 "objective": str( step.get( "objective", "" ) ).strip(),
                 "proof_targets": list( step.get( "proof_targets", [] ) ),
@@ -35194,12 +35203,14 @@ def execute_probe_steps(
                 )
                 report["metadata"]["descriptor_ref"] = descriptor_path.name
                 report["metadata"]["final_report_ref"] = final_path.name if final_path.is_file() else ""
+                if setup_support:
+                    report["metadata"]["gameplay_credit"] = False
             else:
                 report["metadata"] = {
                     "artifact_kind": "worker_controlled_live_cockpit_session",
                     "descriptor_ref": descriptor_path.name,
                     "final_report_ref": final_path.name if final_path.is_file() else "",
-                    "gameplay_credit": live_status == 0 and grants_gameplay_proof,
+                    "gameplay_credit": live_status == 0 and live_gameplay_credit,
                 }
             if selection_world_ready is not None:
                 report["metadata"]["initial_world_bootstrap"] = {
