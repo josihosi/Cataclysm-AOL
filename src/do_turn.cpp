@@ -17224,7 +17224,7 @@ void service_live_bandit_home_rallies( const std::optional<std::size_t> only_sit
                                       site.response_home_rally->source == report.target_omt &&
                                       site.response_home_rally->episode == episode;
             if( authorization.report_current && authorization.report_revision_available &&
-                authorization.report_unexpired && authorization.assessment_ready &&
+                effective.danger_known && authorization.report_unexpired && authorization.assessment_ready &&
                 authorization.opportunity_sufficient &&
                 ( same_episode || !site.response_home_rally || !site.response_home_rally->pending() ) ) {
                 raid_sweep::home_rally rally = same_episode ? *site.response_home_rally : raid_sweep::home_rally();

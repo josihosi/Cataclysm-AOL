@@ -773,8 +773,23 @@ struct scout_assessment_provenance {
     void deserialize( const JsonObject &jo );
 };
 
+// Untraceable dated legacy aggregates retain their durable place and channel
+// facts, but cannot authenticate these separate tactical components.
+constexpr int scout_unknown_certainty = 1 << 0;
+constexpr int scout_unknown_defenders = 1 << 1;
+constexpr int scout_unknown_danger = 1 << 2;
+constexpr int scout_unknown_bounty = 1 << 3;
+constexpr int scout_unknown_route_danger = 1 << 4;
+constexpr int scout_unknown_tactical_all = scout_unknown_certainty | scout_unknown_defenders |
+        scout_unknown_danger | scout_unknown_bounty | scout_unknown_route_danger;
+
 struct scout_assessment_state {
     int schema_version = 3;
+    // Only a producer or explicit legacy migration may establish this marker.
+    bool tactical_completeness_recorded = false;
+    int legacy_unknown_components = 0;
+    // A comparison boundary only: never an observation time or age anchor.
+    int legacy_unknown_through_minutes = -1;
     int observation_started_minutes = -1;
     int last_progress_minutes = -1;
     int burned_minutes = -1;
@@ -841,6 +856,11 @@ struct scout_report_effective_state {
     int latest_contact_minutes = -1;
     int contact_age_minutes = -1;
     int certainty = 0;
+    bool certainty_known = false;
+    bool defenders_known = false;
+    bool danger_known = false;
+    bool bounty_known = false;
+    bool route_danger_known = false;
     bool assessment_ready = false;
     int defenders_low = 0;
     int defenders_high = 0;

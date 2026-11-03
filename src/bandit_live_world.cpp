@@ -7494,6 +7494,13 @@ bool commit_local_pair_cohesion( site_record &site, const local_cohesion_plan &p
         }
     }
     next.last_advanced_minutes = next.local_handoff.committed_minutes;
+    // A private observation can become an input to an already recovered
+    // assessment at this handoff. Recheck completeness using the same
+    // reducer, without changing the assessment's score or granting recovery.
+    if( observations_shared > 0 && next.assessment.legacy_unknown_through_minutes >= 0 ) {
+        const scout_assessment_state shared = summarize_normal_scout_assessment( next );
+        next.assessment.legacy_unknown_components |= shared.legacy_unknown_components;
+    }
     // The eligibility receipt is sealed at the first local handoff, before cohesion.  Later
     // cohesion updates may prove the temporary projection is ready to move, but must not rewrite
     // the receipt's boundary fact; an ordinary save between the two is a distinct owner proof.
@@ -8267,7 +8274,12 @@ camp_decision_transition_result transition_camp_decision_state( site_record &sit
         if( site.active_outing.is_active() ||
             decision.report_policy != report_policy_for_profile( effective_profile( site ) ) ||
             !report_matches_camp_decision( report, decision ) ||
-            !effective_report.valid || !effective_report.attack_authorization_usable ) {
+            !effective_report.valid || !effective_report.attack_authorization_usable ||
+            !effective_report.danger_known ||
+            ( !effective_report.certainty_known && report.assessment.threshold_class !=
+              scout_assessment_threshold_class::site_signal ) ||
+            ( !effective_report.bounty_known && report.assessment.threshold_class !=
+              scout_assessment_threshold_class::site_signal ) ) {
             record_result( "rejected", initial_state,
                            "camp decision follow-on authorization is invalid" );
             return camp_decision_transition_result::rejected;
@@ -9771,10 +9783,14 @@ void scout_report_record::deserialize( const JsonObject &jo )
         }
     }
     jo.read( "observations", candidate.observations );
+    bool premarker_assessment = false;
     if( loaded_schema_version >= 5 ) {
         if( !jo.has_member( "assessment" ) ) {
             jo.throw_error( "schema-v5 scout report is missing assessment state" );
         }
+        JsonObject assessment_json = jo.get_object( "assessment" );
+        assessment_json.allow_omitted_members();
+        premarker_assessment = !assessment_json.has_member( "legacy_unknown_components" );
         jo.read( "assessment", candidate.assessment );
     }
     const auto *receipts = candidate.assessment.provenance &&
@@ -9800,6 +9816,16 @@ void scout_report_record::deserialize( const JsonObject &jo )
     candidate.source_generation = std::max( 0, candidate.source_generation );
     candidate.target_lead_revision = std::max( 0, candidate.target_lead_revision );
     candidate.delivered_minutes = std::max( -1, candidate.delivered_minutes );
+    if( premarker_assessment && candidate.assessment.legacy_unknown_components != 0 ) {
+        for( const sortie_observation &observation : candidate.observations ) {
+            candidate.assessment.legacy_unknown_through_minutes = std::max(
+                        candidate.assessment.legacy_unknown_through_minutes, observation.observed_minutes );
+        }
+    }
+    if( candidate.assessment.legacy_unknown_through_minutes >= 0 &&
+        candidate.assessment.legacy_unknown_through_minutes > candidate.delivered_minutes ) {
+        jo.throw_error( "scout report unknown-state boundary is after delivery" );
+    }
     if( candidate.assessment.provenance ) {
         const auto &provenance = *candidate.assessment.provenance;
         const auto future_input = [&]( const std::vector<sortie_observation> &inputs ) {
@@ -10093,6 +10119,10 @@ void scout_assessment_state::serialize( JsonOut &json ) const
 {
     json.start_object();
     json.member( "schema_version", 3 );
+    if( tactical_completeness_recorded ) {
+        json.member( "legacy_unknown_components", legacy_unknown_components );
+        json.member( "legacy_unknown_through_minutes", legacy_unknown_through_minutes );
+    }
     json.member( "observation_started_minutes", observation_started_minutes );
     json.member( "last_progress_minutes", last_progress_minutes );
     json.member( "burned_minutes", burned_minutes );
@@ -10176,13 +10206,39 @@ void scout_assessment_state::deserialize( const JsonObject &jo )
     jo.read( "exit_reason", candidate.exit_reason );
     jo.read( "interruption", candidate.interruption );
     jo.read( "provenance", candidate.provenance );
+    const bool has_legacy_mask = jo.has_member( "legacy_unknown_components" );
+    if( has_legacy_mask != jo.has_member( "legacy_unknown_through_minutes" ) ) {
+        jo.throw_error( "scout assessment has incomplete legacy unknown state" );
+    }
+    if( has_legacy_mask ) {
+        candidate.tactical_completeness_recorded = true;
+        jo.read( "legacy_unknown_components", candidate.legacy_unknown_components );
+        jo.read( "legacy_unknown_through_minutes", candidate.legacy_unknown_through_minutes );
+    } else if( candidate.observation_started_minutes >= 0 || candidate.last_progress_minutes >= 0 ) {
+        // Pre-marker reducer inputs can be authentic yet incomplete: an old
+        // legacy aggregate and a fresh one may have identical retained inputs.
+        candidate.tactical_completeness_recorded = true;
+        candidate.legacy_unknown_components = scout_unknown_tactical_all;
+        if( candidate.provenance && candidate.provenance->bounty_known &&
+            candidate.provenance->bounty_value > 0 && !candidate.provenance->bounty_inputs.empty() ) {
+            candidate.legacy_unknown_components &= ~scout_unknown_bounty;
+        }
+        candidate.legacy_unknown_through_minutes = std::max( {
+            candidate.observation_started_minutes, candidate.last_progress_minutes,
+            candidate.provenance ? candidate.provenance->captured_minutes : -1 } );
+    }
     const auto matches_revision = [&]( const std::vector<sortie_observation> &inputs ) {
         return std::all_of( inputs.begin(), inputs.end(), [&]( const sortie_observation &input ) {
             return input.target_revision == candidate.pinned_target_revision &&
                    input.observed_minutes <= candidate.provenance->captured_minutes;
         } );
     };
-    const bool valid = ( !candidate.provenance ||
+    const bool valid = candidate.legacy_unknown_components >= 0 &&
+                       ( candidate.legacy_unknown_components & ~scout_unknown_tactical_all ) == 0 &&
+                       candidate.legacy_unknown_through_minutes >= -1 &&
+                       ( candidate.legacy_unknown_components == 0 ||
+                         candidate.legacy_unknown_through_minutes >= 0 ) &&
+                       ( !candidate.provenance ||
                          !candidate.provenance->bounty_known ||
                          candidate.provenance->bounty_value == candidate.bounty_estimate ) &&
                        ( !candidate.provenance ||
@@ -10757,6 +10813,12 @@ void active_outing_state::deserialize( const JsonObject &jo )
     jo.read( "schema_version", candidate.schema_version );
     jo.read( "activation", candidate.activation );
     const int loaded_schema_version = candidate.schema_version;
+    bool premarker_assessment = false;
+    if( loaded_schema_version >= 9 && jo.has_member( "assessment" ) ) {
+        JsonObject assessment_json = jo.get_object( "assessment" );
+        assessment_json.allow_omitted_members();
+        premarker_assessment = !assessment_json.has_member( "legacy_unknown_components" );
+    }
     std::string kind_string = "none";
     jo.read( "kind", kind_string );
     candidate.kind = outing_kind_from_string( kind_string ).value_or( outing_kind::none );
@@ -11088,10 +11150,36 @@ void active_outing_state::deserialize( const JsonObject &jo )
                 candidate.assessment.last_progress_minutes =
                     candidate.assessment.observation_started_minutes;
             }
+            // The absent legacy assessment has no contributor-completeness
+            // record, including when the outing is already returning. Existing
+            // outing timestamps are a comparison boundary, not a fact's date.
+            const int legacy_boundary = std::max( {
+                candidate.assessment.last_progress_minutes, candidate.started_minutes,
+                candidate.last_progress_minutes, candidate.last_advanced_minutes } );
+            if( legacy_boundary >= 0 ) {
+                candidate.assessment.tactical_completeness_recorded = true;
+                candidate.assessment.legacy_unknown_components = scout_unknown_tactical_all;
+                candidate.assessment.legacy_unknown_through_minutes = legacy_boundary;
+                for( const sortie_observation &observation : candidate.observations ) {
+                    candidate.assessment.legacy_unknown_through_minutes = std::max(
+                                candidate.assessment.legacy_unknown_through_minutes,
+                                observation.observed_minutes );
+                }
+            }
         }
     }
     if( loaded_schema_version == 9 && structural_outing_uses_frontier_route( candidate ) ) {
         jo.read( "assessment", candidate.assessment );
+    }
+    if( premarker_assessment && candidate.assessment.legacy_unknown_components != 0 ) {
+        for( const sortie_observation &observation : candidate.observations ) {
+            candidate.assessment.legacy_unknown_through_minutes = std::max(
+                        candidate.assessment.legacy_unknown_through_minutes, observation.observed_minutes );
+        }
+    }
+    if( candidate.assessment.legacy_unknown_through_minutes >= 0 &&
+        candidate.assessment.legacy_unknown_through_minutes > candidate.last_advanced_minutes ) {
+        jo.throw_error( "active outing unknown-state boundary is after its last advance" );
     }
     if( candidate.assessment.provenance ) {
         const auto &provenance = *candidate.assessment.provenance;
@@ -15584,8 +15672,8 @@ response_authorization_evaluation evaluate_response_authorization(
     }
     result.report_unexpired = effective.attack_authorization_usable;
     result.assessment_ready = effective.assessment_ready;
-    result.normalized_opportunity = normalize_ground_bounty_opportunity(
-                                        effective.bounty_estimate );
+    result.normalized_opportunity = effective.bounty_known ?
+                                    normalize_ground_bounty_opportunity( effective.bounty_estimate ) : -1;
     const bool signal_founded_site =
         report.assessment.threshold_class == scout_assessment_threshold_class::site_signal;
     if( signal_founded_site ) {
@@ -15638,7 +15726,12 @@ response_authorization_evaluation evaluate_response_authorization(
     // margin still gate a response; no loot score is manufactured here.
     const int opportunity_floor = policy == camp_report_policy::bandit_shakedown ? 333 : 600;
     result.opportunity_sufficient = signal_founded_site ? result.assessment_ready :
-                                    result.normalized_opportunity >= opportunity_floor;
+                                    effective.bounty_known && result.normalized_opportunity >= opportunity_floor;
+    if( !effective.danger_known ) {
+        result.valid = true;
+        result.rejection_reason = "response danger is unknown pending relevant observation";
+        return result;
+    }
 
     const response_party_selection_result fresh_selection =
         select_capable_response_party( site, policy, effective.danger_high, member_reads );
@@ -15763,6 +15856,7 @@ response_denial_resolution resolve_response_authorization_denial(
     const bool interrupted_routine_due = incomplete_watch &&
                                          select_routine_scout_pair( site ).eligible &&
                                          report.casualty_ids.empty() && effective.valid &&
+                                         effective.danger_known &&
                                          !hostile_camp_routine_risk_blocked( effective.normalized_risk ) &&
                                          site.next_routine_dispatch_eligible_minutes >= report.delivered_minutes &&
                                          current_minutes >= site.next_routine_dispatch_eligible_minutes;
@@ -20279,6 +20373,32 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     report.observations = make_reportable_sortie_observations(
                               reported_outing.observations, carrier_ids );
     report.assessment = reported_outing.assessment;
+    if( !report.assessment.tactical_completeness_recorded &&
+        ( report.assessment.observation_started_minutes >= 0 ||
+          report.assessment.last_progress_minutes >= 0 ) ) {
+        report.assessment.tactical_completeness_recorded = true;
+        report.assessment.legacy_unknown_components = scout_unknown_tactical_all;
+        if( report.assessment.provenance &&
+            report.assessment.provenance->activity_id == reported_outing.activity_id &&
+            report.assessment.provenance->generation == reported_outing.generation &&
+            report.assessment.provenance->captured_minutes <= delivered_minutes &&
+            report.assessment.provenance->bounty_known &&
+            report.assessment.provenance->bounty_value == report.assessment.bounty_estimate &&
+            report.assessment.provenance->bounty_value > 0 &&
+            !report.assessment.provenance->bounty_inputs.empty() &&
+            std::all_of( report.assessment.provenance->bounty_inputs.begin(),
+                         report.assessment.provenance->bounty_inputs.end(),
+        [&]( const sortie_observation &input ) {
+            return typed_sortie_observation_is_valid( input ) &&
+                   input.observed_minutes <= report.assessment.provenance->captured_minutes &&
+                   input.target_revision == report.assessment.pinned_target_revision;
+        } ) ) {
+            report.assessment.legacy_unknown_components &= ~scout_unknown_bounty;
+        }
+        report.assessment.legacy_unknown_through_minutes = std::max(
+                    report.assessment.observation_started_minutes,
+                    report.assessment.last_progress_minutes );
+    }
     if( !report.assessment.habitation_certainty_known ) {
         // R055 already included optical senses in certainty. Rebuild that
         // contribution from its bounded shared facts under the current bucket
@@ -20296,7 +20416,12 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     active_outing_state reported_evidence = reported_outing;
     reported_evidence.observations = report.observations;
     reported_evidence.last_advanced_minutes = delivered_minutes;
+    reported_evidence.assessment = report.assessment;
     const scout_assessment_state reported_summary = summarize_normal_scout_assessment( reported_evidence );
+    // Publishing a living carrier's private facts can expose an older
+    // contributor after the completed watch recovered its components. Keep
+    // its score and exit decision, but do not retain unsupported completeness.
+    report.assessment.legacy_unknown_components |= reported_summary.legacy_unknown_components;
     const int reported_habitation = reported_summary.habitation_certainty;
     const int added_habitation = std::max( 0, reported_habitation -
                                            report.assessment.habitation_certainty );
@@ -26083,16 +26208,63 @@ scout_report_effective_state evaluate_scout_report_at(
 
     result.valid = true;
     result.age_minutes = current_minutes - report.delivered_minutes;
+    int unknown = report.assessment.legacy_unknown_components;
+    const bool dated = report.assessment.observation_started_minutes >= 0 ||
+                       report.assessment.last_progress_minutes >= 0;
+    if( dated && !report.assessment.tactical_completeness_recorded ) {
+        unknown |= scout_unknown_tactical_all;
+        const auto &provenance = report.assessment.provenance;
+        if( provenance && provenance->activity_id == report.source_activity_id &&
+            provenance->generation == report.source_generation &&
+            provenance->captured_minutes <= report.delivered_minutes && provenance->bounty_known &&
+            provenance->bounty_value == report.assessment.bounty_estimate &&
+            provenance->bounty_value > 0 && !provenance->bounty_inputs.empty() &&
+            std::all_of( provenance->bounty_inputs.begin(), provenance->bounty_inputs.end(),
+        [&]( const sortie_observation &input ) {
+            return typed_sortie_observation_is_valid( input ) &&
+                   input.observed_minutes <= provenance->captured_minutes &&
+                   input.target_revision == report.assessment.pinned_target_revision;
+        } ) ) {
+            unknown &= ~scout_unknown_bounty;
+        }
+    }
+    if( dated && !report.assessment.provenance ) {
+        // A marker alone is not a provenance record.
+        unknown |= scout_unknown_tactical_all;
+    }
+    if( report.assessment.observation_started_minutes > report.delivered_minutes ||
+        report.assessment.last_progress_minutes > report.delivered_minutes ) {
+        unknown |= scout_unknown_tactical_all;
+    }
+    if( dated && report.assessment.provenance ) {
+        if( !report.assessment.provenance->reducer_known ) {
+            unknown |= scout_unknown_certainty | scout_unknown_defenders |
+                       scout_unknown_danger | scout_unknown_route_danger;
+        }
+        if( !report.assessment.provenance->bounty_known ) {
+            unknown |= scout_unknown_bounty;
+        }
+    }
+    // Aggregate danger depends on confidence, defender and route evidence.
+    if( unknown & ( scout_unknown_certainty | scout_unknown_defenders | scout_unknown_route_danger ) ) {
+        unknown |= scout_unknown_danger;
+    }
+    result.certainty_known = ( unknown & scout_unknown_certainty ) == 0;
+    result.defenders_known = ( unknown & scout_unknown_defenders ) == 0;
+    result.danger_known = ( unknown & scout_unknown_danger ) == 0;
+    result.bounty_known = ( unknown & scout_unknown_bounty ) == 0;
+    result.route_danger_known = ( unknown & scout_unknown_route_danger ) == 0 &&
+                                report.assessment.route_danger_high >= 0;
     const int certainty_penalty = result.age_minutes >= 24 * 60 ? 20 :
                                   result.age_minutes >= 12 * 60 ? 10 : 0;
-    result.certainty = std::max( 0, report.assessment.certainty - certainty_penalty );
-    result.defenders_low = report.assessment.defenders_low;
-    result.defenders_high = report.assessment.defenders_high;
-    result.danger_low = report.assessment.danger_low;
-    result.danger_high = report.assessment.danger_high;
-    result.normalized_risk = normalize_hostile_camp_danger_risk( result.danger_high );
-    result.bounty_estimate = report.assessment.bounty_estimate;
-    result.route_danger_high = report.assessment.route_danger_high;
+    result.certainty = result.certainty_known ? std::max( 0, report.assessment.certainty - certainty_penalty ) : -1;
+    result.defenders_low = result.defenders_known ? report.assessment.defenders_low : -1;
+    result.defenders_high = result.defenders_known ? report.assessment.defenders_high : -1;
+    result.danger_low = result.danger_known ? report.assessment.danger_low : -1;
+    result.danger_high = result.danger_known ? report.assessment.danger_high : -1;
+    result.normalized_risk = result.danger_known ? normalize_hostile_camp_danger_risk( result.danger_high ) : -1;
+    result.bounty_estimate = result.bounty_known ? report.assessment.bounty_estimate : -1;
+    result.route_danger_high = result.route_danger_known ? report.assessment.route_danger_high : -1;
     result.scout_losses = static_cast<int>( report.casualty_ids.size() );
     result.attack_authorization_usable = result.age_minutes < 48 * 60;
     if( report.assessment.threshold_class == scout_assessment_threshold_class::site_signal ) {
@@ -26104,6 +26276,8 @@ scout_report_effective_state evaluate_scout_report_at(
     }
     result.assessment_ready = result.attack_authorization_usable &&
                               report.assessment.readiness_latched &&
+                              ( result.certainty_known || report.assessment.threshold_class ==
+                                scout_assessment_threshold_class::site_signal ) &&
                               scout_assessment_readiness_after_certainty(
                                   report.assessment.threshold_class, true,
                                   result.certainty );
@@ -26143,6 +26317,9 @@ bool scout_assessment_states_equal( const scout_assessment_state &lhs,
                                     const scout_assessment_state &rhs )
 {
     return lhs.schema_version == rhs.schema_version &&
+           lhs.tactical_completeness_recorded == rhs.tactical_completeness_recorded &&
+           lhs.legacy_unknown_components == rhs.legacy_unknown_components &&
+           lhs.legacy_unknown_through_minutes == rhs.legacy_unknown_through_minutes &&
            lhs.observation_started_minutes == rhs.observation_started_minutes &&
            lhs.last_progress_minutes == rhs.last_progress_minutes &&
            lhs.burned_minutes == rhs.burned_minutes &&
@@ -26191,6 +26368,7 @@ scout_assessment_state summarize_normal_scout_assessment(
                                 outing.last_advanced_minutes >= 0 &&
                                 outing.observations.size() <= max_active_outing_observations;
     std::vector<sortie_observation> bounty_inputs;
+    std::vector<sortie_observation> physical_opportunity_inputs;
     const auto capture_input = [&]( std::vector<sortie_observation> &inputs,
     const sortie_observation &observation ) {
         if( !typed_sortie_observation_is_valid( observation ) ||
@@ -26223,6 +26401,12 @@ scout_assessment_state summarize_normal_scout_assessment(
     std::set<int> physical_player_opportunity_buckets;
     std::map<std::string, std::set<int>> cargo_handling_buckets_by_source;
     bool equipment_detail = false;
+    bool fresh_contributing_visual = false;
+    bool fresh_contributing_defenders = false;
+    bool stale_certainty_input = false;
+    bool stale_defender_input = false;
+    bool stale_danger_input = false;
+    bool fresh_burn_input = false;
     using observation_window_key = std::tuple<int, int, int, int>;
     std::map<observation_window_key, int> static_hazard_by_window;
     std::vector<const sortie_observation *> defender_windows;
@@ -26329,15 +26513,23 @@ scout_assessment_state summarize_normal_scout_assessment(
         }
         capture_input( provenance.target_inputs, observation );
         latest_progress = std::max( latest_progress, observation.observed_minutes );
+        const bool stale_tactical_input = summary.legacy_unknown_through_minutes >= 0 &&
+                                          observation.observed_minutes <= summary.legacy_unknown_through_minutes;
+        if( !stale_tactical_input && observation.kind == sortie_observation_kind::burn ) {
+            fresh_burn_input = true;
+        }
         if( observation.kind == sortie_observation_kind::contradiction ) {
+            stale_certainty_input = stale_certainty_input || stale_tactical_input;
             contradiction_penalty = std::min( 30, contradiction_penalty + 15 );
             continue;
         }
         if( observation.sense != sortie_observation_sense::visual ) {
             if( current_watch_optical_record_is_bound( outing, observation ) ) {
                 habitation_buckets.insert( observation.bucket_start_minutes );
+                stale_certainty_input = stale_certainty_input || stale_tactical_input;
             } else if( !smoke_sense && !light_sense ) {
                 signal_senses.insert( observation.sense );
+                stale_certainty_input = stale_certainty_input || stale_tactical_input;
             }
             continue;
         }
@@ -26358,15 +26550,32 @@ scout_assessment_state summarize_normal_scout_assessment(
                 observation.bucket_start_minutes );
             continue;
         }
+        // Only observations that reach the normal visual reducer can replace
+        // its inherited tactical components. Wealth-only cues intentionally
+        // leave certainty and defender assessment untouched above.
+        if( observation.observed_minutes > summary.legacy_unknown_through_minutes ) {
+            fresh_contributing_visual = fresh_contributing_visual || observation.visual_quality > 0;
+            fresh_contributing_defenders = fresh_contributing_defenders ||
+                                           sortie_observation_defender_count( observation ) > 0;
+        }
         const bool physical_player_opportunity =
             observation.state_key == "physical-player-opportunity" &&
             observation.fact_key.rfind( "physical-player-opportunity:player@", 0 ) == 0;
+        if( stale_tactical_input ) {
+            const bool defenders = sortie_observation_defender_count( observation ) > 0;
+            stale_certainty_input = stale_certainty_input || observation.visual_quality > 0 ||
+                                    observation.kind == sortie_observation_kind::burn ||
+                                    physical_player_opportunity || defenders || observation.equipment_detail > 0;
+            stale_defender_input = stale_defender_input || defenders;
+            stale_danger_input = stale_danger_input || defenders || observation.observed_power_low > 0;
+        }
         if( observation.kind == sortie_observation_kind::burn || physical_player_opportunity ||
             observation.fact_key.rfind( "visible-defenders:", 0 ) == 0 ) {
             bounty_inputs.push_back( observation );
         }
         if( physical_player_opportunity ) {
             physical_player_opportunity_buckets.insert( observation.bucket_start_minutes );
+            physical_opportunity_inputs.push_back( observation );
         }
         confirmed_presence = confirmed_presence ||
                              observation.kind == sortie_observation_kind::burn ||
@@ -26465,15 +26674,48 @@ scout_assessment_state summarize_normal_scout_assessment(
         physical_player_opportunity_buckets.size() >= 3 &&
         *physical_player_opportunity_buckets.rbegin() -
         *physical_player_opportunity_buckets.begin() >= 60;
+    std::vector<sortie_observation> fresh_physical_opportunity_inputs;
+    std::set<int> fresh_physical_opportunity_buckets;
+    for( const sortie_observation &input : physical_opportunity_inputs ) {
+        if( input.observed_minutes > summary.legacy_unknown_through_minutes ) {
+            fresh_physical_opportunity_inputs.push_back( input );
+            fresh_physical_opportunity_buckets.insert( input.bucket_start_minutes );
+        }
+    }
+    const bool fresh_repeated_opportunity = fresh_physical_opportunity_buckets.size() >= 3 &&
+                                            *fresh_physical_opportunity_buckets.rbegin() -
+                                            *fresh_physical_opportunity_buckets.begin() >= 60;
     const int current_bounty = repeated_physical_player_opportunity ? 2 : occupied_human_baseline ?
                                distinct_class_and_bucket_cues || repeated_cargo_handling ? 3 :
                                confirmed_outward_wealth_cue ? 2 : 1 : 0;
     summary.bounty_estimate = std::max( prior_bounty, current_bounty );
     if( provenance_available ) {
-        if( current_bounty >= prior_bounty && ( confirmed_human_presence || prior_bounty == 0 ) ) {
+        const std::vector<sortie_observation> &current_winner_inputs =
+            repeated_physical_player_opportunity ?
+            ( fresh_repeated_opportunity ? fresh_physical_opportunity_inputs : physical_opportunity_inputs ) :
+            bounty_inputs;
+        const bool current_winner_has_old_input = summary.legacy_unknown_through_minutes >= 0 &&
+                std::any_of( current_winner_inputs.begin(), current_winner_inputs.end(),
+        [&]( const sortie_observation &input ) {
+            return input.observed_minutes <= summary.legacy_unknown_through_minutes;
+        } );
+        // An equally valuable newly visible old cue must not replace an
+        // independently authenticated retained winner with weaker proof.
+        const bool preserve_prior_winner = current_bounty == prior_bounty && prior_bounty > 0 &&
+                current_winner_has_old_input &&
+                ( summary.legacy_unknown_components & scout_unknown_bounty ) == 0 &&
+                previous_provenance && previous_provenance->bounty_known &&
+                previous_provenance->bounty_value == prior_bounty &&
+                previous_provenance->activity_id == outing.activity_id &&
+                previous_provenance->generation == outing.generation &&
+                outing.assessment.pinned_target_revision == outing.target_lead_revision;
+        if( current_bounty >= prior_bounty && !preserve_prior_winner &&
+            ( confirmed_human_presence || prior_bounty == 0 ) ) {
             provenance.bounty_known = true;
             if( summary.bounty_estimate > 0 ) {
-                provenance.bounty_inputs = bounty_inputs;
+                // This branch scores repeated physical opportunities on its
+                // own; unrelated wealth cues do not support its winning value.
+                provenance.bounty_inputs = current_winner_inputs;
             }
         } else if( previous_provenance && previous_provenance->bounty_known &&
                    previous_provenance->bounty_value == prior_bounty &&
@@ -26492,6 +26734,67 @@ scout_assessment_state summarize_normal_scout_assessment(
             }
         }
         provenance.bounty_value = summary.bounty_estimate;
+        // The current reducer has captured its actual bounded contributors;
+        // this prospective marker does not certify an inherited aggregate.
+        summary.tactical_completeness_recorded = true;
+        if( summary.legacy_unknown_through_minutes >= 0 ) {
+            // Replacing an inherited aggregate requires actual relevant inputs
+            // from after migration, not a numeric recompute of a truncated old
+            // buffer. Each independently supported component clears its own bit.
+            const int after = summary.legacy_unknown_through_minutes;
+            const auto all_new = [after]( const std::vector<sortie_observation> &inputs ) {
+                return !inputs.empty() && std::all_of( inputs.begin(), inputs.end(),
+                [after]( const sortie_observation &input ) {
+                    return input.observed_minutes > after;
+                } );
+            };
+            const auto any_old = [after]( const std::vector<sortie_observation> &inputs ) {
+                return std::any_of( inputs.begin(), inputs.end(),
+                [after]( const sortie_observation &input ) {
+                    return input.observed_minutes <= after;
+                } );
+            };
+            if( stale_certainty_input ) {
+                summary.legacy_unknown_components |= scout_unknown_certainty |
+                                                     scout_unknown_defenders | scout_unknown_danger;
+            }
+            if( stale_defender_input ) {
+                summary.legacy_unknown_components |= scout_unknown_defenders | scout_unknown_danger;
+            }
+            if( stale_danger_input ) {
+                summary.legacy_unknown_components |= scout_unknown_danger;
+            }
+            if( any_old( provenance.route_inputs ) ) {
+                summary.legacy_unknown_components |= scout_unknown_route_danger | scout_unknown_danger;
+            }
+            if( provenance.bounty_known && any_old( provenance.bounty_inputs ) &&
+                ( !previous_provenance || !previous_provenance->bounty_known ||
+                  previous_provenance->bounty_value != prior_bounty || current_bounty > prior_bounty ) ) {
+                summary.legacy_unknown_components |= scout_unknown_bounty;
+            }
+            const bool new_visual = fresh_contributing_visual && !stale_certainty_input;
+            const bool new_defenders = fresh_contributing_defenders && !stale_defender_input;
+            if( new_visual ) {
+                summary.legacy_unknown_components &= ~scout_unknown_certainty;
+            }
+            if( new_defenders &&
+                ( summary.legacy_unknown_components & scout_unknown_certainty ) == 0 ) {
+                summary.legacy_unknown_components &= ~scout_unknown_defenders;
+            }
+            if( all_new( provenance.route_inputs ) ) {
+                summary.legacy_unknown_components &= ~scout_unknown_route_danger;
+            }
+            if( provenance.bounty_known && provenance.bounty_value > 0 &&
+                all_new( provenance.bounty_inputs ) ) {
+                summary.legacy_unknown_components &= ~scout_unknown_bounty;
+            }
+            if( new_defenders && !stale_danger_input &&
+                ( summary.target_alert <= 0 || fresh_burn_input ) &&
+                ( summary.legacy_unknown_components & ( scout_unknown_certainty |
+                  scout_unknown_defenders | scout_unknown_route_danger ) ) == 0 ) {
+                summary.legacy_unknown_components &= ~scout_unknown_danger;
+            }
+        }
         summary.provenance = std::move( provenance );
     }
     summary.route_danger_high = route_danger_high;
@@ -27756,10 +28059,17 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
     const std::optional<std::vector<sortie_observation>> observations =
                 make_atomic_covert_burn_observations(
                     site, expected_cursor, burn, danger_read, current_minutes );
-    if( !observations ) {
+    if( !observations || std::any_of( observations->begin(), observations->end(),
+    [current_minutes]( const sortie_observation &observation ) {
+        return observation.observed_minutes > current_minutes;
+    } ) ) {
         return effect;
     }
     candidate.active_outing.observations = *observations;
+    // The burn and optional danger read belong to this transaction's clock.
+    // Bind it before reducing their provenance; the candidate is not published
+    // until all remaining ownership and roster checks succeed.
+    candidate.active_outing.last_advanced_minutes = current_minutes;
     const scout_phase burn_phase = survival_direction ? scout_phase::burned_withdrawal :
                                    scout_phase::returning_exposed;
     candidate.active_outing.alternate_watch_reposition_pending = false;
@@ -27804,7 +28114,6 @@ static covert_scout_burn_effect apply_covert_scout_burn_impl(
         candidate.active_outing.local_handoff.egress_omt = survival_direction->omt;
     }
     candidate.active_outing.last_progress_minutes = current_minutes;
-    candidate.active_outing.last_advanced_minutes = current_minutes;
     consume_local_pair_resume_receipt( candidate.active_outing );
     if( !simulation_owner_state_is_consistent( candidate.active_outing ) ||
         !candidate.roster().valid ) {
