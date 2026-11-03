@@ -15267,10 +15267,26 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                     !hostile_spawned ) {
                     // Introduce the live threat at this callback, before any
                     // Native actor can acquire it or raise a faction alarm.
-                    const tripoint_abs_ms threat_position = actors[split_inactive_index]->pos_abs() +
-                                                           point( 2, 0 );
-                    REQUIRE( get_map().inbounds( threat_position ) );
-                    monster &threat = spawn_test_monster( "mon_zombie", get_map().get_bub( threat_position ) );
+                    const tripoint_abs_ms member_position = actors[split_inactive_index]->pos_abs();
+                    std::optional<tripoint_bub_ms> threat_position;
+                    for( int radius = 1; radius <= 3 && !threat_position; ++radius ) {
+                        for( int y = -radius; y <= radius && !threat_position; ++y ) {
+                            for( int x = -radius; x <= radius; ++x ) {
+                                const tripoint_abs_ms candidate = member_position + point( x, y );
+                                if( std::max( std::abs( x ), std::abs( y ) ) != radius ||
+                                    !get_map().inbounds( candidate ) ) {
+                                    continue;
+                                }
+                                const auto local = get_map().get_bub( candidate );
+                                if( get_map().passable( local ) && g->is_empty( local ) ) {
+                                    threat_position = local;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    REQUIRE( threat_position );
+                    monster &threat = spawn_test_monster( "mon_zombie", *threat_position );
                     REQUIRE( actors[split_inactive_index]->attitude_to( threat ) == Creature::Attitude::HOSTILE );
                     hostile_spawned = true;
                 }
@@ -15630,27 +15646,50 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         const auto second_progress = overmap_buffer.find_npc( live_ids.back() );
         REQUIRE( first_progress );
         REQUIRE( second_progress );
-        CHECK( first_progress->pos_abs_omt() == second_progress->pos_abs_omt() );
-        CHECK( first_progress->pos_abs_omt() != homeward );
-        CHECK( first_progress->pos_abs_omt() != live_site.anchor );
-        CHECK( live_site.active_outing.local_handoff.route_position ==
-               first_progress->pos_abs_omt() );
+        // Two minutes cannot fund the selected field edge. Repeating the
+        // same service cannot renew work or move either authenticated body.
+        CHECK( first_progress->pos_abs_omt() == homeward );
+        CHECK( second_progress->pos_abs_omt() == homeward );
+        const auto early_work = live_site.active_outing.coarse_work.work_millis;
+        const auto early_active = live_site.active_outing.activation.active_turns;
+        const auto early_serviced = live_site.active_outing.coarse_work.serviced_active_turns;
+        process_overmap_npc_move_for_test();
+        CHECK( first_progress->pos_abs_omt() == homeward );
+        CHECK( second_progress->pos_abs_omt() == homeward );
+        CHECK( live_site.active_outing.coarse_work.work_millis == early_work );
+        CHECK( live_site.active_outing.coarse_work.serviced_active_turns == early_serviced );
         CHECK( live_site.active_outing.member_return_receipts.empty() );
+        REQUIRE( homeward_path.size() >= 2 );
+        const auto next = homeward_path[homeward_path.size() - 2];
+        const int weight = overmap_path_params::for_npc().get_cost(
+                               overmap_buffer.ter( next )->get_travel_cost_type() );
+        const int speed = std::min( first_progress->get_speed(), second_progress->get_speed() );
+        REQUIRE( weight == 36 );
+        REQUIRE( speed > 0 );
+        const std::int64_t edge_cost = ( static_cast<std::int64_t>( weight ) * 30000000 +
+                                         speed * 24 - 1 ) / ( speed * 24 );
+        bool progressed = false;
         bandit_live_world::advance_structural_bounty_outings(
             overmap_buffer.global_state.bandit_live_world, 105, {} );
         REQUIRE( live_site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
         REQUIRE( bandit_live_world::current_external_simulation_cursor( live_site ) );
         calendar::turn = calendar::start_of_cataclysm + 105_minutes;
-        for( int step = 0; step < 5 &&
+        for( int step = 0; step < 24 &&
              first_progress->pos_abs_omt() != live_site.anchor; ++step, calendar::turn += 5_minutes ) {
             process_overmap_npc_move_for_test();
             CHECK( first_progress->pos_abs_omt() == second_progress->pos_abs_omt() );
+            if( !progressed && first_progress->pos_abs_omt() != homeward ) {
+                CHECK( early_work + ( live_site.active_outing.activation.active_turns - early_active ) *
+                       1000 >= edge_cost );
+                progressed = true;
+            }
             if( first_progress->pos_abs_omt() != live_site.anchor ) {
                 CHECK( live_site.active_outing.local_handoff.route_position ==
                        first_progress->pos_abs_omt() );
                 CHECK( live_site.active_outing.member_return_receipts.empty() );
             }
         }
+        CHECK( progressed );
         CHECK( first_progress->pos_abs_omt() == live_site.anchor );
         REQUIRE( live_site.active_outing.member_return_receipts.size() == 2 );
         CHECK( live_site.active_outing.member_return_receipts[0].member_id == live_ids.front() );
@@ -71589,6 +71628,65 @@ TEST_CASE( "coarse route price rejects incomplete persisted evidence",
     bandit_live_world::coarse_route_price price;
     CHECK_THROWS( price.deserialize( json_loader::from_string( R"({"weight":24})" ).get_object() ) );
     CHECK_THROWS( price.deserialize( json_loader::from_string( R"({"omt":[1,2,0],"weight":0})" ).get_object() ) );
+}
+
+TEST_CASE( "outbound party work and forecast use the slowest actual member",
+           "[bandit_live_world][expedition_slowest_native_member]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, true );
+    REQUIRE( journey.members().size() == 2 );
+    const auto fast = overmap_buffer.find_npc( journey.members().front() );
+    const auto slow = overmap_buffer.find_npc( journey.members().back() );
+    REQUIRE( fast );
+    REQUIRE( slow );
+    fast->set_speed_base( 100 );
+    fast->set_speed_bonus( 0 );
+    slow->set_speed_base( 50 );
+    slow->set_speed_bonus( 0 );
+    REQUIRE( fast->get_speed() == 100 );
+    REQUIRE( slow->get_speed() == 50 );
+    const int prior_return = journey.site().active_outing.expected_return_minutes;
+    prepare_live_bandit_abstract_scout_travel_for_test();
+    REQUIRE( journey.site().active_outing.owner == simulation_owner::abstract );
+    REQUIRE( journey.site().active_outing.route_clock_speed == 50 );
+    CHECK( journey.site().active_outing.expected_return_minutes > prior_return );
+    REQUIRE( fast->pos_abs_omt() == journey.home );
+    REQUIRE( slow->pos_abs_omt() == journey.home );
+    REQUIRE( fast->omt_path.size() >= 2 );
+    REQUIRE( fast->omt_path == slow->omt_path );
+    const auto next = fast->omt_path[fast->omt_path.size() - 2];
+    REQUIRE( overmap_buffer.ter( next ) == oter_id( "field" ) );
+    const auto initial_active = journey.site().active_outing.activation.active_turns;
+    bool saw_partial = false;
+    bool moved = false;
+    for( int minute = 0; minute < 45; ++minute ) {
+        journey.next_minute();
+        const auto &outing = journey.site().active_outing;
+        REQUIRE( outing.owner == simulation_owner::abstract );
+        const bool fast_moved = fast->pos_abs_omt() != journey.home;
+        const bool slow_moved = slow->pos_abs_omt() != journey.home;
+        CHECK( fast_moved == slow_moved );
+        if( outing.coarse_work.edge_bound ) {
+            CHECK( outing.coarse_work.edge_cost_millis == 900000 ); // field at speed 50
+            CHECK( outing.coarse_work.work_millis < 900000 );
+            CHECK_FALSE( fast_moved );
+            saw_partial = true;
+        }
+        if( fast_moved ) {
+            CHECK( fast->pos_abs_omt() == next );
+            CHECK( slow->pos_abs_omt() == next );
+            CHECK( ( outing.activation.active_turns - initial_active ) * 1000 >= 900000 );
+            moved = true;
+            break;
+        }
+    }
+    CHECK( saw_partial );
+    CHECK( moved );
 }
 
 TEST_CASE( "outbound clock reprices unchanged passable future terrain",
