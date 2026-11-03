@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <set>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -21,8 +22,10 @@
 #include "do_turn.h"
 #include "faction.h"
 #include "game.h"
+#include "item.h"
 #include "json.h"
 #include "json_loader.h"
+#include "live_light.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
@@ -537,6 +540,221 @@ TEST_CASE( "deterministic Native camp special placement registers both camp fact
         CHECK( repeated.recognized_tiles == 4 );
     }
     CHECK( all_members.size() == 28 );
+}
+
+TEST_CASE( "signal residents followed by native camp generation preserve ownership",
+           "[bandit][live_world][natural_worldgen][signal_ownership]" )
+{
+    const bandit_live_world::world_state old_world = overmap_buffer.global_state.bandit_live_world;
+    const unsigned int old_seed = g->get_seed();
+    on_out_of_scope restore( [old_world, old_seed]() {
+        for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+            for( const auto &member : site.members ) {
+                if( overmap_buffer.find_npc( member.npc_id ) ) {
+                    auto actor = overmap_buffer.remove_npc( member.npc_id );
+                    if( actor && actor->get_faction() ) {
+                        actor->get_faction()->remove_member( member.npc_id );
+                    }
+                }
+            }
+        }
+        overmap_buffer.clear();
+        overmap_buffer.global_state.bandit_live_world = old_world;
+        g->set_seed( old_seed );
+    } );
+    overmap_buffer.clear();
+    auto &state = overmap_buffer.global_state.bandit_live_world;
+    state.clear();
+    constexpr std::uint32_t seed = 830205018;
+    g->set_seed( seed );
+    rng_set_engine_seed( seed );
+    overmap_special_batch empty_batch( point_abs_om( 1, 0 ) );
+    overmap_buffer.create_custom_overmap( point_abs_om( 1, 0 ), empty_batch );
+    overmap &generated = overmap_buffer.get( point_abs_om( 1, 0 ) );
+    const overmap_special_id special_id( "bandit_camp" );
+    const overmap_special &special = special_id.obj();
+    const city no_city;
+    std::optional<tripoint_abs_omt> origin;
+    for( int attempt = 0; attempt < 100 && !origin; ++attempt ) {
+        const tripoint_om_omt local( 10 + ( attempt % 10 ) * 16,
+                                     10 + ( attempt / 10 ) * 16, 0 );
+        if( !generated.can_place_special( special, local, om_direction::type::north, false ) ) {
+            continue;
+        }
+        const auto placed = generated.place_special( special, local, om_direction::type::north,
+                            no_city, false, false );
+        for( const tripoint_om_omt tile : placed ) {
+            if( generated.overmap_special_at( tile ) == special_id ) {
+                origin = project_combine( generated.pos(),
+                                         generated.overmap_special_origin_at( tile ).value_or( tile ) );
+                break;
+            }
+        }
+    }
+    REQUIRE( origin );
+    bandit_live_world::register_abstract_sites_near( state, *origin, 3, existing_special_lookup );
+    REQUIRE( state.sites.size() == 1 );
+    auto &site = state.sites.front();
+    REQUIRE( site.source_id == "bandit_camp" );
+    const auto observer = resolve_live_bandit_staffed_observer_for_test( state, 0 );
+    REQUIRE( observer.exclusion_reason.empty() );
+    live_bandit_signal_observation smoke;
+    smoke.mark.kind = "smoke";
+    smoke.mark.mark_id = "ownership-control";
+    smoke.source_omt = site.anchor;
+    smoke.range_cap_omt = 4;
+    observe_live_hostile_signal_sources_for_test( { smoke } );
+    std::set<character_id> lazy_ids;
+    for( const auto &member : site.members ) {
+        lazy_ids.insert( member.npc_id );
+    }
+    REQUIRE( lazy_ids.size() > 1 );
+    const tripoint_abs_omt anchor = site.anchor;
+    {
+        auto unrelated = round_trip( state );
+        CHECK_FALSE( bandit_live_world::consume_pending_native_spawn( unrelated, "cannibal_camp",
+                     anchor, "bandit" ) );
+        CHECK_FALSE( bandit_live_world::consume_pending_native_spawn( unrelated, "bandit_camp",
+                     anchor + point( 50, 0 ), "bandit" ) );
+        CHECK_FALSE( bandit_live_world::consume_pending_native_spawn( unrelated, "bandit_camp",
+                     anchor, "bandit_trader" ) );
+        for( auto &member : unrelated.sites.front().members ) {
+            REQUIRE( member.pending_native_spawn );
+            member.pending_native_spawn = false; // Legacy provenance is unknown.
+        }
+        CHECK_FALSE( bandit_live_world::consume_pending_native_spawn( unrelated, "bandit_camp",
+                     anchor, "bandit" ) );
+        unrelated = round_trip( state );
+        unrelated.sites.push_back( unrelated.sites.front() );
+        CHECK_FALSE( bandit_live_world::consume_pending_native_spawn( unrelated, "bandit_camp",
+                     anchor, "bandit" ) );
+    }
+    const character_id away_id = *lazy_ids.begin();
+    const character_id dead_id = *std::next( lazy_ids.begin() );
+    auto away = overmap_buffer.find_npc( away_id );
+    REQUIRE( away );
+    away->spawn_at_omt( anchor + point( 2, 0 ) );
+    away->set_pain( 25 );
+    away->set_part_hp_cur( bodypart_id( "arm_l" ), 20 );
+    away->i_add( item( itype_id( "rock" ), calendar::turn ) );
+    const tripoint_abs_ms away_position = away->pos_abs();
+    const auto away_mission = away->mission;
+    REQUIRE( bandit_live_world::update_member_state( site, dead_id,
+             bandit_live_world::member_state::dead, "control casualty" ) );
+    auto casualty = overmap_buffer.remove_npc( dead_id );
+    REQUIRE( casualty );
+    if( casualty->get_faction() ) {
+        casualty->get_faction()->remove_member( dead_id );
+    }
+    // Persist both the overmap NPC bodies and the owning ledger before mapgen.
+    const auto saved_before_mapgen = round_trip( state );
+    overmap_buffer.save();
+    overmap_buffer.reset();
+    state = saved_before_mapgen;
+    overmap_buffer.get( point_abs_om( 1, 0 ) );
+    away = overmap_buffer.find_npc( away_id );
+    REQUIRE( away );
+    REQUIRE( away->pos_abs() == away_position );
+    REQUIRE( away->get_pain() == 25 );
+    REQUIRE( away->get_part_hp_cur( bodypart_id( "arm_l" ) ) == 20 );
+    REQUIRE( away->has_amount( itype_id( "rock" ), 1 ) );
+    CHECK( away->mission == away_mission );
+    for( const tripoint_abs_omt &omt : state.sites.front().footprint ) {
+        if( omt.z() == 0 ) {
+            smallmap native_map;
+            native_map.generate( omt, calendar::turn, true );
+        }
+    }
+    const auto *after = find_site_by_source( state, "bandit_camp" );
+    REQUIRE( after );
+    const JsonArray definitions = json_loader::from_path( cata_path( cata_path::root_path::data,
+                                  "json/mapgen/hells_raiders/bandit_camp.json" ) ).get_array();
+    REQUIRE_FALSE( definitions.empty() );
+    JsonObject definition = definitions.get_object( 0 );
+    definition.allow_omitted_members();
+    JsonObject map_object = definition.get_object( "object" );
+    map_object.allow_omitted_members();
+    const JsonArray placements = map_object.get_array( "place_npcs" );
+    const std::size_t native_slots = placements.size();
+    std::map<std::string, int> native_templates;
+    for( JsonObject placement : placements ) {
+        placement.allow_omitted_members();
+        ++native_templates[placement.get_string( "class" )];
+    }
+    CHECK( after->members.size() == native_slots );
+    CHECK( after->living_total == static_cast<int>( native_slots ) - 1 );
+    std::set<character_id> ids;
+    std::map<std::string, int> actual_templates;
+    for( const auto &member : after->members ) {
+        REQUIRE( ids.insert( member.npc_id ).second );
+        ++actual_templates[member.npc_template_id];
+        if( member.npc_id == dead_id ) {
+            CHECK( member.state == bandit_live_world::member_state::dead );
+            CHECK_FALSE( overmap_buffer.find_npc( member.npc_id ) );
+        } else {
+            REQUIRE( overmap_buffer.find_npc( member.npc_id ) );
+        }
+        CHECK_FALSE( member.pending_native_spawn );
+    }
+    CHECK( actual_templates == native_templates );
+    for( const character_id id : lazy_ids ) {
+        CHECK( ids.count( id ) == 1 );
+    }
+    CHECK( after->roster().valid );
+    away = overmap_buffer.find_npc( away_id );
+    REQUIRE( away );
+    CHECK( away->pos_abs() == away_position );
+    CHECK( away->get_pain() == 25 );
+    CHECK( away->get_part_hp_cur( bodypart_id( "arm_l" ) ) == 20 );
+    CHECK( away->has_amount( itype_id( "rock" ), 1 ) );
+    CHECK( away->mission == away_mission );
+    const auto saved = round_trip( state );
+    REQUIRE( saved.sites.size() == 1 );
+    CHECK( saved.sites.front().living_total == after->living_total );
+    CHECK( saved.sites.front().members.size() == ids.size() );
+    overmap_buffer.save();
+    overmap_buffer.reset();
+    state = saved;
+    overmap_buffer.get( point_abs_om( 1, 0 ) );
+    away = overmap_buffer.find_npc( away_id );
+    REQUIRE( away );
+    CHECK( away->pos_abs() == away_position );
+    CHECK( away->get_part_hp_cur( bodypart_id( "arm_l" ) ) == 20 );
+    CHECK( away->has_amount( itype_id( "rock" ), 1 ) );
+    CHECK( away->mission == away_mission );
+    CHECK_FALSE( overmap_buffer.find_npc( dead_id ) );
+    bandit_live_world::register_abstract_sites_near( state, anchor, 3, existing_special_lookup );
+    CHECK( state.sites.front().members.size() == ids.size() );
+}
+
+TEST_CASE( "pending native placement preserves an active local outing",
+           "[bandit][live_world][signal_ownership]" )
+{
+    JsonObject document = json_loader::from_path( cata_path( cata_path::root_path::base,
+                          "tests/data/r054_local_ownership_clock.json" ) ).get_object();
+    document.allow_omitted_members();
+    JsonObject fixture = document.get_array( "cases" ).get_object( 0 );
+    fixture.allow_omitted_members();
+    bandit_live_world::world_state world;
+    world.deserialize( fixture.get_object( "world" ) );
+    auto *site = world.find_site( "overmap_special:bandit_camp@129,149,0" );
+    REQUIRE( site );
+    REQUIRE( site->roster().valid );
+    const auto *outing = site->active_external_outing();
+    REQUIRE( outing );
+    REQUIRE( outing->owner == bandit_live_world::simulation_owner::local );
+    auto *member = site->find_member( character_id( 4 ) );
+    REQUIRE( member );
+    REQUIRE( member->state == bandit_live_world::member_state::local_contact );
+    // The retained fixture predates provenance. Set the new marker explicitly
+    // as a control; this does not infer it for that historical save.
+    member->pending_native_spawn = true;
+    const std::string before = serialize_state( world );
+    REQUIRE( bandit_live_world::consume_pending_native_spawn( world, "bandit_camp",
+             site->anchor, "bandit" ) );
+    CHECK_FALSE( member->pending_native_spawn );
+    member->pending_native_spawn = true;
+    CHECK( serialize_state( world ) == before );
 }
 
 TEST_CASE( "natural hunting blind watch uses the production selector and exact pair handoff",

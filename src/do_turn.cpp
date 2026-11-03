@@ -8698,11 +8698,12 @@ int live_bandit_materialize_abstract_members(
         bandit_live_world::world_state candidate = state;
         const bool claimed = bandit_live_world::claim_tracked_spawn( candidate, template_id.str(),
                              bandit->getID(), bandit->pos_abs(), site.source_id, std::nullopt, special_lookup );
-        const bandit_live_world::site_record *allocated = candidate.find_site( site.site_id );
+        bandit_live_world::site_record *allocated = candidate.find_site( site.site_id );
         if( claimed && candidate.sites.size() == state.sites.size() && allocated != nullptr &&
             allocated->has_member( bandit->getID() ) && allocated->roster().valid &&
             allocated->living_total == site.living_total &&
             allocated->roster().unmaterialized_home_total == site.roster().unmaterialized_home_total - 1 ) {
+            allocated->find_member( bandit->getID() )->pending_native_spawn = true;
             overmap_buffer.insert_npc( bandit );
             site = *allocated;
             created_members++;

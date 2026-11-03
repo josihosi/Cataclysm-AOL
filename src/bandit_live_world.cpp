@@ -8287,6 +8287,9 @@ void member_record::serialize( JsonOut &json ) const
     json.member( "npc_id", npc_id.get_value() );
     json.member( "npc_template_id", npc_template_id );
     json.member( "home_spawn_tile", home_spawn_tile );
+    if( pending_native_spawn ) {
+        json.member( "pending_native_spawn", true );
+    }
     json.member( "state", to_string( state ) );
     json.member( "wounded_or_unready", wounded_or_unready );
     if( abstract_wound_until_minutes >= 0 ) {
@@ -8303,6 +8306,8 @@ void member_record::deserialize( const JsonObject &jo )
     npc_id.deserialize( raw_npc_id );
     jo.read( "npc_template_id", npc_template_id );
     jo.read( "home_spawn_tile", home_spawn_tile );
+    pending_native_spawn = false;
+    jo.read( "pending_native_spawn", pending_native_spawn );
     std::string state_string = "at_home";
     jo.read( "state", state_string );
     state = member_state_from_string( state_string ).value_or( member_state::at_home );
@@ -14581,6 +14586,34 @@ abstract_bootstrap_result register_abstract_sites_near(
     }
 
     return result;
+}
+
+bool consume_pending_native_spawn( world_state &state, const std::string &source_id,
+                                   const tripoint_abs_omt &omt, const std::string &npc_template_id )
+{
+    site_record *site = nullptr;
+    for( site_record &candidate : state.sites ) {
+        if( candidate.source_kind != anchor_source_kind::overmap_special ||
+            candidate.source_id != source_id ||
+            std::find( candidate.footprint.begin(), candidate.footprint.end(), omt ) ==
+            candidate.footprint.end() ) {
+            continue;
+        }
+        if( site != nullptr ) {
+            return false;
+        }
+        site = &candidate;
+    }
+    if( site == nullptr || !site->roster().valid ) {
+        return false;
+    }
+    for( member_record &member : site->members ) {
+        if( member.pending_native_spawn && member.npc_template_id == npc_template_id ) {
+            member.pending_native_spawn = false;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,

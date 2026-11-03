@@ -125,6 +125,9 @@ class mapgendata
         std::vector<oter_id> predecessors_;
 
     public:
+        // Set only by the normal initial map generation caller; mapgen updates
+        // and explicit NPC placements must retain their independent semantics.
+        bool initial_map_generation = false;
         std::array<oter_id, 8> t_nesw;
 
         int n_fac = 0;  // dir == 0

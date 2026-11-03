@@ -263,6 +263,7 @@ void map::generate( const tripoint_abs_omt &p, const time_point &when, bool save
                                  !generated.at( get_nonant( tripoint_rel_sm{ point_rel_sm::south, p_sm.z() } ) );
 
         mapgendata dat( { p.xy(), gridz}, *this, density, when, nullptr );
+        dat.initial_map_generation = save_results;
         if( ( any_missing || !save_results ) &&
             !terrain_type->has_uniform_terrain() ) {
             draw_map( dat );
@@ -2078,6 +2079,20 @@ class jmapgen_npc : public jmapgen_piece
                 return;
             }
             tripoint_bub_ms const dst( x.get(), y.get(), dat.zlevel() + z.get() );
+            if( dat.initial_map_generation && dst.z() == dat.zlevel() &&
+                !target && traits.empty() && unique_id.empty() ) {
+                const tripoint_abs_omt omt = project_to<coords::omt>( dat.m.get_abs( dst ) );
+                if( const auto special = overmap_buffer.overmap_special_at_existing( omt ) ) {
+                    if( bandit_live_world::consume_pending_native_spawn(
+                            overmap_buffer.global_state.bandit_live_world, special->str(), omt,
+                            chosen_id.str() ) ) {
+                        if( reality_bubble().inbounds( dat.m.get_abs( dst ) ) ) {
+                            dat.m.queue_main_cleanup();
+                        }
+                        return;
+                    }
+                }
+            }
             // TODO: Make place_npc 3D aware.
             character_id npc_id = dat.m.place_npc( dst.xy(), chosen_id );
             if( reality_bubble().inbounds( dat.m.get_abs( dst ) ) ) {

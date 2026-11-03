@@ -359,6 +359,10 @@ struct member_record {
     bool wounded_or_unready = false;
     std::string last_writeback_summary;
     int abstract_wound_until_minutes = -1;
+    // A concrete actor allocated from an abstract seed before native mapgen.
+    // Its compatible initial mapgen placement is still owed to this identity,
+    // even if the actor is away or has since died.  Legacy absence is unknown.
+    bool pending_native_spawn = false;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -2110,6 +2114,8 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::optional<std::string> &overmap_special_id,
                           const std::optional<std::string> &map_extra_id,
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
+bool consume_pending_native_spawn( world_state &state, const std::string &source_id,
+                                   const tripoint_abs_omt &omt, const std::string &npc_template_id );
 finite_resource_claim_result claim_finite_resource_units( world_state &state,
         const std::string &claimant_site_id, const tripoint_abs_omt &omt,
         const finite_resource_record &expected,
