@@ -72418,7 +72418,8 @@ class r067_fresh_scout_journey
             return true;
         }
 
-        void finish_return( const bool persistent_threat_may_prevent_return = false ) {
+        void finish_return( const bool persistent_threat_may_prevent_return = false,
+                            std::vector<bandit_live_world_probe::transition_event> *physical_returns = nullptr ) {
             using namespace bandit_live_world;
             REQUIRE( scout_phase_requires_homeward_only( site().active_outing.phase ) );
             const auto assessment = site().active_outing.assessment;
@@ -72440,7 +72441,21 @@ class r067_fresh_scout_journey
             const int home_deadline = minute() + std::clamp( rl_dist( legal_watch.xy(), home.xy() ) * 10, 30,
                                       180 ) + 120;
             while( minute() <= home_deadline && site().active_outing.is_active() ) {
-                next_minute();
+                if( physical_returns ) {
+                    // The probe has a bounded event buffer. Capture each real
+                    // service separately so early travel cannot hide arrivals.
+                    bandit_live_world_probe::session trace(
+                        bandit_live_world_probe::collection_mode::transition_events );
+                    next_minute();
+                    for( const auto &event : trace.result().transition_events ) {
+                        if( event.transition == "structural_member_physical_return" &&
+                            event.outcome == "committed" ) {
+                            physical_returns->push_back( event );
+                        }
+                    }
+                } else {
+                    next_minute();
+                }
                 if( persistent_threat_may_prevent_return && current_persistent_threat_refusal() &&
                     verify_persistent_threat_hold() ) {
                     return;
@@ -72472,6 +72487,14 @@ class r067_fresh_scout_journey
             REQUIRE( delivered.last_progress_minutes == expected_completed.last_progress_minutes );
             REQUIRE( delivered.pinned_target_revision == assessment.pinned_target_revision );
             if( knowledge.empty() ) {
+                // Delivery authenticates the empty returned-optical input set
+                // without changing the completed watch's values or timing.
+                if( expected_completed.provenance && expected_completed.provenance->reducer_known ) {
+                    REQUIRE( delivered.provenance );
+                    CHECK( delivered.provenance->returned_optical_known );
+                    CHECK( delivered.provenance->returned_optical_inputs.empty() );
+                    expected_completed.provenance->returned_optical_known = true;
+                }
                 REQUIRE( r067_return_record_bytes( delivered ) == r067_return_record_bytes( expected_completed ) );
                 REQUIRE_FALSE( delivered.readiness_latched );
             } else {
@@ -72637,7 +72660,7 @@ TEST_CASE( "abstract scout party pays actual mixed terrain across its selected o
            "[bandit][expedition_coarse_native_caller][mixed_terrain]" )
 {
     using namespace bandit_live_world;
-    override_option food( "NO_NPC_FOOD", "true" );
+    override_option food( "NO_NPC_FOOD", "false" );
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     scoped_weather_override weather( weather_type_id( "clear" ) );
     r067_fresh_scout_journey journey;
@@ -72732,6 +72755,46 @@ TEST_CASE( "abstract scout party pays actual mixed terrain across its selected o
     CHECK( traversed_weights.count( 72 ) == 1 );
     CHECK( charged_weights.count( 24 ) == 1 );
     CHECK( charged_weights.count( 72 ) == 1 );
+
+    // Continue this same earned route through the actual watch and return
+    // owners. A registered save/reload must not grant work or alter bodies.
+    const auto before_reload_work = r067_return_record_bytes( journey.site().active_outing.coarse_work );
+    const auto before_reload_active = journey.site().active_outing.activation.active_turns;
+    std::map<character_id, decltype( r067_finite_body_key( std::declval<npc>() ) )> before_reload_bodies;
+    for( const character_id id : journey.members() ) {
+        const auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        before_reload_bodies.emplace( id, r067_finite_body_key( *actor ) );
+    }
+    journey.reload();
+    CHECK( r067_return_record_bytes( journey.site().active_outing.coarse_work ) == before_reload_work );
+    CHECK( journey.site().active_outing.activation.active_turns == before_reload_active );
+    for( const auto &entry : before_reload_bodies ) {
+        const auto actor = overmap_buffer.find_npc( entry.first );
+        REQUIRE( actor );
+        CHECK( r067_finite_body_key( *actor ) == entry.second );
+    }
+    journey.reach_watch( -1, false );
+    for( const auto &entry : before_reload_bodies ) {
+        const auto actor = overmap_buffer.find_npc( entry.first );
+        REQUIRE( actor );
+        CHECK( actor->get_last_updated() > std::get<1>( entry.second ) );
+        CHECK( actor->get_last_updated() <= calendar::turn );
+    }
+    journey.complete_watch();
+    const int generation = journey.scout_generation();
+    const auto returning_ids = journey.members();
+    std::vector<bandit_live_world_probe::transition_event> return_events;
+    journey.finish_return( false, &return_events );
+    CHECK( journey.site().applied_return_generation == generation );
+    for( const character_id id : returning_ids ) {
+        CHECK( std::count_if( return_events.begin(), return_events.end(), [&]( const auto &event ) {
+            return event.transition == "structural_member_physical_return" &&
+                   event.outcome == "committed" && event.generation == generation &&
+                   std::find( event.actor_ids.begin(), event.actor_ids.end(), id.get_value() ) !=
+                   event.actor_ids.end();
+        } ) == 1 );
+    }
 }
 
 TEST_CASE( "live home admission authenticates available and newly materialized members",
