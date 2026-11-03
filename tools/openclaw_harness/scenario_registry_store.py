@@ -1612,7 +1612,13 @@ def _first_run_certification_route(
             manifest.get("validation", {}).get("status") != "valid" or manifest.get("validation", {}).get("review_required"):
         return None
     name = manifest.get("name")
-    if name == "bandit.r005_continuous_hostile_ecology_certification":
+    if name == "caol.patrol_sound_focused_mcw":
+        valid = (
+            facts.get("capabilities.caol.patrol_sound", {}).get("value") ==
+            "native_personal_rule_duty_sound_release_reload"
+            and facts.get("runtime.fixture", {}).get("value") == "r032_prepared_camp_patrol_v1"
+        )
+    elif name == "bandit.r005_continuous_hostile_ecology_certification":
         valid = (
             facts.get("capabilities.bandit.r005", {}).get("value") == "continuous_hostile_ecology_lifecycle"
             and facts.get("capabilities.bandit.r005.prerequisites", {}).get("value") == ["R-001", "R-002", "R-004"]

@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Active loop and fixed-post patrol temporarily show and use Investigate sounds ON, preserve each personal preference, and reveal it on duty exit and reload.",
+  "material_proof": "On a disposable prepared camp, native same-actor rule and duty observations for both personal starting values, actual loop and hold runtime, an unseen qualified audible event and observed NPC response, release restoration, and native save/reload evidence. Fixture and practical preparation are setup only.",
+  "material_contradiction": [
+    "effective UI and sound behavior disagree under actual eligible duty",
+    "personal preference or danger rules are lost on exit or reload",
+    "qualified safe unseen sound does not produce the expected native response"
+  ],
+  "already_accepted_evidence": [
+    "Focused automated tests cover current loop and hold rule state, personal edits, NPC serialization, sound handler and visible danger. They do not prove native gameplay."
+  ],
+  "current_uncertainty": "Actual same-run actor identity, runtime assignment, sound opportunity, movement, UI, exit and reload remain to be observed.",
+  "forbidden_shortcuts": [
+    "credit fixture or startup as gameplay",
+    "fabricate NPC perception, movement, time, or receipts",
+    "directly edit NPC state or save",
+    "infer response from a setting alone"
+  ],
+  "honest_stop_conditions": [
+    "missing actual duty, sound opportunity, native receipt, binding, or safe cleanup remains a scoped gap",
+    "preserve actual failures and partial observations"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

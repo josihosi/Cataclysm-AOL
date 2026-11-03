@@ -5575,6 +5575,27 @@ bool npc::has_camp_patrol_order() const
     return camp_patrol_order_active;
 }
 
+bool npc::camp_patrol_owns_sound_rule() const
+{
+    if( !camp_patrol_order_active || !assigned_camp ||
+        ( mission != NPC_MISSION_GUARD && mission != NPC_MISSION_GUARD_PATROL ) ||
+        job.get_priority_of_job( activity_id( "ACT_CAMP_PATROL" ) ) <= 0 ) {
+        return false;
+    }
+    const auto camp = overmap_buffer.find_camp( assigned_camp->xy() );
+    return camp && *camp &&
+           ( *camp )->get_current_patrol_runtime( getID(), calendar::turn ).has_value() &&
+           camp_patrol_order_active;
+}
+
+bool npc::effective_follower_rule( const ally_rule rule ) const
+{
+    if( rule == ally_rule::ignore_noise && camp_patrol_owns_sound_rule() ) {
+        return false;
+    }
+    return rules.has_flag( rule );
+}
+
 bool npc::has_activity() const
 {
     return mission == NPC_MISSION_ACTIVITY && attitude == NPCATT_ACTIVITY;

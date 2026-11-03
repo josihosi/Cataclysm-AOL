@@ -1,0 +1,184 @@
+{
+  "manifest_version": 1,
+  "name": "caol.patrol_sound_focused_mcw",
+  "description": "Focused patrol sound preference proof on a disposable prepared camp. The fixture and incidental setup have zero credit; native duty, UI, qualified sound response, release and reload carry the observation.",
+  "profile": "patrol-sound-exploration-001-luna",
+  "config_profile": "r032-patrol-semantic-load",
+  "world": "McWilliams",
+  "fixture": "r032_prepared_camp_patrol_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_prepared_camp_patrol_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.caol.patrol_sound": "native_personal_rule_duty_sound_release_reload"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "patrol-sound-exploration-001-luna",
+    "fixture": "r032_prepared_camp_patrol_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "patrol-sound-exploration-001-luna",
+      "fixture": "r032_prepared_camp_patrol_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_patrol_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_patrol_sound_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.basecamp_missions"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_patrol_sound_duty",
+      "cleanup_on_finish": true,
+      "objective": "Using advertised native actions, establish each personal Investigate sounds starting value, enter actual patrol duty, observe effective rule and a qualified unseen audible event, and compare release. Exercise loop and hold and native save/reload where the scene permits; distinguish setup from observed NPC behavior.",
+      "proof_targets": [
+        "same actor and personal rule before duty for OFF and ON starts",
+        "native priority assignment and actual loop and hold runtime ownership",
+        "native effective rule UI while duty is active with personal preference preserved",
+        "qualified audible event outside the guard sight and observed NPC response, with actual danger and reachability conditions",
+        "native duty release and revealed personal rule for each starting value",
+        "native save/quit and reload of same actor and duty state",
+        "accepted cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture Patrol zone and practical scene preparation have zero gameplay credit",
+        "only native actions and independent observations establish NPC perception, movement, rule state and elapsed time",
+        "danger, sound priority, visibility, reachability and zone filters remain operative; ON does not guarantee investigation",
+        "do not modify NPC state or saves, fabricate sound perception or action, inject receipts, or credit bootstrap",
+        "preserve both starting values and distinguish loop from hold and each duty exit",
+        "keep actual failures and limitations distinct from qualification and claim acceptance"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "observe_patrol_sound_duty",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_patrol_sound_reloaded_world",
+        "native_semantic_checkpoint": {
+          "required_actions": [
+            "world.wait"
+          ],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_patrol_sound_after_reload",
+        "cleanup_on_finish": true,
+        "objective": "Observe the same actor after native save and process replacement; verify the effective duty setting and personal preference, then complete any remaining native sound, duty-exit and restoration observations.",
+        "proof_targets": [
+          "native save/quit and process replacement",
+          "same actor and actual patrol runtime after reload",
+          "effective rule during duty and personal rule after native duty exit",
+          "qualified sound and observed response where still required",
+          "accepted cleanup"
+        ],
+        "authority": [
+          "currently advertised native semantic actions",
+          "game.act",
+          "run.witness",
+          "run.finish"
+        ],
+        "invariants": [
+          "fixture and setup remain zero-credit",
+          "do not reinstall the fixture or directly edit NPCs or saves",
+          "preserve actual duty, sound and release observations without inventing prior stages"
+        ],
+        "live_operations": [
+          "game.act"
+        ],
+        "transition_timeout_seconds": 20.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {
+    "precondition": [
+      "bind_patrol_sound_world"
+    ],
+    "production_behavior": [
+      "observe_patrol_sound_duty"
+    ],
+    "terminal_persistence": [
+      "observe_patrol_sound_duty",
+      "bind_patrol_sound_reloaded_world",
+      "observe_patrol_sound_after_reload"
+    ],
+    "artifact_verdict": [
+      "observe_patrol_sound_duty",
+      "observe_patrol_sound_after_reload"
+    ],
+    "disallowed_shortcuts": [
+      "bind_patrol_sound_world"
+    ]
+  }
+}

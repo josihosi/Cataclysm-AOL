@@ -1,0 +1,15 @@
+{
+  "outcome": "Active loop and fixed-post patrol temporarily show and use Investigate sounds ON, preserve each personal preference, and reveal it on duty exit and reload.",
+  "scenario": "caol.patrol_sound_focused_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.caol.patrol_sound",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_personal_rule_duty_sound_release_reload"
+      }
+    ],
+    "preferences": []
+  }
+}

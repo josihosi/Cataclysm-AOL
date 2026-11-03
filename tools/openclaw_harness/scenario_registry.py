@@ -75,6 +75,7 @@ _RELATION_PROOF_DEPTHS = {
 }
 
 _GAMEPLAY_PROOF_ALLOWED_V1 = frozenset({
+    "caol.patrol_sound_focused_mcw",
     "bandit.r_caol_r050_natural_mixed_expedition_luna_20261103",
     "bandit.r_caol_r050_lazy_mapgen_7896_ownership_20261103",
     "bandit.r_caol_r050_saved99302_cabin_service_20261103",

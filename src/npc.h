@@ -1643,6 +1643,8 @@ class npc : public Character
         bool set_camp_patrol_order( const tripoint_abs_ms &target, npc_mission patrol_mission );
         void clear_camp_patrol_order();
         bool has_camp_patrol_order() const;
+        bool camp_patrol_owns_sound_rule() const;
+        bool effective_follower_rule( ally_rule rule ) const;
         const ::bandit_live_world_projection_lease &get_bandit_live_world_projection_lease() const;
         // Read-only diagnostic clock; this is not proof of movement or ownership.
         time_point get_last_updated() const {

@@ -580,8 +580,13 @@ void show_npc_inspection( npc &actor, const bool allow_offbubble )
     const auto rule_labels = follower_rules_ui::semantic_labels( actor );
     const auto rule_facts = follower_rules_ui::semantic_payload( actor, rule_labels );
     for( const auto &rule : ally_rule_strs ) {
-        window.text += "\n" + rule_labels.at( actor.rules.has_flag( rule.second.rule ) ?
+        window.text += "\n" + rule_labels.at( actor.effective_follower_rule( rule.second.rule ) ?
                                               rule.second.rule_true_text : rule.second.rule_false_text );
+        if( rule.second.rule == ally_rule::ignore_noise && actor.camp_patrol_owns_sound_rule() ) {
+            window.text += " " + string_format( _( "(patrol duty; personal setting: %s)" ),
+                           rule_labels.at( actor.rules.has_flag( rule.second.rule ) ?
+                                           rule.second.rule_true_text : rule.second.rule_false_text ) );
+        }
     }
     for( const char *key : {
              "engagement", "aim", "cbm_recharge", "cbm_reserve"

@@ -119,12 +119,15 @@ std::map<std::string, std::string> follower_rules_ui::semantic_payload(
     json.start_array();
     const std::map<std::string, ally_rule_data> rules( ally_rule_strs.begin(), ally_rule_strs.end() );
     for( const auto &entry : rules ) {
-        const bool enabled = guy.rules.has_flag( entry.second.rule );
+        const bool enabled = guy.effective_follower_rule( entry.second.rule );
         json.start_object();
         json.member( "id", entry.first );
         json.member( "enabled", enabled );
         json.member( "base_enabled", guy.rules.has_flag( entry.second.rule, false ) );
+        json.member( "personal_enabled", guy.rules.has_flag( entry.second.rule ) );
         json.member( "override_enabled", guy.rules.has_override_enable( entry.second.rule ) );
+        json.member( "patrol_owned", entry.second.rule == ally_rule::ignore_noise &&
+                     guy.camp_patrol_owns_sound_rule() );
         json.member( "label", labels.at( enabled ? entry.second.rule_true_text :
                                          entry.second.rule_false_text ) );
         json.end_object();
@@ -148,8 +151,11 @@ std::vector<semantic_action_descriptor> follower_rules_ui::semantic_actions(
     std::vector<semantic_action_descriptor> actions = { { "menu.cancel", "", _( "Done" ), true } };
     const std::map<std::string, ally_rule_data> rules( ally_rule_strs.begin(), ally_rule_strs.end() );
     for( const auto &entry : rules ) {
-        const bool enabled = guy.rules.has_flag( entry.second.rule );
+        const bool enabled = guy.effective_follower_rule( entry.second.rule );
+        const bool patrol_owned = entry.second.rule == ally_rule::ignore_noise &&
+                                  guy.camp_patrol_owns_sound_rule();
         actions.push_back( { "npc_rules.toggle", entry.first,
+                             patrol_owned ? _( "Toggle personal preference (patrol duty active)" ) :
                              labels.at( enabled ? entry.second.rule_false_text :
                                         entry.second.rule_true_text ), true } );
         actions.push_back( { "npc_rules.reset", entry.first, _( "Default" ),
@@ -449,7 +455,7 @@ void follower_rules_ui_impl::checkbox( int rule_number, const T &this_rule,
 {
     ImGui::PushID( rule_number );
     print_hotkey( assigned_hotkey );
-    bool rule_enabled = guy->rules.has_flag( this_rule.rule );
+    bool rule_enabled = guy->effective_follower_rule( this_rule.rule );
     std::string rules_text = rule_enabled ? this_rule.rule_true_text : this_rule.rule_false_text;
     rules_text = string_format( "%s###CHECK", get_parsed( rules_text ) );
     bool clicked = ImGui::Checkbox( rules_text.c_str(), &rule_enabled );
@@ -463,6 +469,10 @@ void follower_rules_ui_impl::checkbox( int rule_number, const T &this_rule,
     if( changed ) {
         toggle_follower_rule( *guy, this_rule.rule );
     }
+    if( this_rule.rule == ally_rule::ignore_noise && guy->camp_patrol_owns_sound_rule() ) {
+        ImGui::SameLine();
+        ImGui::TextUnformatted( _( "(patrol duty)" ) );
+    }
     ImGui::SameLine();
     auto label = _( "Default" );
     auto x = ImGui::GetWindowWidth() - ImGui::GetStyle().ScrollbarSize -
@@ -470,6 +480,12 @@ void follower_rules_ui_impl::checkbox( int rule_number, const T &this_rule,
     ImGui::SetCursorPosX( x );
     if( ImGui::Button( label ) ) {
         reset_follower_rule( *guy, this_rule.rule );
+    }
+    if( this_rule.rule == ally_rule::ignore_noise && guy->camp_patrol_owns_sound_rule() ) {
+        const bool personal_enabled = guy->rules.has_flag( this_rule.rule );
+        const std::string personal_text = get_parsed( personal_enabled ? this_rule.rule_true_text :
+                                          this_rule.rule_false_text );
+        ImGui::TextUnformatted( string_format( _( "Personal setting: %s" ), personal_text ).c_str() );
     }
     ImGui::PopID();
 }

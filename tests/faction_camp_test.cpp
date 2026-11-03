@@ -35,6 +35,9 @@
 #include "messages.h"
 #include "monster.h"
 #include "npc.h"
+#include "npctalk_rules.h"
+#include "semantic_surface.h"
+#include "sounds.h"
 #include "options_helpers.h"
 #include "overmapbuffer.h"
 #include "player_helpers.h"
@@ -429,6 +432,8 @@ TEST_CASE( "camp_patrol_order_ownership_survives_npc_save", "[camp][patrol][save
     npc saved;
     saved.assigned_camp = camp_pos;
     saved.set_mission( NPC_MISSION_CAMP_RESIDENT );
+    saved.rules.set_flag( ally_rule::ignore_noise );
+    saved.rules.set_specific_override_state( ally_rule::ignore_noise, true );
     REQUIRE( saved.set_camp_patrol_order( patrol_target, NPC_MISSION_GUARD_PATROL ) );
 
     std::ostringstream os;
@@ -442,6 +447,11 @@ TEST_CASE( "camp_patrol_order_ownership_survives_npc_save", "[camp][patrol][save
     CHECK( loaded.has_camp_patrol_order() );
     CHECK( loaded.mission == NPC_MISSION_GUARD_PATROL );
     CHECK( loaded.get_guard_post() == patrol_target );
+    CHECK( loaded.rules.has_flag( ally_rule::ignore_noise, false ) );
+    CHECK( loaded.rules.has_override_enable( ally_rule::ignore_noise ) );
+    CHECK( loaded.rules.has_override( ally_rule::ignore_noise ) );
+    // Without an actual eligible runtime, a saved order alone cannot force sound.
+    CHECK( loaded.effective_follower_rule( ally_rule::ignore_noise ) );
 
     loaded.clear_camp_patrol_order();
     CHECK_FALSE( loaded.has_camp_patrol_order() );
@@ -1884,6 +1894,52 @@ TEST_CASE( "camp_patrol_worker_moves_route_and_releases_after_interrupt",
     worker.set_moves( 100 );
     worker.move();
     REQUIRE( worker.has_camp_patrol_order() );
+    CHECK( worker.rules.has_flag( ally_rule::ignore_noise ) );
+    CHECK_FALSE( worker.effective_follower_rule( ally_rule::ignore_noise ) );
+    std::ostringstream patrol_save;
+    JsonOut patrol_json( patrol_save );
+    worker.serialize( patrol_json );
+    npc reloaded;
+    reloaded.deserialize( json_loader::from_string( patrol_save.str() ).get_object() );
+    CHECK( reloaded.has_camp_patrol_order() );
+    CHECK( reloaded.rules.has_flag( ally_rule::ignore_noise ) );
+    CHECK_FALSE( reloaded.effective_follower_rule( ally_rule::ignore_noise ) );
+    reloaded.set_mission( NPC_MISSION_ACTIVITY );
+    CHECK( reloaded.effective_follower_rule( ally_rule::ignore_noise ) );
+    const auto labels = follower_rules_ui::semantic_labels( worker );
+    const JsonArray rules = json_loader::from_string(
+                                follower_rules_ui::semantic_payload( worker, labels ).at( "rules" ) );
+    bool found_sound = false;
+    for( const JsonObject row : rules ) {
+        row.allow_omitted_members();
+        if( row.get_string( "id" ) == "ignore_noise" ) {
+            found_sound = true;
+            CHECK_FALSE( row.get_bool( "enabled" ) );
+            CHECK( row.get_bool( "base_enabled" ) );
+            CHECK( row.get_bool( "personal_enabled" ) );
+            CHECK( row.get_bool( "patrol_owned" ) );
+        }
+    }
+    CHECK( found_sound );
+    semantic_action_request toggle;
+    toggle.action_id = "npc_rules.toggle";
+    toggle.stable_id = "ignore_noise";
+    REQUIRE( follower_rules_ui::handle_semantic_request( worker, toggle ).accepted );
+    CHECK_FALSE( worker.rules.has_flag( ally_rule::ignore_noise ) );
+    CHECK_FALSE( worker.effective_follower_rule( ally_rule::ignore_noise ) );
+    const JsonArray after_toggle = json_loader::from_string(
+                                       follower_rules_ui::semantic_payload( worker, labels ).at( "rules" ) );
+    for( const JsonObject row : after_toggle ) {
+        row.allow_omitted_members();
+        if( row.get_string( "id" ) == "ignore_noise" ) {
+            CHECK_FALSE( row.get_bool( "enabled" ) );
+            CHECK_FALSE( row.get_bool( "personal_enabled" ) );
+            CHECK( row.get_bool( "patrol_owned" ) );
+        }
+    }
+    REQUIRE( follower_rules_ui::handle_semantic_request( worker, toggle ).accepted );
+    CHECK( worker.rules.has_flag( ally_rule::ignore_noise ) );
+    CHECK_FALSE( worker.effective_follower_rule( ally_rule::ignore_noise ) );
     REQUIRE( worker.guard_pos );
     const tripoint_abs_ms first_patrol_target = *worker.guard_pos;
     CHECK( std::find( patrol_tiles.begin(), patrol_tiles.end(), first_patrol_target ) !=
@@ -1921,6 +1977,7 @@ TEST_CASE( "camp_patrol_worker_moves_route_and_releases_after_interrupt",
     CHECK_FALSE( test_camp->get_current_patrol_runtime(
                      worker.getID(), calendar::turn ).has_value() );
     CHECK_FALSE( worker.has_camp_patrol_order() );
+    CHECK( worker.effective_follower_rule( ally_rule::ignore_noise ) );
     CHECK( worker.mission == NPC_MISSION_GUARD_PATROL );
     CHECK( worker.get_guard_post() == external_guard_target );
 
@@ -2013,12 +2070,30 @@ TEST_CASE( "camp_patrol_only_blocks_other_jobs_during_active_runtime",
         std::max( camp_patrol_loop_dwell(), shift_duration * 20 / 100 );
 
     calendar::turn = day_start;
+    worker.rules.set_flag( ally_rule::ignore_noise );
     REQUIRE( test_camp->get_current_patrol_runtime( worker.getID(), calendar::turn ) );
+    REQUIRE( worker.mission == NPC_MISSION_GUARD );
+    CHECK_FALSE( worker.effective_follower_rule( ally_rule::ignore_noise ) );
+    worker.rules.set_danger_overrides();
+    CHECK_FALSE( worker.effective_follower_rule( ally_rule::ignore_noise ) );
+    CHECK( worker.rules.has_override_enable( ally_rule::hold_the_line ) );
+    // An unseen alarm within the fixed-post range reaches the sound handler.
+    static const ter_id wall( "t_wall" );
+    here.ter_set( tripoint_bub_ms( 10, 12, 0 ), wall );
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0, true );
+    const tripoint_bub_ms sound_pos( 10, 14, 0 );
+    REQUIRE_FALSE( worker.sees( here, sound_pos ) );
+    REQUIRE_FALSE( worker.has_ai_sound_alerts() );
+    worker.handle_sound( sounds::sound_t::alarm, "test alarm", 30, sound_pos );
+    CHECK( worker.has_ai_sound_alerts() );
+    worker.rules.clear_overrides();
     CHECK_FALSE( worker.find_job_to_perform() );
     CHECK( !worker.activity );
 
     REQUIRE( worker.has_camp_patrol_order() );
     REQUIRE( worker.job.set_task_priority( ACT_CAMP_PATROL, 0 ) );
+    CHECK( worker.effective_follower_rule( ally_rule::ignore_noise ) );
     // A stale guard mission chooses guard behavior before worker_downtime, so
     // release has to occur at the ordinary NPC decision boundary.
     worker.set_moves( 100 );
@@ -2049,6 +2124,61 @@ TEST_CASE( "camp_patrol_only_blocks_other_jobs_during_active_runtime",
     CHECK( !worker.activity );
 
     zone_manager::get_manager().clear();
+}
+
+TEST_CASE( "camp_patrol_sound_yields_to_visible_danger", "[camp][patrol][sound]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    clear_avatar();
+    clear_map_without_vision();
+    clear_creatures();
+    zone_manager::get_manager().clear();
+    on_out_of_scope clear_zones( []() {
+        zone_manager::get_manager().clear();
+    } );
+    map &here = get_map();
+    const tripoint_abs_ms post = here.get_abs( tripoint_bub_ms( 52, 50, 0 ) );
+    create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, post );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( post );
+    overmap_buffer.clear_camps( camp_omt.xy() );
+    here.add_camp( camp_omt, "faction_camp" );
+    on_out_of_scope clear_camp( [camp_omt]() {
+        overmap_buffer.clear_camps( camp_omt.xy() );
+    } );
+    const auto camp = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( camp );
+    ( *camp )->set_owner( your_fac );
+    ( *camp )->set_bb_pos( post );
+    npc &guard = spawn_npc( tripoint_bub_ms( 50, 50, 0 ).xy(), "thug" );
+    clear_character( guard, true );
+    guard.setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    guard.set_fac( faction_id( "free_merchants" ) );
+    guard.set_attitude( NPCATT_NULL );
+    guard.set_mission( NPC_MISSION_CAMP_RESIDENT );
+    guard.rules.set_flag( ally_rule::ignore_noise );
+    REQUIRE( guard.job.set_task_priority( activity_id( "ACT_CAMP_PATROL" ), 9 ) );
+    ( *camp )->add_assignee( guard.getID() );
+    calendar::turn = sunrise( calendar::turn_zero ) + 2_hours;
+    REQUIRE( ( *camp )->get_current_patrol_runtime( guard.getID(), calendar::turn ) );
+    REQUIRE_FALSE( guard.effective_follower_rule( ally_rule::ignore_noise ) );
+    static const ter_id wall( "t_wall" );
+    here.ter_set( tripoint_bub_ms( 50, 52, 0 ), wall );
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0, true );
+    const tripoint_bub_ms sound_pos( 50, 54, 0 );
+    REQUIRE_FALSE( guard.sees( here, sound_pos ) );
+    monster &hulk = spawn_test_monster( "mon_zombie", tripoint_bub_ms( 52, 50, 0 ) );
+    REQUIRE( guard.evaluate_monster( hulk, 2 ) >= 1.0f );
+    REQUIRE( guard.sees( here, hulk ) );
+    guard.assess_danger();
+    REQUIRE( guard.current_target() == &hulk );
+    REQUIRE_FALSE( guard.has_ai_sound_alerts() );
+    guard.handle_sound( sounds::sound_t::alarm, "test alarm", 30, sound_pos );
+    CHECK_FALSE( guard.has_ai_sound_alerts() );
+    g->remove_zombie( hulk );
+    guard.regen_ai_cache();
+    guard.handle_sound( sounds::sound_t::alarm, "test alarm", 30, sound_pos );
+    CHECK( guard.has_ai_sound_alerts() );
 }
 
 TEST_CASE( "camp_patrol_defers_routine_sleep_until_off_duty",
