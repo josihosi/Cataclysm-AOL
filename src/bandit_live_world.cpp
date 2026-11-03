@@ -13,6 +13,7 @@
 #include <fstream>
 #include <limits>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -10046,6 +10047,9 @@ void scout_assessment_provenance::serialize( JsonOut &json ) const
     json.member( "reducer_known", reducer_known );
     json.member( "target_inputs", target_inputs );
     json.member( "route_inputs", route_inputs );
+    if( shared_optical_inputs ) {
+        json.member( "shared_optical_inputs", *shared_optical_inputs );
+    }
     json.member( "bounty_known", bounty_known );
     json.member( "bounty_value", bounty_value );
     json.member( "bounty_inputs", bounty_inputs );
@@ -10076,6 +10080,10 @@ void scout_assessment_provenance::deserialize( const JsonObject &jo )
     jo.read( "reducer_known", candidate.reducer_known );
     jo.read( "target_inputs", candidate.target_inputs );
     jo.read( "route_inputs", candidate.route_inputs );
+    if( jo.has_member( "shared_optical_inputs" ) ) {
+        candidate.shared_optical_inputs.emplace();
+        jo.read( "shared_optical_inputs", *candidate.shared_optical_inputs );
+    }
     jo.read( "bounty_known", candidate.bounty_known );
     jo.read( "bounty_value", candidate.bounty_value );
     jo.read( "bounty_inputs", candidate.bounty_inputs );
@@ -10095,6 +10103,18 @@ void scout_assessment_provenance::deserialize( const JsonObject &jo )
     if( candidate.activity_id.empty() || candidate.activity_id.size() > max_operation_application_key_length ||
         candidate.generation <= 0 || candidate.captured_minutes < 0 ||
         candidate.target_inputs.size() + candidate.route_inputs.size() > max_active_outing_observations ||
+        ( candidate.shared_optical_inputs &&
+          ( candidate.shared_optical_inputs->size() > candidate.target_inputs.size() ||
+            !valid_inputs( *candidate.shared_optical_inputs, false ) ||
+            !std::all_of( candidate.shared_optical_inputs->begin(),
+                          candidate.shared_optical_inputs->end(), [&]( const auto &optical ) {
+                return std::any_of( candidate.target_inputs.begin(), candidate.target_inputs.end(),
+                [&]( const auto &input ) {
+                    return sortie_observation_identity_matches( input, optical ) &&
+                           input.observed_minutes == optical.observed_minutes &&
+                           input.source_id == optical.source_id && input.sense == optical.sense;
+                } );
+            } ) ) ) ||
         candidate.bounty_inputs.size() > 3 * max_active_outing_observations ||
         candidate.returned_optical_inputs.size() > max_active_outing_observations ||
         candidate.bounty_value < 0 || candidate.bounty_value > 3 ||
@@ -26197,6 +26217,222 @@ bool scout_assessment_readiness_after_certainty(
     return false;
 }
 
+namespace
+{
+// Reconstruct only the lanes whose reducer inputs and credits are bound to
+// this report, including authenticated returning carriers' optical additions.
+std::optional<int> shared_report_certainty_penalty( const scout_report_record &report,
+        const int current_minutes )
+{
+    const scout_assessment_state &assessment = report.assessment;
+    if( assessment.observation_started_minutes < 0 || !assessment.provenance ) {
+        return std::nullopt;
+    }
+    const scout_assessment_provenance &provenance = *assessment.provenance;
+    if( !provenance.reducer_known || provenance.activity_id != report.source_activity_id ||
+        provenance.generation != report.source_generation ||
+        provenance.captured_minutes < 0 || provenance.captured_minutes > report.delivered_minutes ||
+        assessment.pinned_target_revision <= 0 ||
+        ( provenance.target_inputs.empty() && provenance.habitation_delta == 0 ) ) {
+        return std::nullopt;
+    }
+    const auto age_penalty = [current_minutes]( const int observed ) {
+        const int age = current_minutes - observed;
+        return age >= 24 * 60 ? 20 : age >= 12 * 60 ? 10 : 0;
+    };
+    int visual_total = 0;
+    int visual_penalty = 0;
+    int contradiction_total = 0;
+    int contradiction_penalty = 0;
+    int presence_observed = -1;
+    int equipment_observed = -1;
+    bool found_burn = false;
+    bool has_optical = false;
+    std::map<sortie_observation_sense, int> signal_times;
+    for( const sortie_observation &input : provenance.target_inputs ) {
+        if( !typed_sortie_observation_is_valid( input ) ||
+            input.share_state == sortie_observation_share_state::observer_private ||
+            input.target_revision != assessment.pinned_target_revision ||
+            input.observed_minutes < assessment.observation_started_minutes ||
+            input.observed_minutes > provenance.captured_minutes ) {
+            return std::nullopt;
+        }
+        if( input.kind == sortie_observation_kind::contradiction ) {
+            contradiction_total += 15;
+            contradiction_penalty += 15 * age_penalty( input.observed_minutes );
+            continue;
+        }
+        if( input.sense != sortie_observation_sense::visual ) {
+            if( input.sense == sortie_observation_sense::smoke ||
+                input.sense == sortie_observation_sense::light ) {
+                has_optical = true;
+            } else {
+                auto it = signal_times.find( input.sense );
+                if( it == signal_times.end() || it->second < input.observed_minutes ) {
+                    signal_times[input.sense] = input.observed_minutes;
+                }
+            }
+            continue;
+        }
+        if( sortie_observation_is_vehicle_wealth_cue( input ) ||
+            sortie_observation_is_generation_infrastructure_cue( input ) ||
+            sortie_observation_is_cargo_handling_cue( input ) ) {
+            continue;
+        }
+        const bool physical_opportunity = input.state_key == "physical-player-opportunity" &&
+                input.fact_key.rfind( "physical-player-opportunity:player@", 0 ) == 0;
+        if( input.kind == sortie_observation_kind::burn &&
+            input.observed_minutes == assessment.burned_minutes ) {
+            found_burn = true;
+        }
+        const int value = input.visual_quality == 3 ? 20 : input.visual_quality == 2 ? 15 :
+                          input.visual_quality == 1 ? 5 : 0;
+        visual_total += value;
+        visual_penalty += value * age_penalty( input.observed_minutes );
+        if( input.kind == sortie_observation_kind::burn || physical_opportunity ||
+            sortie_observation_defender_count( input ) > 0 ) {
+            presence_observed = std::max( presence_observed, input.observed_minutes );
+        }
+        if( input.equipment_detail > 0 ) {
+            equipment_observed = std::max( equipment_observed, input.observed_minutes );
+        }
+    }
+    if( ( has_optical && !provenance.shared_optical_inputs ) ||
+        ( assessment.burned_minutes >= 0 && !found_burn ) ) {
+        return std::nullopt;
+    }
+    std::map<int, int> optical_times;
+    if( provenance.shared_optical_inputs ) {
+        for( const sortie_observation &input : *provenance.shared_optical_inputs ) {
+            if( !typed_sortie_observation_is_valid( input ) ||
+                input.share_state == sortie_observation_share_state::observer_private ||
+                input.kind != sortie_observation_kind::certainty ||
+                input.target_revision != assessment.pinned_target_revision ||
+                input.observed_minutes < assessment.observation_started_minutes ||
+                input.observed_minutes > provenance.captured_minutes ||
+                ( input.sense != sortie_observation_sense::smoke &&
+                  input.sense != sortie_observation_sense::light ) ||
+                !std::any_of( provenance.target_inputs.begin(), provenance.target_inputs.end(),
+            [&]( const sortie_observation &target ) {
+                return sortie_observation_identity_matches( target, input ) &&
+                       target.observed_minutes == input.observed_minutes &&
+                       target.source_id == input.source_id && target.sense == input.sense &&
+                       target.kind == input.kind;
+            } ) ) {
+                return std::nullopt;
+            }
+            auto it = optical_times.find( input.bucket_start_minutes );
+            if( it == optical_times.end() || it->second < input.observed_minutes ) {
+                optical_times[input.bucket_start_minutes] = input.observed_minutes;
+            }
+        }
+    }
+    const int visual_credit = std::min( 60, visual_total );
+    const int shared_optical_credit = std::min( 20, 5 * static_cast<int>( optical_times.size() ) );
+    if( shared_optical_credit != provenance.habitation_before ) {
+        return std::nullopt;
+    }
+    std::map<int, int> added_optical_times;
+    if( provenance.habitation_delta > 0 ) {
+        if( !provenance.returned_optical_known ) {
+            return std::nullopt;
+        }
+        std::set<int> returned_buckets;
+        for( const sortie_observation &input : provenance.returned_optical_inputs ) {
+            const bool smoke = input.sense == sortie_observation_sense::smoke;
+            const bool light = input.sense == sortie_observation_sense::light;
+            const std::string source = "structural-" + std::string( smoke ? "smoke@" : "light@" ) +
+                                       input.source_omt.to_string();
+            sortie_observation reported = input;
+            reported.share_state = sortie_observation_share_state::reported;
+            if( !typed_sortie_observation_is_valid( input ) ||
+                ( !smoke && !light ) || input.kind != sortie_observation_kind::certainty ||
+                input.source_id != source || input.fact_key != "structural-signal:" + source ||
+                input.state_key != ( smoke ? "structural-smoke-signal" : "structural-light-signal" ) ||
+                input.target_revision != assessment.pinned_target_revision ||
+                input.observed_minutes < assessment.observation_started_minutes ||
+                input.observed_minutes > report.delivered_minutes ||
+                input.expiry_minutes < report.delivered_minutes ||
+                ( input.share_state == sortie_observation_share_state::observer_private &&
+                  std::find( report.carrier_ids.begin(), report.carrier_ids.end(), input.observer_id ) ==
+                  report.carrier_ids.end() ) ||
+                !std::any_of( report.observations.begin(), report.observations.end(),
+            [&]( const sortie_observation &record ) {
+                return sortie_observations_equal( reported, record ) &&
+                       reported.emitter_ms == record.emitter_ms &&
+                       reported.observable_ms == record.observable_ms;
+            } ) ) {
+                return std::nullopt;
+            }
+            returned_buckets.insert( input.bucket_start_minutes );
+            if( optical_times.count( input.bucket_start_minutes ) == 0 ) {
+                auto it = added_optical_times.find( input.bucket_start_minutes );
+                if( it == added_optical_times.end() || it->second < input.observed_minutes ) {
+                    added_optical_times[input.bucket_start_minutes] = input.observed_minutes;
+                }
+            }
+        }
+        if( added_optical_times.empty() ||
+            std::max( 0, std::min( 20, 5 * static_cast<int>( returned_buckets.size() ) ) -
+                      shared_optical_credit ) != provenance.habitation_delta ) {
+            return std::nullopt;
+        }
+    }
+    const int optical_credit = shared_optical_credit + provenance.habitation_delta;
+    const int signal_credit = std::min( 10, 5 * static_cast<int>( signal_times.size() ) );
+    const int contradiction_credit = std::min( 30, contradiction_total );
+    if( optical_credit != assessment.habitation_certainty ) {
+        return std::nullopt;
+    }
+    const int positive = visual_credit + shared_optical_credit + signal_credit +
+                         ( presence_observed >= 0 ? 10 : 0 ) +
+                         ( equipment_observed >= 0 ? 10 : 0 );
+    const int net = positive - contradiction_credit;
+    const int base = std::clamp( net, 0, 95 );
+    const int burn_credit = found_burn ? std::min( 30, 95 - base ) : 0;
+    const int return_credit = std::min( provenance.habitation_delta, 95 - base - burn_credit );
+    if( base + burn_credit + return_credit <= 0 ||
+        base + burn_credit + return_credit != assessment.certainty ) {
+        return std::nullopt;
+    }
+    double weighted = visual_total > 0 ? static_cast<double>( visual_penalty ) *
+                      visual_credit / visual_total : 0.0;
+    for( const auto &entry : optical_times ) {
+        weighted += static_cast<double>( shared_optical_credit ) / optical_times.size() * age_penalty( entry.second );
+    }
+    for( const auto &entry : signal_times ) {
+        weighted += static_cast<double>( signal_credit ) / signal_times.size() * age_penalty( entry.second );
+    }
+    if( presence_observed >= 0 ) {
+        weighted += 10 * age_penalty( presence_observed );
+    }
+    if( equipment_observed >= 0 ) {
+        weighted += 10 * age_penalty( equipment_observed );
+    }
+    if( contradiction_total > 0 ) {
+        weighted += static_cast<double>( contradiction_penalty ) * contradiction_credit / contradiction_total;
+    }
+    // Contradictions remain negative in the reducer's score, but their age
+    // is an uncertainty contribution, not a negative age penalty. Scale both
+    // sides of the reducer's net score together when its 95-point cap binds.
+    const double base_scale = net > 0 ? static_cast<double>( base ) / net : 0.0;
+    // Return credit is added after the completed assessment's cap, so it
+    // must not rescale the credits already earned at the watch.
+    double returned_weighted = 0.0;
+    for( const auto &entry : added_optical_times ) {
+        returned_weighted += static_cast<double>( return_credit ) / added_optical_times.size() *
+                             age_penalty( entry.second );
+    }
+    weighted = weighted * base_scale + returned_weighted;
+    if( found_burn ) {
+        weighted += burn_credit * age_penalty( assessment.burned_minutes );
+    }
+    const double total_weight = ( positive + contradiction_credit ) * base_scale + burn_credit + return_credit;
+    return total_weight > 0.0 ? std::optional<int>( static_cast<int>( std::lround( weighted /
+           total_weight ) ) ) : std::nullopt;
+}
+} // namespace
+
 scout_report_effective_state evaluate_scout_report_at(
     const scout_report_record &report, const int current_minutes )
 {
@@ -26211,6 +26447,16 @@ scout_report_effective_state evaluate_scout_report_at(
     int unknown = report.assessment.legacy_unknown_components;
     const bool dated = report.assessment.observation_started_minutes >= 0 ||
                        report.assessment.last_progress_minutes >= 0;
+    if( dated && report.assessment.habitation_certainty > 0 ) {
+        const auto &provenance = report.assessment.provenance;
+        if( !provenance ||
+            ( provenance->habitation_before > 0 && !provenance->shared_optical_inputs ) ||
+            ( provenance->habitation_delta > 0 && !provenance->returned_optical_known ) ) {
+            // A delivery time cannot authenticate missing observation dates.
+            // Explicitly undated reports retain their separate legacy path.
+            unknown |= scout_unknown_certainty;
+        }
+    }
     if( dated && !report.assessment.tactical_completeness_recorded ) {
         unknown |= scout_unknown_tactical_all;
         const auto &provenance = report.assessment.provenance;
@@ -26241,9 +26487,32 @@ scout_report_effective_state evaluate_scout_report_at(
             unknown |= scout_unknown_certainty | scout_unknown_defenders |
                        scout_unknown_danger | scout_unknown_route_danger;
         }
-        if( !report.assessment.provenance->bounty_known ) {
+        const auto &provenance = *report.assessment.provenance;
+        const bool valid_retained_bounty = provenance.bounty_known &&
+                                           provenance.activity_id == report.source_activity_id &&
+                                           provenance.generation == report.source_generation &&
+                                           provenance.captured_minutes >= 0 &&
+                                           provenance.captured_minutes <= report.delivered_minutes &&
+                                           provenance.bounty_value == report.assessment.bounty_estimate &&
+                                           ( report.assessment.bounty_estimate == 0 ||
+                                             ( !provenance.bounty_inputs.empty() &&
+                                               std::all_of( provenance.bounty_inputs.begin(),
+                                                       provenance.bounty_inputs.end(), [&]( const auto &input ) {
+            return typed_sortie_observation_is_valid( input ) &&
+                   input.share_state != sortie_observation_share_state::observer_private &&
+                   input.target_revision == report.assessment.pinned_target_revision &&
+                   input.observed_minutes <= provenance.captured_minutes;
+        } ) ) );
+        if( !valid_retained_bounty ) {
             unknown |= scout_unknown_bounty;
         }
+    }
+    const std::optional<int> contribution_penalty = shared_report_certainty_penalty(
+                report, current_minutes );
+    if( dated && report.assessment.certainty > 0 && !contribution_penalty ) {
+        // A delivery timestamp cannot authenticate any dated certainty
+        // contribution whose observation-time accounting is unavailable.
+        unknown |= scout_unknown_certainty;
     }
     // Aggregate danger depends on confidence, defender and route evidence.
     if( unknown & ( scout_unknown_certainty | scout_unknown_defenders | scout_unknown_route_danger ) ) {
@@ -26255,9 +26524,10 @@ scout_report_effective_state evaluate_scout_report_at(
     result.bounty_known = ( unknown & scout_unknown_bounty ) == 0;
     result.route_danger_known = ( unknown & scout_unknown_route_danger ) == 0 &&
                                 report.assessment.route_danger_high >= 0;
-    const int certainty_penalty = result.age_minutes >= 24 * 60 ? 20 :
-                                  result.age_minutes >= 12 * 60 ? 10 : 0;
-    result.certainty = result.certainty_known ? std::max( 0, report.assessment.certainty - certainty_penalty ) : -1;
+    const int delivery_penalty = result.age_minutes >= 24 * 60 ? 20 :
+                                 result.age_minutes >= 12 * 60 ? 10 : 0;
+    const int certainty_penalty = contribution_penalty.value_or( delivery_penalty );
+    result.certainty = result.certainty_known ? std::clamp( report.assessment.certainty - certainty_penalty, 0, 95 ) : -1;
     result.defenders_low = result.defenders_known ? report.assessment.defenders_low : -1;
     result.defenders_high = result.defenders_known ? report.assessment.defenders_high : -1;
     result.danger_low = result.danger_known ? report.assessment.danger_low : -1;
@@ -26364,6 +26634,7 @@ scout_assessment_state summarize_normal_scout_assessment(
     provenance.generation = outing.generation;
     provenance.captured_minutes = outing.last_advanced_minutes;
     provenance.reducer_known = true;
+    provenance.shared_optical_inputs.emplace();
     bool provenance_available = !outing.activity_id.empty() && outing.generation > 0 &&
                                 outing.last_advanced_minutes >= 0 &&
                                 outing.observations.size() <= max_active_outing_observations;
@@ -26526,6 +26797,7 @@ scout_assessment_state summarize_normal_scout_assessment(
         if( observation.sense != sortie_observation_sense::visual ) {
             if( current_watch_optical_record_is_bound( outing, observation ) ) {
                 habitation_buckets.insert( observation.bucket_start_minutes );
+                capture_input( *provenance.shared_optical_inputs, observation );
                 stale_certainty_input = stale_certainty_input || stale_tactical_input;
             } else if( !smoke_sense && !light_sense ) {
                 signal_senses.insert( observation.sense );

@@ -11112,6 +11112,92 @@ TEST_CASE( "scout_provenance_retains_bounty_witness_after_real_observation_evict
     loaded.deserialize( json_loader::from_string( out.str() ).get_object() );
     REQUIRE( loaded.provenance );
     CHECK( loaded.provenance->bounty_inputs.front().fact_key == original.fact_key );
+
+    // A later signal and an off-target wealth cue cannot replace the evicted
+    // winner's actual evidence or date.
+    outing.assessment = after;
+    auto sound = make_typed_visual_observation( observer, revision, 281, "later-sound",
+                 bandit_live_world::sortie_observation_share_state::shared );
+    sound.source_omt = outing.target_omt;
+    sound.receiver_omt = outing.selected_watch_omt;
+    sound.sense = bandit_live_world::sortie_observation_sense::sound;
+    sound.visual_quality = 0;
+    sound.defender_ids.clear();
+    sound.observed_power_low = 0;
+    sound.observed_power_high = 0;
+    sound.equipment_detail = 0;
+    auto route_wealth = make_typed_visual_observation( observer, revision, 281, "later-route-wealth",
+                        bandit_live_world::sortie_observation_share_state::shared );
+    route_wealth.source_omt = outing.selected_watch_omt;
+    route_wealth.receiver_omt = outing.selected_watch_omt;
+    route_wealth.kind = bandit_live_world::sortie_observation_kind::bounds;
+    route_wealth.source_id = "vehicle-origin:unrelated";
+    route_wealth.fact_key = "wealth-cue:vehicle:" + route_wealth.source_id;
+    route_wealth.state_key = "wealth-cue:vehicle";
+    route_wealth.strength = 2;
+    route_wealth.visual_quality = 2;
+    route_wealth.defender_ids.clear();
+    route_wealth.observed_power_low = 0;
+    route_wealth.observed_power_high = 0;
+    route_wealth.equipment_detail = 0;
+    route_wealth.uncertainty_radius_omt = 0;
+    REQUIRE( bandit_live_world::record_active_typed_observations( site,
+             require_current_simulation_cursor( site ), observer, revision,
+    { sound, route_wealth }, 281 ).valid );
+    const auto after_unrelated = bandit_live_world::summarize_normal_scout_assessment( outing );
+    REQUIRE( after_unrelated.provenance );
+    REQUIRE( after_unrelated.provenance->bounty_known );
+    REQUIRE( after_unrelated.provenance->bounty_inputs.size() == 1 );
+    CHECK( after_unrelated.provenance->bounty_inputs.front().fact_key == original.fact_key );
+    CHECK( after_unrelated.provenance->bounty_inputs.front().observed_minutes == 221 );
+
+    // A separately observed, equally valuable winner is a legitimate new
+    // witness; its date must come from that witness, not the unrelated cue.
+    auto tied_world = world;
+    auto &tied_site = tied_world.sites.front();
+    tied_site.active_outing.assessment = after_unrelated;
+    auto tied = make_typed_visual_observation( observer, revision, 282,
+                "visible-defenders:fresh-tied-witness", bandit_live_world::sortie_observation_share_state::shared );
+    tied.source_omt = tied_site.active_outing.target_omt;
+    tied.receiver_omt = tied_site.active_outing.selected_watch_omt;
+    REQUIRE( bandit_live_world::record_active_typed_observations( tied_site,
+             require_current_simulation_cursor( tied_site ), observer, revision, { tied }, 282 ).valid );
+    const auto tied_summary = bandit_live_world::summarize_normal_scout_assessment( tied_site.active_outing );
+    REQUIRE( tied_summary.bounty_estimate == 1 );
+    REQUIRE( tied_summary.provenance );
+    REQUIRE( tied_summary.provenance->bounty_inputs.size() == 1 );
+    CHECK( tied_summary.provenance->bounty_inputs.front().fact_key == tied.fact_key );
+    CHECK( tied_summary.provenance->bounty_inputs.front().observed_minutes == 282 );
+
+    // Deliver the evicted original winner through the actual physical return
+    // and reload rather than deriving a date from the delivery clock.
+    outing.assessment = after_unrelated;
+    outing.phase = bandit_live_world::scout_phase::returning_home;
+    outing.actor_departure_observed = true;
+    outing.actor_route_waypoint = static_cast<int>( outing.shared_route.size() ) - 1;
+    const auto members = outing.member_ids;
+    for( const auto id : members ) {
+        REQUIRE( bandit_live_world::record_structural_member_physical_return(
+                     site, require_current_simulation_cursor( site ), id, site.anchor, 282 ) );
+    }
+    bandit_live_world::advance_structural_bounty_outings( world, 283, {} );
+    REQUIRE( site.current_scout_report.is_present() );
+    const auto report = round_trip_world( world ).sites.front().current_scout_report;
+    REQUIRE( report.is_present() );
+    REQUIRE( report.assessment.provenance );
+    REQUIRE( report.assessment.provenance->bounty_inputs.size() == 1 );
+    CHECK( report.assessment.provenance->bounty_inputs.front().observed_minutes == 221 );
+    const auto effective = bandit_live_world::evaluate_scout_report_at( report, 221 + 12 * 60 );
+    REQUIRE( effective.valid );
+    CHECK( effective.bounty_known );
+    CHECK( effective.bounty_estimate == 1 );
+
+    auto future = report;
+    future.assessment.provenance->bounty_inputs.front().observed_minutes = report.delivered_minutes + 1;
+    CHECK_FALSE( bandit_live_world::evaluate_scout_report_at( future, report.delivered_minutes ).bounty_known );
+    auto foreign = report;
+    foreign.assessment.provenance->activity_id = "foreign-activity";
+    CHECK_FALSE( bandit_live_world::evaluate_scout_report_at( foreign, report.delivered_minutes ).bounty_known );
 }
 
 TEST_CASE( "bandit_live_world_migrates_unversioned_observations_and_rejects_partial_typed_records",
@@ -32045,6 +32131,8 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
         REQUIRE( recorded.valid );
         REQUIRE( recorded.inserted == 1 );
     }
+    bandit_live_world::world_state shared_lanes_world = world;
+    bandit_live_world::world_state carrier_lanes_world = world;
 
     std::ostringstream legacy_assessment_output;
     JsonOut legacy_assessment_json( legacy_assessment_output, true );
@@ -32252,6 +32340,251 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     CHECK( site.next_routine_dispatch_eligible_minutes == 320 + 48 * 60 );
     CHECK( site.camp_decision.state ==
            bandit_live_world::camp_decision_state::report_awaiting_assessment );
+
+    // The first two visual windows are twelve hours old; the third, and the
+    // independently supported presence/equipment credits, are still fresh.
+    const auto mixed_age = bandit_live_world::evaluate_scout_report_at(
+                               site.current_scout_report, 240 + 12 * 60 );
+    REQUIRE( mixed_age.valid );
+    CHECK( mixed_age.certainty == 75 );
+    const bandit_live_world::world_state reloaded_age_world = round_trip_world( world );
+    const auto mixed_age_reloaded = bandit_live_world::evaluate_scout_report_at(
+                                        reloaded_age_world.sites.front().current_scout_report,
+                                        240 + 12 * 60 );
+    REQUIRE( mixed_age_reloaded.valid );
+    CHECK( mixed_age_reloaded.certainty == mixed_age.certainty );
+    // A dated visual-only report must not silently use its newer delivery
+    // time if its contributing observation ledger is unavailable.
+    auto missing_visual_ledger = reloaded_age_world.sites.front().current_scout_report;
+    REQUIRE( missing_visual_ledger.assessment.provenance );
+    REQUIRE( missing_visual_ledger.assessment.habitation_certainty == 0 );
+    missing_visual_ledger.assessment.provenance->target_inputs.clear();
+    CHECK_FALSE( bandit_live_world::evaluate_scout_report_at(
+                     missing_visual_ledger, 270 + 12 * 60 ).certainty_known );
+    missing_visual_ledger.assessment.observation_started_minutes = -1;
+    missing_visual_ledger.assessment.last_progress_minutes = -1;
+    CHECK( bandit_live_world::evaluate_scout_report_at(
+               missing_visual_ledger, 270 + 12 * 60 ).certainty_known );
+    const auto same_age_reloaded = bandit_live_world::evaluate_scout_report_at(
+                                       reloaded_age_world.sites.front().current_scout_report,
+                                       270 + 12 * 60 );
+    REQUIRE( same_age_reloaded.valid );
+    CHECK( same_age_reloaded.certainty == 70 );
+
+    // Add genuinely shared optical, sound and contradiction inputs through
+    // the same producer, then deliver and reload the completed assessment.
+    {
+        auto &lane_site = shared_lanes_world.sites.front();
+        auto &lane_outing = lane_site.active_outing;
+        auto optical = make_typed_visual_observation( observer_id, lane_outing.target_lead_revision,
+                       271, "temporary-optical", bandit_live_world::sortie_observation_share_state::shared );
+        optical.source_omt = target;
+        optical.receiver_omt = watch;
+        optical.sense = bandit_live_world::sortie_observation_sense::smoke;
+        optical.source_id = "structural-smoke@" + target.to_string();
+        optical.fact_key = "structural-signal:" + optical.source_id;
+        optical.state_key = "structural-smoke-signal";
+        optical.visual_quality = 0;
+        optical.defender_ids.clear();
+        optical.observed_power_low = 0;
+        optical.observed_power_high = 0;
+        optical.equipment_detail = 0;
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     lane_site, require_current_simulation_cursor( lane_site ), observer_id,
+                     lane_outing.target_lead_revision, { optical }, 271 ).valid );
+        auto contradiction = make_typed_visual_observation( observer_id, lane_outing.target_lead_revision,
+                             272, "shared-contradiction", bandit_live_world::sortie_observation_share_state::shared );
+        contradiction.source_omt = target;
+        contradiction.receiver_omt = watch;
+        contradiction.kind = bandit_live_world::sortie_observation_kind::contradiction;
+        contradiction.defender_ids.clear();
+        contradiction.observed_power_low = 0;
+        contradiction.observed_power_high = 0;
+        contradiction.equipment_detail = 0;
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     lane_site, require_current_simulation_cursor( lane_site ), observer_id,
+                     lane_outing.target_lead_revision, { contradiction }, 272 ).valid );
+        auto sound = optical;
+        sound.observed_minutes = 273;
+        sound.simultaneity_end_minutes = 274;
+        sound.sense = bandit_live_world::sortie_observation_sense::sound;
+        sound.source_id = "shared-sound";
+        sound.fact_key = "shared-sound";
+        sound.state_key = "sound";
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     lane_site, require_current_simulation_cursor( lane_site ), observer_id,
+                     lane_outing.target_lead_revision, { sound }, 273 ).valid );
+        auto wealth = make_typed_visual_observation( observer_id, lane_outing.target_lead_revision,
+                      274, "temporary-wealth", bandit_live_world::sortie_observation_share_state::shared );
+        wealth.source_omt = target;
+        wealth.receiver_omt = watch;
+        wealth.kind = bandit_live_world::sortie_observation_kind::bounds;
+        wealth.source_id = "vehicle-origin:test";
+        wealth.fact_key = "wealth-cue:vehicle:" + wealth.source_id;
+        wealth.state_key = "wealth-cue:vehicle";
+        wealth.strength = 2;
+        wealth.visual_quality = 2;
+        wealth.defender_ids.clear();
+        wealth.observed_power_low = 0;
+        wealth.observed_power_high = 0;
+        wealth.equipment_detail = 0;
+        wealth.uncertainty_radius_omt = 0;
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     lane_site, require_current_simulation_cursor( lane_site ), observer_id,
+                     lane_outing.target_lead_revision, { wealth }, 274 ).valid );
+        REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                     lane_site, lane_outing.activity_id, lane_outing.generation,
+                     lane_outing.target_lead_revision, 320 ) ==
+                 bandit_live_world::scout_assessment_result::normal_success );
+        REQUIRE( lane_outing.assessment.certainty == 75 );
+        bandit_live_world::advance_structural_bounty_outings( shared_lanes_world, 321, {} );
+        const int home_time = lane_outing.expected_return_minutes;
+        publish_physical_camp_resume( lane_site, home_time - 1 );
+        REQUIRE( bandit_live_world::advance_structural_bounty_outings(
+                     shared_lanes_world, home_time, {} ).members_returned == 2 );
+        REQUIRE( lane_site.current_scout_report.is_present() );
+        const auto shared_report = round_trip_world( shared_lanes_world ).sites.front().current_scout_report;
+        REQUIRE( shared_report.is_present() );
+        REQUIRE( shared_report.assessment.provenance );
+        REQUIRE( shared_report.assessment.provenance->shared_optical_inputs );
+        REQUIRE( shared_report.assessment.provenance->shared_optical_inputs->size() == 1 );
+        CHECK( bandit_live_world::evaluate_scout_report_at( shared_report, 990 ).certainty == 67 );
+        CHECK( bandit_live_world::evaluate_scout_report_at( shared_report, 994 ).certainty == 65 );
+        auto foreign_optical = shared_report;
+        foreign_optical.assessment.provenance->shared_optical_inputs->front().source_id = "foreign-source";
+        CHECK_FALSE( bandit_live_world::evaluate_scout_report_at( foreign_optical, 990 ).certainty_known );
+        std::ostringstream foreign_bytes;
+        JsonOut foreign_output( foreign_bytes );
+        foreign_optical.serialize( foreign_output );
+        CHECK_THROWS( bandit_live_world::scout_report_record().deserialize(
+                          json_loader::from_string( foreign_bytes.str() ).get_object() ) );
+    }
+
+    // A second bucket remains private until its actual living observer
+    // returns; the already shared bucket must not be credited twice.
+    {
+        const bool shared_after_watch = GENERATE( false, true );
+        const bool capped_watch = GENERATE( false, true );
+        CAPTURE( shared_after_watch, capped_watch );
+        auto &carrier_site = carrier_lanes_world.sites.front();
+        auto &carrier_outing = carrier_site.active_outing;
+        auto shared = make_typed_visual_observation( observer_id, carrier_outing.target_lead_revision,
+                      271, "temporary-shared", bandit_live_world::sortie_observation_share_state::shared );
+        shared.source_omt = target;
+        shared.receiver_omt = watch;
+        shared.sense = bandit_live_world::sortie_observation_sense::smoke;
+        shared.source_id = "structural-smoke@" + target.to_string();
+        shared.fact_key = "structural-signal:" + shared.source_id;
+        shared.state_key = "structural-smoke-signal";
+        shared.visual_quality = 0;
+        shared.defender_ids.clear();
+        shared.observed_power_low = 0;
+        shared.observed_power_high = 0;
+        shared.equipment_detail = 0;
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                     carrier_outing.target_lead_revision, { shared }, 271 ).valid );
+        auto private_light = shared;
+        private_light.observed_minutes = 301;
+        private_light.bucket_start_minutes = 300;
+        private_light.simultaneity_start_minutes = 300;
+        private_light.simultaneity_end_minutes = 302;
+        private_light.expiry_minutes = 481;
+        private_light.sense = bandit_live_world::sortie_observation_sense::light;
+        private_light.source_id = "structural-light@" + target.to_string();
+        private_light.fact_key = "structural-signal:" + private_light.source_id;
+        private_light.state_key = "structural-light-signal";
+        private_light.share_state = bandit_live_world::sortie_observation_share_state::observer_private;
+        auto same_bucket = private_light;
+        same_bucket.observed_minutes = 272;
+        same_bucket.bucket_start_minutes = 270;
+        same_bucket.simultaneity_start_minutes = 271;
+        same_bucket.simultaneity_end_minutes = 273;
+        same_bucket.expiry_minutes = 452;
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                     carrier_outing.target_lead_revision, { same_bucket }, 272 ).valid );
+        if( capped_watch ) {
+            auto extra_shared = private_light;
+            extra_shared.share_state = bandit_live_world::sortie_observation_share_state::shared;
+            REQUIRE( bandit_live_world::record_active_typed_observations(
+                         carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                         carrier_outing.target_lead_revision, { extra_shared }, 301 ).valid );
+            auto sound = extra_shared;
+            sound.observed_minutes = 302;
+            sound.simultaneity_end_minutes = 303;
+            sound.sense = bandit_live_world::sortie_observation_sense::sound;
+            sound.source_id = "return-cap-sound";
+            sound.fact_key = "return-cap-sound";
+            sound.state_key = "sound";
+            REQUIRE( bandit_live_world::record_active_typed_observations(
+                         carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                         carrier_outing.target_lead_revision, { sound }, 302 ).valid );
+            private_light.observed_minutes = 331;
+            private_light.bucket_start_minutes = 330;
+            private_light.simultaneity_start_minutes = 330;
+            private_light.simultaneity_end_minutes = 332;
+            private_light.expiry_minutes = 511;
+        }
+        REQUIRE( bandit_live_world::record_active_typed_observations(
+                     carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                     carrier_outing.target_lead_revision, { private_light },
+                     capped_watch ? 331 : 301 ).valid );
+        const int watch_end = capped_watch ? 350 : 320;
+        REQUIRE( bandit_live_world::advance_structural_scout_assessment(
+                     carrier_site, carrier_outing.activity_id, carrier_outing.generation,
+                     carrier_outing.target_lead_revision, watch_end ) ==
+                 bandit_live_world::scout_assessment_result::normal_success );
+        REQUIRE( carrier_outing.assessment.certainty == ( capped_watch ? 95 : 85 ) );
+        if( shared_after_watch ) {
+            // The actual typed producer can receive a pair-shared receipt
+            // after the completed watch but before physical report delivery.
+            private_light.share_state = bandit_live_world::sortie_observation_share_state::shared;
+            REQUIRE( bandit_live_world::record_active_typed_observations(
+                         carrier_site, require_current_simulation_cursor( carrier_site ), observer_id,
+                         carrier_outing.target_lead_revision, { private_light }, watch_end + 1 ).valid );
+        }
+        bandit_live_world::advance_structural_bounty_outings( carrier_lanes_world,
+                watch_end + ( shared_after_watch ? 2 : 1 ), {} );
+        const int home_time = carrier_outing.expected_return_minutes;
+        publish_physical_camp_resume( carrier_site, home_time - 1 );
+        REQUIRE( bandit_live_world::advance_structural_bounty_outings(
+                     carrier_lanes_world, home_time, {} ).members_returned == 2 );
+        REQUIRE( carrier_site.current_scout_report.is_present() );
+        const auto carrier_report = round_trip_world( carrier_lanes_world ).sites.front().current_scout_report;
+        REQUIRE( carrier_report.is_present() );
+        REQUIRE( carrier_report.assessment.provenance );
+        REQUIRE( carrier_report.assessment.provenance->habitation_before == ( capped_watch ? 10 : 5 ) );
+        REQUIRE( carrier_report.assessment.provenance->habitation_private_delta ==
+                 ( shared_after_watch ? 0 : 5 ) );
+        CHECK( std::count_if( carrier_report.assessment.provenance->returned_optical_inputs.begin(),
+                              carrier_report.assessment.provenance->returned_optical_inputs.end(),
+        []( const auto &input ) {
+            return input.share_state == bandit_live_world::sortie_observation_share_state::observer_private;
+        } ) == ( shared_after_watch ? 1 : 2 ) );
+        REQUIRE( carrier_report.assessment.certainty == ( capped_watch ? 95 : 90 ) );
+        if( capped_watch ) {
+            // The new bucket increases habitation but contributes no score:
+            // a fresh receipt must not rejuvenate the already capped watch.
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1050 ).certainty == 85 );
+        } else {
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 991 ).certainty == 81 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1021 ).certainty == 80 );
+            CHECK( bandit_live_world::evaluate_scout_report_at( carrier_report, 1741 ).certainty == 70 );
+        }
+        auto missing_attribution = carrier_report;
+        missing_attribution.assessment.provenance->shared_optical_inputs.reset();
+        CHECK_FALSE( bandit_live_world::evaluate_scout_report_at( missing_attribution, 991 ).certainty_known );
+        std::ostringstream old_receipt_bytes;
+        JsonOut old_receipt_json( old_receipt_bytes );
+        missing_attribution.serialize( old_receipt_json );
+        bandit_live_world::scout_report_record old_receipt;
+        old_receipt.deserialize( json_loader::from_string( old_receipt_bytes.str() ).get_object() );
+        CHECK_FALSE( bandit_live_world::evaluate_scout_report_at( old_receipt, 991 ).certainty_known );
+        missing_attribution.assessment.observation_started_minutes = -1;
+        missing_attribution.assessment.last_progress_minutes = -1;
+        CHECK( bandit_live_world::evaluate_scout_report_at( missing_attribution, 991 ).certainty_known );
+    }
 
     bandit_live_world::site_record &inconclusive_site =
         inconclusive_world.sites.front();
@@ -32746,6 +33079,7 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
 
     SECTION( "next-minute burn authenticates its report without clearing unrelated legacy unknowns" ) {
         const bool legacy = GENERATE( false, true );
+        const bool rich_visual = GENERATE( false, true );
         auto world = make_world();
         auto &site = world.sites.front();
         const tripoint_abs_ms home = project_to<coords::ms>( site.anchor );
@@ -32763,6 +33097,20 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
             outing.assessment.tactical_completeness_recorded = true;
             outing.assessment.legacy_unknown_components = bandit_live_world::scout_unknown_tactical_all;
             outing.assessment.legacy_unknown_through_minutes = 1;
+        }
+        if( rich_visual && !legacy ) {
+            std::vector<bandit_live_world::sortie_observation> old_visuals;
+            for( int index = 0; index < 3; ++index ) {
+                auto visual = make_typed_visual_observation( outing.leader_id,
+                              outing.target_lead_revision, 1, "pre-burn-visual-" + std::to_string( index ),
+                              bandit_live_world::sortie_observation_share_state::shared );
+                visual.source_omt = outing.target_omt;
+                visual.receiver_omt = outing.selected_watch_omt;
+                old_visuals.push_back( visual );
+            }
+            REQUIRE( bandit_live_world::record_active_typed_observations(
+                         site, require_current_simulation_cursor( site ), outing.leader_id,
+                         outing.target_lead_revision, old_visuals, 1 ).valid );
         }
         const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( cursor );
@@ -32845,6 +33193,17 @@ TEST_CASE( "bandit_live_world_covert_burn_is_one_atomic_owner_transition",
         CHECK( effective.certainty_known );
         CHECK( effective.defenders_known );
         CHECK( effective.danger_known == !legacy );
+        if( !legacy ) {
+            const auto aged_burn = bandit_live_world::evaluate_scout_report_at( report, 2 + 12 * 60 );
+            REQUIRE( aged_burn.certainty_known );
+            CHECK( aged_burn.certainty == std::max( 0, report.assessment.certainty - 10 ) );
+            if( rich_visual ) {
+                REQUIRE( report.assessment.certainty == 95 );
+                const auto mixed_burn = bandit_live_world::evaluate_scout_report_at( report, 1 + 12 * 60 );
+                REQUIRE( mixed_burn.certainty_known );
+                CHECK( mixed_burn.certainty == 89 );
+            }
+        }
         if( returned.camp_decision.state == bandit_live_world::camp_decision_state::idle ) {
             REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( returned ) ==
                      bandit_live_world::camp_decision_transition_result::applied );
@@ -50888,6 +51247,15 @@ TEST_CASE( "binocular acquisition ends with native watch interruption and reload
         CHECK( report_loaded.assessment.provenance->habitation_delta == increase );
         CHECK( report_loaded.assessment.provenance->returned_optical_inputs.size() ==
                ( blind_survivor ? 0 : 1 ) );
+        if( !cached_habitation && !premarker_assessment ) {
+            REQUIRE( report_loaded.assessment.certainty == ( blind_survivor ? 0 : 5 ) );
+            const auto before_age = bandit_live_world::evaluate_scout_report_at( report_loaded, 1440 );
+            const auto at_age = bandit_live_world::evaluate_scout_report_at( report_loaded, 1441 );
+            REQUIRE( before_age.certainty_known );
+            REQUIRE( at_age.certainty_known );
+            CHECK( before_age.certainty == ( blind_survivor ? 0 : 5 ) );
+            CHECK( at_age.certainty == 0 );
+        }
         std::ostringstream report_bytes;
         JsonOut report_json( report_bytes, true );
         report.serialize( report_json );

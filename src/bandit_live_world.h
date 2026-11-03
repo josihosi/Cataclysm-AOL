@@ -759,6 +759,9 @@ struct scout_assessment_provenance {
     bool reducer_known = false;
     std::vector<sortie_observation> target_inputs;
     std::vector<sortie_observation> route_inputs;
+    // Absent on older receipts: the reducer had not recorded which optical
+    // inputs actually passed the watch's geometry and binding checks.
+    std::optional<std::vector<sortie_observation>> shared_optical_inputs;
     bool bounty_known = false;
     int bounty_value = 0;
     std::vector<sortie_observation> bounty_inputs;
