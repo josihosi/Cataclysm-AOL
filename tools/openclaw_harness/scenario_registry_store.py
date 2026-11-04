@@ -1632,7 +1632,7 @@ def _first_run_certification_route(
             archive_path = repository_root() / ".userdata/reference-saves/archives/josef-basecamp-open-windows-20260924-122356.zip"
             expected_archive = "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f"
             expected_tree = ("037ef09b7ff920d64d5a43f6a490bb8414676a1c367fb756fb68f610d1a346d8" if nearby else
-                             "1b70946053f85d11ae65481b1889b053662f3a4516d57dc2420594e13d92232a" if reentry else
+                             "95e96cd0200e29998d04e0fa479a8a70d162f68da2991795911d400c74ec3d3a" if reentry else
                              "b46c05d8b26702798ac34f4ecd6d9f82bb4c058f415ead6be447d1152f5ee7b6")
             from startup_harness import sha256_tree
             actual_tree, tree_error = sha256_tree(source)

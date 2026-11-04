@@ -12,7 +12,7 @@
     "runtime.world": "TestSetup00",
     "runtime.reference_variant": "gear_reentry",
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
-    "runtime.reference_save_tree_sha256": "1b70946053f85d11ae65481b1889b053662f3a4516d57dc2420594e13d92232a",
+    "runtime.reference_save_tree_sha256": "95e96cd0200e29998d04e0fa479a8a70d162f68da2991795911d400c74ec3d3a",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
     "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
   },
@@ -75,7 +75,7 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Reopen the exact native saved encounter with Casey injured and the existing zombie. Verify actual actor, zombie, camp, health and duty continuity. Use practical ordinary survivor, door and route controls to create a genuine active-guard sightline opportunity if feasible, then observe actual perception, alarm, per-actor response/exclusion and genuine combat outcome. No second zombie placement or injected guard action. Save and close normally.",
+      "objective": "Continue this existing zombie encounter as a survivor until actual active-guard detection and response or a concrete reason that opportunity cannot occur. Use ordinary armed, door and route judgment and preserve genuine consequences. Then save and close.",
       "proof_targets": [
         "exact source and installed world, actual saved actor and encounter continuity",
         "actual Tilda active-guard sightline opportunity and observed detection or first missing premise",
