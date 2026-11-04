@@ -1,0 +1,21 @@
+{
+  "outcome": "Observe Tilda equipment persistence on actual owner-reference post-transfer save reentry.",
+  "scenario": "caol.reference_camp_gear_reentry_focused_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.caol.reference_camp",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_reference_camp_equipment_patrol_physical_signal_journey"
+      },
+      {
+        "key": "runtime.reference_variant",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "gear_reentry"
+      }
+    ],
+    "preferences": []
+  }
+}

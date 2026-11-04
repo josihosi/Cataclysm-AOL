@@ -1,0 +1,119 @@
+{
+  "manifest_version": 1,
+  "name": "caol.reference_camp_gear_reentry_focused_mcw",
+  "description": "Focused actual post-transfer save reentry for owner reference camp NPC equipment persistence.",
+  "profile": "reference-camp-gear-reentry-001-luna",
+  "config_profile": "dev-harness",
+  "world": "TestSetup00",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00",
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.world": "TestSetup00",
+    "runtime.reference_variant": "gear_reentry",
+    "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
+    "runtime.reference_save_tree_sha256": "2a2839888d4d5593c320000cdc761fd820b03bccf24700d44cca9b200b826404",
+    "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
+    "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
+      "direct save edits after install",
+      "synthetic receipts",
+      "hostile teleport",
+      "guessed input"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "reference-camp-gear-reentry-001-luna",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "current source-bound native executable",
+      "profile": "reference-camp-gear-reentry-001-luna",
+      "fixture": "owner-reference saved-world snapshot",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_reference_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_reference_camp",
+      "cleanup_on_finish": true,
+      "objective": "Reopen the exact final native saved world after the observed locker transfer, inspect Tilda and her equipped pistol, magazine and ammunition, then save and close normally. Prior transfer remains proof from its original run.",
+      "proof_targets": [
+        "exact saved source and installed world identity, player, camp and Tilda identity",
+        "actual reloaded wielded pistol, magazine and loaded ammunition type/count",
+        "native save and exit"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "copying the prior saved world is setup; prior transfer retains its original run evidence",
+        "do not fabricate NPC behavior, equipment, clock or other state",
+        "compare actual loaded equipment by type and count; regenerated UIDs are not a persistence requirement"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_reference_world"
+    ],
+    "production_behavior": [
+      "observe_reference_camp"
+    ],
+    "terminal_persistence": [
+      "observe_reference_camp"
+    ],
+    "artifact_verdict": [
+      "observe_reference_camp"
+    ],
+    "disallowed_shortcuts": [
+      "bind_reference_world"
+    ]
+  }
+}

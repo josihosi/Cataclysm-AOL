@@ -1,0 +1,21 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Observe actual post-transfer equipment persistence after reopening the owner-reference saved world.",
+  "material_proof": "Bind and reopen the exact native save from run 4110 at turn 5261480, then inspect Tilda ID 2, her actual wielded Glock carry pistol, its magazine and loaded 17 JHP rounds; retain actual identities and type/count.",
+  "material_contradiction": [
+    "The authenticated saved world reloads but the observed actor or equipment differs from the saved post-transfer state."
+  ],
+  "already_accepted_evidence": [
+    "The autonomous transfer is evidenced by the original run and is not replayed or promoted by this continuation."
+  ],
+  "current_uncertainty": "Actual actor and equipment continuity after reopening are not assumed.",
+  "forbidden_shortcuts": [
+    "alter saved actor or item state",
+    "count source installation as loaded NPC observation",
+    "treat changed item UIDs as a loss without type/count evidence"
+  ],
+  "honest_stop_conditions": [
+    "Record actual loaded actor and equipment, including any mismatch or failed launch."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

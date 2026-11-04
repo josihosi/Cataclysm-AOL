@@ -1339,7 +1339,7 @@ def _selected_saved_world_defaults(selection: Any, *, post_relaunch_continuation
     scenario = _load_selected_scenario(selection)
     declared = str(scenario.get("saved_world_snapshot", "") or "").strip()
     snapshot = str(saved_world_snapshot or declared).strip()
-    if scenario.get("name") in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw", "caol.reference_camp_nearby_focused_mcw", "caol.reference_camp_gear_reload_focused_mcw"}:
+    if scenario.get("name") in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw", "caol.reference_camp_nearby_focused_mcw", "caol.reference_camp_gear_reload_focused_mcw", "caol.reference_camp_gear_reentry_focused_mcw"}:
         if not declared or not snapshot or Path(snapshot).expanduser().resolve() != Path(declared).expanduser().resolve():
             raise ScenarioRegistryStoreError(
                 "reference-camp snapshot override differs from the authorized source; no token or game input was consumed")

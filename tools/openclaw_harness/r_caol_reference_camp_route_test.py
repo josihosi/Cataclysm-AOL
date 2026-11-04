@@ -393,6 +393,64 @@ class ReferenceCampRouteTest(unittest.TestCase):
             self.assertEqual(receipt['wec_authority']['evidence_class'], 'focused feature proof')
             self.assertEqual(probe.call_args.args[0].saved_world_snapshot, str(world))
 
+    def test_gear_reentry_saved_start_has_exact_focused_launch_and_rejects_drift(self):
+        from scenario_registry_cli_test import ScenarioRegistryCliTest
+        scene = self.scene('gear_reentry')
+        self.assertEqual(validate_manifest(scene, path=HARNESS / 'scenarios' / (scene['name'] + '.json'))['validation']['status'], 'valid')
+        self.assertEqual(len(saved_world_continuation_steps(scene['steps'], scene.get('post_relaunch'))), 2)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            world = root / '.userdata/reference-camp-gear-001-luna/save/TestSetup00'
+            world.mkdir(parents=True)
+            scene['saved_world_snapshot'] = str(world)
+            scene['capabilities']['runtime.reference_save_path'] = str(world)
+            scenarios = root / 'scenarios'; scenarios.mkdir()
+            (scenarios / (scene['name'] + '.json')).write_text(json.dumps(scene))
+            registry = root / 'registry.sqlite3'; connection = store.open_registry(str(registry))
+            store.rebuild_manifest_projection(connection, scenarios)
+            request = store.parse_registry_query_request({'requirements': [
+                {'key':'runtime.reference_variant', 'op':'eq', 'value':'gear_reentry', 'minimum_evidence':'declared'}], 'preferences': []})
+            expected_tree = scene['capabilities']['runtime.reference_save_tree_sha256']
+            expected_archive = scene['capabilities']['runtime.reference_archive_sha256']
+            original = store.path_sha256
+            def path_hash(path):
+                return expected_archive if Path(path).suffix == '.zip' else original(path)
+            try:
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    selected = store.execute_registry_query(connection, request, drafts_root=root / 'drafts')
+                    self.assertIsNotNone(selected.token_id)
+                    token = store.reload_selection_token_for_launch(connection, selected.token_id)
+                    self.assertTrue(token.accepted)
+                    with self.assertRaisesRegex(store.ScenarioRegistryStoreError, 'snapshot override differs'):
+                        cli._selected_saved_world_defaults(token, post_relaunch_continuation=False,
+                            saved_world_snapshot=str(root / 'other-save'), profile_override='')
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=('0' * 64, '')):
+                    self.assertEqual(store.reload_selection_token_for_launch(connection, selected.token_id).reason,
+                                     'reference_source_not_authorized')
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', return_value='0' * 64), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    self.assertFalse(store.reload_selection_token_for_launch(connection, selected.token_id).accepted)
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    selected = store.execute_registry_query(connection, request, drafts_root=root / 'drafts')
+            finally:
+                connection.close()
+            with mock.patch.object(store, 'repository_root', return_value=root), \
+                 mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                 mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')), \
+                 mock.patch.dict(os.environ, {'OPENCLAW_COCKPIT_BRIDGE_BINDING_ID':'test-bridge'}):
+                result, probe = ScenarioRegistryCliTest().run_registry_launch(registry, scenarios, selected.token_id)
+            self.assertEqual(result, 23)
+            receipt = json.loads(probe.call_args.args[0].registry_launch_receipt)
+            self.assertEqual(receipt['wec_authority']['evidence_class'], 'focused feature proof')
+            self.assertEqual(probe.call_args.args[0].saved_world_snapshot, str(world))
+
     def test_reference_query_rejects_drift_even_with_verified_or_coordinator_authority(self):
         for route_kind in ('verified', 'coordinator'):
             for drift in ('tree', 'archive'):
