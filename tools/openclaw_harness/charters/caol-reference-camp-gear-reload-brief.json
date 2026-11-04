@@ -1,0 +1,21 @@
+{
+  "outcome": "Observe actual NPC useful locker gear transfer and continuity in the saved owner reference camp.",
+  "scenario": "caol.reference_camp_gear_reload_focused_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.caol.reference_camp",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_reference_camp_equipment_patrol_physical_signal_journey"
+      },
+      {
+        "key": "runtime.reference_variant",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "gear_reload"
+      }
+    ],
+    "preferences": []
+  }
+}

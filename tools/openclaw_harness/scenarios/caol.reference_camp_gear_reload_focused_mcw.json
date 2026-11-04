@@ -1,0 +1,121 @@
+{
+  "manifest_version": 1,
+  "name": "caol.reference_camp_gear_reload_focused_mcw",
+  "description": "Focused continuation from the previously observed and saved owner reference camp at minute 8458; exercise real locker gear collection and saved-state continuity, with no replay of prior signal journey.",
+  "profile": "reference-camp-gear-001-luna",
+  "config_profile": "dev-harness",
+  "world": "TestSetup00",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-initial/save/TestSetup00",
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.world": "TestSetup00",
+    "runtime.reference_variant": "gear_reload",
+    "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
+    "runtime.reference_save_tree_sha256": "b46c05d8b26702798ac34f4ecd6d9f82bb4c058f415ead6be447d1152f5ee7b6",
+    "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
+    "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-initial/save/TestSetup00"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
+      "direct save edits after install",
+      "synthetic receipts",
+      "hostile teleport",
+      "guessed input"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "reference-camp-gear-001-luna",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "current source-bound native executable",
+      "profile": "reference-camp-gear-001-luna",
+      "fixture": "owner-reference saved-world snapshot",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_reference_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_reference_camp",
+      "cleanup_on_finish": true,
+      "objective": "Resume the actual saved owner reference camp to check prior saved actor/duty continuity and observe real NPC acquisition and use of a useful eligible locker item with type/count conservation; record a fresh saved checkpoint for any further reload. No earlier story is replayed.",
+      "proof_targets": [
+        "actual source checkpoint and installed world identity, player, camp, actors and saved-state continuity",
+        "actual NPC tile-to-inventory/worn/wielded collection of useful eligible equipment with type/count conservation and usability",
+        "actual day/night patrol roster, real service and saved-state continuity where observable",
+        "fresh native save and exit; later reload after a newly observed transfer is a separate boundary"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "the saved checkpoint and practical gear placement are zero-credit setup; earlier scoped observations retain their original run identity",
+        "do not fabricate NPC action, item transfer, duty, time, payment or hostile encounter",
+        "prove only the actor and item states actually observed, with type/count conservation independent of regenerated item IDs",
+        "do not assert a later reload before a fresh save is actually reopened"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_reference_world"
+    ],
+    "production_behavior": [
+      "observe_reference_camp"
+    ],
+    "terminal_persistence": [
+      "observe_reference_camp"
+    ],
+    "artifact_verdict": [
+      "observe_reference_camp"
+    ],
+    "disallowed_shortcuts": [
+      "bind_reference_world"
+    ]
+  }
+}

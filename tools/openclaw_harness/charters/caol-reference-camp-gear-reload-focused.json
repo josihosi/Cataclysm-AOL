@@ -1,0 +1,27 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Observe actual owner-reference NPC locker equipment collection and continuation of saved actor and duty state.",
+  "material_proof": "Source-bound saved-world load and actual actor state continuity; an eligible useful item is observed on its real tile before autonomous NPC collection, with inventory/worn/wielded type/count and usability after. A subsequent reload is credited only if that fresh save is actually reopened.",
+  "material_contradiction": [
+    "qualified expected native transition fails under established conditions",
+    "item custody or conservation differs from the actual transfer",
+    "physical signal or actor journey is asserted without its observer or source opportunity"
+  ],
+  "already_accepted_evidence": [
+    "Earlier camp assignment, Locker, patrol and Signal outcomes remain accepted only at their original source/run scope; they do not prove this owner reference copy."
+  ],
+  "current_uncertainty": "Saved actor and duty state, locker eligibility, practical useful item, actual collection and later reload are not assumed.",
+  "forbidden_shortcuts": [
+    "credit archive, debug setup or source emission as an actor response",
+    "inject a lead, dispatch, encounter, return, clock or NPC behavior",
+    "infer a returned outing or physical arrival",
+    "rewrite the source save or skip real interruptions",
+    "credit the saved start alone as a new gear pickup",
+    "claim post-transfer reload without a fresh save and actual reentry"
+  ],
+  "honest_stop_conditions": [
+    "identify the first absent eligible transition and its actual premises",
+    "retain losses, no-return limits and each independent observation without forcing success"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

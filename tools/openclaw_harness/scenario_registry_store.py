@@ -1598,6 +1598,12 @@ def _current_verified_route(snapshot: RegistryQueryCandidateSnapshot) -> Optiona
     return None
 
 
+_REFERENCE_CAMP_SCENES = frozenset({
+    "caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw",
+    "caol.reference_camp_nearby_focused_mcw", "caol.reference_camp_gear_reload_focused_mcw",
+})
+
+
 def _first_run_certification_route(
     snapshot: RegistryQueryCandidateSnapshot,
 ) -> Optional[Mapping[str, Any]]:
@@ -1612,20 +1618,23 @@ def _first_run_certification_route(
             manifest.get("validation", {}).get("status") != "valid" or manifest.get("validation", {}).get("review_required"):
         return None
     name = manifest.get("name")
-    if name == "caol.reference_camp_nearby_focused_mcw":
+    if name in {"caol.reference_camp_nearby_focused_mcw", "caol.reference_camp_gear_reload_focused_mcw"}:
         try:
             declaration = json.loads(Path(str(manifest["source_path"])).read_text(encoding="utf-8"))
             saved_path = str(declaration.get("saved_world_snapshot", ""))
             source = Path(saved_path).resolve()
-            expected_source = (repository_root() / ".userdata/reference-camp-nearby-initial/save/TestSetup00").resolve()
+            nearby = name == "caol.reference_camp_nearby_focused_mcw"
+            source_profile = "reference-camp-nearby-initial" if nearby else "reference-camp-gear-initial"
+            expected_source = (repository_root() / ".userdata" / source_profile / "save/TestSetup00").resolve()
             archive_path = repository_root() / ".userdata/reference-saves/archives/josef-basecamp-open-windows-20260924-122356.zip"
             expected_archive = "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f"
-            expected_tree = "037ef09b7ff920d64d5a43f6a490bb8414676a1c367fb756fb68f610d1a346d8"
+            expected_tree = ("037ef09b7ff920d64d5a43f6a490bb8414676a1c367fb756fb68f610d1a346d8" if nearby else
+                             "b46c05d8b26702798ac34f4ecd6d9f82bb4c058f415ead6be447d1152f5ee7b6")
             from startup_harness import sha256_tree
             actual_tree, tree_error = sha256_tree(source)
             valid = (facts.get("capabilities.caol.reference_camp", {}).get("value") ==
                      "native_reference_camp_equipment_patrol_physical_signal_journey" and
-                     facts.get("runtime.reference_variant", {}).get("value") == "nearby" and
+                     facts.get("runtime.reference_variant", {}).get("value") == ("nearby" if nearby else "gear_reload") and
                      facts.get("runtime.reference_archive_sha256", {}).get("value") == expected_archive and
                      facts.get("runtime.reference_save_tree_sha256", {}).get("value") == expected_tree and
                      facts.get("runtime.reference_save_path", {}).get("value") == saved_path and
@@ -1863,6 +1872,31 @@ def _first_run_certification_route(
         "details": {"first_run": True, "manifest_sha256": str(manifest.get("sha256", ""))},
         "bindings": (),
     }
+
+
+def _reference_source_authorized(name: str, source_path: str, source_sha256: str) -> bool:
+    """Recheck exact external inputs for these reference scenes at every authority boundary."""
+    if name not in _REFERENCE_CAMP_SCENES:
+        return True
+    try:
+        source_bytes = Path(source_path).read_bytes()
+        if hashlib.sha256(source_bytes).hexdigest() != source_sha256:
+            return False
+        declaration = json.loads(source_bytes.decode("utf-8"))
+        if not isinstance(declaration, Mapping) or declaration.get("name") != name:
+            return False
+        capabilities = declaration.get("capabilities", {})
+        if not isinstance(capabilities, Mapping):
+            return False
+        snapshot = RegistryQueryCandidateSnapshot(
+            scenario_id="reference-source-check", lifecycle_state="active", token_eligible=True,
+            facts={key: {"value": value} for key, value in capabilities.items()},
+            explanation={"manifest": {"name": name, "source_path": source_path,
+                "sha256": source_sha256, "validation": {"status": "valid", "review_required": False}}},
+        )
+        return _first_run_certification_route(snapshot) is not None
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError):
+        return False
 
 
 def _current_stale_bootstrap_candidate(snapshot: RegistryQueryCandidateSnapshot) -> bool:
@@ -2996,6 +3030,12 @@ def execute_registry_query(
     )
     selected = _select_coordinator_query_candidate(evaluation, coordinator_brief, scenario_id=scenario_id)
     selected_id = selected.scenario_id if selected is not None else None
+    if selected is not None:
+        selected_manifest = selected.explanation.get("manifest", {})
+        if not _reference_source_authorized(str(selected_manifest.get("name", "")),
+                                            str(selected_manifest.get("source_path", "")),
+                                            str(selected_manifest.get("sha256", ""))):
+            raise ScenarioRegistryStoreError("reference_source_not_authorized")
     coordinator_authorization = None
     if selected is not None and (coordinator_brief is not None or witness_charter is not None):
         # Retain supplied context independently of the selected evidence route.
@@ -3373,16 +3413,8 @@ def reload_selection_token_for_launch(
 
         # These owner-reference scenes bind their physical source even after
         # they acquire ordinary verified history or coordinator authority.
-        reference_route = None
-        if scenario in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw", "caol.reference_camp_nearby_focused_mcw"}:
-            reference_snapshot = RegistryQueryCandidateSnapshot(
-                scenario_id=expected_manifest_id, lifecycle_state="active", token_eligible=True,
-                facts={key: {"value": value} for key, value in declaration.get("capabilities", {}).items()},
-                explanation={"manifest": {"name": scenario, "source_path": str(source_path),
-                    "sha256": expected_sha256, "validation": {"status": "valid", "review_required": False}}},
-            )
-            reference_route = _first_run_certification_route(reference_snapshot)
-            if reference_route is None:
+        if scenario in _REFERENCE_CAMP_SCENES:
+            if not _reference_source_authorized(scenario, str(source_path), expected_sha256):
                 return reject("reference_source_not_authorized")
 
         if authority_kind == "coordinator_brief_charter":
@@ -3426,7 +3458,7 @@ def reload_selection_token_for_launch(
                     "validation": {"status": "valid", "review_required": False},
                 }},
             )
-            expected_first_run_route = reference_route or _first_run_certification_route(snapshot)
+            expected_first_run_route = _first_run_certification_route(snapshot)
             if expected_first_run_route is None:
                 return reject("first_run_manifest_not_authorized")
             expected_first_run_route = {
@@ -3574,6 +3606,8 @@ def issue_registry_bootstrap_token(
     manifest_id = str(manifest["manifest_id"])
     manifest_sha256 = str(manifest["sha256"])
     scenario = _string(manifest.get("name"), "manifest scenario name")
+    if not _reference_source_authorized(scenario, str(manifest.get("source_path", "")), manifest_sha256):
+        return RegistryBootstrapToken("", False, "reference_source_not_authorized")
     token_details = {
         "authority_kind": "registry_bootstrap_first_compatible_run",
         "query_json": json.loads(request_json),
@@ -3719,6 +3753,8 @@ def reload_bootstrap_token_for_launch(
             scenario = _string(selected.explanation["manifest"].get("name"), "manifest scenario name")
         except ScenarioRegistryStoreError as exc:
             return reject("manifest_scenario_unavailable", error=str(exc))
+        if not _reference_source_authorized(scenario, str(manifest["source_path"]), expected_sha256):
+            return reject("reference_source_not_authorized")
         return RegistryBootstrapToken(
             token_id, True, "claimed" if claimed else "current", scenario,
             str(manifest["source_path"]), runtime, expected_sha256,
@@ -4093,6 +4129,8 @@ def issue_registry_repair_token(
         return RegistryRepairToken("", False, "manifest_source_unreadable")
     if source_sha256 != str(manifest["current_sha256"] or "").lower():
         return RegistryRepairToken("", False, "manifest_source_changed")
+    if not _reference_source_authorized(scenario, str(source_path), source_sha256):
+        return RegistryRepairToken("", False, "reference_source_not_authorized")
     if not _repair_route_current(
             connection, manifest_id=manifest_id, route_key=route_key,
             red_verification_id=red_verification_id):
@@ -4313,6 +4351,8 @@ def reload_repair_token_for_launch(
             normalized_expected = _repair_binding(expected_binding, declaration)
         except ScenarioRegistryStoreError as exc:
             return reject("receipt_malformed", error=str(exc))
+        if not _reference_source_authorized(scenario, str(manifest["source_path"]), expected_sha256):
+            return reject("reference_source_not_authorized")
         if binding is not None:
             try:
                 current_binding = _repair_binding(binding, _json_object(
