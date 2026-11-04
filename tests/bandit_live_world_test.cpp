@@ -83718,3 +83718,136 @@ TEST_CASE( "native return routes retain ground detours and bridge-only paths",
                                           overmap_path_params::for_npc() ) );
     }
 }
+
+// Real generation-7 returned report and claim, extracted from the owned native
+// save at minute 23671.  The callbacks below model scheduling, not a native visit.
+TEST_CASE( "fresh returned bandit signal renews only its settled zero claim",
+           "[bandit_live_world][bandit_fresh_signal_claim]" )
+{
+    using namespace bandit_live_world;
+    const std::string condition = GENERATE( "fresh", "reload", "no_release", "old_report",
+                                            "same_revision", "foreign_operation", "foreign_report",
+                                            "goods", "population", "activity", "missing_receipt",
+                                            "wrong_observer", "duplicate_carrier", "unknown_danger",
+                                            "stale_commit_claim", "route_missing", "apply_failure", "cooldown", "caution" );
+    CAPTURE( condition );
+    const auto old_start = calendar::start_of_cataclysm;
+    const auto old_turn = calendar::turn;
+    on_out_of_scope restore( [&]() {
+        calendar::start_of_cataclysm = old_start;
+        calendar::turn = old_turn;
+    } );
+    calendar::start_of_cataclysm = time_point::from_turn( 4752000 );
+    calendar::turn = time_point::from_turn( 6172265 );
+    std::ifstream input( "tests/data/pay_return_gen7_signal_claim.json" );
+    REQUIRE( input.good() );
+    const std::string fixture( std::istreambuf_iterator<char>( input ), {} );
+    world_state world;
+    world.deserialize( json_loader::from_string( fixture ).get_object() );
+    REQUIRE( world.sites.size() == 1 );
+    REQUIRE( world.hostile_target_opportunities.size() == 1 );
+    // Permit one focused scheduler service at the already observed saved time.
+    world.routine_scheduler_last_hour = -1;
+    if( condition == "reload" ) {
+        world = round_trip_world( world );
+    }
+    auto &site = world.sites.front();
+    auto &report = site.current_scout_report;
+    auto &claim = world.hostile_target_opportunities.front();
+    REQUIRE( report.assessment.provenance );
+    REQUIRE( report.assessment.provenance->reducer_known );
+    REQUIRE( report.assessment.observation_started_minutes == 23340 );
+    REQUIRE( report.source_generation == 7 );
+    REQUIRE( claim.consumed_generation == 2 );
+    const auto reads = []( const site_record & value ) {
+        std::vector<response_member_power_read> result;
+        for( const auto &member : value.members ) {
+            result.push_back( { member.npc_id, true, true, true, 10 } );
+        }
+        return result;
+    };
+    const auto selected = select_capable_response_party( site, report.action_policy,
+                          report.assessment.danger_high, reads( site ) );
+    const auto authorization = evaluate_response_authorization( site, 23671, selected, reads( site ) );
+    INFO( authorization.rejection_reason );
+    REQUIRE( authorization.authorized );
+    if( condition == "no_release" ) {
+        site.applied_return_generation = 1;
+    } else if( condition == "old_report" ) {
+        claim.consumed_generation = report.source_generation;
+        claim.consumed_operation_id = site.site_id + "#hostile:7";
+    } else if( condition == "same_revision" ) {
+        claim.revision = report.target_lead_revision;
+    } else if( condition == "foreign_operation" ) {
+        claim.consumed_operation_id = "foreign#hostile:2";
+    } else if( condition == "foreign_report" ) {
+        claim.consumed_report_key = "foreign#structural:report:1";
+    } else if( condition == "goods" ) {
+        claim.goods_value = 1;
+    } else if( condition == "population" ) {
+        claim.population = 1;
+    } else if( condition == "activity" ) {
+        claim.activity = 1;
+    } else if( condition == "missing_receipt" ) {
+        report.observations.clear();
+    } else if( condition == "wrong_observer" ) {
+        for( auto &observation : report.observations ) {
+            observation.observer_id = character_id( 999999 );
+        }
+    } else if( condition == "duplicate_carrier" ) {
+        report.carrier_ids.push_back( report.carrier_ids.front() );
+    } else if( condition == "cooldown" ) {
+        REQUIRE_FALSE( site.intelligence_map.robbery_places.empty() );
+        site.intelligence_map.robbery_places.front().next_eligible_active_turn =
+            site.home_activation.active_turns + 3600;
+    } else if( condition == "caution" ) {
+        REQUIRE_FALSE( site.intelligence_map.robbery_places.empty() );
+        site.intelligence_map.robbery_places.front().caution = 1;
+    } else if( condition == "unknown_danger" ) {
+        report.assessment.provenance.reset();
+        CHECK_FALSE( evaluate_response_authorization( site, 23671, selected, reads( site ) ).authorized );
+    }
+    const auto boundary = [&]() { return serialize_world( world ); };
+    std::string before_response;
+    int read_calls = 0;
+    const auto checked_reads = [&]( const site_record & value ) {
+        auto result = reads( value );
+        if( ++read_calls == 1 ) {
+            before_response = boundary();
+        } else if( read_calls == 2 && condition == "stale_commit_claim" ) {
+            ++claim.revision;
+            before_response = boundary();
+        }
+        return result;
+    };
+    const auto result = advance_structural_bounty_maintenance(
+                            world, 23671, 0, 0, {}, {}, {}, {}, {}, {}, checked_reads, {},
+    [&]( const site_record & value ) -> std::optional<canonical_hostile_operation_route> {
+        if( condition == "route_missing" ) {
+            return std::nullopt;
+        }
+        return canonical_hostile_operation_route{
+            { value.anchor, value.anchor + point( 1, 0 ), value.current_scout_report.target_omt },
+            value.anchor + point( 1, 0 ) };
+    }, [&]( site_record & value, const authorized_hostile_operation_plan & plan ) {
+        return apply_hostile_operation_plan_with_authorized_response( value, plan ) &&
+               condition != "apply_failure";
+    } );
+    INFO( render_structural_bounty_maintenance_report( result ) );
+    const bool positive = condition == "fresh" || condition == "reload";
+    CHECK( result.response_operations_applied == ( positive ? 1 : 0 ) );
+    if( !positive || result.response_operations_applied == 0 ) {
+        REQUIRE_FALSE( before_response.empty() );
+        CHECK( boundary() == before_response );
+        return;
+    }
+    CHECK( site.active_hostile_operation.reservation.generation == 8 );
+    CHECK( world.hostile_target_opportunities.front().revision == 1988 );
+    CHECK( world.hostile_target_opportunities.front().consumed_generation == 8 );
+    CHECK( world.hostile_target_opportunities.front().consumed_report_key == report.application_key );
+    const auto committed = serialize_world( world );
+    CHECK( serialize_world( round_trip_world( world ) ) == committed );
+    CHECK( advance_structural_bounty_maintenance( world, 23671, 0, 0, {}, {}, {}, {}, {}, {},
+            reads ).scheduler_replay_suppressed );
+    CHECK( serialize_world( world ) == committed );
+}

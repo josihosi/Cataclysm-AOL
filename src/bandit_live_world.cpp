@@ -21711,6 +21711,83 @@ static void stage_released_response_source_claim( world_state &claims,
     claim->consumed_generation = 0;
 }
 
+// A later physically returned signal report can replace an exhausted, zero-valued
+// permission for the same bandit site.  This is a new report-bound claim, not
+// renewed goods or a repeat-place reservation; ordinary response gates still apply.
+static void stage_fresh_bandit_signal_claim( world_state &claims,
+        const site_record &previous, const site_record &candidate )
+{
+    const auto &report = previous.current_scout_report;
+    const auto &operation = candidate.active_hostile_operation;
+    auto claim = std::find_if( claims.hostile_target_opportunities.begin(),
+    claims.hostile_target_opportunities.end(), [&]( const auto &entry ) {
+        return entry.target_id == report.target_id && entry.target_omt == report.target_omt;
+    } );
+    const auto *lead = previous.intelligence_map.find_lead( report.target_lead_id );
+    if( claim == claims.hostile_target_opportunities.end() ||
+        effective_profile( previous ) != hostile_site_profile::camp_style ||
+        operation.operation_kind != hostile_operation_kind::shakedown ||
+        previous.has_active_outside_pressure() || previous.site_id != candidate.site_id ||
+        report.assessment.threshold_class != scout_assessment_threshold_class::site_signal ||
+        claim->goods_value != 0 || claim->population != 0 || claim->activity != 0 ||
+        claim->consumed_generation <= 0 || claim->consumed_generation >= report.source_generation ||
+        claim->consumed_generation > previous.applied_return_generation ||
+        report.source_generation > previous.applied_return_generation ||
+        previous.applied_report_generation != report.source_generation ||
+        report.target_lead_revision <= claim->revision ||
+        operation.reservation.generation != previous.next_outing_generation ||
+        operation.reservation.generation <= previous.applied_return_generation ||
+        claim->consumed_operation_id != previous.site_id + "#hostile:" +
+        std::to_string( claim->consumed_generation ) ||
+        report.source_activity_id != previous.site_id + "#structural" ||
+        report.application_key != bandit_pursuit_handoff::make_operation_component_key(
+            report.source_activity_id, report.source_generation, "report" ) ||
+        lead == nullptr || lead->target_id != report.target_id || lead->omt != report.target_omt ||
+        lead->status == camp_lead_status::invalidated || lead->revision < report.target_lead_revision ||
+        report.carrier_ids.empty() ) {
+        return;
+    }
+    const std::string prefix = previous.site_id + "#structural:report:";
+    if( claim->consumed_report_key.rfind( prefix, 0 ) != 0 ) {
+        return;
+    }
+    const std::string suffix = claim->consumed_report_key.substr( prefix.size() );
+    int old_generation = 0;
+    const auto parsed = std::from_chars( suffix.data(), suffix.data() + suffix.size(), old_generation );
+    if( parsed.ec != std::errc() || parsed.ptr != suffix.data() + suffix.size() ||
+        old_generation <= 0 || old_generation >= claim->consumed_generation ||
+        suffix != std::to_string( old_generation ) ) {
+        return;
+    }
+    const bool carriers_home = std::all_of( report.carrier_ids.begin(), report.carrier_ids.end(),
+    [&]( const character_id id ) {
+        const member_record *member = previous.find_member( id );
+        return member && member->state == member_state::at_home &&
+               std::count( report.carrier_ids.begin(), report.carrier_ids.end(), id ) == 1;
+    } );
+    const bool fresh_receipt = std::any_of( report.observations.begin(), report.observations.end(),
+    [&]( const sortie_observation &observation ) {
+        return typed_sortie_observation_is_valid( observation ) &&
+               observation.kind == sortie_observation_kind::certainty &&
+               observation.share_state == sortie_observation_share_state::reported &&
+               observation.source_omt == report.target_omt &&
+               observation.target_revision == report.target_lead_revision &&
+               observation.source_id == report.assessment.site_signal_source_id &&
+               observation.observed_minutes == report.assessment.site_signal_observed_minutes &&
+               observation.observed_minutes <= report.delivered_minutes &&
+               observation.expiry_minutes >= report.delivered_minutes &&
+               std::find( report.carrier_ids.begin(), report.carrier_ids.end(),
+                          observation.observer_id ) != report.carrier_ids.end();
+    } );
+    if( !carriers_home || !fresh_receipt ) {
+        return;
+    }
+    claim->revision = report.target_lead_revision;
+    claim->consumed_operation_id.clear();
+    claim->consumed_report_key.clear();
+    claim->consumed_generation = 0;
+}
+
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         const int now_minutes, const int scan_budget, const int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
@@ -22259,6 +22336,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     } );
                 }
                 stage_released_response_source_claim( claim_candidate, site, candidate );
+                stage_fresh_bandit_signal_claim( claim_candidate, site, candidate );
                 const hostile_target_claim_result claim_result = claim_hostile_target_opportunity(
                             claim_candidate, reservation.target_id, reservation.target_omt,
                             reservation.target_lead_revision, reservation.activity_id,
