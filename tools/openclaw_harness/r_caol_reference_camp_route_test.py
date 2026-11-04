@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 import tempfile
@@ -247,6 +248,84 @@ class ReferenceCampRouteTest(unittest.TestCase):
                     self.assertEqual(descriptor['gameplay_credit'], credit)
                     self.assertEqual(reports[0]['metadata']['gameplay_credit'], credit)
                     self.assertEqual(opened.call_args.kwargs['witness_evidence_ceiling'], ceiling)
+
+    def test_nearby_footprint_only_and_real_launch_binding(self):
+        from scenario_registry_cli_test import ScenarioRegistryCliTest
+        from bandit_live_world_audit import load_special_definitions
+        source = Path(self.scene('open')['saved_world_snapshot'])
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            world = root / '.userdata/reference-camp-nearby-initial/save/TestSetup00'
+            world.parent.mkdir(parents=True)
+            shutil.copytree(source, world)
+            seed = {'kind': 'seed_overmap_special_near_player', 'player_save': '#VGVzdDAw.sav.zzip',
+                    'special_id': 'bandit_cabin', 'source_special_id': 'bandit_cabin',
+                    'site_index': 1, 'offset_omt': [-10, -5, 0]}
+            result = startup_harness.apply_seed_overmap_special_near_player_transform(world, seed)
+            self.assertEqual(result['target_abs_omt'], [121, 138, 0])
+            self.assertEqual(result['previous_target_terrain'], {'121,138,0': 'field', '121,138,1': 'open_air'})
+            changed = [p.relative_to(source) for p in source.rglob('*') if p.is_file() and
+                       (world / p.relative_to(source)).read_bytes() != p.read_bytes()]
+            self.assertEqual(changed, [Path('overmaps/o.0.0.zzip')])
+            placements = startup_harness.load_bandit_special_placements(HARNESS.parents[1], world, set(load_special_definitions(HARNESS.parents[1])))
+            self.assertEqual(sorted(tuple(p.points[0]) for p in placements if p.special_id == 'bandit_cabin'),
+                             [(103, 167, 0), (121, 138, 0)])
+            scene = self.scene('nearby')
+            scene['saved_world_snapshot'] = str(world)
+            scene['capabilities']['runtime.reference_save_path'] = str(world)
+            scenarios = root / 'scenarios'; scenarios.mkdir()
+            (scenarios / (scene['name'] + '.json')).write_text(json.dumps(scene))
+            registry = root / 'registry.sqlite3'; connection = store.open_registry(str(registry))
+            store.rebuild_manifest_projection(connection, scenarios)
+            request = store.parse_registry_query_request({'requirements': [
+                {'key':'runtime.reference_variant', 'op':'eq', 'value':'nearby', 'minimum_evidence':'declared'}], 'preferences': []})
+            expected_tree = scene['capabilities']['runtime.reference_save_tree_sha256']
+            expected_archive = scene['capabilities']['runtime.reference_archive_sha256']
+            original = store.path_sha256
+            def path_hash(path):
+                return expected_archive if Path(path).suffix == '.zip' else original(path)
+            try:
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    selection = store.execute_registry_query(connection, request, drafts_root=root / 'drafts')
+                    self.assertIsNotNone(selection.token_id)
+                    token = store.reload_selection_token_for_launch(connection, selection.token_id)
+                    self.assertTrue(token.accepted)
+                    with self.assertRaisesRegex(store.ScenarioRegistryStoreError, 'snapshot override differs'):
+                        cli._selected_saved_world_defaults(token, post_relaunch_continuation=False,
+                            saved_world_snapshot=str(root / 'other-save'), profile_override='')
+                def wrong_archive(path):
+                    return '0' * 64 if Path(path).suffix == '.zip' else original(path)
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=wrong_archive), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    self.assertEqual(store.reload_selection_token_for_launch(connection, selection.token_id).reason,
+                                     'reference_source_not_authorized')
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    selection = store.execute_registry_query(connection, request, drafts_root=root / 'drafts')
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=('0' * 64, '')):
+                    rejected = store.reload_selection_token_for_launch(connection, selection.token_id)
+                    self.assertEqual(rejected.reason, 'reference_source_not_authorized')
+                with mock.patch.object(store, 'repository_root', return_value=root), \
+                     mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                     mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')):
+                    selection = store.execute_registry_query(connection, request, drafts_root=root / 'drafts')
+            finally:
+                connection.close()
+            with mock.patch.object(store, 'repository_root', return_value=root), \
+                 mock.patch.object(store, 'path_sha256', side_effect=path_hash), \
+                 mock.patch.object(startup_harness, 'sha256_tree', return_value=(expected_tree, '')), \
+                 mock.patch.dict(os.environ, {'OPENCLAW_COCKPIT_BRIDGE_BINDING_ID':'test-bridge'}):
+                result, probe = ScenarioRegistryCliTest().run_registry_launch(registry, scenarios, selection.token_id)
+            self.assertEqual(result, 23)
+            receipt = json.loads(probe.call_args.args[0].registry_launch_receipt)
+            self.assertEqual(receipt['wec_authority']['evidence_class'], 'focused feature proof')
+            self.assertEqual(probe.call_args.args[0].saved_world_snapshot, str(world))
 
 if __name__ == '__main__':
     unittest.main()

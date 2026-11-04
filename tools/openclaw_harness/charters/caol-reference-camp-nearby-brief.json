@@ -1,0 +1,21 @@
+{
+  "outcome": "Natural physical source to knowledge, decision, travel and arrival at the original owner reference camp from an ordinary nearby bandit site.",
+  "scenario": "caol.reference_camp_nearby_focused_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.caol.reference_camp",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_reference_camp_equipment_patrol_physical_signal_journey"
+      },
+      {
+        "key": "runtime.reference_variant",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "nearby"
+      }
+    ],
+    "preferences": []
+  }
+}

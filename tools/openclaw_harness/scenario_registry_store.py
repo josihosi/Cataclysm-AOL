@@ -1612,7 +1612,28 @@ def _first_run_certification_route(
             manifest.get("validation", {}).get("status") != "valid" or manifest.get("validation", {}).get("review_required"):
         return None
     name = manifest.get("name")
-    if name in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw"}:
+    if name == "caol.reference_camp_nearby_focused_mcw":
+        try:
+            declaration = json.loads(Path(str(manifest["source_path"])).read_text(encoding="utf-8"))
+            saved_path = str(declaration.get("saved_world_snapshot", ""))
+            source = Path(saved_path).resolve()
+            expected_source = (repository_root() / ".userdata/reference-camp-nearby-initial/save/TestSetup00").resolve()
+            archive_path = repository_root() / ".userdata/reference-saves/archives/josef-basecamp-open-windows-20260924-122356.zip"
+            expected_archive = "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f"
+            expected_tree = "037ef09b7ff920d64d5a43f6a490bb8414676a1c367fb756fb68f610d1a346d8"
+            from startup_harness import sha256_tree
+            actual_tree, tree_error = sha256_tree(source)
+            valid = (facts.get("capabilities.caol.reference_camp", {}).get("value") ==
+                     "native_reference_camp_equipment_patrol_physical_signal_journey" and
+                     facts.get("runtime.reference_variant", {}).get("value") == "nearby" and
+                     facts.get("runtime.reference_archive_sha256", {}).get("value") == expected_archive and
+                     facts.get("runtime.reference_save_tree_sha256", {}).get("value") == expected_tree and
+                     facts.get("runtime.reference_save_path", {}).get("value") == saved_path and
+                     source == expected_source and not tree_error and actual_tree == expected_tree and
+                     path_sha256(archive_path) == expected_archive)
+        except (OSError, ValueError, KeyError, IndexError, ScenarioRegistryStoreError):
+            valid = False
+    elif name in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw"}:
         variant = "open" if name == "caol.reference_camp_open_focused_mcw" else "closed"
         archive = {"open": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
                    "closed": "4b11469931507c49f0b373934730fed6b729b7a29b87c6f78eca0f728e8320c3"}
@@ -3353,7 +3374,7 @@ def reload_selection_token_for_launch(
         # These owner-reference scenes bind their physical source even after
         # they acquire ordinary verified history or coordinator authority.
         reference_route = None
-        if scenario in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw"}:
+        if scenario in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw", "caol.reference_camp_nearby_focused_mcw"}:
             reference_snapshot = RegistryQueryCandidateSnapshot(
                 scenario_id=expected_manifest_id, lifecycle_state="active", token_eligible=True,
                 facts={key: {"value": value} for key, value in declaration.get("capabilities", {}).items()},
