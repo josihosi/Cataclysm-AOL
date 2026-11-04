@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_gear_reentry_focused_mcw",
-  "description": "Owner-reference continuation for actual day patrol service and comparable physical source conditions, starting from the previously observed post-transfer saved world.",
+  "description": "Owner-reference exact day-patrol saved-state reentry to observe continued native duty after reload.",
   "profile": "reference-camp-gear-reentry-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -12,7 +12,7 @@
     "runtime.world": "TestSetup00",
     "runtime.reference_variant": "gear_reentry",
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
-    "runtime.reference_save_tree_sha256": "2a2839888d4d5593c320000cdc761fd820b03bccf24700d44cca9b200b826404",
+    "runtime.reference_save_tree_sha256": "d0b5527eea8abdb8baf4339dcf5dd426d8f5118c79b07e73ae4f22f0676c785f",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
     "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
   },
@@ -75,12 +75,12 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Continue from the exact native saved reference camp. Use ordinary job, door, window and fuel controls as disclosed setup; observe actual day patrol roster and service and bounded physical open/closed/roof source conditions with time, weather, geometry, fuel and observer opportunity. Save and close the actual result. A separately authorized continuation from that fresh saved output is required to observe service after reload.",
+      "objective": "Reopen the exact native save produced after observed day patrol. Inspect Tilda character 2 and the actual saved camp roster, priority, order and physical position; allow ordinary AI opportunity and observe whether real patrol duty continues after reload. Save and exit normally without replaying prior gear, physical-source or signal work.",
       "proof_targets": [
-        "source and installed world identity, player, camp, actor and actual game time",
-        "actual day patrol roster and physical duty service",
-        "actual open/closed/roof source and observer conditions with light escape and smoke positions kept separate, reusing scoped original reference observations",
-        "native save and exit with exact saved-world identity for a separately reviewed service-after-reload continuation"
+        "exact resulting saved source and installed world identity, player, camp, actor and game time",
+        "actual post-load day roster, order, priority and route state",
+        "actual continued physical patrol service after reload or its first missing eligible premise",
+        "native exit and exact process custody"
       ],
       "authority": [
         "currently advertised native semantic actions",
@@ -89,10 +89,10 @@
         "run.finish"
       ],
       "invariants": [
-        "saved start and ordinary camp/window/door/fuel setup are zero-credit; prior transfer and night/physical observations retain their original run identities",
-        "do not inject NPC action, perception, source response, clock, lead or other actor state",
-        "do not claim native use of the original closed archive when modifying this open reference working copy",
-        "do not claim service after reload until a fresh resulting native save is reopened through a separately authorized source-bound continuation"
+        "saved start is zero-credit; earlier day movement and other facts retain original run identities",
+        "do not inject NPC duty, movement, perception, elapsed time or save state",
+        "do not treat roster or assignment alone as physical service",
+        "retain actual failure or non-opportunity without forcing a result"
       ],
       "live_operations": [
         "game.act"
