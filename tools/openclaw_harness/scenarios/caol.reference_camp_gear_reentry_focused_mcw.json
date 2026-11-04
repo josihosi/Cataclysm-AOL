@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_gear_reentry_focused_mcw",
-  "description": "Owner-reference saved-camp continuation for an actual zombie alarm and appropriate-guard response.",
+  "description": "Owner-reference continuation of the actual saved zombie encounter to seek a genuine active-guard perception opportunity.",
   "profile": "reference-camp-gear-reentry-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -12,7 +12,7 @@
     "runtime.world": "TestSetup00",
     "runtime.reference_variant": "gear_reentry",
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
-    "runtime.reference_save_tree_sha256": "15d67762ab042f765eaf7c9d66b0899dff7260486dec1e21dc45f656466fd6d7",
+    "runtime.reference_save_tree_sha256": "1b70946053f85d11ae65481b1889b053662f3a4516d57dc2420594e13d92232a",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
     "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
   },
@@ -21,11 +21,10 @@
       "frame-bound semantic requests",
       "cockpit:game.act",
       "cockpit:run.witness",
-      "cockpit:run.finish",
-      "advertised native zombie placement as zero-credit setup"
+      "cockpit:run.finish"
     ],
     "forbidden_input": [
-      "direct NPC action, perception, alarm, attack, damage, lead, hostile contact, clock, payment or return injection",
+      "direct NPC action, perception, alarm, attack, damage, zombie respawn, actor teleport, clock, payment or return injection",
       "direct save edits after install",
       "synthetic receipts",
       "hostile teleport",
@@ -76,13 +75,12 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Reopen the exact native owner-reference save after observed day patrol. Inspect actual residents, loadouts, day/reserve duties and opportunity. Use ordinary job-priority controls as disclosed setup if needed, then disclose one supported native visible hostile zombie placement as zero-credit opportunity setup. Observe actual detection, alarm, appropriate guard mobilization and native combat outcome; record eligibility and exclusions per actor. Save and exit normally.",
+      "objective": "Reopen the exact native saved encounter with Casey injured and the existing zombie. Verify actual actor, zombie, camp, health and duty continuity. Use practical ordinary survivor, door and route controls to create a genuine active-guard sightline opportunity if feasible, then observe actual perception, alarm, per-actor response/exclusion and genuine combat outcome. No second zombie placement or injected guard action. Save and close normally.",
       "proof_targets": [
-        "exact saved source and installed world identity, player, camp, residents and game time",
-        "actual per-actor loadout, duty, reserve/active status, eligibility and opportunity",
-        "native zombie detection and actual camp alarm",
-        "actual response or evidenced exclusion for each appropriate guard and native combat outcome",
-        "native exit and exact process custody"
+        "exact source and installed world, actual saved actor and encounter continuity",
+        "actual Tilda active-guard sightline opportunity and observed detection or first missing premise",
+        "actual alarm and per-actor appropriate response or evidenced exclusion, if reached",
+        "genuine survivor and zombie outcomes, native exit and process custody"
       ],
       "authority": [
         "currently advertised native semantic actions",
@@ -91,11 +89,11 @@
         "run.finish"
       ],
       "invariants": [
-        "saved start, ordinary priority management and zombie placement are disclosed zero-credit setup",
-        "do not inject alarm, NPC perception, attack, guard action, damage or encounter outcome",
-        "do not require both residents to be on duty or attack simultaneously; record real per-actor eligibility and exclusions",
-        "prior equipment transfer and persistence retain their original run scope; do not assume current loadout or replay acquisition",
-        "do not repeat earlier physical source or signal journey"
+        "saved encounter is zero-credit starting state; prior contact and Casey injury retain original run identity and must not be erased",
+        "do not spawn a second zombie, teleport actors or inject detection, alarm, attack, damage or outcome",
+        "ordinary survivor, door and route decisions are allowed without prescribing a tile sequence",
+        "do not require both residents to attack or be on duty simultaneously; report real eligibility and exclusions",
+        "do not repeat earlier gear, signal or physical-source work"
       ],
       "live_operations": [
         "game.act"

@@ -1,24 +1,24 @@
 {
   "schema": "caol-playtest-witness-charter-v1",
-  "claim": "Observe native zombie detection, camp alarm and appropriate owner-reference guard response.",
-  "material_proof": "Bind and reopen the exact owner-reference saved world, inspect actual resident IDs, loadouts, active/reserve duty and opportunity. Disclose supported native placement of one visible hostile zombie as zero-credit setup, then observe actual detection, alarm, each appropriate guard response or real exclusion and native combat outcome.",
+  "claim": "Continue the real owner-reference zombie encounter to seek a genuine active-guard perception opportunity.",
+  "material_proof": "Reopen the exact saved encounter from run a30bf with its real Casey injury and existing zombie; establish actual loaded identities and state. Use ordinary survivor and door/route actions if practical to give the actual active guard a real sightline, then observe actual detection, alarm and each appropriate guard response or real exclusion and combat outcome.",
   "material_contradiction": [
-    "A qualified eligible guard fails to respond to an actual alarm under established native opportunity."
+    "A qualified eligible guard fails to respond to an actual perceived hostile under established native opportunity."
   ],
   "already_accepted_evidence": [
-    "Prior R032 zombie witness covers one guard in its own camp; prior owner-reference gear, day/night patrol, physical source and natural bandit observations retain their original run scope."
+    "Original a30bf zombie contact and Casey injury, and earlier owner-reference gear, patrol, physical source and bandit observations remain at their original run scope."
   ],
-  "current_uncertainty": "Current loadouts, actual detection, alarm and each guard response or exclusion are not assumed.",
+  "current_uncertainty": "Existing zombie continuity, an actual active-guard sightline, alarm and individual guard actions are not assumed.",
   "forbidden_shortcuts": [
-    "count saved-world installation, priority setup or zombie placement as guard response",
-    "inject alarm, NPC action, attack, perception, damage or outcome",
-    "require both residents to be on duty or attack simultaneously",
-    "claim the previously equipped pistol remains present without current observation",
-    "repeat or recast earlier gear, physical-source or signal events as fresh proof"
+    "spawn another zombie, teleport or relocate actors by debug controls",
+    "inject perception, alarm, attack, damage, guard order, time or outcome",
+    "erase existing injury or count saved setup as new behavior",
+    "require both residents to attack or be on duty simultaneously",
+    "repeat earlier gear, signal or source rituals"
   ],
   "honest_stop_conditions": [
-    "Identify the first absent eligible transition and its actual premise; ordinary recovery remains permitted.",
-    "Preserve genuine injuries, deaths, nonresponse and eligibility exclusions without forcing a result."
+    "Identify actual first absent transition and its premise, including unavailable zombie continuation or impractical safe sightline.",
+    "Preserve actual injuries, deaths, refusals and genuine survival outcome without forcing success."
   ],
   "requested_evidence_ceiling": "focused"
 }
