@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_gear_reentry_focused_mcw",
-  "description": "Owner-reference exact day-patrol saved-state reentry to observe continued native duty after reload.",
+  "description": "Owner-reference saved-camp continuation for an actual zombie alarm and appropriate-guard response.",
   "profile": "reference-camp-gear-reentry-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -12,7 +12,7 @@
     "runtime.world": "TestSetup00",
     "runtime.reference_variant": "gear_reentry",
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
-    "runtime.reference_save_tree_sha256": "d0b5527eea8abdb8baf4339dcf5dd426d8f5118c79b07e73ae4f22f0676c785f",
+    "runtime.reference_save_tree_sha256": "15d67762ab042f765eaf7c9d66b0899dff7260486dec1e21dc45f656466fd6d7",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
     "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
   },
@@ -21,10 +21,11 @@
       "frame-bound semantic requests",
       "cockpit:game.act",
       "cockpit:run.witness",
-      "cockpit:run.finish"
+      "cockpit:run.finish",
+      "advertised native zombie placement as zero-credit setup"
     ],
     "forbidden_input": [
-      "direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
+      "direct NPC action, perception, alarm, attack, damage, lead, hostile contact, clock, payment or return injection",
       "direct save edits after install",
       "synthetic receipts",
       "hostile teleport",
@@ -75,11 +76,12 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Reopen the exact native save produced after observed day patrol. Inspect Tilda character 2 and the actual saved camp roster, priority, order and physical position; allow ordinary AI opportunity and observe whether real patrol duty continues after reload. Save and exit normally without replaying prior gear, physical-source or signal work.",
+      "objective": "Reopen the exact native owner-reference save after observed day patrol. Inspect actual residents, loadouts, day/reserve duties and opportunity. Use ordinary job-priority controls as disclosed setup if needed, then disclose one supported native visible hostile zombie placement as zero-credit opportunity setup. Observe actual detection, alarm, appropriate guard mobilization and native combat outcome; record eligibility and exclusions per actor. Save and exit normally.",
       "proof_targets": [
-        "exact resulting saved source and installed world identity, player, camp, actor and game time",
-        "actual post-load day roster, order, priority and route state",
-        "actual continued physical patrol service after reload or its first missing eligible premise",
+        "exact saved source and installed world identity, player, camp, residents and game time",
+        "actual per-actor loadout, duty, reserve/active status, eligibility and opportunity",
+        "native zombie detection and actual camp alarm",
+        "actual response or evidenced exclusion for each appropriate guard and native combat outcome",
         "native exit and exact process custody"
       ],
       "authority": [
@@ -89,10 +91,11 @@
         "run.finish"
       ],
       "invariants": [
-        "saved start is zero-credit; earlier day movement and other facts retain original run identities",
-        "do not inject NPC duty, movement, perception, elapsed time or save state",
-        "do not treat roster or assignment alone as physical service",
-        "retain actual failure or non-opportunity without forcing a result"
+        "saved start, ordinary priority management and zombie placement are disclosed zero-credit setup",
+        "do not inject alarm, NPC perception, attack, guard action, damage or encounter outcome",
+        "do not require both residents to be on duty or attack simultaneously; record real per-actor eligibility and exclusions",
+        "prior equipment transfer and persistence retain their original run scope; do not assume current loadout or replay acquisition",
+        "do not repeat earlier physical source or signal journey"
       ],
       "live_operations": [
         "game.act"

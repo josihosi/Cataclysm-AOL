@@ -1,22 +1,24 @@
 {
   "schema": "caol-playtest-witness-charter-v1",
-  "claim": "Observe actual owner-reference day patrol service continuing after the day-duty save is reopened.",
-  "material_proof": "Reopen the exact native save from run99dc after actual Tilda day loop service. Verify Tilda ID2 and camp identity and observe the actual restored day patrol state and physical movement under normal AI. A roster or order alone is not physical service.",
+  "claim": "Observe native zombie detection, camp alarm and appropriate owner-reference guard response.",
+  "material_proof": "Bind and reopen the exact owner-reference saved world, inspect actual resident IDs, loadouts, active/reserve duty and opportunity. Disclose supported native placement of one visible hostile zombie as zero-credit setup, then observe actual detection, alarm, each appropriate guard response or real exclusion and native combat outcome.",
   "material_contradiction": [
-    "The authenticated saved world reloads but an eligible patrol service fails with its actual premise established."
+    "A qualified eligible guard fails to respond to an actual alarm under established native opportunity."
   ],
   "already_accepted_evidence": [
-    "Original native day loop and movement, earlier night patrol, physical source, gear transfer/reentry and connected signal-to-arrival facts remain at their original run scope."
+    "Prior R032 zombie witness covers one guard in its own camp; prior owner-reference gear, day/night patrol, physical source and natural bandit observations retain their original run scope."
   ],
-  "current_uncertainty": "Post-load actual day patrol state and subsequent service are not assumed.",
+  "current_uncertainty": "Current loadouts, actual detection, alarm and each guard response or exclusion are not assumed.",
   "forbidden_shortcuts": [
-    "count saved-world installation or roster membership as physical duty",
-    "inject NPC order, movement, perception, time or actor/save state",
-    "repeat or recast earlier source, gear or signal events as fresh proof"
+    "count saved-world installation, priority setup or zombie placement as guard response",
+    "inject alarm, NPC action, attack, perception, damage or outcome",
+    "require both residents to be on duty or attack simultaneously",
+    "claim the previously equipped pistol remains present without current observation",
+    "repeat or recast earlier gear, physical-source or signal events as fresh proof"
   ],
   "honest_stop_conditions": [
     "Identify the first absent eligible transition and its actual premise; ordinary recovery remains permitted.",
-    "Preserve actual loaded state and movement or refusal without forcing a result."
+    "Preserve genuine injuries, deaths, nonresponse and eligibility exclusions without forcing a result."
   ],
   "requested_evidence_ceiling": "focused"
 }
