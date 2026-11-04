@@ -79830,7 +79830,11 @@ TEST_CASE( "retained committed Fight flight escapes through native scheduler and
     if( !admitted || !home_order ) {
         return;
     }
-    for( int turn = 0; turn < 1500 && scene.site().active_hostile_operation.is_active() &&
+    // Allow the partner's real overmap travel and the subsequent five-minute
+    // return-owner service after the first survivor reaches home.  The owner
+    // cannot settle the party until both living bodies have actually arrived.
+    const int return_observation_turns = 1500 + 3 * to_turns<int>( 5_minutes );
+    for( int turn = 0; turn < return_observation_turns && scene.site().active_hostile_operation.is_active() &&
          !scene.site().active_hostile_operation.reservation.member_is_resolved( character_id( 5 ) ); ++turn ) {
         step();
     }
@@ -79850,6 +79854,7 @@ TEST_CASE( "retained committed Fight flight escapes through native scheduler and
               << " partner=" << scene.actor( 6 ).pos_abs() << " partner_dead=" << scene.actor( 6 ).is_dead()
               << " home=" << returned.anchor << '\n';
     CHECK( scene.actor( 5 ).pos_abs_omt() == returned.anchor );
+    CHECK( scene.actor( 6 ).pos_abs_omt() == returned.anchor );
     CHECK( returned.find_member( character_id( 5 ) )->state == bandit_live_world::member_state::at_home );
     CHECK_FALSE( returned.active_hostile_operation.is_active() );
     CHECK( returned.applied_return_generation == generation );
@@ -81701,6 +81706,71 @@ TEST_CASE( "response_zero_claim_renews_only_a_released_source_episode",
     CHECK( advance_structural_bounty_maintenance( world, 18060, 0, 0, {}, {}, {}, {}, {}, {},
             reads ).scheduler_replay_suppressed );
     CHECK( serialize_world( world ) == committed );
+}
+
+TEST_CASE( "cannibal raid distinguishes visible humans zombies and animal relations",
+           "[bandit_live_world][dispatch_visit_relations]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    const std::string kind = GENERATE( std::string( "human" ), std::string( "ally" ),
+                                       std::string( "zombie" ), std::string( "hostile_animal" ),
+                                       std::string( "harmless_animal" ) );
+    CAPTURE( kind );
+    clear_creatures();
+    on_out_of_scope cleanup( []() { clear_creatures(); } );
+    r066_visit_scene scene( false, true );
+    scene.distant_adjacent_avatar();
+    calendar::turn += 1_minutes;
+    advance_live_bandit_hostile_approaches_for_test();
+    REQUIRE( scene.site().active_hostile_operation.phase == hostile_operation_phase::committed_contact );
+    npc &raider = *scene.collector;
+    REQUIRE( active_local_camp_member_profile( overmap_buffer.global_state.bandit_live_world,
+             raider.getID() ) == hostile_site_profile::cannibal_camp );
+    raider.personality.bravery = 10;
+    raider.op_of_u.fear = -100;
+    raider.set_attitude( NPCATT_KILL );
+    Creature *subject = nullptr;
+    const tripoint_bub_ms position = raider.pos_bub() + point( 2, 0 );
+    if( kind == "human" || kind == "ally" ) {
+        npc &person = spawn_npc( position.xy(), "test_talker" );
+        person.set_fac( faction_id( kind == "ally" ? "cannibal_camp" : "no_faction" ) );
+        person.set_attitude( NPCATT_NULL );
+        person.set_dodge_bonus( 0 );
+        item weapon( itype_id( "knife_combat" ), calendar::turn );
+        person.wield( weapon );
+        subject = &person;
+    } else {
+        const std::string type = kind == "zombie" ? "mon_zombie" :
+                                 kind == "hostile_animal" ? "mon_rattlesnake_mega" : "mon_squirrel";
+        monster &animal = spawn_test_monster( type, position );
+        if( kind == "hostile_animal" ) {
+            // Declare an aggressive individual; the species alone normally
+            // ignores characters even with a positive aggression value.
+            animal.aggro_character = true;
+            REQUIRE( animal.attitude_to( raider ) == Creature::Attitude::HOSTILE );
+        }
+        subject = &animal;
+    }
+    REQUIRE( subject );
+    scene.rebuild();
+    REQUIRE( raider.sees( get_map(), *subject ) );
+    const bool hostile = kind != "ally" && kind != "harmless_animal";
+    CHECK( ( raider.attitude_to( *subject ) == Creature::Attitude::HOSTILE ) == hostile );
+    if( kind == "ally" ) {
+        CHECK( raider.attitude_to( *subject ) == Creature::Attitude::FRIENDLY );
+    }
+    raider.regen_ai_cache();
+    if( !hostile ) {
+        CHECK( raider.current_target() != subject );
+    } else {
+        CHECK( raider.current_target() == subject );
+    }
+    const auto before = raider.pos_abs();
+    const int moves = raider.get_moves();
+    live_cannibal_raid_advance_site_search_for_test( scene.site() );
+    CHECK( raider.pos_abs() == before );
+    CHECK( raider.get_moves() == moves );
 }
 
 TEST_CASE( "owned signal scout consumed native arrival starts its finite watch once",

@@ -26973,6 +26973,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "headcount_override": raw.get("headcount_override"),
                 "clear_spawn_tile_headcount": bool(raw.get("clear_spawn_tile_headcount", False)),
             })
+            if "home_body_faction" in raw:
+                faction = str(raw.get("home_body_faction", "") or "").strip()
+                expected_faction = str(raw.get("expected_home_body_faction", "") or "").strip()
+                if not faction or not expected_faction or active_outside_member_count:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] home-body faction setup needs both factions "
+                        f"and only at-home members in {manifest_path}"
+                    )
+                transforms[-1]["home_body_faction"] = faction
+                transforms[-1]["expected_home_body_faction"] = expected_faction
             continue
 
         if kind == "bandit_registered_staffed_observer_bootstrap":
@@ -32247,6 +32257,50 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
     }
 
 
+def _fixture_sync_home_body_factions(
+    world_dir: Path, site: Dict[str, Any], members: List[Dict[str, Any]],
+    faction: str, expected_faction: str,
+) -> List[int]:
+    """Explicit fixture setup for existing home bodies, never a travel event."""
+    ids = [int(member.get("npc_id", -1)) for member in members]
+    if not ids or any(npc_id <= 0 for npc_id in ids) or len(set(ids)) != len(ids):
+        raise SystemExit("Fixture home-body setup needs distinct existing NPC identities")
+    footprint = site.get("footprint", []) or [site.get("anchor", [])]
+    if not all(isinstance(tile, list) and len(tile) >= 3 for tile in footprint):
+        raise SystemExit("Fixture home-body setup needs a valid camp footprint")
+    home_tiles = {tuple(int(value) for value in tile[:3]) for tile in footprint}
+    loaded: List[Tuple[Path, str, Dict[str, Any], bool]] = []
+    bodies: Dict[int, Dict[str, Any]] = {}
+    try:
+        for archive in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+            plain, version, payload = extract_overmap_payload(archive)
+            loaded.append((plain, version, payload, bool(payload.get("_created_plain", False))))
+            for body in payload.get("npcs", []):
+                if not isinstance(body, dict) or body.get("id") not in ids:
+                    continue
+                npc_id = int(body["id"])
+                if npc_id in bodies:
+                    raise SystemExit(f"Fixture home-body setup found duplicate NPC {npc_id}")
+                location = body.get("location")
+                if not isinstance(location, list) or len(location) < 3 or \
+                        (int(location[0]) // 24, int(location[1]) // 24, int(location[2])) not in home_tiles:
+                    raise SystemExit(f"Fixture home-body setup found NPC {npc_id} away from camp")
+                if body.get("my_fac") != expected_faction:
+                    raise SystemExit(f"Fixture home-body setup found unexpected faction for NPC {npc_id}")
+                bodies[npc_id] = body
+        if set(bodies) != set(ids):
+            raise SystemExit("Fixture home-body setup could not find every selected NPC")
+        for body in bodies.values():
+            body["my_fac"] = faction
+        for plain, version, payload, _created in loaded:
+            if any(body is npc for body in bodies.values() for npc in payload.get("npcs", [])):
+                write_overmap_payload(plain, version, payload)
+        return ids
+    finally:
+        for plain, _version, _payload, created in loaded:
+            cleanup_extracted_overmap(plain, keep=not created)
+
+
 def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     dimension_path = world_dir / "dimension_data.gsav"
     if not dimension_path.exists():
@@ -32375,11 +32429,27 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
             selected_site["active_sortie_started_minutes"] = -1
             selected_site["active_sortie_local_contact_minutes"] = -1
 
+    home_body_ids: List[int] = []
+    faction = str(transform.get("home_body_faction", "") or "").strip()
+    if faction:
+        expected = str(transform.get("expected_home_body_faction", "") or "").strip()
+        if not expected or active_outside_member_count:
+            raise SystemExit("Fixture home-body faction setup requires an expected faction and home members")
+        selected_ids = {member.get("npc_id") for member in shaped_members}
+        for other in sites:
+            if not isinstance(other, dict) or other is selected_site or other.get("retired_empty_site"):
+                continue
+            if any(isinstance(member, dict) and member.get("npc_id") in selected_ids
+                   for member in other.get("members", [])):
+                raise SystemExit("Fixture home-body setup refuses an NPC owned by another site")
+        home_body_ids = _fixture_sync_home_body_factions(world_dir, selected_site, shaped_members,
+                        faction, expected)
+
     dimension_path.write_text(
         version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
-    return {
+    result = {
         "kind": "bandit_site_roster_shape",
         "world": world_dir.name,
         "site_id": str(selected_site.get("site_id", "")),
@@ -32394,6 +32464,10 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "active_member_state": active_member_state,
         "active_member_ids": active_member_ids,
     }
+    if faction:
+        result["home_body_setup"] = {"npc_ids": home_body_ids, "faction": faction,
+                                     "previous_faction": expected}
+    return result
 
 
 def apply_bandit_registered_staffed_observer_bootstrap_transform(
