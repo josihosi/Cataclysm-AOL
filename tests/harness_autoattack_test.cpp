@@ -10,6 +10,7 @@
 #include "cata_catch.h"
 #include "effect.h"
 #include "game.h"
+#include "gates.h"
 #include "input_context.h"
 #include "json_loader.h"
 #include "map.h"
@@ -95,4 +96,32 @@ TEST_CASE( "native autoattack refuses a character that cannot attack",
     you.set_moves( 1000 );
     avatar_action::autoattack( you, get_map() );
     CHECK( you.get_moves() == 1000 );
+}
+
+TEST_CASE( "semantic World exposes native close for nearby doors",
+           "[semantic_surface][harness][world_close]" )
+{
+    const input_context context = get_default_mode_input_context();
+    REQUIRE( context.is_registered_action( "close" ) );
+    CHECK( look_up_action( "close" ) == ACTION_CLOSE );
+    const auto actions = openclaw_harness_world_actions( context );
+    const auto offered = std::find_if( actions.begin(), actions.end(),
+    []( const std::pair<std::string, std::string> &action ) {
+        return action.first == "world.close";
+    } );
+    REQUIRE( offered != actions.end() );
+    CHECK( offered->second == "close" );
+
+    clear_avatar();
+    clear_map();
+    avatar &you = get_avatar();
+    map &here = get_map();
+    const tripoint_bub_ms door = you.pos_bub( here ) + tripoint::east;
+    here.ter_set( door, ter_id( "t_door_o" ) );
+    doors::close_door( here, you, door );
+    CHECK( here.ter( door ) == ter_id( "t_door_c" ) );
+    const tripoint_bub_ms floor = you.pos_bub( here ) + tripoint::west;
+    here.ter_set( floor, ter_id( "t_floor" ) );
+    doors::close_door( here, you, floor );
+    CHECK( here.ter( floor ) == ter_id( "t_floor" ) );
 }

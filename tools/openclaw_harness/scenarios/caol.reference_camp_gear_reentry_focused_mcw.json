@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_gear_reentry_focused_mcw",
-  "description": "Owner-reference continuation of the actual saved zombie encounter to seek a genuine active-guard perception opportunity.",
+  "description": "Owner-reference continuation for a matched native open and closed physical fire-source comparison.",
   "profile": "reference-camp-gear-reentry-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -12,7 +12,7 @@
     "runtime.world": "TestSetup00",
     "runtime.reference_variant": "gear_reentry",
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
-    "runtime.reference_save_tree_sha256": "95e96cd0200e29998d04e0fa479a8a70d162f68da2991795911d400c74ec3d3a",
+    "runtime.reference_save_tree_sha256": "396e439a307de5359221939c16ff9d749393fc56f811e9c6b9e1d7b070f2c6f0",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
     "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-camp-gear-001-luna/save/TestSetup00"
   },
@@ -75,12 +75,12 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Continue this existing zombie encounter as a survivor until actual active-guard detection and response or a concrete reason that opportunity cannot occur. Use ordinary armed, door and route judgment and preserve genuine consequences. Then save and close.",
+      "objective": "Continue the actual reference camp as a survivor and compare the same physical fire source from a comparable native observer position with the building open and closed. Record actual source, fuel, geometry, time, weather, light visibility and smoke positions separately; use ordinary camp and door or window management as needed. Preserve real encounter consequences, then save and close.",
       "proof_targets": [
-        "exact source and installed world, actual saved actor and encounter continuity",
-        "actual Tilda active-guard sightline opportunity and observed detection or first missing premise",
-        "actual alarm and per-actor appropriate response or evidenced exclusion, if reached",
-        "genuine survivor and zombie outcomes, native exit and process custody"
+        "exact source and installed world and current actor, source and encounter footing",
+        "actual open and closed building comparison at comparable observer position, time and weather",
+        "native source intensity, fuel, geometry and observed light and smoke positions separately",
+        "genuine survival outcome, native exit and process custody"
       ],
       "authority": [
         "currently advertised native semantic actions",
@@ -89,11 +89,10 @@
         "run.finish"
       ],
       "invariants": [
-        "saved encounter is zero-credit starting state; prior contact and Casey injury retain original run identity and must not be erased",
-        "do not spawn a second zombie, teleport actors or inject detection, alarm, attack, damage or outcome",
-        "ordinary survivor, door and route decisions are allowed without prescribing a tile sequence",
-        "do not require both residents to attack or be on duty simultaneously; report real eligibility and exclusions",
-        "do not repeat earlier gear, signal or physical-source work"
+        "saved reference world and earlier gear, patrol, signal, alarm and combat evidence retain their original run scope",
+        "ordinary survival, fuel, door and window management is disclosed preparation, not injected behavior",
+        "do not infer smoke through walls, numeric light values, or closed-ZIP play from this continuation",
+        "do not inject NPC actions, perception, alarm, attacks, time, payment or outcomes"
       ],
       "live_operations": [
         "game.act"
