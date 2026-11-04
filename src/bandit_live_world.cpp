@@ -3126,7 +3126,7 @@ bool local_handoff_snapshot_is_empty(
            snapshot.cohesion_leader_id == character_id() &&
            snapshot.cohesion_deadline_minutes == -1 &&
            snapshot.cohesion_reroutes_used == 0 && !snapshot.cohesion_assembled &&
-           !snapshot.cohesion_abort_return &&
+           !snapshot.cohesion_abort_return && !snapshot.has_native_vertical_edge &&
            snapshot.cargo.supply_units == 0 && snapshot.cargo.trade_value == 0;
 }
 
@@ -3272,11 +3272,26 @@ bool local_handoff_snapshot_matches_outing(
                                     snapshot.egress_omt.z() == snapshot.route_position.z() &&
                                     burn_origin_distance && burn_egress_distance &&
                                     *burn_egress_distance >= *burn_origin_distance;
+    const bool native_vertical_height = snapshot.schema_version >= 5 &&
+        snapshot.has_native_vertical_edge && physical_homeward_cursor &&
+        snapshot.native_vertical_from.xy() == snapshot.native_vertical_to.xy() &&
+        std::abs( snapshot.native_vertical_from.z() - snapshot.native_vertical_to.z() ) == 1 &&
+        snapshot.native_vertical_to.z() == snapshot.route_position.z() &&
+        ( snapshot.approach_from.z() == snapshot.route_position.z() ||
+          ( snapshot.approach_from == snapshot.native_vertical_from &&
+            snapshot.route_position == snapshot.native_vertical_to ) );
+    if( snapshot.has_native_vertical_edge &&
+        ( !native_vertical_height ||
+          !( ( outing.owner == simulation_owner::abstract && snapshot.is_abstract_resume() ) ||
+             ( outing.owner == simulation_owner::local && snapshot.is_active() ) ) ) ) {
+        return refuse( "snapshot_native_vertical_edge" );
+    }
     if( snapshot.approach_from != expected_approach ||
         ( snapshot.egress_omt != expected_egress && !scored_burn_egress ) ||
         ( physical_homeward_cursor &&
           ( snapshot.route_position.z() != canonical_route_position.z() ||
-            snapshot.approach_from.z() != snapshot.route_position.z() ) ) ) {
+            snapshot.approach_from.z() != snapshot.route_position.z() ) &&
+          !native_vertical_height ) ) {
         return refuse( "snapshot_approach_egress_or_height" );
     }
     if( snapshot.schema_version >= 3 &&
@@ -3415,6 +3430,10 @@ bool local_handoff_snapshots_equal(
         lhs.handoff_epoch != rhs.handoff_epoch || lhs.waypoint_index != rhs.waypoint_index ||
         lhs.phase != rhs.phase || lhs.route_position != rhs.route_position ||
         lhs.approach_from != rhs.approach_from || lhs.egress_omt != rhs.egress_omt ||
+        lhs.has_native_vertical_edge != rhs.has_native_vertical_edge ||
+        ( lhs.has_native_vertical_edge &&
+          ( lhs.native_vertical_from != rhs.native_vertical_from ||
+            lhs.native_vertical_to != rhs.native_vertical_to ) ) ||
         lhs.cargo.supply_units != rhs.cargo.supply_units ||
         lhs.cargo.trade_value != rhs.cargo.trade_value ||
         lhs.casualty_ids != rhs.casualty_ids || lhs.committed_minutes != rhs.committed_minutes ||
@@ -4976,6 +4995,12 @@ local_handoff_plan plan_local_pair_handoff( const site_record &site,
     }
 
     local_handoff_snapshot snapshot;
+    if( resumes_physical_homeward_cursor && outing.local_handoff.has_native_vertical_edge ) {
+        snapshot.schema_version = 5;
+        snapshot.has_native_vertical_edge = true;
+        snapshot.native_vertical_from = outing.local_handoff.native_vertical_from;
+        snapshot.native_vertical_to = outing.local_handoff.native_vertical_to;
+    }
     snapshot.activity_id = outing.activity_id;
     snapshot.activity_generation = outing.generation;
     snapshot.handoff_epoch = outing.handoff_epoch + 1;
@@ -5277,7 +5302,7 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     const tripoint_abs_omt prior_local_route_position = snapshot.route_position;
     const tripoint_abs_omt prior_local_approach = snapshot.approach_from;
     const tripoint_abs_omt prior_local_egress = snapshot.egress_omt;
-    snapshot.schema_version = 4;
+    snapshot.schema_version = std::max( snapshot.schema_version, 4 );
     snapshot.handoff_epoch = outing.handoff_epoch + 1;
     snapshot.waypoint_index = outing.waypoint_index;
     snapshot.phase = outing.phase;
@@ -5390,6 +5415,19 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
         snapshot.route_position = *physical_homeward_cursor;
         snapshot.approach_from = snapshot.route_position == prior_local_route_position ?
                                  prior_local_approach : prior_local_route_position;
+        if( snapshot.route_position.z() != prior_local_route_position.z() ) {
+            if( !overmap_travel_step_valid( prior_local_route_position, snapshot.route_position,
+                                            overmap_path_params::for_npc() ) ) {
+                plan.notes.push_back( "local dematerialization blocked: invalid native vertical edge" );
+                return plan;
+            }
+            snapshot.schema_version = 5;
+            snapshot.has_native_vertical_edge = true;
+            snapshot.native_vertical_from = prior_local_route_position;
+            snapshot.native_vertical_to = snapshot.route_position;
+        } else if( snapshot.route_position.z() == outing.shared_route[snapshot.waypoint_index].z() ) {
+            snapshot.has_native_vertical_edge = false;
+        }
         if( outing.phase != scout_phase::burned_withdrawal ) {
             snapshot.egress_omt = outing.shared_route.back();
         }
@@ -5850,6 +5888,21 @@ std::optional<site_record> local_pair_abstract_resume_progress_candidate( const 
     active_outing_state &next = candidate.active_outing;
     local_handoff_snapshot &resume = next.local_handoff;
     const tripoint_abs_omt prior_route_position = resume.route_position;
+    if( progressed_omt->z() != prior_route_position.z() ) {
+        if( !has_native_service || !scout_phase_requires_homeward_only( outing.phase ) ||
+            progressed_omt->xy() != prior_route_position.xy() ||
+            std::abs( progressed_omt->z() - prior_route_position.z() ) != 1 ||
+            !overmap_travel_step_valid( prior_route_position, *progressed_omt,
+                                        overmap_path_params::for_npc() ) ) {
+            return refuse( "resume_vertical_edge_unverified" );
+        }
+        resume.schema_version = std::max( resume.schema_version, 5 );
+        resume.has_native_vertical_edge = true;
+        resume.native_vertical_from = prior_route_position;
+        resume.native_vertical_to = *progressed_omt;
+    } else if( progressed_omt->z() == next.shared_route[resume.waypoint_index].z() ) {
+        resume.has_native_vertical_edge = false;
+    }
     const auto forward_destination = retained_abstract_arrival_destination( outing );
     if( forward_destination ) {
         if( *progressed_omt != *forward_destination ) {
@@ -9480,7 +9533,7 @@ bool local_handoff_snapshot::is_active() const
 } ) ) ) {
         return false;
     }
-    return schema_version >= 1 && schema_version <= 4 && !activity_id.empty() &&
+    return schema_version >= 1 && schema_version <= 5 && !activity_id.empty() &&
            activity_generation > 0 &&
            handoff_epoch > 0 && handoff_epoch % 2 == 1 && committed_minutes >= 0 &&
            !members.empty() && members.size() <= 2;
@@ -9496,7 +9549,7 @@ bool local_handoff_snapshot::is_abstract_resume() const
 } ) ) ) {
         return false;
     }
-    return schema_version >= 2 && schema_version <= 4 && !activity_id.empty() &&
+    return schema_version >= 2 && schema_version <= 5 && !activity_id.empty() &&
            handoff_epoch > 0 && handoff_epoch % 2 == 0 && committed_minutes >= 0 &&
            members.size() == 2;
 }
@@ -9530,6 +9583,13 @@ void local_handoff_snapshot::serialize( JsonOut &json ) const
     }
     if( schema_version >= 4 ) {
         json.member( "cohesion_best_staging_distances", cohesion_best_staging_distances );
+    }
+    if( schema_version >= 5 ) {
+        json.member( "has_native_vertical_edge", has_native_vertical_edge );
+        if( has_native_vertical_edge ) {
+            json.member( "native_vertical_from", native_vertical_from );
+            json.member( "native_vertical_to", native_vertical_to );
+        }
     }
     json.member( "committed_minutes", std::max( -1, committed_minutes ) );
     json.end_object();
@@ -9597,6 +9657,23 @@ void local_handoff_snapshot::deserialize( const JsonObject &jo )
         return distance < 0;
     } ) ) {
             jo.throw_error( "local handoff snapshot has malformed staging progress state" );
+        }
+    }
+    if( candidate.schema_version >= 5 ) {
+        if( !jo.has_member( "has_native_vertical_edge" ) ) {
+            jo.throw_error( "local handoff snapshot lacks native vertical edge state" );
+        }
+        jo.read( "has_native_vertical_edge", candidate.has_native_vertical_edge );
+        if( candidate.has_native_vertical_edge ) {
+            if( !jo.has_member( "native_vertical_from" ) || !jo.has_member( "native_vertical_to" ) ) {
+                jo.throw_error( "local handoff snapshot has incomplete native vertical edge" );
+            }
+            jo.read( "native_vertical_from", candidate.native_vertical_from );
+            jo.read( "native_vertical_to", candidate.native_vertical_to );
+            if( candidate.native_vertical_from.xy() != candidate.native_vertical_to.xy() ||
+                std::abs( candidate.native_vertical_from.z() - candidate.native_vertical_to.z() ) != 1 ) {
+                jo.throw_error( "local handoff snapshot has malformed native vertical edge" );
+            }
         }
     }
     jo.read( "committed_minutes", candidate.committed_minutes );

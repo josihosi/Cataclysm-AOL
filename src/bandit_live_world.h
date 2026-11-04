@@ -571,6 +571,11 @@ struct local_handoff_snapshot {
     tripoint_abs_omt route_position;
     tripoint_abs_omt approach_from;
     tripoint_abs_omt egress_omt;
+    // The last native vertical edge which put this retained homeward pair on
+    // its current height.  It is populated only by a preflighted motor step.
+    bool has_native_vertical_edge = false;
+    tripoint_abs_omt native_vertical_from;
+    tripoint_abs_omt native_vertical_to;
     sortie_cargo cargo;
     std::vector<character_id> casualty_ids;
     std::vector<local_handoff_member_snapshot> members;

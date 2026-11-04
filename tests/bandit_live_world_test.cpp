@@ -78998,7 +78998,8 @@ TEST_CASE( "retained physical party uses the native motor before cargo and after
     using namespace bandit_live_world;
     const bool incapacitated = GENERATE( false, true );
     const bool staged_pair = GENERATE( false, true );
-    CAPTURE( incapacitated, staged_pair );
+    const bool bridge_route = GENERATE( false, true );
+    CAPTURE( incapacitated, staged_pair, bridge_route );
     override_option food( "NO_NPC_FOOD", "true" );
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     const auto old_world = overmap_buffer.global_state.bandit_live_world;
@@ -79014,8 +79015,8 @@ TEST_CASE( "retained physical party uses the native motor before cargo and after
         g->remove_npc( character_id( 6 ) );
         overmap_buffer.remove_npc( character_id( 6 ) );
         overmap_buffer.global_state.bandit_live_world = old_world;
-        for( const auto &[position, prior] : terrain ) {
-            overmap_buffer.ter_set( position, prior );
+        for( auto it = terrain.rbegin(); it != terrain.rend(); ++it ) {
+            overmap_buffer.ter_set( it->first, it->second );
         }
         calendar::start_of_cataclysm = old_start;
         calendar::turn = old_turn;
@@ -79107,8 +79108,13 @@ TEST_CASE( "retained physical party uses the native motor before cargo and after
         REQUIRE( current_external_simulation_cursor( site ) );
         body->remove_effect( efftype_id( "narcosis" ) ); // Changed condition, same owner.
     }
-    calendar::turn += 5_minutes;
-    process_overmap_npc_move_for_test();
+    // Coarse native work can require more than one service cadence before
+    // the first terrain edge is fully funded.
+    for( int cadence = 0; cadence < 4 &&
+         body->pos_abs_omt() != tripoint_abs_omt( 135, 141, 0 ); ++cadence ) {
+        calendar::turn += 5_minutes;
+        process_overmap_npc_move_for_test();
+    }
     REQUIRE( body->pos_abs_omt() == tripoint_abs_omt( 135, 141, 0 ) );
     if( partner ) {
         REQUIRE( partner->pos_abs_omt() == body->pos_abs_omt() );
@@ -79121,7 +79127,7 @@ TEST_CASE( "retained physical party uses the native motor before cargo and after
     const auto moved = body->pos_abs();
     process_overmap_npc_move_for_test();
     CHECK( body->pos_abs() == moved ); // A second callback cannot spend the same interval.
-    calendar::turn = calendar::start_of_cataclysm + 11400_minutes;
+    calendar::turn = std::max( calendar::turn, calendar::start_of_cataclysm + 11400_minutes );
     advance_structural_bounty_outings( world, 11400, {} );
     REQUIRE( retained_survivor_site( world ).active_outing.cargo.supply_units == 2 );
     REQUIRE( current_external_simulation_cursor( site ) );
@@ -79139,17 +79145,55 @@ TEST_CASE( "retained physical party uses the native motor before cargo and after
     REQUIRE( body->pos_abs() == arrived_position );
     REQUIRE( retained_survivor_site( world ).active_outing.cargo.supply_units == 2 );
     REQUIRE( current_external_simulation_cursor( retained_survivor_site( world ) ) );
+    if( bridge_route ) {
+        // Make the only return corridor cross an actual connected bridge.
+        for( int z = 0; z <= 1; ++z ) {
+            for( int x = 130; x <= 140; ++x ) {
+                for( int y = 136; y <= 142; ++y ) {
+                    const tripoint_abs_omt point( x, y, z );
+                    terrain.emplace_back( point, overmap_buffer.ter( point ) );
+                    overmap_buffer.ter_set( point, oter_str_id( "solid_earth" ) );
+                }
+            }
+        }
+        for( int y : { 138, 141 } ) {
+            overmap_buffer.ter_set( tripoint_abs_omt( 135, y, 0 ),
+                                    oter_str_id( "bridgehead_ground_north" ) );
+            overmap_buffer.ter_set( tripoint_abs_omt( 135, y, 1 ),
+                                    oter_str_id( "bridgehead_ramp_north" ) );
+        }
+        for( int y : { 139, 140 } ) {
+            overmap_buffer.ter_set( tripoint_abs_omt( 135, y, 1 ),
+                                    oter_str_id( "bridge_road_north" ) );
+        }
+        overmap_buffer.ter_set( tripoint_abs_omt( 135, 137, 0 ), oter_str_id( "field" ) );
+    }
     calendar::turn = calendar::start_of_cataclysm + 11400_minutes;
     int steps = 0;
-    while( body->pos_abs_omt() != tripoint_abs_omt( 135, 137, 0 ) && steps < 24 ) {
+    bool saved_on_bridge = false;
+    while( body->pos_abs_omt() != tripoint_abs_omt( 135, 137, 0 ) && steps < 48 ) {
         calendar::turn += 5_minutes;
         process_overmap_npc_move_for_test();
         ++steps;
         REQUIRE_FALSE( body->is_dead() );
+        if( bridge_route && !saved_on_bridge && body->pos_abs_omt().z() == 1 ) {
+            REQUIRE( retained_survivor_site( world ).active_outing.local_handoff.has_native_vertical_edge );
+            REQUIRE( g->save() );
+            r067_handover_reload( world_name );
+            body = overmap_buffer.find_npc( character_id( 6 ) );
+            REQUIRE( body );
+            REQUIRE( body->pos_abs_omt().z() == 1 );
+            REQUIRE( current_external_simulation_cursor( retained_survivor_site( world ) ) );
+            saved_on_bridge = true;
+        }
     }
     CHECK( body->pos_abs_omt() == tripoint_abs_omt( 135, 137, 0 ) );
     CHECK( steps > 0 );
-    CHECK( steps < 24 );
+    CHECK( steps < 48 );
+    CHECK( ( !bridge_route || saved_on_bridge ) );
+    if( bridge_route ) {
+        CHECK_FALSE( retained_survivor_site( world ).active_outing.local_handoff.has_native_vertical_edge );
+    }
     CHECK( retained_survivor_site( world ).find_member( character_id( 5 ) )->state ==
            ( staged_pair ? member_state::at_home : member_state::dead ) );
     const auto &returns = retained_survivor_site( world ).active_outing.member_return_receipts;
@@ -83546,4 +83590,131 @@ TEST_CASE( "hostile member settles at a frozen home while its partner stays acti
     REQUIRE( overmap_buffer.find_npc( ids.front() ) == returned );
     REQUIRE( home_clock.bodies.count( ids.front() ) == 1 );
     CHECK( home_clock.bodies.at( ids.front() ).suspended_turns == retained.suspended_turns );
+}
+
+TEST_CASE( "retained homeward vertical edge requires native route authority",
+           "[bandit_live_world][retained_homeward_vertical]" )
+{
+    using namespace bandit_live_world;
+    auto world = retained_survivor_11371();
+    auto &site = retained_survivor_site( world );
+    cross_retained_survivor_11375( site );
+    std::vector<local_abstract_resume_progress_read> reads;
+    for( const auto &member : site.active_outing.local_handoff.members ) {
+        reads.push_back( { member.npc_id, true, member.dead, member.hp_percent,
+                           member.dead ? member.exit_position : tripoint_abs_ms( 3241, 3406, 0 ) } );
+    }
+    REQUIRE( record_local_pair_abstract_resume_progress( site,
+             *current_external_simulation_cursor( site ), 11400, reads, []() {} ) );
+    REQUIRE( advance_structural_bounty_outings( world, 11401, {} ).arrivals_processed == 1 );
+    REQUIRE( site.active_outing.phase == scout_phase::returning_home );
+    const auto from = site.active_outing.local_handoff.route_position;
+    const tripoint_abs_omt up( from.x(), from.y(), from.z() + 1 );
+    const auto old_from = overmap_buffer.ter( from );
+    const auto old_up = overmap_buffer.ter( up );
+    on_out_of_scope restore( [&]() {
+        overmap_buffer.ter_set( from, old_from );
+        overmap_buffer.ter_set( up, old_up );
+    } );
+    overmap_buffer.ter_set( from, oter_str_id( "bridgehead_ground_north" ).id() );
+    overmap_buffer.ter_set( up, oter_str_id( "bridgehead_ramp_north" ).id() );
+    REQUIRE( overmap_travel_step_valid( from, up, overmap_path_params::for_npc() ) );
+    reads.clear();
+    for( const auto &member : site.active_outing.local_handoff.members ) {
+        auto pos = member.exit_position;
+        if( !member.dead ) {
+            pos = tripoint_abs_ms( pos.x(), pos.y(), pos.z() + 1 );
+        }
+        reads.push_back( { member.npc_id, true, member.dead, member.hp_percent, pos } );
+    }
+    const auto cursor = *current_external_simulation_cursor( site );
+    const auto before = serialize_world( world );
+    int commits = 0;
+    CHECK_FALSE( record_local_pair_abstract_resume_progress( site, cursor, 11405, reads ) );
+    CHECK( commits == 0 );
+    CHECK( serialize_world( world ) == before );
+    auto stale = cursor;
+    ++stale.generation;
+    CHECK_FALSE( record_local_pair_abstract_resume_progress( site, stale, 11405, reads,
+    [&]() { ++commits; } ) );
+    auto nonadjacent = reads;
+    for( auto &read : nonadjacent ) {
+        if( !read.dead ) {
+            read.current_position = tripoint_abs_ms( read.current_position.x() + 24,
+                                    read.current_position.y(), read.current_position.z() );
+        }
+    }
+    CHECK_FALSE( record_local_pair_abstract_resume_progress( site, cursor, 11405, nonadjacent,
+    [&]() { ++commits; } ) );
+    overmap_buffer.ter_set( up, oter_str_id( "bridgehead_ramp_south" ).id() );
+    CHECK_FALSE( record_local_pair_abstract_resume_progress( site, cursor, 11405, reads,
+    [&]() { ++commits; } ) );
+    CHECK( commits == 0 );
+    CHECK( serialize_world( world ) == before );
+    overmap_buffer.ter_set( up, oter_str_id( "bridgehead_ramp_north" ).id() );
+    REQUIRE( record_local_pair_abstract_resume_progress( site, cursor, 11405, reads,
+    [&]() { ++commits; } ) );
+    CHECK( commits == 1 );
+    CHECK( site.active_outing.local_handoff.route_position == up );
+    CHECK( site.active_outing.local_handoff.has_native_vertical_edge );
+    auto loaded = round_trip_world( world );
+    CHECK( serialize_world( loaded ) == serialize_world( world ) );
+    CHECK( current_external_simulation_cursor( retained_survivor_site( loaded ) ) );
+    auto &forged = retained_survivor_site( loaded ).active_outing.local_handoff;
+    forged.native_vertical_from = tripoint_abs_omt( from.x() + 2, from.y(), from.z() );
+    CHECK_FALSE( current_external_simulation_cursor( retained_survivor_site( loaded ) ) );
+}
+
+TEST_CASE( "native return routes retain ground detours and bridge-only paths",
+           "[bandit_live_world][retained_homeward_vertical]" )
+{
+    std::vector<std::pair<tripoint_abs_omt, oter_id>> saved;
+    for( int z = 0; z <= 1; ++z ) {
+        for( int x = 596; x <= 608; ++x ) {
+            for( int y = 596; y <= 604; ++y ) {
+                const tripoint_abs_omt p( x, y, z );
+                saved.emplace_back( p, overmap_buffer.ter( p ) );
+                overmap_buffer.ter_set( p, oter_str_id( "solid_earth" ) );
+            }
+        }
+    }
+    on_out_of_scope restore( [&]() {
+        for( const auto &[p, terrain] : saved ) {
+            overmap_buffer.ter_set( p, terrain );
+        }
+    } );
+    const auto set = []( int x, int y, int z, const char *id ) {
+        overmap_buffer.ter_set( tripoint_abs_omt( x, y, z ), oter_str_id( id ) );
+    };
+    const tripoint_abs_omt start( 600, 600, 0 );
+    const tripoint_abs_omt end( 606, 600, 0 );
+    set( 600, 600, 0, "field" );
+    set( 606, 600, 0, "field" );
+    for( int x = 600; x <= 606; ++x ) {
+        set( x, 601, 0, "field" );
+    }
+    auto route = overmap_buffer.get_travel_path( start, end, overmap_path_params::for_npc() );
+    REQUIRE_FALSE( route.points.empty() );
+    CHECK( std::any_of( route.points.begin(), route.points.end(), []( const auto &p ) {
+        return p.y() == 601 && p.z() == 0;
+    } ) );
+    for( int x = 600; x <= 606; ++x ) {
+        set( x, 601, 0, "solid_earth" );
+    }
+    for( int x : { 601, 605 } ) {
+        set( x, 600, 0, "bridgehead_ground_north" );
+        set( x, 600, 1, "bridgehead_ramp_north" );
+    }
+    for( int x = 602; x <= 604; ++x ) {
+        set( x, 600, 1, "bridge_road_north" );
+    }
+    route = overmap_buffer.get_travel_path( start, end, overmap_path_params::for_npc() );
+    REQUIRE_FALSE( route.points.empty() );
+    CHECK( std::any_of( route.points.begin(), route.points.end(), []( const auto &p ) {
+        return p.z() == 1;
+    } ) );
+    for( std::size_t i = 1; i < route.points.size(); ++i ) {
+        CHECK( overmap_travel_step_valid( route.points[i], route.points[i - 1],
+                                          overmap_path_params::for_npc() ) );
+    }
 }
