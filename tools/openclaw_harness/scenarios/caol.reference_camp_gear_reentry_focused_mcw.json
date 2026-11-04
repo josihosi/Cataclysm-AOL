@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_gear_reentry_focused_mcw",
-  "description": "Focused actual post-transfer save reentry for owner reference camp NPC equipment persistence.",
+  "description": "Owner-reference continuation for actual day patrol service and comparable physical source conditions, starting from the previously observed post-transfer saved world.",
   "profile": "reference-camp-gear-reentry-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -75,11 +75,12 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Reopen the exact final native saved world after the observed locker transfer, inspect Tilda and her equipped pistol, magazine and ammunition, then save and close normally. Prior transfer remains proof from its original run.",
+      "objective": "Continue from the exact native saved reference camp. Use ordinary job, door, window and fuel controls as disclosed setup; observe actual day patrol roster and service and bounded physical open/closed/roof source conditions with time, weather, geometry, fuel and observer opportunity. Save and close the actual result. A separately authorized continuation from that fresh saved output is required to observe service after reload.",
       "proof_targets": [
-        "exact saved source and installed world identity, player, camp and Tilda identity",
-        "actual reloaded wielded pistol, magazine and loaded ammunition type/count",
-        "native save and exit"
+        "source and installed world identity, player, camp, actor and actual game time",
+        "actual day patrol roster and physical duty service",
+        "actual open/closed/roof source and observer conditions with light escape and smoke positions kept separate, reusing scoped original reference observations",
+        "native save and exit with exact saved-world identity for a separately reviewed service-after-reload continuation"
       ],
       "authority": [
         "currently advertised native semantic actions",
@@ -88,9 +89,10 @@
         "run.finish"
       ],
       "invariants": [
-        "copying the prior saved world is setup; prior transfer retains its original run evidence",
-        "do not fabricate NPC behavior, equipment, clock or other state",
-        "compare actual loaded equipment by type and count; regenerated UIDs are not a persistence requirement"
+        "saved start and ordinary camp/window/door/fuel setup are zero-credit; prior transfer and night/physical observations retain their original run identities",
+        "do not inject NPC action, perception, source response, clock, lead or other actor state",
+        "do not claim native use of the original closed archive when modifying this open reference working copy",
+        "do not claim service after reload until a fresh resulting native save is reopened through a separately authorized source-bound continuation"
       ],
       "live_operations": [
         "game.act"

@@ -1,21 +1,24 @@
 {
   "schema": "caol-playtest-witness-charter-v1",
-  "claim": "Observe actual post-transfer equipment persistence after reopening the owner-reference saved world.",
-  "material_proof": "Bind and reopen the exact native save from run 4110 at turn 5261480, then inspect Tilda ID 2, her actual wielded Glock carry pistol, its magazine and loaded 17 JHP rounds; retain actual identities and type/count.",
+  "claim": "Observe owner-reference day patrol service and comparable physical source conditions with a declared later save/reopen plan.",
+  "material_proof": "On this exact saved owner-reference working copy observe actual day patrol roster and physical service, and bounded physical open/closed/roof source observations with actual geometry, time, weather, fuel and observer opportunity; distinguish visible light from smoke position. Save and exit the actual resulting world. A later separately authorized exact saved-world reentry is required for post-reload service.",
   "material_contradiction": [
-    "The authenticated saved world reloads but the observed actor or equipment differs from the saved post-transfer state."
+    "A qualified actual day duty or physical observation contradicts an established premise."
   ],
   "already_accepted_evidence": [
-    "The autonomous transfer is evidenced by the original run and is not replayed or promoted by this continuation."
+    "Original scoped night patrol, roof fire/refueling, open-door/occluded visibility, actual equipment transfer/reentry and connected signal-to-arrival facts remain at their original run scope."
   ],
-  "current_uncertainty": "Actual actor and equipment continuity after reopening are not assumed.",
+  "current_uncertainty": "Day roster and service, comparable closed-building source behavior and service after a future reload are not assumed.",
   "forbidden_shortcuts": [
-    "alter saved actor or item state",
-    "count source installation as loaded NPC observation",
-    "treat changed item UIDs as a loss without type/count evidence"
+    "count saved-start setup, ordinary window/door/fuel changes or installed copy as actor behavior",
+    "claim a native original closed-archive run from the modified open working copy",
+    "infer smoke through walls, bandit perception or quantitative light from an occlusion comparison",
+    "inject NPC duty, perception, elapsed time, lead, dispatch, encounter, payment or return",
+    "claim post-reload service before the actual fresh output is saved and reopened"
   ],
   "honest_stop_conditions": [
-    "Record actual loaded actor and equipment, including any mismatch or failed launch."
+    "Identify first absent eligible transition and its actual premise; ordinary setup recovery is not an automatic stop.",
+    "Preserve actual physical observations and negative results without forcing a favorable outcome."
   ],
   "requested_evidence_ceiling": "focused"
 }
