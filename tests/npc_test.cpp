@@ -87,6 +87,7 @@ std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
 #include "ranged.h"
 #include "raid_decision_trace.h"
 #include "rng.h"
+#include "scout_observation.h"
 #include "stomach.h"
 #include "string_formatter.h"
 #include "test_data.h"
@@ -2683,6 +2684,27 @@ TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",
     }
     REQUIRE( expected_power < 200 );
 
+    scout_observation::site_reader watch_reader;
+    std::string scout_watch_reason;
+    std::string partner_watch_reason;
+    const bool scout_watching = watch_reader.watching_member( live_state.sites.front(), *scout,
+                                &scout_watch_reason );
+    const bool partner_watching = watch_reader.watching_member( live_state.sites.front(), *partner,
+                                  &partner_watch_reason );
+    CAPTURE( scout_watching, scout_watch_reason, partner_watching, partner_watch_reason );
+    REQUIRE( scout_watching );
+    REQUIRE( partner_watching );
+    // This controlled local handoff must have the same physical owner leases
+    // as a real transfer before the live progress owner can commit.
+    REQUIRE_FALSE( scout->get_bandit_live_world_projection_lease().present );
+    REQUIRE_FALSE( partner->get_bandit_live_world_projection_lease().present );
+    CHECK( bandit_live_world::record_live_covert_visible_defenders() == 0 );
+    const auto &fixture_outing = live_state.sites.front().active_outing;
+    const bandit_live_world_projection_lease lease{ true, live_state.sites.front().site_id,
+            fixture_outing.activity_id, "local", fixture_outing.generation,
+            fixture_outing.handoff_epoch, fixture_outing.last_advanced_minutes };
+    sync_bandit_live_world_projection_lease_copies( *scout, lease );
+    sync_bandit_live_world_projection_lease_copies( *partner, lease );
     REQUIRE( bandit_live_world::record_live_covert_visible_defenders() == 1 );
     const bandit_live_world::active_outing_state &outing =
         live_state.sites.front().active_outing;
@@ -2719,6 +2741,55 @@ TEST_CASE( "loaded_visible_defender_adapter_keeps_exact_count_beyond_id_sample",
     CHECK( loaded_observation.observed_power_low == expected_power );
     CHECK( loaded_observation.share_state ==
            bandit_live_world::sortie_observation_share_state::observer_private );
+
+    // Reduce the scene to the same one physical defender for both later
+    // observations. Change the actor's actual health, never the receipt.
+    for( const character_id id : defender_ids ) {
+        g->remove_npc( id );
+        overmap_buffer.remove_npc( id );
+    }
+    generated_ids = { scout_id, partner_id };
+    on_out_of_scope reset_test_avatar( []() { clear_avatar(); } );
+    player_character.set_all_parts_hp_to_max();
+    player_character.set_wielded_item( item( itype_bat ) );
+    // A cautious observer avoids both readings saturating at the minimum
+    // normalized bucket, while the native evaluator owns both measurements.
+    scout->personality.aggression = -10;
+    const int healthy = bandit_live_world::normalize_hostile_camp_character_power(
+                            scout->evaluate_character_threat_without_perception_fuzz(
+                                player_character, scout_has_gun, true ) );
+    REQUIRE( healthy > 1 );
+    set_time( calendar::start_of_cataclysm + time_duration::from_minutes( current_minutes + 31 ) );
+    REQUIRE( bandit_live_world::record_live_covert_visible_defenders() == 1 );
+    const auto find_avatar_observation = [&]( const int at ) {
+        const auto &records = live_state.sites.front().active_outing.observations;
+        return std::find_if( records.begin(), records.end(), [&]( const auto &record ) {
+            return record.observer_id == scout_id && record.observed_minutes == at &&
+                   record.defender_ids == std::vector<std::string> { "avatar" };
+        } );
+    };
+    const auto &healthy_records = live_state.sites.front().active_outing.observations;
+    auto healthy_it = find_avatar_observation( current_minutes + 31 );
+    REQUIRE( healthy_it != healthy_records.end() );
+    const auto healthy_sighting = *healthy_it;
+    CHECK( healthy_sighting.observed_power_low == healthy );
+    CHECK( healthy_sighting.observed_power_high == healthy );
+    player_character.set_all_parts_hp_cur( 1 );
+    REQUIRE_FALSE( player_character.is_dead_state() );
+    const int injured = bandit_live_world::normalize_hostile_camp_character_power(
+                            scout->evaluate_character_threat_without_perception_fuzz(
+                                player_character, scout_has_gun, true ) );
+    REQUIRE( injured < healthy );
+    set_time( calendar::start_of_cataclysm + time_duration::from_minutes( current_minutes + 62 ) );
+    REQUIRE( bandit_live_world::record_live_covert_visible_defenders() == 1 );
+    const auto &injured_records = live_state.sites.front().active_outing.observations;
+    const auto injured_it = find_avatar_observation( current_minutes + 62 );
+    REQUIRE( injured_it != injured_records.end() );
+    CHECK( injured_it->defender_ids == healthy_sighting.defender_ids );
+    CHECK( injured_it->defender_positions == healthy_sighting.defender_positions );
+    CHECK( injured_it->observed_power_low == injured );
+    CHECK( injured_it->observed_power_high < healthy_sighting.observed_power_low );
+    CHECK( injured_it->equipment_detail == healthy_sighting.equipment_detail );
 }
 
 TEST_CASE( "live_response_selection_reads_loaded_and_unloaded_home_npc_owners",
@@ -7766,6 +7837,7 @@ TEST_CASE( "on_load_migrates_legacy_camp_npcs", "[npc][camp]" )
     SECTION( "GUARD_ALLY + assigned_camp migrates to CAMP_RESIDENT" ) {
         guy.set_mission( NPC_MISSION_GUARD_ALLY );
         guy.assigned_camp = project_to<coords::omt>( guy.pos_abs() );
+        guy.chatbin.first_topic = "TALK_FRIEND_GUARD";
         guy.set_guard_pos( guy.pos_abs() );
         guy.on_load( &here );
         CHECK( guy.mission == NPC_MISSION_CAMP_RESIDENT );
@@ -7791,6 +7863,7 @@ TEST_CASE( "on_load_migrates_legacy_camp_npcs", "[npc][camp]" )
         guy.set_mission( NPC_MISSION_ACTIVITY );
         guy.previous_mission = NPC_MISSION_GUARD_ALLY;
         guy.assigned_camp = project_to<coords::omt>( guy.pos_abs() );
+        guy.chatbin.first_topic = "TALK_FRIEND_GUARD";
         guy.set_guard_pos( guy.pos_abs() );
         guy.on_load( &here );
         CHECK( guy.mission == NPC_MISSION_ACTIVITY );
@@ -7802,6 +7875,42 @@ TEST_CASE( "on_load_migrates_legacy_camp_npcs", "[npc][camp]" )
         guy.set_guard_pos( guy.pos_abs() );
         guy.on_load( &here );
         CHECK( guy.mission == NPC_MISSION_GUARD_ALLY );
+    }
+    SECTION( "explicit camp guard survives serialization and load" ) {
+        guy.assigned_camp = project_to<coords::omt>( guy.pos_abs() );
+        guy.set_mission( NPC_MISSION_CAMP_RESIDENT );
+        talk_function::assign_guard( guy );
+        const auto post = guy.get_guard_post();
+        REQUIRE( post.has_value() );
+
+        std::ostringstream out;
+        JsonOut jout( out );
+        guy.serialize( jout );
+        JsonValue saved = json_loader::from_string( out.str() );
+        npc loaded;
+        loaded.deserialize( saved.get_object() );
+        loaded.on_load( &here );
+        CHECK( loaded.mission == NPC_MISSION_GUARD_ALLY );
+        CHECK( loaded.assigned_camp == guy.assigned_camp );
+        CHECK( loaded.get_guard_post() == post );
+    }
+    SECTION( "interrupted explicit camp guard keeps previous mission and post" ) {
+        guy.assigned_camp = project_to<coords::omt>( guy.pos_abs() );
+        guy.set_mission( NPC_MISSION_CAMP_RESIDENT );
+        talk_function::assign_guard( guy );
+        const auto post = guy.get_guard_post();
+        REQUIRE( post.has_value() );
+        guy.set_mission( NPC_MISSION_ACTIVITY );
+        std::ostringstream out;
+        JsonOut jout( out );
+        guy.serialize( jout );
+        JsonValue saved = json_loader::from_string( out.str() );
+        npc loaded;
+        loaded.deserialize( saved.get_object() );
+        loaded.on_load( &here );
+        CHECK( loaded.mission == NPC_MISSION_ACTIVITY );
+        CHECK( loaded.previous_mission == NPC_MISSION_GUARD_ALLY );
+        CHECK( loaded.get_guard_post() == post );
     }
 }
 

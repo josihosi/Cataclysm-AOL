@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -472,6 +473,11 @@ struct robbery_physical_evidence {
     void deserialize( const JsonObject &jo );
 };
 
+// Undefined 0/0 and unknown values never establish a strict improvement.
+bool robbery_ratio_is_strictly_better( int power, int danger, int old_power, int old_danger );
+
+struct scout_report_record;
+
 struct robbery_place_memory {
     std::string target_id;
     tripoint_abs_omt target_omt;
@@ -486,6 +492,7 @@ struct robbery_place_memory {
     std::int64_t admission_retry_active_turn = 0;
     int caution = 0;
     bool eligible = false;
+    bool suspended_by_caution = false;
     int verified_party_power = -1;
     int verified_danger = -1;
     int verified_minutes = -1;
@@ -495,6 +502,20 @@ struct robbery_place_memory {
     // Neither record alone asserts that current danger has improved.
     std::optional<robbery_physical_evidence> original_physical_evidence;
     std::optional<robbery_physical_evidence> later_physical_evidence;
+    // Authenticated same-place tactical inputs, evaluated at admission time.
+    std::shared_ptr<const scout_report_record> reopening_report;
+    // The first costly failure owns this baseline until caution is cleared.
+    // Missing legacy provenance remains unknown rather than being rebuilt
+    // from a later report.
+    std::optional<robbery_physical_evidence> failed_physical_evidence;
+    std::string failed_operation_id;
+    int failed_generation = 0;
+    int failed_party_power = -1;
+    int failed_danger = -1;
+    int failed_verified_minutes = -1;
+    int failed_visit_event_minutes = -1;
+    std::vector<int> failed_party_ids;
+    std::vector<int> failed_casualty_ids;
     int last_visit_event_minutes = -1;
     std::vector<int> party_ids;
     std::vector<int> casualty_ids;

@@ -83088,6 +83088,24 @@ TEST_CASE( "legacy four-site producer requests local owners without body leases"
            local_projection_reconciliation_result::rejected );
 }
 
+TEST_CASE( "repeat robbery compares verified ratios without rounding or danger floors",
+           "[bandit_live_world][repeat_reopening]" )
+{
+    using bandit_live_world::robbery_ratio_is_strictly_better;
+    CHECK( robbery_ratio_is_strictly_better( 21, 10, 20, 10 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 20, 10, 10, 5 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 19, 10, 20, 10 ) );
+    CHECK( robbery_ratio_is_strictly_better( 1, 0, 20, 10 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 1, 0, 20, 0 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 0, 0, 20, 10 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 20, 10, 0, 0 ) );
+    CHECK( robbery_ratio_is_strictly_better( 1, 10, 0, 10 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 0, 10, 0, 20 ) );
+    CHECK_FALSE( robbery_ratio_is_strictly_better( 20, 10, -1, 10 ) );
+    const int max_power = std::numeric_limits<int>::max();
+    CHECK( robbery_ratio_is_strictly_better( max_power, max_power - 1, max_power - 1, max_power ) );
+}
+
 TEST_CASE( "repeat memory retains reported physical provenance without reopening caution",
            "[bandit_live_world][repeat_physical_provenance]" )
 {
@@ -83101,12 +83119,29 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     const std::string target_id = outing.target_id;
     REQUIRE_FALSE( target_id.empty() );
     const auto physical_at = project_to<coords::ms>( target );
+    standard_npc physical_observer( "favorable sighting observer" );
+    standard_npc physical_defender( "same physical defender" );
+    clear_character( physical_observer, true );
+    clear_character( physical_defender, true );
+    physical_observer.personality.aggression = 0;
+    physical_defender.setID( character_id( 896099 ), true );
+    physical_defender.spawn_at_precise( physical_at );
+    physical_defender.set_all_parts_hp_to_max();
+    physical_defender.set_wielded_item( item( itype_id( "bat" ) ) );
+    const auto observed_power = [&]() {
+        return normalize_hostile_camp_character_power(
+                   physical_observer.evaluate_character_threat_without_perception_fuzz(
+                       physical_defender, false, true ) );
+    };
+    const int healthy_power = observed_power();
+    REQUIRE( healthy_power > 1 );
     const auto observe = [&]( const int now ) {
         const auto cursor = current_external_simulation_cursor( observer_site );
         REQUIRE( cursor );
         const auto recorded = record_covert_visible_defender_observations(
                                   observer_site, *cursor, outing.leader_id, outing.selected_watch_omt,
-        { { "avatar", target, 4, 0, physical_at } }, now, true );
+        { { "npc:" + std::to_string( physical_defender.getID().get_value() ),
+            physical_defender.pos_abs_omt(), observed_power(), 1, physical_defender.pos_abs() } }, now, true );
         REQUIRE( recorded.valid );
         REQUIRE( recorded.changed );
         const auto found = std::find_if( outing.observations.begin(), outing.observations.end(),
@@ -83121,10 +83156,16 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
         result.share_state = sortie_observation_share_state::reported;
         return result;
     };
-    const int observed = outing.last_advanced_minutes + 1;
+    const int observed = outing.last_advanced_minutes + 61;
     const auto original = observe( observed );
     const auto before_visit_ended = observe( observed + 1 );
+    physical_defender.set_all_parts_hp_cur( 1 );
+    const int injured_power = observed_power();
+    REQUIRE( injured_power < healthy_power );
     const auto later = observe( observed + 90 );
+    REQUIRE( later.defender_ids == original.defender_ids );
+    REQUIRE( later.observed_power_high < original.observed_power_low );
+    CHECK( later.equipment_detail == original.equipment_detail );
     const int newer_revision = original.target_revision + 1;
     outing.target_lead_revision = newer_revision;
     const auto newer_report_observation = observe( observed + 120 );
@@ -83161,13 +83202,35 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     report.delivered_minutes = observed + 1;
     report.carrier_ids = outing.member_ids;
     report.observations = { original };
-    report.assessment.observation_started_minutes = observed;
-    report.assessment.last_progress_minutes = observed;
-    report.assessment.certainty = 95;
-    report.assessment.readiness_latched = true;
-    report.assessment.threshold_class = scout_assessment_threshold_class::normal;
-    report.assessment.danger_high = 15;
-    report.assessment.bounty_estimate = 2;
+    // Controlled report delivery uses the production reducer, including its
+    // dated tactical provenance. The three complete visual windows model a
+    // real watch; they are fixture inputs, not native gameplay evidence.
+    const auto assessment_for = [&]( const scout_report_record &packet ) {
+        auto watch = outing;
+        watch.activity_id = packet.source_activity_id;
+        watch.generation = packet.source_generation;
+        watch.target_lead_revision = packet.target_lead_revision;
+        watch.last_advanced_minutes = packet.delivered_minutes;
+        watch.assessment = {};
+        watch.assessment.observation_started_minutes = packet.delivered_minutes - 61;
+        watch.assessment.last_progress_minutes = packet.delivered_minutes - 1;
+        watch.observations.clear();
+        for( const int age : { 61, 31, 1 } ) {
+            auto input = original;
+            input.observed_minutes = packet.delivered_minutes - age;
+            input.bucket_start_minutes = input.observed_minutes - input.observed_minutes % 30;
+            input.simultaneity_start_minutes = input.observed_minutes;
+            input.simultaneity_end_minutes = input.observed_minutes;
+            input.expiry_minutes = input.observed_minutes + 24 * 60;
+            input.target_revision = packet.target_lead_revision;
+            watch.observations.push_back( input );
+        }
+        auto assessment = summarize_normal_scout_assessment( watch );
+        assessment.readiness_latched = true;
+        assessment.threshold_class = scout_assessment_threshold_class::normal;
+        return assessment;
+    };
+    report.assessment = assessment_for( report );
     site.applied_report_generation = report.source_generation;
     site.next_outing_generation = 3;
     site.intelligence_map.last_daily_cleanup_minutes = 0;
@@ -83226,6 +83289,7 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
                                      std::to_string( new_report.source_generation );
         new_report.delivered_minutes = observed + 91;
         new_report.observations = { candidate };
+        new_report.assessment = assessment_for( new_report );
         camp.applied_report_generation = new_report.source_generation;
         REQUIRE( accept_current_scout_report_for_assessment( camp ) == camp_decision_transition_result::applied );
         return next;
@@ -83299,6 +83363,7 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
         fresh.target_lead_revision = newer_revision;
         fresh.delivered_minutes = observed + 121;
         fresh.observations = { newer_report_observation };
+        fresh.assessment = assessment_for( fresh );
         camp.intelligence_map.find_lead( fresh.target_lead_id )->revision = newer_revision;
         camp.applied_report_generation = fresh.source_generation;
         REQUIRE( accept_current_scout_report_for_assessment( camp ) ==
@@ -83337,6 +83402,34 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
         CHECK_FALSE( failed.later_physical_evidence );
         CHECK( failed.last_visit_event_minutes == observed + 125 );
         CHECK( failed.casualty_ids == std::vector<int> { casualty.get_value() } );
+        CHECK( failed.failed_operation_id == activity );
+        CHECK( failed.failed_generation == generation );
+        CHECK( failed.failed_party_power == camp.active_hostile_operation.verified_response_power );
+        CHECK( failed.failed_danger == camp.active_hostile_operation.verified_response_danger );
+        CHECK( failed.failed_visit_event_minutes == observed + 125 );
+        CHECK( failed.failed_casualty_ids == std::vector<int> { casualty.get_value() } );
+        REQUIRE( failed.failed_physical_evidence );
+        CHECK( failed.failed_physical_evidence->observation.observed_minutes == observed + 120 );
+        auto old_saved = failed;
+        old_saved.failed_operation_id.clear(); // serializer emits the legacy shape
+        const auto reload_place = []( const robbery_place_memory &value ) {
+            std::ostringstream out;
+            JsonOut json( out );
+            value.serialize( json );
+            robbery_place_memory loaded;
+            loaded.deserialize( json_loader::from_string( out.str() ).get_object() );
+            return loaded;
+        };
+        const auto migrated = reload_place( old_saved );
+        CHECK( migrated.failed_operation_id == activity );
+        CHECK( migrated.failed_generation == generation );
+        CHECK( migrated.failed_casualty_ids == std::vector<int> { casualty.get_value() } );
+        REQUIRE( migrated.failed_physical_evidence );
+        old_saved.verified_minutes = -1;
+        old_saved.verified_party_power = -1;
+        old_saved.verified_danger = -1;
+        const auto unknown_legacy = reload_place( old_saved );
+        CHECK( unknown_legacy.failed_operation_id.empty() );
     }
     {
         // The fresh report expires naturally before the place becomes due.
@@ -83407,6 +83500,253 @@ TEST_CASE( "repeat memory retains reported physical provenance without reopening
     CHECK_FALSE( cautious_result.authorized );
     CHECK( cautious_result.rejection_reason ==
            "costly robbery place requires favorable evidence and repeat admission" );
+    {
+        // A changed sighting is controlled report setup. Admission remains
+        // the actual response caller, with the failed visit kept separately.
+        // The later sighting is produced from the same real actor after an
+        // injury, not by editing the recorded observation's power values.
+        const auto improved = later;
+        auto reopening = with_later_report( improved );
+        auto &camp = reopening.sites.front();
+        auto &memory = camp.intelligence_map.robbery_places.front();
+        memory.caution = 1;
+        memory.next_eligible_active_turn = camp.home_activation.active_turns;
+        memory.failed_operation_id = memory.last_operation_id;
+        memory.failed_generation = memory.last_generation;
+        memory.failed_party_ids = memory.party_ids;
+        REQUIRE( memory.failed_party_ids.size() >= 2 );
+        memory.failed_casualty_ids = { memory.failed_party_ids.back() };
+        REQUIRE( update_member_state( camp, character_id( memory.failed_casualty_ids.front() ),
+                                      member_state::dead, "controlled failed-visit casualty" ) );
+        const auto living = camp.roster().physically_present_ids;
+        REQUIRE_FALSE( living.empty() );
+        camp.current_scout_report.carrier_ids = { living.front() };
+        memory.failed_physical_evidence = memory.original_physical_evidence;
+        memory.failed_verified_minutes = now;
+        memory.failed_visit_event_minutes = memory.last_visit_event_minutes;
+        memory.failed_danger = camp.current_scout_report.assessment.danger_high;
+        const auto selected = select_capable_response_party( camp,
+                              camp_report_policy::bandit_shakedown,
+                              camp.current_scout_report.assessment.danger_high, reads( camp ) );
+        REQUIRE( selected.eligible );
+        REQUIRE( selected.party_power > 0 );
+        memory.failed_party_power = selected.party_power - 1;
+        const auto admit = [&]( const site_record &candidate ) {
+            const auto selection = select_capable_response_party( candidate,
+                                   camp_report_policy::bandit_shakedown,
+                                   candidate.current_scout_report.assessment.danger_high, reads( candidate ) );
+            return evaluate_response_authorization( candidate, observed + 91, selection,
+                                                    reads( candidate ) ).authorized;
+        };
+        CHECK( admit( camp ) );
+        auto tie = camp;
+        tie.intelligence_map.robbery_places.front().failed_party_power = selected.party_power;
+        CHECK_FALSE( admit( tie ) );
+        auto unknown = camp;
+        unknown.intelligence_map.robbery_places.front().failed_verified_minutes = -1;
+        CHECK_FALSE( admit( unknown ) );
+        auto no_loss = camp;
+        no_loss.intelligence_map.robbery_places.front().failed_casualty_ids.clear();
+        CHECK_FALSE( admit( no_loss ) );
+        auto foreign = camp;
+        foreign.current_scout_report.target_id += "-other";
+        CHECK_FALSE( admit( foreign ) );
+        auto unchanged = camp;
+        auto unchanged_sighting = later;
+        unchanged_sighting.observed_power_low = original.observed_power_low;
+        unchanged_sighting.observed_power_high = original.observed_power_high;
+        unchanged.intelligence_map.robbery_places.front().later_physical_evidence->observation = unchanged_sighting;
+        unchanged.current_scout_report.observations = { unchanged_sighting };
+        CHECK_FALSE( admit( unchanged ) );
+        auto incomplete = camp;
+        auto &incomplete_observation = incomplete.intelligence_map.robbery_places.front().
+                                       later_physical_evidence->observation;
+        incomplete_observation.observed_defender_count++;
+        incomplete.current_scout_report.observations = { incomplete_observation };
+        CHECK_FALSE( admit( incomplete ) );
+        {
+            auto replacement = reopening;
+            auto &new_camp = replacement.sites.front();
+            auto &new_report = new_camp.current_scout_report;
+            new_report.revision++;
+            new_report.source_generation = new_camp.next_outing_generation++;
+            new_report.source_activity_id = new_camp.site_id + "#scout:" +
+                                            std::to_string( new_report.source_generation );
+            new_report.application_key = new_report.source_activity_id + ":report:" +
+                                         std::to_string( new_report.source_generation );
+            new_report.delivered_minutes = observed + 92;
+            new_report.observations.clear();
+            new_report.assessment = assessment_for( new_report );
+            new_camp.applied_report_generation = new_report.source_generation;
+            REQUIRE( accept_current_scout_report_for_assessment( new_camp ) ==
+                     camp_decision_transition_result::applied );
+            const auto selected_again = select_capable_response_party( new_camp,
+                                        camp_report_policy::bandit_shakedown,
+                                        new_camp.current_scout_report.assessment.danger_high, reads( new_camp ) );
+            REQUIRE( selected_again.eligible );
+            CHECK( evaluate_response_authorization( new_camp, observed + 92, selected_again,
+                                                    reads( new_camp ) ).authorized );
+            CHECK( new_camp.intelligence_map.robbery_places.front().failed_operation_id ==
+                   memory.failed_operation_id );
+        }
+        {
+            // The returned favorable report is accepted while the available
+            // party is too weak. Its attack authorization expires, but its
+            // target-bound tactical inputs remain usable by repeat admission.
+            auto delayed = reopening;
+            auto &waiting = delayed.sites.front();
+            const int delivery = waiting.current_scout_report.delivered_minutes;
+            const int expired = delivery + 7 * 24 * 60;
+            waiting.intelligence_map.robbery_places.front().next_eligible_active_turn =
+                waiting.home_activation.active_turns + 144LL * 60 * 60;
+            auto weak_reads = reads( waiting );
+            for( auto &read : weak_reads ) {
+                read.normalized_power = 0;
+            }
+            const auto weak_party = select_capable_response_party( waiting,
+                                    camp_report_policy::bandit_shakedown,
+                                    waiting.current_scout_report.assessment.danger_high, weak_reads );
+            CHECK_FALSE( weak_party.eligible );
+            CHECK( resolve_response_authorization_denial( waiting, delivery + 1,
+                    weak_party, weak_reads ) == response_denial_resolution::held );
+            const auto strong_party = select_capable_response_party( waiting,
+                                      camp_report_policy::bandit_shakedown,
+                                      waiting.current_scout_report.assessment.danger_high, reads( waiting ) );
+            REQUIRE( strong_party.eligible );
+            CHECK_FALSE( evaluate_response_authorization( waiting, delivery + 48 * 60, strong_party,
+                         reads( waiting ) ).authorized );
+            CHECK( resolve_response_authorization_denial( waiting, expired, weak_party,
+                    weak_reads ) == response_denial_resolution::rescout_ready );
+            REQUIRE( waiting.camp_decision.state == camp_decision_state::idle );
+            REQUIRE( waiting.intelligence_map.robbery_places.front().reopening_report );
+            const auto evaluated = evaluate_scout_report_at(
+                                       *waiting.intelligence_map.robbery_places.front().reopening_report, expired );
+            REQUIRE( evaluated.valid );
+            REQUIRE( evaluated.danger_known );
+            CHECK_FALSE( evaluated.attack_authorization_usable );
+            delayed = round_trip_world( delayed );
+            auto &ready = delayed.sites.front();
+            REQUIRE( ready.intelligence_map.robbery_places.front().reopening_report );
+            ready.home_activation.evaluate( expired * 60, true, ready.home_activation_anchors(), {}, now * 60 );
+            {
+                // An unrelated genuinely accepted report must neither replace
+                // nor refresh this place's retained tactical input.
+                auto other = delayed;
+                auto &other_camp = other.sites.front();
+                const auto retained_key = other_camp.intelligence_map.robbery_places.front().
+                                          reopening_report->application_key;
+                auto &other_report = other_camp.current_scout_report;
+                ++other_report.revision;
+                other_report.source_generation = other_camp.next_outing_generation++;
+                other_report.source_activity_id = other_camp.site_id + "#scout:" +
+                                                  std::to_string( other_report.source_generation );
+                other_report.application_key = other_report.source_activity_id + ":report:" +
+                                               std::to_string( other_report.source_generation );
+                other_report.target_id += "-other";
+                other_report.target_omt += point( 1, 0 );
+                other_report.delivered_minutes = expired + 1;
+                other_report.observations.clear();
+                auto other_watch = outing;
+                other_watch.activity_id = other_report.source_activity_id;
+                other_watch.generation = other_report.source_generation;
+                other_watch.target_id = other_report.target_id;
+                other_watch.target_omt = other_report.target_omt;
+                other_watch.last_advanced_minutes = other_report.delivered_minutes;
+                other_watch.assessment = {};
+                other_watch.assessment.observation_started_minutes = other_report.delivered_minutes - 61;
+                other_watch.assessment.last_progress_minutes = other_report.delivered_minutes - 1;
+                other_watch.observations.clear();
+                other_report.assessment = summarize_normal_scout_assessment( other_watch );
+                other_camp.applied_report_generation = other_report.source_generation;
+                REQUIRE( accept_current_scout_report_for_assessment( other_camp ) ==
+                         camp_decision_transition_result::applied );
+                REQUIRE( other_camp.intelligence_map.robbery_places.front().reopening_report );
+                CHECK( other_camp.intelligence_map.robbery_places.front().reopening_report->application_key ==
+                       retained_key );
+                other = round_trip_world( other );
+                CHECK( other.sites.front().intelligence_map.robbery_places.front().reopening_report->application_key ==
+                       retained_key );
+            }
+            auto unknown = delayed;
+            auto &unknown_memory = unknown.sites.front().intelligence_map.robbery_places.front();
+            auto unknown_report = *unknown_memory.reopening_report;
+            unknown_report.assessment.legacy_unknown_components |= scout_unknown_danger;
+            unknown_memory.reopening_report = std::make_shared<const scout_report_record>( unknown_report );
+            CHECK( advance_structural_bounty_maintenance( unknown, expired, 0, 0,
+                   {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 0 );
+            auto contradictory = delayed;
+            auto &contradictory_memory = contradictory.sites.front().intelligence_map.robbery_places.front();
+            auto contradictory_report = *contradictory_memory.reopening_report;
+            auto contradiction = improved;
+            contradiction.kind = sortie_observation_kind::contradiction;
+            contradictory_report.observations.push_back( contradiction );
+            contradictory_memory.reopening_report = std::make_shared<const scout_report_record>( contradictory_report );
+            CHECK( advance_structural_bounty_maintenance( contradictory, expired, 0, 0,
+                   {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 0 );
+            REQUIRE( advance_structural_bounty_maintenance( delayed, expired, 0, 0,
+                     {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 1 );
+            CHECK( ready.active_hostile_operation.repeat_place );
+            CHECK( ready.active_hostile_operation.reservation.target_id == target_id );
+            CHECK( ready.intelligence_map.robbery_places.front().caution == 1 );
+            delayed = round_trip_world( delayed );
+            CHECK( delayed.sites.front().active_hostile_operation.repeat_place );
+            CHECK( delayed.sites.front().intelligence_map.robbery_places.front().failed_operation_id ==
+                   memory.failed_operation_id );
+        }
+        auto suspended = camp;
+        suspended.intelligence_map.robbery_places.front().caution = 2;
+        suspended.intelligence_map.robbery_places.front().eligible = false;
+        suspended.intelligence_map.robbery_places.front().suspended_by_caution = true;
+        CHECK( admit( suspended ) );
+        {
+            auto dispatched = reopening;
+            auto &dispatch_camp = dispatched.sites.front();
+            REQUIRE( observe_authoritative_hostile_target_opportunity( dispatched, target_id, target,
+                     { 101, 3, 1 } ) );
+            // The new opportunity has a new revision. Deliver a matching new
+            // report instead of reusing the already consumed source revision.
+            auto &new_report = dispatch_camp.current_scout_report;
+            new_report.revision++;
+            new_report.source_generation = dispatch_camp.next_outing_generation++;
+            new_report.source_activity_id = dispatch_camp.site_id + "#scout:" +
+                                            std::to_string( new_report.source_generation );
+            new_report.application_key = new_report.source_activity_id + ":report:" +
+                                         std::to_string( new_report.source_generation );
+            new_report.target_lead_revision = newer_revision;
+            new_report.delivered_minutes = observed + 121;
+            new_report.observations = { newer_report_observation };
+            new_report.assessment = assessment_for( new_report );
+            dispatch_camp.intelligence_map.find_lead( new_report.target_lead_id )->revision = newer_revision;
+            dispatch_camp.applied_report_generation = new_report.source_generation;
+            REQUIRE( accept_current_scout_report_for_assessment( dispatch_camp ) ==
+                     camp_decision_transition_result::applied );
+            auto suspended_dispatch = dispatched;
+            auto &suspended_camp = suspended_dispatch.sites.front();
+            auto &suspended_memory = suspended_camp.intelligence_map.robbery_places.front();
+            suspended_memory.caution = 2;
+            suspended_memory.eligible = false;
+            suspended_memory.suspended_by_caution = true;
+            REQUIRE( advance_structural_bounty_maintenance( suspended_dispatch, observed + 121, 0, 0,
+                     {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 1 );
+            CHECK( suspended_camp.intelligence_map.robbery_places.front().caution == 2 );
+            CHECK( suspended_camp.intelligence_map.robbery_places.front().suspended_by_caution );
+            REQUIRE( advance_structural_bounty_maintenance( dispatched, observed + 121, 0, 0,
+                     {}, {}, {}, {}, {}, {}, reads, {}, route ).response_operations_applied == 1 );
+            CHECK( dispatch_camp.active_hostile_operation.reservation.target_id == target_id );
+            CHECK( dispatch_camp.active_hostile_operation.reservation.target_omt == target );
+            CHECK( dispatch_camp.intelligence_map.robbery_places.front().caution == 1 );
+            CHECK( dispatch_camp.intelligence_map.robbery_places.front().failed_operation_id ==
+                   memory.failed_operation_id );
+        }
+        const std::string failed_operation = memory.failed_operation_id;
+        reopening = round_trip_world( reopening );
+        const auto &reloaded = reopening.sites.front().intelligence_map.robbery_places.front();
+        CHECK( reloaded.failed_operation_id == failed_operation );
+        CHECK( reloaded.failed_party_power == selected.party_power - 1 );
+        REQUIRE( reloaded.failed_physical_evidence );
+        CHECK( reloaded.failed_physical_evidence->report_key ==
+               reloaded.original_physical_evidence->report_key );
+    }
 }
 
 TEST_CASE( "human raid activation follows actual living split members",

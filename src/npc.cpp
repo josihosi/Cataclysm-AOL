@@ -5093,11 +5093,15 @@ void npc::on_load( map *here )
     }
     effect_on_conditions::load_existing_character( *this );
 
-    // Migrate legacy camp assignees from GUARD_ALLY to CAMP_RESIDENT.
+    // Old camp assignees used GUARD_ALLY for ordinary camp duties.  An
+    // explicit guard order at a camp uses the same mission, but assign_guard
+    // records its distinct dialogue topic (also while an activity interrupts
+    // the order).  Do not erase that current order on every load.
+    const bool explicit_camp_guard = chatbin.first_topic == "TALK_FRIEND_GUARD_CAMP";
     const bool migrate_current =
-        mission == NPC_MISSION_GUARD_ALLY && assigned_camp;
+        mission == NPC_MISSION_GUARD_ALLY && assigned_camp && !explicit_camp_guard;
     const bool migrate_previous =
-        previous_mission == NPC_MISSION_GUARD_ALLY && assigned_camp;
+        previous_mission == NPC_MISSION_GUARD_ALLY && assigned_camp && !explicit_camp_guard;
     if( migrate_current || migrate_previous ) {
         if( migrate_current ) {
             mission = NPC_MISSION_CAMP_RESIDENT;
