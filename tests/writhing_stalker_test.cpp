@@ -4854,6 +4854,9 @@ TEST_CASE( "stalker_distant_light_short_step_survives_transfer_then_expires_with
     if( reload ) {
         *local = round_trip_writhing_stalker( *local );
     }
+    CHECK( local->writhing_stalker_state().light_observed_turn == 1000 );
+    CHECK( local->writhing_stalker_state().light_expires_turn == 1030 );
+    CHECK( local->writhing_stalker_state().light_sample_id == "transferred-light-step" );
     const auto position = local->pos_abs();
     const auto expiry = local->writhing_stalker_state().light_expires_turn;
     set_time( calendar::turn_zero + time_duration::from_turns( expiry ) );
