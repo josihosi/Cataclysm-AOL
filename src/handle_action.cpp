@@ -1,5 +1,6 @@
 #include "game.h"
 #include "harness_creature_debug.h" // IWYU pragma: associated
+#include "harness_light_fixture.h"
 #include "json.h"
 
 #include <algorithm>
@@ -223,7 +224,7 @@ static std::optional<tripoint_bub_ms> openclaw_harness_fixture_lamp_probe_positi
     const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
     if( scenario == nullptr ||
         ( std::string( scenario ) != "writhing_stalker.live_light_continuity_mcw" &&
-          std::string( scenario ) != "zombie_rider.live_light_memory_continuity_mcw" ) ) {
+          !harness_rider_light_fixture( scenario ) ) ) {
         return std::nullopt;
     }
     const map &here = get_map();
@@ -252,8 +253,7 @@ static std::optional<tripoint_bub_ms> openclaw_harness_fixture_lamp_position(
         return std::nullopt;
     }
     const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
-    if( scenario != nullptr && std::string( scenario ) ==
-        "zombie_rider.live_light_memory_continuity_mcw" ) {
+    if( harness_rider_light_fixture( scenario ) ) {
         const map &here = get_map();
         if( here.furn( *found ).obj().id != furn_str_id( "f_caol_powered_exposed_lamp" ) &&
             here.ter( *found )->id != ter_str_id( "t_utility_light" ) ) {
@@ -1201,8 +1201,7 @@ static std::string openclaw_harness_diagnostic_active_monsters()
 static std::string openclaw_harness_diagnostic_zombie_rider_light_memory()
 {
     const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
-    if( scenario == nullptr || std::string( scenario ) !=
-        "zombie_rider.live_light_memory_continuity_mcw" ) {
+    if( !harness_rider_light_fixture( scenario ) ) {
         return "{\"schema\":\"caol-zombie-rider-light-memory-v1\",\"available\":false}";
     }
 
@@ -6013,9 +6012,7 @@ bool game::handle_action()
                         if( !semantic_fixture_lamp_position.has_value() ) {
                             return semantic_action_dispatch_result{ false, "fixture_lamp_unavailable", "" };
                         }
-                        if( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) != nullptr &&
-                            std::string( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ==
-                            "zombie_rider.live_light_memory_continuity_mcw" ) {
+                        if( harness_rider_light_fixture( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ) {
                             if( !openclaw_harness_turn_off_rider_fixture_lamp(
                                     *semantic_fixture_lamp_position ) ) {
                                 return semantic_action_dispatch_result{ false, "fixture_lamp_noop", "" };
@@ -6030,9 +6027,7 @@ bool game::handle_action()
                         if( !semantic_fixture_lamp_position.has_value() ) {
                             return semantic_action_dispatch_result{ false, "fixture_lamp_unavailable", "" };
                         }
-                        if( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) != nullptr &&
-                            std::string( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ==
-                            "zombie_rider.live_light_memory_continuity_mcw" ) {
+                        if( harness_rider_light_fixture( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ) {
                             if( !openclaw_harness_turn_off_rider_fixture_lamp(
                                     *semantic_fixture_lamp_position ) ) {
                                 return semantic_action_dispatch_result{ false, "fixture_lamp_noop", "" };

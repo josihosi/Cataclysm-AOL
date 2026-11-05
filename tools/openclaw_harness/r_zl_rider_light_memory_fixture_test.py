@@ -18,6 +18,18 @@ import startup_harness  # noqa: E402
 
 
 class RzlRiderLightMemoryFixtureTest(unittest.TestCase):
+    def test_isolated_variant_preserves_fixture_and_contract(self):
+        canonical = json.loads(SCENARIO.read_text())
+        variant = json.loads((ROOT / "scenarios/zombie_rider.live_light_memory_continuity_isolated_mcw.json").read_text())
+        self.assertNotEqual(variant["profile"], canonical["profile"])
+        self.assertEqual(variant["runtime_contract"]["profile"], variant["profile"])
+        self.assertEqual(variant["runtime_contract"]["requirements"]["profile"], variant["profile"])
+        variant["name"] = canonical["name"]
+        variant["profile"] = canonical["profile"]
+        variant["runtime_contract"]["profile"] = canonical["runtime_contract"]["profile"]
+        variant["runtime_contract"]["requirements"]["profile"] = canonical["runtime_contract"]["requirements"]["profile"]
+        self.assertEqual(variant, canonical)
+
     def test_fixture_uses_powered_terrain_and_forbids_disconnected_appliance(self):
         manifest = json.loads(FIXTURE.read_text())
         furniture = next(t for t in manifest["save_transforms"] if t["kind"] == "map_furniture_near_player")

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "cata_catch.h"
+#include "harness_light_fixture.h"
 #include "cached_options.h"
 #include "calendar.h"
 #include "avatar.h"
@@ -122,6 +123,16 @@ void assign_test_environment( const std::string &name, const std::optional<std::
     }
 }
 } // namespace
+
+TEST_CASE( "rider lamp fixture control admits only declared rider fixtures", "[semantic][fixture_lamp]" )
+{
+    CHECK( harness_rider_light_fixture( "zombie_rider.live_light_memory_continuity_mcw" ) );
+    CHECK( harness_rider_light_fixture( "zombie_rider.live_light_memory_continuity_isolated_mcw" ) );
+    CHECK_FALSE( harness_rider_light_fixture( nullptr ) );
+    CHECK_FALSE( harness_rider_light_fixture( "" ) );
+    CHECK_FALSE( harness_rider_light_fixture( "zombie_rider.live_light_memory_continuity_mcw.other" ) );
+    CHECK_FALSE( harness_rider_light_fixture( "writhing_stalker.live_light_continuity_mcw" ) );
+}
 
 TEST_CASE( "semantic test environment assignment keeps native empty-value behavior and restores on unwind",
            "[semantic_surface][environment_portability_067]" )
