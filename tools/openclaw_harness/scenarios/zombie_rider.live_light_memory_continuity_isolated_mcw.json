@@ -184,7 +184,7 @@
       "observation_interval_seconds": 0.1
     }
   ],
-  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_light_memory_continuity_mcw",
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_light_memory_continuity_isolated_mcw",
   "evidence_contract": {
     "claim": "one source-bound native rider samples an exposed physical lamp, acts through its owning source-keyed light memory, stops refreshing after native source loss and expires that memory",
     "setup_guard": "fixture setup earns no behavior credit",

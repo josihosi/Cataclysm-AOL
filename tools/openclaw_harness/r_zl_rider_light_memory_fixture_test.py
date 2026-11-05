@@ -24,6 +24,8 @@ class RzlRiderLightMemoryFixtureTest(unittest.TestCase):
         self.assertNotEqual(variant["profile"], canonical["profile"])
         self.assertEqual(variant["runtime_contract"]["profile"], variant["profile"])
         self.assertEqual(variant["runtime_contract"]["requirements"]["profile"], variant["profile"])
+        self.assertEqual(variant["recommended_test_command"].split()[-1], variant["name"])
+        variant["recommended_test_command"] = canonical["recommended_test_command"]
         variant["name"] = canonical["name"]
         variant["profile"] = canonical["profile"]
         variant["runtime_contract"]["profile"] = canonical["runtime_contract"]["profile"]
