@@ -4637,6 +4637,50 @@ TEST_CASE( "stalker_distant_light_uses_reachable_native_steps_before_finite_arri
     clear_map_without_vision();
 }
 
+TEST_CASE( "stalker_replans_a_self_waypoint_toward_a_reachable_lamp",
+           "[writhing_stalker][predator][light_transition][routing][native_regression]" )
+{
+    clear_map_and_put_player_underground();
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( calendar::turn_zero + 1000_turns );
+    map &here = get_map();
+    const tripoint_bub_ms start( 65, 65, 0 );
+    prepare_writhing_stalker_arena( here, start );
+    get_player_character().setpos( here, tripoint_bub_ms( 65, 65, -2 ) );
+    const auto lamp = start + point::east * 4;
+    here.furn_set( lamp, furn_str_id( "f_exodii_lamp" ) );
+    refresh_writhing_stalker_arena( here );
+    monster &stalker = spawn_new_stalker_fixture( start );
+    stalker.anger = 100;
+    REQUIRE( stalker.can_move_to( lamp ) );
+    INFO( "target cost=" << here.move_cost( lamp ) << " maxdist=" <<
+          stalker.get_pathfinding_settings().max_dist << " maxlength=" <<
+          stalker.get_pathfinding_settings().max_length );
+    const auto lamp_route = here.route( stalker, pathfinding_target::point( lamp ) );
+    here.furn_clear( lamp );
+    refresh_writhing_stalker_arena( here );
+    const auto clear_route = here.route( stalker, pathfinding_target::point( lamp ) );
+    INFO( "lamp route=" << lamp_route.size() << " clear route=" << clear_route.size() );
+    REQUIRE_FALSE( clear_route.empty() );
+    here.furn_set( lamp, furn_str_id( "f_exodii_lamp" ) );
+    refresh_writhing_stalker_arena( here );
+    REQUIRE_FALSE( here.route( stalker, pathfinding_target::point( lamp ) ).empty() );
+    auto &state = stalker.writhing_stalker_state();
+    state.advance_to( 1000 );
+    REQUIRE( state.observe_light_interest( here.get_abs( lamp ), "lamp-control", 1000, 186 ) );
+    // Reproduce the retained native state without claiming this controlled map
+    // reconstructs its dynamic occupancy or the path that led to the state.
+    state.committed_waypoint = stalker.pos_abs();
+    state.has_committed_waypoint = true;
+    state.remaining_route_progress = 4;
+    state.last_progress_turn = 997;
+    stalker.plan();
+    REQUIRE( stalker.has_dest() );
+    CHECK( stalker.get_dest() != stalker.pos_abs() );
+    CHECK( rl_dist( stalker.get_dest(), here.get_abs( lamp ) ) < 4 );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "stalker_due_or_started_familiar_visit_preserves_accepted_sound_then_finishes",
            "[writhing_stalker][predator][pursuit][scheduler][signal]" )
 {

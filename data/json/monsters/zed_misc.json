@@ -516,7 +516,7 @@
     "vision_day": 35,
     "vision_night": 12,
     "grab_strength": 5,
-    "path_settings": { "max_dist": 10, "avoid_traps": true, "avoid_sharp": true },
+    "path_settings": { "max_dist": 10, "max_length": 50, "avoid_traps": true, "avoid_sharp": true },
     "special_attacks": [
       { "id": "scratch", "cooldown": 6, "damage_max_instance": [ { "damage_type": "cut", "amount": 12 } ] },
       {

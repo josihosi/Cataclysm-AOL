@@ -22,6 +22,9 @@ class monster;
 class npc;
 class openclaw_harness_turn_trace;
 
+int signal_live_zombie_riders_from_light_observations_for_test(
+    const std::vector<live_bandit_signal_observation> &signals );
+
 // Existing bounded diagnostic row, shared only to measure actual native owners.
 // WALL scopes/call counts are inert without an active run-bound diagnostic row.
 // Scopes are synchronous children of that row; they must not outlive its turn.

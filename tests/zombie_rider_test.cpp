@@ -25,6 +25,7 @@
 #include "json.h"
 #include "json_loader.h"
 #include "item.h"
+#include "live_light.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
@@ -67,6 +68,7 @@ static const damage_type_id damage_bash( "bash" );
 static const vproto_id vehicle_prototype_none( "none" );
 static const vproto_id vehicle_prototype_test_shopping_cart( "test_shopping_cart" );
 static const std::string zombie_rider_bone_bow_shot( "zombie_rider_bone_bow_shot" );
+
 
 static void refresh_pathing_cache( map &here )
 {
@@ -1703,6 +1705,67 @@ TEST_CASE( "zombie_rider_shot_ammo_survives_unload_reload_and_repeated_serializa
     monster empty = round_trip_zombie_rider( repeated );
     CHECK( empty.ammo[zombie_rider_tainted_bone_arrow] == 0 );
     clear_map_without_vision();
+}
+
+TEST_CASE( "live_unbanded_rider_receives_one_light_investigation",
+           "[zombie_rider][native][light][unbanded_regression]" )
+{
+    restore_on_out_of_scope restore_time( calendar::turn );
+    restore_on_out_of_scope restore_bands( overmap_buffer.global_state.zombie_rider_bands );
+    restore_on_out_of_scope restore_activity( overmap_buffer.global_state.predator_activity );
+    restore_on_out_of_scope restore_memory( overmap_buffer.global_state.zombie_rider_light_memory );
+    restore_on_out_of_scope restore_memory_turn( overmap_buffer.global_state.zombie_rider_light_memory_last_turn );
+    clear_map_without_vision();
+    on_out_of_scope cleanup( [] { clear_map_without_vision(); } );
+    set_time( calendar::turn_zero + 80000000_turns );
+    map &here = get_map();
+    const tripoint_bub_ms center( 65, 65, 0 );
+    prepare_zombie_rider_local_arena( here, center );
+    get_avatar().setpos( here, tripoint_bub_ms( center.xy(), -2 ) );
+    overmap_buffer.global_state.zombie_rider_bands.clear();
+    overmap_buffer.global_state.zombie_rider_light_memory.clear();
+    monster &rider = spawn_new_local_rider_fixture( center + point::east * 4 );
+    REQUIRE( overmap_buffer.predator_activity_for( rider, predator_activation::representation::local,
+             rider.pos_abs() ) );
+    REQUIRE( overmap_buffer.global_state.zombie_rider_bands.living_members(
+                 rider.predator_state().actor_id ) == 0 );
+    REQUIRE_FALSE( zombie_rider_overmap_ai::get_camp_pressure_intent( rider ) );
+
+    bandit_mark_generation::light_packet packet;
+    packet.id = "unbanded-lamp";
+    packet.envelope_id = "unbanded-lamp-envelope";
+    packet.region_id = "unbanded-lamp-region";
+    packet.observed_range_omt = 8;
+    packet.source_strength = 4;
+    packet.persistence = 3;
+    packet.time = bandit_mark_generation::light_time_band::night;
+    packet.weather = bandit_mark_generation::light_weather_band::clear;
+    packet.exposure = bandit_mark_generation::light_exposure_band::exposed;
+    packet.source = bandit_mark_generation::light_source_band::ordinary;
+    packet.terrain = bandit_mark_generation::light_terrain_band::open;
+    live_bandit_signal_observation signal;
+    signal.light_projection = bandit_mark_generation::adapt_light_packet( packet );
+    signal.has_light_projection = true;
+    signal.horde_signal_power = bandit_mark_generation::horde_signal_power_from_light_projection(
+                                    signal.light_projection );
+    REQUIRE( signal.light_projection.viable );
+    REQUIRE( signal.horde_signal_power > 0 );
+    signal.source_ms = here.get_abs( center );
+    signal.source_omt = project_to<coords::omt>( *signal.source_ms );
+    signal.sample_id = "unbanded-lamp#80000000";
+    signal.observed_turn = to_turn<int>( calendar::turn );
+    CHECK( signal_live_zombie_riders_from_light_observations_for_test( {} ) == 0 );
+    REQUIRE( signal_live_zombie_riders_from_light_observations_for_test( { signal } ) == 1 );
+    const auto intent = zombie_rider_overmap_ai::get_camp_pressure_intent( rider );
+    REQUIRE( intent );
+    CHECK( intent->posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::investigate );
+    CHECK( intent->source == *signal.source_ms );
+    CHECK( intent->sample_id == signal.sample_id );
+    CHECK( overmap_buffer.global_state.zombie_rider_bands.living_members(
+               rider.predator_state().actor_id ) == 0 );
+    CHECK( signal_live_zombie_riders_from_light_observations_for_test( { signal } ) == 0 );
+    CHECK( zombie_rider_overmap_ai::get_camp_pressure_intent( rider )->observed_world ==
+           signal.observed_turn );
 }
 
 TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",

@@ -13155,7 +13155,10 @@ live_zombie_rider_pressure_summary command_live_zombie_riders_to_light(
         pressure_input.light_memory_active = true;
         const int durable_band_members = overmap_buffer.global_state.zombie_rider_bands.living_members(
                                              rider_id );
-        pressure_input.rider_count = durable_band_members;
+        // The selected local rider is already authenticated and alive.  A
+        // solitary rider need not have a durable band entry until a real
+        // encounter, but still counts itself when deciding how to investigate.
+        pressure_input.rider_count = std::max( 1, durable_band_members );
         pressure_input.band_formed = durable_band_members >=
                                      zombie_rider_overmap_ai::rider_band_minimum_size;
         pressure_input.breach_or_opening = actionable_opening;
@@ -16026,6 +16029,12 @@ live_bandit_elevated_recovery_orders recover_live_bandit_local_elevated_watches(
 }
 
 } // namespace
+
+int signal_live_zombie_riders_from_light_observations_for_test(
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    return signal_live_zombie_riders_from_light_observations( signals );
+}
 
 std::optional<bool> live_light::tended_fire_conspicuous( const tripoint_abs_ms &source )
 {
