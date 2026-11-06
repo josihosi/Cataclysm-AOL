@@ -23,6 +23,17 @@ def sample(t, cpu, identity="start-a"):
 
 
 class PerformanceTest(unittest.TestCase):
+    def test_reduced_interval_evidence_discloses_original_scope(self):
+        from evidence_events import envelopes
+        source = {"producer": "native_semantic_events", "sha256": "a" * 64, "offset": 0}
+        packet = {"event": "raid_performance_interval", "run_id": "run-a",
+                  "retention_scope": "max_simulation_row_only", "original_row_count": 3000,
+                  "rows": [{"turn": 5271300, "simulation_seconds": 3.047}]}
+        interval = next(envelopes(packet, source))["interval"]
+        self.assertEqual(interval, {"first_turn": 5271300, "last_turn": 5271300,
+                                   "row_count": 1, "retention_scope": "max_simulation_row_only",
+                                   "original_row_count": 3000})
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -111,6 +122,49 @@ class PerformanceTest(unittest.TestCase):
         path.write_bytes(b"rotated\n")
         self.assertEqual(base64.b64decode(recover(handle["retained_raw"]["sha256"], self.evidence_store)["raw_base64"]), raw)
         self.assertEqual(perf.collect_turn_assessment(self.directory, "foreign")["status"], "unavailable")
+
+    def test_explicit_max_retains_only_selected_turn_and_survives_rotation(self):
+        import base64
+        from evidence_display import recover
+        self.recorder([sample(1, 0)])
+        start = self.turn_event(1, "start", sequence=1)
+        phase = {**self.turn_event(1, "begin", sequence=2, phase="input"), "event": "turn_phase"}
+        end = self.turn_event(1, "end", sequence=3, duration=2.5)
+        self.append_trace(start, phase, end, self.turn_event(2, "start", sequence=4),
+                          self.turn_event(2, "end", sequence=5, duration=.02))
+        unselected = perf.collect_turn_assessment(self.directory, "binding-a")
+        self.assertNotIn("selected_max_turn", unselected)
+        self.assertFalse(self.evidence_store.exists())
+        selected = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)
+        handle = selected["selected_max_turn"]
+        self.assertEqual(handle["status"], "retained")
+        self.assertEqual(handle["game_turn"], 101)
+        artifact = recover(handle["evidence"]["sha256"], self.evidence_store)
+        self.assertEqual(len(artifact["records"]), 3)
+        raw = [base64.b64decode(item["raw_base64"]) for item in artifact["records"]]
+        self.assertEqual([json.loads(item[len(perf.TURN_TRACE_PREFIX):])["stage"] for item in raw],
+                         ["start", "begin", "end"])
+        path = self.directory / "semantic.native.events.jsonl"
+        path.write_bytes(b"rotated\n")
+        self.assertEqual(recover(handle["evidence"]["sha256"], self.evidence_store), artifact)
+        # An old selected handle cannot be silently substituted after rotation.
+        missing = perf.retain_selected_max_turn(self.directory, unselected["owner"], artifact["measurement"])
+        self.assertEqual(missing["status"], "unavailable")
+
+    def test_public_performance_explicit_max_selection(self):
+        from types import SimpleNamespace
+        from play_cli import PlayerClient
+        self.recorder([sample(1, 0)])
+        perf.write_json(self.directory / "bridge.manifest.json", {"binding_id": "binding-a"})
+        perf.write_json(self.directory / "status.json", {"binding_id": "binding-a", "state": "ready",
+                        "session_descriptor": {"run_id": "run-a"}})
+        self.append_trace(self.turn_event(1, "start", sequence=1),
+                          self.turn_event(1, "end", sequence=2, duration=1.7))
+        args = SimpleNamespace(sample_seconds=None, retain_max=True, offset=None, limit=5,
+                               baseline=None, save_baseline=None, tag="")
+        result = PlayerClient(self.directory).performance(args)
+        self.assertEqual(result["turn_assessment"]["selected_max_turn"]["status"], "retained")
+        self.assertEqual(result["turn_assessment"]["selected_max_turn"]["game_turn"], 101)
 
     def test_selected_packet_failure_does_not_advance_and_foreign_packet_refused(self):
         self.recorder([sample(1, 0)])

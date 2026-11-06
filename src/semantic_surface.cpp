@@ -87,6 +87,10 @@ class native_semantic_journal
                 return false;
             }
             const std::string kind = read_string( "event" );
+            const bool reduced_performance_interval = format == native_record_format::diagnostic &&
+                    kind == "raid_performance_interval" &&
+                    read_string( "retention_scope" ) == "max_simulation_row_only" &&
+                    event.size() <= 512 * 1024;
             // Read every field used by this semantic retention branch before
             // changing sequence, pins or trip state. A type refusal cannot
             // become publishable authority on a later compaction retry.
@@ -116,6 +120,12 @@ class native_semantic_journal
             const std::string prefix = format == native_record_format::semantic ?
                                        "openclaw_harness_semantic_step: " : "";
             auto row = std::make_shared<const record>( record { ++sequence, prefix + event + '\n' } );
+            // Keep at most one explicitly reduced interval through journal
+            // compaction. It has diagnostic status and cannot become input
+            // authority. A later reduced interval replaces it.
+            if( reduced_performance_interval ) {
+                pins["performance_reduced"] = row;
+            }
             // Diagnostic callers share retention, never semantic framing or
             // current input pins, even if their event names resemble authority.
             if( format == native_record_format::semantic ) {

@@ -3913,11 +3913,16 @@ void overmapbuffer::spawn_monster( const tripoint_abs_sm &p, bool spawn_nonlocal
                 g->has_loaded_handoff_actor( handoff->monster_data->handoff_actor_id() ) ) {
                 DebugLog( D_WARNING, D_GAME ) << "Refused duplicate local actor ownership.";
             } else {
+                const shared_ptr_fast<monster> occupant = get_creature_tracker().find( entry.pos );
+                // Forced placement keeps saved terrain behavior, but a real local
+                // occupant cannot share its tracker slot. Search nearby instead;
+                // if no tile is available the exact abstract node is reinserted.
+                const bool force_center = !occupant || occupant->is_hallucination();
                 placed = handoff->monster_data->has_handoff_identity() ?
                          g->place_critter_at( make_shared_fast<monster>( *handoff->monster_data ),
                                               local ) :
                          g->place_critter_around( make_shared_fast<monster>( *handoff->monster_data ),
-                                                  local, 1, true );
+                                                  local, 1, force_center );
             }
             // TODO: make sure entity data such as destination is synched
         } else {

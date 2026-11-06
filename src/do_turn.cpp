@@ -3,6 +3,12 @@
 #if defined(EMSCRIPTEN)
 #include <emscripten.h>
 #endif
+#if defined(__APPLE__)
+#include <libproc.h>
+#include <mach/mach_time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -293,6 +299,9 @@ struct raid_perf_row {
     double cpu_seconds = 0;
     double input_seconds = 0;
     double save_seconds = 0;
+#if defined(__APPLE__)
+    std::optional<std::array<std::uint64_t, 6>> process_resource_delta;
+#endif
     debug_sink_statistics sink;
     std::array<double, raid_perf_stage_count> stages{};
     std::array<std::size_t, raid_perf_stage_count> stage_calls{};
@@ -386,7 +395,7 @@ void raid_perf_note_query( raid_perf_query_event event )
     }
 }
 
-static void raid_perf_flush_after_wait()
+static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max = std::nullopt )
 {
     if( raid_perf_rows.empty() || raid_perf_wait_generation() != 0 ) {
         return;
@@ -397,6 +406,10 @@ static void raid_perf_flush_after_wait()
     js.member( "event", "raid_performance_interval" );
     js.member( "mode", raid_perf_mode );
     js.member( "run_id", std::string( std::getenv( "OPENCLAW_HARNESS_RUN_ID" ) ) );
+    if( selected_max ) {
+        js.member( "retention_scope", "max_simulation_row_only" );
+        js.member( "original_row_count", raid_perf_rows.size() );
+    }
     js.member( "stage_scope",
                "WALL durations: signal_total includes discovery and horde delivery; overmap_npcs includes npc_site_bootstrap, npc_signal_copy and npc_channel_audit; watch_preflight includes disjoint watch_optical_read and watch_record_view children; Mi-go service navigation children split local/abstract physical owners; migo_local_plan and migo_local_move cover full native monster plan/move calls with an existing Mi-go intent, including pre-hook targeting; migo_plan_native_targeting and migo_plan_species_hook are disjoint children of that plan, with migo_plan_hostile_recognition nested inside the species hook; migo_local_plan and migo_local_move are disjoint local creature children containing authenticated migo_local_prepare_navigation; migo_abstract_prepare_navigation measures the abstract transport prepare_step route child; physical_navigation_read includes early returns and locally owned remote-view destruction; retained service-workspace destruction belongs to the inclusive migo_operations parent, not each read. Read contains disjoint physical_navigation_view_build and physical_navigation_native_route children; view_build is construction only, native_route includes callbacks and caches, not pure A-star CPU; direct arrival checks may have no service/prepare parent; do not add nested stages" );
     js.member( "scout_scope",
@@ -407,6 +420,10 @@ static void raid_perf_flush_after_wait()
                "Actual preflight/read/record_view calls; eligible record_view calls are not confirmed writes; cached views sum each preflight's retained geometry/lighting views, including failed lighting, not per-read allocations or unique world cells" );
     js.member( "debug_sink_scope",
                "logical file-sink bytes/flushes over the whole turn including input/save; not physical disk bytes" );
+    js.member( "turn_partition_scope",
+               "WALL simulation partitions, excluding the same native input and save intervals as simulation_seconds. Setup ends after population; activity_prep ends before the input loop; input_loop ends after that loop; world_tail ends at turn exit. Its disjoint children tail_prepare end after vehicle movement, tail_world_work ends after overmap NPC processing, and tail_finish ends at turn exit. Existing stages may nest inside partitions; process CPU is whole-turn only, not partition CPU. No extra events." );
+    js.member( "signal_callback_scope",
+               "WALL actual synchronous signal callbacks: rider_maintenance combines reconciliation and memory aging; stalkers, riders, cannibals and migo time their named delivery callbacks. All nest in signal_total; packet preparation and remaining work are not partitioned. Process CPU is whole-turn only. No additional discovery or delivery." );
     js.member( "nav_view_scope",
                "WALL: view_build includes nav_view_lookup and disjoint nav_view_level_setup outside lookup; lookup includes nav_view_miss_load, not pure disk time. LEVEL setup includes pool bookkeeping/clear or fresh allocation/construction/clear. The remaining constructor time groups base map, unknown SoA and binding work. Counts are actual branch observations, not distinct queries or physical I/O; missing_quad means an absent compressed archive entry; plain read failures are not classified by an extra stat. Archive open attempts are existing file-map calls including retries. LEVEL work inside lookup stays in lookup and is counted separately. Do not add nested stages." );
     js.member( "nav_query_scope",
@@ -427,11 +444,19 @@ static void raid_perf_flush_after_wait()
         "migo_plan_native_targeting", "migo_plan_species_hook", "migo_plan_hostile_recognition",
         "scout_actor_read", "scout_view_build", "scout_view_cache", "scout_light_read",
         "scout_light_dependencies", "scout_light_native", "scout_actor_predicate", "scout_reader_retire",
-        "creature_monsters", "creature_npc_preparation", "creature_npc_actions"
+        "creature_monsters", "creature_npc_preparation", "creature_npc_actions",
+        "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
+        "tail_prepare", "tail_world_work", "tail_finish",
+        "signal_rider_maintenance", "signal_stalkers", "signal_riders",
+        "signal_cannibals", "signal_migo"
     } );
     js.member( "rows" );
     js.start_array();
-    for( const raid_perf_row &row : raid_perf_rows ) {
+    for( std::size_t row_index = 0; row_index < raid_perf_rows.size(); ++row_index ) {
+        if( selected_max && row_index != *selected_max ) {
+            continue;
+        }
+        const raid_perf_row &row = raid_perf_rows[row_index];
         js.start_object();
         js.member( "turn", row.turn );
         js.member( "wait_begin", row.wait_begin );
@@ -444,6 +469,34 @@ static void raid_perf_flush_after_wait()
         js.member( "process_cpu_seconds", row.cpu_seconds );
         js.member( "input_seconds", row.input_seconds );
         js.member( "save_seconds", row.save_seconds );
+#if defined(__APPLE__)
+        if( row.process_resource_delta ) {
+            // These are whole-process, whole-turn counters: input and save
+            // are included, and I/O byte counts do not measure blocking time.
+            js.member( "process_resource_delta" );
+            js.start_object();
+            js.member( "pageins", ( *row.process_resource_delta )[0] );
+            js.member( "disk_read_bytes", ( *row.process_resource_delta )[1] );
+            js.member( "disk_write_bytes", ( *row.process_resource_delta )[2] );
+            // Darwin reports these task-wide values in Mach absolute ticks.
+            // They include all threads and the input/save portion of the turn.
+            js.member( "user_ticks", ( *row.process_resource_delta )[3] );
+            js.member( "system_ticks", ( *row.process_resource_delta )[4] );
+            js.member( "runnable_ticks", ( *row.process_resource_delta )[5] );
+            static const mach_timebase_info_data_t timebase = []() {
+                mach_timebase_info_data_t value{};
+                if( mach_timebase_info( &value ) != KERN_SUCCESS ) {
+                    value = {};
+                }
+                return value;
+            }();
+            if( timebase.denom != 0 ) {
+                js.member( "timebase_numer", timebase.numer );
+                js.member( "timebase_denom", timebase.denom );
+            }
+            js.end_object();
+        }
+#endif
         js.member( "debug_log_bytes", row.sink.bytes );
         js.member( "debug_log_flushes", row.sink.flushes );
         js.member( "debug_log_replacements", row.sink.replacements );
@@ -515,7 +568,20 @@ static void raid_perf_flush_after_wait()
     }
     js.end_array();
     js.end_object();
-    write_native_diagnostic_event( stream.str() );
+    const std::string packet = stream.str();
+    // The journal's recent-diagnostic allowance is 4 MiB. An individual
+    // oversized interval would otherwise be evicted before a collector can
+    // observe it. Keep its actual slowest simulation row, clearly marked as
+    // reduced scope; no extra threshold or reconstructed timing is involved.
+    if( !selected_max && packet.size() >= 4 * 1024 * 1024 ) {
+        const auto slowest = std::max_element( raid_perf_rows.begin(), raid_perf_rows.end(),
+        []( const raid_perf_row &lhs, const raid_perf_row &rhs ) {
+            return lhs.simulation_seconds < rhs.simulation_seconds;
+        } );
+        raid_perf_flush_after_wait( static_cast<std::size_t>( slowest - raid_perf_rows.begin() ) );
+        return;
+    }
+    write_native_diagnostic_event( packet );
     raid_perf_rows.clear();
     // A scan in the currently open row has not been emitted with these older
     // completed rows. It already owns the first-scan slot of the next batch.
@@ -540,6 +606,16 @@ class openclaw_harness_turn_trace
                     raid_perf_current = &diagnostic_;
                     cpu_started_ = std::clock();
                     sink_started_ = get_debug_sink_statistics();
+#if defined(__APPLE__)
+                    const char *const resource_option = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+                    if( resource_option && resource_option[0] != '\0' && resource_option[0] != '0' ) {
+                        rusage_info_v4 resource{};
+                        if( proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                                             reinterpret_cast<rusage_info_t *>( &resource ) ) == 0 ) {
+                            resource_started_ = resource;
+                        }
+                    }
+#endif
                 }
                 static std::uint64_t next_turn_id = 0;
                 turn_id_ = std::to_string( ++next_turn_id );
@@ -562,6 +638,8 @@ class openclaw_harness_turn_trace
                 const double simulation = std::max( 0.0, elapsed - outside_simulation_seconds_ -
                                                    open_outside_simulation );
                 if( raid_perf_current == &diagnostic_ ) {
+                    finish_partition( simulation );
+                    finish_tail_partition( simulation );
                     diagnostic_.simulation_seconds = simulation;
                     if( outside_simulation_phase_ == "input" ) {
                         diagnostic_.input_seconds += open_outside_simulation;
@@ -580,6 +658,29 @@ class openclaw_harness_turn_trace
                                          sink_end.flushes - sink_started_.flushes,
                                          sink_end.replacements - sink_started_.replacements,
                                          sink_end.replacement_nanoseconds - sink_started_.replacement_nanoseconds };
+#if defined(__APPLE__)
+                    if( resource_started_ ) {
+                        rusage_info_v4 resource{};
+                        if( proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                                             reinterpret_cast<rusage_info_t *>( &resource ) ) == 0 &&
+                            resource.ri_proc_start_abstime == resource_started_->ri_proc_start_abstime &&
+                            resource.ri_pageins >= resource_started_->ri_pageins &&
+                            resource.ri_diskio_bytesread >= resource_started_->ri_diskio_bytesread &&
+                            resource.ri_diskio_byteswritten >= resource_started_->ri_diskio_byteswritten &&
+                            resource.ri_user_time >= resource_started_->ri_user_time &&
+                            resource.ri_system_time >= resource_started_->ri_system_time &&
+                            resource.ri_runnable_time >= resource_started_->ri_runnable_time ) {
+                            diagnostic_.process_resource_delta = std::array<std::uint64_t, 6> {
+                                resource.ri_pageins - resource_started_->ri_pageins,
+                                resource.ri_diskio_bytesread - resource_started_->ri_diskio_bytesread,
+                                resource.ri_diskio_byteswritten - resource_started_->ri_diskio_byteswritten,
+                                resource.ri_user_time - resource_started_->ri_user_time,
+                                resource.ri_system_time - resource_started_->ri_system_time,
+                                resource.ri_runnable_time - resource_started_->ri_runnable_time
+                            };
+                        }
+                    }
+#endif
                     raid_perf_rows.push_back( std::move( diagnostic_ ) );
                     raid_perf_current = nullptr;
                 }
@@ -606,6 +707,39 @@ class openclaw_harness_turn_trace
 
         void input_end() {
             phase_end( "input" );
+        }
+
+        // Boundaries are sampled only with the existing diagnostic enabled.
+        // They partition the same simulation wall interval as the turn row,
+        // without adding events, calls into the game, or per-stage CPU claims.
+        void next_partition( raid_perf_stage next ) {
+            if( raid_perf_current != &diagnostic_ ) {
+                return;
+            }
+            const double elapsed = std::chrono::duration<double>(
+                                       std::chrono::steady_clock::now() - started_ ).count();
+            const double open_outside = outside_simulation_started_ ?
+                                        std::chrono::duration<double>( std::chrono::steady_clock::now() -
+                                                *outside_simulation_started_ ).count() : 0.0;
+            finish_partition( std::max( 0.0, elapsed - outside_simulation_seconds_ - open_outside ) );
+            partition_ = next;
+            if( next == raid_perf_stage::turn_world_tail ) {
+                tail_partition_ = raid_perf_stage::tail_prepare;
+                tail_start_ = partition_start_;
+            }
+        }
+
+        void next_tail_partition( raid_perf_stage next ) {
+            if( raid_perf_current != &diagnostic_ || !tail_partition_ ) {
+                return;
+            }
+            const double elapsed = std::chrono::duration<double>(
+                                       std::chrono::steady_clock::now() - started_ ).count();
+            const double open_outside = outside_simulation_started_ ?
+                                        std::chrono::duration<double>( std::chrono::steady_clock::now() -
+                                                *outside_simulation_started_ ).count() : 0.0;
+            finish_tail_partition( std::max( 0.0, elapsed - outside_simulation_seconds_ - open_outside ) );
+            tail_partition_ = next;
         }
 
         void phase_begin( const char *phase ) {
@@ -645,6 +779,21 @@ class openclaw_harness_turn_trace
         }
 
     private:
+        void finish_partition( double simulation ) {
+            const std::size_t index = static_cast<std::size_t>( partition_ );
+            diagnostic_.stages[index] += std::max( 0.0, simulation - partition_start_ );
+            ++diagnostic_.stage_calls[index];
+            partition_start_ = simulation;
+        }
+        void finish_tail_partition( double simulation ) {
+            if( !tail_partition_ ) {
+                return;
+            }
+            const std::size_t index = static_cast<std::size_t>( *tail_partition_ );
+            diagnostic_.stages[index] += std::max( 0.0, simulation - tail_start_ );
+            ++diagnostic_.stage_calls[index];
+            tail_start_ = simulation;
+        }
         openclaw_harness_turn_trace *previous_trace_ = nullptr;
         bool enabled_ = false;
         int game_turn_ = 0;
@@ -659,6 +808,13 @@ class openclaw_harness_turn_trace
         std::optional<std::clock_t> outside_cpu_started_;
         double outside_cpu_seconds_ = 0.0;
         debug_sink_statistics sink_started_;
+#if defined(__APPLE__)
+        std::optional<rusage_info_v4> resource_started_;
+#endif
+        raid_perf_stage partition_ = raid_perf_stage::turn_setup;
+        double partition_start_ = 0.0;
+        std::optional<raid_perf_stage> tail_partition_;
+        double tail_start_ = 0.0;
 };
 
 openclaw_harness_native_input_scope::openclaw_harness_native_input_scope()
@@ -15178,9 +15334,11 @@ void sample_and_deliver_live_light_for_advancing_turn()
 {
     live_light::callbacks callbacks;
     callbacks.reconcile_riders = []() {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_rider_maintenance );
         overmap_buffer.reconcile_rider_band_encounters();
     };
     callbacks.age_rider_memory = []() {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_rider_maintenance );
         advance_zombie_rider_light_memories();
     };
     callbacks.discover = []() {
@@ -15195,15 +15353,19 @@ void sample_and_deliver_live_light_for_advancing_turn()
         attract_live_hordes_from_light_observations( samples );
     };
     callbacks.deliver_stalkers = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_stalkers );
         signal_live_writhing_stalkers_from_light_observations( samples );
     };
     callbacks.deliver_riders = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_riders );
         signal_live_zombie_riders_from_light_observations( samples );
     };
     callbacks.deliver_cannibals = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_cannibals );
         observe_live_hostile_signal_sources( samples );
     };
     callbacks.deliver_migo = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::signal_migo );
         const int now = to_turn<int>( calendar::turn );
         auto *observation = raid_perf_current && !raid_perf_receiver_captured ?
                             &raid_perf_current->receiver_scan : nullptr;
@@ -23710,6 +23872,7 @@ bool game::do_turn()
         raid_perf_scope diagnostic_scope( raid_perf_stage::population );
         migo_population::service_loaded();
     }
+    turn_trace.next_partition( raid_perf_stage::turn_activity_prep );
     if( calendar::once_every( time_duration::from_minutes( 2.5 ) ) ) {
         if( u.has_trait( trait_HAS_NEMESIS ) ) {
             overmap_buffer.move_nemesis();
@@ -23764,6 +23927,7 @@ bool game::do_turn()
     }
 
     // avatar processes human input through handle_action()
+    turn_trace.next_partition( raid_perf_stage::turn_input_loop );
     if( !u.has_effect( effect_sleep ) || uquit == QUIT_WATCH ) {
         if( u.get_moves() > 0 || uquit == QUIT_WATCH ) {
             while( u.get_moves() > 0 || uquit == QUIT_WATCH ) {
@@ -23866,6 +24030,7 @@ bool game::do_turn()
         }
     }
 
+    turn_trace.next_partition( raid_perf_stage::turn_world_tail );
     if( driving_view_offset.x() != 0 || driving_view_offset.y() != 0 ) {
         // Still have a view offset, but might not be driving anymore,
         // or the option has been deactivated,
@@ -23888,6 +24053,7 @@ bool game::do_turn()
 
     m.process_falling();
     m.vehmove();
+    turn_trace.next_tail_partition( raid_perf_stage::tail_world_work );
     {
         raid_perf_scope diagnostic_scope( raid_perf_stage::fields );
         m.process_fields();
@@ -23936,6 +24102,7 @@ bool game::do_turn()
     } else if( sounds::has_significant_sounds() ) {
         observe_live_bandit_sounds();
     }
+    turn_trace.next_tail_partition( raid_perf_stage::tail_finish );
     m.furniture_terrain_emit_fields();
     // required after monsters move and fields emit
     mon_info_update();

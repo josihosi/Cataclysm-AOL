@@ -42,7 +42,11 @@ enum class raid_perf_stage : std::size_t {
     migo_plan_native_targeting, migo_plan_species_hook, migo_plan_hostile_recognition,
     scout_actor_read, scout_view_build, scout_view_cache, scout_light_read,
     scout_light_dependencies, scout_light_native, scout_actor_predicate, scout_reader_retire,
-    creature_monsters, creature_npc_preparation, creature_npc_actions, count
+    creature_monsters, creature_npc_preparation, creature_npc_actions,
+    turn_setup, turn_activity_prep, turn_input_loop, turn_world_tail,
+    tail_prepare, tail_world_work, tail_finish,
+    signal_rider_maintenance, signal_stalkers, signal_riders,
+    signal_cannibals, signal_migo, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,

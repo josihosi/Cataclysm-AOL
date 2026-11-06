@@ -16,6 +16,7 @@
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
 #include "debug.h"
+#include "creature_tracker.h"
 #include "field_type.h"
 #include "field.h"
 #include "filesystem.h"
@@ -1339,4 +1340,74 @@ TEST_CASE( "migo_partial_legacy_generation_cannot_refill_residents_or_reconstruc
     REQUIRE( discover( anchor ) );
     CHECK( site->members.size() == 2 );
     CHECK( abstract_members( geometry->id, anchor ).size() == 2 );
+}
+
+TEST_CASE( "ordinary_colocated_horde_payloads_load_without_occupied_tracker_warning",
+           "[horde][handoff][collision]" )
+{
+    clear_map();
+    map &here = get_map();
+    const tripoint_bub_ms position( 65, 65, 0 );
+    const tripoint_abs_ms absolute = here.get_abs( position );
+    overmap &owner = overmap_buffer.get( project_to<coords::om>( absolute ).xy() );
+    const tripoint_om_ms local = project_remain<coords::om>( absolute ).remainder_tripoint;
+    for( const tripoint_bub_ms &p : here.points_in_radius( position, 1 ) ) {
+        here.ter_set( p, ter_str_id( "t_floor" ) );
+    }
+    monster first( mtype_id( "mon_zombie" ) );
+    monster second( mtype_id( "mon_zombie_fat" ) );
+    first.set_hp( 43 );
+    second.set_hp( 67 );
+    REQUIRE( owner.hordes.spawn_entity( absolute, first, true ) );
+    REQUIRE( owner.hordes.spawn_entity( absolute, second, true ) );
+    const std::string warning = capture_debugmsg_during( [&]() {
+        overmap_buffer.spawn_monster( project_to<coords::sm>( absolute ), false );
+    } );
+    CHECK( warning.find( "there's already a monster" ) == std::string::npos );
+    CHECK( owner.entities_at( local ).empty() );
+    std::set<int> hp;
+    for( const monster &m : g->all_monsters() ) {
+        if( m.type->id == mtype_id( "mon_zombie" ) || m.type->id == mtype_id( "mon_zombie_fat" ) ) {
+            hp.insert( m.get_hp() );
+        }
+    }
+    const std::set<int> expected_hp{ 43, 67 };
+    CHECK( hp == expected_hp );
+}
+
+TEST_CASE( "ordinary_horde_collision_keeps_payload_when_nearby_tiles_blocked",
+           "[horde][handoff][collision]" )
+{
+    clear_map();
+    map &here = get_map();
+    const tripoint_bub_ms position( 65, 65, 0 );
+    const tripoint_abs_ms absolute = here.get_abs( position );
+    overmap &owner = overmap_buffer.get( project_to<coords::om>( absolute ).xy() );
+    const tripoint_om_ms local = project_remain<coords::om>( absolute ).remainder_tripoint;
+    here.ter_set( position, ter_str_id( "t_floor" ) );
+    monster *occupant = g->place_critter_at( mtype_id( "mon_zombie" ), position );
+    REQUIRE( occupant );
+    for( const tripoint_bub_ms &p : here.points_in_radius( position, 1 ) ) {
+        if( p != position ) {
+            here.ter_set( p, ter_str_id( "t_wall" ) );
+        }
+    }
+    monster payload( mtype_id( "mon_zombie_fat" ) );
+    payload.set_hp( 67 );
+    REQUIRE( owner.hordes.spawn_entity( absolute, payload, true ) );
+    const std::string warning = capture_debugmsg_during( [&]() {
+        overmap_buffer.spawn_monster( project_to<coords::sm>( absolute ), false );
+    } );
+    CHECK( warning.find( "there's already a monster" ) == std::string::npos );
+    const auto remaining = owner.entities_at( local );
+    REQUIRE( remaining.size() == 1 );
+    REQUIRE( remaining.front()->monster_data );
+    CHECK( remaining.front()->monster_data->get_hp() == 67 );
+    CHECK( get_creature_tracker().find( absolute ).get() == occupant );
+    here.ter_set( position + tripoint::east, ter_str_id( "t_floor" ) );
+    overmap_buffer.spawn_monster( project_to<coords::sm>( absolute ), false );
+    CHECK( owner.entities_at( local ).empty() );
+    const monster *loaded = get_creature_tracker().find( here.get_abs( position + tripoint::east ) ).get();
+    REQUIRE( loaded );
+    CHECK( loaded->get_hp() == 67 );
 }

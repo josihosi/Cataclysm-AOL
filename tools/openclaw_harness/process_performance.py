@@ -169,6 +169,64 @@ def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
     return summary
 
 
+def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurement: dict) -> dict:
+    """Retain only an explicitly selected maximum's exact native records, if still present."""
+    import evidence_display
+    from cockpit_archive import Archive, ArchiveMap
+
+    handles = [measurement.get("start")] + [event.get("evidence") for event in
+              measurement.get("phase_events", [])] + [measurement.get("end")]
+    if len(handles) > 258 or any(not isinstance(handle, dict) for handle in handles):
+        return {"status": "unavailable", "reason": "selected_turn_handles_incomplete_or_too_many"}
+    try:
+        raw_records = []
+        parsed_records = []
+        total = 0
+        for handle in handles:
+            path = Path(handle["path"])
+            with path.open("rb") as stream:
+                if semantic_trace_identity(stream) != handle["generation"]:
+                    return {"status": "unavailable", "reason": "selected_turn_source_rotated"}
+                start, end = int(handle["offset"]), int(handle["end"])
+                if start < 0 or end <= start or end - start > 1024 * 1024:
+                    return {"status": "unavailable", "reason": "selected_turn_record_bounds"}
+                stream.seek(start)
+                raw = stream.read(end - start)
+                total += len(raw)
+                if len(raw) != end - start or total > 1024 * 1024:
+                    return {"status": "unavailable", "reason": "selected_turn_source_incomplete"}
+                prefix = TURN_TRACE_PREFIX.encode("utf-8")
+                if not raw.startswith(prefix):
+                    return {"status": "unavailable", "reason": "selected_turn_source_changed"}
+                parsed_records.append(json.loads(raw[len(prefix):]))
+                raw_records.append({"handle": handle, "raw_base64": base64.b64encode(raw).decode("ascii")})
+        final = parsed_records[-1]
+        if (final.get("event") != "turn" or final.get("stage") != "end" or
+                _turn_identity(owner, final) != measurement["measurement_id"] or
+                final.get("sequence") != measurement.get("sequence") or
+                final.get("simulation_seconds") != measurement.get("simulation_seconds") or
+                parsed_records[0].get("stage") != "start" or
+                any(_active_turn_identity(owner, event) != _active_turn_identity(owner, final)
+                    for event in parsed_records)):
+            return {"status": "unavailable", "reason": "selected_turn_source_changed"}
+        artifact = evidence_display.retain({"schema": "caol-selected-max-turn-v1", "owner": dict(owner),
+                                            "measurement": measurement, "records": raw_records},
+                                           directory=evidence_display.STORE)
+        archive = Archive(directory / "cockpit-evidence.sqlite", run_id=owner["run_id"],
+                          binding_id=owner["binding_id"])
+        try:
+            retained = ArchiveMap(archive, "selected_max_turns")
+            retained[measurement["measurement_id"]] = {"measurement_id": measurement["measurement_id"],
+                                                        "evidence": artifact}
+        finally:
+            archive.close()
+        return {"status": "retained", "measurement_id": measurement["measurement_id"],
+                "game_turn": measurement.get("game_turn"), "simulation_seconds": measurement["simulation_seconds"],
+                "evidence": artifact, "store": str(evidence_display.STORE)}
+    except (OSError, KeyError, ValueError, sqlite3.Error) as error:
+        return {"status": "unavailable", "reason": "selected_turn_retention_failed", "detail": str(error)}
+
+
 def publish_alarm_evidence(directory: Path, *, run_id: str, binding_id: str) -> dict:
     """Bind compact alarm retrieval to the ordinary final, outside session cleanup."""
     import evidence_display
@@ -382,7 +440,7 @@ def _owner_is_live(owner: Mapping[str, Any]) -> bool:
 
 
 def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mapping[str, Any] | None = None,
-                            now_unix_seconds: float | None = None) -> dict:
+                            now_unix_seconds: float | None = None, retain_max: bool = False) -> dict:
     """Read newly published native turn boundaries and update one compact assessment.
 
     It is safe to call from every pending-operation poll: collection does not
@@ -748,6 +806,9 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
         "waiting": {key: value for key, value in waiting_state.items() if key not in {"seconds", "measurements", "identity", "last_measurement"}},
         "pending_operation": operation, "observation_uncertainty": observation_uncertainty,
         "note": "Native turn boundaries measure simulation only. Input, pause, load, save and transport phases do not create simulation alarms."}
+    if retain_max:
+        assessment["selected_max_turn"] = (retain_selected_max_turn(directory, owner, max(completed, key=lambda item: item["simulation_seconds"]))
+                                           if completed else {"status": "unavailable", "reason": "no_completed_turn"})
     assessment["selected_native_packets"] = packet_handles
     assessment["selected_packet_archive"] = str(directory / "cockpit-evidence.sqlite")
     assessment["alarm_retention"] = retain_alarm_evidence(

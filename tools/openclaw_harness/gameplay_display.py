@@ -845,6 +845,16 @@ def plain_player_output(result, *, snapshot=None, full_look=True, startup_error=
             lines.append(f"Simulation: {metrics['game_turns_per_simulation_second']:.1f} turns/s")
         if metrics.get("sample_count") is not None:
             lines.append(f"Measured turns: {metrics['sample_count']}")
+        selected_max = assessment.get("selected_max_turn")
+        if selected_max:
+            if selected_max.get("status") == "retained":
+                lines.append(f"Selected maximum turn {selected_max.get('game_turn')} retained: "
+                             f"{selected_max.get('evidence', {}).get('sha256')}")
+            else:
+                lines.append(f"Selected maximum unavailable: {selected_max.get('reason')}")
+        packets = assessment.get("selected_native_packets") or []
+        if packets:
+            lines.append("Native performance intervals retained → play evidence --event raid_performance_interval")
         if record.get("action_latency_seconds") is not None:
             lines.append(f"Action elapsed: {record['action_latency_seconds']:.3g} s (includes non-simulation time)")
         game_time = record.get("game_time") or {}

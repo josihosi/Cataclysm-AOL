@@ -105,6 +105,9 @@ def envelopes(record, source):
         base["interval"] = {"first_turn": min(turns) if turns else None,
                             "last_turn": max(turns) if turns else None,
                             "row_count": len(rows) if isinstance(rows, list) else None}
+        if record.get("retention_scope") == "max_simulation_row_only":
+            base["interval"]["retention_scope"] = record["retention_scope"]
+            base["interval"]["original_row_count"] = record.get("original_row_count")
     yield base
 
     def observations(value, path=""):

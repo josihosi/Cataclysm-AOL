@@ -191,6 +191,13 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertIn("Tell the coordinator", text)
         self.assertNotIn(".21997036122", text)
 
+    def test_performance_exposes_retained_native_interval_retrieval(self):
+        result = {"latest": {}, "turn_assessment": {
+            "selected_native_packets": [{"sha256": "selected-packet"}]}}
+        self.assertIn("play evidence --event raid_performance_interval", plain_player_output(result))
+        result["turn_assessment"]["selected_native_packets"] = []
+        self.assertNotIn("Native performance intervals retained", plain_player_output(result))
+
     def test_text_input_examples_keep_a_sentence_in_one_shell_argument(self):
         import shlex
         from gameplay_display import _plain_controls

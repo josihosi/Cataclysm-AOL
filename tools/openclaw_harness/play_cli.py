@@ -305,6 +305,7 @@ class PlayerClient:
             raise ValueError("performance_binding_mismatch")
         assessment = collect_turn_assessment(
             self.session, self.binding, pending=self.state.get("pending"),
+            retain_max=getattr(args, "retain_max", False),
         )
         result = {"ok": True, "latest": record or None,
                   "turn_assessment": assessment,
@@ -1247,6 +1248,7 @@ def main(argv=None):
                                "ignore_danger_and_interruptions"))
     performance = commands.add_parser("performance", help="Read CPU/RSS/action intervals, including while a request is pending")
     performance.add_argument("--sample-seconds", type=float, help="Measure a fresh owned-process CPU interval without bridge input")
+    performance.add_argument("--retain-max", action="store_true", help="Retain exact native records for the selected current-window maximum, if still available")
     performance.add_argument("--offset", type=int, help="Page exact retained records from this zero-based offset")
     performance.add_argument("--limit", type=int, default=5)
     performance.add_argument("--tag", default="", help="Explicit comparable-workload annotation; never a native fact")

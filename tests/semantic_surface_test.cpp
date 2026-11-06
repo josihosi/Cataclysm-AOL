@@ -3975,6 +3975,12 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
                                               ",\"destination_cleared\":" + ( state == "completed_cleared" ? "true" : "false" ) + "}" ) );
     }
     std::set<std::string> travel_states;
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"raid_performance_interval\",\"run_id\":\"" + run +
+                                           "\",\"retention_scope\":\"max_simulation_row_only\",\"turn\":11}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"raid_performance_interval\",\"run_id\":\"" + run +
+                                           "\",\"retention_scope\":\"max_simulation_row_only\",\"turn\":12}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"raid_performance_interval\",\"run_id\":\"" + run +
+                                           "\",\"turn\":13}" ) );
     for( int index = 0; index < 100; ++index ) {
         std::ostringstream event;
         event << "{\"event\":\"turn\",\"run_id\":\"" << run
@@ -4001,6 +4007,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
     bool accepted = false;
     bool current = false;
     bool raid_diagnostic = false;
+    std::set<int> retained_performance_turns;
     std::size_t discarded = 0;
     while( std::getline( input, line ) ) {
         const std::string prefix = "openclaw_harness_semantic_step: ";
@@ -4013,6 +4020,9 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
         if( !semantic ) {
             CHECK( ( kind.compare( 0, 5, "raid_" ) == 0 || kind == "turn" || diagnostic_kinds.count( kind ) ) );
             raid_diagnostic = raid_diagnostic || kind.compare( 0, 5, "raid_" ) == 0;
+            if( kind == "raid_performance_interval" ) {
+                retained_performance_turns.insert( object.get_int( "turn" ) );
+            }
             if( diagnostic_kinds.count( kind ) ) {
                 retained_diagnostic_kinds.insert( kind );
             }
@@ -4034,6 +4044,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
     CHECK( discarded > 0 );
     CHECK( travel_states == std::set<std::string> { "active", "hostile_boundary", "progress", "completed_cleared" } );
     CHECK( raid_diagnostic );
+    CHECK( retained_performance_turns == std::set<int> { 12 } );
     CHECK( retained_diagnostic_kinds == diagnostic_kinds );
     CHECK( current );
     CHECK( accepted );

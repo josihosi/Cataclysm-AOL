@@ -34,6 +34,7 @@
 #include "cata_utility.h"
 #include "color.h"
 #include "cursesdef.h"
+#include "do_turn.h"
 #include "filesystem.h"
 #include "get_version.h"
 #include "input.h"
@@ -437,6 +438,10 @@ static void debug_error_prompt(
         ctxt.register_manual_key( 'I' );
         ctxt.register_manual_key( ' ' );
 #endif
+        // A diagnostic modal can be opened from inside a game turn. Treat
+        // its blocking UI as native input, just like other nested prompts,
+        // so waiting for Continue is not charged to simulation time.
+        openclaw_harness_native_input_scope input_phase;
         for( bool stop = false; !stop; ) {
             ui_manager::redraw();
             if( semantic_scope ) {
