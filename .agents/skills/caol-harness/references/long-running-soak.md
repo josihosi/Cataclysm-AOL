@@ -66,7 +66,10 @@ Keep safe mode off, checking after entry/reload or a blocked move. The explicit 
 wait policy continues through supported danger and damage interruptions; invisibility and
 Debug Life Support do not make the avatar immune to damage. Before long waits, check actual
 health, effects and surroundings, choose practical shelter and care, and use supported avatar
-protection when warranted. Use ignore for understood routine interruptions, not for a freezing
+protection when warranted. For supplies, use ordinary sources or the specific supported item
+spawning control; the native “Quick setup…” action is not a supplies menu: it normalizes the
+avatar, clears effects and worn gear, adds broad debug traits and reveals the overmap. Preserve
+any consequences already applied. Use ignore for understood routine interruptions, not for a freezing
 warning: stop the wait, get dry and warm in suitable shelter, and check health and effects before
 resuming. Treat pain or falling HP as a reason to stop and investigate; when the cause or safety
 is uncertain, use short waits and recheck before a long absence. Preserve actual consequences.
