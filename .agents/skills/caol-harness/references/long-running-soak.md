@@ -62,9 +62,14 @@ actors, reload an earlier save to undo consequences, or erase a crash with a fre
 
 ## Interruptions and lightweight observations
 
-Keep safe mode off, checking after entry/reload or a blocked move. Use explicit CLI `ignore`
-wait policy for the intended long waits: it continues through supported danger/damage
-interruptions. Choose currently advertised native wait durations and batch them toward the
+Keep safe mode off, checking after entry/reload or a blocked move. The explicit CLI `ignore`
+wait policy continues through supported danger and damage interruptions; invisibility and
+Debug Life Support do not make the avatar immune to damage. Before long waits, check actual
+health, effects and surroundings, choose practical shelter and care, and use supported avatar
+protection when warranted. Treat pain or falling HP as a reason to stop and investigate, not a
+harmless interruption; when the cause or safety is uncertain, use short waits and recheck before
+resuming a long absence. Preserve actual consequences. Choose currently
+advertised native wait durations and batch them toward the
 next day or useful journey boundary; a one-day requested wait is not automatically a one-day
 completed wait. Collect pending CLI requests instead of submitting them again. Resolve a known
 harmless prompt through its advertised Ignore control. Unknown dialogs, debug errors, crashes
