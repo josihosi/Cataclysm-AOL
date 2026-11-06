@@ -282,6 +282,44 @@ class PerformanceTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("absent", output)
 
+    def test_failed_max_index_can_release_exact_unindexed_owned_artifact(self):
+        import contextlib
+        import io
+        import play_cli
+        from cockpit_archive import Archive
+        from evidence_display import recover
+
+        self.recorder([sample(1, 0)])
+        perf.write_json(self.directory / "bridge.manifest.json", {"binding_id": "binding-a"})
+        perf.write_json(self.directory / "status.json", {"binding_id": "binding-a", "state": "ready",
+                        "session_descriptor": {"run_id": "run-a"}})
+        self.append_trace(self.turn_event(1, "start", sequence=1),
+                          self.turn_event(1, "end", sequence=2, duration=1.7))
+        earlier = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)["selected_max_turn"]
+        self.append_trace(self.turn_event(2, "start", sequence=3),
+                          self.turn_event(2, "end", sequence=4, duration=2.7))
+        # SQLite itself rejects the injected unsupported parameter at INSERT,
+        # after retain has written the selected bytes.
+        with patch.object(Archive, "encode", return_value=object()):
+            failed = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)["selected_max_turn"]
+        self.assertEqual(failed["reason"], "selected_turn_retention_failed")
+        digest = failed["evidence"]["sha256"]
+        artifact = recover(digest, self.evidence_store)
+        def release(run, measurement):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+                code = play_cli.main(["--session", str(self.directory), "release-max", "--run-id", run,
+                                      "--measurement-id", measurement, "--sha256", digest])
+            return code, output.getvalue()
+        self.assertEqual(release("run-b", failed["measurement_id"])[0], 1)
+        self.assertEqual(release("run-a", "foreign-measurement")[0], 1)
+        self.assertEqual(recover(digest, self.evidence_store), artifact)
+        code, output = release("run-a", failed["measurement_id"])
+        self.assertEqual(code, 0)
+        self.assertIn("released_unindexed_owned", output)
+        self.assertEqual(release("run-a", failed["measurement_id"])[0], 0)
+        self.assertTrue(recover(earlier["evidence"]["sha256"], self.evidence_store))
+
     def test_selected_packet_failure_does_not_advance_and_foreign_packet_refused(self):
         self.recorder([sample(1, 0)])
         path = self.directory / "semantic.native.events.jsonl"

@@ -178,6 +178,7 @@ def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurem
               measurement.get("phase_events", [])] + [measurement.get("end")]
     if len(handles) > 258 or any(not isinstance(handle, dict) for handle in handles):
         return {"status": "unavailable", "reason": "selected_turn_handles_incomplete_or_too_many"}
+    artifact = None
     try:
         raw_records = []
         parsed_records = []
@@ -235,7 +236,10 @@ def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurem
                 "game_turn": measurement.get("game_turn"), "simulation_seconds": measurement["simulation_seconds"],
                 "evidence": artifact, "store": str(evidence_display.STORE)}
     except (OSError, KeyError, ValueError, sqlite3.Error) as error:
-        return {"status": "unavailable", "reason": "selected_turn_retention_failed", "detail": str(error)}
+        result = {"status": "unavailable", "reason": "selected_turn_retention_failed", "detail": str(error)}
+        if artifact is not None:
+            result.update({"measurement_id": measurement.get("measurement_id"), "evidence": artifact})
+        return result
 
 
 def release_selected_max_turn(directory: Path, *, run_id: str, binding_id: str,
@@ -264,12 +268,13 @@ def release_selected_max_turn(directory: Path, *, run_id: str, binding_id: str,
         retained = ArchiveMap(archive, "selected_max_turns")
         paths = [evidence_display.STORE / (sha256 + suffix) for suffix in (".json.gz", ".json")]
         present = [path for path in paths if path.exists() or path.is_symlink()]
-        if measurement_id not in retained:
+        indexed = measurement_id in retained
+        if not indexed and not present:
             # This deliberately does not claim that a never-existing identity
             # was previously released.  It is safe to repeat the operation.
-            return {"status": "absent" if not present else "unavailable",
-                    "reason": "selection_absent" if not present else "selection_not_owned"}
-        entry = retained[measurement_id]
+            return {"status": "absent", "reason": "selection_absent"}
+        entry = retained[measurement_id] if indexed else {"measurement_id": measurement_id,
+                                                          "evidence": {"sha256": sha256}}
         if (not isinstance(entry.get("evidence"), Mapping) or
                 entry.get("measurement_id") != measurement_id or entry["evidence"].get("sha256") != sha256):
             return {"status": "unavailable", "reason": "selected_max_identity_mismatch"}
@@ -303,7 +308,8 @@ def release_selected_max_turn(directory: Path, *, run_id: str, binding_id: str,
         archive.connection.execute("BEGIN IMMEDIATE")
         present[0].unlink()
         del retained[measurement_id]
-        return {"status": "released", "measurement_id": measurement_id, "sha256": sha256}
+        return {"status": "released", "reason": "released_selection" if indexed else "released_unindexed_owned",
+                "measurement_id": measurement_id, "sha256": sha256}
     except (OSError, KeyError, TypeError, ValueError, AttributeError, sqlite3.Error) as error:
         return {"status": "unavailable", "reason": "selected_max_release_failed", "detail": str(error)}
     finally:
