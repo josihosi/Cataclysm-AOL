@@ -66,11 +66,12 @@ Keep safe mode off, checking after entry/reload or a blocked move. The explicit 
 wait policy continues through supported danger and damage interruptions; invisibility and
 Debug Life Support do not make the avatar immune to damage. Before long waits, check actual
 health, effects and surroundings, choose practical shelter and care, and use supported avatar
-protection when warranted. Treat pain or falling HP as a reason to stop and investigate, not a
-harmless interruption; when the cause or safety is uncertain, use short waits and recheck before
-resuming a long absence. Preserve actual consequences. Choose currently
-advertised native wait durations and batch them toward the
-next day or useful journey boundary; a one-day requested wait is not automatically a one-day
+protection when warranted. Use ignore for understood routine interruptions, not for a freezing
+warning: stop the wait, get dry and warm in suitable shelter, and check health and effects before
+resuming. Treat pain or falling HP as a reason to stop and investigate; when the cause or safety
+is uncertain, use short waits and recheck before a long absence. Preserve actual consequences.
+Choose currently advertised native wait durations and batch them toward the next day or useful
+journey boundary; a one-day requested wait is not automatically a one-day
 completed wait. Collect pending CLI requests instead of submitting them again. Resolve a known
 harmless prompt through its advertised Ignore control. Unknown dialogs, debug errors, crashes
 and lost input ownership require inspection; never blanket-dismiss them as monsters.
