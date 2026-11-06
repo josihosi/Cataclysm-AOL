@@ -1307,6 +1307,72 @@ os.close(rd);os.close(wr)
         wake.assert_called_once_with(Path(temp).resolve(), self.run_id)
         self.assertNotIn("dispatch_semantic_input", inspect.getsource(startup_harness.execute_semantic_act))
 
+    def test_partial_descriptor_cursor_recovers_only_exact_current_owner(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {"padding": "x" * 10000}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        receipt = {"event": "surface_receipt", "run_id": self.run_id,
+                   "requested_run_id": self.run_id, "requested_surface_id": "old-surface",
+                   "requested_frame_id": "old-frame", "consuming_surface_id": "old-surface",
+                   "consuming_frame_id": "old-frame", "request_id": "old-request",
+                   "action_id": "world.move.east", "accepted": True,
+                   "rejection_reason": "", "resulting_frame_id": "surface-frame"}
+        raw = self.frame("raw-world", "world", {}, 100)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.events.jsonl"
+            prefix = b"openclaw_harness_semantic_step: "
+            encoded = b"".join(prefix + json.dumps(event).encode() + b"\n"
+                               for event in (descriptor, receipt, raw))
+            trace.write_bytes(encoded)
+            inside = 5000
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, inside, run_id=self.run_id, frame_id="surface-frame"), 0)
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, inside, run_id="foreign-run", frame_id="surface-frame"), inside)
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, inside, run_id=self.run_id, frame_id="stale-frame"), inside)
+            # Rotation/truncation and an incomplete record cannot recover authority.
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, len(encoded) + 7, run_id=self.run_id, frame_id="surface-frame"), len(encoded) + 7)
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=trace), \
+                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                        "status": "bound", "path": "pipe-contract", "contract": {"transport": "named_fifo"},
+                    }), \
+                    patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1) as wake:
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=inside, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                )
+                self.assertEqual(result["reason"], "native_surface_receipt_timeout")
+                self.assertEqual(result["surface_request"]["frame_id"], "surface-frame")
+                wake.assert_called_once()
+                wake.reset_mock()
+                stale = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="stale-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                )
+                self.assertFalse(stale["accepted"])
+                self.assertEqual(stale["reason"], "stale_frame")
+                wake.assert_not_called()
+            trace.write_bytes(prefix + json.dumps(descriptor).encode()[:8000])
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, 5000, run_id=self.run_id, frame_id="surface-frame"), 5000)
+            # A replacement generation with a different owner cannot inherit
+            # the old cursor's authority, even when the byte offset still fits.
+            replacement = dict(descriptor, run_id="replacement-run")
+            rotated = root / "rotated.log"
+            rotated.write_bytes(prefix + json.dumps(replacement).encode() + b"\n")
+            os.replace(rotated, trace)
+            self.assertEqual(startup_harness.semantic_step_partial_descriptor_offset(
+                trace, 5000, run_id=self.run_id, frame_id="surface-frame"), 5000)
+
     def test_surface_descriptor_preserves_accepted_receipt_when_successor_is_missing(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,

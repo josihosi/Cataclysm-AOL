@@ -5881,6 +5881,42 @@ def semantic_step_effective_source_offset(
     return start_offset if 0 <= start_offset <= size else 0
 
 
+def semantic_step_partial_descriptor_offset(
+    source: Path, start_offset: int, *, run_id: str, frame_id: str,
+) -> int:
+    """Recover only the requested descriptor when a cursor splits its line."""
+    if start_offset <= 0 or not run_id or not frame_id:
+        return start_offset
+    limit = 4 * 1024 * 1024
+    try:
+        with source.open("rb") as stream:
+            size = os.fstat(stream.fileno()).st_size
+            if start_offset >= size:
+                return start_offset
+            stream.seek(start_offset - 1)
+            if stream.read(1) == b"\n":
+                return start_offset
+            begin = max(0, start_offset - limit)
+            stream.seek(begin)
+            prefix = stream.read(start_offset - begin)
+            last_newline = prefix.rfind(b"\n")
+            if last_newline < 0 and begin != 0:
+                return start_offset
+            line_start = begin + last_newline + 1
+            stream.seek(line_start)
+            line = stream.readline(limit + 1)
+            marker = b"openclaw_harness_semantic_step: "
+            if len(line) > limit or not line.endswith(b"\n") or not line.startswith(marker):
+                return start_offset
+            record = json.loads(line[len(marker):])
+            if isinstance(record, dict) and record.get("event") == "surface_descriptor" and \
+                    record.get("run_id") == run_id and record.get("frame_id") == frame_id:
+                return line_start
+    except (OSError, ValueError, UnicodeDecodeError):
+        pass
+    return start_offset
+
+
 def semantic_step_trace_start_after_launch(
     log_path: Path,
     *,
@@ -7333,6 +7369,11 @@ def execute_semantic_act(
         latest_frame["value"] = dict(frame)
         return frame
 
+    if observed_frame is None:
+        source = transaction_source()
+        transaction_cursor["offset"] = semantic_step_partial_descriptor_offset(
+            source, transaction_cursor["offset"], run_id=run_id, frame_id=frame_id,
+        )
     before = dict(observed_frame) if observed_frame is not None else dict(read_frame())
     # Legacy trace frames carry their private binding directly.  They are not
     # semantic-surface descriptors and must not require a live semantic trace
@@ -7352,6 +7393,8 @@ def execute_semantic_act(
         isinstance(before.get("advertised_action_details"), list)
     )
     if is_surface_descriptor:
+        if str(before.get("run_id", "")) != run_id or str(before.get("frame_id", "")) != frame_id:
+            return {"accepted": False, "reason": "stale_frame", "next_frame": None}
         descriptor_actions = before.get("valid_actions", [])
         if not any(isinstance(candidate, Mapping) for candidate in descriptor_actions):
             descriptor_actions = before.get("advertised_action_details", [])
