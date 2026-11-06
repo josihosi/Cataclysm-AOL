@@ -294,6 +294,12 @@ class PlayerClient:
         result["log_identity_status"] = logs["identity_status"]
         return result
 
+    def release_selected_max(self, *, run_id, measurement_id, digest):
+        from process_performance import release_selected_max_turn
+        result = release_selected_max_turn(self.session, run_id=run_id, binding_id=self.binding,
+                                           measurement_id=measurement_id, sha256=digest)
+        return {"ok": result["status"] in {"released", "absent"}, **result}
+
     def performance(self, args):
         from process_performance import (read_json, read_records, sample_owned_session,
                                          compare_records, collect_turn_assessment)
@@ -1249,6 +1255,10 @@ def main(argv=None):
     performance = commands.add_parser("performance", help="Read CPU/RSS/action intervals, including while a request is pending")
     performance.add_argument("--sample-seconds", type=float, help="Measure a fresh owned-process CPU interval without bridge input")
     performance.add_argument("--retain-max", action="store_true", help="Retain exact native records for the selected current-window maximum, if still available")
+    release_max = commands.add_parser("release-max", help="Release one consumed selected-maximum artifact owned by this session")
+    release_max.add_argument("--run-id", required=True, help="Exact run ID from the retained selection")
+    release_max.add_argument("--measurement-id", required=True, help="Exact selected measurement ID")
+    release_max.add_argument("--sha256", required=True, help="Exact retained artifact SHA-256")
     performance.add_argument("--offset", type=int, help="Page exact retained records from this zero-based offset")
     performance.add_argument("--limit", type=int, default=5)
     performance.add_argument("--tag", default="", help="Explicit comparable-workload annotation; never a native fact")
@@ -1327,6 +1337,10 @@ def main(argv=None):
             # Independent telemetry must remain readable while another CLI is
             # waiting with the request-ownership lock. It never edits that state.
             result = PlayerClient(args.session).performance(args)
+        elif args.command == "release-max":
+            # Explicit evidence cleanup does not send native game input.
+            result = PlayerClient(args.session).release_selected_max(
+                run_id=args.run_id, measurement_id=args.measurement_id, digest=args.sha256)
         elif args.command == "cancel":
             # Cancellation is an out-of-band control and must remain usable
             # while the submitting client owns the request lock.
@@ -1440,6 +1454,10 @@ def main(argv=None):
             # This read-only UI/log view neither submits a game action nor
             # grants recovery input authority.
             result["startup_dialog"] = observe_startup_dialog(args.session, client.binding, status)
+    if args.command == "release-max" and not args.diagnostics:
+        print("Selected maximum " + result.get("status", "unavailable") +
+              (": " + result["reason"] if result.get("reason") else ""))
+        return 0 if result.get("ok") else 1
     if not args.diagnostics:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.

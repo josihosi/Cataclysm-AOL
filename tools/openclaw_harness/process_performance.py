@@ -172,7 +172,7 @@ def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
 def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurement: dict) -> dict:
     """Retain only an explicitly selected maximum's exact native records, if still present."""
     import evidence_display
-    from cockpit_archive import Archive, ArchiveMap
+    from cockpit_archive import Archive
 
     handles = [measurement.get("start")] + [event.get("evidence") for event in
               measurement.get("phase_events", [])] + [measurement.get("end")]
@@ -209,15 +209,26 @@ def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurem
                 any(_active_turn_identity(owner, event) != _active_turn_identity(owner, final)
                     for event in parsed_records)):
             return {"status": "unavailable", "reason": "selected_turn_source_changed"}
-        artifact = evidence_display.retain({"schema": "caol-selected-max-turn-v1", "owner": dict(owner),
-                                            "measurement": measurement, "records": raw_records},
-                                           directory=evidence_display.STORE)
         archive = Archive(directory / "cockpit-evidence.sqlite", run_id=owner["run_id"],
                           binding_id=owner["binding_id"])
         try:
-            retained = ArchiveMap(archive, "selected_max_turns")
-            retained[measurement["measurement_id"]] = {"measurement_id": measurement["measurement_id"],
-                                                        "evidence": artifact}
+            # Serialize retain and explicit release for this run.  In particular,
+            # do not publish an index pointing at a blob a concurrent release
+            # has just removed.
+            archive.connection.execute("BEGIN IMMEDIATE")
+            from cockpit_archive import ArchiveMap
+            existing = ArchiveMap(archive, "selected_max_turns")
+            if (measurement["measurement_id"] in existing and
+                    existing[measurement["measurement_id"]].get("release_pending") is True):
+                return {"status": "unavailable", "reason": "selected_max_release_pending"}
+            artifact = evidence_display.retain({"schema": "caol-selected-max-turn-v1", "owner": dict(owner),
+                                                "measurement": measurement, "records": raw_records},
+                                               directory=evidence_display.STORE)
+            value = {"measurement_id": measurement["measurement_id"], "evidence": artifact}
+            archive.connection.execute("INSERT OR REPLACE INTO objects VALUES (?,?,?,?,?,?)",
+                                       ("selected_max_turns", measurement["measurement_id"],
+                                        archive.encode(value), False, False, None))
+            archive.connection.commit()
         finally:
             archive.close()
         return {"status": "retained", "measurement_id": measurement["measurement_id"],
@@ -225,6 +236,79 @@ def retain_selected_max_turn(directory: Path, owner: Mapping[str, Any], measurem
                 "evidence": artifact, "store": str(evidence_display.STORE)}
     except (OSError, KeyError, ValueError, sqlite3.Error) as error:
         return {"status": "unavailable", "reason": "selected_turn_retention_failed", "detail": str(error)}
+
+
+def release_selected_max_turn(directory: Path, *, run_id: str, binding_id: str,
+                              measurement_id: str, sha256: str) -> dict:
+    """Release one owner-selected consumed artifact; leave every other selection alone.
+
+    The caller's explicit selection is the decision that its evidence is consumed.
+    Both the bound archive and the content-addressed artifact must agree before
+    deletion.  No policy is inferred from age, size or a later maximum.
+    """
+    import evidence_display
+    from cockpit_archive import Archive, ArchiveMap
+
+    if (not isinstance(run_id, str) or not isinstance(binding_id, str) or
+            not isinstance(measurement_id, str) or not isinstance(sha256, str) or
+            not run_id or not binding_id or not measurement_id or len(sha256) != 64 or
+            any(c not in "0123456789abcdef" for c in sha256)):
+        return {"status": "unavailable", "reason": "invalid_selected_max_identity"}
+    archive_path = directory / "cockpit-evidence.sqlite"
+    if not archive_path.is_file():
+        return {"status": "unavailable", "reason": "selected_max_archive_missing"}
+    archive = None
+    try:
+        archive = Archive(archive_path, run_id=run_id, binding_id=binding_id)
+        archive.connection.execute("BEGIN IMMEDIATE")
+        retained = ArchiveMap(archive, "selected_max_turns")
+        paths = [evidence_display.STORE / (sha256 + suffix) for suffix in (".json.gz", ".json")]
+        present = [path for path in paths if path.exists() or path.is_symlink()]
+        if measurement_id not in retained:
+            # This deliberately does not claim that a never-existing identity
+            # was previously released.  It is safe to repeat the operation.
+            return {"status": "absent" if not present else "unavailable",
+                    "reason": "selection_absent" if not present else "selection_not_owned"}
+        entry = retained[measurement_id]
+        if (not isinstance(entry.get("evidence"), Mapping) or
+                entry.get("measurement_id") != measurement_id or entry["evidence"].get("sha256") != sha256):
+            return {"status": "unavailable", "reason": "selected_max_identity_mismatch"}
+        if not present and entry.get("release_pending") is True:
+            del retained[measurement_id]
+            return {"status": "released", "reason": "completed_pending_release",
+                    "measurement_id": measurement_id, "sha256": sha256}
+        if len(present) != 1 or present[0].is_symlink() or not present[0].is_file():
+            return {"status": "unavailable", "reason": "selected_max_artifact_missing_or_ambiguous"}
+        artifact = evidence_display.recover(sha256, directory=evidence_display.STORE)
+        if not isinstance(artifact, Mapping):
+            return {"status": "unavailable", "reason": "selected_max_artifact_owner_mismatch"}
+        owner = artifact.get("owner")
+        measurement = artifact.get("measurement")
+        if (not isinstance(owner, Mapping) or not isinstance(measurement, Mapping) or
+                artifact.get("schema") != "caol-selected-max-turn-v1" or
+                owner.get("run_id") != run_id or owner.get("binding_id") != binding_id or
+                measurement.get("measurement_id") != measurement_id):
+            return {"status": "unavailable", "reason": "selected_max_artifact_owner_mismatch"}
+        # A second selected identity referring to the same bytes is a known
+        # shared reference.  Do not delete it on another selection's behalf.
+        for other_id in retained:
+            if other_id != measurement_id and retained[other_id].get("evidence", {}).get("sha256") == sha256:
+                return {"status": "unavailable", "reason": "selected_max_artifact_shared"}
+        # Persist the explicit decision before unlinking. If unlink succeeds but
+        # the following archive deletion fails, the same owner can retry safely.
+        archive.connection.rollback()
+        retained[measurement_id] = {"measurement_id": measurement_id,
+                                    "evidence": dict(entry["evidence"]),
+                                    "release_pending": True}
+        archive.connection.execute("BEGIN IMMEDIATE")
+        present[0].unlink()
+        del retained[measurement_id]
+        return {"status": "released", "measurement_id": measurement_id, "sha256": sha256}
+    except (OSError, KeyError, TypeError, ValueError, AttributeError, sqlite3.Error) as error:
+        return {"status": "unavailable", "reason": "selected_max_release_failed", "detail": str(error)}
+    finally:
+        if archive is not None:
+            archive.close()
 
 
 def publish_alarm_evidence(directory: Path, *, run_id: str, binding_id: str) -> dict:

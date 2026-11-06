@@ -166,6 +166,122 @@ class PerformanceTest(unittest.TestCase):
         self.assertEqual(result["turn_assessment"]["selected_max_turn"]["status"], "retained")
         self.assertEqual(result["turn_assessment"]["selected_max_turn"]["game_turn"], 101)
 
+    def test_explicit_selected_max_release_through_player_cli(self):
+        import contextlib
+        import io
+        from cockpit_archive import Archive, ArchiveMap
+        from evidence_display import recover, retain
+        import play_cli
+
+        self.recorder([sample(1, 0)])
+        perf.write_json(self.directory / "bridge.manifest.json", {"binding_id": "binding-a"})
+        perf.write_json(self.directory / "status.json", {"binding_id": "binding-a", "state": "ready",
+                        "session_descriptor": {"run_id": "run-a"}})
+        self.append_trace(self.turn_event(1, "start", sequence=1),
+                          self.turn_event(1, "end", sequence=2, duration=1.7))
+        first = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)["selected_max_turn"]
+        files_after_first = set(self.evidence_store.iterdir())
+        repeated = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)["selected_max_turn"]
+        self.assertEqual(repeated["measurement_id"], first["measurement_id"])
+        self.assertEqual(repeated["evidence"]["sha256"], first["evidence"]["sha256"])
+        self.assertEqual(set(self.evidence_store.iterdir()), files_after_first)
+        self.append_trace(self.turn_event(2, "start", sequence=3),
+                          self.turn_event(2, "end", sequence=4, duration=2.7))
+        second = perf.collect_turn_assessment(self.directory, "binding-a", retain_max=True)["selected_max_turn"]
+        self.assertNotEqual(first["measurement_id"], second["measurement_id"])
+        digest = first["evidence"]["sha256"]
+        expected = recover(digest, self.evidence_store)
+
+        def invoke(run_id="run-a", measurement_id=None, sha256=None):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+                code = play_cli.main(["--session", str(self.directory), "release-max",
+                                      "--run-id", run_id,
+                                      "--measurement-id", measurement_id or first["measurement_id"],
+                                      "--sha256", sha256 or digest])
+            return code, output.getvalue()
+
+        # Wrong run, binding and artifact must leave entry and bytes untouched.
+        self.assertEqual(invoke(run_id="run-b")[0], 1)
+        self.assertEqual(invoke(sha256=second["evidence"]["sha256"])[0], 1)
+        perf.write_json(self.directory / "bridge.manifest.json", {"binding_id": "binding-b"})
+        self.assertEqual(invoke()[0], 1)
+        self.assertEqual(recover(digest, self.evidence_store), expected)
+        perf.write_json(self.directory / "bridge.manifest.json", {"binding_id": "binding-a"})
+        # Missing bytes are not silently orphaned or mistaken for a completed
+        # release when the selected identity is still indexed.
+        blob = self.evidence_store / (digest + ".json.gz")
+        saved_bytes = blob.read_bytes()
+        blob.unlink()
+        code, output = invoke()
+        self.assertEqual(code, 1)
+        self.assertIn("selected_max_artifact_missing_or_ambiguous", output)
+        blob.write_bytes(saved_bytes)
+
+        # A second selected identity in the same archive is also a genuine
+        # shared reference; an unsuccessful unlink must retain the index.
+        archive = Archive(self.directory / "cockpit-evidence.sqlite", run_id="run-a", binding_id="binding-a")
+        try:
+            refs = ArchiveMap(archive, "selected_max_turns")
+            refs["same-session-alias"] = {"measurement_id": "same-session-alias", "evidence": first["evidence"]}
+            code, output = invoke()
+            self.assertEqual(code, 1)
+            self.assertIn("selected_max_artifact_shared", output)
+            del refs["same-session-alias"]
+            with patch.object(Path, "unlink", side_effect=PermissionError("denied")):
+                code, output = invoke()
+            self.assertEqual(code, 1)
+            self.assertIn("selected_max_release_failed", output)
+            self.assertIn(first["measurement_id"], refs)
+            self.assertEqual(recover(digest, self.evidence_store), expected)
+        finally:
+            archive.close()
+
+        # A content-addressed artifact whose embedded run is foreign cannot be
+        # released merely by changing this session's archive reference.
+        bad = copy.deepcopy(expected)
+        bad["owner"]["run_id"] = "run-b"
+        bad_handle = retain(bad, self.evidence_store)
+        archive = Archive(self.directory / "cockpit-evidence.sqlite", run_id="run-a", binding_id="binding-a")
+        try:
+            refs = ArchiveMap(archive, "selected_max_turns")
+            refs[first["measurement_id"]] = {"measurement_id": first["measurement_id"], "evidence": bad_handle}
+            code, output = invoke(sha256=bad_handle["sha256"])
+            self.assertEqual(code, 1)
+            self.assertIn("selected_max_artifact_owner_mismatch", output)
+            self.assertEqual(recover(bad_handle["sha256"], self.evidence_store), bad)
+            refs[first["measurement_id"]] = {"measurement_id": first["measurement_id"], "evidence": first["evidence"]}
+        finally:
+            archive.close()
+
+        # If unlink succeeds but archive deletion fails, the durable explicit
+        # decision permits an honest retry without treating missing bytes as
+        # an unknown loss. Unrelated selections remain untouched.
+        real_delete = ArchiveMap.__delitem__
+        def failed_delete(mapping, key):
+            if key == first["measurement_id"]:
+                mapping.archive.connection.execute(
+                    "DELETE FROM objects WHERE namespace=? AND id=?", (mapping.namespace, key))
+                raise perf.sqlite3.OperationalError("simulated commit failure")
+            return real_delete(mapping, key)
+        with patch.object(ArchiveMap, "__delitem__", failed_delete):
+            code, output = invoke()
+        self.assertEqual(code, 1)
+        self.assertIn("selected_max_release_failed", output)
+        self.assertFalse(blob.exists())
+        blocked = perf.retain_selected_max_turn(self.directory, expected["owner"], expected["measurement"])
+        self.assertEqual(blocked["reason"], "selected_max_release_pending")
+        self.assertFalse(blob.exists())
+        code, output = invoke()
+        self.assertEqual(code, 0)
+        self.assertIn("completed_pending_release", output)
+        # An unrelated unresolved selection stays intact; repeating release is
+        # harmless and does not claim a nonexistent artifact was recovered.
+        self.assertTrue(recover(second["evidence"]["sha256"], self.evidence_store))
+        code, output = invoke()
+        self.assertEqual(code, 0)
+        self.assertIn("absent", output)
+
     def test_selected_packet_failure_does_not_advance_and_foreign_packet_refused(self):
         self.recorder([sample(1, 0)])
         path = self.directory / "semantic.native.events.jsonl"
