@@ -1246,8 +1246,18 @@ static void writhing_stalker_record_live_evidence( monster &stalker, const Creat
 static bool writhing_stalker_watches( const monster &stalker, const Creature &target,
                                     scout_observation::site_reader &reader )
 {
-    return stalker.friendly == 0 && stalker.can_see() && !stalker.is_dead() &&
-           reader.read_actor( stalker, target, { 72, 72.0f /
+    if( stalker.friendly != 0 || !stalker.can_see() || stalker.is_dead() ) {
+        return false;
+    }
+    // This physical optical path cannot see an invisible Character, including
+    // at adjacent range. A monster stalker cannot itself be that Character.
+    // Reject only this known negative before preparing geometry and light;
+    // the shared reader still owns availability and every other sight rule.
+    const Character *character = target.as_character();
+    if( character && character->is_invisible() ) {
+        return false;
+    }
+    return reader.read_actor( stalker, target, { 72, 72.0f /
                              std::max( 1, std::max( stalker.type->vision_day,
                                        stalker.type->vision_night ) ) }, true ).visible;
 }
@@ -1272,6 +1282,7 @@ bool writhing_stalker::retire_arrived_sound( monster &stalker,
 
 Creature *writhing_stalker::observe_current_target( monster &stalker )
 {
+    raid_perf_scope diagnostic_scope( raid_perf_stage::stalker_target_acquisition );
     // Settle the owning interval before assigning an acquisition's active time.
     // An abstract caller has already supplied its effective interval at this
     // same world turn, so the once-only guard prevents a second advance here.
@@ -1280,8 +1291,16 @@ Creature *writhing_stalker::observe_current_target( monster &stalker )
     Character *seen = nullptr;
     const auto consider = [&]( Character & candidate ) {
         if( rl_dist( stalker.pos_abs(), candidate.pos_abs() ) > 72 ||
-            stalker.attitude_to( candidate ) != Creature::Attitude::HOSTILE ||
-            !writhing_stalker_watches( stalker, candidate, reader ) ) {
+            stalker.attitude_to( candidate ) != Creature::Attitude::HOSTILE ) {
+            return;
+        }
+        const bool visible = [&]() {
+            raid_perf_scope diagnostic_scope( raid_perf_stage::stalker_invisible_avatar_read,
+                                             raid_perf_query_active() && candidate.is_avatar() &&
+                                             candidate.is_invisible() );
+            return writhing_stalker_watches( stalker, candidate, reader );
+        }();
+        if( !visible ) {
             return;
         }
         if( !seen || rl_dist( stalker.pos_abs(), candidate.pos_abs() ) <
@@ -1596,8 +1615,11 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
     // into action, destination/effect writes, movement or another plan.
     std::optional<scout_observation::site_reader> reader( std::in_place );
     const Character *character = target.as_character();
-    const bool visible = character ? writhing_stalker_watches( stalker, *character, *reader ) :
-                         stalker.sees( here, target );
+    const bool visible = [&]() {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::stalker_target_recheck );
+        return character ? writhing_stalker_watches( stalker, *character, *reader ) :
+               stalker.sees( here, target );
+    }();
     if( visible ) {
         writhing_stalker_record_live_evidence( stalker, target );
     } else {

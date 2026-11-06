@@ -39,10 +39,12 @@
 #include "map_iterator.h"
 #include "map_selector.h"
 #include "mapdata.h"
+#include "mattack_common.h"
 #include "math_parser_diag_value.h"
 #include "memory_fast.h"
 #include "messages.h"
 #include "monster.h"
+#include "mtype.h"
 #include "npc.h"
 #include "overmapbuffer.h"
 #include "pimpl.h"
@@ -59,6 +61,54 @@
 #endif
 
 class recipe;
+
+TEST_CASE( "star_vampire_blood_drinking_requires_character_target", "[eoc][mattack]" )
+{
+    clear_avatar();
+    clear_creatures();
+    clear_npcs();
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms origin{ 65, 65, 0 };
+    you.setpos( here, origin + point::east );
+    monster &feral = spawn_test_monster( "mon_feral_human_pipe", origin + point::south );
+    monster &noncharacter = spawn_test_monster( "mon_kreck", origin + point::west );
+    npc &other = spawn_npc( ( origin + point::north ).xy(), "thug" );
+    const effect_on_condition_id valid_drink( "target_valid_drink" );
+    REQUIRE( valid_drink.is_valid() );
+    you.add_effect( efftype_id( "grabbed" ), 1_minutes );
+    other.add_effect( efftype_id( "grabbed" ), 1_minutes );
+    feral.add_effect( efftype_id( "grabbed" ), 1_minutes );
+    noncharacter.add_effect( efftype_id( "grabbed" ), 1_minutes );
+    int offset = 0;
+    for( const std::string &id : { "mon_star_vampire", "mon_star_vampire_coiling", "mon_dish_head" } ) {
+        CAPTURE( id );
+        monster &vampire = spawn_test_monster( id, origin + point::east * ( 3 + offset++ ) );
+        vampire.add_effect( efftype_id( "grabbing" ), 1_minutes );
+        const auto &attacks = vampire.type->special_attacks;
+        REQUIRE( attacks.count( "star_vampire_bite" ) == 1 );
+        REQUIRE( attacks.count( "star_vampire_blood_drinking" ) == 1 );
+        REQUIRE( attacks.count( "star_vampire_blood_drinking_ferals" ) == 1 );
+        const auto condition = [&]( const std::string &attack, Creature &target ) {
+            dialogue d( get_talker_for( vampire ), get_talker_for( target ) );
+            return attacks.at( attack )->condition( d );
+        };
+        for( Creature *target : { static_cast<Creature *>( &you ), static_cast<Creature *>( &other ) } ) {
+            CHECK( condition( "star_vampire_blood_drinking", *target ) );
+            CHECK_FALSE( condition( "star_vampire_bite", *target ) );
+        }
+        CHECK_FALSE( condition( "star_vampire_blood_drinking", feral ) );
+        CHECK( condition( "star_vampire_blood_drinking_ferals", feral ) );
+        CHECK_FALSE( condition( "star_vampire_bite", feral ) );
+        CHECK_FALSE( condition( "star_vampire_blood_drinking", noncharacter ) );
+        CHECK( condition( "star_vampire_bite", noncharacter ) );
+        you.set_mutation( trait_id( "ACIDBLOOD" ) );
+        CHECK_FALSE( condition( "star_vampire_blood_drinking", you ) );
+        CHECK( condition( "star_vampire_bite", you ) );
+        you.unset_mutation( trait_id( "ACIDBLOOD" ) );
+    }
+}
 
 static const activity_id ACT_ADD_VARIABLE_COMPLETE( "ACT_ADD_VARIABLE_COMPLETE" );
 static const activity_id ACT_ADD_VARIABLE_DURING( "ACT_ADD_VARIABLE_DURING" );

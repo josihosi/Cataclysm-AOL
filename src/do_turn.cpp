@@ -448,7 +448,9 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
         "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
         "tail_prepare", "tail_world_work", "tail_finish",
         "signal_rider_maintenance", "signal_stalkers", "signal_riders",
-        "signal_cannibals", "signal_migo"
+        "signal_cannibals", "signal_migo",
+        "stalker_target_acquisition", "stalker_target_recheck",
+        "stalker_invisible_avatar_read"
     } );
     js.member( "rows" );
     js.start_array();

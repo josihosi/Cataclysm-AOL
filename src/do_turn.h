@@ -46,7 +46,9 @@ enum class raid_perf_stage : std::size_t {
     turn_setup, turn_activity_prep, turn_input_loop, turn_world_tail,
     tail_prepare, tail_world_work, tail_finish,
     signal_rider_maintenance, signal_stalkers, signal_riders,
-    signal_cannibals, signal_migo, count
+    signal_cannibals, signal_migo,
+    stalker_target_acquisition, stalker_target_recheck,
+    stalker_invisible_avatar_read, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,

@@ -1618,6 +1618,53 @@ TEST_CASE( "writhing_stalker_linked_melee_miss_binds_resolution_time_observers",
     clear_map_without_vision();
 }
 
+TEST_CASE( "writhing_stalker_actor_observation_tracks_current_geometry",
+           "[writhing_stalker][ai][pressure][resolution]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center );
+    monster &observer = spawn_new_stalker_fixture( center + point::east * 6 );
+    monster &attacker = spawn_test_monster( mon_zombie.str(), center + point::east * 2 );
+    refresh_writhing_stalker_arena( here );
+    const auto reference = [&]( const Creature &target ) {
+        scout_observation::site_reader reader;
+        return reader.read_actor( observer, target, { 72, 72.0f /
+                                  std::max( 1, std::max( observer.type->vision_day,
+                                            observer.type->vision_night ) ) }, true );
+    };
+    const auto sees_both = [&]() {
+        return writhing_stalker::can_observe_actor( observer, attacker ) &&
+               writhing_stalker::can_observe_actor( observer, you );
+    };
+    REQUIRE( sees_both() );
+    CHECK( writhing_stalker::can_observe_actor( observer, you ) == reference( you ).visible );
+    here.ter_set( center + point::east * 5, ter_id( "t_wall" ) );
+    refresh_writhing_stalker_arena( here );
+    CHECK_FALSE( sees_both() );
+    CHECK( writhing_stalker::can_observe_actor( observer, you ) == reference( you ).visible );
+    here.ter_set( center + point::east * 5, ter_id( "t_floor" ) );
+    refresh_writhing_stalker_arena( here );
+    CHECK( sees_both() );
+    you.set_mutation( trait_id( "DEBUG_CLOAK" ) );
+    REQUIRE( you.is_invisible() );
+    CHECK_FALSE( reference( you ).visible );
+    CHECK_FALSE( writhing_stalker::can_observe_actor( observer, you ) );
+    you.setpos( here, center + point::east * 5 );
+    refresh_writhing_stalker_arena( here );
+    CHECK_FALSE( reference( you ).visible );
+    CHECK_FALSE( writhing_stalker::can_observe_actor( observer, you ) );
+    // A non-Character (including the observer itself) still uses the shared
+    // reader's existing visibility/availability semantics.
+    CHECK( writhing_stalker::can_observe_actor( observer, observer ) == reference( observer ).visible );
+    you.unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "writhing_stalker_linked_projectile_miss_is_idempotent_and_visibility_bound",
            "[writhing_stalker][ai][pressure][counterpressure][resolution]" )
 {
