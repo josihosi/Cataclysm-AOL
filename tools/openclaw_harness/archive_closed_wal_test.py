@@ -91,6 +91,43 @@ class ClosedWalTest(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), before)
         self.assertFalse(Path(str(self.path) + '-wal').exists())
 
+    def test_unmatched_archive_responses_do_not_accumulate_open_descriptors(self):
+        import os
+        if not Path('/dev/fd').is_dir():
+            self.skipTest('descriptor inspection unavailable')
+        original = Bridge.response_artifact
+        observed = []
+
+        def recover(*args, **kwargs):
+            result = original(*args, **kwargs)
+            observed.append(len(os.listdir('/dev/fd')))
+            return result
+
+        source = {'path': str(self.response_path), 'producer': 'cockpit', 'response': True}
+        missing = {'path': str(self.directory / 'missing.json'), 'producer': 'cockpit'}
+        before = len(os.listdir('/dev/fd'))
+        with patch.object(Bridge, 'response_artifact', side_effect=recover), patch.object(
+                evidence_events, 'retain', return_value={'sha256': 'test'}):
+            result = evidence_events.query([source] * 20 + [missing],
+                                           {'event': 'no-such-event'})
+        self.assertEqual(result['matched'], 0)
+        self.assertEqual(result['status'], 'partial')
+        self.assertEqual(len(result['unavailable_sources']), 1)
+        self.assertEqual(len(observed), 20)
+        self.assertLessEqual(max(observed), before + 8)
+        self.assertLessEqual(len(os.listdir('/dev/fd')), before + 2)
+
+    def test_selected_full_response_keeps_lazy_payload_readable(self):
+        with patch.object(evidence_events, 'retain',
+                          side_effect=lambda value: retain(value, self.directory / 'display')):
+            result = evidence_events.query([
+                {'path': str(self.response_path), 'producer': 'cockpit', 'response': True}],
+                {'event': 'record'})
+        self.assertEqual(result['matched'], 1)
+        sequence = result['rows'][0]['payload']['result']['action_observation_sequence']
+        self.assertEqual(sequence[0]['value']['game_turn'], 42)
+        sequence.archive.close()
+
     def test_non_posix_does_not_signal_a_process(self):
         with patch.object(cockpit_archive.os, 'name', 'nt'), patch.object(cockpit_archive.os, 'kill') as kill:
             self.assertFalse(cockpit_archive._closed_bridge_archive(self.path, 'binding'))

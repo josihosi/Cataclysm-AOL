@@ -365,7 +365,15 @@ def query(sources, filters, contains=None, selectors=(), limit=20, predicates=()
                                         "sha256": hashlib.sha256(original).hexdigest(),
                                         "producer": metadata.get("producer", path.name)}
             for event in envelopes(record, source):
-                events.append(event)
+                # Lifecycle correlation needs only these scalar fields.  Keeping
+                # the full payload here retains every recovered lazy archive
+                # until the entire query finishes, even for unmatched events.
+                lifecycle = _lifecycle_payload(event)
+                events.append({key: event.get(key) for key in (
+                    "event_id", "run_id", "process_instance", "request_id",
+                    "event", "producer", "actor_id") } | {
+                    "payload": {key: lifecycle.get(key) for key in (
+                        "accepted", "rejection_reason", "outcome")}})
                 try:
                     if any(select(event, k) != v for k, v in filters.items()):
                         continue
