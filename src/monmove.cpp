@@ -3878,12 +3878,11 @@ int monster::calc_movecost( const map &here, const tripoint_bub_ms &from,
                        ( from.z() != to.z() && terrain.has_flag( ter_furn_flag::TFLAG_DIFFICULT_Z ) ) ) {
                 if( climbs() || force ) {
                     cost += furniture.movecost * get_climb_mod();
-                } else if( where == to ) {
-                    cost += furniture.movecost;
                 } else {
-                    debugmsg( "%s cannot climb over %s. monster::calc_movecost expects to be called with valid destination.",
-                              get_name(), furniture.name() );
-                    return 0;               // cannot climb
+                    // A nonclimber may already occupy this furniture (for example,
+                    // after a leap).  Charge its ordinary cost at either endpoint;
+                    // move_to validates the destination before calculating cost.
+                    cost += furniture.movecost;
                 }
 
             } else if( furniture.has_flag( "BRIDGE" ) ) {

@@ -609,6 +609,80 @@ TEST_CASE( "monster_special_move", "[speed]" )
     }
 }
 
+TEST_CASE( "monster_can_leave_climbable_furniture", "[monster][movement]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    const tripoint_bub_ms from( 30, 30, 0 );
+    const tripoint_bub_ms to( 31, 30, 0 );
+    REQUIRE( here.ter_set( from, ter_t_floor ) );
+    REQUIRE( here.ter_set( to, ter_t_floor ) );
+    monster &zombie = spawn_test_monster( "mon_zombie_winged", from );
+    REQUIRE_FALSE( zombie.climbs() );
+    REQUIRE( here.furn_set( from, furn_str_id( "f_dumpster" ) ) );
+    REQUIRE( here.has_flag( ter_furn_flag::TFLAG_CLIMBABLE, from ) );
+    REQUIRE( zombie.can_move_to( to ) );
+
+    bool moved = false;
+    int leaving_cost = 0;
+    int entering_cost = 0;
+    const std::string warnings = capture_debugmsg_during( [&] {
+        leaving_cost = zombie.calc_movecost( here, from, to );
+        entering_cost = zombie.calc_movecost( here, to, from );
+        moved = zombie.move_to( to );
+    } );
+    CHECK( warnings.empty() );
+    CHECK( leaving_cost > 0 );
+    CHECK( leaving_cost == entering_cost );
+    CHECK( moved );
+    CHECK( zombie.pos_bub() == to );
+}
+
+TEST_CASE( "monster_climbable_furniture_movement_controls", "[monster][movement]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    const tripoint_bub_ms from( 30, 30, 0 );
+    const tripoint_bub_ms to( 31, 30, 0 );
+    REQUIRE( here.ter_set( from, ter_t_floor ) );
+    REQUIRE( here.ter_set( to, ter_t_floor ) );
+
+    SECTION( "a nonclimber cannot enter climbable furniture" ) {
+        monster &zombie = spawn_test_monster( "mon_zombie_winged", from );
+        REQUIRE_FALSE( zombie.climbs() );
+        REQUIRE( here.furn_set( to, furn_str_id( "f_dumpster" ) ) );
+        REQUIRE_FALSE( zombie.can_move_to( to ) );
+        CHECK_FALSE( zombie.move_to( to ) );
+        CHECK( zombie.pos_bub() == from );
+    }
+
+    SECTION( "an impassable destination remains rejected" ) {
+        monster &zombie = spawn_test_monster( "mon_zombie_winged", from );
+        REQUIRE( here.ter_set( to, ter_str_id( "t_wall" ) ) );
+        REQUIRE_FALSE( zombie.can_move_to( to ) );
+        CHECK_FALSE( zombie.move_to( to ) );
+        CHECK( zombie.pos_bub() == from );
+    }
+
+    SECTION( "a climber can leave the furniture" ) {
+        monster &climber = spawn_test_monster( "mon_test_climb_nobash", from );
+        REQUIRE( climber.climbs() );
+        REQUIRE( here.furn_set( from, furn_str_id( "f_dumpster" ) ) );
+        CHECK( climber.move_to( to ) );
+        CHECK( climber.pos_bub() == to );
+    }
+
+    SECTION( "forced movement can leave the furniture" ) {
+        monster &zombie = spawn_test_monster( "mon_zombie_winged", from );
+        REQUIRE_FALSE( zombie.climbs() );
+        REQUIRE( here.furn_set( from, furn_str_id( "f_dumpster" ) ) );
+        CHECK( zombie.move_to( to, true ) );
+        CHECK( zombie.pos_bub() == to );
+    }
+}
+
 TEST_CASE( "monster_extend_flags", "[monster]" )
 {
     // mon_dog_zombie_brute is copy-from mon_dog_zombie_rot
