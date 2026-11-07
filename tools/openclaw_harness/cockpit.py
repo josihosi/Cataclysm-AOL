@@ -1587,6 +1587,45 @@ class CockpitRunChannel:
         safety_frames = 0
         handled_interruptions = self.archive.sequence() if self.archive is not None else []
         rejected_owners: set[tuple[str, str]] = set()
+        refreshed_distraction_rejection = False
+
+        def refresh_rejected_distraction(outcome, old_observation, old_raw, action_id):
+            """Reobserve once after an authenticated rejection, never replay it."""
+            nonlocal refreshed_distraction_rejection
+            receipt = outcome.get("receipt") if isinstance(outcome, Mapping) else None
+            native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
+            if refreshed_distraction_rejection or outcome.get("error") != "native_action_rejected" or \
+                    not isinstance(native, Mapping) or native.get("accepted") is not False or \
+                    native.get("rejection_reason") != "wrong_surface" or \
+                    not self._native_receipt_run_matches(native, str(old_observation.get("run_id", "")),
+                                                         surface_owned=True) or \
+                    native.get("requested_frame_id") != old_observation.get("observation_id") or \
+                    native.get("requested_surface_id") != old_raw.get("surface_id") or \
+                    native.get("action_id") != action_id:
+                return None
+            refreshed_distraction_rejection = True
+            try:
+                fresh = self.observe()
+            except ValueError:
+                return None
+            if fresh.get("run_id") != old_observation.get("run_id") or \
+                    fresh.get("observation_id") == old_observation.get("observation_id"):
+                return None
+            fresh_record = self._observations.get(str(fresh.get("observation_id", "")), {})
+            fresh_raw = fresh_record.get("issuing_frame", {}) if isinstance(fresh_record, Mapping) else {}
+            if not (self._semantic_damage_ignore_choice(fresh_raw) or
+                    self._semantic_activity_ignore_choice(fresh_raw)):
+                return None
+            if self._semantic_distraction_condition(fresh_raw)[0] == "unknown_activity_distraction":
+                return None
+            handled_interruptions.append({
+                "decision": "refresh_rejected_distraction_owner",
+                "observation_id": old_observation.get("observation_id", ""),
+                "fresh_observation_id": fresh.get("observation_id", ""),
+                "rejected_native_receipt": dict(native),
+            })
+            return fresh
+
         def interrupt(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
             current = self._signal_value(observed, "game_minutes")
             return self._interrupt_macro(reason, observed, {
@@ -1693,6 +1732,10 @@ class CockpitRunChannel:
                     )
                     tool_round_trips += 1
                     if outcome.get("ok") is not True:
+                        fresh = refresh_rejected_distraction(outcome, observed, raw, action_id)
+                        if fresh is not None:
+                            observed = dict(fresh)
+                            continue
                         return outcome
                     handled_interruptions.append({
                         "classification": interruption_classification,
@@ -1726,6 +1769,10 @@ class CockpitRunChannel:
                     )
                     tool_round_trips += 1
                     if outcome.get("ok") is not True:
+                        fresh = refresh_rejected_distraction(outcome, observed, raw, action_id)
+                        if fresh is not None:
+                            observed = dict(fresh)
+                            continue
                         return outcome
                     handled_interruptions.append({
                         "classification": interruption_classification,

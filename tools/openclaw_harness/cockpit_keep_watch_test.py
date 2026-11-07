@@ -67,6 +67,68 @@ def distraction_surface(sequence: int, kind: str, distraction_type: str | None,
 
 
 class KeepWatchTest(unittest.TestCase):
+    def test_rejected_activity_ignore_refreshes_only_fresh_classified_prompt(self):
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        for variant in ("fresh", "unchanged", "unknown", "unknown_type", "foreign_receipt", "timeout", "danger"):
+            with self.subTest(variant=variant):
+                start = frame(1, 100, clear)
+                old = distraction_surface(2, "activity_distraction", "noise")
+                prompt = distraction_surface(3, "prompt", "noise")
+                if variant == "unchanged":
+                    prompt = old
+                elif variant == "unknown":
+                    prompt["payload"]["title"] = "unrelated prompt"
+                elif variant == "unknown_type":
+                    prompt["payload"]["distraction_type"] = "unrecognized_event"
+                elif variant == "danger":
+                    prompt["payload"]["distraction_type"] = "pain"
+                target = frame(4, 101, clear)
+                target.update({"schema_version": 1, "event": "surface_descriptor", "surface_id": "surface:4",
+                               "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                               "valid_actions": [{"id": "world.wait", "stable_id": "",
+                                                  "label": "Wait", "enabled": True}]})
+                current = [start]
+                calls = []
+
+                def dispatch(issuing, action_id, stable_id=None):
+                    calls.append((issuing["frame_id"], action_id))
+                    if action_id == "world.wait":
+                        current[0] = old
+                        return {"native_receipt": {"run_id": issuing["run_id"],
+                            "frame_id": issuing["frame_id"], "action_id": action_id,
+                            "accepted": True}, "next_frame": old}
+                    if action_id == "activity.ignore":
+                        current[0] = prompt
+                        if variant == "timeout":
+                            return {"accepted": False, "reason": "native_surface_receipt_timeout",
+                                    "action_outcome": "unknown"}
+                        return {"native_receipt": {"run_id": "foreign" if variant == "foreign_receipt" else issuing["run_id"],
+                            "requested_run_id": issuing["run_id"], "requested_frame_id": issuing["frame_id"],
+                            "requested_surface_id": issuing["surface_id"], "action_id": action_id,
+                            "accepted": False, "rejection_reason": "wrong_surface"}}
+                    self.assertEqual(action_id, "prompt.choose")
+                    current[0] = target
+                    return {"native_receipt": {"run_id": issuing["run_id"], "requested_run_id": issuing["run_id"],
+                        "requested_frame_id": issuing["frame_id"], "requested_surface_id": issuing["surface_id"],
+                        "consuming_surface_id": issuing["surface_id"], "frame_id": issuing["frame_id"],
+                        "action_id": action_id, "accepted": True}, "next_frame": target}
+
+                channel = cockpit.CockpitRunChannel(lambda: current[0], dispatch,
+                    binding_id="binding-a", read_binding_id=lambda: "binding-a")
+                result = cockpit.CockpitService(run_channel=channel).call({"action": "game.wait", "wait": {
+                    "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                    "recipe": ["world.wait"], "danger_handling": "handle_classified_non_dangerous"
+                              if variant == "danger" else "ignore_danger_and_interruptions"}})
+                self.assertEqual(result.get("ok"), variant == "fresh", result)
+                self.assertEqual([item[1] for item in calls],
+                                 ["world.wait", "activity.ignore", "prompt.choose"] if variant == "fresh"
+                                 else ["world.wait", "activity.ignore"])
+                if variant == "fresh":
+                    rejection = result["result"]["handled_interruptions"][0]
+                    self.assertEqual(rejection["rejected_native_receipt"]["rejection_reason"], "wrong_surface")
+                if variant == "danger":
+                    self.assertEqual(result["error"], "keep_watch_unsafe_condition")
+
     def service(self, frames: list[dict[str, object]], *,
                 omit_activity_successor: bool = False) -> tuple[cockpit.CockpitService, list[str]]:
         index = [0]
