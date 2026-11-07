@@ -2098,8 +2098,9 @@ static void teleport_long()
     if( where.is_invalid() ) {
         return;
     }
-    g->place_player_overmap( where );
-    add_msg( _( "You teleport to submap %s." ), where.to_string() );
+    if( g->place_player_overmap( where ) ) {
+        add_msg( _( "You teleport to submap %s." ), where.to_string() );
+    }
 }
 
 static void teleport_overmap( bool specific_coordinates = false )
@@ -2125,11 +2126,11 @@ static void teleport_overmap( bool specific_coordinates = false )
         where = player_character.pos_abs_omt() + offset;
     }
     if( !!where ) {
-        g->place_player_overmap( *where );
-
-        const tripoint_abs_om new_pos =
-            project_to<coords::om>( player_character.pos_abs_omt() );
-        add_msg( _( "You teleport to overmap %s." ), new_pos.to_string() );
+        if( g->place_player_overmap( *where ) ) {
+            const tripoint_abs_om new_pos =
+                project_to<coords::om>( player_character.pos_abs_omt() );
+            add_msg( _( "You teleport to overmap %s." ), new_pos.to_string() );
+        }
     }
 }
 

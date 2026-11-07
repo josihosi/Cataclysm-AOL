@@ -21,10 +21,9 @@ class teleporter_list
         // ui for selection of desired teleport location.
         // returns overmap tripoint, or nullopt if canceled
         std::optional<tripoint_abs_omt> choose_teleport_location();
-        // returns true if a teleport is successful
-        // does not do any loading or unloading
-        bool place_avatar_overmap( Character &you, const tripoint_abs_omt &omt_pt ) const;
     public:
+        // Move the avatar to a translocator, returning false if placement fails.
+        bool place_avatar_overmap( Character &you, const tripoint_abs_omt &omt_pt ) const;
         bool knows_translocator( const tripoint_abs_omt &omt_pos ) const;
         // copy translocator at omt_pos to omt_pos_new, will do nothing and return false if it does not exist.
         bool copy_translocator( const tripoint_abs_omt &omt_pos, const tripoint_abs_omt &omt_pos_new );
@@ -37,6 +36,8 @@ class teleporter_list
         // calls the necessary functions to select translocator location
         // and teleports the target(s) there
         void translocate( const std::set<tripoint_bub_ms> &targets );
+        void translocate( const std::set<tripoint_bub_ms> &targets,
+                          const tripoint_abs_omt &destination );
 
         void serialize( JsonOut &json ) const;
         void deserialize( const JsonObject &data );

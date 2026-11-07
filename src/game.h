@@ -1045,7 +1045,8 @@ class game
         void insert_item( drop_locations &targets );
         // Places the player at the specified point; hurts feet, lists items etc.
         point_rel_sm place_player( const tripoint_bub_ms &dest, bool quick = false );
-        void place_player_overmap( const tripoint_abs_omt &om_dest, bool move_player = true );
+        point_rel_sm place_player( const tripoint_bub_ms &dest, bool quick, bool &placed );
+        bool place_player_overmap( const tripoint_abs_omt &om_dest, bool move_player = true );
         void perhaps_add_random_npc( bool ignore_spawn_timers_and_rates );
         static void display_om_pathfinding_progress( size_t open_set, size_t known_size );
 

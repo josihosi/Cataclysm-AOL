@@ -8729,6 +8729,13 @@ static void autopulp_or_butcher( avatar &u )
 
 point_rel_sm game::place_player( const tripoint_bub_ms &dest_loc, bool quick )
 {
+    bool placed = false;
+    return place_player( dest_loc, quick, placed );
+}
+
+point_rel_sm game::place_player( const tripoint_bub_ms &dest_loc, bool quick, bool &placed )
+{
+    placed = false;
     map &here = get_map();
     const optional_vpart_position vp1 = here.veh_at( dest_loc );
     if( const std::optional<std::string> label = vp1.get_label() ) {
@@ -8893,6 +8900,7 @@ point_rel_sm game::place_player( const tripoint_bub_ms &dest_loc, bool quick )
         u.stop_hauling();
     }
     u.setpos( here, dest_loc );
+    placed = true;
     if( u.is_mounted() ) {
         monster *mon = u.mounted_creature.get();
         mon->setpos( here, dest_loc );
@@ -9072,9 +9080,10 @@ point_rel_sm game::place_player( const tripoint_bub_ms &dest_loc, bool quick )
     return submap_shift;
 }
 
-void game::place_player_overmap( const tripoint_abs_omt &om_dest, bool move_player )
+bool game::place_player_overmap( const tripoint_abs_omt &om_dest, bool move_player )
 {
     map &here = get_map();
+    const tripoint_abs_omt original_omt = u.pos_abs_omt();
 
     // if player is teleporting around, they don't bring their horse with them
     if( u.is_mounted() ) {
@@ -9108,8 +9117,17 @@ void game::place_player_overmap( const tripoint_abs_omt &om_dest, bool move_play
     // update weather now as it could be different on the new location
     weather.set_nextweather( calendar::turn );
     if( move_player ) {
-        place_player( player_pos );
+        bool placed = false;
+        place_player( player_pos, false, placed );
+        if( !placed ) {
+            // Placement can refuse an occupied landing after the destination
+            // map has loaded. Restore the original map, as the long-distance
+            // teleport failure path does, without moving either creature.
+            place_player_overmap( original_omt, false );
+            return false;
+        }
     }
+    return true;
 }
 
 bool game::phasing_move( const tripoint_bub_ms &dest_loc, const bool via_ramp )

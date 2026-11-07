@@ -83,7 +83,9 @@ bool teleporter_list::place_avatar_overmap( Character &you, const tripoint_abs_o
     tripoint_omt_ms local_dest = omt_dest.get_omt( *global_dest ) + point( 60,
                                  60 );
     you.add_effect( effect_ignore_fall_damage, 1_seconds, false, 0, true );
-    g->place_player_overmap( omt_pt );
+    if( !g->place_player_overmap( omt_pt ) ) {
+        return false;
+    }
     g->place_player( rebase_bub( local_dest ) );
     return true;
 }
@@ -101,15 +103,25 @@ void teleporter_list::translocate( const std::set<tripoint_bub_ms> &targets )
         return;
     }
 
+    translocate( targets, *omt_dest );
+}
+
+void teleporter_list::translocate( const std::set<tripoint_bub_ms> &targets,
+                                  const tripoint_abs_omt &destination )
+{
     bool valid_targets = false;
     for( const tripoint_bub_ms &pt : targets ) {
         Character *you = get_creature_tracker().creature_at<Character>( pt );
 
         if( you && you->is_avatar() ) {
             valid_targets = true;
-            if( !place_avatar_overmap( *you, *omt_dest ) ) {
-                add_msg( _( "Failed to teleport.  Teleporter obstructed or destroyed." ) );
-                deactivate_teleporter( *omt_dest, pt );
+            if( !place_avatar_overmap( *you, destination ) ) {
+                if( find_valid_teleporters_omt( destination ) ) {
+                    add_msg( _( "Failed to teleport.  Teleporter landing is obstructed." ) );
+                } else {
+                    add_msg( _( "Failed to teleport.  Teleporter obstructed or destroyed." ) );
+                    deactivate_teleporter( destination, pt );
+                }
             }
         }
     }

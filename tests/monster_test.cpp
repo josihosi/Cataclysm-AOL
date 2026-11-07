@@ -28,12 +28,15 @@
 #include "json.h"
 #include "json_loader.h"
 #include "line.h"
+#include "magic_teleporter_list.h"
 #include "map.h"
+#include "mapbuffer.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
 #include "map_iterator.h"
 #include "map_scale_constants.h"
 #include "mapdata.h"
+#include "messages.h"
 #include "memory_fast.h"
 #include "monattack.h"
 #include "monster.h"
@@ -71,6 +74,197 @@ static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
 static const ter_str_id ter_t_palisade( "t_palisade" );
 static const ter_str_id ter_t_water_dp( "t_water_dp" );
+
+TEST_CASE( "overmap_teleport_restores_map_when_monster_blocks_landing", "[monster][teleport]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_abs_omt original_omt = player.pos_abs_omt();
+    g->place_player_overmap( original_omt, false );
+    const tripoint_abs_ms original_position = player.pos_abs();
+    const tripoint_bub_ms landing_offset = player.pos_bub( here );
+    const tripoint_abs_omt destination = original_omt + point( 12, 0 );
+
+    // Place an ordinary static spawn at the exact destination landing.  The
+    // destination is loaded while the player is still at the old position,
+    // just as it is during place_player_overmap's native transition.
+    g->place_player_overmap( destination, false );
+    REQUIRE( here.ter_set( landing_offset, ter_t_floor ) );
+    tripoint_abs_sm submap_position;
+    point_sm_ms offset;
+    std::tie( submap_position, offset ) = project_remain<coords::sm>( here.get_abs( landing_offset ) );
+    submap *const target = MAPBUFFER.lookup_submap( submap_position );
+    REQUIRE( target != nullptr );
+    target->spawns.emplace_back( mon_test_zombie, 1, offset, -1, -1, false,
+                                 std::string( "landing blocker" ) );
+    g->place_player_overmap( original_omt, false );
+    REQUIRE( player.pos_abs() == original_position );
+    REQUIRE( here.inbounds( player.pos_bub( here ) ) );
+    Messages::clear_messages();
+
+    CHECK_FALSE( g->place_player_overmap( destination ) );
+
+    const auto messages = Messages::recent_messages( 0 );
+    CHECK( std::any_of( messages.begin(), messages.end(), []( const auto &entry ) {
+        return entry.second.find( "cannot move" ) != std::string::npos &&
+               entry.second.find( "out of the way" ) != std::string::npos;
+    } ) );
+    CHECK( player.pos_abs() == original_position );
+    CHECK( here.inbounds( player.pos_bub( here ) ) );
+    CHECK( here.ter( player.pos_bub( here ) ) != ter_id( "t_null" ) );
+    g->place_player_overmap( destination, false );
+    const monster *const blocker = get_creature_tracker().creature_at<monster>( landing_offset );
+    REQUIRE( blocker != nullptr );
+    CHECK( blocker->type->id == mon_test_zombie );
+    CHECK( blocker->unique_name == "landing blocker" );
+    g->place_player_overmap( original_omt, false );
+}
+
+TEST_CASE( "overmap_teleport_reaches_unoccupied_landing", "[monster][teleport]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_abs_omt original_omt = player.pos_abs_omt();
+    g->place_player_overmap( original_omt, false );
+    const tripoint_abs_ms original_position = player.pos_abs();
+    const tripoint_bub_ms landing_offset = player.pos_bub( here );
+    const tripoint_abs_omt destination = original_omt + point( 12, 0 );
+    g->place_player_overmap( destination, false );
+    REQUIRE( player.pos_abs() == original_position );
+    REQUIRE( here.ter_set( landing_offset, ter_t_floor ) );
+    const tripoint_abs_ms expected = here.get_abs( landing_offset );
+    g->place_player_overmap( original_omt, false );
+    CHECK( g->place_player_overmap( destination ) );
+    CHECK( player.pos_abs() == expected );
+    CHECK( here.inbounds( player.pos_bub( here ) ) );
+    g->place_player_overmap( original_omt, false );
+}
+
+TEST_CASE( "overmap_teleport_keeps_post_landing_trap_movement", "[monster][teleport]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    avatar &player = get_avatar();
+    player.set_dex_base( 0 );
+    player.set_skill_level( skill_id( "dodge" ), 0 );
+    player.reset_stats();
+    const tripoint_abs_omt original_omt = player.pos_abs_omt();
+    g->place_player_overmap( original_omt, false );
+    const tripoint_abs_ms original_position = player.pos_abs();
+    const tripoint_bub_ms landing = player.pos_bub( here );
+    const tripoint_abs_omt destination = original_omt + point( 12, 0 );
+    g->place_player_overmap( destination, false );
+    for( const tripoint_bub_ms &p : here.points_in_radius( landing, 15 ) ) {
+        here.ter_set( p, ter_t_floor );
+        here.furn_clear( p );
+    }
+    const tripoint_abs_ms landing_position = here.get_abs( landing );
+    here.trap_set( landing, trap_str_id( "tr_telepad" ).id() );
+    g->place_player_overmap( original_omt, false );
+
+    CHECK( g->place_player_overmap( destination ) );
+    CHECK( player.pos_abs() != original_position );
+    CHECK( player.pos_abs() != landing_position );
+    CHECK( here.inbounds( player.pos_bub( here ) ) );
+    g->place_player_overmap( original_omt, false );
+}
+
+TEST_CASE( "translocator_respects_intermediate_placement_failure", "[.magiclysm][teleport]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_abs_omt original_omt = player.pos_abs_omt();
+    player.setpos( project_to<coords::ms>( original_omt ) + point( 1, 1 ) );
+    g->place_player_overmap( original_omt, false );
+    const tripoint_abs_ms original_position = player.pos_abs();
+    const tripoint_bub_ms landing = player.pos_bub( here );
+    const tripoint_abs_omt destination = original_omt + point( 12, 0 );
+    const furn_str_id gate( "f_magiclysm_translocator_gate" );
+    REQUIRE( gate.is_valid() );
+    g->place_player_overmap( destination, false );
+    const tripoint_bub_ms gate_position = landing + tripoint::east;
+    REQUIRE( project_to<coords::omt>( here.get_abs( gate_position ) ) == destination );
+    REQUIRE( here.ter_set( landing, ter_t_floor ) );
+    REQUIRE( here.ter_set( gate_position, ter_t_floor ) );
+    REQUIRE( here.furn_set( gate_position, gate ) );
+    const tripoint_abs_ms expected_gate = here.get_abs( gate_position );
+    bool blocked = false;
+    SECTION( "a monster prevents intermediate placement" ) {
+        blocked = true;
+        tripoint_abs_sm submap_position;
+        point_sm_ms offset;
+        std::tie( submap_position, offset ) = project_remain<coords::sm>( here.get_abs( landing ) );
+        submap *const target = MAPBUFFER.lookup_submap( submap_position );
+        REQUIRE( target != nullptr );
+        target->spawns.emplace_back( mon_test_zombie, 1, offset );
+    }
+    SECTION( "an unoccupied intermediate landing reaches the gate" ) {}
+    g->place_player_overmap( original_omt, false );
+    teleporter_list teleporters;
+    const bool moved = teleporters.place_avatar_overmap( player, destination );
+    CHECK( moved == !blocked );
+    CHECK( player.pos_abs() == ( blocked ? original_position : expected_gate ) );
+    CHECK( here.inbounds( player.pos_bub( here ) ) );
+    g->place_player_overmap( original_omt, false );
+}
+
+TEST_CASE( "translocator_destination_failure_preserves_intact_gate", "[.magiclysm][teleport]" )
+{
+    clear_map_and_put_player_underground();
+    clear_creatures();
+    map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_abs_omt origin = player.pos_abs_omt();
+    player.setpos( project_to<coords::ms>( origin ) + point( 1, 1 ) );
+    g->place_player_overmap( origin, false );
+    const tripoint_abs_ms original_position = player.pos_abs();
+    const tripoint_bub_ms landing = player.pos_bub( here );
+    const tripoint_abs_omt destination = origin + point( 12, 0 );
+    g->place_player_overmap( destination, false );
+    const tripoint_bub_ms gate_position = landing + tripoint::east;
+    REQUIRE( project_to<coords::omt>( here.get_abs( gate_position ) ) == destination );
+    REQUIRE( here.ter_set( landing, ter_t_floor ) );
+    REQUIRE( here.ter_set( gate_position, ter_t_floor ) );
+    here.furn_clear( gate_position );
+    bool missing = false;
+    bool blocked = false;
+    SECTION( "intact gate with blocked intermediate landing" ) {
+        blocked = true;
+        REQUIRE( here.furn_set( gate_position, furn_str_id( "f_magiclysm_translocator_gate" ) ) );
+        tripoint_abs_sm submap_position;
+        point_sm_ms offset;
+        std::tie( submap_position, offset ) = project_remain<coords::sm>( here.get_abs( landing ) );
+        submap *const target = MAPBUFFER.lookup_submap( submap_position );
+        REQUIRE( target != nullptr );
+        target->spawns.emplace_back( mon_test_zombie, 1, offset );
+    }
+    SECTION( "destroyed gate" ) {
+        missing = true;
+    }
+    SECTION( "intact reachable gate" ) {
+        REQUIRE( here.furn_set( gate_position, furn_str_id( "f_magiclysm_translocator_gate" ) ) );
+    }
+    const tripoint_abs_ms expected_gate = here.get_abs( gate_position );
+    g->place_player_overmap( origin, false );
+    teleporter_list teleporters;
+    std::ostringstream json;
+    json << "{\"known_teleporters\":[{\"position\":[" << destination.x() << ','
+         << destination.y() << ',' << destination.z() << "],\"name\":\"test gate\"}]}";
+    teleporters.deserialize( json_loader::from_string( json.str() ).get_object() );
+    REQUIRE( teleporters.knows_translocator( destination ) );
+    teleporters.translocate( { player.pos_bub( here ) }, destination );
+    CHECK( teleporters.knows_translocator( destination ) == !missing );
+    CHECK( player.pos_abs() == ( blocked || missing ? original_position : expected_gate ) );
+    CHECK( here.inbounds( player.pos_bub( here ) ) );
+    g->place_player_overmap( origin, false );
+}
 
 TEST_CASE( "necromancer_revives_the_actual_placed_creature", "[monster][resurrection]" )
 {
