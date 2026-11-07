@@ -297,6 +297,7 @@ class ArchiveSequence(Sequence):
     def __init__(self, archive, stream, count=None):
         self.archive, self.stream, self.count = archive, stream, count
         self.verified_reference = None
+        self._reference_cache = None
 
     def __len__(self):
         if self.count is not None:
@@ -455,15 +456,35 @@ class ArchiveSequence(Sequence):
         return self.archive.decode(row[0]) if row else None
 
     def reference(self):
+        # A producer can emit the same unchanged sequence in its compact
+        # terminal artifact and again in the live finish response. Avoid
+        # expanding it twice within this archive connection, but never reuse
+        # the result after any local or external SQLite change. Independent
+        # readers construct their own sequence and still verify from source.
+        connection = self.archive.connection
+        version = (connection.total_changes,
+                   connection.execute("PRAGMA data_version").fetchone()[0], len(self))
+        # Any nested sequence may read a legacy sidecar in this same archive;
+        # those files can change independently of SQLite's data_version.
+        # Conservatively disable reuse for the entire archive when one exists.
+        sidecar_pattern = self.archive.path.stem + ".stream-*.canonical.jsonl"
+        cacheable = not any(self.archive.path.parent.glob(sidecar_pattern))
+        if cacheable and self._reference_cache is not None and self._reference_cache[0] == version:
+            return dict(self._reference_cache[1])
         digest = hashlib.sha256()
         size = 0
         for chunk in self.json_chunks(sort_keys=True):
             raw = chunk.encode("utf-8")
             digest.update(raw)
             size += len(raw)
-        return {"archive_path": str(self.archive.path), "stream": self.stream, "count": len(self),
-                "sha256": digest.hexdigest(), "json_bytes": size,
-                "run_id": self.archive.run_id, "binding_id": self.archive.binding_id}
+        result = {"archive_path": str(self.archive.path), "stream": self.stream, "count": len(self),
+                  "sha256": digest.hexdigest(), "json_bytes": size,
+                  "run_id": self.archive.run_id, "binding_id": self.archive.binding_id}
+        after = (connection.total_changes,
+                 connection.execute("PRAGMA data_version").fetchone()[0], len(self))
+        self._reference_cache = (version, dict(result)) if cacheable and version == after and \
+            not any(self.archive.path.parent.glob(sidecar_pattern)) else None
+        return result
 
     @property
     def json_bytes(self):

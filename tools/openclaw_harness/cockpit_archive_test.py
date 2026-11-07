@@ -2,6 +2,7 @@ import gc
 import io
 import contextlib
 import os
+import sqlite3
 from unittest.mock import patch
 import startup_harness
 import cockpit
@@ -244,6 +245,66 @@ class ArchiveTest(unittest.TestCase):
         path = self.directory / "export.json"
         write_json_stream(path, sequence)
         self.assertEqual(json.loads(path.read_text(encoding="utf-8")), legacy)
+
+    def test_final_reference_reuses_unchanged_sequence_but_cold_read_verifies(self):
+        from cockpit_report_reference import load_report
+        sequence = self.archive.sequence()
+        for index in range(30):
+            sequence.append({"index": index, "detail": "z" * 10000})
+        report = {"schema": "caol-cockpit-live-final-v1", "run_id": "run-a", "binding_id": "binding-a",
+                  "action_observation_sequence": sequence}
+        path = self.directory / "final.json"
+        with mock.patch.object(sequence, "json_chunks", wraps=sequence.json_chunks) as chunks, \
+                mock.patch.object(startup_harness, "current_owned_process_generation",
+                                  return_value={"pid": 42, "status": "exited", "expected": {"pid": 42}}):
+            startup_harness.finalize_cockpit_live_session(self.directory, 42, report,
+                                                         cleanup_process=False, final_path=path)
+            wire = self.archive.wire({"ok": True, "result": report})
+            self.assertEqual(chunks.call_count, 1)  # terminal artifact and response, one expansion
+        self.assertLess(len(json.dumps(wire)), len("".join(json_chunks(sequence))) // 10)
+        _, _, recovered = load_report(path)
+        self.addCleanup(recovered["action_observation_sequence"].archive.close)
+        self.assertEqual(list(recovered["action_observation_sequence"]), list(sequence))
+        sequence.append({"index": 30, "detail": "new"})
+        self.assertEqual(sequence.reference()["count"], 31)
+        # Independent public recovery must not reuse a producer's cache.
+        with sqlite3.connect(self.archive.path) as other:
+            other.execute("DELETE FROM records WHERE stream=? AND seq=0", (sequence.stream,))
+        with self.assertRaisesRegex(ValueError, "archive_sequence_gap"):
+            sequence.reference()
+        with self.assertRaisesRegex(ValueError, "archive_sequence_gap"):
+            load_report(path)
+
+    def test_reference_does_not_cache_legacy_sidecar(self):
+        sequence = self.archive.sequence()
+        sequence.append({"value": "first"})
+        sidecar = sequence._sidecar_path(sort_keys=True)
+        sidecar.write_text('{"value":"first"}', encoding="utf-8")
+        first = sequence.reference()
+        sidecar.write_text('{"value":"second"}', encoding="utf-8")
+        self.assertNotEqual(sequence.reference()["sha256"], first["sha256"])
+
+    def test_nested_legacy_sidecar_change_invalidates_outer_reference(self):
+        inner = self.archive.sequence()
+        inner.append({"value": "first"})
+        outer = self.archive.sequence()
+        outer.append({"nested": inner})
+        sidecar = inner._sidecar_path(sort_keys=True)
+        sidecar.write_text('{"value":"first"}', encoding="utf-8")
+        first = outer.reference()
+        sidecar.write_text('{"value":"second"}', encoding="utf-8")
+        updated = outer.reference()
+        self.assertNotEqual(updated["sha256"], first["sha256"])
+        wire = self.archive.wire({"value": outer})
+        recovered = resolve_wire(wire, directory=self.directory, binding_id="binding-a")
+        self.addCleanup(recovered["value"].archive.close)
+        self.assertEqual(json.loads("".join(json_chunks(recovered["value"], sort_keys=True))),
+                         [{"nested": [{"value": "second"}]}])
+        # The reference describes the canonical sidecar bytes, and a cold
+        # recovery verifies them independently after another sidecar change.
+        sidecar.write_text('{"value":"third"}', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "archive_reference_digest_mismatch"):
+            resolve_wire(wire, directory=self.directory, binding_id="binding-a")
 
     def test_ordinary_finish_cites_consumed_facts_without_restoring_authority(self):
         for archived in (False, True):
