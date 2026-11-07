@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional
 
 import startup_harness
+from semantic_state import valid_surface_breadcrumbs
 
 from scenario_registry_store import (
     ScenarioRegistryStoreError,
@@ -388,10 +389,13 @@ class CockpitRunChannel:
         breadcrumbs = frame.get("breadcrumbs")
         payload = frame.get("payload")
         actions = frame.get("valid_actions")
-        if not run_id or not frame_id or not surface_id or not kind or \
-                not isinstance(breadcrumbs, list) or not breadcrumbs or \
-                any(not isinstance(item, str) or not item for item in breadcrumbs) or \
-                not isinstance(payload, Mapping) or not isinstance(actions, list):
+        if any(not isinstance(frame.get(key), str) for key in ("run_id", "frame_id", "surface_id", "kind")) or \
+                not run_id or not frame_id or not surface_id or not kind or \
+                not valid_surface_breadcrumbs(kind, breadcrumbs) or \
+                not isinstance(payload, Mapping) or any(
+                    not isinstance(key, str) or not isinstance(value, str)
+                    for key, value in payload.items()
+                ) or not isinstance(actions, list):
             raise ValueError("native semantic surface descriptor is malformed")
         normalized_actions = []
         action_keys = set()

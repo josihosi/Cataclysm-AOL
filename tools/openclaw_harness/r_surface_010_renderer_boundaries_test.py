@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import sys
+import json
+import copy
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +27,100 @@ def descriptor(kind: str, frame_id: str, actions: list[dict[str, object]]) -> di
 
 
 class RendererUnsupportedBoundariesTest(unittest.TestCase):
+    def test_unnamed_dialogue_is_preserved_without_weakening_authority(self) -> None:
+        # Native W5 frame 1202 has an unnamed speaker and two distinct
+        # dialogue choices plus a cancel action. No speaker is invented.
+        native = descriptor("dialogue", "renderer-proof:frame:1202", [
+            {"id": "dialogue.choose", "stable_id": "dialogue-response-1",
+             "label": "Contact it.", "enabled": True},
+            {"id": "dialogue.choose", "stable_id": "dialogue-response-2",
+             "label": "Ignore it.", "enabled": True},
+            {"id": "dialogue.cancel", "stable_id": "", "label": "Goodbye", "enabled": True},
+        ])
+        native["breadcrumbs"] = [""]
+        named = copy.deepcopy(native)
+        named["breadcrumbs"] = ["Named speaker"]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "semantic.native.events.jsonl"
+
+            def read(frame):
+                path.write_text(semantic_state.SEMANTIC_STEP_PREFIX + json.dumps(frame) + "\n")
+                return semantic_state.read_semantic_step_trace(path, root, "renderer-proof")
+
+            for frame in (native, named):
+                events, status = read(frame)
+                self.assertEqual(status, "ok")
+                self.assertEqual(events[0]["breadcrumbs"], frame["breadcrumbs"])
+                observed = cockpit.CockpitRunChannel(lambda: events[0]).observe()
+                self.assertEqual(observed["breadcrumbs"], frame["breadcrumbs"])
+                self.assertEqual(observed["frame_id"], frame["frame_id"])
+                self.assertEqual(observed["advertised_actions"],
+                                 ["dialogue.choose", "dialogue.choose", "dialogue.cancel"])
+
+            # Native surfaces inherit each parent's own label, including an
+            # unnamed dialogue speaker, even when the child is not dialogue.
+            for labels in (["", "Follower rules"], ["", "Follower rules", "Confirm"]):
+                child = descriptor("menu", "renderer-proof:frame:child", [{
+                    "id": "menu.cancel", "stable_id": "", "label": "Cancel", "enabled": True,
+                }])
+                child["breadcrumbs"] = labels
+                events, status = read(child)
+                self.assertEqual(status, "ok")
+                observed = cockpit.CockpitRunChannel(lambda: events[0]).observe()
+                self.assertEqual(observed["breadcrumbs"], labels)
+                self.assertEqual(observed["advertised_actions"], ["menu.cancel"])
+
+            successor = descriptor("world", "renderer-proof:frame:1203", [])
+            calls = []
+            def dispatch(frame, action_id, stable_id=None):
+                calls.append((frame["frame_id"], action_id, stable_id))
+                return {"native_receipt": {
+                    "requested_frame_id": frame["frame_id"],
+                    "requested_surface_id": frame["surface_id"],
+                    "consuming_surface_id": frame["surface_id"],
+                    "action_id": action_id, "stable_id": stable_id or "", "accepted": True,
+                }, "next_frame": successor}
+            channel = cockpit.CockpitRunChannel(lambda: native, dispatch)
+            observed = channel.observe()
+            rejected = channel.act(observation_id=observed["observation_id"],
+                                   action_id="dialogue.choose", stable_id="invented")
+            self.assertFalse(rejected["ok"])
+            self.assertEqual(calls, [])
+            acted = channel.act(observation_id=observed["observation_id"],
+                                action_id="dialogue.choose", stable_id="dialogue-response-2")
+            self.assertTrue(acted["ok"], acted)
+            self.assertEqual(calls, [(native["frame_id"], "dialogue.choose", "dialogue-response-2")])
+            replay = channel.act(observation_id=observed["observation_id"],
+                                 action_id="dialogue.choose", stable_id="dialogue-response-2")
+            self.assertEqual(replay["error"], "duplicate_submission")
+            self.assertEqual(len(calls), 1)
+
+            invalid = []
+            for change in (
+                {"run_id": "foreign"}, {"run_id": None}, {"frame_id": ""},
+                {"frame_id": 123}, {"surface_id": ""}, {"surface_id": 123},
+                {"kind": "menu"}, {"kind": None}, {"breadcrumbs": []}, {"breadcrumbs": [None]},
+                {"breadcrumbs": ["Speaker", None]}, {"payload": {"speaker": None}},
+                {"kind": "menu", "breadcrumbs": ["", ""]},
+            ):
+                frame = copy.deepcopy(native); frame.update(change); invalid.append(frame)
+            duplicate = copy.deepcopy(native)
+            duplicate["valid_actions"].append(copy.deepcopy(duplicate["valid_actions"][0]))
+            invalid.append(duplicate)
+            wrong_action = copy.deepcopy(native)
+            wrong_action["valid_actions"][0]["enabled"] = "true"
+            invalid.append(wrong_action)
+            for frame in invalid:
+                events, status = read(frame)
+                self.assertEqual(events, [])
+                self.assertIn(status, {"contamination", "malformed_semantic_surface_descriptor"})
+            # Cockpit validates identity and action shape independently of the
+            # run-bound trace reader; contamination is the reader's boundary.
+            for frame in invalid[1:]:
+                with self.assertRaises(ValueError):
+                    cockpit.CockpitRunChannel._surface_descriptor(frame)
+
     def test_terminal_projection_preserves_the_tiles_v2_surface_verbatim(self) -> None:
         frames = [
             descriptor("inventory", "renderer-proof:inventory", [{

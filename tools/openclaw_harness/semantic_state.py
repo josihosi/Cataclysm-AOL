@@ -46,6 +46,15 @@ def semantic_catalog_io_path(path: Path) -> Path:
     return Path("\\\\?\\" + absolute)
 
 
+def valid_surface_breadcrumbs(kind: str, breadcrumbs: Any) -> bool:
+    """Preserve unnamed dialogue labels, including inherited ancestor labels."""
+    if not isinstance(breadcrumbs, list) or not breadcrumbs:
+        return False
+    return all(isinstance(value, str) and (bool(value) or
+               index < len(breadcrumbs) - 1 or kind == "dialogue")
+               for index, value in enumerate(breadcrumbs))
+
+
 def read_bounded_transition_facts(path: Path, run_dir: Path, run_id: str) -> tuple[list[dict[str, Any]], str]:
     """Read at most the bounded native stream and reject unsafe sources."""
     path = Path(path)
@@ -202,10 +211,11 @@ def read_semantic_step_trace(
             breadcrumbs = normalized.get("breadcrumbs")
             payload = normalized.get("payload")
             actions = normalized.get("valid_actions")
-            if schema_version != 1 or not isinstance(surface_id, str) or not surface_id or \
+            if schema_version != 1 or not isinstance(normalized.get("run_id"), str) or \
+                    not normalized["run_id"] or not isinstance(normalized.get("frame_id"), str) or \
+                    not isinstance(surface_id, str) or not surface_id or \
                     not frame_id or not isinstance(kind, str) or not kind or \
-                    not isinstance(breadcrumbs, list) or not breadcrumbs or \
-                    any(not isinstance(value, str) or not value for value in breadcrumbs) or \
+                    not valid_surface_breadcrumbs(kind, breadcrumbs) or \
                     not isinstance(payload, Mapping) or any(
                         not isinstance(key, str) or not isinstance(value, str)
                         for key, value in payload.items()
