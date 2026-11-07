@@ -506,7 +506,12 @@ class CockpitRunChannel:
             "actions": {action["id"] for action in enabled_actions},
             "action_stable_ids": action_stable_ids,
             "handles": set(),
-            "used": previous_record.get("submission_outcome") == "unknown",
+            # World input advances gameplay. A delayed repeat of the same
+            # descriptor must not grant its already-consumed input again.
+            # Some non-World owners deliberately accept same-frame menu
+            # selections, so retain their existing selection behavior.
+            "used": previous_record.get("submission_outcome") == "unknown" or (
+                descriptor["kind"] == "world" and previous_record.get("submission_outcome") == "accepted"),
             "submission_outcome": previous_record.get("submission_outcome"),
             "public_state": result,
             "issuing_frame": dict(issuing_raw), "native_interruption": False,
@@ -3266,6 +3271,12 @@ class CockpitRunChannel:
                     "action_id": action_id, "observation_id": str(observation_id),
                     "native_receipt": dict(native), "unused_authority": "revoked",
                 }), "receipt": dict(receipt)}
+        if is_surface_action and issuing_raw.get("kind") == "world":
+            # Persist the accepted World submission even when the archive has
+            # compacted the consumed observation to its authority tombstone.
+            consumed = self._observations.get(str(observation_id), {})
+            consumed["submission_outcome"] = "accepted"
+            self._observations[str(observation_id)] = consumed
         if isinstance(next_frame, Mapping):
             self._accept_wait_operation(
                 observed=observed["public_state"], action_id=str(action_id),

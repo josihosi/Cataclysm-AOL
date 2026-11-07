@@ -43,6 +43,40 @@ class ArchiveTest(unittest.TestCase):
              witness_charter=CHARTER, witness_identity={"scenario_id": "scenario-a", "source_identity": "source-a", "executable_identity": "exe-a"})
         return CockpitService(run_channel=channel)
 
+    def test_reobserved_consumed_world_frame_cannot_dispatch_twice(self):
+        for archived in (False, True):
+            with self.subTest(archived=archived):
+                current = {"event": "surface_descriptor", "schema_version": 1,
+                           "run_id": "run-a", "frame_id": "world:1", "surface_id": "world",
+                           "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                           "valid_actions": [{"id": "world.move.west", "stable_id": "",
+                                              "label": "West", "enabled": True}]}
+                calls = []
+
+                def dispatch(issuing, action):
+                    calls.append(issuing["frame_id"])
+                    successor = {**current, "frame_id": "world:2" if len(calls) == 1 else "world:3"}
+                    return {"native_receipt": {
+                        "run_id": "run-a", "requested_run_id": "run-a", "accepted": True,
+                        "requested_frame_id": issuing["frame_id"], "consuming_frame_id": issuing["frame_id"],
+                        "requested_surface_id": "world", "consuming_surface_id": "world", "action_id": action},
+                        "next_frame": successor}
+
+                channel = CockpitRunChannel(lambda: current, dispatch,
+                    archive=self.archive if archived else None, binding_id="binding-a")
+                service = CockpitService(run_channel=channel)
+                first = service.call({"action": "game.observe"})["result"]
+                action = {"action": "game.act", "observation_id": first["observation_id"],
+                          "action_id": "world.move.west"}
+                self.assertTrue(service.call(action)["ok"])
+                self.assertEqual(service.call({"action": "game.observe"})["result"]["observation_id"], "world:1")
+                self.assertEqual(service.call(action)["error"], "duplicate_submission")
+                self.assertEqual(calls, ["world:1"])
+                current["frame_id"] = "world:2"
+                fresh = service.call({"action": "game.observe"})["result"]
+                self.assertTrue(service.call({**action, "observation_id": fresh["observation_id"]})["ok"])
+                self.assertEqual(calls, ["world:1", "world:2"])
+
     def test_ordinary_scenario_reuses_its_published_final_without_history_rescans(self):
         run_dir = self.directory
         (run_dir / "process.json").write_text(json.dumps({"run_id": "run-a"}), encoding="utf-8")
