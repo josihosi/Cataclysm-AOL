@@ -572,6 +572,32 @@ def _valid_native_extrema(packet: Any, owner: Mapping[str, Any], instance: str |
                 {"turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail"} or
                 any(not _finite_number(value) or value < 0 for value in stages.values())):
             return False
+        # Older v1 producers did not emit detailed rows. When present, bind
+        # the row to this exact turn and reject malformed array pairings.
+        if "detailed_diagnostic" in sample:
+            if "detailed_diagnostic_unavailable_reason" not in sample:
+                return False
+            detail = sample["detailed_diagnostic"]
+            reason = sample.get("detailed_diagnostic_unavailable_reason")
+            if detail is None:
+                if reason != "native_diagnostic_unavailable":
+                    return False
+            else:
+                if reason is not None or not isinstance(detail, dict) or \
+                        detail.get("unavailable_reason") is not None:
+                    return False
+                row = detail.get("row")
+                names = detail.get("stage_names")
+                if not isinstance(row, dict) or row.get("turn") != sample["game_turn"] or \
+                        not isinstance(names, list) or not names or \
+                        not all(isinstance(name, str) and name for name in names) or \
+                        len(names) != len(set(names)):
+                    return False
+                for key in ("stages_seconds", "stage_calls"):
+                    values = row.get(key)
+                    if not isinstance(values, list) or len(values) != len(names) or \
+                            any(not _finite_number(value) or value < 0 for value in values):
+                        return False
         if any(sample[key] is None for key in metrics) or stages is None:
             return sample.get("metric_unavailable_reason") == "native_diagnostic_mode_off"
         return sample.get("metric_unavailable_reason") is None

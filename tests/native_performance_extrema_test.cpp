@@ -80,3 +80,27 @@ TEST_CASE( "native_performance_extrema_rewind_starts_new_epoch", "[performance][
     CHECK( extrema.individual()->turn_id == 2 );
     CHECK_FALSE( extrema.window() );
 }
+
+TEST_CASE( "native_performance_extrema_capture_candidates_follow_window_and_epoch", "[performance][extrema]" )
+{
+    native_performance_extrema extrema;
+    native_performance_sample row;
+    row.turn_id = 1;
+    row.game_turn = 100;
+    row.simulation_seconds = 4;
+    CHECK( extrema.needs_detail( row ) );
+    extrema.add( row );
+    row.turn_id = 2;
+    row.game_turn = 101;
+    row.simulation_seconds = 4;
+    CHECK_FALSE( extrema.needs_detail( row ) );
+    extrema.add( row );
+    row.turn_id = 4;
+    row.game_turn = 102;
+    row.simulation_seconds = 1;
+    CHECK( extrema.needs_detail( row ) );
+    extrema.add( row );
+    row.turn_id = 5;
+    row.game_turn = 50;
+    CHECK( extrema.needs_detail( row ) );
+}

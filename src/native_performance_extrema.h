@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <cstddef>
 #include <optional>
+#include <memory>
+
+struct raid_perf_row;
 
 // Per-native-process, fixed-size, non-overlapping 100-turn extrema. Equal
 // maxima keep the first occurrence; incomplete windows are never promoted.
@@ -19,6 +22,7 @@ struct native_performance_sample {
     std::optional<double> input_seconds;
     std::optional<double> save_seconds;
     std::optional<std::array<double, 4>> stages_seconds;
+    std::shared_ptr<const raid_perf_row> detailed_row;
 };
 
 struct native_performance_window {
@@ -34,6 +38,25 @@ struct native_performance_window {
 class native_performance_extrema
 {
     public:
+        // Capture the current row only when it can become an individual or
+        // partial-window maximum. Ties retain the first observed turn.
+        bool needs_detail( const native_performance_sample &sample ) const {
+            if( last_game_turn_ && sample.game_turn < *last_game_turn_ ) {
+                return true;
+            }
+            if( !individual_ || sample.simulation_seconds > individual_->simulation_seconds ) {
+                return true;
+            }
+            if( count_ == 0 || sample.turn_id != partial_[count_ - 1].turn_id + 1 ) {
+                return true;
+            }
+            for( std::size_t i = 0; i < count_; ++i ) {
+                if( sample.simulation_seconds <= partial_[i].simulation_seconds ) {
+                    return false;
+                }
+            }
+            return true;
+        }
         bool add( const native_performance_sample &sample ) {
             bool changed = false;
             if( last_game_turn_ && sample.game_turn < *last_game_turn_ ) {

@@ -5561,6 +5561,26 @@ TEST_CASE( "performance interval output preserves the real World successor",
             const auto window = object.get_object( "window_max" );
             window.allow_omitted_members();
             CHECK( window.get_int( "sample_count" ) == 100 );
+            for( const TextJsonObject &sample : { object.get_object( "individual_max" ),
+                                                  window.get_object( "dominant_turn" ) } ) {
+                sample.allow_omitted_members();
+                if( mode == "off" ) {
+                    CHECK( sample.get_string( "detailed_diagnostic_unavailable_reason" ) ==
+                           "native_diagnostic_unavailable" );
+                } else {
+                    REQUIRE( sample.has_object( "detailed_diagnostic" ) );
+                    const auto detail = sample.get_object( "detailed_diagnostic" );
+                    detail.allow_omitted_members();
+                    const auto names = detail.get_string_array( "stage_names" );
+                    const auto row = detail.get_object( "row" );
+                    row.allow_omitted_members();
+                    CHECK( row.get_int( "turn" ) == sample.get_int( "game_turn" ) );
+                    CHECK( row.get_array( "stages_seconds" ).size() == names.size() );
+                    CHECK( row.get_array( "stage_calls" ).size() == names.size() );
+                    CHECK( row.get_string( "migo_receiver_scan_unavailable_reason" ) ==
+                           "bounded_extrema_does_not_retain_scan_records" );
+                }
+            }
             ++pinned;
         }
     }

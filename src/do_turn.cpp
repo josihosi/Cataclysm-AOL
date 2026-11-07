@@ -413,6 +413,158 @@ void raid_perf_note_query( raid_perf_query_event event )
     }
 }
 
+static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_names {
+        "migo_operations", "horde_movement", "population", "fields", "items", "map_cache",
+        "signal_total", "signal_discovery", "signal_hordes", "creatures", "overmap_npcs",
+        "pre_input_world", "post_input_action",
+        "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit", "human_activation",
+        "watch_preflight", "watch_optical_read", "watch_record_view",
+        "migo_service_local_navigation", "migo_service_abstract_navigation",
+        "migo_local_plan", "migo_local_move",
+        "migo_local_prepare_navigation", "migo_abstract_prepare_navigation",
+        "physical_navigation_read", "physical_navigation_view_build", "physical_navigation_native_route",
+        "nav_view_lookup", "nav_view_miss_load", "nav_view_level_setup",
+        "migo_plan_native_targeting", "migo_plan_species_hook", "migo_plan_hostile_recognition",
+        "scout_actor_read", "scout_view_build", "scout_view_cache", "scout_light_read",
+        "scout_light_dependencies", "scout_light_native", "scout_actor_predicate", "scout_reader_retire",
+        "creature_monsters", "creature_npc_preparation", "creature_npc_actions",
+        "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
+        "tail_prepare", "tail_world_work", "tail_finish",
+        "signal_rider_maintenance", "signal_stalkers", "signal_riders",
+        "signal_cannibals", "signal_migo",
+        "stalker_target_acquisition", "stalker_target_recheck",
+        "stalker_invisible_avatar_read"
+};
+
+static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
+{
+    js.start_object();
+    js.member( "turn", row.turn );
+    js.member( "wait_begin", row.wait_begin );
+    js.member( "wait_end", row.wait_end );
+    js.member( "simulation_seconds", row.simulation_seconds );
+    if( bounded_extrema ) {
+        js.member( "migo_receiver_scan_unavailable_reason", "bounded_extrema_does_not_retain_scan_records" );
+    } else if( row.receiver_scan.entered() ) {
+        js.member( "migo_receiver_scan" );
+        row.receiver_scan.serialize( js );
+    }
+    js.member( "process_cpu_seconds", row.cpu_seconds );
+    js.member( "input_seconds", row.input_seconds );
+    js.member( "save_seconds", row.save_seconds );
+#if defined(__APPLE__)
+    if( row.process_resource_delta ) {
+        // These are whole-process, whole-turn counters: input and save
+        // are included, and I/O byte counts do not measure blocking time.
+        js.member( "process_resource_delta" );
+        js.start_object();
+        js.member( "pageins", ( *row.process_resource_delta )[0] );
+        js.member( "disk_read_bytes", ( *row.process_resource_delta )[1] );
+        js.member( "disk_write_bytes", ( *row.process_resource_delta )[2] );
+        // Darwin reports these task-wide values in Mach absolute ticks.
+        // They include all threads and the input/save portion of the turn.
+        js.member( "user_ticks", ( *row.process_resource_delta )[3] );
+        js.member( "system_ticks", ( *row.process_resource_delta )[4] );
+        js.member( "runnable_ticks", ( *row.process_resource_delta )[5] );
+        static const mach_timebase_info_data_t timebase = []() {
+            mach_timebase_info_data_t value{};
+            if( mach_timebase_info( &value ) != KERN_SUCCESS ) {
+                value = {};
+            }
+            return value;
+        }();
+        if( timebase.denom != 0 ) {
+            js.member( "timebase_numer", timebase.numer );
+            js.member( "timebase_denom", timebase.denom );
+        }
+        js.end_object();
+    }
+#endif
+    if( bounded_extrema ) {
+#if defined(__APPLE__)
+        if( !row.process_resource_delta ) {
+            js.member( "process_resource_delta" );
+            js.write_null();
+            js.member( "process_resource_unavailable_reason", "not_enabled_or_unavailable" );
+        }
+#else
+        js.member( "process_resource_delta" );
+        js.write_null();
+        js.member( "process_resource_unavailable_reason", "unsupported_platform" );
+#endif
+    }
+    js.member( "debug_log_bytes", row.sink.bytes );
+    js.member( "debug_log_flushes", row.sink.flushes );
+    js.member( "debug_log_replacements", row.sink.replacements );
+    js.member( "debug_log_replacement_seconds", row.sink.replacement_nanoseconds / 1e9 );
+    js.member( "stages_seconds", row.stages );
+    js.member( "stage_calls", row.stage_calls );
+    js.member( "nav_view_counts" );
+    js.start_object();
+    for( std::size_t i = 0; i < raid_perf_nav_event_count; ++i ) {
+        js.member( raid_perf_nav_names[i], row.nav_counts[i] );
+    }
+    js.end_object();
+    js.member( "nav_query_counts" );
+    js.start_object();
+    for( std::size_t i = 0; i < raid_perf_query_event_count; ++i ) {
+        js.member( raid_perf_query_names[i], row.query_counts[i] );
+    }
+    js.end_object();
+    js.member( "discovered_sources", row.discovered_sources );
+    js.member( "horde_packets", row.horde_packets );
+    js.member( "horde_diagnostic_records", row.horde_diagnostic_records );
+    js.member( "horde_candidate_entities", row.horde_candidate_entities );
+    js.member( "horde_attracted_entities", row.horde_attracted_entities );
+    js.member( "human_activation_queries", row.human_activation_queries );
+    js.member( "human_nearby_candidates", row.human_nearby_candidates );
+    js.member( "watch_preflights", row.watch_preflights );
+    js.member( "watch_optical_read_calls", row.watch_optical_read_calls );
+    js.member( "watch_record_view_calls", row.watch_record_view_calls );
+    js.member( "watch_record_view_eligible_calls", row.watch_record_view_eligible_calls );
+    js.member( "watch_cached_views", row.watch_cached_views );
+    js.member( "channel_records", row.channel_output.records );
+    js.member( "channel_open_calls", row.channel_output.open_calls );
+    js.member( "channel_flush_calls", row.channel_output.flush_calls );
+    js.member( "channel_logical_bytes", row.channel_output.logical_bytes );
+    js.member( "channel_write_failed", row.channel_output.write_failed );
+    js.end_object();
+}
+
+static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf_row &row )
+{
+    auto copy = std::make_shared<raid_perf_row>();
+    copy->turn = row.turn;
+    copy->wait_begin = row.wait_begin;
+    copy->wait_end = row.wait_end;
+    copy->simulation_seconds = row.simulation_seconds;
+    copy->cpu_seconds = row.cpu_seconds;
+    copy->input_seconds = row.input_seconds;
+    copy->save_seconds = row.save_seconds;
+    copy->sink = row.sink;
+    copy->stages = row.stages;
+    copy->stage_calls = row.stage_calls;
+    copy->nav_counts = row.nav_counts;
+    copy->query_counts = row.query_counts;
+    copy->discovered_sources = row.discovered_sources;
+    copy->horde_packets = row.horde_packets;
+    copy->horde_diagnostic_records = row.horde_diagnostic_records;
+    copy->horde_candidate_entities = row.horde_candidate_entities;
+    copy->horde_attracted_entities = row.horde_attracted_entities;
+    copy->human_activation_queries = row.human_activation_queries;
+    copy->human_nearby_candidates = row.human_nearby_candidates;
+    copy->watch_preflights = row.watch_preflights;
+    copy->watch_optical_read_calls = row.watch_optical_read_calls;
+    copy->watch_record_view_calls = row.watch_record_view_calls;
+    copy->watch_record_view_eligible_calls = row.watch_record_view_eligible_calls;
+    copy->watch_cached_views = row.watch_cached_views;
+    copy->channel_output = row.channel_output;
+#if defined(__APPLE__)
+    copy->process_resource_delta = row.process_resource_delta;
+#endif
+    return copy;
+}
+
 static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max = std::nullopt )
 {
     if( raid_perf_rows.empty() || raid_perf_wait_generation() != 0 ) {
@@ -448,111 +600,14 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
                "Scalar branch visits, not distinct query/goal identities or timing. Inputs no_segment/segment_empty/segment_present and terminal walk/open_door/goal_reached/unknown_geometry/fire_refused/no_route/other_refusal each partition physical_navigation_read calls. Context resets precede the read; only positive resets discard an existing prefix. Qualification rejections and store/reuse counts overlap input/outcome groups. cross_z counts actual input level differences. deferred_member_ineligible is a deferred unreachable probe for a member already listed at exclusion, which cannot satisfy reconsider's new-member condition; no behavior is suppressed. No failed-result cache or per-query output." );
     js.member( "channel_output_scope",
                "run-bound audit record/open/explicit-flush calls and completed logical bytes; not physical disk I/O" );
-    js.member( "stage_names", std::array<std::string, raid_perf_stage_count> {
-        "migo_operations", "horde_movement", "population", "fields", "items", "map_cache",
-        "signal_total", "signal_discovery", "signal_hordes", "creatures", "overmap_npcs",
-        "pre_input_world", "post_input_action",
-        "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit", "human_activation",
-        "watch_preflight", "watch_optical_read", "watch_record_view",
-        "migo_service_local_navigation", "migo_service_abstract_navigation",
-        "migo_local_plan", "migo_local_move",
-        "migo_local_prepare_navigation", "migo_abstract_prepare_navigation",
-        "physical_navigation_read", "physical_navigation_view_build", "physical_navigation_native_route",
-        "nav_view_lookup", "nav_view_miss_load", "nav_view_level_setup",
-        "migo_plan_native_targeting", "migo_plan_species_hook", "migo_plan_hostile_recognition",
-        "scout_actor_read", "scout_view_build", "scout_view_cache", "scout_light_read",
-        "scout_light_dependencies", "scout_light_native", "scout_actor_predicate", "scout_reader_retire",
-        "creature_monsters", "creature_npc_preparation", "creature_npc_actions",
-        "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
-        "tail_prepare", "tail_world_work", "tail_finish",
-        "signal_rider_maintenance", "signal_stalkers", "signal_riders",
-        "signal_cannibals", "signal_migo",
-        "stalker_target_acquisition", "stalker_target_recheck",
-        "stalker_invisible_avatar_read"
-    } );
+    js.member( "stage_names", raid_perf_stage_names );
     js.member( "rows" );
     js.start_array();
     for( std::size_t row_index = 0; row_index < raid_perf_rows.size(); ++row_index ) {
         if( selected_max && row_index != *selected_max ) {
             continue;
         }
-        const raid_perf_row &row = raid_perf_rows[row_index];
-        js.start_object();
-        js.member( "turn", row.turn );
-        js.member( "wait_begin", row.wait_begin );
-        js.member( "wait_end", row.wait_end );
-        js.member( "simulation_seconds", row.simulation_seconds );
-        if( row.receiver_scan.entered() ) {
-            js.member( "migo_receiver_scan" );
-            row.receiver_scan.serialize( js );
-        }
-        js.member( "process_cpu_seconds", row.cpu_seconds );
-        js.member( "input_seconds", row.input_seconds );
-        js.member( "save_seconds", row.save_seconds );
-#if defined(__APPLE__)
-        if( row.process_resource_delta ) {
-            // These are whole-process, whole-turn counters: input and save
-            // are included, and I/O byte counts do not measure blocking time.
-            js.member( "process_resource_delta" );
-            js.start_object();
-            js.member( "pageins", ( *row.process_resource_delta )[0] );
-            js.member( "disk_read_bytes", ( *row.process_resource_delta )[1] );
-            js.member( "disk_write_bytes", ( *row.process_resource_delta )[2] );
-            // Darwin reports these task-wide values in Mach absolute ticks.
-            // They include all threads and the input/save portion of the turn.
-            js.member( "user_ticks", ( *row.process_resource_delta )[3] );
-            js.member( "system_ticks", ( *row.process_resource_delta )[4] );
-            js.member( "runnable_ticks", ( *row.process_resource_delta )[5] );
-            static const mach_timebase_info_data_t timebase = []() {
-                mach_timebase_info_data_t value{};
-                if( mach_timebase_info( &value ) != KERN_SUCCESS ) {
-                    value = {};
-                }
-                return value;
-            }();
-            if( timebase.denom != 0 ) {
-                js.member( "timebase_numer", timebase.numer );
-                js.member( "timebase_denom", timebase.denom );
-            }
-            js.end_object();
-        }
-#endif
-        js.member( "debug_log_bytes", row.sink.bytes );
-        js.member( "debug_log_flushes", row.sink.flushes );
-        js.member( "debug_log_replacements", row.sink.replacements );
-        js.member( "debug_log_replacement_seconds", row.sink.replacement_nanoseconds / 1e9 );
-        js.member( "stages_seconds", row.stages );
-        js.member( "stage_calls", row.stage_calls );
-        js.member( "nav_view_counts" );
-        js.start_object();
-        for( std::size_t i = 0; i < raid_perf_nav_event_count; ++i ) {
-            js.member( raid_perf_nav_names[i], row.nav_counts[i] );
-        }
-        js.end_object();
-        js.member( "nav_query_counts" );
-        js.start_object();
-        for( std::size_t i = 0; i < raid_perf_query_event_count; ++i ) {
-            js.member( raid_perf_query_names[i], row.query_counts[i] );
-        }
-        js.end_object();
-        js.member( "discovered_sources", row.discovered_sources );
-        js.member( "horde_packets", row.horde_packets );
-        js.member( "horde_diagnostic_records", row.horde_diagnostic_records );
-        js.member( "horde_candidate_entities", row.horde_candidate_entities );
-        js.member( "horde_attracted_entities", row.horde_attracted_entities );
-        js.member( "human_activation_queries", row.human_activation_queries );
-        js.member( "human_nearby_candidates", row.human_nearby_candidates );
-        js.member( "watch_preflights", row.watch_preflights );
-        js.member( "watch_optical_read_calls", row.watch_optical_read_calls );
-        js.member( "watch_record_view_calls", row.watch_record_view_calls );
-        js.member( "watch_record_view_eligible_calls", row.watch_record_view_eligible_calls );
-        js.member( "watch_cached_views", row.watch_cached_views );
-        js.member( "channel_records", row.channel_output.records );
-        js.member( "channel_open_calls", row.channel_output.open_calls );
-        js.member( "channel_flush_calls", row.channel_output.flush_calls );
-        js.member( "channel_logical_bytes", row.channel_output.logical_bytes );
-        js.member( "channel_write_failed", row.channel_output.write_failed );
-        js.end_object();
+        write_raid_perf_row( js, raid_perf_rows[row_index] );
     }
     js.end_array();
     // Ground truth for the experiment, never supplied to an NPC's knowledge.
@@ -641,6 +696,25 @@ static void write_extrema_sample( JsonOut &js, const native_performance_sample &
         js.end_object();
     } else {
         js.write_null();
+    }
+    js.member( "detailed_diagnostic" );
+    if( sample.detailed_row ) {
+        js.start_object();
+        js.member( "scope", "same-turn diagnostic wall stages and calls; resource counters include input and save" );
+        js.member( "stage_names", raid_perf_stage_names );
+        js.member( "row" );
+        write_raid_perf_row( js, *sample.detailed_row, true );
+        js.member( "unavailable_reason" );
+        js.write_null();
+        js.end_object();
+    } else {
+        js.write_null();
+    }
+    js.member( "detailed_diagnostic_unavailable_reason" );
+    if( sample.detailed_row ) {
+        js.write_null();
+    } else {
+        js.write( "native_diagnostic_unavailable" );
     }
     if( !sample.process_cpu_seconds || !sample.input_seconds || !sample.save_seconds ||
         !sample.stages_seconds ) {
@@ -772,7 +846,8 @@ class openclaw_harness_turn_trace
                 extrema_sample.start_sequence = start_sequence_;
                 extrema_sample.start_wall_seconds = start_wall_seconds_;
                 extrema_sample.simulation_seconds = simulation;
-                if( raid_perf_current == &diagnostic_ ) {
+                const bool diagnostic_completed = raid_perf_current == &diagnostic_;
+                if( diagnostic_completed ) {
                     finish_partition( simulation );
                     finish_tail_partition( simulation );
                     diagnostic_.simulation_seconds = simulation;
@@ -843,6 +918,10 @@ class openclaw_harness_turn_trace
                     extrema_dirty = false;
                 }
                 if( extrema_sample.start_sequence && extrema_sample.end_sequence ) {
+                    if( diagnostic_completed && !raid_perf_rows.empty() &&
+                        extrema.needs_detail( extrema_sample ) ) {
+                        extrema_sample.detailed_row = copy_extrema_detail( raid_perf_rows.back() );
+                    }
                     extrema_dirty = extrema.add( extrema_sample ) || extrema_dirty;
                 }
                 if( extrema_dirty && write_native_performance_extrema( extrema ) ) {

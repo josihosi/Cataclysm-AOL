@@ -779,6 +779,19 @@ class PerformanceTest(unittest.TestCase):
                     "mean_simulation_seconds_per_turn": .1099, "dominant_turn": row(50, 10),
                     "total_process_cpu_seconds": None, "total_input_seconds": None,
                     "total_save_seconds": None, "aggregation_unavailable_reason": "one_or_more_turn_metrics_unavailable"}}
+        packet["window_max"]["dominant_turn"] = row(75, 9)
+        for chosen in (packet["individual_max"], packet["window_max"]["dominant_turn"]):
+            chosen.update(process_cpu_seconds=.4, input_seconds=0., save_seconds=0.,
+                          stages_seconds={"turn_setup": 0., "turn_activity_prep": 0.,
+                                          "turn_input_loop": 0., "turn_world_tail": 10.},
+                          metric_unavailable_reason=None,
+                          detailed_diagnostic={"scope": "same turn", "stage_names": ["creatures"],
+                                               "row": {"turn": chosen["game_turn"], "stages_seconds": [9.],
+                                                       "stage_calls": [1]}, "unavailable_reason": None},
+                          detailed_diagnostic_unavailable_reason=None)
+        bad = copy.deepcopy(packet)
+        bad["individual_max"]["detailed_diagnostic"]["row"]["turn"] = 1051
+        self.assertFalse(perf._valid_native_extrema(bad, {"run_id": "run-a", "pid": 73}, None))
         # After compaction the only record may be the pinned snapshot. It is
         # run/PID-bound and explicitly producer-self-identified, not silently
         # promoted to an independent process-instance crosscheck.
@@ -792,6 +805,8 @@ class PerformanceTest(unittest.TestCase):
         first = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=11)
         self.assertEqual(first["native_extrema"]["status"], "retained")
         self.assertEqual(first["native_extrema"]["snapshot"]["individual_max"]["turn_id"], 50)
+        self.assertEqual(first["native_extrema"]["snapshot"]["individual_max"]["detailed_diagnostic"]["row"]["stages_seconds"], [9.])
+        self.assertEqual(first["native_extrema"]["snapshot"]["window_max"]["dominant_turn"]["detailed_diagnostic"]["row"]["turn"], 1075)
         # Failure indexing a later max must not consume its only source row or
         # replace the previous durable assessment, even if no new max follows.
         updated = copy.deepcopy(packet)
