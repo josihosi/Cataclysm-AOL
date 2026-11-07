@@ -423,6 +423,15 @@ def _parse_turn_trace(path: Path, *, start_offset: int, run_id: str,
                 raw = stream.readline(size - stream.tell())
                 if not raw.endswith(b"\n"):
                     break
+                if raw.startswith(b'{"event":"native_performance_extrema"'):
+                    try:
+                        packet = json.loads(raw)
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        return [], start_offset, "malformed_native_extrema"
+                    if packet.get("run_id") != run_id:
+                        return [], start_offset, "native_extrema_run_mismatch"
+                    events.append({"event": "native_extrema_snapshot", "packet": packet,
+                                   "path": str(path), "offset": cursor, "generation": generation})
                 # Selected producer intervals are plain JSON, unlike turn markers.
                 # Keep their exact bytes at the normal collection boundary before
                 # the bounded native journal rotates; never retain every turn.
@@ -529,6 +538,147 @@ def _owner_is_live(owner: Mapping[str, Any]) -> bool:
         sample.get("process_identity") == owner.get("process_identity")
 
 
+def _valid_native_extrema(packet: Any, owner: Mapping[str, Any], instance: str | None) -> bool:
+    """Reject stale/foreign or structurally incomplete producer snapshots."""
+    if not isinstance(packet, dict) or packet.get("schema") != "caol-native-performance-extrema-v1" or \
+            packet.get("run_id") != owner.get("run_id") or packet.get("native_pid") != owner.get("pid") or \
+            not isinstance(packet.get("native_process_instance"), str) or not packet["native_process_instance"] or \
+            (instance is not None and packet.get("native_process_instance") != instance) or \
+            packet.get("scope") != "non_overlapping_100_complete_turns_per_native_process" or \
+            not isinstance(packet.get("snapshot_sequence"), int) or isinstance(packet["snapshot_sequence"], bool) or packet["snapshot_sequence"] <= 0 or \
+            not isinstance(packet.get("metric_epoch"), int) or isinstance(packet["metric_epoch"], bool) or packet["metric_epoch"] <= 0:
+        return False
+    def valid_sample(sample):
+        if not isinstance(sample, dict):
+            return False
+        for key in ("turn_id", "start_event_sequence", "end_event_sequence", "game_turn"):
+            if not isinstance(sample.get(key), int) or isinstance(sample[key], bool):
+                return False
+        if sample["turn_id"] <= 0 or sample["start_event_sequence"] <= 0 or \
+                sample["end_event_sequence"] <= sample["start_event_sequence"]:
+            return False
+        if any(not _finite_number(sample.get(key)) for key in
+               ("simulation_seconds", "start_wall_seconds", "end_wall_seconds")) or \
+                sample["simulation_seconds"] < 0 or sample["end_wall_seconds"] < sample["start_wall_seconds"]:
+            return False
+        metrics = ("process_cpu_seconds", "input_seconds", "save_seconds")
+        if not all(key in sample and (sample[key] is None or
+                   (_finite_number(sample[key]) and sample[key] >= 0)) for key in metrics):
+            return False
+        if "stages_seconds" not in sample or "metric_unavailable_reason" not in sample:
+            return False
+        stages = sample.get("stages_seconds")
+        if stages is not None and (not isinstance(stages, dict) or set(stages) !=
+                {"turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail"} or
+                any(not _finite_number(value) or value < 0 for value in stages.values())):
+            return False
+        if any(sample[key] is None for key in metrics) or stages is None:
+            return sample.get("metric_unavailable_reason") == "native_diagnostic_mode_off"
+        return sample.get("metric_unavailable_reason") is None
+    if not valid_sample(packet.get("individual_max")):
+        return False
+    window = packet.get("window_max")
+    if window is None:
+        return True
+    if not isinstance(window, dict) or window.get("sample_count") != 100 or \
+            "aggregation_unavailable_reason" not in window or \
+            not valid_sample(window.get("dominant_turn")):
+        return False
+    for key in ("first_turn_id", "last_turn_id", "first_event_sequence", "last_event_sequence",
+                "first_game_turn", "last_game_turn"):
+        if not isinstance(window.get(key), int) or isinstance(window[key], bool):
+            return False
+    if window["last_turn_id"] - window["first_turn_id"] != 99 or \
+            window["last_event_sequence"] <= window["first_event_sequence"] or \
+            not window["first_turn_id"] <= window["dominant_turn"]["turn_id"] <= window["last_turn_id"] or \
+            not window["first_event_sequence"] <= window["dominant_turn"]["start_event_sequence"] < \
+                window["dominant_turn"]["end_event_sequence"] <= window["last_event_sequence"]:
+        return False
+    if any(not _finite_number(window.get(key)) for key in
+           ("mean_simulation_seconds_per_turn", "start_wall_seconds", "end_wall_seconds")) or \
+            window["mean_simulation_seconds_per_turn"] < 0 or window["end_wall_seconds"] < window["start_wall_seconds"]:
+        return False
+    aggregate = ("total_process_cpu_seconds", "total_input_seconds", "total_save_seconds")
+    if any(key not in window for key in aggregate):
+        return False
+    if any(window.get(key) is not None and (not _finite_number(window[key]) or window[key] < 0)
+           for key in aggregate):
+        return False
+    if any(window.get(key) is None for key in aggregate):
+        return window.get("aggregation_unavailable_reason") == "one_or_more_turn_metrics_unavailable"
+    return window.get("aggregation_unavailable_reason") is None
+
+
+def retain_native_extrema(directory: Path, owner: Mapping[str, Any], snapshots: list[dict],
+                          observed_instances: set[str]) -> dict:
+    """One owner-bound inline archive record; session cleanup owns its lifetime."""
+    if not snapshots and not (directory / "cockpit-evidence.sqlite").is_file():
+        return {"status": "unavailable", "reason": "native_extrema_not_observed"}
+    from cockpit_archive import Archive, ArchiveMap
+    archive = None
+    try:
+        archive = Archive(directory / "cockpit-evidence.sqlite", run_id=owner["run_id"],
+                          binding_id=owner["binding_id"])
+        retained = ArchiveMap(archive, "native_performance_extrema")
+        prior = retained.get("latest")
+        if not isinstance(prior, dict) or prior.get("owner") != dict(owner) or \
+                not _valid_native_extrema(prior.get("snapshot"), owner, None):
+            prior = None
+        # A producer-pinned snapshot is self-contained even when all turn
+        # records have rotated away. The run-owned path, owner binding and PID
+        # authenticate its source; process_instance is producer-asserted unless
+        # an independently observed turn or prior snapshot can corroborate it.
+        instance = prior["snapshot"]["native_process_instance"] if prior is not None else None
+        identity_scope = "matched_prior_snapshot" if prior is not None else "producer_self_identified"
+        reason = None
+        changed = False
+        for item in snapshots:
+            packet = item.get("packet")
+            if not _valid_native_extrema(packet, owner, instance):
+                reason = "foreign_stale_or_invalid_native_extrema"
+                continue
+            if prior and packet["snapshot_sequence"] < prior["snapshot"]["snapshot_sequence"]:
+                reason = "stale_native_extrema_sequence"
+                continue
+            if prior and packet["snapshot_sequence"] == prior["snapshot"]["snapshot_sequence"]:
+                if packet != prior["snapshot"]:
+                    reason = "conflicting_native_extrema_sequence"
+                continue
+            if prior and packet["metric_epoch"] < prior["snapshot"]["metric_epoch"]:
+                reason = "stale_native_extrema_epoch"
+                continue
+            if prior and packet["metric_epoch"] == prior["snapshot"]["metric_epoch"] and (packet["individual_max"]["simulation_seconds"] <
+                          prior["snapshot"]["individual_max"]["simulation_seconds"] or
+                          (prior["snapshot"]["window_max"] is not None and
+                           (packet["window_max"] is None or
+                            packet["window_max"]["mean_simulation_seconds_per_turn"] <
+                            prior["snapshot"]["window_max"]["mean_simulation_seconds_per_turn"]))):
+                reason = "regressed_native_extrema"
+                continue
+            if instance is None:
+                instance = packet["native_process_instance"]
+            if instance in observed_instances:
+                identity_scope = "matched_native_turn"
+            prior = {"owner": dict(owner), "snapshot": packet, "identity_scope": identity_scope,
+                     "source": {key: item.get(key) for key in ("path", "offset", "generation")}}
+            changed = True
+        if changed:
+            retained["latest"] = prior
+        if prior is None:
+            return {"status": "unavailable", "reason": reason or "native_extrema_not_observed"}
+        return {"status": "retained", "snapshot": prior["snapshot"], "source": prior["source"],
+                "freshness": "retained_extremum_not_current_telemetry",
+                "identity_scope": prior.get("identity_scope", "producer_self_identified"),
+                "binding_id": owner["binding_id"], "source_binding": owner.get("source_binding"),
+                "archive": str(directory / "cockpit-evidence.sqlite"), "archive_key": "latest",
+                **({"warning": reason} if reason else {})}
+    except (OSError, ValueError, sqlite3.Error, KeyError) as error:
+        return {"status": "unavailable", "reason": "native_extrema_retention_failed", "detail": str(error)}
+    finally:
+        if archive is not None:
+            archive.close()
+
+
 def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mapping[str, Any] | None = None,
                             now_unix_seconds: float | None = None, retain_max: bool = False) -> dict:
     """Read newly published native turn boundaries and update one compact assessment.
@@ -621,7 +771,18 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
         finally:
             if archive is not None:
                 archive.close()
-    events = [event for event in events if event.get("event") != "selected_native_interval"]
+    snapshots = [event for event in events if event.get("event") == "native_extrema_snapshot"]
+    observed_instances = {event.get("process_instance") for event in events
+                          if event.get("event") in {"turn", "turn_phase"} and
+                          isinstance(event.get("process_instance"), str) and event.get("process_instance")}
+    native_extrema = retain_native_extrema(directory, owner, snapshots, observed_instances)
+    if native_extrema.get("reason") == "native_extrema_retention_failed":
+        # The next producer snapshot may never arrive. Keep the existing
+        # assessment and source cursor so this same pinned record is retried.
+        return {"status": "unavailable", "reason": "native_extrema_retention_failed",
+                "detail": native_extrema.get("detail"), "native_receipts_preserved": True}
+    events = [event for event in events if event.get("event") not in
+              {"selected_native_interval", "native_extrema_snapshot"}]
     completed = list(state.get("completed", []))[-window_turns:]
     waiting_state = state.get("waiting", {})
     waiting_changes = []
@@ -900,6 +1061,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
         assessment["selected_max_turn"] = (retain_selected_max_turn(directory, owner, max(completed, key=lambda item: item["simulation_seconds"]))
                                            if completed else {"status": "unavailable", "reason": "no_completed_turn"})
     assessment["selected_native_packets"] = packet_handles
+    assessment["native_extrema"] = native_extrema
     assessment["selected_packet_archive"] = str(directory / "cockpit-evidence.sqlite")
     assessment["alarm_retention"] = retain_alarm_evidence(
         directory, state, assessment, waiting_windows=waiting_windows, added=added)

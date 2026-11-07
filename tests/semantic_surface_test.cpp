@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <clocale>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -48,6 +49,8 @@
 #include "overmapbuffer.h"
 #include "worldfactory.h"
 #include "effect.h"
+#include "effect_on_condition.h"
+#include "dialogue.h"
 #include "editmap.h"
 #include "coordinates.h"
 #include "color.h"
@@ -3981,6 +3984,8 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
                                            "\",\"retention_scope\":\"max_simulation_row_only\",\"turn\":12}" ) );
     REQUIRE( write_native_diagnostic_event( "{\"event\":\"raid_performance_interval\",\"run_id\":\"" + run +
                                            "\",\"turn\":13}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_performance_extrema\",\"schema\":\"caol-native-performance-extrema-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":1}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_performance_extrema\",\"schema\":\"caol-native-performance-extrema-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":2}" ) );
     for( int index = 0; index < 100; ++index ) {
         std::ostringstream event;
         event << "{\"event\":\"turn\",\"run_id\":\"" << run
@@ -4008,6 +4013,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
     bool current = false;
     bool raid_diagnostic = false;
     std::set<int> retained_performance_turns;
+    std::set<int> retained_extrema_snapshots;
     std::size_t discarded = 0;
     while( std::getline( input, line ) ) {
         const std::string prefix = "openclaw_harness_semantic_step: ";
@@ -4018,10 +4024,14 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
         object.allow_omitted_members();
         const std::string kind = object.get_string( "event" );
         if( !semantic ) {
-            CHECK( ( kind.compare( 0, 5, "raid_" ) == 0 || kind == "turn" || diagnostic_kinds.count( kind ) ) );
+            CHECK( ( kind.compare( 0, 5, "raid_" ) == 0 || kind == "turn" ||
+                     kind == "native_performance_extrema" || diagnostic_kinds.count( kind ) ) );
             raid_diagnostic = raid_diagnostic || kind.compare( 0, 5, "raid_" ) == 0;
             if( kind == "raid_performance_interval" ) {
                 retained_performance_turns.insert( object.get_int( "turn" ) );
+            }
+            if( kind == "native_performance_extrema" ) {
+                retained_extrema_snapshots.insert( object.get_int( "snapshot_sequence" ) );
             }
             if( diagnostic_kinds.count( kind ) ) {
                 retained_diagnostic_kinds.insert( kind );
@@ -4042,6 +4052,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
         }
     }
     CHECK( discarded > 0 );
+    CHECK( retained_extrema_snapshots == std::set<int> { 2 } );
     CHECK( travel_states == std::set<std::string> { "active", "hostile_boundary", "progress", "completed_cleared" } );
     CHECK( raid_diagnostic );
     CHECK( retained_performance_turns == std::set<int> { 12 } );
@@ -5188,10 +5199,184 @@ TEST_CASE( "bodygraph Close owns the concrete modal across timeout and nested re
 #endif
 
 #if !defined(TILES)
+TEST_CASE( "turn driven dialogue input is excluded without replaying its effect",
+           "[.manual][semantic_surface][performance_dialogue_input]" )
+{
+    override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", "normal" );
+    override_option autosave( "AUTOSAVE", "false" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    clear_avatar();
+    clear_map();
+    clear_npcs();
+    REQUIRE( world_generator->active_world );
+    const auto world = world_generator->active_world->world_name;
+    REQUIRE( g->save() );
+    REQUIRE( turn_handler::cleanup_at_end() );
+    world_generator->set_active_world( nullptr );
+    REQUIRE( g->load( world ) );
+    clear_avatar();
+    clear_map();
+    clear_npcs();
+    avatar &u = get_avatar();
+    u.setpos( get_map(), tripoint_bub_ms( 60, 60, 0 ), false );
+    const auto root_path = std::filesystem::path( PATH_INFO::user_dir() );
+    const auto trace = root_path / "dialogue-timing-control.jsonl";
+    const auto requests = root_path / "dialogue-timing-requests.jsonl";
+    std::filesystem::remove( trace );
+    std::filesystem::remove( requests );
+    const std::string run = "dialogue-timing-control";
+    const std::map<std::string, std::optional<std::string>> settings = {
+        { "OPENCLAW_HARNESS_RUN_ID", run }, { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run },
+        { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace.string() },
+        { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", requests.string() }
+    };
+    std::map<std::string, std::optional<std::string>> previous;
+    for( const auto &entry : settings ) {
+        const char *value = std::getenv( entry.first.c_str() );
+        previous[entry.first] = value ? std::optional<std::string>( value ) : std::nullopt;
+        assign_test_environment( entry.first, entry.second );
+    }
+    on_out_of_scope restore_environment( [&] {
+        for( const auto &entry : previous ) {
+            assign_test_environment( entry.first, entry.second );
+        }
+        std::filesystem::remove( requests );
+    } );
+    const std::string previous_locale = std::setlocale( LC_CTYPE, nullptr );
+    REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) != nullptr );
+    on_out_of_scope restore_locale( [&] { std::setlocale( LC_CTYPE, previous_locale.c_str() ); } );
+    const bool owns_terminal = !catacurses::stdscr;
+    if( owns_terminal ) {
+        catacurses::init_interface();
+        catacurses::resizeterm();
+    }
+    on_out_of_scope close_terminal( [&] {
+        if( owns_terminal ) {
+            catacurses::endwin();
+        }
+    } );
+    scoped_imgui_context imgui;
+    restore_on_out_of_scope<bool> restore_test_mode( test_mode );
+    test_mode = false;
+    ui_adaptor root;
+    root.on_redraw( []( ui_adaptor & ) {} );
+    ui_manager::redraw();
+    const auto pause = get_default_mode_input_context().first_keyboard_character_for_action( "pause" );
+    REQUIRE( pause );
+    REQUIRE( pause->size() == 1 );
+    // This manual control may need a real terminal Pause at the initial World
+    // prompt; the delayed dialogue response below is supplied by the test.
+    REQUIRE( ungetch( pause->front() ) != -1 );
+    u.set_moves( 100 );
+    REQUIRE_FALSE( g->do_turn() );
+
+    const JsonObject topic = json_loader::from_string( R"({"id":"TALK_TEST_NATIVE_TIMING_067",
+        "dynamic_line":"Wait for an answer.","replace_built_in_responses":true,
+        "responses":[{"text":"Bye.","topic":"TALK_DONE"}]})" );
+    load_talk_topic( topic, "test" );
+    const JsonObject source = json_loader::from_string( R"({"eoc":{
+        "id":"EOC_TEST_NATIVE_TIMING_067","effect":[
+        {"open_dialogue":{"topic":"TALK_TEST_NATIVE_TIMING_067"}},
+        {"u_add_var":"native_timing_effect","value":"done"}]}})" );
+    const auto eoc = effect_on_conditions::load_inline_eoc( source.get_member( "eoc" ), "test" );
+    effect_on_conditions::queue_effect_on_condition( 0_turns, eoc, u, {} );
+    const int previous_timeout = inp_mngr.get_timeout();
+    inp_mngr.set_timeout( 250 );
+    on_out_of_scope restore_timeout( [&] { inp_mngr.set_timeout( previous_timeout ); } );
+    semantic_surface_manager &manager = openclaw_harness_semantic_surface_manager();
+    std::thread writer;
+    std::atomic<bool> wrote{ false };
+    bool dialogue_seen = false;
+    double dialogue_open_wall = 0;
+    double dialogue_receipt_wall = 0;
+    bool pause_queued = false;
+    int accepted = 0;
+    on_out_of_scope finish( [&] {
+        if( writer.joinable() ) { writer.join(); }
+        manager.set_descriptor_observer( {} );
+        manager.set_receipt_observer( {} );
+    } );
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        if( receipt.request_id == "dialogue-timing-close" && receipt.accepted ) {
+            ++accepted;
+            dialogue_receipt_wall = std::chrono::duration<double>(
+                                        std::chrono::system_clock::now().time_since_epoch() ).count();
+        }
+    } );
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &owner ) {
+        if( owner.kind == "dialogue" && !dialogue_seen ) {
+            dialogue_seen = true;
+            dialogue_open_wall = std::chrono::duration<double>(
+                                     std::chrono::system_clock::now().time_since_epoch() ).count();
+            const auto choice = std::find_if( owner.valid_actions.begin(), owner.valid_actions.end(),
+            []( const semantic_action_descriptor &action ) { return action.id == "dialogue.choose" && action.enabled; } );
+            REQUIRE( choice != owner.valid_actions.end() );
+            const std::string stable = choice->stable_id;
+            writer = std::thread( [&, owner, stable] {
+                std::this_thread::sleep_for( std::chrono::milliseconds( 150 ) );
+                std::ofstream out( requests, std::ios::app );
+                out << "{\"run_id\":\"" << run << "\",\"surface_id\":\"" << owner.surface_id
+                    << "\",\"frame_id\":\"" << owner.frame_id << "\",\"request_id\":\"dialogue-timing-close\","
+                    << "\"action_id\":\"dialogue.choose\",\"stable_id\":\"" << stable << "\"}\n";
+                out.close();
+                wrote = static_cast<bool>( out );
+            } );
+        } else if( owner.kind == "world" && dialogue_seen && !pause_queued ) {
+            pause_queued = true;
+            REQUIRE( ungetch( pause->front() ) != -1 );
+        }
+    } );
+    u.set_moves( 100 );
+    REQUIRE_FALSE( g->do_turn() );
+    REQUIRE( writer.joinable() );
+    writer.join();
+    CHECK( wrote );
+    CHECK( dialogue_seen );
+    CHECK( accepted == 1 );
+    CHECK( u.get_value( "native_timing_effect" ) == "done" );
+    double turn_start = 0, input_start = 0, input_end = 0, turn_end = 0, simulation = 0;
+    double longest_input = 0;
+    double dialogue_input_overlap = 0;
+    std::ifstream input( trace );
+    std::string line;
+    while( std::getline( input, line ) ) {
+        const auto start = line.find( '{' );
+        if( start == std::string::npos || line.find( "\"event\":\"turn" ) == std::string::npos ) { continue; }
+        std::istringstream text( line.substr( start ) );
+        TextJsonIn jsin( text );
+        const TextJsonObject event = jsin.get_object();
+        event.allow_omitted_members();
+        const auto kind = event.get_string( "event" );
+        const auto stage = event.get_string( "stage" );
+        const auto phase = event.get_string( "phase" );
+        const double wall = event.get_float( "wall_time_seconds" );
+        if( kind == "turn" && stage == "start" ) { turn_start = wall; input_start = input_end = 0; longest_input = 0; }
+        if( kind == "turn_phase" && stage == "begin" && phase == "input" ) { input_start = wall; }
+        if( kind == "turn_phase" && stage == "end" && input_start != 0 ) {
+            input_end = wall;
+            longest_input = std::max( longest_input, input_end - input_start );
+            dialogue_input_overlap += std::max( 0.0, std::min( input_end, dialogue_receipt_wall ) -
+                                               std::max( input_start, dialogue_open_wall ) );
+            input_start = 0;
+        }
+        if( kind == "turn" && stage == "end" && longest_input >= .1 ) {
+            turn_end = wall;
+            simulation = event.get_float( "simulation_seconds" );
+        }
+    }
+    CHECK( longest_input >= .1 );
+    CHECK( dialogue_receipt_wall > dialogue_open_wall );
+    CHECK( dialogue_input_overlap >= .1 );
+    CHECK( turn_end > turn_start );
+    CHECK( turn_end - turn_start - simulation >= .09 );
+}
+#endif
+
+#if !defined(TILES)
 TEST_CASE( "performance interval output preserves the real World successor",
            "[semantic_surface][raid_performance_output_route]" )
 {
-    const std::string mode = GENERATE( "normal", "quiet_signal" );
+    const std::string mode = GENERATE( "normal", "quiet_signal", "off" );
     override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", mode );
     override_option autosave( "AUTOSAVE", "false" );
     override_option llm( "LLM_INTENT_ENABLE", "false" );
@@ -5214,9 +5399,9 @@ TEST_CASE( "performance interval output preserves the real World successor",
     // This actual native output is consumed by the Python strict-reader control
     // before its disposable test userdir is removed. No live-game input is used.
     const std::filesystem::path trace = std::filesystem::path( PATH_INFO::user_dir() ) /
-                                        "raid-performance-route-control.jsonl";
+                                        ( "raid-performance-route-" + mode + ".jsonl" );
     std::filesystem::remove( trace );
-    const std::string run = "raid-performance-output-control";
+    const std::string run = "raid-performance-output-control-" + mode;
     const std::map<std::string, std::optional<std::string>> settings = {
         { "OPENCLAW_HARNESS_RUN_ID", run },
         { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run },
@@ -5234,6 +5419,9 @@ TEST_CASE( "performance interval output preserves the real World successor",
             assign_test_environment( entry.first, entry.second );
         }
     } );
+    const std::string previous_locale = std::setlocale( LC_CTYPE, nullptr );
+    REQUIRE( std::setlocale( LC_CTYPE, "en_US.UTF-8" ) != nullptr );
+    on_out_of_scope restore_locale( [&] { std::setlocale( LC_CTYPE, previous_locale.c_str() ); } );
     const bool owns_terminal = !catacurses::stdscr;
     if( owns_terminal ) {
         catacurses::init_interface();
@@ -5280,11 +5468,32 @@ TEST_CASE( "performance interval output preserves the real World successor",
         CHECK( u.pos_abs() == position );
     }
 
+    int extrema_snapshots = 0;
     int intervals = 0;
     int receiver_scans = 0;
     std::ifstream input( trace );
     std::string line;
     while( std::getline( input, line ) ) {
+        if( line.find( "native_performance_extrema" ) != std::string::npos ) {
+            std::istringstream record( line );
+            TextJsonIn jsin( record );
+            const TextJsonObject object = jsin.get_object();
+            object.allow_omitted_members();
+            CHECK( object.get_string( "schema" ) == "caol-native-performance-extrema-v1" );
+            CHECK( object.get_string( "run_id" ) == run );
+            REQUIRE( object.has_object( "individual_max" ) );
+            if( mode == "off" ) {
+                const auto sample = object.get_object( "individual_max" );
+                sample.allow_omitted_members();
+                CHECK( sample.get_string( "metric_unavailable_reason" ) == "native_diagnostic_mode_off" );
+            }
+            if( object.has_object( "window_max" ) ) {
+                const auto window = object.get_object( "window_max" );
+                window.allow_omitted_members();
+                CHECK( window.get_int( "sample_count" ) == 100 );
+            }
+            ++extrema_snapshots;
+        }
         if( line.find( "raid_performance_interval" ) == std::string::npos ) {
             continue;
         }
@@ -5320,8 +5529,40 @@ TEST_CASE( "performance interval output preserves the real World successor",
             }
         }
     }
-    CHECK( intervals >= 1 );
-    CHECK( receiver_scans == 1 );
+    CHECK( ( mode == "off" ? intervals == 0 : intervals >= 1 ) );
+    CHECK( ( mode == "off" ? receiver_scans == 0 : receiver_scans == 1 ) );
+    CHECK( extrema_snapshots >= 1 );
+    input.close();
+    // Extend this same native process to a complete non-overlapping window.
+    for( int turn = 0; turn < 98; ++turn ) {
+        REQUIRE( ungetch( pause->front() ) != -1 );
+        u.set_moves( 100 );
+        CHECK_FALSE( g->do_turn() );
+        CHECK( u.pos_abs() == position );
+    }
+    // Check the ordinary intervals before rotation; only the extrema are pinned.
+    const std::string filler( 96 * 1024, 'd' );
+    for( int index = 0; index < 50; ++index ) {
+        REQUIRE( write_native_diagnostic_event( "{\"event\":\"rotation_control\",\"run_id\":\"" +
+                                               run + "\",\"data\":\"" + filler + "\"}" ) );
+    }
+    std::ifstream rotated( trace );
+    int pinned = 0;
+    while( std::getline( rotated, line ) ) {
+        if( line.find( "native_performance_extrema" ) != std::string::npos ) {
+            std::istringstream record( line );
+            TextJsonIn jsin( record );
+            const TextJsonObject object = jsin.get_object();
+            object.allow_omitted_members();
+            CHECK( object.get_string( "run_id" ) == run );
+            REQUIRE( object.has_object( "window_max" ) );
+            const auto window = object.get_object( "window_max" );
+            window.allow_omitted_members();
+            CHECK( window.get_int( "sample_count" ) == 100 );
+            ++pinned;
+        }
+    }
+    CHECK( pinned == 1 );
 }
 #endif
 

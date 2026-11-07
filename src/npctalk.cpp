@@ -3731,7 +3731,11 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
                     d_win.debug_topic_name = topic.id;
                 }
                 ui_manager::redraw();
-                action = ctxt.handle_input();
+                {
+                    // Turn-driven dialogue waits for a reply outside simulation work.
+                    openclaw_harness_native_input_scope input_phase;
+                    action = ctxt.handle_input();
+                }
                 evt = ctxt.get_raw_input();
                 if( semantic_response_index ) {
                     response_ind = *semantic_response_index;

@@ -750,6 +750,114 @@ class PerformanceTest(unittest.TestCase):
                                                  now_unix_seconds=21.3)
         self.assertEqual({item["kind"] for item in recovered["recoveries"]}, {"recovery"})
 
+    def test_no_extrema_does_not_create_archive(self):
+        self.recorder([sample(1, 0)])
+        perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=2)
+        result = perf.retain_native_extrema(self.directory, perf.read_json(
+            self.directory / "performance-owner.json"), [], set())
+        self.assertEqual(result["reason"], "native_extrema_not_observed")
+        self.assertFalse((self.directory / "cockpit-evidence.sqlite").exists())
+
+    def test_native_extrema_retained_across_rotation_and_foreign_rejected(self):
+        self.recorder([sample(1, 0)])
+        def row(turn, seconds):
+            return {"turn_id": turn, "game_turn": 1000 + turn,
+                    "start_event_sequence": turn * 2 - 1, "end_event_sequence": turn * 2,
+                    "start_wall_seconds": float(turn), "end_wall_seconds": turn + seconds,
+                    "simulation_seconds": seconds, "process_cpu_seconds": None,
+                    "input_seconds": None, "save_seconds": None, "stages_seconds": None,
+                    "metric_unavailable_reason": "native_diagnostic_mode_off"}
+        packet = {"event": "native_performance_extrema", "schema": "caol-native-performance-extrema-v1",
+                  "run_id": "run-a", "native_process_instance": "native-a", "native_pid": 73,
+                  "snapshot_sequence": 1, "metric_epoch": 1,
+                  "scope": "non_overlapping_100_complete_turns_per_native_process",
+                  "individual_max": row(50, 10),
+                  "window_max": {"first_turn_id": 1, "last_turn_id": 100,
+                    "first_event_sequence": 1, "last_event_sequence": 200,
+                    "first_game_turn": 1001, "last_game_turn": 1100, "sample_count": 100,
+                    "start_wall_seconds": 1., "end_wall_seconds": 100.01,
+                    "mean_simulation_seconds_per_turn": .1099, "dominant_turn": row(50, 10),
+                    "total_process_cpu_seconds": None, "total_input_seconds": None,
+                    "total_save_seconds": None, "aggregation_unavailable_reason": "one_or_more_turn_metrics_unavailable"}}
+        # After compaction the only record may be the pinned snapshot. It is
+        # run/PID-bound and explicitly producer-self-identified, not silently
+        # promoted to an independent process-instance crosscheck.
+        trace = self.directory / "semantic.native.events.jsonl"
+        trace.write_text(json.dumps(packet, separators=(",", ":")) + "\n")
+        initial = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=10.5)
+        self.assertEqual(initial["native_extrema"]["status"], "retained")
+        self.assertEqual(initial["native_extrema"]["identity_scope"], "producer_self_identified")
+        self.append_trace(self.turn_event(1, "start", sequence=1),
+                          self.turn_event(1, "end", sequence=2, duration=.01, wall=10.01))
+        first = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=11)
+        self.assertEqual(first["native_extrema"]["status"], "retained")
+        self.assertEqual(first["native_extrema"]["snapshot"]["individual_max"]["turn_id"], 50)
+        # Failure indexing a later max must not consume its only source row or
+        # replace the previous durable assessment, even if no new max follows.
+        updated = copy.deepcopy(packet)
+        updated["snapshot_sequence"] = 2
+        updated["individual_max"]["simulation_seconds"] = 11
+        final = copy.deepcopy(updated)
+        final["snapshot_sequence"] = 3
+        final["individual_max"]["simulation_seconds"] = 12
+        with trace.open("a") as out:
+            out.write(json.dumps(updated, separators=(",", ":")) + "\n")
+            out.write(json.dumps(final, separators=(",", ":")) + "\n")
+        state_path = self.directory / perf.TURN_STATE_NAME
+        previous_state = state_path.read_bytes()
+        from cockpit_archive import ArchiveMap
+        original_setitem = ArchiveMap.__setitem__
+        writes = []
+        def fail_last(archive_map, key, value):
+            writes.append(value["snapshot"]["snapshot_sequence"])
+            if value["snapshot"]["snapshot_sequence"] == 3:
+                raise OSError("injected failure")
+            return original_setitem(archive_map, key, value)
+        with patch.object(ArchiveMap, "__setitem__", new=fail_last):
+            failed = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=11.5)
+        self.assertEqual(failed["status"], "unavailable")
+        self.assertEqual(failed["reason"], "native_extrema_retention_failed")
+        self.assertEqual(writes, [3])
+        self.assertEqual(state_path.read_bytes(), previous_state)
+        prior = perf.retain_native_extrema(self.directory, perf.read_json(
+            self.directory / "performance-owner.json"), [], set())
+        self.assertEqual(prior["snapshot"], packet)
+        retried = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=11.6)
+        self.assertEqual(retried["native_extrema"]["snapshot"], final)
+        packet = final
+        # Replace the source generation; the single inline archive record is still usable.
+        trace.unlink()
+        self.append_trace(self.turn_event(2, "start", sequence=3),
+                          self.turn_event(2, "end", sequence=4, duration=.01, wall=10.01))
+        second = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=12)
+        self.assertEqual(second["native_extrema"]["snapshot"], packet)
+        foreign = copy.deepcopy(packet)
+        foreign["native_pid"] = 99
+        foreign["snapshot_sequence"] = 4
+        with trace.open("a") as out:
+            out.write(json.dumps(foreign, separators=(",", ":")) + "\n")
+        third = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=13)
+        self.assertEqual(third["native_extrema"]["snapshot"], packet)
+        self.assertEqual(third["native_extrema"]["warning"], "foreign_stale_or_invalid_native_extrema")
+        foreign = copy.deepcopy(packet)
+        foreign["native_process_instance"] = "foreign-instance"
+        foreign["snapshot_sequence"] = 5
+        with trace.open("a") as out:
+            out.write(json.dumps(foreign, separators=(",", ":")) + "\n")
+        fourth = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=14)
+        self.assertEqual(fourth["native_extrema"]["snapshot"], packet)
+        self.assertEqual(fourth["native_extrema"]["warning"], "foreign_stale_or_invalid_native_extrema")
+        malformed = copy.deepcopy(packet)
+        del malformed["window_max"]["total_input_seconds"]
+        self.assertFalse(perf._valid_native_extrema(malformed, perf.read_json(
+            self.directory / "performance-owner.json"), "native-a"))
+        from cockpit_archive import Archive, ArchiveMap
+        archive = Archive(self.directory / "cockpit-evidence.sqlite", run_id="run-a", binding_id="binding-a")
+        try:
+            self.assertEqual(len(ArchiveMap(archive, "native_performance_extrema")), 1)
+        finally:
+            archive.close()
+
     def test_long_input_is_not_charged_to_resumed_simulation(self):
         self.recorder([sample(1, 0)])
         self.turn_config()
@@ -799,7 +907,7 @@ class PerformanceTest(unittest.TestCase):
         chain = source[start + len("stream << "):end]
         values = {
             "event": "turn", "stage": "start", "openclaw_harness_turn_trace_quote( run_id )": "run-a",
-            "process_instance": "native-a", "++sequence": "1", "turn_id": "turn-1",
+            "process_instance": "native-a", "event_sequence": "1", "turn_id": "turn-1",
             "game_turn": "100", "game_minutes": "600", "wall_time": format(1700000000.125, ".17g"),
             "simulation_seconds": format(.125, ".17g"), "phase": "simulation",
             "waiting_generation": "1",

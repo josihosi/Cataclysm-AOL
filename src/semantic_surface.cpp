@@ -91,6 +91,24 @@ class native_semantic_journal
                     kind == "raid_performance_interval" &&
                     read_string( "retention_scope" ) == "max_simulation_row_only" &&
                     event.size() <= 512 * 1024;
+            const bool performance_extrema_candidate = format == native_record_format::diagnostic &&
+                    kind == "native_performance_extrema" && event.size() <= 64 * 1024 &&
+                    read_string( "schema" ) == "caol-native-performance-extrema-v1";
+            std::string extrema_instance;
+            int extrema_pid = 0;
+            int extrema_sequence = 0;
+            if( performance_extrema_candidate ) {
+                extrema_instance = read_string( "native_process_instance" );
+                failure.stage = "record_type";
+                failure.field = "native_pid";
+                extrema_pid = object.get_int( "native_pid", 0 );
+                failure.field = "snapshot_sequence";
+                extrema_sequence = object.get_int( "snapshot_sequence", 0 );
+            }
+            const bool performance_extrema = performance_extrema_candidate && !extrema_instance.empty() &&
+                    extrema_pid > 0 && extrema_sequence > performance_extrema_sequence &&
+                    ( performance_extrema_instance.empty() ||
+                      ( extrema_instance == performance_extrema_instance && extrema_pid == performance_extrema_pid ) );
             // Read every field used by this semantic retention branch before
             // changing sequence, pins or trip state. A type refusal cannot
             // become publishable authority on a later compaction retry.
@@ -125,6 +143,14 @@ class native_semantic_journal
             // authority. A later reduced interval replaces it.
             if( reduced_performance_interval ) {
                 pins["performance_reduced"] = row;
+            }
+            // One producer-owned bounded snapshot carries both extrema. The
+            // pin survives ordinary journal compaction, never grants input.
+            if( performance_extrema ) {
+                performance_extrema_instance = extrema_instance;
+                performance_extrema_pid = extrema_pid;
+                performance_extrema_sequence = extrema_sequence;
+                pins["performance_extrema"] = row;
             }
             // Diagnostic callers share retention, never semantic framing or
             // current input pins, even if their event names resemble authority.
@@ -328,6 +354,9 @@ class native_semantic_journal
         std::string path;
         std::string run;
         std::string current_frame;
+        std::string performance_extrema_instance;
+        int performance_extrema_pid = 0;
+        int performance_extrema_sequence = 0;
         std::string accepted_result;
         std::string receipt_result;
         std::string current_trip;

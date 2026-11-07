@@ -37,7 +37,14 @@
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32)
+#include <process.h>
+#elif !defined(__APPLE__)
+#include <unistd.h>
+#endif
+
 #include "active_time.h"
+#include "native_performance_extrema.h"
 #include "action.h"
 #include "activity_type.h"
 #include "avatar.h"
@@ -230,21 +237,31 @@ static bool openclaw_harness_turn_trace_enabled()
            semantic_run_id[0] != '\0' && path[0] != '\0' && std::string( run_id ) == semantic_run_id;
 }
 
-static void openclaw_harness_write_turn_trace( const char *event, const char *stage,
+static std::string openclaw_harness_process_instance()
+{
+    static const auto instance = std::chrono::system_clock::now().time_since_epoch().count();
+    return std::to_string( instance );
+}
+
+static std::uint64_t openclaw_harness_write_turn_trace( const char *event, const char *stage,
         const char *phase, const std::string &turn_id, int game_turn, int game_minutes,
-        double simulation_seconds )
+        double simulation_seconds, double *observed_wall = nullptr )
 {
     if( !openclaw_harness_turn_trace_enabled() ) {
-        return;
+        return 0;
     }
     const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
-    static const auto process_instance = std::chrono::system_clock::now().time_since_epoch().count();
+    const std::string process_instance = openclaw_harness_process_instance();
     const player_activity &activity = get_avatar().activity;
     const size_t waiting_generation = activity.id().str().compare( 0, 8, "ACT_WAIT" ) == 0 ?
                                       activity.input_generation() : 0;
     static std::uint64_t sequence = 0;
     const auto wall_time = std::chrono::duration_cast<std::chrono::duration<double>>(
                                std::chrono::system_clock::now().time_since_epoch() ).count();
+    if( observed_wall ) {
+        *observed_wall = wall_time;
+    }
+    const std::uint64_t event_sequence = ++sequence;
     std::ostringstream stream;
     {
         // The native wall clock is used to distinguish a newly resumed
@@ -256,7 +273,7 @@ static void openclaw_harness_write_turn_trace( const char *event, const char *st
                << "\",\"stage\":\"" << stage
                << "\",\"run_id\":\"" << openclaw_harness_turn_trace_quote( run_id )
                << "\",\"process_instance\":\"" << process_instance
-               << "\",\"sequence\":" << ++sequence
+               << "\",\"sequence\":" << event_sequence
                << ",\"turn_id\":\"" << turn_id
                << "\",\"game_turn\":" << game_turn
                << ",\"game_minutes\":" << game_minutes
@@ -266,7 +283,7 @@ static void openclaw_harness_write_turn_trace( const char *event, const char *st
                << ",\"phase\":\"" << phase
                << "\",\"owner\":\"game::do_turn\"}";
     }
-    write_native_semantic_event( stream.str() );
+    return write_native_semantic_event( stream.str() ) ? event_sequence : 0;
 }
 
 // Task-local diagnostic only: identical timing in both logging variants.  The
@@ -590,6 +607,115 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
     raid_perf_receiver_captured = raid_perf_current && raid_perf_current->receiver_scan.entered();
 }
 
+static void write_extrema_optional( JsonOut &js, const char *name, const std::optional<double> &value )
+{
+    js.member( name );
+    if( value ) {
+        js.write( *value );
+    } else {
+        js.write_null();
+    }
+}
+
+static void write_extrema_sample( JsonOut &js, const native_performance_sample &sample )
+{
+    js.start_object();
+    js.member( "turn_id", sample.turn_id );
+    js.member( "game_turn", sample.game_turn );
+    js.member( "start_event_sequence", sample.start_sequence );
+    js.member( "end_event_sequence", sample.end_sequence );
+    js.member( "start_wall_seconds", sample.start_wall_seconds );
+    js.member( "end_wall_seconds", sample.end_wall_seconds );
+    js.member( "simulation_seconds", sample.simulation_seconds );
+    write_extrema_optional( js, "process_cpu_seconds", sample.process_cpu_seconds );
+    write_extrema_optional( js, "input_seconds", sample.input_seconds );
+    write_extrema_optional( js, "save_seconds", sample.save_seconds );
+    js.member( "stages_seconds" );
+    if( sample.stages_seconds ) {
+        js.start_object();
+        js.member( "turn_setup", ( *sample.stages_seconds )[0] );
+        js.member( "turn_activity_prep", ( *sample.stages_seconds )[1] );
+        js.member( "turn_input_loop", ( *sample.stages_seconds )[2] );
+        js.member( "turn_world_tail", ( *sample.stages_seconds )[3] );
+        js.end_object();
+    } else {
+        js.write_null();
+    }
+    if( !sample.process_cpu_seconds || !sample.input_seconds || !sample.save_seconds ||
+        !sample.stages_seconds ) {
+        js.member( "metric_unavailable_reason", "native_diagnostic_mode_off" );
+    } else {
+        js.member( "metric_unavailable_reason" );
+        js.write_null();
+    }
+    js.end_object();
+}
+
+static bool write_native_performance_extrema( const native_performance_extrema &extrema )
+{
+    static std::uint64_t snapshot_sequence = 0;
+    static std::string snapshot_run;
+    const std::string run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( snapshot_run != run_id ) {
+        snapshot_run = run_id;
+        snapshot_sequence = 0;
+    }
+    std::ostringstream stream;
+    stream << std::setprecision( std::numeric_limits<double>::max_digits10 );
+    JsonOut js( stream );
+    js.start_object();
+    js.member( "event", "native_performance_extrema" );
+    js.member( "schema", "caol-native-performance-extrema-v1" );
+    js.member( "run_id", run_id );
+    js.member( "native_process_instance", openclaw_harness_process_instance() );
+#if defined(_WIN32)
+    js.member( "native_pid", _getpid() );
+#else
+    js.member( "native_pid", getpid() );
+#endif
+    js.member( "snapshot_sequence", ++snapshot_sequence );
+    js.member( "metric_epoch", extrema.epoch() );
+    js.member( "scope", "non_overlapping_100_complete_turns_per_native_process" );
+    js.member( "metric_scope", "simulation wall and process CPU exclude tracked input and save; wall timestamps are unix seconds" );
+    js.member( "individual_max" );
+    if( extrema.individual() ) {
+        write_extrema_sample( js, *extrema.individual() );
+    } else {
+        js.write_null();
+    }
+    js.member( "window_max" );
+    if( extrema.window() ) {
+        const native_performance_window &window = *extrema.window();
+        js.start_object();
+        js.member( "first_turn_id", window.first.turn_id );
+        js.member( "last_turn_id", window.last.turn_id );
+        js.member( "first_event_sequence", window.first.start_sequence );
+        js.member( "last_event_sequence", window.last.end_sequence );
+        js.member( "first_game_turn", window.first.game_turn );
+        js.member( "last_game_turn", window.last.game_turn );
+        js.member( "sample_count", 100 );
+        js.member( "start_wall_seconds", window.first.start_wall_seconds );
+        js.member( "end_wall_seconds", window.last.end_wall_seconds );
+        js.member( "mean_simulation_seconds_per_turn", window.mean_simulation_seconds_per_turn );
+        js.member( "dominant_turn" );
+        write_extrema_sample( js, window.dominant );
+        write_extrema_optional( js, "total_process_cpu_seconds", window.total_process_cpu_seconds );
+        write_extrema_optional( js, "total_input_seconds", window.total_input_seconds );
+        write_extrema_optional( js, "total_save_seconds", window.total_save_seconds );
+        if( !window.total_process_cpu_seconds || !window.total_input_seconds || !window.total_save_seconds ) {
+            js.member( "aggregation_unavailable_reason", "one_or_more_turn_metrics_unavailable" );
+        } else {
+            js.member( "aggregation_unavailable_reason" );
+            js.write_null();
+        }
+        js.end_object();
+    } else {
+        js.write_null();
+    }
+    js.end_object();
+    return write_native_diagnostic_event( stream.str() );
+}
+
 static openclaw_harness_turn_trace *active_turn_trace = nullptr;
 
 class openclaw_harness_turn_trace
@@ -621,8 +747,8 @@ class openclaw_harness_turn_trace
                 }
                 static std::uint64_t next_turn_id = 0;
                 turn_id_ = std::to_string( ++next_turn_id );
-                openclaw_harness_write_turn_trace( "turn", "start", "simulation", turn_id_, game_turn_,
-                                                   game_minutes_, 0.0 );
+                start_sequence_ = openclaw_harness_write_turn_trace( "turn", "start", "simulation", turn_id_, game_turn_,
+                                  game_minutes_, 0.0, &start_wall_seconds_ );
             }
             if( !enabled_ || raid_perf_mode == "off" ) {
                 raid_perf_rows.clear();
@@ -639,6 +765,12 @@ class openclaw_harness_turn_trace
                                                                std::chrono::steady_clock::now() - *outside_simulation_started_ ).count() : 0.0;
                 const double simulation = std::max( 0.0, elapsed - outside_simulation_seconds_ -
                                                    open_outside_simulation );
+                native_performance_sample extrema_sample;
+                extrema_sample.turn_id = std::stoull( turn_id_ );
+                extrema_sample.game_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+                extrema_sample.start_sequence = start_sequence_;
+                extrema_sample.start_wall_seconds = start_wall_seconds_;
+                extrema_sample.simulation_seconds = simulation;
                 if( raid_perf_current == &diagnostic_ ) {
                     finish_partition( simulation );
                     finish_tail_partition( simulation );
@@ -683,13 +815,38 @@ class openclaw_harness_turn_trace
                         }
                     }
 #endif
+                    extrema_sample.process_cpu_seconds = diagnostic_.cpu_seconds;
+                    extrema_sample.input_seconds = diagnostic_.input_seconds;
+                    extrema_sample.save_seconds = diagnostic_.save_seconds;
+                    extrema_sample.stages_seconds = std::array<double, 4> {
+                        diagnostic_.stages[static_cast<std::size_t>( raid_perf_stage::turn_setup )],
+                        diagnostic_.stages[static_cast<std::size_t>( raid_perf_stage::turn_activity_prep )],
+                        diagnostic_.stages[static_cast<std::size_t>( raid_perf_stage::turn_input_loop )],
+                        diagnostic_.stages[static_cast<std::size_t>( raid_perf_stage::turn_world_tail )]
+                    };
                     raid_perf_rows.push_back( std::move( diagnostic_ ) );
                     raid_perf_current = nullptr;
                 }
-                openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
-                                                   to_turns<int>( calendar::turn - calendar::turn_zero ),
-                                                   to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
-                                                   simulation );
+                extrema_sample.end_sequence = openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
+                                              extrema_sample.game_turn,
+                                              to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
+                                              simulation, &extrema_sample.end_wall_seconds );
+                // A missing boundary cannot support an authenticated window.
+                static native_performance_extrema extrema;
+                static bool extrema_dirty = false;
+                static std::string extrema_run;
+                const std::string run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+                if( extrema_run != run_id ) {
+                    extrema_run = run_id;
+                    extrema = native_performance_extrema{};
+                    extrema_dirty = false;
+                }
+                if( extrema_sample.start_sequence && extrema_sample.end_sequence ) {
+                    extrema_dirty = extrema.add( extrema_sample ) || extrema_dirty;
+                }
+                if( extrema_dirty && write_native_performance_extrema( extrema ) ) {
+                    extrema_dirty = false;
+                }
             }
             active_turn_trace = previous_trace_;
         }
@@ -801,6 +958,8 @@ class openclaw_harness_turn_trace
         int game_turn_ = 0;
         int game_minutes_ = 0;
         std::string turn_id_;
+        std::uint64_t start_sequence_ = 0;
+        double start_wall_seconds_ = 0;
         std::chrono::steady_clock::time_point started_;
         std::optional<std::chrono::steady_clock::time_point> outside_simulation_started_;
         std::string outside_simulation_phase_;
