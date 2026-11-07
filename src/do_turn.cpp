@@ -30,6 +30,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -14308,7 +14309,15 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     // the assigned area, not recognizable occupants or an illuminated scene.
     // Actual arrived observers acquire their own light/channel-bound evidence.
     size_t watch_cached_views = 0;
-    const auto terrain_lookup = [&site, &plan, &watch_cached_views](
+    // Individual ray records are verbose diagnostics, not watch observations.
+    // Keep them for probe sessions and explicit investigations; routine live
+    // runs retain the route summary and lifecycle events without one stream
+    // append for every sample.
+    const char *watch_detail = std::getenv( "OPENCLAW_HARNESS_WATCH_GEOMETRY_DETAIL" );
+    const bool record_watch_details = bandit_live_world_probe::transition_events_enabled() &&
+                                      ( bandit_live_world_probe::active() ||
+                                        ( watch_detail && std::string_view( watch_detail ) == "1" ) );
+    const auto terrain_lookup = [&site, &plan, &watch_cached_views, record_watch_details](
     const tripoint_abs_omt &candidate, const std::vector<tripoint_abs_omt> &footprint ) {
         bandit_live_world::structural_watch_terrain_read terrain;
         const oter_id &candidate_terrain = overmap_buffer.ter_existing( candidate );
@@ -14334,7 +14343,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
             if( raid_perf_current ) {
                 ++raid_perf_current->watch_record_view_calls;
             }
-            if( !terrain.concealed || !bandit_live_world_probe::transition_events_enabled() ) {
+            if( !terrain.concealed || !record_watch_details ) {
                 return;
             }
             if( raid_perf_current ) {

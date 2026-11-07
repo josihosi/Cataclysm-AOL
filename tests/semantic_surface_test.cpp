@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <sstream>
@@ -24,6 +25,7 @@
 #include "calendar.h"
 #include "avatar.h"
 #include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 #include "bodygraph.h"
 #include "input.h"
 #include "activity_actor_definitions.h"
@@ -5571,7 +5573,8 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
            "[semantic_surface][raid_performance_watch_split]" )
 {
     const std::string mode = GENERATE( "normal", "quiet_signal", "off" );
-    const std::string branch = GENERATE( "watch_record", "watch_no_record", "nonwatch" );
+    const std::string branch = GENERATE( "watch_record", "watch_summary", "watch_invalid_detail",
+                                        "watch_probe", "watch_no_record", "nonwatch" );
     CAPTURE( mode, branch );
     override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", mode );
     override_option autosave( "AUTOSAVE", "false" );
@@ -5652,8 +5655,12 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
         { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run },
         { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace.string() },
         { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", std::nullopt },
-        { "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", branch == "watch_record" ?
-          std::optional<std::string>( transitions.string() ) : std::nullopt }
+        { "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", branch == "watch_record" || branch == "watch_summary" ||
+          branch == "watch_invalid_detail" ?
+          std::optional<std::string>( transitions.string() ) : std::nullopt },
+        { "OPENCLAW_HARNESS_WATCH_GEOMETRY_DETAIL", branch == "watch_record" ?
+          std::optional<std::string>( "1" ) : branch == "watch_invalid_detail" ?
+          std::optional<std::string>( "0" ) : std::nullopt }
     };
     std::map<std::string, std::optional<std::string>> previous;
     for( const auto &setting : settings ) {
@@ -5692,6 +5699,7 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
     REQUIRE_FALSE( g->do_turn() );
     auto &manager = openclaw_harness_semantic_surface_manager();
     bool called = false;
+    int probe_geometry_events = 0;
     manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &owner ) {
         if( owner.kind != "world" || called ) {
             return;
@@ -5701,7 +5709,17 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
         const auto moves_before = u.get_moves();
         const auto trace_bytes_before = std::filesystem::file_size( trace );
         int budget = 8;
+        std::unique_ptr<bandit_live_world_probe::session> detail_probe;
+        if( branch == "watch_probe" ) {
+            detail_probe = std::make_unique<bandit_live_world_probe::session>(
+                               bandit_live_world_probe::collection_mode::transition_events );
+        }
         const auto read = live_bandit_structural_route_read_for_test( site, plan, budget );
+        if( detail_probe ) {
+            for( const auto &event : detail_probe->result().transition_events ) {
+                probe_geometry_events += event.transition == "watch_geometry_read";
+            }
+        }
         // Timing/counters stay in the current row. Only the unchanged native
         // transition recorder may write its separate, explicitly bound file.
         CHECK( std::filesystem::file_size( trace ) == trace_bytes_before );
@@ -5786,7 +5804,7 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
         CHECK( preflights == ( branch == "nonwatch" ? 0 : 1 ) );
         CHECK( ( reads > 0 ) == ( branch != "nonwatch" ) );
         CHECK( record_calls == reads );
-        CHECK( eligible_calls == ( branch == "watch_record" ? reads : 0 ) );
+        CHECK( eligible_calls == ( branch == "watch_record" || branch == "watch_probe" ? reads : 0 ) );
         CHECK( ( cached_views > 0 ) == ( branch != "nonwatch" ) );
     }
     int written_events = 0;
@@ -5799,6 +5817,7 @@ TEST_CASE( "watch diagnostics separate actual optical and recording owners witho
         ++written_events;
     }
     CHECK( ( written_events > 0 ) == ( branch == "watch_record" ) );
+    CHECK( ( probe_geometry_events > 0 ) == ( branch == "watch_probe" ) );
     if( mode != "off" ) {
         CHECK( written_events == ( branch == "watch_record" ? reads : 0 ) );
     }

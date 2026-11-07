@@ -132,6 +132,12 @@ when they only verify provenance rather than resolve the decision; include them 
 combined targeted total. `scanned_records`/`scanned_bytes` describe source work, not CLI output
 cost. Unavailable sources remain reported as unavailable rather than being treated as no matches.
 
+Routine native runs retain watch route summaries and lifecycle records without writing every
+nonmutating geometry sample. For a specific geometry investigation, set
+`OPENCLAW_HARNESS_WATCH_GEOMETRY_DETAIL=1` in the launch environment before the game starts;
+the per-ray `watch_geometry_read` transition records then remain available in that run's stream.
+This diagnostic choice does not change sight, watch selection or simulation cadence.
+
 For legacy exact log queries, use `cockpit_file_bridge.py log-query --path PATH` with
 `--run-id`, `--process-instance`, `--request-id`, `--actor-id`, `--actor-name`, and `--event`
 for exact identities/events, then `--where FIELD=JSON` and `--select FIELD` for a narrow
