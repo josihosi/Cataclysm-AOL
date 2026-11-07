@@ -1094,9 +1094,8 @@ bool mattack::resurrect( monster *z )
     cata_assert( raised.second );
     // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
     float corpse_damage = raised.second->damage_level();
-    creature_tracker &creatures = get_creature_tracker();
     // Did we successfully raise something?
-    if( g->revive_corpse( raised.first, *raised.second ) ) {
+    if( monster *const zed = g->revive_corpse_with_result( raised.first, *raised.second, 1 ) ) {
         here.i_rem( raised.first, raised.second );
         // check to ensure that we destroy any dormant zombie traps in the same tile.
         if( here.tr_at( raised.first ) == trap_id( "tr_dormant_corpse" ) ) {
@@ -1112,12 +1111,6 @@ bool mattack::resurrect( monster *z )
         // Penalize speed by between 10% and 50% based on how damaged the corpse is.
         float speed_penalty = 0.1 + ( corpse_damage * 0.1 );
         z->set_speed_base( z->get_speed_base() - speed_penalty * z->type->speed );
-        monster *const zed = creatures.creature_at<monster>( raised.first );
-        if( !zed ) {
-            debugmsg( "Misplaced or failed to revive a zombie corpse" );
-            return true;
-        }
-
         zed->make_ally( *z );
         if( player_character.sees( here, *zed ) ) {
             add_msg( m_warning, _( "A nearby %s rises from the dead!" ), zed->name() );

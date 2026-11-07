@@ -618,8 +618,7 @@ class game
         bool is_sheltered( map *here, const tripoint_bub_ms &p );
         /**
          * Revives a corpse at given location. The monster type and some of its properties are
-         * deducted from the corpse. If reviving succeeds, the location is guaranteed to have a
-         * new monster there (see @ref creature_at).
+         * deducted from the corpse. Placement may use a nearby tile.
          * @param p The place where to put the revived monster.
          * @param it The corpse item, it must be a valid corpse (see @ref item::is_corpse).
          * @return Whether the corpse has actually been revived. Reviving may fail for many
@@ -630,6 +629,8 @@ class game
         bool revive_corpse( const tripoint_bub_ms &p, item &it );
         // same as above, but with relaxed placement radius.
         bool revive_corpse( const tripoint_bub_ms &p, item &it, int radius );
+        // Returns the actual placed monster, or nullptr on failure.
+        monster *revive_corpse_with_result( const tripoint_bub_ms &p, item &it, int radius );
         // evaluate what monster it should be, if necessary
         void assign_revive_form( item &it, tripoint_bub_ms p );
         /**Turns Broken Cyborg monster into Cyborg NPC via surgery*/

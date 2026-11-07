@@ -5421,19 +5421,24 @@ bool game::revive_corpse( const tripoint_bub_ms &p, item &it )
 
 bool game::revive_corpse( const tripoint_bub_ms &p, item &it, int radius )
 {
+    return revive_corpse_with_result( p, it, radius ) != nullptr;
+}
+
+monster *game::revive_corpse_with_result( const tripoint_bub_ms &p, item &it, int radius )
+{
     if( !it.is_corpse() ) {
         debugmsg( "Tried to revive a non-corpse." );
-        return false;
+        return nullptr;
     }
     // If this is not here, the game may attempt to spawn a monster before the map exists,
     // leading to it querying for furniture, and crashing.
     if( g->new_game || g->swapping_dimensions ) {
-        return false;
+        return nullptr;
     }
     if( it.has_flag( flag_FIELD_DRESS ) || it.has_flag( flag_FIELD_DRESS_FAILED ) ||
         it.has_flag( flag_QUARTERED ) ) {
         // Failed reanimation due to corpse being butchered
-        return false;
+        return nullptr;
     }
 
     assign_revive_form( it, p );
@@ -5449,7 +5454,7 @@ bool game::revive_corpse( const tripoint_bub_ms &p, item &it, int radius )
     critter.init_from_item( it );
     if( critter.get_hp() < 1 ) {
         // Failed reanimation due to corpse being too burned
-        return false;
+        return nullptr;
     }
 
     critter.no_extra_death_drops = true;

@@ -35,6 +35,7 @@
 #include "map_scale_constants.h"
 #include "mapdata.h"
 #include "memory_fast.h"
+#include "monattack.h"
 #include "monster.h"
 #include "monstergenerator.h"
 #include "mtype.h"
@@ -70,6 +71,114 @@ static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
 static const ter_str_id ter_t_palisade( "t_palisade" );
 static const ter_str_id ter_t_water_dp( "t_water_dp" );
+
+TEST_CASE( "necromancer_revives_the_actual_placed_creature", "[monster][resurrection]" )
+{
+    clear_map_and_put_player_underground();
+    map &here = get_map();
+    const tripoint_bub_ms corpse_pos{ 65, 65, 0 };
+    for( const tripoint_bub_ms &p : here.points_in_radius( corpse_pos, 3 ) ) {
+        here.ter_set( p, ter_t_floor );
+    }
+    monster &necromancer = spawn_test_monster( "mon_zombie_necro", corpse_pos + tripoint::west * 2 );
+    necromancer.friendly = 42;
+    necromancer.add_effect( efftype_id( "raising" ), 1_hours, false, 10, true );
+    necromancer.set_moves( 100 );
+    bool blocked = false;
+    bool adjacent = false;
+    mtype_id corpse_type( "mon_zombie" );
+    SECTION( "ordinary placement" ) {}
+    SECTION( "adjacent placement" ) {
+        corpse_type = mtype_id( "mon_zhark" );
+        adjacent = true;
+    }
+    SECTION( "no suitable tile" ) {
+        corpse_type = mtype_id( "mon_zhark" );
+        blocked = true;
+    }
+    item corpse = item::make_corpse( corpse_type );
+    corpse.active = true;
+    here.add_item_or_charges( corpse_pos, corpse );
+    // The aquatic corpse is on dry floor, with water available alongside it.
+    for( const tripoint_bub_ms &p : here.points_in_radius( corpse_pos, 1 ) ) {
+        if( adjacent && p != corpse_pos ) {
+            here.ter_set( p, ter_t_water_dp );
+        }
+    }
+    here.build_map_cache( 0 );
+    here.update_submaps_with_active_items();
+    REQUIRE( g->is_empty( corpse_pos ) );
+    REQUIRE( here.sees( necromancer.pos_bub(), corpse_pos, -1 ) );
+    REQUIRE( necromancer.get_effect_int( efftype_id( "raising" ) ) >= 3 );
+    REQUIRE( here.i_at( corpse_pos ).begin()->can_revive() );
+    REQUIRE( here.i_at( corpse_pos ).begin()->active );
+    REQUIRE( here.i_at( corpse_pos ).begin()->get_mtype()->has_flag( mon_flag_id( "REVIVES" ) ) );
+    REQUIRE( here.i_at( corpse_pos ).begin()->get_mtype()->in_species( species_id( "ZOMBIE" ) ) );
+    REQUIRE_FALSE( here.i_at( corpse_pos ).begin()->get_mtype()->has_flag( mon_flag_id( "NO_NECRO" ) ) );
+    REQUIRE( necromancer.get_speed_base() > necromancer.type->speed / 2 );
+    restore_on_out_of_scope<bool> restore_new_game( g->new_game );
+    g->new_game = false;
+    REQUIRE_FALSE( g->swapping_dimensions );
+    auto active_corpses = here.get_active_items_in_radius( necromancer.pos_bub(), 10,
+                          special_item_type::corpse );
+    REQUIRE( active_corpses.size() == 1 );
+    REQUIRE( active_corpses.front().pos_bub( here ) == corpse_pos );
+    const std::string warning = capture_debugmsg_during( [&] {
+        mattack::resurrect( &necromancer );
+    } );
+    INFO( "raising intensity after call: " << necromancer.get_effect_int( efftype_id( "raising" ) ) );
+    CHECK( warning.empty() );
+    if( blocked ) {
+        CHECK_FALSE( here.i_at( corpse_pos ).empty() );
+        for( const tripoint_bub_ms &p : here.points_in_radius( corpse_pos, 1 ) ) {
+            CHECK( get_creature_tracker().creature_at<monster>( p ) == nullptr );
+        }
+        return;
+    }
+    CHECK( here.i_at( corpse_pos ).empty() );
+    monster *revived = nullptr;
+    for( const tripoint_bub_ms &p : here.points_in_radius( corpse_pos, 1 ) ) {
+        monster *candidate = get_creature_tracker().creature_at<monster>( p );
+        if( candidate != nullptr && candidate != &necromancer ) {
+            REQUIRE( revived == nullptr );
+            revived = candidate;
+        }
+    }
+    REQUIRE( revived != nullptr );
+    CHECK( ( revived->pos_bub() != corpse_pos ) == adjacent );
+    CHECK( revived->friendly == necromancer.friendly );
+    CHECK( revived->faction == necromancer.faction );
+    CHECK( necromancer.attitude_to( *revived ) == Creature::Attitude::FRIENDLY );
+}
+
+TEST_CASE( "revive_corpse_preserves_boolean_placement_contract", "[monster][resurrection]" )
+{
+    clear_map_and_put_player_underground();
+    map &here = get_map();
+    const tripoint_bub_ms pos{ 65, 65, 0 };
+    for( const tripoint_bub_ms &p : here.points_in_radius( pos, 3 ) ) {
+        here.ter_set( p, ter_t_floor );
+    }
+    restore_on_out_of_scope<bool> restore_new_game( g->new_game );
+    g->new_game = false;
+    item corpse = item::make_corpse( mtype_id( "mon_zhark" ) );
+    SECTION( "nearby water is valid with the default radius" ) {
+        const tripoint_bub_ms water = pos + tripoint::east;
+        here.ter_set( water, ter_t_water_dp );
+        CHECK( g->revive_corpse( pos, corpse ) );
+        monster *placed = get_creature_tracker().creature_at<monster>( water );
+        REQUIRE( placed != nullptr );
+        CHECK( placed->type->id == mtype_id( "mon_zhark" ) );
+        CHECK( corpse.is_corpse() ); // The caller owns corpse removal.
+    }
+    SECTION( "explicit radius excludes the only water tile" ) {
+        here.ter_set( pos + tripoint::east * 2, ter_t_water_dp );
+        CHECK_FALSE( g->revive_corpse( pos, corpse, 1 ) );
+        CHECK( corpse.is_corpse() );
+        CHECK( g->revive_corpse( pos, corpse, 3 ) );
+        CHECK( get_creature_tracker().creature_at<monster>( pos + tripoint::east * 2 ) != nullptr );
+    }
+}
 
 
 static int moves_to_destination( const std::string &monster_type,
