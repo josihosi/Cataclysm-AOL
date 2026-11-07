@@ -7,6 +7,8 @@
 #include "cata_catch.h"
 #include "character.h"
 #include "coordinates.h"
+#include "creature_tracker.h"
+#include "debug.h"
 #include "game.h"
 #include "map.h"
 #include "map_helpers.h"
@@ -136,6 +138,46 @@ static const std::vector<std::pair<mtype_id, std::string>> climbing_creatures = 
 };
 
 static constexpr int test_turns = 30;
+
+TEST_CASE( "stumble_redirected_stairs_respect_occupied_landing", "[monster][z-level][stumble]" )
+{
+    clear_map( -2, 2 );
+    clear_creatures();
+    map &here = get_map();
+    get_player_character().setpos( here, tripoint_bub_ms( 50, 50, 0 ) );
+    const tripoint_bub_ms origin( 60, 60, 0 );
+    const tripoint_bub_ms requested( 60, 60, 1 );
+    const tripoint_bub_ms redirected( 61, 60, 1 );
+    here.ter_set( origin, ter_t_stairs_up );
+    here.ter_set( requested, ter_t_floor );
+    here.ter_set( redirected, ter_t_stairs_down );
+    monster &walker = spawn_test_monster( mon_test_zombie.str(), origin, false );
+    monster *blocker = nullptr;
+    bool force = false;
+    SECTION( "voluntary stumble uses forced movement with occupied redirected stair" ) {
+        force = true;
+        blocker = &spawn_test_monster( mon_test_zombie.str(), redirected, false );
+    }
+    SECTION( "ordinary movement rejects occupied redirected stair" ) {
+        blocker = &spawn_test_monster( mon_test_zombie.str(), redirected, false );
+    }
+    SECTION( "forced movement uses an empty redirected stair" ) {
+        force = true;
+    }
+    REQUIRE( get_creature_tracker().creature_at( requested ) == nullptr );
+    REQUIRE( walker.can_move_to( requested ) );
+    bool moved = false;
+    const std::string warning = capture_debugmsg_during( [&] {
+        moved = walker.move_to( requested, force, false );
+    } );
+    CHECK( warning.empty() );
+    CHECK( moved == ( blocker == nullptr ) );
+    CHECK( walker.pos_bub( here ) == ( blocker ? origin : redirected ) );
+    CHECK( get_creature_tracker().creature_at<monster>( blocker ? origin : redirected ) == &walker );
+    if( blocker ) {
+        CHECK( get_creature_tracker().creature_at<monster>( redirected ) == blocker );
+    }
+}
 
 TEST_CASE( "creatures_ascend_regular_stairs", "[monster][z-level]" )
 {

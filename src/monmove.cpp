@@ -4211,8 +4211,10 @@ bool monster::move_to( const tripoint_bub_ms &p, bool force, bool step_on_critte
         return false;
     }
 
-    // Check for temporary blockers
-    if( !force && critter != nullptr && !step_on_critter ) {
+    // A forced stumble checks its requested tile before calling move_to, but
+    // stair redirection can select a different, occupied landing tile.
+    if( critter != nullptr && !step_on_critter &&
+        ( !force || ( z_move && destination != p ) ) ) {
         return false;
     }
 
