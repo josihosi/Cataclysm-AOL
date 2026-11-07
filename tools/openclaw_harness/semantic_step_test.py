@@ -36,6 +36,134 @@ from startup_harness import (
 class SemanticStepChannelTest(unittest.TestCase):
     run_id = "run-natural-1"
 
+    def test_launch_debug_offset_does_not_skip_run_owned_native_stream(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from types import SimpleNamespace
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            native = root / "semantic.native.events.jsonl"
+            descriptor = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+                "surface_id": "world", "frame_id": "world-frame", "kind": "world",
+                "breadcrumbs": ["World"], "game_minutes": 42, "payload": {},
+                "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "Wait", "enabled": True}],
+            }
+            native.write_text("openclaw_harness_semantic_step: " + json.dumps(descriptor) + "\n" +
+                              "unrelated native trace padding\n" * 80, encoding="utf-8")
+            launch_offset = native.stat().st_size // 2
+            (root / "process.json").write_text(json.dumps({"run_id": self.run_id,
+                "semantic_step_trace_start_offset": launch_offset}), encoding="utf-8")
+            args = SimpleNamespace(profile="ignored", run_dir=str(root), run_id=self.run_id,
+                                   trace_start_offset=launch_offset)
+            with redirect_stdout(StringIO()) as out:
+                self.assertEqual(startup_harness.run_semantic_observe(args), 0)
+            self.assertEqual(json.loads(out.getvalue())["frame_id"], "world-frame")
+            with patch.object(startup_harness, "semantic_step_partial_descriptor_offset",
+                              side_effect=RuntimeError("dispatch stopped before input")) as cursor:
+                with self.assertRaisesRegex(RuntimeError, "dispatch stopped before input"):
+                    execute_semantic_act(run_dir=root, profile="ignored", run_id=self.run_id,
+                        trace_start_offset=launch_offset, pid=123, session_id="session",
+                        frame_id="world-frame", action_id="world.wait",
+                        transition_timeout_seconds=1, observe_interval_seconds=0.1)
+                self.assertEqual(cursor.call_args.args[1], 0)
+            self.assertEqual(startup_harness.semantic_step_initial_source_offset(
+                "ignored", root, self.run_id, launch_offset), 0)
+            # A genuine later cursor, or a process record belonging to another run,
+            # remains in its own coordinate system.
+            self.assertEqual(startup_harness.semantic_step_initial_source_offset(
+                "ignored", root, self.run_id, launch_offset + 1), launch_offset + 1)
+            self.assertEqual(startup_harness.semantic_step_initial_source_offset(
+                "ignored", root, "foreign", launch_offset), launch_offset)
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=root / "debug.log"):
+                self.assertEqual(startup_harness.semantic_step_initial_source_offset(
+                    "ignored", root, self.run_id, launch_offset), launch_offset)
+
+    def test_standalone_action_rebases_if_native_appears_before_first_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            debug = root / "debug.log"
+            debug.write_bytes(b"noise\n" * 100)
+            native = root / "semantic.native.events.jsonl"
+            (root / "process.json").write_text(json.dumps({"run_id": self.run_id,
+                "semantic_step_trace_start_offset": 100}), encoding="utf-8")
+            descriptor = {"event": "surface_descriptor", "schema_version": 1,
+                "run_id": self.run_id, "frame_id": "current", "surface_id": "world",
+                "kind": "world", "breadcrumbs": ["World"], "game_minutes": 42,
+                "payload": {}, "valid_actions": []}
+            calls = []
+            def select_source(*_args):
+                calls.append(True)
+                if len(calls) == 1:
+                    return debug
+                if not native.exists():
+                    native.write_text("openclaw_harness_semantic_step: " + json.dumps(descriptor) +
+                                      "\n" + "padding\n" * 100, encoding="utf-8")
+                return native
+
+            with patch.object(startup_harness, "semantic_step_source_trace", side_effect=select_source), \
+                    patch.object(startup_harness, "semantic_step_partial_descriptor_offset",
+                                 wraps=startup_harness.semantic_step_partial_descriptor_offset) as cursor, \
+                    patch.object(startup_harness, "write_semantic_wake_pipe") as wake:
+                result = execute_semantic_act(run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=100, pid=123, session_id="session", frame_id="current",
+                    action_id="world.wait", transition_timeout_seconds=1,
+                    observe_interval_seconds=0.1)
+                self.assertEqual(cursor.call_args.args[0], native.resolve())
+                self.assertEqual(cursor.call_args.args[1], 0)
+                self.assertFalse(result["accepted"])
+                self.assertEqual(result["reason"], "unadvertised_action")
+                self.assertEqual(result["surface_request"]["frame_id"], "current")
+                self.assertFalse((root / "semantic.requests.jsonl").exists())
+                wake.assert_not_called()
+
+    def test_standalone_action_race_preserves_accepted_receipt_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            debug, native = root / "debug.log", root / "semantic.native.events.jsonl"
+            debug.write_bytes(b"noise\n" * 100)
+            (root / "process.json").write_text(json.dumps({"run_id": self.run_id,
+                "semantic_step_trace_start_offset": 100}), encoding="utf-8")
+            descriptor = {"event": "surface_descriptor", "schema_version": 1,
+                "run_id": self.run_id, "frame_id": "current", "surface_id": "world",
+                "kind": "world", "breadcrumbs": ["World"], "game_minutes": 42,
+                "payload": {}, "valid_actions": [{"id": "world.wait", "stable_id": "",
+                                                   "label": "Wait", "enabled": True}]}
+            calls = []
+            def line(row):
+                return "openclaw_harness_semantic_step: " + json.dumps(row) + "\n"
+            def select_source(*_args):
+                calls.append(True)
+                if len(calls) == 1:
+                    return debug
+                if not native.exists():
+                    native.write_text(line(descriptor) + "padding\n" * 100, encoding="utf-8")
+                return native
+            def wake(*_args):
+                request = json.loads((root / "semantic.requests.jsonl").read_text().strip())
+                receipt = {"event": "surface_receipt", "run_id": self.run_id,
+                    "request_id": request["request_id"], "requested_run_id": self.run_id,
+                    "requested_frame_id": "current", "requested_surface_id": "world",
+                    "consuming_frame_id": "current", "consuming_surface_id": "world",
+                    "action_id": "world.wait", "accepted": True, "rejection_reason": "",
+                    "resulting_frame_id": "successor"}
+                with native.open("a", encoding="utf-8") as stream:
+                    stream.write(line(receipt) + line({**descriptor, "frame_id": "successor"}))
+                return 1
+            contract = {"status": "bound", "path": "test", "contract": {"transport": "test"}}
+            with patch.object(startup_harness, "semantic_step_source_trace", side_effect=select_source), \
+                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value=contract), \
+                    patch.object(startup_harness, "write_semantic_wake_pipe", side_effect=wake) as writer:
+                result = execute_semantic_act(run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=100, pid=123, session_id="session", frame_id="current",
+                    action_id="world.wait", transition_timeout_seconds=1, observe_interval_seconds=0.01)
+                self.assertTrue(result["accepted"], result)
+                self.assertEqual(result["native_receipt"]["requested_frame_id"], "current")
+                self.assertEqual(result["next_frame"]["frame_id"], "successor")
+                self.assertEqual(len((root / "semantic.requests.jsonl").read_text().splitlines()), 1)
+                writer.assert_called_once()
+
     def frame(self, frame_id: str, state: str, actions: dict[str, str], turn: int) -> dict:
         return {
             "event": "frame",
@@ -2351,6 +2479,26 @@ os.close(rd);os.close(wr)
 
 
 class SemanticSourceMirrorTest(unittest.TestCase):
+    def test_first_observation_rebases_when_native_stream_appears_after_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            config = run / "config"
+            config.mkdir()
+            (config / "debug.log").write_bytes(b"noise\n" * 100)
+            native = run / "semantic.native.events.jsonl"
+            native.write_bytes(b"")
+            (run / "process.json").write_text(json.dumps({"run_id": "run",
+                "semantic_step_trace_start_offset": 100}), encoding="utf-8")
+            with patch.object(startup_harness, "config_dir_for_profile", return_value=config), \
+                    patch.object(startup_harness, "resolve_profile_name", return_value="owned"):
+                service = startup_harness.open_cockpit_game_service(
+                    profile="owned", run_dir=run, run_id="run", trace_start_offset=100,
+                    live_session=False, cleanup_on_finish=False)
+                native.write_bytes(self.source_line(self.source_owner(11, "world")))
+                result = service.call({"action": "game.observe"})
+                self.assertTrue(result["ok"], result)
+                self.assertEqual(result["result"]["observation_id"], "run:frame:11")
+
     def test_same_observer_keeps_identity_when_canonical_stream_appears(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)

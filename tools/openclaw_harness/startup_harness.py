@@ -5354,7 +5354,7 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
 
 
 def semantic_step_trace_start_for_source(
-    profile: str, run_dir: Path, inherited_offset: int,
+    profile: str, run_dir: Path, inherited_offset: int, *, source: Optional[Path] = None,
 ) -> int:
     """Translate a profile-log cursor to the source used by semantic steps.
 
@@ -5363,7 +5363,7 @@ def semantic_step_trace_start_for_source(
     fresh, run-owned stream, so that cursor has no coordinate meaning there.
     Its whole lifetime belongs to this run and must be read from byte zero.
     """
-    source = semantic_step_source_trace(profile, run_dir)
+    source = source if source is not None else semantic_step_source_trace(profile, run_dir)
     native_trace = Path(run_dir) / "semantic.native.events.jsonl"
     try:
         if source.resolve() == native_trace.resolve():
@@ -5879,6 +5879,21 @@ def semantic_step_effective_source_offset(
     except OSError:
         return start_offset
     return start_offset if 0 <= start_offset <= size else 0
+
+
+def semantic_step_initial_source_offset(profile: str, run_dir: Path, run_id: str,
+                                        start_offset: int, *, source: Optional[Path] = None) -> int:
+    """Translate a launch debug-log offset only for the run-owned native stream."""
+    run_dir = Path(run_dir).resolve()
+    try:
+        process = json.loads((run_dir / "process.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return start_offset
+    if isinstance(process, Mapping) and process.get("run_id") == run_id and \
+            type(process.get("semantic_step_trace_start_offset")) is int and \
+            process["semantic_step_trace_start_offset"] == start_offset:
+        return semantic_step_trace_start_for_source(profile, run_dir, start_offset, source=source)
+    return start_offset
 
 
 def semantic_step_partial_descriptor_offset(
@@ -6403,7 +6418,10 @@ def open_cockpit_game_service(
     # frame and only its unconsumed successors, rather than re-materializing
     # the whole current-run history on every observation.  The existing cap
     # still rejects an overfull unconsumed window.
-    semantic_cursor = {"offset": trace_start_offset, "source": None, "generation": None}
+    initial_source = semantic_step_source_trace(profile, run_dir).resolve()
+    semantic_cursor = {"offset": semantic_step_initial_source_offset(
+        profile, run_dir, run_id, trace_start_offset, source=initial_source), "source": str(initial_source),
+        "generation": semantic_trace_path_identity(initial_source)}
     semantic_history: Dict[str, Any] = {}
     latest_frame: Dict[str, Mapping[str, Any]] = {}
     performance = None
@@ -7217,9 +7235,12 @@ def await_cockpit_advertised_action(
 
 
 def run_semantic_observe(args: argparse.Namespace) -> int:
+    source = semantic_step_source_trace(args.profile, Path(args.run_dir)).resolve()
     frame = current_semantic_step_frame(
         profile=args.profile, run_dir=Path(args.run_dir), run_id=args.run_id,
-        start_offset=args.trace_start_offset,
+        start_offset=semantic_step_initial_source_offset(
+            args.profile, Path(args.run_dir), args.run_id, args.trace_start_offset, source=source),
+        source_trace=source,
     )
     public = {key: value for key, value in frame.items() if not key.startswith("_") and key != "action_inputs"}
     print(json.dumps(public, indent=2, ensure_ascii=False))
@@ -7244,6 +7265,12 @@ def execute_semantic_act(
 ) -> Dict[str, Any]:
     """Apply one advertised action from its issuing run-bound frame."""
     run_dir = Path(run_dir).resolve()
+    initial_source = None
+    if observed_frame is None:
+        initial_source = (trace_source.resolve() if trace_source is not None else
+                          semantic_step_source_trace(profile, run_dir).resolve())
+        trace_start_offset = semantic_step_initial_source_offset(
+            profile, run_dir, run_id, trace_start_offset, source=initial_source)
     diagnostic_enabled = (
         ( run_dir / WAIT_DIAGNOSTIC_ACTIVATION_FILENAME ).exists() or
         ( run_dir / WAIT_DIAGNOSTIC_RECORDS_FILENAME ).exists()
@@ -7275,9 +7302,11 @@ def execute_semantic_act(
     # transaction rather than replaying the run from its launch cursor.
     transaction_cursor: Dict[str, Any] = {
         "offset": trace_start_offset,
-        "generation": observed_frame.get("_source_generation") if observed_frame is not None else None,
+        "generation": (observed_frame.get("_source_generation") if observed_frame is not None else
+                       semantic_trace_path_identity(initial_source)),
         "source": (observed_frame.get("_source_path") if observed_frame is not None else None)
-        or (str(trace_source.resolve()) if trace_source is not None else None),
+        or (str(initial_source) if initial_source is not None else
+            str(trace_source.resolve()) if trace_source is not None else None),
     }
 
     def transaction_source() -> Path:
