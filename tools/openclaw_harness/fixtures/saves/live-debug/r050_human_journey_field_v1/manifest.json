@@ -1,0 +1,56 @@
+{
+  "name": "r050_human_journey_field_v1",
+  "source_fixture": "r050_rural_roof_bandit_only_v1",
+  "source_profile": "live-debug",
+  "description": "Isolated representative field footing: same R050 11-OMT geometry, with an ordinary carried brazier supplied as zero-credit setup. Signal and camp behavior must be observed natively.",
+  "setup_classification": {
+    "kind": "representative_candidate",
+    "minimum_footprint_edge_omt": 10,
+    "default_footprint_edge_omt": 15,
+    "native_source_qualified": false,
+    "native_prepared_save_adopted": false
+  },
+  "gameplay_credit": false,
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        11,
+        -11,
+        0
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": false,
+      "items": [
+        {
+          "typeid": "brazier",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "kind": "representative_human_source_geometry",
+      "player_save": "#VGVzdDAw.sav.zzip",
+      "source_area_omt": [
+        [
+          140,
+          138,
+          0
+        ]
+      ],
+      "expected_source_terrain_id": "field",
+      "expected_home_site_ids": [
+        "overmap_special:bandit_camp@129,149,0",
+        "overmap_special:bandit_cabin@103,167,0"
+      ],
+      "minimum_distance_omt": 10
+    }
+  ]
+}

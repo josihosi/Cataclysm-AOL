@@ -1,0 +1,170 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r050_brazier_deploy_diagnostic_mcw",
+  "setup_classification": {
+    "kind": "representative_candidate",
+    "native_source_qualified": false,
+    "native_prepared_save_adopted": false
+  },
+  "description": "Focused source-bound comparison of real brazier deployment and adjacent quiet turns on the same R050 field footing; diagnostic output is not journey proof.",
+  "profile": "r050-brazier-deploy-diagnostic",
+  "world": "TestSetup00",
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "suppress_profile_startup_input": true,
+  "run_class": "combat",
+  "capabilities": {
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ],
+    "world.hostile_policy": "added_bandit_camp+inherited_distant_bandit_cabin",
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_caol.r050_rural_roof": "bandit_only_derivative_of_B"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.move.*",
+      "semantic:world.pickup",
+      "semantic:world.inventory",
+      "semantic:inventory.select",
+      "semantic:inventory.item_menu.choose",
+      "semantic:inventory.cancel",
+      "semantic:direction.choose",
+      "semantic:direction.cancel",
+      "semantic:prompt.choose",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "semantic:world.toggle_safemode",
+      "semantic:menu.choose",
+      "semantic:world.quicksave",
+      "semantic:world.save_quit",
+      "semantic:world.look",
+      "semantic:cursor.north",
+      "semantic:cursor.south",
+      "semantic:cursor.east",
+      "semantic:cursor.west",
+      "semantic:cursor.confirm",
+      "semantic:cursor.cancel",
+      "semantic:world.level_up",
+      "semantic:world.level_down",
+      "semantic:world.examine"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_smoke",
+      "debug:inject_fire",
+      "debug:inject_light",
+      "debug:inject_dispatch",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "raw-save-rewrite-after-install"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r050-brazier-deploy-diagnostic",
+    "fixture": "r050_human_journey_field_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r050-brazier-deploy-diagnostic",
+      "fixture": "r050_human_journey_field_v1",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "source-bound native cockpit actions; ordinary roof ignition and save"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r050_bandit_only_baseline",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Load maintained R050 pre-signal bytes plus initial-player-only remote transform140,138,0 and final all-home footprint audit. Original homes/rosters/clocks/history must be unchanged; old roof131,143 is not this source. Geometry alone gives no terrain/emission/reach or gameplay credit. Verify exact userdir/executable/World and supported native setup before scoring."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_same_run_r050_bandit_only_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.inventory",
+          "world.quicksave",
+          "world.look"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "native_r050_bandit_only_journey",
+      "objective": "Measure ordinary native brazier deployment and nearby quiet turns with targeted performance diagnostics; do not repeat the journey. Record actual timing, action/input phases, native diagnostic stages and process identity, then close.",
+      "proof_targets": [
+        "same actual source/build and compatible field footing",
+        "native deploy action and adjacent quiet turn timing and diagnostic attribution",
+        "native process exit and cleanup"
+      ],
+      "invariants": [
+        "offline edits have zero gameplay credit; no injected signal, knowledge, report, raid or payment",
+        "the added bandit_camp differs from the inherited distant bandit_cabin and old player lead",
+        "do not alter normal supply, response power, drive or dispatch cadence",
+        "native scout/response IDs are resolved from this run, never copied from R049"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "load_r050_bandit_only_baseline",
+      "bind_same_run_r050_bandit_only_world"
+    ],
+    "production_behavior": [
+      "native_r050_bandit_only_journey"
+    ],
+    "terminal_persistence": [
+      "native_r050_bandit_only_journey"
+    ],
+    "artifact_verdict": [
+      "native_r050_bandit_only_journey"
+    ],
+    "disallowed_shortcuts": [
+      "native_r050_bandit_only_journey"
+    ]
+  },
+  "evidence_contract": {
+    "claim": "Bounded deployment timing comparison; no signal or journey proof.",
+    "failure_rule": "An aggregate timing or unmatched fixture is not causal attribution."
+  },
+  "fixture": "r050_human_journey_field_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides": {
+    "RAID_PERFORMANCE_DIAGNOSTIC": "normal"
+  }
+}
