@@ -103,13 +103,46 @@ def _finite_number(value: Any, *, positive: bool = False) -> bool:
         math.isfinite(value) and (value > 0 if positive else True)
 
 
+def _native_alarm_routes(native: Mapping[str, Any], config: Mapping[str, Any] | None) -> set[str]:
+    snapshot = native.get("snapshot", {}) if native.get("status") == "retained" else {}
+    if snapshot.get("monitoring_enabled") is not True:
+        return set()
+    result = {"waiting_slow"}
+    if config and snapshot.get("configured_slow_turn_seconds") == config["slow_turn_seconds"] and \
+            snapshot.get("configured_spike_seconds") == config["spike_seconds"] and \
+            snapshot.get("configured_sustained_turns") == config["sustained_turns"]:
+        result.update({"spike", "slow_turn", "sustained_regression"})
+    return result
+
+
+def _bounded_alarm_routes(native: Mapping[str, Any], config: Mapping[str, Any] | None) -> set[str]:
+    """Keep even temporarily unmatched native alarms out of the unbounded legacy store."""
+    snapshot = native.get("snapshot", {}) if native.get("status") == "retained" else {}
+    if snapshot.get("monitoring_enabled") is not True:
+        return set()
+    return {"waiting_slow", "spike", "slow_turn", "sustained_regression"}
+
+
 def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
-                          waiting_windows: Mapping[int, list], added: list[dict]) -> dict:
-    """Retain only emitted alarm facts in the existing content-addressed store."""
+                          waiting_windows: Mapping[int, list], added: list[dict],
+                          config: Mapping[str, Any] | None = None) -> dict:
+    """Retain legacy-only alarms; eligible completed alarms use the native pin."""
     import evidence_display
 
     records = list(state.get("unretained_alarm_records", []))
+    native = assessment.get("native_slow_receipts", {})
+    routed = _native_alarm_routes(native, config)
+    bounded = _bounded_alarm_routes(native, config)
+    coalesced = 0
+    configuration_unmatched = 0
     for alarm in assessment["alarms"]:
+        if alarm.get("kind") in bounded:
+            amount = alarm.get("coalesced_observed_count_this_poll", 1)
+            if alarm.get("kind") in routed:
+                coalesced += amount
+            else:
+                configuration_unmatched += amount
+            continue
         waiting = alarm.get("kind") == "waiting_slow"
         samples = waiting_windows[id(alarm)] if waiting else state.get("completed", [])
         if alarm.get("kind") in {"spike", "slow_turn"}:
@@ -162,8 +195,14 @@ def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
             if archive is not None:
                 archive.close()
     state["unretained_alarm_records"] = pending
-    summary = {"status": "failed" if pending else "retained" if count else "none_observed",
+    summary = {"status": "failed" if pending else "configuration_unmatched" if configuration_unmatched else "retained" if count else "coalesced" if coalesced else "none_observed",
                "count": count, "unretained_count": len(pending),
+               "native_configuration_unmatched_count_this_collection": configuration_unmatched,
+               "native_configuration_unmatched_reason": ("native_and_assessment_config_differ_evidence_unavailable"
+                                                           if configuration_unmatched else None),
+               "native_coalesced_alarm_count_this_collection": coalesced,
+               "native_coalesced_freshness": ("last_successful_publication_pending_updates_unknown"
+                                                if routed else "unavailable"),
                **({"errors": errors} if errors else {}), "store": str(evidence_display.STORE)}
     state["alarm_retention"] = summary
     return summary
@@ -431,6 +470,17 @@ def _parse_turn_trace(path: Path, *, start_offset: int, run_id: str,
                     if packet.get("run_id") != run_id:
                         return [], start_offset, "native_extrema_run_mismatch"
                     events.append({"event": "native_extrema_snapshot", "packet": packet,
+                                   "path": str(path), "offset": cursor, "generation": generation})
+                if raw.startswith(b'{"event":"native_slow_turn_receipts"'):
+                    if len(raw) > 32769:
+                        return [], start_offset, "oversized_native_slow_receipts"
+                    try:
+                        packet = json.loads(raw)
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        return [], start_offset, "malformed_native_slow_receipts"
+                    if packet.get("run_id") != run_id:
+                        return [], start_offset, "native_slow_receipts_run_mismatch"
+                    events.append({"event": "native_slow_receipts_snapshot", "packet": packet,
                                    "path": str(path), "offset": cursor, "generation": generation})
                 # Selected producer intervals are plain JSON, unlike turn markers.
                 # Keep their exact bytes at the normal collection boundary before
@@ -705,6 +755,178 @@ def retain_native_extrema(directory: Path, owner: Mapping[str, Any], snapshots: 
             archive.close()
 
 
+def _valid_native_slow_receipts(packet: Any, owner: Mapping[str, Any], instance: str | None) -> bool:
+    if not isinstance(packet, dict):
+        return False
+    try:
+        if len(json.dumps(packet, separators=(",", ":"), ensure_ascii=False,
+                          allow_nan=False).encode("utf-8")) > 32768:
+            return False
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    if packet.get("schema") != "caol-native-slow-turn-receipts-v1" or \
+            packet.get("run_id") != owner.get("run_id") or packet.get("native_pid") != owner.get("pid") or \
+            not isinstance(packet.get("native_pid"), int) or isinstance(packet["native_pid"], bool) or packet["native_pid"] <= 0 or \
+            not isinstance(packet.get("native_process_instance"), str) or not packet["native_process_instance"] or \
+            len(packet["native_process_instance"]) > 128 or \
+            (instance is not None and instance != packet["native_process_instance"]) or \
+            not isinstance(packet.get("snapshot_sequence"), int) or isinstance(packet["snapshot_sequence"], bool) or \
+            packet["snapshot_sequence"] <= 0 or packet.get("publication_interval_seconds") != 30 or \
+            packet.get("cpu_scope") != "process_simulation_excluding_tracked_input_and_save" or \
+            packet.get("stage_scope") != "inclusive_wall_seconds_not_additive" or \
+            packet.get("unpublished_updates") != "unknown_after_publication_until_next_success":
+        return False
+    if not isinstance(packet.get("prior_run_pending_unpublished"), bool) or \
+            not isinstance(packet.get("monitoring_enabled"), bool):
+        return False
+    if packet.get("generic_config_status") not in {"not_checked", "available", "unavailable_or_invalid", "oversized"}:
+        return False
+    dropped = packet.get("dropped_alarm_count")
+    records = packet.get("records")
+    if any(key not in packet or (packet[key] is not None and
+           not _finite_number(packet[key], positive=True)) for key in
+           ("configured_slow_turn_seconds", "configured_spike_seconds")):
+        return False
+    configured_sustained = packet.get("configured_sustained_turns")
+    if "configured_sustained_turns" not in packet or (configured_sustained is not None and
+            (not isinstance(configured_sustained, int) or isinstance(configured_sustained, bool) or
+             not 1 <= configured_sustained <= 256)):
+        return False
+    if len({packet["configured_slow_turn_seconds"] is None,
+            packet["configured_spike_seconds"] is None, configured_sustained is None}) != 1:
+        return False
+    if (packet["generic_config_status"] == "available") != (configured_sustained is not None):
+        return False
+    if not isinstance(dropped, int) or isinstance(dropped, bool) or dropped < 0 or \
+            not isinstance(records, list) or len(records) > 8:
+        return False
+    def valid_identity(item):
+        return isinstance(item, dict) and all(isinstance(item.get(key), int) and
+            not isinstance(item[key], bool) for key in
+            ("turn_id", "game_turn", "start_event_sequence", "end_event_sequence")) and \
+            item["turn_id"] > 0 and item["start_event_sequence"] > 0 and \
+            item["end_event_sequence"] > item["start_event_sequence"]
+    keys = set()
+    for record in records:
+        if not isinstance(record, dict) or record.get("alarm_kind") not in (1, 2, 3, 4) or \
+                isinstance(record.get("alarm_kind"), bool) or \
+                not isinstance(record.get("count"), int) or isinstance(record["count"], bool) or record["count"] < 1 or \
+                not isinstance(record.get("metric_epoch"), int) or isinstance(record["metric_epoch"], bool) or record["metric_epoch"] < 1 or \
+                not isinstance(record.get("sample_count"), int) or isinstance(record["sample_count"], bool) or \
+                (record["sample_count"] != 100 if record["alarm_kind"] == 3 else
+                 not 1 <= record["sample_count"] <= 256 if record["alarm_kind"] == 4 else record["sample_count"] != 1):
+            return False
+        if any(not valid_identity(record.get(key)) for key in
+               ("first", "last", "worst_first", "worst_last", "dominant")):
+            return False
+        if not record["first"]["turn_id"] <= record["last"]["turn_id"] or \
+                not record["worst_first"]["turn_id"] <= record["dominant"]["turn_id"] <= record["worst_last"]["turn_id"] or \
+                record["worst_last"]["turn_id"] - record["worst_first"]["turn_id"] != record["sample_count"] - 1:
+            return False
+        if any(not _finite_number(record.get(key)) or record[key] < 0 for key in
+               ("simulation_seconds", "dominant_simulation_seconds", "start_wall_seconds", "end_wall_seconds")) or \
+                record["end_wall_seconds"] < record["start_wall_seconds"]:
+            return False
+        if not _finite_number(record.get("threshold_seconds"), positive=True) or \
+                (record["alarm_kind"] == 3 and record["threshold_seconds"] != WAITING_LIMIT_SECONDS):
+            return False
+        identity_key = (record["metric_epoch"], record["alarm_kind"], record.get("dominant_stage"),
+                        record["threshold_seconds"])
+        if identity_key in keys or record["simulation_seconds"] <= record["threshold_seconds"] or \
+                record["dominant_simulation_seconds"] < record["simulation_seconds"]:
+            return False
+        keys.add(identity_key)
+        expected_scope = {1: "individual_turn", 2: "individual_turn", 3: "sliding_wait_window_mean_per_turn",
+                          4: "sliding_sustained_window_mean_per_turn"}[record["alarm_kind"]]
+        expected_count = {1: "qualifying_native_turns", 2: "qualifying_native_turns",
+                          3: "waiting_alarm_crossings", 4: "qualifying_native_windows"}[record["alarm_kind"]]
+        if record.get("simulation_scope") != expected_scope or record.get("count_scope") != expected_count or \
+                record.get("other_metrics_scope") != "dominant_turn":
+            return False
+        if any(key not in record or (record[key] is not None and
+               (not _finite_number(record[key]) or record[key] < 0)) for key in
+               ("process_cpu_seconds", "input_seconds", "save_seconds")):
+            return False
+        missing_metrics = any(record[key] is None for key in ("process_cpu_seconds", "input_seconds", "save_seconds"))
+        if "metric_unavailable_reason" not in record:
+            return False
+        missing_reason = record["metric_unavailable_reason"]
+        if (missing_metrics and missing_reason not in {"native_diagnostic_metric_unavailable", "bounded_candidate_detail_evicted"}) or \
+                (not missing_metrics and missing_reason is not None):
+            return False
+        ids, names, seconds, counts, labels = (record.get(key) for key in
+            ("stage_ids", "stage_names", "stage_seconds", "workload_counts", "workload_count_names"))
+        if not isinstance(ids, list) or len(ids) != 3 or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in ids) or \
+                record.get("dominant_stage") != ids[0] or not isinstance(names, list) or len(names) != 3 or \
+                any(not isinstance(v, str) or len(v) > 64 for v in names) or \
+                (seconds is None if missing_reason != "bounded_candidate_detail_evicted" else seconds is not None) or \
+                (counts is None if missing_reason != "bounded_candidate_detail_evicted" else counts is not None) or \
+                (seconds is not None and (not isinstance(seconds, list) or len(seconds) != 3 or any(not _finite_number(v) or v < 0 for v in seconds))) or \
+                (counts is not None and (not isinstance(counts, list) or len(counts) != 6 or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in counts))) or \
+                labels != ["discovered_sources", "horde_packets", "human_nearby_candidates", "watch_record_view_calls", "debug_logical_bytes", "debug_stream_flushes"]:
+            return False
+    return True
+
+
+def retain_native_slow_receipts(directory: Path, owner: Mapping[str, Any], snapshots: list[dict],
+                                expected_instance: str | None = None) -> dict:
+    """Replace one bounded owner-bound native snapshot; never append alarms."""
+    if not snapshots and not (directory / "cockpit-evidence.sqlite").is_file():
+        return {"status": "unavailable", "reason": "native_slow_receipts_not_observed"}
+    from cockpit_archive import Archive, ArchiveMap
+    archive = None
+    try:
+        archive = Archive(directory / "cockpit-evidence.sqlite", run_id=owner["run_id"], binding_id=owner["binding_id"])
+        retained = ArchiveMap(archive, "native_slow_turn_receipts")
+        prior = retained.get("latest")
+        if not isinstance(prior, dict) or prior.get("owner") != dict(owner) or \
+                not _valid_native_slow_receipts(prior.get("snapshot"), owner, expected_instance):
+            prior = None
+        instance = prior["snapshot"]["native_process_instance"] if prior else expected_instance
+        changed = False
+        reason = None
+        for item in snapshots:
+            packet = item.get("packet")
+            if not _valid_native_slow_receipts(packet, owner, instance):
+                reason = "foreign_or_invalid_native_slow_receipts"
+                continue
+            if prior and packet["snapshot_sequence"] <= prior["snapshot"]["snapshot_sequence"]:
+                if packet["snapshot_sequence"] == prior["snapshot"]["snapshot_sequence"] and packet != prior["snapshot"]:
+                    reason = "conflicting_native_slow_receipts_sequence"
+                continue
+            instance = packet["native_process_instance"]
+            prior = {"owner": dict(owner), "snapshot": packet,
+                     "source": {key: item.get(key) for key in ("path", "offset", "generation")}}
+            changed = True
+        if changed:
+            retained["latest"] = prior
+        if prior is None:
+            return {"status": "unavailable", "reason": reason or "native_slow_receipts_not_observed"}
+        records = prior["snapshot"]["records"]
+        worst = max(records, key=lambda row: row["dominant_simulation_seconds"], default=None)
+        summary = None if worst is None else {
+            "kind": {1: "spike", 2: "slow_turn", 3: "waiting_slow", 4: "sustained_regression"}[worst["alarm_kind"]],
+            "recurrence_count": worst["count"],
+            "dominant_turn": worst["dominant"],
+            "dominant_simulation_seconds": worst["dominant_simulation_seconds"],
+            "window_mean_seconds_per_turn": worst["simulation_seconds"] if worst["alarm_kind"] in (3, 4) else None,
+            "process_cpu_seconds": worst["process_cpu_seconds"],
+            "interpretation": "Wall and process CPU have different scopes; their difference does not establish a cause.",
+        }
+        return {"status": "retained", "snapshot": prior["snapshot"], "source": prior["source"],
+                "identity_scope": "matched_native_extrema" if expected_instance else "producer_self_identified",
+                "binding_id": owner["binding_id"],
+                "source_binding": owner.get("source_binding"),
+                "summary": summary,
+                "freshness": "last_successful_publication_pending_updates_unknown",
+                **({"warning": reason} if reason else {})}
+    except (OSError, ValueError, sqlite3.Error, KeyError) as error:
+        return {"status": "unavailable", "reason": "native_slow_receipts_retention_failed", "detail": str(error)}
+    finally:
+        if archive is not None:
+            archive.close()
+
+
 def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mapping[str, Any] | None = None,
                             now_unix_seconds: float | None = None, retain_max: bool = False) -> dict:
     """Read newly published native turn boundaries and update one compact assessment.
@@ -807,8 +1029,16 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
         # assessment and source cursor so this same pinned record is retried.
         return {"status": "unavailable", "reason": "native_extrema_retention_failed",
                 "detail": native_extrema.get("detail"), "native_receipts_preserved": True}
+    slow_snapshots = [event for event in events if event.get("event") == "native_slow_receipts_snapshot"]
+    native_slow_receipts = retain_native_slow_receipts(
+        directory, owner, slow_snapshots,
+        native_extrema.get("snapshot", {}).get("native_process_instance")
+        if native_extrema.get("status") == "retained" else None)
+    if native_slow_receipts.get("reason") == "native_slow_receipts_retention_failed":
+        return {"status": "unavailable", "reason": "native_slow_receipts_retention_failed",
+                "detail": native_slow_receipts.get("detail"), "native_receipts_preserved": True}
     events = [event for event in events if event.get("event") not in
-              {"selected_native_interval", "native_extrema_snapshot"}]
+              {"selected_native_interval", "native_extrema_snapshot", "native_slow_receipts_snapshot"}]
     completed = list(state.get("completed", []))[-window_turns:]
     waiting_state = state.get("waiting", {})
     waiting_changes = []
@@ -1046,11 +1276,40 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                         observation_uncertainty = "owned_process_not_live_or_pid_reused"
                 else:
                     observation_uncertainty = "fresh_native_event_has_no_turn_progress_fact"
+    # Existing individual alarms remain the selection authority. When the
+    # matching native producer owns their bounded evidence, expose one
+    # per-kind alert per collection rather than generating per-turn artifacts.
+    routed = _bounded_alarm_routes(native_slow_receipts, config)
+    grouped: dict[str, dict] = {}
+    remaining = []
+    for alarm in alarms:
+        kind = alarm["kind"]
+        if kind not in routed:
+            remaining.append(alarm)
+            continue
+        score = max(alarm["observed"]) if isinstance(alarm.get("observed"), list) else alarm.get("observed", 0)
+        if kind not in grouped:
+            grouped[kind] = {**alarm, "key": "native_coalesced:" + kind,
+                             "coalesced_observed_count_this_poll": 1,
+                             "first_evidence_this_poll": alarm.get("evidence"),
+                             "last_evidence_this_poll": alarm.get("evidence"), "_score": score}
+        else:
+            item = grouped[kind]
+            item["coalesced_observed_count_this_poll"] += 1
+            item["last_evidence_this_poll"] = alarm.get("evidence")
+            if score > item["_score"]:
+                item.update(observed=alarm.get("observed"), evidence=alarm.get("evidence"), _score=score)
+    for item in grouped.values():
+        item.pop("_score")
+    alarms = remaining + list(grouped.values())
     state_reset = game_turn_rewound or native_process_replaced
     emitted = set() if state_reset else set(state.get("emitted", []))
-    changed = [alarm for alarm in alarms if alarm["key"] not in emitted]
     previous_active = set() if state_reset else set(state.get("active_alarm_keys", []))
+    changed = [alarm for alarm in alarms if (alarm["key"] not in previous_active
+               if alarm["key"].startswith("native_coalesced:") else alarm["key"] not in emitted)]
     current_active = {alarm["key"] for alarm in alarms}
+    if not added:
+        current_active.update(key for key in previous_active if key.startswith("native_coalesced:"))
     recoveries = [{"kind": "recovery", "recovered_alarm": key} for key in previous_active - current_active]
     for alarm in alarms:
         alarm.update(run_id=owner["run_id"], pid=owner["pid"], process_identity=owner["process_identity"],
@@ -1088,9 +1347,10 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                                            if completed else {"status": "unavailable", "reason": "no_completed_turn"})
     assessment["selected_native_packets"] = packet_handles
     assessment["native_extrema"] = native_extrema
+    assessment["native_slow_receipts"] = native_slow_receipts
     assessment["selected_packet_archive"] = str(directory / "cockpit-evidence.sqlite")
     assessment["alarm_retention"] = retain_alarm_evidence(
-        directory, state, assessment, waiting_windows=waiting_windows, added=added)
+        directory, state, assessment, waiting_windows=waiting_windows, added=added, config=config)
     state["assessment"] = assessment
     try:
         write_json(directory / TURN_STATE_NAME, state)

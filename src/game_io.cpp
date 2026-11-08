@@ -31,6 +31,7 @@
 #include "auto_note.h"
 #include "auto_pickup.h"
 #include "avatar.h"
+#include "do_turn.h"
 #include "bandit_live_world.h"
 #include "bandit_live_world_probe.h"
 #include "cached_options.h"
@@ -1057,6 +1058,7 @@ bool game::save_external_options_record()
 
 bool game::save()
 {
+    flush_native_slow_turn_receipts();
     if( save_is_dirty ) {
         last_save_result_ = "failed_dirty_state";
         popup( _( "The game is in an unsupported state after using debug tools and cannot be saved." ) );

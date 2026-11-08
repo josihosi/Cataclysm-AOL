@@ -3151,6 +3151,9 @@ bool game::try_get_right_click_action( action_id &act, const tripoint_bub_ms &mo
 
 bool game::is_game_over()
 {
+    if( uquit != QUIT_NO || u.is_dead_state() ) {
+        flush_native_slow_turn_receipts();
+    }
     if( death_camera_semantic_scope && ( uquit != QUIT_WATCH || !u.is_dead_state() ) ) {
         death_camera_semantic_scope.reset();
         death_camera_semantic_run_id.clear();

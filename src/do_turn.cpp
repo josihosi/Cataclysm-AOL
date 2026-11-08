@@ -46,6 +46,7 @@
 
 #include "active_time.h"
 #include "native_performance_extrema.h"
+#include "native_slow_turn_receipts.h"
 #include "action.h"
 #include "activity_type.h"
 #include "avatar.h"
@@ -791,6 +792,258 @@ static bool write_native_performance_extrema( const native_performance_extrema &
     return write_native_diagnostic_event( stream.str() );
 }
 
+// This producer is run-bound and opt-in through the existing native
+// diagnostics. The finite cadence is independent of ordinary extrema writes.
+struct slow_receipt_runtime {
+    native_slow_turn_detector detector;
+    std::string run;
+    std::optional<double> slow_seconds;
+    std::optional<double> spike_seconds;
+    std::optional<int> sustained_turns;
+    std::optional<int> last_game_turn;
+    std::uint64_t metric_epoch = 1;
+    std::uint64_t snapshot_sequence = 0;
+    bool prior_run_pending_unpublished = false;
+    bool monitoring_enabled = false;
+    const char *config_status = "not_checked";
+    double next_config_read = 0;
+};
+
+// Explicit opt-out supports controlled overhead comparisons. The default is
+// enabled only inside the already run-bound, non-off diagnostic path.
+static bool slow_receipts_enabled()
+{
+    const char *value = std::getenv( "OPENCLAW_HARNESS_SLOW_RECEIPTS" );
+    return !value || std::string_view( value ) != "0";
+}
+
+static slow_receipt_runtime &slow_receipt_state()
+{
+    static slow_receipt_runtime state;
+    return state;
+}
+
+static double slow_receipt_monotonic_seconds()
+{
+    return std::chrono::duration_cast<std::chrono::duration<double>>(
+               std::chrono::steady_clock::now().time_since_epoch() ).count();
+}
+
+// The same session-owned configuration drives Python's existing generic
+// alarms. Read it at most twice a minute, never once per turn. Waiting's
+// established 100-turn/100ms alarm is independent of this optional file.
+static void refresh_slow_receipt_config( slow_receipt_runtime &state, double now )
+{
+    if( now < state.next_config_read ) {
+        return;
+    }
+    state.next_config_read = now + 30;
+    state.slow_seconds.reset();
+    state.spike_seconds.reset();
+    state.sustained_turns.reset();
+    state.config_status = "unavailable_or_invalid";
+    const char *session = std::getenv( "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR" );
+    if( !session || !*session ) {
+        return;
+    }
+    const auto path = std::filesystem::path( session ) / "performance-turn-config.json";
+    std::error_code error;
+    const auto size = std::filesystem::file_size( path, error );
+    if( error ) {
+        return;
+    }
+    if( size > 16384 ) {
+        state.config_status = "oversized";
+        return;
+    }
+    try {
+        std::ifstream file( path );
+        TextJsonIn input( file );
+        const TextJsonObject object = input.get_object();
+        object.allow_omitted_members();
+        const auto positive = [&]( const char *key ) {
+            return object.has_number( key ) && std::isfinite( object.get_float( key ) ) &&
+                   object.get_float( key ) > 0;
+        };
+        if( object.get_string( "schema", "" ) != "caol-performance-turn-config-v1" ||
+            object.get_string( "provenance", "" ).find_first_not_of( " \t\r\n" ) == std::string::npos ||
+            !positive( "spike_seconds" ) || !positive( "slow_turn_seconds" ) ||
+            !positive( "incomplete_turn_seconds" ) || !positive( "stalled_observation_seconds" ) ||
+            !object.has_int( "window_turns" ) || !object.has_int( "sustained_turns" ) ||
+            !object.has_number( "tail_percentile" ) || !object.has_bool( "expected_progress" ) ) {
+            return;
+        }
+        const int window = object.get_int( "window_turns" );
+        const int sustained = object.get_int( "sustained_turns" );
+        const double percentile = object.get_float( "tail_percentile" );
+        if( window < 1 || window > 256 || sustained < 1 || sustained > window ||
+            !std::isfinite( percentile ) || percentile <= 0 || percentile > 1 ) {
+            return;
+        }
+        state.slow_seconds = object.get_float( "slow_turn_seconds" );
+        state.spike_seconds = object.get_float( "spike_seconds" );
+        state.sustained_turns = sustained;
+        state.config_status = "available";
+    } catch( const std::exception & ) {
+        // A malformed, missing or inaccessible configuration is not a
+        // default threshold and does not disable the independent wait alarm.
+    }
+}
+
+static void write_slow_receipt_identity( JsonOut &js, const slow_turn_identity &identity )
+{
+    js.start_object();
+    js.member( "turn_id", identity.turn_id );
+    js.member( "game_turn", identity.game_turn );
+    js.member( "start_event_sequence", identity.start_sequence );
+    js.member( "end_event_sequence", identity.end_sequence );
+    js.end_object();
+}
+
+static bool publish_slow_receipts( slow_receipt_runtime &state, double now, bool lifecycle )
+{
+    auto &receipts = state.detector.receipts();
+    if( !receipts.should_publish( now, lifecycle ) ) {
+        return true;
+    }
+    if( state.run.empty() || state.run.size() > 128 ) {
+        return false;
+    }
+    std::ostringstream stream;
+    stream << std::setprecision( std::numeric_limits<double>::max_digits10 );
+    JsonOut js( stream );
+    js.start_object();
+    js.member( "event", "native_slow_turn_receipts" );
+    js.member( "schema", "caol-native-slow-turn-receipts-v1" );
+    js.member( "run_id", state.run );
+    js.member( "native_process_instance", openclaw_harness_process_instance() );
+#if defined(_WIN32)
+    js.member( "native_pid", _getpid() );
+#else
+    js.member( "native_pid", getpid() );
+#endif
+    // A failed journal write may already have updated its in-memory pin.
+    // Every attempt therefore owns a fresh sequence, including retries.
+    js.member( "snapshot_sequence", ++state.snapshot_sequence );
+    js.member( "publication_interval_seconds", native_slow_turn_receipts::publication_interval_seconds );
+    js.member( "unpublished_updates", "unknown_after_publication_until_next_success" );
+    js.member( "dropped_alarm_count", receipts.dropped() );
+    js.member( "prior_run_pending_unpublished", state.prior_run_pending_unpublished );
+    js.member( "monitoring_enabled", state.monitoring_enabled );
+    js.member( "generic_config_status", state.config_status );
+    write_extrema_optional( js, "configured_slow_turn_seconds", state.slow_seconds );
+    write_extrema_optional( js, "configured_spike_seconds", state.spike_seconds );
+    js.member( "configured_sustained_turns" );
+    if( state.sustained_turns ) { js.write( *state.sustained_turns ); } else { js.write_null(); }
+    js.member( "cpu_scope", "process_simulation_excluding_tracked_input_and_save" );
+    js.member( "stage_scope", "inclusive_wall_seconds_not_additive" );
+    js.member( "records" );
+    js.start_array();
+    for( const slow_turn_record &record : receipts.records() ) {
+        if( !record.used ) {
+            continue;
+        }
+        const auto &worst = record.worst;
+        js.start_object();
+        js.member( "alarm_kind", static_cast<int>( worst.alarm_kind ) );
+        js.member( "dominant_stage", static_cast<int>( worst.dominant_stage ) );
+        js.member( "metric_epoch", worst.metric_epoch );
+        js.member( "count", record.count );
+        js.member( "first" ); write_slow_receipt_identity( js, record.first );
+        js.member( "last" ); write_slow_receipt_identity( js, record.last );
+        js.member( "worst_first" ); write_slow_receipt_identity( js, worst.first );
+        js.member( "worst_last" ); write_slow_receipt_identity( js, worst.last );
+        js.member( "dominant" ); write_slow_receipt_identity( js, worst.dominant );
+        js.member( "sample_count", worst.sample_count );
+        js.member( "threshold_seconds", worst.threshold_seconds );
+        js.member( "simulation_seconds", worst.simulation_seconds );
+        js.member( "dominant_simulation_seconds", worst.dominant_simulation_seconds );
+        js.member( "simulation_scope", worst.alarm_kind == 3 ? "sliding_wait_window_mean_per_turn" :
+                   worst.alarm_kind == 4 ? "sliding_sustained_window_mean_per_turn" : "individual_turn" );
+        js.member( "count_scope", worst.alarm_kind == 4 ? "qualifying_native_windows" :
+                   worst.alarm_kind == 3 ? "waiting_alarm_crossings" : "qualifying_native_turns" );
+        js.member( "other_metrics_scope", "dominant_turn" );
+        js.member( "start_wall_seconds", worst.start_wall_seconds );
+        js.member( "end_wall_seconds", worst.end_wall_seconds );
+        write_extrema_optional( js, "process_cpu_seconds", worst.simulation_cpu_seconds );
+        write_extrema_optional( js, "input_seconds", worst.input_seconds );
+        write_extrema_optional( js, "save_seconds", worst.save_seconds );
+        if( !worst.details_available ) {
+            js.member( "metric_unavailable_reason", "bounded_candidate_detail_evicted" );
+        } else if( !worst.simulation_cpu_seconds || !worst.input_seconds || !worst.save_seconds ) {
+            js.member( "metric_unavailable_reason", "native_diagnostic_metric_unavailable" );
+        } else {
+            js.member( "metric_unavailable_reason" );
+            js.write_null();
+        }
+        js.member( "stage_ids", worst.stage_ids );
+        js.member( "stage_names" );
+        js.start_array();
+        for( const auto id : worst.stage_ids ) {
+            js.write( id < raid_perf_stage_names.size() ? raid_perf_stage_names[id] : "unavailable" );
+        }
+        js.end_array();
+        js.member( "stage_seconds" );
+        if( worst.details_available ) { js.write( worst.stage_seconds ); } else { js.write_null(); }
+        js.member( "workload_count_names", std::array<std::string, 6> {
+            "discovered_sources", "horde_packets", "human_nearby_candidates",
+            "watch_record_view_calls", "debug_logical_bytes", "debug_stream_flushes"
+        } );
+        js.member( "workload_counts" );
+        if( worst.details_available ) { js.write( worst.workload_counts ); } else { js.write_null(); }
+        js.end_object();
+    }
+    js.end_array();
+    js.end_object();
+    const std::string payload = stream.str();
+    const bool success = payload.size() <= 32768 && write_native_diagnostic_event( payload );
+    receipts.published( now, success );
+    return success;
+}
+
+void flush_native_slow_turn_receipts()
+{
+    auto &state = slow_receipt_state();
+    const char *run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( run && state.run == run && raid_perf_mode != "off" && slow_receipts_enabled() ) {
+        publish_slow_receipts( state, slow_receipt_monotonic_seconds(), true );
+    }
+}
+
+static slow_turn_candidate make_slow_candidate( const native_performance_sample &sample,
+        const raid_perf_row &row )
+{
+    slow_turn_candidate result;
+    result.first = result.last = result.dominant = {
+        sample.turn_id, sample.start_sequence, sample.end_sequence, sample.game_turn
+    };
+    result.sample_count = 1;
+    result.simulation_seconds = result.dominant_simulation_seconds = sample.simulation_seconds;
+    result.start_wall_seconds = sample.start_wall_seconds;
+    result.end_wall_seconds = sample.end_wall_seconds;
+    result.simulation_cpu_seconds = sample.process_cpu_seconds;
+    result.input_seconds = sample.input_seconds;
+    result.save_seconds = sample.save_seconds;
+    for( std::size_t i = 0; i < row.stages.size(); ++i ) {
+        for( std::size_t j = 0; j < result.stage_seconds.size(); ++j ) {
+            if( row.stages[i] > result.stage_seconds[j] ) {
+                for( std::size_t k = result.stage_seconds.size() - 1; k > j; --k ) {
+                    result.stage_seconds[k] = result.stage_seconds[k - 1];
+                    result.stage_ids[k] = result.stage_ids[k - 1];
+                }
+                result.stage_seconds[j] = row.stages[i];
+                result.stage_ids[j] = static_cast<std::uint16_t>( i );
+                break;
+            }
+        }
+    }
+    result.dominant_stage = result.stage_ids[0];
+    result.workload_counts = { row.discovered_sources, row.horde_packets,
+                               row.human_nearby_candidates, row.watch_record_view_calls,
+                               row.sink.bytes, row.sink.flushes };
+    return result;
+}
+
 static openclaw_harness_turn_trace *active_turn_trace = nullptr;
 
 class openclaw_harness_turn_trace
@@ -803,6 +1056,17 @@ class openclaw_harness_turn_trace
             active_turn_trace = this;
             if( enabled_ ) {
                 raid_perf_mode = get_option<std::string>( "RAID_PERFORMANCE_DIAGNOSTIC" );
+                auto &slow = slow_receipt_state();
+                const char *run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+                const bool want_slow = raid_perf_mode != "off" && slow_receipts_enabled();
+                if( run && slow.run == run && slow.monitoring_enabled != want_slow ) {
+                    slow.monitoring_enabled = want_slow;
+                    slow.detector.receipts().mark_started();
+                    slow.next_config_read = 0;
+                    if( !want_slow ) {
+                        publish_slow_receipts( slow, slow_receipt_monotonic_seconds(), true );
+                    }
+                }
                 if( raid_perf_mode != "off" ) {
                     diagnostic_.turn = game_turn;
                     diagnostic_.wait_begin = raid_perf_wait_generation();
@@ -907,6 +1171,33 @@ class openclaw_harness_turn_trace
                                               extrema_sample.game_turn,
                                               to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
                                               simulation, &extrema_sample.end_wall_seconds );
+                if( slow_receipts_enabled() && diagnostic_completed && !raid_perf_rows.empty() && extrema_sample.start_sequence &&
+                    extrema_sample.end_sequence ) {
+                    auto &slow = slow_receipt_state();
+                    const std::string run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+                    if( slow.run != run ) {
+                        // The journal belongs to the new run now; publishing
+                        // the old run here would cross its authority boundary.
+                        const bool old_pending = !slow.run.empty() && slow.detector.receipts().pending();
+                        slow = slow_receipt_runtime{};
+                        slow.run = run;
+                        slow.monitoring_enabled = true;
+                        slow.prior_run_pending_unpublished = old_pending;
+                        slow.detector.receipts().mark_started();
+                    }
+                    const double now = slow_receipt_monotonic_seconds();
+                    refresh_slow_receipt_config( slow, now );
+                    if( slow.last_game_turn && extrema_sample.game_turn < *slow.last_game_turn ) {
+                        ++slow.metric_epoch;
+                        slow.detector.reset_waiting();
+                    }
+                    slow.last_game_turn = extrema_sample.game_turn;
+                    slow_turn_candidate candidate = make_slow_candidate( extrema_sample, raid_perf_rows.back() );
+                    candidate.metric_epoch = slow.metric_epoch;
+                    slow.detector.observe( candidate, raid_perf_rows.back().wait_begin,
+                                           slow.slow_seconds, slow.spike_seconds, slow.sustained_turns );
+                    publish_slow_receipts( slow, now, g && g->uquit != QUIT_NO );
+                }
                 // A missing boundary cannot support an authenticated window.
                 static native_performance_extrema extrema;
                 static bool extrema_dirty = false;

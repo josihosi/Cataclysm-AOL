@@ -99,6 +99,17 @@ simulated time against wall time for comparable actions; interrupted waits, rend
 and external/model waits must not be mislabelled as overmap simulation cost. No invented fixed
 threshold or continuous profiling is required.
 
+When native slow-turn receipts are available, the assessment exposes a run- and
+process-bound snapshot with at most eight coalesced records. It keeps counts and
+first, last and worst identities; the bounded producer publishes at most once per
+30 seconds during ordinary work and may flush at save or exit. A snapshot can lag
+pending changes, and capacity drops or an assessment/native configuration mismatch
+are explicitly reported. The latter leaves those detailed alarm receipts unavailable
+until the configuration matches; it does not make the visible alarm a pass. CPU is
+process simulation CPU excluding tracked input and save; stages are inclusive wall
+time. A 100-turn waiting window is a sliding alarm window, not the separate
+non-overlapping extrema window. Off-mode and older products need not emit receipts.
+
 When a pronounced slowdown appears, note game time, action/elapsed time, nearby creature
 load and relevant party/dispatch activity. Make a bounded useful comparison after leaving the
 dense local bubble or continuing through sparse terrain, keeping product and world continuity.

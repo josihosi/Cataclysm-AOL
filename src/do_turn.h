@@ -22,6 +22,10 @@ class monster;
 class npc;
 class openclaw_harness_turn_trace;
 
+// Publish only already-selected, pending diagnostic receipts at a safe
+// lifecycle boundary. It is inert without an active monitored run.
+void flush_native_slow_turn_receipts();
+
 int signal_live_zombie_riders_from_light_observations_for_test(
     const std::vector<live_bandit_signal_observation> &signals );
 

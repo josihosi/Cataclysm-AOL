@@ -3988,6 +3988,9 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
                                            "\",\"turn\":13}" ) );
     REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_performance_extrema\",\"schema\":\"caol-native-performance-extrema-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":1}" ) );
     REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_performance_extrema\",\"schema\":\"caol-native-performance-extrema-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":2}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_slow_turn_receipts\",\"schema\":\"caol-native-slow-turn-receipts-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":1}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_slow_turn_receipts\",\"schema\":\"caol-native-slow-turn-receipts-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"native-a\",\"native_pid\":73,\"snapshot_sequence\":2}" ) );
+    REQUIRE( write_native_diagnostic_event( "{\"event\":\"native_slow_turn_receipts\",\"schema\":\"caol-native-slow-turn-receipts-v1\",\"run_id\":\"" + run + "\",\"native_process_instance\":\"foreign\",\"native_pid\":73,\"snapshot_sequence\":3}" ) );
     for( int index = 0; index < 100; ++index ) {
         std::ostringstream event;
         event << "{\"event\":\"turn\",\"run_id\":\"" << run
@@ -4016,6 +4019,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
     bool raid_diagnostic = false;
     std::set<int> retained_performance_turns;
     std::set<int> retained_extrema_snapshots;
+    std::set<int> retained_slow_snapshots;
     std::size_t discarded = 0;
     while( std::getline( input, line ) ) {
         const std::string prefix = "openclaw_harness_semantic_step: ";
@@ -4027,13 +4031,16 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
         const std::string kind = object.get_string( "event" );
         if( !semantic ) {
             CHECK( ( kind.compare( 0, 5, "raid_" ) == 0 || kind == "turn" ||
-                     kind == "native_performance_extrema" || diagnostic_kinds.count( kind ) ) );
+                     kind == "native_performance_extrema" || kind == "native_slow_turn_receipts" || diagnostic_kinds.count( kind ) ) );
             raid_diagnostic = raid_diagnostic || kind.compare( 0, 5, "raid_" ) == 0;
             if( kind == "raid_performance_interval" ) {
                 retained_performance_turns.insert( object.get_int( "turn" ) );
             }
             if( kind == "native_performance_extrema" ) {
                 retained_extrema_snapshots.insert( object.get_int( "snapshot_sequence" ) );
+            }
+            if( kind == "native_slow_turn_receipts" ) {
+                retained_slow_snapshots.insert( object.get_int( "snapshot_sequence" ) );
             }
             if( diagnostic_kinds.count( kind ) ) {
                 retained_diagnostic_kinds.insert( kind );
@@ -4055,6 +4062,7 @@ TEST_CASE( "native journal bounds diagnostics while preserving current authority
     }
     CHECK( discarded > 0 );
     CHECK( retained_extrema_snapshots == std::set<int> { 2 } );
+    CHECK( retained_slow_snapshots == std::set<int> { 2 } );
     CHECK( travel_states == std::set<std::string> { "active", "hostile_boundary", "progress", "completed_cleared" } );
     CHECK( raid_diagnostic );
     CHECK( retained_performance_turns == std::set<int> { 12 } );
@@ -5403,12 +5411,20 @@ TEST_CASE( "performance interval output preserves the real World successor",
     const std::filesystem::path trace = std::filesystem::path( PATH_INFO::user_dir() ) /
                                         ( "raid-performance-route-" + mode + ".jsonl" );
     std::filesystem::remove( trace );
+    const auto receipt_session = std::filesystem::path( PATH_INFO::user_dir() ) /
+                                 ( "slow-receipt-config-" + mode );
+    std::filesystem::create_directories( receipt_session );
+    {
+        std::ofstream config( receipt_session / "performance-turn-config.json" );
+        config << R"({"schema":"caol-performance-turn-config-v1","provenance":"native control","window_turns":4,"tail_percentile":0.95,"spike_seconds":0.000000001,"slow_turn_seconds":0.000000001,"sustained_turns":2,"incomplete_turn_seconds":1,"stalled_observation_seconds":1,"expected_progress":true})";
+    }
     const std::string run = "raid-performance-output-control-" + mode;
     const std::map<std::string, std::optional<std::string>> settings = {
         { "OPENCLAW_HARNESS_RUN_ID", run },
         { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run },
         { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace.string() },
-        { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", std::nullopt }
+        { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", std::nullopt },
+        { "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", receipt_session.string() }
     };
     std::map<std::string, std::optional<std::string>> previous;
     for( const auto &entry : settings ) {
@@ -5458,8 +5474,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
         CHECK( calendar::turn == before + ( turn == 0 ? 0_turns : 1_turns ) );
         CHECK( u.pos_abs() == position );
     }
+    flush_native_slow_turn_receipts();
     // Disabling a temporary diagnostic discards its still-open final row,
     // rather than publishing old data under mode off or leaking into later tests.
+    int disabled_game_turn = 0;
     {
         override_option disabled( "RAID_PERFORMANCE_DIAGNOSTIC", "off" );
         REQUIRE( ungetch( pause->front() ) != -1 );
@@ -5467,15 +5485,35 @@ TEST_CASE( "performance interval output preserves the real World successor",
         const auto before = calendar::turn;
         CHECK_FALSE( g->do_turn() );
         CHECK( calendar::turn == before + 1_turns );
+        disabled_game_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
         CHECK( u.pos_abs() == position );
     }
 
     int extrema_snapshots = 0;
+    int slow_snapshots = 0;
+    bool observed_slow_record = false;
+    int highest_slow_count = 0;
     int intervals = 0;
     int receiver_scans = 0;
     std::ifstream input( trace );
     std::string line;
     while( std::getline( input, line ) ) {
+        if( line.find( "native_slow_turn_receipts" ) != std::string::npos ) {
+            std::istringstream record( line );
+            TextJsonIn jsin( record );
+            const TextJsonObject object = jsin.get_object();
+            object.allow_omitted_members();
+            CHECK( object.get_string( "schema" ) == "caol-native-slow-turn-receipts-v1" );
+            CHECK( object.get_string( "run_id" ) == run );
+            CHECK( line.size() <= 32768 );
+            const auto records = object.get_array( "records" );
+            observed_slow_record = observed_slow_record || records.size() > 0;
+            for( const TextJsonObject &item : records ) {
+                item.allow_omitted_members();
+                highest_slow_count = std::max( highest_slow_count, item.get_int( "count" ) );
+            }
+            ++slow_snapshots;
+        }
         if( line.find( "native_performance_extrema" ) != std::string::npos ) {
             std::istringstream record( line );
             TextJsonIn jsin( record );
@@ -5531,6 +5569,15 @@ TEST_CASE( "performance interval output preserves the real World successor",
             }
         }
     }
+    const char *const slow_option = std::getenv( "OPENCLAW_HARNESS_SLOW_RECEIPTS" );
+    const bool slow_disabled = slow_option && std::string( slow_option ) == "0";
+    if( mode == "off" || slow_disabled ) {
+        CHECK( slow_snapshots == 0 );
+    } else {
+        CHECK( slow_snapshots >= 1 );
+        CHECK( observed_slow_record );
+        CHECK( highest_slow_count >= 1 );
+    }
     CHECK( ( mode == "off" ? intervals == 0 : intervals >= 1 ) );
     CHECK( ( mode == "off" ? receiver_scans == 0 : receiver_scans == 1 ) );
     CHECK( extrema_snapshots >= 1 );
@@ -5542,6 +5589,7 @@ TEST_CASE( "performance interval output preserves the real World successor",
         CHECK_FALSE( g->do_turn() );
         CHECK( u.pos_abs() == position );
     }
+    flush_native_slow_turn_receipts();
     // Check the ordinary intervals before rotation; only the extrema are pinned.
     const std::string filler( 96 * 1024, 'd' );
     for( int index = 0; index < 50; ++index ) {
@@ -5550,7 +5598,26 @@ TEST_CASE( "performance interval output preserves the real World successor",
     }
     std::ifstream rotated( trace );
     int pinned = 0;
+    int slow_pinned = 0;
     while( std::getline( rotated, line ) ) {
+        if( line.find( "native_slow_turn_receipts" ) != std::string::npos ) {
+            std::istringstream record( line );
+            TextJsonIn jsin( record );
+            const TextJsonObject object = jsin.get_object();
+            object.allow_omitted_members();
+            int count = 0;
+            for( const TextJsonObject &item : object.get_array( "records" ) ) {
+                item.allow_omitted_members();
+                if( item.get_int( "alarm_kind" ) == 1 ) {
+                    count += item.get_int( "count" );
+                }
+            }
+            // Distinct dominant stages have separate buckets. If capacity is
+            // exhausted, their evicted counts are reported as dropped.
+            CHECK( count >= 1 );
+            CHECK( count + object.get_int( "dropped_alarm_count" ) >= 100 );
+            ++slow_pinned;
+        }
         if( line.find( "native_performance_extrema" ) != std::string::npos ) {
             std::istringstream record( line );
             TextJsonIn jsin( record );
@@ -5565,6 +5632,12 @@ TEST_CASE( "performance interval output preserves the real World successor",
                                                   window.get_object( "dominant_turn" ) } ) {
                 sample.allow_omitted_members();
                 if( mode == "off" ) {
+                    CHECK( sample.get_string( "detailed_diagnostic_unavailable_reason" ) ==
+                           "native_diagnostic_unavailable" );
+                } else if( !sample.has_object( "detailed_diagnostic" ) ) {
+                    // The intentional single off-mode turn can itself be the
+                    // maximum; its missing detail must remain explicit.
+                    CHECK( sample.get_int( "game_turn" ) == disabled_game_turn );
                     CHECK( sample.get_string( "detailed_diagnostic_unavailable_reason" ) ==
                            "native_diagnostic_unavailable" );
                 } else {
@@ -5585,6 +5658,7 @@ TEST_CASE( "performance interval output preserves the real World successor",
         }
     }
     CHECK( pinned == 1 );
+    CHECK( slow_pinned == ( mode == "off" || slow_disabled ? 0 : 1 ) );
 }
 #endif
 

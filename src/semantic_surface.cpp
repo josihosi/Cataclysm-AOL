@@ -109,6 +109,24 @@ class native_semantic_journal
                     extrema_pid > 0 && extrema_sequence > performance_extrema_sequence &&
                     ( performance_extrema_instance.empty() ||
                       ( extrema_instance == performance_extrema_instance && extrema_pid == performance_extrema_pid ) );
+            const bool slow_candidate = format == native_record_format::diagnostic &&
+                    kind == "native_slow_turn_receipts" && event.size() <= 32768 &&
+                    read_string( "schema" ) == "caol-native-slow-turn-receipts-v1";
+            std::string slow_instance;
+            int slow_pid = 0;
+            int slow_sequence = 0;
+            if( slow_candidate ) {
+                slow_instance = read_string( "native_process_instance" );
+                failure.stage = "record_type";
+                failure.field = "native_pid";
+                slow_pid = object.get_int( "native_pid", 0 );
+                failure.field = "snapshot_sequence";
+                slow_sequence = object.get_int( "snapshot_sequence", 0 );
+            }
+            const bool slow_receipts = slow_candidate && !slow_instance.empty() && slow_pid > 0 &&
+                    slow_sequence > slow_receipts_sequence &&
+                    ( slow_receipts_instance.empty() ||
+                      ( slow_instance == slow_receipts_instance && slow_pid == slow_receipts_pid ) );
             // Read every field used by this semantic retention branch before
             // changing sequence, pins or trip state. A type refusal cannot
             // become publishable authority on a later compaction retry.
@@ -151,6 +169,12 @@ class native_semantic_journal
                 performance_extrema_pid = extrema_pid;
                 performance_extrema_sequence = extrema_sequence;
                 pins["performance_extrema"] = row;
+            }
+            if( slow_receipts ) {
+                slow_receipts_instance = slow_instance;
+                slow_receipts_pid = slow_pid;
+                slow_receipts_sequence = slow_sequence;
+                pins["performance_slow_receipts"] = row;
             }
             // Diagnostic callers share retention, never semantic framing or
             // current input pins, even if their event names resemble authority.
@@ -357,6 +381,9 @@ class native_semantic_journal
         std::string performance_extrema_instance;
         int performance_extrema_pid = 0;
         int performance_extrema_sequence = 0;
+        std::string slow_receipts_instance;
+        int slow_receipts_pid = 0;
+        int slow_receipts_sequence = 0;
         std::string accepted_result;
         std::string receipt_result;
         std::string current_trip;
