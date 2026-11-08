@@ -2307,3 +2307,48 @@ TEST_CASE( "light discovery summary respects harness and explicit debug", "[phys
     CHECK( rejected_count == ( enabled && weak_source ? 6 : 0 ) );
     CHECK( debug_log_enabled( D_ERROR, D_GAME ) );
 }
+
+TEST_CASE( "routine overmap summaries respect harness and explicit debug", "[physical_light][overmap_log]" )
+{
+    const int mode = GENERATE( 0, 1, 2, 3 ); // ordinary, bound, opt-in, mismatched
+    CAPTURE( mode );
+    clear_avatar();
+    clear_map_without_vision();
+    restore_on_out_of_scope<time_point> restore_clock( calendar::turn );
+    calendar::turn = calendar::turn_zero;
+    const int prior_level = getDebugLevel();
+    const int prior_class = getDebugClass();
+    on_out_of_scope restore_masks( [&] {
+        limitDebugLevel( prior_level );
+        limitDebugClass( prior_class );
+    } );
+    limitDebugLevel( mode == 2 ? D_ERROR | D_INFO : D_ERROR );
+    limitDebugClass( mode == 2 ? D_MAIN | D_GAME : D_MAIN );
+    scoped_transition_environment environment;
+    environment.set( "", mode == 1 || mode == 3 ? "disk-control" : "" );
+    environment.set_semantic( mode == 1 ? "disk-control" : mode == 3 ? "other" : "" );
+    discovery_summary_counting_buffer captured;
+    std::ostream &log = DebugLog( D_INFO, DC_ALL );
+    auto *original = log.rdbuf( &captured );
+    on_out_of_scope restore_log( [&] { log.rdbuf( original ); } );
+    const auto starting_position = get_avatar().pos_abs();
+    for( int i = 0; i < 2; ++i ) {
+        calendar::turn += 5_minutes;
+        process_overmap_npc_move_for_test();
+    }
+    const auto count = [&captured]( const std::string &marker ) {
+        const std::string text = captured.str();
+        std::size_t result = 0;
+        for( auto pos = text.find( marker ); pos != std::string::npos;
+             pos = text.find( marker, pos + marker.size() ) ) {
+            ++result;
+        }
+        return result;
+    };
+    const bool enabled = mode == 1 || mode == 2;
+    CHECK( count( "bandit_live_world staffed_camp_signal_observation" ) == ( enabled ? 2 : 0 ) );
+    CHECK( count( "bandit_live_world perf:" ) == ( enabled ? 2 : 0 ) );
+    CHECK( calendar::turn == calendar::turn_zero + 10_minutes );
+    CHECK( get_avatar().pos_abs() == starting_position );
+    CHECK( debug_log_enabled( D_ERROR, D_GAME ) );
+}

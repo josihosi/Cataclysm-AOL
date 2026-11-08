@@ -12819,10 +12819,14 @@ void live_bandit_note_light_source( live_bandit_local_source_reading &reading,
 
 physical_light::loaded_source_sampler live_source_sampler;
 
+bool live_bandit_routine_diagnostics_enabled()
+{
+    return openclaw_harness_semantic_session_active() || debug_log_enabled( D_INFO, D_GAME );
+}
+
 std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
 {
-    const bool signal_diagnostics = openclaw_harness_semantic_session_active() ||
-                                    debug_log_enabled( D_INFO, D_GAME );
+    const bool signal_diagnostics = live_bandit_routine_diagnostics_enabled();
     avatar &u = get_avatar();
     map &here = get_map();
     // Absolute-map-square identity deliberately survives until after local
@@ -21336,13 +21340,15 @@ void overmap_npc_move()
         const bandit_live_world::camp_signal_observation_result camp_signals =
             record_live_light_staffed_observer_at_cadence(
                 bandit_state, live_signals, live_sounds, signal_cadence_due );
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world staffed_camp_signal_observation"
-                                   << " sites=" << camp_signals.sites_considered
-                                   << " eligible=" << camp_signals.eligible_camps
-                                   << " callbacks=" << camp_signals.callbacks_invoked
-                                   << " created=" << camp_signals.leads_created
-                                   << " refreshed=" << camp_signals.leads_refreshed
-                                   << " unchanged=" << camp_signals.unchanged_reads << '\n';
+        if( live_bandit_routine_diagnostics_enabled() ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world staffed_camp_signal_observation"
+                                       << " sites=" << camp_signals.sites_considered
+                                       << " eligible=" << camp_signals.eligible_camps
+                                       << " callbacks=" << camp_signals.callbacks_invoked
+                                       << " created=" << camp_signals.leads_created
+                                       << " refreshed=" << camp_signals.leads_refreshed
+                                       << " unchanged=" << camp_signals.unchanged_reads << '\n';
+        }
     } else if( !live_sounds.empty() ) {
         // A consumed one-shot sound cannot wait for the next optical cadence.
         record_live_bandit_staffed_camp_signals( bandit_state, {}, live_sounds );
@@ -23238,7 +23244,8 @@ void overmap_npc_move()
     dematerialized_handoffs |= dematerialize_live_bandit_structural_handoffs();
     const auto travel_done = std::chrono::steady_clock::now();
 
-    if( signal_cadence_due || dispatch_cadence_due || !empty_site_retirement_reports.empty() ) {
+    if( ( signal_cadence_due || dispatch_cadence_due || !empty_site_retirement_reports.empty() ) &&
+        live_bandit_routine_diagnostics_enabled() ) {
         int active_sites = 0;
         std::map<std::string, int> active_job_mix;
         for( const bandit_live_world::site_record &site : bandit_state.sites ) {
