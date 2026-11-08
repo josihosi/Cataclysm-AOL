@@ -1,11 +1,14 @@
 """Bound process death must replace cached native input authority."""
 import sys
+import tempfile
+import sqlite3
 from pathlib import Path
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cockpit import CockpitRunChannel, CockpitService
+from cockpit_archive import Archive
 
 
 CHARTER = {"claim": "Inspect native interface usability", "material_proof": "Observed native facts",
@@ -161,6 +164,98 @@ class ProcessExitTest(unittest.TestCase):
         self.assertEqual(confirmed["surface"]["facts"]["evidence_ref"], "confirmed-exit.json")
         self.assertTrue(channel._observations[unknown["observation_id"]]["used"])
         self.assertEqual(confirmed["advertised_actions"], [])
+
+    def test_revoked_cached_exit_can_be_freshly_observed_without_rearming(self):
+        with tempfile.TemporaryDirectory() as root:
+            archive = Archive(Path(root) / "evidence.sqlite", run_id="run-a", binding_id="bound-a")
+            self.addCleanup(archive.close)
+            process = {"run_id": "run-a", "pid": 123, "alive": False, "exit_code": 0,
+                       "identity_status": "matched", "evidence_ref": "game-process-exit.json"}
+            channel = CockpitRunChannel(world, Mock(), archive=archive, binding_id="bound-a",
+                                        read_process_state=lambda: process, witness_charter=CHARTER,
+                                        witness_identity={"scenario_id": "test", "source_identity": "src",
+                                                          "executable_identity": "exe"})
+            service = CockpitService(run_channel=channel)
+            original = service.call({"action": "game.observe"})["result"]
+            old = original["observation_id"]
+            # Inject a journal construction error at the actual service caller.
+            # This reproduces the revoked-cache state; it does not assert the
+            # cause of any historical database lock.
+            with patch("cockpit.build_evidence_journal", side_effect=sqlite3.OperationalError("database is locked")):
+                failed = service.call({"action": "run.witness", "observation_id": old,
+                                       "stop_reason": "done", "unused_authority": "released"})
+            self.assertEqual(failed["error"], "database is locked")
+            stale = service.call({"action": "run.witness", "observation_id": old,
+                                  "stop_reason": "done", "unused_authority": "released"})
+            self.assertEqual(stale["error"], "unknown_or_stale_observation")
+            fresh = service.call({"action": "game.observe"})["result"]
+            self.assertNotEqual(fresh["observation_id"], old)
+            self.assertTrue(channel._observations[old]["used"])
+            self.assertFalse(channel._observations[fresh["observation_id"]]["used"])
+            self.assertEqual(fresh["surface"]["facts"]["pid"], 123)
+            self.assertEqual(fresh["surface"]["facts"]["save_outcome"], "not_established_by_process_exit")
+            self.assertEqual(fresh["advertised_actions"], [])
+            # A second interruption does not reuse either earlier identity.
+            channel._fail_operation("second_interruption", {})
+            newer = service.call({"action": "game.observe"})["result"]
+            self.assertNotIn(newer["observation_id"], {old, fresh["observation_id"]})
+            self.assertTrue(channel._observations[fresh["observation_id"]]["used"])
+            fresh = newer
+            sealed = service.call({"action": "run.witness", "observation_id": fresh["observation_id"],
+                                   "stop_reason": "done", "unused_authority": "released"})
+            self.assertTrue(sealed["ok"])
+            self.assertTrue(channel._observations[old]["used"])
+            finished = service.call({"action": "run.finish", "observation_id": fresh["observation_id"],
+                                     "stop_reason": "done", "unused_authority": "released",
+                                     "outcome": {"summary": "process exited", "verdict": "inconclusive"}})
+            self.assertTrue(finished["ok"])
+            self.assertEqual(channel._state, "finished")
+            self.assertTrue(channel._observations[old]["used"])
+
+    def test_failed_finish_reobserves_exit_without_replaying_old_authority(self):
+        channel, _, _, _ = self.channel(alive=False, exit_code=0)
+        service = CockpitService(run_channel=channel)
+        old = service.call({"action": "game.observe"})["result"]["observation_id"]
+        request = {"action": "run.finish", "observation_id": old, "stop_reason": "done",
+                   "unused_authority": "released",
+                   "outcome": {"summary": "exit observed", "verdict": "inconclusive"}}
+        with patch.object(channel, "_stop", side_effect=sqlite3.OperationalError("database is locked")):
+            self.assertEqual(service.call(request)["error"], "database is locked")
+        self.assertTrue(channel._observations[old]["used"])
+        self.assertEqual(service.call(request)["error"], "unknown_or_stale_observation")
+        fresh = service.call({"action": "game.observe"})["result"]["observation_id"]
+        self.assertNotEqual(fresh, old)
+        request["observation_id"] = fresh
+        self.assertTrue(service.call(request)["ok"])
+        self.assertTrue(channel._observations[old]["used"])
+
+    def test_revoked_exit_reobservation_rejects_changed_or_missing_birth(self):
+        for replacement in ("replacement", None):
+            with self.subTest(replacement=replacement):
+                channel, process, _, _ = self.channel(alive=False, exit_code=0)
+                process["process_generation"] = {"birth_identity": "first"}
+                original = channel.observe()
+                channel._fail_operation("interrupted_reporting", {})
+                process["process_generation"] = {"birth_identity": replacement}
+                response = CockpitService(run_channel=channel).call({"action": "game.observe"})
+                self.assertFalse(response["ok"])
+                self.assertEqual(response["error"], "process_exit_birth_identity_mismatch")
+                self.assertTrue(channel._observations[original["observation_id"]]["used"])
+
+    def test_revoked_exit_reobservation_rejects_changed_process_identity(self):
+        for change in ({"identity_status": "identity_changed"}, {"identity_status": "identity_unavailable"},
+                       {"pid": 124}, {"run_id": "foreign"}, {"alive": True}):
+            with self.subTest(change=change):
+                channel, process, _, _ = self.channel(alive=False, exit_code=0)
+                original = channel.observe()
+                channel._fail_operation("interrupted_reporting", {})
+                process.update(change)
+                result = CockpitService(run_channel=channel).call({"action": "game.observe"})
+                if change == {"alive": True}:
+                    self.assertEqual(result["result"]["observation_id"], original["observation_id"])
+                else:
+                    self.assertFalse(result["ok"])
+                self.assertTrue(channel._observations[original["observation_id"]]["used"])
 
     def test_wrong_run_process_cannot_replace_current_native_state(self):
         channel, process, _, _ = self.channel()

@@ -1017,16 +1017,28 @@ class CockpitRunChannel:
             raise ValueError("process_exit_identity_unavailable")
         if self._run_id and run_id != self._run_id:
             raise ValueError("process_exit_run_identity_mismatch")
+        reobserved = False
         if cached is not None:
             prior = cached["surface"]["facts"]
             if prior["pid"] != pid:
                 raise ValueError("process_exit_pid_identity_mismatch")
-            if prior.get("exit_code") is not None or process.get("exit_code") is None:
+            old_generation = prior.get("process_generation")
+            new_generation = process.get("process_generation")
+            old_birth = old_generation.get("birth_identity") if isinstance(old_generation, Mapping) else None
+            new_birth = new_generation.get("birth_identity") if isinstance(new_generation, Mapping) else None
+            if old_birth and old_birth != new_birth:
+                raise ValueError("process_exit_birth_identity_mismatch")
+            record = self._observations.get(str(cached.get("observation_id", "")))
+            reobserved = isinstance(record, Mapping) and record.get("used") is True
+            if reobserved and process.get("identity_status") in {"identity_changed", "identity_unavailable"}:
+                raise ValueError("process_exit_identity_unavailable")
+            if not reobserved and (prior.get("exit_code") is not None or process.get("exit_code") is None):
                 return cached
         if self.archive is not None and run_id != self.archive.run_id:
             raise ValueError("archive_frame_run_mismatch")
         self._run_id = run_id
-        suffix = ":confirmed" if cached is not None else ""
+        suffix = (f":reobserved:{secrets.token_hex(8)}" if reobserved else
+                  ":confirmed" if cached is not None else "")
         observation_id = f"{run_id}:process-exit:{pid}{suffix}"
         previous = self._last_public_state or {}
         facts = {**process, "gameplay_credit": False,
