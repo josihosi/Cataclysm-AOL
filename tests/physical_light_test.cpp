@@ -49,11 +49,20 @@ class scoped_transition_environment
     public:
         scoped_transition_environment() :
             previous_event_path( get( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH" ) ),
-            previous_run_id( get( "OPENCLAW_HARNESS_RUN_ID" ) ) {}
+            previous_run_id( get( "OPENCLAW_HARNESS_RUN_ID" ) ),
+            previous_semantic_run_id( get( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" ) ),
+            previous_semantic_trace_path( get( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" ) ) {}
 
         ~scoped_transition_environment() {
             restore( "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH", previous_event_path );
             restore( "OPENCLAW_HARNESS_RUN_ID", previous_run_id );
+            restore( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", previous_semantic_run_id );
+            restore( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", previous_semantic_trace_path );
+        }
+
+        void set_semantic( const std::string &run_id ) const {
+            assign( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run_id.c_str() );
+            assign( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", nullptr );
         }
 
         void set( const std::string &event_path, const std::string &run_id ) const {
@@ -87,6 +96,8 @@ class scoped_transition_environment
 
         std::optional<std::string> previous_event_path;
         std::optional<std::string> previous_run_id;
+        std::optional<std::string> previous_semantic_run_id;
+        std::optional<std::string> previous_semantic_trace_path;
 };
 
 TEST_CASE( "resident light queries preserve exact seams without loading saved owners",
@@ -2237,12 +2248,32 @@ class discovery_summary_counting_buffer : public std::stringbuf {
             return std::stringbuf::sync();
         }
 };
-TEST_CASE( "empty light discovery emits a compact scan summary", "[physical_light][signal_log]" )
+TEST_CASE( "light discovery summary respects harness and explicit debug", "[physical_light][signal_log]" )
 {
+    const int mode = GENERATE( 0, 1, 2, 3 ); // ordinary, bound, opt-in, mismatched
+    const bool weak_source = GENERATE( false, true );
+    CAPTURE( mode, weak_source );
     clear_avatar();
     clear_map_without_vision();
     reset_live_light_sample_cache();
     restore_on_out_of_scope<time_point> restore_clock( calendar::turn );
+    calendar::turn = calendar::turn_zero + 12_hours;
+    map &here = get_map();
+    here.ter_set( get_avatar().pos_bub(), ter_str_id( "t_radio_tower" ) );
+    ter_t &source_terrain = const_cast<ter_t &>( here.ter( get_avatar().pos_bub() ).obj() );
+    restore_on_out_of_scope restore_light( source_terrain.light_emitted );
+    source_terrain.light_emitted = weak_source ? 1 : 0;
+    const int prior_level = getDebugLevel();
+    const int prior_class = getDebugClass();
+    on_out_of_scope restore_masks( [&] {
+        limitDebugLevel( prior_level );
+        limitDebugClass( prior_class );
+    } );
+    limitDebugLevel( mode == 2 ? D_ERROR | D_INFO : D_ERROR );
+    limitDebugClass( mode == 2 ? D_MAIN | D_GAME : D_MAIN );
+    scoped_transition_environment environment;
+    environment.set( "", mode == 1 || mode == 3 ? "disk-control" : "" );
+    environment.set_semantic( mode == 1 ? "disk-control" : mode == 3 ? "other" : "" );
     discovery_summary_counting_buffer captured;
     std::ostream &log = DebugLog( D_INFO, DC_ALL );
     auto *original = log.rdbuf( &captured );
@@ -2258,8 +2289,21 @@ TEST_CASE( "empty light discovery emits a compact scan summary", "[physical_ligh
     for( auto pos = text.find( marker ); pos != std::string::npos; pos = text.find( marker, pos + marker.size() ) ) {
         ++count;
     }
-    CHECK( count == 6 );
-    CHECK( text.find( "tiles_examined=" ) != std::string::npos );
-    CHECK( text.find( "discovery_interval_turns=" ) != std::string::npos );
-    CHECK( captured.syncs <= 120 );
+    const bool enabled = mode == 1 || mode == 2;
+    CHECK( count == ( enabled ? 6 : 0 ) );
+    if( enabled ) {
+        CHECK( text.find( "tiles_examined=" ) != std::string::npos );
+        CHECK( text.find( "discovery_interval_turns=" ) != std::string::npos );
+        if( !weak_source ) {
+            CHECK( captured.syncs <= 120 );
+        }
+    }
+    const std::string rejected = "bandit_live_world signal rejected: packet=";
+    std::size_t rejected_count = 0;
+    for( auto pos = text.find( rejected ); pos != std::string::npos;
+         pos = text.find( rejected, pos + rejected.size() ) ) {
+        ++rejected_count;
+    }
+    CHECK( rejected_count == ( enabled && weak_source ? 6 : 0 ) );
+    CHECK( debug_log_enabled( D_ERROR, D_GAME ) );
 }

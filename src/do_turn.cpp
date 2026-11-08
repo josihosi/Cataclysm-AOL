@@ -12821,6 +12821,8 @@ physical_light::loaded_source_sampler live_source_sampler;
 
 std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
 {
+    const bool signal_diagnostics = openclaw_harness_semantic_session_active() ||
+                                    debug_log_enabled( D_INFO, D_GAME );
     avatar &u = get_avatar();
     map &here = get_map();
     // Absolute-map-square identity deliberately survives until after local
@@ -12946,16 +12948,18 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
 
         const bandit_mark_generation::light_projection &light_projection = field_projection.light;
         if( !light_projection.viable ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet="
-                                       << light_projection.packet.id
-                                       << " kind=light reason=below_threshold time="
-                                       << bandit_mark_generation::to_string( light_time )
-                                       << " weather=" << bandit_mark_generation::to_string( light_weather )
-                                       << " exposure="
-                                       << bandit_mark_generation::to_string( light_projection.packet.exposure )
-                                       << " observed_range_omt=" << light_projection.packet.observed_range_omt
-                                       << " projected_range_omt=" << light_projection.projected_range_omt
-                                       << " visibility_score=" << light_projection.visibility_score << '\n';
+            if( signal_diagnostics ) {
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet="
+                                           << light_projection.packet.id
+                                           << " kind=light reason=below_threshold time="
+                                           << bandit_mark_generation::to_string( light_time )
+                                           << " weather=" << bandit_mark_generation::to_string( light_weather )
+                                           << " exposure="
+                                           << bandit_mark_generation::to_string( light_projection.packet.exposure )
+                                           << " observed_range_omt=" << light_projection.packet.observed_range_omt
+                                           << " projected_range_omt=" << light_projection.projected_range_omt
+                                           << " visibility_score=" << light_projection.visibility_score << '\n';
+            }
             continue;
         }
 
@@ -12996,38 +13000,42 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
         }
     }
 
-    std::ostringstream scan_summary;
-    if( observations.empty() ) {
-        scan_summary <<
-                                   "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
-                                   << " now_minutes=" << live_bandit_current_minutes()
-                                   << " tiles_examined=" << source_index.tiles_examined
-                                   << " discovery_interval_turns=" << physical_light::loaded_source_sampler::discovery_interval_turns
-                                   << " weather=" << bandit_mark_generation::to_string( weather_band )
-                                   << " light_time=" << bandit_mark_generation::to_string( light_time )
-                                   << " light_weather=" << bandit_mark_generation::to_string( light_weather )
-                                   << " raw_weather=" << weather.weather_id.str()
-                                   << " sight_penalty=" << weather.weather_id->sight_penalty
-                                   << " windspeed=" << weather.windspeed
-                                   << '\n';
-    } else {
-        scan_summary <<
-                                   "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
-                                   << " now_minutes=" << live_bandit_current_minutes()
-                                   << " tiles_examined=" << source_index.tiles_examined
-                                   << " packets=" << observations.size()
-                                   << " smoke_packets=" << smoke_packets
-                                   << " light_packets=" << light_packets
-                                   << " discovery_interval_turns=" << physical_light::loaded_source_sampler::discovery_interval_turns
-                                   << " weather=" << bandit_mark_generation::to_string( weather_band )
-                                   << " light_time=" << bandit_mark_generation::to_string( light_time )
-                                   << " light_weather=" << bandit_mark_generation::to_string( light_weather )
-                                   << " raw_weather=" << weather.weather_id.str()
-                                   << " sight_penalty=" << weather.weather_id->sight_penalty
-                                   << " windspeed=" << weather.windspeed
-                                   << '\n';
+    // Routine scan summaries are useful to the bound harness or an explicitly
+    // enabled game diagnostic, but should not write every turn in normal play.
+    if( signal_diagnostics ) {
+        std::ostringstream scan_summary;
+        if( observations.empty() ) {
+            scan_summary <<
+                                       "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
+                                       << " now_minutes=" << live_bandit_current_minutes()
+                                       << " tiles_examined=" << source_index.tiles_examined
+                                       << " discovery_interval_turns=" << physical_light::loaded_source_sampler::discovery_interval_turns
+                                       << " weather=" << bandit_mark_generation::to_string( weather_band )
+                                       << " light_time=" << bandit_mark_generation::to_string( light_time )
+                                       << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                       << " raw_weather=" << weather.weather_id.str()
+                                       << " sight_penalty=" << weather.weather_id->sight_penalty
+                                       << " windspeed=" << weather.windspeed
+                                       << '\n';
+        } else {
+            scan_summary <<
+                                       "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
+                                       << " now_minutes=" << live_bandit_current_minutes()
+                                       << " tiles_examined=" << source_index.tiles_examined
+                                       << " packets=" << observations.size()
+                                       << " smoke_packets=" << smoke_packets
+                                       << " light_packets=" << light_packets
+                                       << " discovery_interval_turns=" << physical_light::loaded_source_sampler::discovery_interval_turns
+                                       << " weather=" << bandit_mark_generation::to_string( weather_band )
+                                       << " light_time=" << bandit_mark_generation::to_string( light_time )
+                                       << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                       << " raw_weather=" << weather.weather_id.str()
+                                       << " sight_penalty=" << weather.weather_id->sight_penalty
+                                       << " windspeed=" << weather.windspeed
+                                       << '\n';
+        }
+        DebugLog( D_INFO, DC_ALL ) << scan_summary.str();
     }
-    DebugLog( D_INFO, DC_ALL ) << scan_summary.str();
     return observations;
 }
 
