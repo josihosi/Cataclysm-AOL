@@ -63949,6 +63949,15 @@ TEST_CASE( "complete save generations reject mixed custody and restore explicitl
         REQUIRE( g->save() );
         CHECK_FALSE( save_continuity::incomplete( world_path ) );
         CHECK( save_continuity::prior_point( world_path )->turn > prior->turn );
+        // The test advanced the calendar directly rather than running a native
+        // body update. A native load catches each live body up before exposing
+        // it, so compare against the same once-only transition after saving.
+        refresh_live_bandit_activation();
+        for( auto id : ids ) {
+            npc &body = scene.actor( id.get_value() );
+            CHECK( body.catch_up_body() == 1_turns );
+            CHECK( body.catch_up_body() == 0_turns );
+        }
         const std::string retry_world = serialize_world( overmap_buffer.global_state.bandit_live_world );
         std::map<character_id, decltype( actor_key( scene.actor( carrier.get_value() ) ) )> retry_actors;
         for( auto id : ids ) {
