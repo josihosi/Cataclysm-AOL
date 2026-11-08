@@ -6947,6 +6947,100 @@ def detect_scenario_relations(connection: sqlite3.Connection) -> Dict[str, int]:
         return detect()
 
 
+def _mark_manifest_absent(connection: sqlite3.Connection, source_path: str, previous: sqlite3.Row) -> None:
+    """Apply the same lifecycle and token invalidation for a verified absence."""
+    manifest_id = str(previous["manifest_id"])
+    revision = int(previous["revision"])
+    last_hash = str(previous["last_content_sha256"] or "")
+    current_relations = connection.execute(
+        "SELECT relation_kind, target_kind, target_key, route_role FROM manifest_relation_current "
+        "WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchall()
+    connection.execute(
+        "UPDATE manifest_current SET present = 0, current_sha256 = NULL, absent_at = CURRENT_TIMESTAMP "
+        "WHERE manifest_id = ?",
+        (manifest_id,),
+    )
+    connection.execute(
+        "DELETE FROM manifest_capability_current WHERE manifest_id = ?",
+        (manifest_id,),
+    )
+    connection.execute(
+        "DELETE FROM manifest_proof_route_current WHERE manifest_id = ?",
+        (manifest_id,),
+    )
+    connection.execute(
+        "DELETE FROM manifest_relation_current WHERE manifest_id = ?",
+        (manifest_id,),
+    )
+    connection.execute(
+        "INSERT INTO lifecycle_history( manifest_id, event_kind, revision, cause_sha256, details_json ) "
+        "VALUES( ?, 'absence', ?, ?, ? )",
+        (manifest_id, revision, last_hash, _json_text({"source_path": source_path})),
+    )
+    connection.executemany(
+        "INSERT INTO manifest_relation_history( "
+        "manifest_id, relation_kind, target_kind, target_key, route_role, event_kind, revision, details_json "
+        ") VALUES( ?, ?, ?, ?, ?, 'absence', ?, ? )",
+        [
+            (
+                manifest_id,
+                str(row["relation_kind"]),
+                str(row["target_kind"]),
+                str(row["target_key"]),
+                str(row["route_role"]),
+                revision,
+                _json_text({"source_path": source_path}),
+            )
+            for row in current_relations
+        ],
+    )
+    _invalidate_manifest_tokens(
+        connection,
+        manifest_id=manifest_id,
+        reason="manifest_absent",
+        details={"source_path": source_path, "source_sha256": last_hash},
+    )
+
+
+def reconcile_absent_manifest(connection: sqlite3.Connection, source_path: Path, *,
+                              manifest_id: str, source_sha256: str) -> Dict[str, int]:
+    """Reconcile one owner-settled, already removed source by exact identity.
+
+    This does not remove files or establish native-process custody; the caller
+    must settle the source owner before deleting it.  A missing parent is not
+    evidence of a missing source, and dangling symlinks are not absence.
+    """
+    source_path = Path(source_path)
+    if not source_path.is_absolute() or not source_path.parent.is_dir():
+        raise ScenarioRegistryStoreError("absolute source path with an available parent is required")
+    canonical = source_path.parent.resolve() / source_path.name
+    if str(canonical) != str(source_path):
+        raise ScenarioRegistryStoreError("source path must be canonical")
+    if not manifest_id or not source_sha256:
+        raise ScenarioRegistryStoreError("manifest identity and last source hash are required")
+    with immediate_transaction(connection):
+        row = connection.execute(
+            "SELECT manifest_id, source_path, present, revision, last_content_sha256 "
+            "FROM manifest_current WHERE source_path = ?", (str(canonical),)
+        ).fetchone()
+        if row is None or str(row["manifest_id"]) != manifest_id or \
+                str(row["last_content_sha256"] or "") != source_sha256:
+            raise ScenarioRegistryStoreError("source identity or last hash does not match registry")
+        try:
+            canonical.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            raise ScenarioRegistryStoreError("source still exists; owner must settle and remove it first")
+        if not int(row["present"]):
+            return {"absent": 0}
+        _mark_manifest_absent(connection, str(canonical), row)
+        detect_scenario_relations(connection)
+    return {"absent": 1}
+
+
 def rebuild_manifest_projection(
     connection: sqlite3.Connection,
     scenarios_root: Optional[Path] = None,
@@ -7065,59 +7159,7 @@ def rebuild_manifest_projection(
                 continue
             if source_path in staged_paths or int(previous["present"]) == 0:
                 continue
-            manifest_id = str(previous["manifest_id"])
-            revision = int(previous["revision"])
-            last_hash = str(previous["last_content_sha256"] or "")
-            current_relations = connection.execute(
-                "SELECT relation_kind, target_kind, target_key, route_role FROM manifest_relation_current "
-                "WHERE manifest_id = ?",
-                (manifest_id,),
-            ).fetchall()
-            connection.execute(
-                "UPDATE manifest_current SET present = 0, current_sha256 = NULL, absent_at = CURRENT_TIMESTAMP "
-                "WHERE manifest_id = ?",
-                (manifest_id,),
-            )
-            connection.execute(
-                "DELETE FROM manifest_capability_current WHERE manifest_id = ?",
-                (manifest_id,),
-            )
-            connection.execute(
-                "DELETE FROM manifest_proof_route_current WHERE manifest_id = ?",
-                (manifest_id,),
-            )
-            connection.execute(
-                "DELETE FROM manifest_relation_current WHERE manifest_id = ?",
-                (manifest_id,),
-            )
-            connection.execute(
-                "INSERT INTO lifecycle_history( manifest_id, event_kind, revision, cause_sha256, details_json ) "
-                "VALUES( ?, 'absence', ?, ?, ? )",
-                (manifest_id, revision, last_hash, _json_text({"source_path": source_path})),
-            )
-            connection.executemany(
-                "INSERT INTO manifest_relation_history( "
-                "manifest_id, relation_kind, target_kind, target_key, route_role, event_kind, revision, details_json "
-                ") VALUES( ?, ?, ?, ?, ?, 'absence', ?, ? )",
-                [
-                    (
-                        manifest_id,
-                        str(row["relation_kind"]),
-                        str(row["target_kind"]),
-                        str(row["target_key"]),
-                        str(row["route_role"]),
-                        revision,
-                        _json_text({"source_path": source_path}),
-                    )
-                    for row in current_relations
-                ],
-            )
-            _invalidate_manifest_tokens(
-                connection,
-                manifest_id=manifest_id,
-                reason="manifest_absent",
-                details={"source_path": source_path, "source_sha256": last_hash},
-            )
+            _mark_manifest_absent(connection, source_path, previous)
             absent += 1
 
         detect_scenario_relations(connection)

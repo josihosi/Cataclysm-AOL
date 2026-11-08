@@ -55,6 +55,7 @@ from scenario_registry_store import (
     retirement_candidates,
     execute_retirement_action,
     rebuild_manifest_projection,
+    reconcile_absent_manifest,
     repository_root,
     resolve_registry_path,
     reconcile_report_bindings,
@@ -1536,6 +1537,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--source", action="append", type=Path, default=[],
         help="add/update this exact selected source without removing unrelated sources; repeat for multiple files",
     )
+    absent = commands.add_parser(
+        "reconcile-absent-source",
+        help="reconcile one already-removed, owner-settled declaration by exact identity",
+    )
+    absent.add_argument("--source", required=True, type=Path)
+    absent.add_argument("--manifest-id", required=True)
+    absent.add_argument("--source-sha256", required=True)
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
     validate_observation = commands.add_parser(
@@ -2669,6 +2677,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 scan_root = (Path(args.scenarios_root) if args.scenarios_root else
                              (None if args.source else _default_scenarios_root()))
                 result = rebuild_manifest_projection(connection, scan_root, source_paths=args.source)
+            elif args.command == "reconcile-absent-source":
+                result = reconcile_absent_manifest(connection, args.source,
+                    manifest_id=args.manifest_id, source_sha256=args.source_sha256)
             elif args.command == "ingest-report":
                 try:
                     report = json.loads(Path(args.report).read_text(encoding="utf-8"))
