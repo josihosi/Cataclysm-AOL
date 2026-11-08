@@ -2228,3 +2228,38 @@ TEST_CASE( "raid_sweep_ignores_removed_field_light_before_field_cleanup",
         return emitter.provenance == "field:fd_fire";
     } ) );
 }
+
+class discovery_summary_counting_buffer : public std::stringbuf {
+    public:
+        int syncs = 0;
+        int sync() override {
+            ++syncs;
+            return std::stringbuf::sync();
+        }
+};
+TEST_CASE( "empty light discovery emits a compact scan summary", "[physical_light][signal_log]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    reset_live_light_sample_cache();
+    restore_on_out_of_scope<time_point> restore_clock( calendar::turn );
+    discovery_summary_counting_buffer captured;
+    std::ostream &log = DebugLog( D_INFO, DC_ALL );
+    auto *original = log.rdbuf( &captured );
+    on_out_of_scope restore_log( [&] { log.rdbuf( original ); } );
+    for( int i = 0; i < 6; ++i ) {
+        calendar::turn += 1_turns;
+        run_live_light_delivery_for_test();
+        CHECK( live_light::samples_for_turn( calendar::turn ).empty() );
+    }
+    const std::string text = captured.str();
+    const std::string marker = "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light";
+    std::size_t count = 0;
+    for( auto pos = text.find( marker ); pos != std::string::npos; pos = text.find( marker, pos + marker.size() ) ) {
+        ++count;
+    }
+    CHECK( count == 6 );
+    CHECK( text.find( "tiles_examined=" ) != std::string::npos );
+    CHECK( text.find( "discovery_interval_turns=" ) != std::string::npos );
+    CHECK( captured.syncs <= 120 );
+}

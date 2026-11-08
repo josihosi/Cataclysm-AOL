@@ -12996,8 +12996,9 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
         }
     }
 
+    std::ostringstream scan_summary;
     if( observations.empty() ) {
-        DebugLog( D_INFO, DC_ALL ) <<
+        scan_summary <<
                                    "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
                                    << " now_minutes=" << live_bandit_current_minutes()
                                    << " tiles_examined=" << source_index.tiles_examined
@@ -13010,7 +13011,7 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
                                    << " windspeed=" << weather.windspeed
                                    << '\n';
     } else {
-        DebugLog( D_INFO, DC_ALL ) <<
+        scan_summary <<
                                    "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
                                    << " now_minutes=" << live_bandit_current_minutes()
                                    << " tiles_examined=" << source_index.tiles_examined
@@ -13026,6 +13027,7 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
                                    << " windspeed=" << weather.windspeed
                                    << '\n';
     }
+    DebugLog( D_INFO, DC_ALL ) << scan_summary.str();
     return observations;
 }
 
