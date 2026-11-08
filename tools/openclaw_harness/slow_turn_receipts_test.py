@@ -143,6 +143,58 @@ class SlowReceiptsTest(unittest.TestCase):
         self.assertEqual(result["alarm_retention"]["native_configuration_unmatched_reason"],
                          "native_and_assessment_config_differ_evidence_unavailable")
 
+    def test_active_alarm_configuration_change_counts_each_poll_until_refresh(self):
+        performance_fixture.PerformanceTest.turn_config(self, directory=self.root)
+        config_path = self.root / perf.TURN_CONFIG_NAME
+        config = perf.read_json(config_path)
+        config["window_turns"] = 256
+        config["sustained_turns"] = 256
+        perf.write_json(config_path, config)
+        initial = packet()
+        initial["configured_sustained_turns"] = 256
+        self.append(initial)
+
+        def add_turn(turn, duration):
+            with self.trace.open("a") as out:
+                for event in (performance_fixture.PerformanceTest.turn_event(
+                        self, turn, "start", sequence=turn * 2 + 1, wall=turn * 4),
+                              performance_fixture.PerformanceTest.turn_event(
+                        self, turn, "end", sequence=turn * 2 + 2,
+                        duration=duration, wall=turn * 4 + duration)):
+                    out.write(perf.TURN_TRACE_PREFIX + json.dumps(event) + "\n")
+
+        with patch("evidence_display.retain", side_effect=AssertionError("unexpected per-alarm write")):
+            add_turn(1, 3)
+            first = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(first["alarm_retention"]["native_coalesced_alarm_count_this_collection"], 2)
+            self.assertEqual(len(first["alarms"]), 2)
+            config["spike_seconds"] = 2.5
+            perf.write_json(config_path, config)
+            add_turn(2, 3)
+            mismatch = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(mismatch["alarms"], [])  # active delivery remains deduplicated
+            self.assertEqual(mismatch["alarm_retention"]["status"], "configuration_unmatched")
+            self.assertEqual(mismatch["alarm_retention"]["native_configuration_unmatched_count_this_collection"], 2)
+            idle = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(idle["alarm_retention"]["native_configuration_unmatched_count_this_collection"], 0)
+            add_turn(3, 3)
+            repeated = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(repeated["alarms"], [])
+            self.assertEqual(repeated["alarm_retention"]["native_configuration_unmatched_count_this_collection"], 2)
+            refreshed = packet(sequence=2)
+            refreshed["configured_sustained_turns"] = 256
+            refreshed["configured_spike_seconds"] = 2.5
+            self.append(refreshed)
+            add_turn(4, 3)
+            matched = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(matched["alarms"], [])
+            self.assertEqual(matched["alarm_retention"]["native_configuration_unmatched_count_this_collection"], 0)
+            self.assertEqual(matched["alarm_retention"]["native_coalesced_alarm_count_this_collection"], 2)
+            add_turn(5, .1)
+            recovered = perf.collect_turn_assessment(self.root, "binding-a")
+            self.assertEqual(recovered["alarms"], [])
+            self.assertEqual(len(recovered["recoveries"]), 2)
+
     def test_sustained_window_and_bounded_detail_eviction_are_explicit(self):
         value = packet()
         row = value["records"][0]

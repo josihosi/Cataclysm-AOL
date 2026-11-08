@@ -125,7 +125,8 @@ def _bounded_alarm_routes(native: Mapping[str, Any], config: Mapping[str, Any] |
 
 def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
                           waiting_windows: Mapping[int, list], added: list[dict],
-                          config: Mapping[str, Any] | None = None) -> dict:
+                          config: Mapping[str, Any] | None = None,
+                          observed_alarms: list[dict] | None = None) -> dict:
     """Retain legacy-only alarms; eligible completed alarms use the native pin."""
     import evidence_display
 
@@ -133,9 +134,17 @@ def retain_alarm_evidence(directory: Path, state: dict, assessment: dict, *,
     native = assessment.get("native_slow_receipts", {})
     routed = _native_alarm_routes(native, config)
     bounded = _bounded_alarm_routes(native, config)
+    # Alert delivery is deduplicated across polls, but receipt accounting must
+    # still see each newly observed bounded alarm, even when its kind was
+    # already active before the native and assessment configurations diverged.
+    delivered = assessment["alarms"]
+    if observed_alarms is not None and added:
+        delivered = ([alarm for alarm in delivered if alarm.get("kind") not in bounded or
+                      alarm.get("kind") == "waiting_slow"] +
+                     [alarm for alarm in observed_alarms if alarm.get("kind") in bounded])
     coalesced = 0
     configuration_unmatched = 0
-    for alarm in assessment["alarms"]:
+    for alarm in delivered:
         if alarm.get("kind") in bounded:
             amount = alarm.get("coalesced_observed_count_this_poll", 1)
             if alarm.get("kind") in routed:
@@ -1350,7 +1359,8 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
     assessment["native_slow_receipts"] = native_slow_receipts
     assessment["selected_packet_archive"] = str(directory / "cockpit-evidence.sqlite")
     assessment["alarm_retention"] = retain_alarm_evidence(
-        directory, state, assessment, waiting_windows=waiting_windows, added=added, config=config)
+        directory, state, assessment, waiting_windows=waiting_windows, added=added, config=config,
+        observed_alarms=alarms)
     state["assessment"] = assessment
     try:
         write_json(directory / TURN_STATE_NAME, state)
