@@ -24697,7 +24697,7 @@ TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
     }
 }
 
-TEST_CASE( "hostile_camp_watch_routed_returned_signal_resolves_empty_at_arrival",
+TEST_CASE( "hostile_camp_empty_selected_watch_returns_without_signal_corroboration",
            "[bandit][live_world][phase4_decoy_signal_control][save]" )
 {
     bandit_live_world::world_state world = make_structural_signal_test_world( false, 723100 );
@@ -24709,10 +24709,12 @@ TEST_CASE( "hostile_camp_watch_routed_returned_signal_resolves_empty_at_arrival"
     const std::string lead_id = lead->lead_id;
     REQUIRE( outing.target_id == lead_id );
     lead->kind = bandit_live_world::camp_lead_kind::smoke_signal;
-    lead->origin = bandit_live_world::camp_lead_origin::returned_report;
+    lead->origin = bandit_live_world::camp_lead_origin::signal;
     lead->generated_by_this_camp_routine = true;
     lead->status = bandit_live_world::camp_lead_status::scout_confirmed;
     lead->confidence = 3;
+    const int last_checked = lead->last_checked_minutes;
+    const int last_seen = lead->last_seen_minutes;
     outing.job_type = "scout";
     const tripoint_abs_omt target_omt = lead->omt;
     const tripoint_abs_omt watch_omt( target_omt.x(), target_omt.y() + 3, target_omt.z() );
@@ -24755,15 +24757,52 @@ TEST_CASE( "hostile_camp_watch_routed_returned_signal_resolves_empty_at_arrival"
     } );
     CHECK( signal_callbacks == 1 );
     CHECK( arrived.arrivals_processed == 1 );
-    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::observing );
     lead = site.intelligence_map.find_lead( lead_id );
     REQUIRE( lead != nullptr );
-    CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
-    CHECK( lead->confidence == 0 );
-    CHECK( lead->times_checked_empty == 1 );
-    CHECK( lead->last_outcome == "signal_investigation_empty" );
-    CHECK( std::any_of( arrived.notes.begin(), arrived.notes.end(), []( const std::string & note ) {
-        return note.find( "returned signal investigation was empty" ) != std::string::npos;
+    CHECK( lead->status == bandit_live_world::camp_lead_status::scout_confirmed );
+    CHECK( lead->confidence == 3 );
+    CHECK( lead->times_checked_empty == 0 );
+    CHECK( lead->last_checked_minutes == last_checked );
+    CHECK( lead->last_seen_minutes == last_seen );
+    REQUIRE( site.active_outing.observations.empty() );
+
+    // Exercise the ordinary no-progress assessment and return consumers.  The
+    // synthetic physical receipts below are a unit control, not motor proof.
+    const int assessment_minutes = arrival_minutes + 120;
+    bandit_live_world::advance_structural_bounty_outings( world, assessment_minutes, {} );
+    REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::returning_report );
+    CHECK_FALSE( site.active_outing.assessment.readiness_latched );
+    CHECK( site.active_outing.assessment.threshold_class ==
+           bandit_live_world::scout_assessment_threshold_class::none );
+    bandit_live_world::advance_structural_bounty_outings( world, assessment_minutes + 1, {} );
+    REQUIRE( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    site.active_outing.actor_departure_observed = true;
+    site.active_outing.actor_route_waypoint = site.active_outing.shared_route.size() - 1;
+    const auto members = site.active_outing.member_ids;
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( site,
+             require_current_simulation_cursor( site ), members.front(), site.anchor,
+             assessment_minutes + 2 ) );
+    CHECK_FALSE( site.current_scout_report.is_present() );
+    REQUIRE( bandit_live_world::record_structural_member_physical_return( site,
+             require_current_simulation_cursor( site ), members.back(), site.anchor,
+             assessment_minutes + 3 ) );
+    bandit_live_world::advance_structural_bounty_outings( world, assessment_minutes + 4, {} );
+    REQUIRE( site.current_scout_report.is_present() );
+    CHECK_FALSE( site.current_scout_report.assessment.readiness_latched );
+    CHECK( site.current_scout_report.assessment.threshold_class ==
+           bandit_live_world::scout_assessment_threshold_class::none );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_checked_minutes == last_checked );
+    CHECK( lead->last_seen_minutes == last_seen );
+    CHECK( lead->times_checked_empty == 0 );
+    CHECK( std::none_of( site.intelligence_map.leads.begin(), site.intelligence_map.leads.end(),
+    []( const bandit_live_world::camp_map_lead & candidate ) {
+        return candidate.origin == bandit_live_world::camp_lead_origin::returned_report &&
+               ( candidate.kind == bandit_live_world::camp_lead_kind::smoke_signal ||
+                 candidate.kind == bandit_live_world::camp_lead_kind::light_signal ||
+                 candidate.kind == bandit_live_world::camp_lead_kind::sound_signal );
     } ) );
 }
 
