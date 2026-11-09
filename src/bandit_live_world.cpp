@@ -17855,14 +17855,13 @@ bool returned_structural_signal_observation_is_eligible( const site_record &site
 }
 
 bool returned_structural_signal_lead_has_support( const site_record &site,
-        const camp_map_lead &lead, const int now_minutes )
+        const camp_map_lead &lead, const int now_minutes, int *observed_minutes = nullptr )
 {
     if( !returned_structural_signal_lead( lead ) ) {
         return false;
     }
-    return std::any_of( site.active_outing.observations.begin(),
-                        site.active_outing.observations.end(), [&site, &lead, now_minutes](
-    const sortie_observation & observation ) {
+    std::optional<int> latest;
+    for( const sortie_observation &observation : site.active_outing.observations ) {
         // The camp and its scouts use different producer prefixes for the
         // same coarse source.  Correlate that source without rewriting either
         // record's provenance; the suffix still distinguishes sound classes.
@@ -17870,12 +17869,17 @@ bool returned_structural_signal_lead_has_support( const site_record &site,
                                  ( lead.origin == camp_lead_origin::signal &&
                                    lead.target_id.rfind( "camp-", 0 ) == 0 &&
                                    observation.source_id == "structural-" + lead.target_id.substr( 5 ) );
-        return returned_structural_signal_observation_is_eligible(
-                   site, observation, now_minutes ) &&
-               signal_kind_to_camp_lead_kind(
-                   structural_signal_sense_name( observation.sense ) ) == lead.kind &&
-               same_source && observation.source_omt == lead.omt;
-    } );
+        if( returned_structural_signal_observation_is_eligible( site, observation, now_minutes ) &&
+            signal_kind_to_camp_lead_kind( structural_signal_sense_name( observation.sense ) ) ==
+            lead.kind && same_source && observation.source_omt == lead.omt &&
+            ( !latest || observation.observed_minutes > *latest ) ) {
+            latest = observation.observed_minutes;
+        }
+    }
+    if( latest && observed_minutes != nullptr ) {
+        *observed_minutes = *latest;
+    }
+    return latest.has_value();
 }
 
 int apply_returned_structural_signal_observations( site_record &site, const int now_minutes )
@@ -21523,6 +21527,19 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                 outing.last_progress_minutes = now_minutes;
                 const bool returned_shared_danger =
                     apply_returned_structural_threat_observation( candidate, *lead, now_minutes );
+                // Selected-watch sorties do not resolve their remote target at
+                // watch arrival.  Correlate only a physically returnable,
+                // matching signal with the original clue at settlement.  The
+                // observation time is evidence, not a fresh camp sighting.
+                std::optional<int> returned_signal_support;
+                if( structural_outing_uses_watch_route( outing ) &&
+                    lead->origin == camp_lead_origin::signal ) {
+                    int observed_minutes = -1;
+                    if( returned_structural_signal_lead_has_support( candidate, *lead, now_minutes,
+                            &observed_minutes ) ) {
+                        returned_signal_support = observed_minutes;
+                    }
+                }
                 if( completed_frontier_route && !returned_shared_danger ) {
                     candidate.intelligence_map.frontier_last_resolved_minutes[
                     static_cast<std::size_t>( *frontier_sector )] = now_minutes;
@@ -21604,6 +21621,26 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                                                         candidate, expected_activity_id, expected_generation,
                                                         "structural outing completed its shared route home" );
                 if( returned ) {
+                    if( returned_signal_support ) {
+                        camp_map_lead *supported = candidate.intelligence_map.find_lead( lead_id );
+                        if( supported == nullptr ) {
+                            returned_signal_support.reset();
+                        } else {
+                            const int checked = std::max( supported->last_checked_minutes,
+                                                          *returned_signal_support );
+                            const int scouted = std::max( supported->last_scouted_minutes,
+                                                          *returned_signal_support );
+                            if( checked != supported->last_checked_minutes ||
+                                scouted != supported->last_scouted_minutes ) {
+                                if( advance_camp_map_lead_revision( candidate, *supported ) ) {
+                                    supported->last_checked_minutes = checked;
+                                    supported->last_scouted_minutes = scouted;
+                                } else {
+                                    returned_signal_support.reset();
+                                }
+                            }
+                        }
+                    }
                     const int returned_members = has_complete_physical_return_receipts ?
                                                  complete_physical_return_members :
                                                  *returned;
@@ -21618,6 +21655,9 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                     }
                     result.members_returned += returned_members;
                     result.notes.push_back( "structural outing returned home lead=" + lead_id );
+                    if( returned_signal_support ) {
+                        result.notes.push_back( "structural outing returned signal support lead=" + lead_id );
+                    }
                     if( returned_signal_leads > 0 ) {
                         result.notes.push_back( "structural outing returned signal leads=" +
                                                 std::to_string( returned_signal_leads ) );
