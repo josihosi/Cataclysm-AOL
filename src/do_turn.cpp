@@ -7,7 +7,6 @@
 #include <libproc.h>
 #include <mach/mach_time.h>
 #include <sys/resource.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -17,6 +16,7 @@
 #include <climits>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -23861,6 +23861,13 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
     const auto homeward_destinations = live_bandit_homeward_destinations( state, homeward_member_ids );
     std::vector<std::string> discriminators;
     const bool reference_check = std::getenv( "CAOL_EXIT_COST_REFERENCE_CHECK" ) != nullptr;
+    const auto serialize_owner = []() {
+        std::ostringstream stream;
+        JsonOut json( stream );
+        overmap_buffer.global_state.bandit_live_world.serialize( json );
+        return stream.str();
+    };
+    const std::string owner_before = reference_check ? serialize_owner() : std::string();
     using test_pair = std::pair<live_bandit_pair_boundary_step, live_bandit_pair_boundary_step>;
     std::vector<test_pair> optimized_pairs;
     const auto selected = live_bandit_pair_boundary_steps( homeward_destinations, &discriminators, true,
@@ -23869,6 +23876,9 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
         return "discriminator_count=0 verdict=unavailable";
     }
     if( reference_check ) {
+        const std::string owner_after_enabled = serialize_owner();
+        const auto quiet = live_bandit_pair_boundary_steps( homeward_destinations, nullptr, true );
+        const std::string owner_after_disabled = serialize_owner();
         std::vector<test_pair> exhaustive_pairs;
         std::vector<std::string> exhaustive_rows;
         std::vector<std::string> repeated_rows;
@@ -23914,6 +23924,10 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
             }
         }
         const bool repeated_match = discriminators == repeated_rows && same_steps( selected, repeated );
+        DebugLog( D_INFO, DC_ALL ) << "exit_cost_diagnostic_parity slots=" << same_steps( selected, quiet )
+                                   << " owner=" << ( owner_before == owner_after_enabled &&
+                                           owner_before == owner_after_disabled )
+                                   << " verdict=" << field( discriminators.front(), "verdict" );
         DebugLog( D_INFO, DC_ALL ) << "exit_cost_reference reference_match=" << reference_match
                                    << " repeated_match=" << repeated_match
                                    << " exact_pairs=" << exact_pairs
@@ -24340,25 +24354,10 @@ bool complete_live_bandit_homeward_boundary_for_test()
         DebugLog( D_INFO, DC_ALL ) << "exit_cost_invalidation applied=" << static_cast<bool>( replacement )
                                    << " refused=" << refused << " owner_preserved=" << owner_preserved;
     }
-#if defined(__APPLE__)
-    // Fork only this in-memory test fixture: the child may commit an irreversible
-    // owner transition while the parent retains the original pair for its test.
-    if( std::getenv( "CAOL_EXIT_TRANSFER_CHECK" ) != nullptr ) {
-        const auto run_isolated = []( const auto &check ) {
-            const pid_t child = fork();
-            if( child < 0 ) {
-                return 99;
-            }
-            if( child == 0 ) {
-                _exit( check() );
-            }
-            int status = 0;
-            if( waitpid( child, &status, 0 ) != child || !WIFEXITED( status ) ) {
-                return 98;
-            }
-            return WEXITSTATUS( status );
-        };
-        const int route_status = run_isolated( [&]() {
+    // These checks mutate the fixture; the Python runner launches the complete
+    // setup separately for each mode, with no platform-specific fork.
+    if( const char *const transfer_mode = std::getenv( "CAOL_EXIT_TRANSFER_MODE" ) ) {
+        const auto route_check = [&]() {
             npc *changed = g->find_npc( steps.begin()->first );
             if( changed == nullptr ) {
                 return 1;
@@ -24386,8 +24385,8 @@ bool complete_live_bandit_homeward_boundary_for_test()
                 }
             }
             return 0;
-        } );
-        const int survivor_status = run_isolated( [&]() {
+        };
+        const auto survivor_check = [&]() {
             auto site_iter = std::find_if( state.sites.begin(), state.sites.end(), [&steps]( const auto &site ) {
                 const auto &ids = site.active_outing.member_ids;
                 return ids.size() == 2 && steps.count( ids[0] ) && steps.count( ids[1] );
@@ -24446,11 +24445,15 @@ bool complete_live_bandit_homeward_boundary_for_test()
                 return 7;
             }
             return 0;
-        } );
-        DebugLog( D_INFO, DC_ALL ) << "exit_cost_transfer route_status=" << route_status
-                                   << " survivor_status=" << survivor_status;
+        };
+        const std::string mode( transfer_mode );
+        const int status = mode == "route" ? route_check() : mode == "survivor" ? survivor_check() : 97;
+        std::fprintf( stderr, "exit_cost_isolated mode=%s status=%d\n", transfer_mode, status );
+        std::fflush( stderr );
+        // The runner gives each irreversible fixture its own process.  Exit here
+        // before the parent fixture's normal two-member completion assertions.
+        std::exit( status );
     }
-#endif
     return complete_live_bandit_homeward_boundary_steps( steps ).size() == 2;
 }
 
