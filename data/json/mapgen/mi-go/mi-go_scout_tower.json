@@ -79,10 +79,7 @@
       "furniture": { "B": "f_migo_brood_pod" },
       "terrain": { ".": "t_region_groundcover" },
       "place_nested": [ { "chunks": [ "mi-go_encampment1_room14" ], "x": 1, "y": 14 } ],
-      "place_monster": [
-        { "monster": "mon_mi_go", "x": 8, "y": 10 },
-        { "monster": "mon_mi_go", "x": 12, "y": 12 }
-      ]
+      "place_monster": [ { "monster": "mon_mi_go", "x": 8, "y": 10 }, { "monster": "mon_mi_go", "x": 12, "y": 12 } ]
     }
   },
   {
@@ -161,10 +158,7 @@
         "vvvvvvvvvvvvvvvvvvvvvvvv"
       ],
       "palettes": [ "mi-go_palette" ],
-      "place_monster": [
-        { "monster": "mon_mi_go", "x": 8, "y": 10 },
-        { "monster": "mon_mi_go", "x": 12, "y": 12 }
-      ]
+      "place_monster": [ { "monster": "mon_mi_go", "x": 8, "y": 10 }, { "monster": "mon_mi_go", "x": 12, "y": 12 } ]
     }
   },
   {
@@ -203,10 +197,7 @@
         { "chunks": [ "mi-go_scout_tower_cells" ], "x": 4, "y": 3 },
         { "chunks": [ "mi-go_encampment1_room17" ], "x": 1, "y": 14 }
       ],
-      "place_monster": [
-        { "monster": "mon_mi_go_scout", "x": 8, "y": 10 },
-        { "monster": "mon_mi_go_scout", "x": 12, "y": 12 }
-      ]
+      "place_monster": [ { "monster": "mon_mi_go_scout", "x": 8, "y": 10 }, { "monster": "mon_mi_go_scout", "x": 12, "y": 12 } ]
     }
   },
   {
@@ -333,10 +324,7 @@
         "vvvvvvvvvvvvvvvvvvvvvvvv"
       ],
       "palettes": [ "mi-go_palette" ],
-      "place_monster": [
-        { "monster": "mon_mi_go", "x": 8, "y": 10 },
-        { "monster": "mon_mi_go", "x": 12, "y": 12 }
-      ]
+      "place_monster": [ { "monster": "mon_mi_go", "x": 8, "y": 10 }, { "monster": "mon_mi_go", "x": 12, "y": 12 } ]
     }
   }
 ]
