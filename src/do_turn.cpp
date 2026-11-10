@@ -7,6 +7,7 @@
 #include <libproc.h>
 #include <mach/mach_time.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -18926,7 +18927,7 @@ void for_each_live_bandit_loaded_perimeter( map &here, int z, Func &&visit )
 {
     const int width = SEEX * here.getmapsize();
     const int height = SEEY * here.getmapsize();
-    if( width <= 0 || height <= 0 ) {
+    if( width <= 0 || height <= 0 || z < -OVERMAP_DEPTH || z > OVERMAP_HEIGHT ) {
         return;
     }
     for( int x = 0; x < width; ++x ) {
@@ -18943,11 +18944,34 @@ void for_each_live_bandit_loaded_perimeter( map &here, int z, Func &&visit )
     }
 }
 
+std::vector<std::size_t> live_bandit_neighbor_indices(
+    const std::map<tripoint_abs_ms, std::vector<std::size_t>> &by_exit,
+    const tripoint_abs_ms &exit )
+{
+    std::vector<std::size_t> neighbors;
+    for( int dy = -1; dy <= 1; ++dy ) {
+        for( int dx = -1; dx <= 1; ++dx ) {
+            if( dx == 0 && dy == 0 ) {
+                continue;
+            }
+            const auto found = by_exit.find( exit + point_rel_ms( dx, dy ) );
+            if( found != by_exit.end() ) {
+                neighbors.insert( neighbors.end(), found->second.begin(), found->second.end() );
+            }
+        }
+    }
+    std::sort( neighbors.begin(), neighbors.end() );
+    return neighbors;
+}
+
 std::map<character_id, live_bandit_pair_boundary_step>
 live_bandit_pair_boundary_steps(
     const std::map<character_id, tripoint_abs_omt> &destinations,
     std::vector<std::string> *route_discriminators = nullptr,
-    const bool require_safe_routes = false )
+    const bool require_safe_routes = false,
+    const bool exhaustive_reference = false,
+    std::vector<std::pair<live_bandit_pair_boundary_step, live_bandit_pair_boundary_step>>
+    *test_complete_pairs = nullptr )
 {
     std::map<character_id, live_bandit_pair_boundary_step> result;
     map &here = get_map();
@@ -19009,12 +19033,14 @@ live_bandit_pair_boundary_steps(
             return route_omt == current ? std::optional<std::size_t>( 0 ) : std::nullopt;
         };
         std::vector<candidate> candidates;
-        for( const tripoint_bub_ms &point : here.points_on_zlevel( destination.z() ) ) {
+        std::size_t visited_boundary_cells = 0;
+        const auto collect_candidate = [&]( const tripoint_bub_ms &point ) {
+            ++visited_boundary_cells;
             const tripoint_abs_ms departure = here.get_abs( point );
             if( !here.passable( point ) ||
                 ( !g->is_empty( point ) && departure != first->pos_abs() &&
                   departure != second->pos_abs() ) ) {
-                continue;
+                return;
             }
             for( int dy = -1; dy <= 1; ++dy ) {
                 for( int dx = -1; dx <= 1; ++dx ) {
@@ -19027,6 +19053,13 @@ live_bandit_pair_boundary_steps(
                     }
                 }
             }
+        };
+        if( exhaustive_reference ) {
+            for( const tripoint_bub_ms &point : here.points_on_zlevel( destination.z() ) ) {
+                collect_candidate( point );
+            }
+        } else {
+            for_each_live_bandit_loaded_perimeter( here, destination.z(), collect_candidate );
         }
         std::sort( candidates.begin(), candidates.end(), []( const candidate & lhs,
         const candidate & rhs ) {
@@ -19038,8 +19071,24 @@ live_bandit_pair_boundary_steps(
         std::tuple<std::size_t, std::size_t, int, int,
             tripoint_abs_ms, tripoint_abs_ms> selected_score;
         std::vector<std::pair<candidate, candidate>> complete_pairs;
+        std::map<tripoint_abs_ms, std::vector<std::size_t>> candidates_by_exit;
+        for( std::size_t index = 0; index < candidates.size(); ++index ) {
+            candidates_by_exit[candidates[index].exit].push_back( index );
+        }
+        std::size_t joined_pairs = 0;
         for( const candidate &first_candidate : candidates ) {
-            for( const candidate &second_candidate : candidates ) {
+            // Preserve the original ordered Cartesian scan for stable score ties.
+            std::vector<std::size_t> neighbors;
+            if( exhaustive_reference ) {
+                for( std::size_t index = 0; index < candidates.size(); ++index ) {
+                    neighbors.push_back( index );
+                }
+            } else {
+                neighbors = live_bandit_neighbor_indices( candidates_by_exit, first_candidate.exit );
+            }
+            for( const std::size_t index : neighbors ) {
+                ++joined_pairs;
+                const candidate &second_candidate = candidates[index];
                 if( first_candidate.departure == second_candidate.departure ||
                     first_candidate.exit == second_candidate.exit ||
                     // Preserve the adjacent two-slot formation already required at handoff.
@@ -19094,6 +19143,13 @@ live_bandit_pair_boundary_steps(
                 };
                 return score( lhs ) < score( rhs );
             } );
+            if( test_complete_pairs != nullptr ) {
+                for( const auto &pair : complete_pairs ) {
+                    test_complete_pairs->emplace_back(
+                        live_bandit_pair_boundary_step{ pair.first.departure, pair.first.exit },
+                        live_bandit_pair_boundary_step{ pair.second.departure, pair.second.exit } );
+                }
+            }
             const auto pair_identity = [first, second](
             const std::pair<candidate, candidate> &pair ) {
                 std::ostringstream identity;
@@ -19106,14 +19162,16 @@ live_bandit_pair_boundary_steps(
                 return identity.str();
             };
             unsigned long long complete_identity = 14695981039346656037ULL;
-            for( const std::pair<candidate, candidate> &pair : complete_pairs ) {
-                const std::string identity = pair_identity( pair );
-                for( const unsigned char byte : identity ) {
-                    complete_identity ^= byte;
+            if( route_discriminators != nullptr ) {
+                for( const std::pair<candidate, candidate> &pair : complete_pairs ) {
+                    const std::string identity = pair_identity( pair );
+                    for( const unsigned char byte : identity ) {
+                        complete_identity ^= byte;
+                        complete_identity *= 1099511628211ULL;
+                    }
+                    complete_identity ^= 0xffU;
                     complete_identity *= 1099511628211ULL;
                 }
-                complete_identity ^= 0xffU;
-                complete_identity *= 1099511628211ULL;
             }
             const std::optional<bandit_live_world::covert_scout_relationship_read>
             first_relationship = bandit_live_world::read_active_covert_scout_homeward_member(
@@ -19178,6 +19236,8 @@ live_bandit_pair_boundary_steps(
                               << second->getID().get_value()
                               << " member_positions=" << first->pos_abs().to_string() << ','
                               << second->pos_abs().to_string()
+                              << " boundary_cells=" << visited_boundary_cells
+                              << " joined_pairs=" << joined_pairs
                               << " complete_pairs=" << complete_pairs.size()
                               << " complete_identity=fnv1a:" << complete_identity
                               << " route_pairs_evaluated=" << route_pairs_evaluated
@@ -19438,11 +19498,13 @@ live_bandit_single_homeward_boundary_steps(
         };
         std::optional<candidate> selected;
         std::tuple<std::size_t, int, tripoint_abs_ms> selected_score;
-        for( const tripoint_bub_ms &point : here.points_on_zlevel( destination->second.z() ) ) {
+        std::map<tripoint_abs_ms, bool> safe_departures;
+        for_each_live_bandit_loaded_perimeter( here, destination->second.z(),
+        [&]( const tripoint_bub_ms &point ) {
             const tripoint_abs_ms departure = here.get_abs( point );
             if( !here.passable( point ) ||
                 ( !g->is_empty( point ) && departure != survivor->pos_abs() ) ) {
-                continue;
+                return;
             }
             for( int dy = -1; dy <= 1; ++dy ) {
                 for( int dx = -1; dx <= 1; ++dx ) {
@@ -19470,8 +19532,15 @@ live_bandit_single_homeward_boundary_steps(
                     if( !route_rank && exit_omt == survivor->pos_abs_omt() ) {
                         route_rank = 0;
                     }
-                    if( !route_rank || !live_bandit_safe_local_route_to(
-                            *survivor, *relationship, here, departure ).safe ) {
+                    if( !route_rank ) {
+                        continue;
+                    }
+                    auto safe = safe_departures.find( departure );
+                    if( safe == safe_departures.end() ) {
+                        safe = safe_departures.emplace( departure, live_bandit_safe_local_route_to(
+                                   *survivor, *relationship, here, departure ).safe ).first;
+                    }
+                    if( !safe->second ) {
                         continue;
                     }
                     const auto score = std::make_tuple( *route_rank,
@@ -19482,7 +19551,7 @@ live_bandit_single_homeward_boundary_steps(
                     }
                 }
             }
-        }
+        } );
         if( selected ) {
             result.emplace( survivor->getID(), live_bandit_pair_boundary_step{
                 selected->departure, selected->exit
@@ -19905,6 +19974,14 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 crossings.clear();
                 break;
             }
+            if( outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+                ( here.inbounds( step->second.exit ) ||
+                  ( !live_bandit_member_routing_home( *member, site ) &&
+                    !live_bandit_member_routing_burn_egress( *member, outing ) ) ) ) {
+                collection_reason = "stale_boundary_or_homeward_route";
+                crossings.clear();
+                break;
+            }
             crossings.emplace_back( member, step->second );
         }
         if( homeward_event ) {
@@ -19960,9 +20037,12 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 return crossing.first->is_dead();
             } ), crossings.end() );
             if( crossings.empty() || std::any_of( crossings.begin(), crossings.end(),
-            []( const auto & crossing ) {
+            [&here, &site, &outing]( const auto & crossing ) {
             return crossing.first->pos_abs() != crossing.second.departure ||
-                       !live_bandit_member_can_take_homeward_step( *crossing.first );
+                       !live_bandit_member_can_take_homeward_step( *crossing.first ) ||
+                       here.inbounds( crossing.second.exit ) ||
+                       ( !live_bandit_member_routing_home( *crossing.first, site ) &&
+                         !live_bandit_member_routing_burn_egress( *crossing.first, outing ) );
             } ) ) {
                 continue;
             }
@@ -23584,6 +23664,34 @@ void overmap_npc_move()
 
 } // namespace
 
+// Narrow production-geometry seams for the exhaustive exit-selector controls.
+std::vector<tripoint_bub_ms> live_bandit_boundary_perimeter_for_test( map &here, int z );
+std::vector<std::vector<std::size_t>> live_bandit_boundary_neighbors_for_test(
+    const std::vector<tripoint_abs_ms> &exits );
+
+std::vector<tripoint_bub_ms> live_bandit_boundary_perimeter_for_test( map &here, int z )
+{
+    std::vector<tripoint_bub_ms> result;
+    for_each_live_bandit_loaded_perimeter( here, z, [&result]( const tripoint_bub_ms &p ) {
+        result.push_back( p );
+    } );
+    return result;
+}
+
+std::vector<std::vector<std::size_t>> live_bandit_boundary_neighbors_for_test(
+    const std::vector<tripoint_abs_ms> &exits )
+{
+    std::map<tripoint_abs_ms, std::vector<std::size_t>> index;
+    for( std::size_t i = 0; i < exits.size(); ++i ) {
+        index[exits[i]].push_back( i );
+    }
+    std::vector<std::vector<std::size_t>> result;
+    for( const tripoint_abs_ms &exit : exits ) {
+        result.push_back( live_bandit_neighbor_indices( index, exit ) );
+    }
+    return result;
+}
+
 void refresh_live_bandit_activation()
 {
     evaluate_live_bandit_activation();
@@ -23752,12 +23860,179 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
         bandit_live_world::local_pair_homeward_travel_ids( state );
     const auto homeward_destinations = live_bandit_homeward_destinations( state, homeward_member_ids );
     std::vector<std::string> discriminators;
-    live_bandit_pair_boundary_steps( homeward_destinations, &discriminators, true );
+    const bool reference_check = std::getenv( "CAOL_EXIT_COST_REFERENCE_CHECK" ) != nullptr;
+    using test_pair = std::pair<live_bandit_pair_boundary_step, live_bandit_pair_boundary_step>;
+    std::vector<test_pair> optimized_pairs;
+    const auto selected = live_bandit_pair_boundary_steps( homeward_destinations, &discriminators, true,
+                          false, reference_check ? &optimized_pairs : nullptr );
     if( discriminators.empty() ) {
         return "discriminator_count=0 verdict=unavailable";
     }
-    return "discriminator_count=" + std::to_string( discriminators.size() ) + ' ' +
-           discriminators.front();
+    if( reference_check ) {
+        std::vector<test_pair> exhaustive_pairs;
+        std::vector<std::string> exhaustive_rows;
+        std::vector<std::string> repeated_rows;
+        const auto exhaustive = live_bandit_pair_boundary_steps( homeward_destinations, &exhaustive_rows,
+                                true, true, &exhaustive_pairs );
+        const auto repeated = live_bandit_pair_boundary_steps( homeward_destinations, &repeated_rows, true );
+        const auto same_steps = []( const auto &lhs, const auto &rhs ) {
+            if( lhs.size() != rhs.size() ) {
+                return false;
+            }
+            for( const auto &entry : lhs ) {
+                const auto other = rhs.find( entry.first );
+                if( other == rhs.end() || entry.second.departure != other->second.departure ||
+                    entry.second.exit != other->second.exit ) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        const auto field = []( const std::string &row, const std::string &key ) {
+            const std::string prefix = key + "=";
+            const std::size_t pos = row.find( prefix );
+            if( pos == std::string::npos ) {
+                return std::string();
+            }
+            const std::size_t begin = pos + prefix.size();
+            return row.substr( begin, row.find( ' ', begin ) - begin );
+        };
+        const bool exact_pairs = optimized_pairs.size() == exhaustive_pairs.size() &&
+                                 std::equal( optimized_pairs.begin(), optimized_pairs.end(),
+        exhaustive_pairs.begin(), []( const test_pair &lhs, const test_pair &rhs ) {
+            return lhs.first.departure == rhs.first.departure && lhs.first.exit == rhs.first.exit &&
+                   lhs.second.departure == rhs.second.departure && lhs.second.exit == rhs.second.exit;
+        } );
+        bool reference_match = discriminators.size() == exhaustive_rows.size() && exact_pairs &&
+                               same_steps( selected, exhaustive );
+        for( std::size_t index = 0; reference_match && index < discriminators.size(); ++index ) {
+            for( const char *key : { "site", "generation", "members", "complete_pairs", "complete_identity",
+                                     "route_pairs_evaluated", "route_reads", "route_solves", "verdict",
+                                     "selected_pair", "safe_pair" } ) {
+                reference_match = reference_match && field( discriminators[index], key ) ==
+                                  field( exhaustive_rows[index], key );
+            }
+        }
+        const bool repeated_match = discriminators == repeated_rows && same_steps( selected, repeated );
+        DebugLog( D_INFO, DC_ALL ) << "exit_cost_reference reference_match=" << reference_match
+                                   << " repeated_match=" << repeated_match
+                                   << " exact_pairs=" << exact_pairs
+                                   << " verdict=" << field( discriminators.front(), "verdict" )
+                                   << " pairs=" << field( discriminators.front(), "complete_pairs" )
+                                   << " route_solves=" << field( discriminators.front(), "route_solves" );
+        if( field( discriminators.front(), "verdict" ) == "H1" && selected.size() == 2 ) {
+            npc *rank_actor = g->find_npc( selected.begin()->first );
+            if( rank_actor != nullptr ) {
+                const auto original_path = rank_actor->omt_path;
+                rank_actor->omt_path.clear();
+                std::vector<std::string> mismatch_rows;
+                std::vector<std::string> mismatch_reference_rows;
+                const auto mismatch = live_bandit_pair_boundary_steps( homeward_destinations,
+                                      &mismatch_rows, true );
+                const auto mismatch_reference = live_bandit_pair_boundary_steps( homeward_destinations,
+                                                &mismatch_reference_rows, true, true );
+                rank_actor->omt_path = original_path;
+                const bool mismatch_match = mismatch_rows.size() == 1 && mismatch_reference_rows.size() == 1 &&
+                                            same_steps( mismatch, mismatch_reference ) &&
+                                            field( mismatch_rows.front(), "complete_pairs" ) ==
+                                            field( mismatch_reference_rows.front(), "complete_pairs" ) &&
+                                            field( mismatch_rows.front(), "complete_identity" ) ==
+                                            field( mismatch_reference_rows.front(), "complete_identity" ) &&
+                                            field( mismatch_rows.front(), "safe_pair" ) ==
+                                            field( mismatch_reference_rows.front(), "safe_pair" );
+                const bool eligibility_changed = !mismatch_rows.empty() &&
+                                                 field( mismatch_rows.front(), "complete_pairs" ) !=
+                                                 field( discriminators.front(), "complete_pairs" );
+                DebugLog( D_INFO, DC_ALL ) << "exit_cost_rank_mismatch matched=" << mismatch_match
+                                           << " eligibility_changed=" << eligibility_changed;
+            }
+            {
+                map &here = get_map();
+                const tripoint_bub_ms departure = here.get_bub( selected.begin()->second.departure );
+                std::vector<std::pair<tripoint_bub_ms, ter_id>> replaced;
+                for( int dy = -1; dy <= 1; ++dy ) {
+                    for( int dx = -1; dx <= 1; ++dx ) {
+                        if( dx == 0 && dy == 0 ) {
+                            continue;
+                        }
+                        const tripoint_bub_ms point = departure + ::point( dx, dy );
+                        if( here.inbounds( point ) && g->is_empty( point ) ) {
+                            replaced.emplace_back( point, here.ter( point ) );
+                            here.ter_set( point, ter_id( "t_wall" ) );
+                        }
+                    }
+                }
+                here.invalidate_map_cache( departure.z() );
+                here.build_map_cache( departure.z(), true );
+                std::vector<std::string> unsafe_rows;
+                std::vector<std::string> unsafe_reference_rows;
+                const auto unsafe = live_bandit_pair_boundary_steps( homeward_destinations, &unsafe_rows, true );
+                const auto unsafe_reference = live_bandit_pair_boundary_steps( homeward_destinations,
+                                              &unsafe_reference_rows, true, true );
+                const bool unsafe_match = unsafe_rows.size() == 1 && unsafe_reference_rows.size() == 1 &&
+                                          same_steps( unsafe, unsafe_reference ) &&
+                                          field( unsafe_rows.front(), "complete_identity" ) ==
+                                          field( unsafe_reference_rows.front(), "complete_identity" ) &&
+                                          field( unsafe_rows.front(), "selected_pair" ) ==
+                                          field( unsafe_reference_rows.front(), "selected_pair" ) &&
+                                          field( unsafe_rows.front(), "safe_pair" ) ==
+                                          field( unsafe_reference_rows.front(), "safe_pair" );
+                const bool alternate = !unsafe_rows.empty() && field( unsafe_rows.front(), "verdict" ) == "H1" &&
+                                       field( unsafe_rows.front(), "selected_pair" ) !=
+                                       field( unsafe_rows.front(), "safe_pair" );
+                for( const auto &entry : replaced ) {
+                    here.ter_set( entry.first, entry.second );
+                }
+                here.invalidate_map_cache( departure.z() );
+                here.build_map_cache( departure.z(), true );
+                DebugLog( D_INFO, DC_ALL ) << "exit_cost_first_safe matched=" << unsafe_match
+                                           << " alternate=" << alternate;
+            }
+            for( auto &site : state.sites ) {
+                auto &outing = site.active_outing;
+                if( outing.member_ids.size() != 2 || selected.count( outing.member_ids[0] ) == 0 ||
+                    selected.count( outing.member_ids[1] ) == 0 ) {
+                    continue;
+                }
+                const character_id survivor = outing.member_ids.front();
+                const character_id casualty = outing.member_ids.back();
+                npc *lost = g->find_npc( casualty );
+                const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+                const bandit_live_world::site_record original = site;
+                bandit_live_world::site_record candidate = site;
+                const bool recorded = lost != nullptr && cursor &&
+                    bandit_live_world::record_local_pair_member_death(
+                        candidate, *cursor, casualty, lost->pos_abs(),
+                        std::max( 0, candidate.active_outing.last_advanced_minutes + 1 ) );
+                bool survivor_selected = false;
+                bool unresolved_refused = false;
+                if( recorded ) {
+                    site = candidate;
+                    const auto single = live_bandit_single_homeward_boundary_steps( homeward_destinations );
+                    survivor_selected = single.size() == 1 && single.count( survivor ) == 1 &&
+                                        single.count( casualty ) == 0 &&
+                                        !get_map().inbounds( single.at( survivor ).exit ) &&
+                                        get_map().inbounds( single.at( survivor ).departure );
+                    site.active_outing.resolved_member_ids.erase(
+                        std::remove( site.active_outing.resolved_member_ids.begin(),
+                                     site.active_outing.resolved_member_ids.end(), casualty ),
+                        site.active_outing.resolved_member_ids.end() );
+                    unresolved_refused = live_bandit_single_homeward_boundary_steps( homeward_destinations ).empty();
+                }
+                site = original;
+                DebugLog( D_INFO, DC_ALL ) << "exit_cost_survivor recorded=" << recorded
+                                           << " survivor_selected=" << survivor_selected
+                                           << " unresolved_refused=" << unresolved_refused;
+                break;
+            }
+        }
+    }
+    const std::string result = "discriminator_count=" + std::to_string( discriminators.size() ) +
+                               ' ' + discriminators.front();
+    if( std::getenv( "CAOL_EXIT_COST_TEST_DIAGNOSTICS" ) != nullptr ) {
+        DebugLog( D_INFO, DC_ALL ) << "exit_cost_test " << result;
+    }
+    return result;
 }
 
 std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
@@ -24022,6 +24297,160 @@ bool complete_live_bandit_homeward_boundary_for_test()
         member->setpos( get_map(), get_map().get_bub( step.departure ) );
         member->path = { get_map().get_bub( step.departure ) };
     }
+    if( std::getenv( "CAOL_EXIT_COST_REFERENCE_CHECK" ) != nullptr ) {
+        npc *member = g->find_npc( steps.begin()->first );
+        const tripoint_abs_ms original_position = member->pos_abs();
+        std::optional<tripoint_bub_ms> replacement;
+        map &here = get_map();
+        for( int dy = -1; dy <= 1 && !replacement; ++dy ) {
+            for( int dx = -1; dx <= 1 && !replacement; ++dx ) {
+                if( dx == 0 && dy == 0 ) {
+                    continue;
+                }
+                const tripoint_bub_ms next = member->pos_bub( here ) + point( dx, dy );
+                if( here.inbounds( next ) && here.passable( next ) && g->is_empty( next ) ) {
+                    replacement = next;
+                }
+            }
+        }
+        bool refused = false;
+        bool owner_preserved = false;
+        if( replacement ) {
+            std::vector<std::tuple<bandit_live_world::simulation_owner, int, int>> before;
+            for( const auto &site : state.sites ) {
+                before.emplace_back( site.active_outing.owner, site.active_outing.handoff_epoch,
+                                     site.active_outing.waypoint_index );
+            }
+            member->setpos( here, *replacement );
+            refused = complete_live_bandit_homeward_boundary_steps( steps ).empty();
+            owner_preserved = before.size() == state.sites.size();
+            for( std::size_t i = 0; owner_preserved && i < before.size(); ++i ) {
+                const auto &outing = state.sites[i].active_outing;
+                owner_preserved = before[i] == std::make_tuple( outing.owner, outing.handoff_epoch,
+                                  outing.waypoint_index );
+            }
+            for( const auto &entry : steps ) {
+                npc *actor = g->find_npc( entry.first );
+                owner_preserved = owner_preserved && actor != nullptr && actor->is_active() &&
+                                  actor->pos_abs() == ( entry.first == member->getID() ?
+                                                        here.get_abs( *replacement ) : entry.second.departure );
+            }
+            member->setpos( here, here.get_bub( original_position ) );
+        }
+        DebugLog( D_INFO, DC_ALL ) << "exit_cost_invalidation applied=" << static_cast<bool>( replacement )
+                                   << " refused=" << refused << " owner_preserved=" << owner_preserved;
+    }
+#if defined(__APPLE__)
+    // Fork only this in-memory test fixture: the child may commit an irreversible
+    // owner transition while the parent retains the original pair for its test.
+    if( std::getenv( "CAOL_EXIT_TRANSFER_CHECK" ) != nullptr ) {
+        const auto run_isolated = []( const auto &check ) {
+            const pid_t child = fork();
+            if( child < 0 ) {
+                return 99;
+            }
+            if( child == 0 ) {
+                _exit( check() );
+            }
+            int status = 0;
+            if( waitpid( child, &status, 0 ) != child || !WIFEXITED( status ) ) {
+                return 98;
+            }
+            return WEXITSTATUS( status );
+        };
+        const int route_status = run_isolated( [&]() {
+            npc *changed = g->find_npc( steps.begin()->first );
+            if( changed == nullptr ) {
+                return 1;
+            }
+            const auto serialize_state = []() {
+                std::ostringstream stream;
+                JsonOut json( stream );
+                overmap_buffer.global_state.bandit_live_world.serialize( json );
+                return stream.str();
+            };
+            changed->goal = changed->goal + point( 31, 0 );
+            changed->omt_path.clear();
+            const std::string before = serialize_state();
+            const auto committed = complete_live_bandit_homeward_boundary_steps( steps );
+            if( !committed.empty() ) {
+                return 2;
+            }
+            if( serialize_state() != before ) {
+                return 4;
+            }
+            for( const auto &entry : steps ) {
+                const npc *member = g->find_npc( entry.first );
+                if( member == nullptr || !member->is_active() || member->pos_abs() != entry.second.departure ) {
+                    return 3;
+                }
+            }
+            return 0;
+        } );
+        const int survivor_status = run_isolated( [&]() {
+            auto site_iter = std::find_if( state.sites.begin(), state.sites.end(), [&steps]( const auto &site ) {
+                const auto &ids = site.active_outing.member_ids;
+                return ids.size() == 2 && steps.count( ids[0] ) && steps.count( ids[1] );
+            } );
+            if( site_iter == state.sites.end() ) {
+                return 1;
+            }
+            auto &site = *site_iter;
+            const character_id survivor_id = site.active_outing.member_ids.front();
+            const character_id casualty_id = site.active_outing.member_ids.back();
+            npc *casualty = g->find_npc( casualty_id );
+            const auto persistent_casualty = overmap_buffer.find_npc( casualty_id );
+            npc *survivor = g->find_npc( survivor_id );
+            const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+            if( casualty == nullptr || !persistent_casualty || survivor == nullptr || !cursor ) {
+                return 2;
+            }
+            casualty->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+            persistent_casualty->set_part_hp_cur( bodypart_id( "torso" ), 0 );
+            const int now = std::max( 0, site.active_outing.last_advanced_minutes + 1 );
+            calendar::turn = calendar::start_of_cataclysm + time_duration::from_minutes( now );
+            if( !bandit_live_world::record_live_local_pair_member_death(
+                    site, *cursor, casualty_id, persistent_casualty->pos_abs(), now ) ) {
+                return 3;
+            }
+            const tripoint_abs_ms casualty_position = persistent_casualty->pos_abs();
+            const auto single = live_bandit_single_homeward_boundary_steps( destinations );
+            if( single.size() != 1 || single.count( survivor_id ) != 1 ) {
+                return 4;
+            }
+            const auto single_step = single.at( survivor_id );
+            survivor->setpos( get_map(), get_map().get_bub( single_step.departure ) );
+            survivor->path = { get_map().get_bub( single_step.departure ) };
+            const auto committed = complete_live_bandit_homeward_boundary_steps( single );
+            if( committed.size() != 1 || committed.count( survivor_id ) == 0 ) {
+                return 5;
+            }
+            const auto stored = overmap_buffer.find_npc( survivor_id );
+            if( !stored || stored->pos_abs() != single_step.exit || stored->is_active() ||
+                site.active_outing.owner != bandit_live_world::simulation_owner::abstract ||
+                !site.active_outing.member_is_resolved( casualty_id ) ||
+                std::find( site.active_outing.casualty_ids.begin(), site.active_outing.casualty_ids.end(),
+                           casualty_id ) == site.active_outing.casualty_ids.end() ) {
+                return 6;
+            }
+            const auto snapshot = std::find_if( site.active_outing.local_handoff.members.begin(),
+                                               site.active_outing.local_handoff.members.end(),
+            [casualty_id]( const auto &member ) {
+                return member.npc_id == casualty_id;
+            } );
+            if( snapshot == site.active_outing.local_handoff.members.end() || !snapshot->dead ||
+                snapshot->exit_position != casualty_position || !persistent_casualty->is_dead() ) {
+                return 8;
+            }
+            if( !complete_live_bandit_homeward_boundary_steps( single ).empty() ) {
+                return 7;
+            }
+            return 0;
+        } );
+        DebugLog( D_INFO, DC_ALL ) << "exit_cost_transfer route_status=" << route_status
+                                   << " survivor_status=" << survivor_status;
+    }
+#endif
     return complete_live_bandit_homeward_boundary_steps( steps ).size() == 2;
 }
 
