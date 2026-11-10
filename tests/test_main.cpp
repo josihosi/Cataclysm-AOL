@@ -327,12 +327,24 @@ TEST_CASE( "noop_test", "[.]" )
 // NOLINTNEXTLINE(bugprone-exception-escape): test runner intentionally lets exceptions propagate
 int main( int argc, const char *argv[] )
 {
+    const bool exit_reference_diagnostic = std::getenv( "CAOL_EXIT_COST_REFERENCE_CHECK" ) != nullptr &&
+                                           std::getenv( "CAOL_EXIT_TRANSFER_MODE" ) == nullptr;
+    const auto exit_reference_phase = [exit_reference_diagnostic]( const char *phase ) {
+        if( exit_reference_diagnostic ) {
+            std::fprintf( stderr, "exit_reference_shutdown phase=%s\n", phase );
+            std::fflush( stderr );
+        }
+    };
 #ifdef _WIN32
     // Suppress the "Microsoft Visual C++ Runtime Library" abort dialog so that
     // a raw assert() in any third-party header (e.g. plf colony/list, flatbuffers)
     // cannot hang headless CI test runs. The Cataclysm test vcxproj does not
     // define NDEBUG for Release, so asserts are live in CI binaries.
-    _set_abort_behavior( 0, _CALL_REPORTFAULT | _WRITE_ABORT_MSG );
+    if( exit_reference_diagnostic ) {
+        _set_error_mode( _OUT_TO_STDERR );
+    }
+    _set_abort_behavior( exit_reference_diagnostic ? _WRITE_ABORT_MSG : 0,
+                         _CALL_REPORTFAULT | _WRITE_ABORT_MSG );
 #endif
     cata::init_allocator();
 #if defined(_MSC_VER)
@@ -487,7 +499,9 @@ int main( int argc, const char *argv[] )
                 }
             }
         } else {
+            exit_reference_phase( "before_session_run" );
             result = session.run();
+            exit_reference_phase( "after_session_run" );
         }
     } catch( const std::exception &err ) {
         DebugLog( D_ERROR, DC_ALL ) << "Terminated:\n" << err.what();
@@ -499,7 +513,17 @@ int main( int argc, const char *argv[] )
     if( game_initialized && world_generator ) {
         std::string world_name = world_generator->active_world->world_name;
         if( result == 0 || dont_save || fail_to_init_game_state ) {
-            world_generator->delete_world( world_name, true );
+            exit_reference_phase( "before_delete_world" );
+            try {
+                world_generator->delete_world( world_name, true );
+            } catch( const std::exception &err ) {
+                if( exit_reference_diagnostic ) {
+                    std::fprintf( stderr, "exit_reference_shutdown exception=%s\n", err.what() );
+                    std::fflush( stderr );
+                }
+                throw;
+            }
+            exit_reference_phase( "after_delete_world" );
         } else {
             if( g->save() ) {
                 DebugLog( D_INFO, DC_ALL ) << "Test world " << world_name << " left for inspection.";
@@ -533,5 +557,6 @@ int main( int argc, const char *argv[] )
         return 1;
     }
 
+    exit_reference_phase( "before_return" );
     return result;
 }
