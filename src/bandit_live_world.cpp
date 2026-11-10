@@ -19333,7 +19333,7 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     const std::int64_t travel = std::max(
                                     static_cast<std::int64_t>( outing.route_clock_travel_minutes ) +
                                     new_travel - old_travel + *later_read -
-                                    old_later_read.value_or( *later_read ) + homeward_change,
+                                    old_later_travel + homeward_change,
                                     new_travel + later_outbound + new_homeward );
     if( remaining < travel || travel < new_homeward || new_homeward > INT_MAX ||
         remaining > INT_MAX || travel > INT_MAX ) {
