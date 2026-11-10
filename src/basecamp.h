@@ -243,6 +243,19 @@ struct camp_locker_service_probe {
     int medical_supplies_to_take = 0;
 };
 
+struct camp_locker_downtime_probe {
+    bool reference_service_recollection = false;
+    int collections = 0;
+    int signatures = 0;
+    int cooldown_skips = 0;
+    int services = 0;
+    int post_service_collections = 0;
+    int service_initial_collections = 0;
+    int service_initial_reuses = 0;
+};
+
+struct camp_locker_preparation;
+
 std::string render_camp_locker_service_probe(
     const camp_locker_service_probe &probe );
 
@@ -968,6 +981,7 @@ class basecamp
         bool is_patrol_alarm_active() const;
         void mark_camp_locker_dirty( npc &worker, bool high_priority = false );
         bool process_camp_locker_downtime( npc &worker );
+        bool process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe );
         bool service_camp_locker( npc &worker );
         camp_locker_service_probe measure_camp_locker_service( npc &worker );
         bool is_locker_slot_enabled( camp_locker_slot slot ) const;
@@ -997,7 +1011,9 @@ class basecamp
                                          std::string *reason = nullptr ) const;
         bool service_camp_locker_impl( npc &worker,
                                        camp_locker_service_probe *probe,
-                                       bool verbose_logging = true );
+                                       bool verbose_logging = true,
+                                       const camp_locker_preparation *preparation = nullptr,
+                                       camp_locker_downtime_probe *downtime_probe = nullptr );
         npc_ptr resolve_crafting_worker(
             const recipe &making, int batch_size,
             const character_id &preferred_worker_id = character_id(),

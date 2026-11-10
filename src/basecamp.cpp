@@ -3140,14 +3140,6 @@ static std::string camp_locker_plan_debug_summary( const camp_locker_plan &plan 
     return join_camp_locker_debug_parts( parts );
 }
 
-namespace
-{
-
-constexpr const char *camp_locker_state_signature_key =
-    "camp_locker_last_state_signature";
-constexpr const char *camp_locker_probe_skip_reason_key =
-    "camp_locker_probe_skip_reason";
-
 struct camp_locker_live_state {
     std::vector<const item *> current_items;
     std::vector<const item *> worker_items;
@@ -3159,6 +3151,19 @@ struct camp_locker_live_state {
     camp_locker_ranged_readiness_state ranged_readiness;
     camp_locker_medical_readiness_state medical_readiness;
 };
+
+struct camp_locker_preparation {
+    const std::vector<tripoint_abs_ms> &tiles;
+    const camp_locker_live_state &state;
+};
+
+namespace
+{
+
+constexpr const char *camp_locker_state_signature_key =
+    "camp_locker_last_state_signature";
+constexpr const char *camp_locker_probe_skip_reason_key =
+    "camp_locker_probe_skip_reason";
 
 bool camp_locker_plan_has_changes( const camp_locker_plan &plan )
 {
@@ -4441,6 +4446,11 @@ void basecamp::mark_camp_locker_dirty( npc &worker, bool high_priority )
 
 bool basecamp::process_camp_locker_downtime( npc &worker )
 {
+    return process_camp_locker_downtime( worker, nullptr );
+}
+
+bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe )
+{
     if( !has_locker_zone() ) {
         if( basecamp_ai::should_show_camp_job_report(
                 worker, basecamp_ai::camp_job_report_kind::locker_exception, "no-locker-zone" ) ) {
@@ -4510,8 +4520,16 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
     }
 
     const faction_id fac_id = camp_effective_owner( owner );
+    const std::vector<tripoint_abs_ms> locker_tiles =
+        collect_sorted_camp_locker_tiles( worker.pos_abs(), fac_id );
+    if( probe ) {
+        ++probe->collections;
+    }
     const camp_locker_live_state live_state = collect_camp_locker_live_state(
-                worker, fac_id, locker_policy, locker_reservations );
+                worker, locker_tiles, locker_policy, locker_reservations );
+    if( probe ) {
+        ++probe->signatures;
+    }
     const std::string locker_state_signature =
         camp_locker_live_state_signature( live_state, locker_policy );
     const std::string previous_signature =
@@ -4551,6 +4569,9 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
         } else if( locker_service_queue.front() != worker.getID() ) {
             skip_reason = "waiting-behind-other-worker";
         } else {
+            if( probe ) {
+                ++probe->cooldown_skips;
+            }
             skip_reason = string_format( "cooldown-until=%d",
                                          to_turn<int>( locker_next_service_turn ) );
         }
@@ -4581,12 +4602,23 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
                               worker.get_name(),
                               static_cast<int>( locker_service_queue.size() ),
                               to_turn<int>( calendar::turn ) );
-    const bool applied_changes = service_camp_locker( worker );
+    if( probe ) {
+        ++probe->services;
+    }
+    // No stock, equipment, policy, position or weather changed since collection.
+    // Service removes this worker's reservations, which never exclude its own items.
+    const bool recollect = probe && probe->reference_service_recollection;
+    const camp_locker_preparation preparation{ locker_tiles, live_state };
+    const bool applied_changes = service_camp_locker_impl(
+                                     worker, nullptr, true, recollect ? nullptr : &preparation, probe );
     locker_service_queue.erase( locker_service_queue.begin() );
     worker.set_value( "camp_locker_last_service_turn", to_turn<int>( calendar::turn ) );
     locker_next_service_turn =
         calendar::turn + ( applied_changes ? 10_minutes : 2_minutes );
 
+    if( probe ) {
+        ++probe->post_service_collections;
+    }
     const camp_locker_live_state post_service_state = collect_camp_locker_live_state(
                 worker, fac_id, locker_policy, locker_reservations );
     worker.set_value( camp_locker_state_signature_key,
@@ -4604,11 +4636,16 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
 
 bool basecamp::service_camp_locker_impl( npc &worker,
         camp_locker_service_probe *probe,
-        bool verbose_logging )
+        bool verbose_logging,
+        const camp_locker_preparation *preparation,
+        camp_locker_downtime_probe *downtime_probe )
 {
     const faction_id fac_id = camp_effective_owner( owner );
-    const std::vector<tripoint_abs_ms> locker_tiles =
-        collect_sorted_camp_locker_tiles( worker.pos_abs(), fac_id );
+    std::vector<tripoint_abs_ms> collected_tiles;
+    if( !preparation ) {
+        collected_tiles = collect_sorted_camp_locker_tiles( worker.pos_abs(), fac_id );
+    }
+    const std::vector<tripoint_abs_ms> &locker_tiles = preparation ? preparation->tiles : collected_tiles;
     if( probe != nullptr ) {
         probe->locker_tile_count = static_cast<int>( locker_tiles.size() );
     }
@@ -4625,8 +4662,19 @@ bool basecamp::service_camp_locker_impl( npc &worker,
     } ),
     locker_reservations.end() );
 
-    const camp_locker_live_state live_state = collect_camp_locker_live_state(
-                worker, locker_tiles, locker_policy, locker_reservations, probe );
+    std::optional<camp_locker_live_state> collected_state;
+    if( preparation ) {
+        if( downtime_probe ) {
+            ++downtime_probe->service_initial_reuses;
+        }
+    } else {
+        if( downtime_probe ) {
+            ++downtime_probe->service_initial_collections;
+        }
+        collected_state.emplace( collect_camp_locker_live_state(
+                                     worker, locker_tiles, locker_policy, locker_reservations, probe ) );
+    }
+    const camp_locker_live_state &live_state = preparation ? preparation->state : *collected_state;
     const int candidate_count =
         count_camp_locker_candidates( live_state.locker_candidates );
     if( probe != nullptr ) {
