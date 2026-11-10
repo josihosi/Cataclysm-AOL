@@ -19294,12 +19294,16 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     const std::vector<std::vector<tripoint_abs_omt>> home_paths( member_ids.size(), homeward_path );
     const auto later_read = new_read ? forecast_coarse_party_group( downstream_paths, model, new_work ) :
                             std::nullopt;
-    const auto old_later_read = old_read ? forecast_coarse_party_group( downstream_paths, old_model,
-                                old_work ) : std::nullopt;
     const auto home_read = later_read ? forecast_coarse_party_group( home_paths, model, new_work ) :
                            std::nullopt;
     if( !new_read || !later_read || !home_read ) {
         return false;
+    }
+    std::int64_t old_later_travel = *later_read;
+    if( old_read ) {
+        if( const auto forecast = forecast_coarse_party_group( downstream_paths, old_model, old_work ) ) {
+            old_later_travel = *forecast;
+        }
     }
     const std::int64_t old_travel = old_read.value_or( *new_read );
     const std::int64_t new_travel = *new_read;
@@ -19308,7 +19312,7 @@ bool revise_structural_coarse_outbound_clock( site_record &site,
     const std::int64_t revised = static_cast<std::int64_t>( outing.route_clock_remaining_minutes ) +
                                  std::max<std::int64_t>( gate_remaining, new_travel ) -
                                  std::max<std::int64_t>( gate_remaining, old_travel ) +
-                                 *later_read - old_later_read.value_or( *later_read ) + homeward_change;
+                                 *later_read - old_later_travel + homeward_change;
     // The original anchor remains authoritative. A detour discovered after a
     // long hold must include the active time already spent and the work that
     // still follows this leg. These service allowances are forecasts,
