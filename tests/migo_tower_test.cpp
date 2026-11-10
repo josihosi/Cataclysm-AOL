@@ -2642,7 +2642,7 @@ TEST_CASE( "migo_local_movement_acquires_at_the_real_bubble_edge_without_copy_au
     const auto goal = origin + direction * 18;
     const std::string id = "loaded-frontier-component";
     overmap_buffer.get( project_to<coords::om>( origin ).xy() );
-    std::shared_ptr<monster> body;
+    shared_ptr_fast<monster> body;
     monster *local = nullptr;
     on_out_of_scope restore( [&]() {
         if( local && get_creature_tracker().find( local->pos_abs() ).get() == local ) {
