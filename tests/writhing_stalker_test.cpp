@@ -29,6 +29,7 @@
 #include "mapbuffer.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
+#include "math_parser_diag_value.h"
 #include "memory_fast.h"
 #include "monster.h"
 #include "mongroup.h"
@@ -1618,6 +1619,79 @@ TEST_CASE( "writhing_stalker_linked_melee_miss_binds_resolution_time_observers",
     clear_map_without_vision();
 }
 
+TEST_CASE( "writhing_stalker_reconsiders_reachable_attacker_after_other_human",
+           "[writhing_stalker][counterattack][resolution][monster]" )
+{
+    clear_map_without_vision();
+    clear_npcs();
+    clear_avatar();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    on_out_of_scope cleanup( [&]() {
+        clear_npcs();
+        clear_map_without_vision();
+    } );
+    set_time( calendar::turn_zero + 12_hours );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    prepare_writhing_stalker_arena( here, center );
+    // The common arena's north wall would block the second attack after the
+    // first legal sidestep; this case exercises repeated visible attacks.
+    here.ter_set( center + point::north, ter_id( "t_floor" ) );
+    you.setpos( here, center + point::east * 2 );
+    npc &other = spawn_npc( point_bub_ms( ( center + point::west ).xy() ), "test_talker" );
+    other.set_fac( faction_id( "your_followers" ) );
+    monster &stalker = spawn_new_stalker_fixture( center );
+    stalker.anger = 100;
+    stalker.aggro_character = true;
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( writhing_stalker::observe_current_target( stalker ) == &other );
+    stalker.plan();
+    REQUIRE( stalker.writhing_stalker_state().evidence_target == other.get_identity() );
+    REQUIRE( stalker.sees( here, you ) );
+    REQUIRE( you.attitude_to( stalker ) == Creature::Attitude::HOSTILE );
+
+    for( int step = 0; step < 3; ++step ) {
+        // Positioning is fixture setup. The attempt and response use the real
+        // resolution, planner and movement callers, without forcing a hit.
+        // A frightened stalker is neutral from the human's relation query,
+        // but a real attack on it remains observable counterpressure.
+        stalker.anger = 95;
+        stalker.morale = -100;
+        REQUIRE( you.attitude_to( stalker ) == Creature::Attitude::NEUTRAL );
+        const tripoint_bub_ms player_pos = stalker.pos_bub() + point::east * 2;
+        you.setpos( here, player_pos );
+        refresh_writhing_stalker_arena( here );
+        set_time( calendar::turn + 1_turns );
+        CAPTURE( step, stalker.pos_bub(), you.pos_bub(), stalker.can_see(),
+                 stalker.sees( here, you ), writhing_stalker::can_observe_actor( stalker, you ) );
+        REQUIRE( stalker.sees( here, you ) );
+        CHECK( stalker.deal_melee_attack( &you, -1000 ) < 0 );
+        const diag_value *pressure_turn = stalker.maybe_get_value(
+                                              "caol_writhing_stalker_counterpressure_turn" );
+        REQUIRE( pressure_turn != nullptr );
+        CHECK( pressure_turn->dbl() == to_turn<int>( calendar::turn ) );
+        REQUIRE( writhing_stalker::has_recent_observed_attack( &stalker, &you, &stalker,
+                 to_turn<int>( calendar::turn ), 0 ) );
+        const tripoint_abs_ms before = stalker.pos_abs();
+        // The native caller plans only after the actor has earned moves.
+        stalker.set_moves( 100 );
+        stalker.plan();
+        REQUIRE( stalker.writhing_stalker_state().evidence_target == you.get_identity() );
+        REQUIRE( stalker.has_dest() );
+        const tripoint_abs_ms destination = stalker.get_dest();
+        CHECK( destination != before );
+        const int moves_before_replay = stalker.get_moves();
+        stalker.plan();
+        CHECK( stalker.get_dest() == destination );
+        CHECK( stalker.get_moves() == moves_before_replay );
+        stalker.move();
+        CHECK( stalker.pos_abs() != before );
+        CHECK( stalker.get_moves() < 100 );
+    }
+}
+
 TEST_CASE( "writhing_stalker_actor_observation_tracks_current_geometry",
            "[writhing_stalker][ai][pressure][resolution]" )
 {
@@ -1663,6 +1737,60 @@ TEST_CASE( "writhing_stalker_actor_observation_tracks_current_geometry",
     CHECK( writhing_stalker::can_observe_actor( observer, observer ) == reference( observer ).visible );
     you.unset_mutation( trait_id( "DEBUG_CLOAK" ) );
     clear_map_without_vision();
+}
+
+TEST_CASE( "writhing_stalker_counterattack_requires_fresh_visible_reachable_human",
+           "[writhing_stalker][counterattack][resolution][monster]" )
+{
+    const std::string scenario = GENERATE( std::string( "no_attack" ), std::string( "hidden" ),
+                                         std::string( "blocked" ), std::string( "expired" ) );
+    CAPTURE( scenario );
+    clear_map_without_vision();
+    clear_npcs();
+    clear_avatar();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    on_out_of_scope cleanup( [&]() {
+        you.unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+        clear_npcs();
+        clear_map_without_vision();
+    } );
+    set_time( calendar::turn_zero + 12_hours );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center + point::east * 2 );
+    npc &other = spawn_npc( point_bub_ms( ( center + point::west ).xy() ), "test_talker" );
+    other.set_fac( faction_id( "your_followers" ) );
+    monster &stalker = spawn_new_stalker_fixture( center );
+    stalker.anger = 100;
+    stalker.aggro_character = true;
+    if( scenario == "hidden" ) {
+        you.set_mutation( trait_id( "DEBUG_CLOAK" ) );
+    } else if( scenario == "blocked" ) {
+        for( const tripoint_bub_ms &square : here.points_in_radius( you.pos_bub(), 1 ) ) {
+            if( square != you.pos_bub() && square.z() == you.posz() ) {
+                here.ter_set( square, ter_id( "t_window" ) );
+            }
+        }
+    }
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( writhing_stalker::observe_current_target( stalker ) == &other );
+    if( scenario != "no_attack" ) {
+        if( scenario == "blocked" ) {
+            REQUIRE( stalker.sees( here, you ) );
+            REQUIRE_FALSE( here.clear_path( stalker.pos_bub(), you.pos_bub(), 3, 1, 100 ) );
+        }
+        CHECK( stalker.deal_melee_attack( &you, -1000 ) < 0 );
+        if( scenario == "expired" ) {
+            REQUIRE( writhing_stalker::has_recent_observed_attack( &stalker, &you, &stalker,
+                     to_turn<int>( calendar::turn ), 0 ) );
+            set_time( calendar::turn + 3_turns );
+        }
+    }
+    stalker.plan();
+    CHECK( stalker.writhing_stalker_state().evidence_target == other.get_identity() );
 }
 
 TEST_CASE( "writhing_stalker_linked_projectile_miss_is_idempotent_and_visibility_bound",

@@ -145,6 +145,10 @@ void observe_attack_resolution( const Creature *attacker, const Creature *target
                                 resolution_id resolution );
 void record_observed_attack( const Creature *observer, const Creature *attacker,
                              const Creature *target, int turn, resolution_id resolution );
+resolution_id recent_observed_attack_resolution( const Creature *observer, const Creature *attacker,
+        const Creature *target, int now_turn, int max_age );
+bool claim_observed_attack_response( const Creature *observer, const Creature *attacker,
+                                     const Creature *target, resolution_id resolution );
 bool has_recent_observed_attack( const Creature *observer, const Creature *attacker,
                                  const Creature *target, int now_turn, int max_age );
 int observed_attack_count( const Creature *observer, const Creature *attacker,

@@ -504,6 +504,7 @@ struct observed_attack {
     actor_identity target = 0;
     resolution_id resolution = 0;
     int turn = 0;
+    bool response_claimed = false;
 };
 
 std::vector<observed_attack> observed_attacks;
@@ -655,11 +656,11 @@ void record_observed_attack( const Creature *observer, const Creature *attacker,
     }
 }
 
-bool has_recent_observed_attack( const Creature *observer, const Creature *attacker,
-                                 const Creature *target, const int now_turn, const int max_age )
+resolution_id recent_observed_attack_resolution( const Creature *observer, const Creature *attacker,
+        const Creature *target, const int now_turn, const int max_age )
 {
     if( observer == nullptr || attacker == nullptr || target == nullptr ) {
-        return false;
+        return 0;
     }
     const actor_identity observer_id = observer->get_identity();
     const actor_identity attacker_id = attacker->get_identity();
@@ -668,6 +669,31 @@ bool has_recent_observed_attack( const Creature *observer, const Creature *attac
         if( it->observer == observer_id && it->attacker == attacker_id &&
             it->target == target_id && it->turn <= now_turn &&
             now_turn - it->turn <= max_age ) {
+            return it->resolution;
+        }
+    }
+    return 0;
+}
+
+bool has_recent_observed_attack( const Creature *observer, const Creature *attacker,
+                                 const Creature *target, const int now_turn, const int max_age )
+{
+    return recent_observed_attack_resolution( observer, attacker, target, now_turn, max_age ) != 0;
+}
+
+bool claim_observed_attack_response( const Creature *observer, const Creature *attacker,
+                                     const Creature *target, const resolution_id resolution )
+{
+    if( observer == nullptr || attacker == nullptr || target == nullptr || resolution == 0 ) {
+        return false;
+    }
+    for( observed_attack &event : observed_attacks ) {
+        if( event.observer == observer->get_identity() && event.attacker == attacker->get_identity() &&
+            event.target == target->get_identity() && event.resolution == resolution ) {
+            if( event.response_claimed ) {
+                return false;
+            }
+            event.response_claimed = true;
             return true;
         }
     }
