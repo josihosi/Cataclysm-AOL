@@ -12,7 +12,8 @@ class ExitAdapterReference(unittest.TestCase):
         env = os.environ.copy()
         env['CAOL_EXIT_COST_REFERENCE_CHECK'] = '1'
         env.pop('CAOL_EXIT_TRANSFER_MODE', None)
-        binary = 'tests/cata_test.exe' if sys.platform == 'win32' else 'tests/cata_test'
+        binary = os.environ.get('CAOL_EXIT_TEST_BINARY') or (
+            'tests/cata_test.exe' if sys.platform == 'win32' else 'tests/cata_test')
         command = [binary, 'hostile_camp_local_handoff_binds_the_complete_pair_transactionally',
                    '--section', 'homeward materialization binds both physical camp routes',
                    '--rng-seed', '48151']

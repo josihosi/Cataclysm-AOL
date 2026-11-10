@@ -330,6 +330,9 @@ jobs:
     - name: Build CDDA
       if: ${{ env.SKIP == 'false' }}
       run: bash ./build-scripts/gha_compile_only.sh
+    - name: Check scout exit adapter controls (Linux)
+      if: ${{ env.SKIP == 'false' && matrix.test-stage == 1 && runner.os == 'Linux' }}
+      run: python3 tests/bandit_exit_cost_adapter_control.py
     - name: post-build ccache manipulation
       if: ${{ env.SKIP == 'false' && !failure() && (runner.os == 'Linux' || runner.os == 'macOS') && matrix.ccache_key != '' }}
       run: |

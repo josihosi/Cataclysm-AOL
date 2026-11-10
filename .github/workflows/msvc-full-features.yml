@@ -157,6 +157,13 @@ jobs:
       run: |
           msbuild -m -p:Configuration=Release -p:Platform=x64 "-target:Cataclysm-vcpkg-static;Cataclysm-test-vcpkg-static;JsonFormatter-vcpkg-static;zzip" msvc-full-features/Cataclysm-vcpkg-static.sln
 
+    - name: Check scout exit adapter controls (Windows)
+      env:
+        CAOL_EXIT_TEST_BINARY: .\Cataclysm-test-vcpkg-static-Release-x64.exe
+      run: |
+        py -3 tests/bandit_exit_cost_adapter_control.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     - name: Get ccache cache age cutoff
       id: get-cache-age
       run: |
