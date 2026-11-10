@@ -78680,9 +78680,9 @@ TEST_CASE( "native Fight defender observation separates actor fate from avatar t
     const auto second_id = second.getID();
     shared_ptr_fast<npc> absent;
     if( mode == "far" ) {
-        const auto far = first.pos_abs() + point( 52, 0 );
-        REQUIRE( get_map().inbounds( far ) );
-        get_avatar().setpos( far, false );
+        const auto distant_position = first.pos_abs() + point( 52, 0 );
+        REQUIRE( get_map().inbounds( distant_position ) );
+        get_avatar().setpos( distant_position, false );
     } else if( mode == "unloaded" || mode == "missing" ) {
         g->remove_npc( second_id );
         REQUIRE_FALSE( second.is_active() );
@@ -81339,8 +81339,8 @@ TEST_CASE( "native_home_rally_uses_an_individual_body_interval_and_real_arrival"
         const auto current_moves = away.get_moves();
         const auto position = away.pos_abs();
         const auto actor_omt = away.pos_abs_omt();
-        const tripoint_abs_omt far( actor_omt.xy() - point( 41, 0 ), actor_omt.z() );
-        get_avatar().setpos( project_to<coords::ms>( far ) + point( 12, 12 ), false );
+        const tripoint_abs_omt distant_position( actor_omt.xy() - point( 41, 0 ), actor_omt.z() );
+        get_avatar().setpos( project_to<coords::ms>( distant_position ) + point( 12, 12 ), false );
         refresh_live_bandit_activation();
         REQUIRE_FALSE( recalled().active );
         away.on_unload();
@@ -81360,10 +81360,10 @@ TEST_CASE( "native_home_rally_uses_an_individual_body_interval_and_real_arrival"
     }
     SECTION( "home inside40 cannot age its independent away member at41" ) {
         const auto body_omt = away.pos_abs_omt();
-        const tripoint_abs_omt far( body_omt.xy() - point( 41, 0 ), body_omt.z() );
+        const tripoint_abs_omt distant_position( body_omt.xy() - point( 41, 0 ), body_omt.z() );
         away.add_effect( efftype_id( "stunned" ), 30_minutes );
         away.on_unload();
-        get_avatar().setpos( project_to<coords::ms>( far ) + point( 12, 12 ), false );
+        get_avatar().setpos( project_to<coords::ms>( distant_position ) + point( 12, 12 ), false );
         set_time( calendar::turn + 1_turns );
         refresh_live_bandit_activation();
         REQUIRE( site().home_activation.active );
@@ -81390,7 +81390,7 @@ TEST_CASE( "native_home_rally_uses_an_individual_body_interval_and_real_arrival"
                     overmap_buffer.global_state.bandit_live_world );
         away.on_load( &here );
         CHECK( body_contents( away ) == frozen_contents );
-        get_avatar().setpos( project_to<coords::ms>( far + point( 1, 0 ) ) + point( 12, 12 ), false );
+        get_avatar().setpos( project_to<coords::ms>( distant_position + point( 1, 0 ) ) + point( 12, 12 ), false );
         refresh_live_bandit_activation();
         away.on_load( &here );
         CHECK( recalled().active_turns == active );
