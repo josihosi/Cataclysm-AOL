@@ -387,6 +387,17 @@ TEST_CASE( "committed local assault keeps an unseen tired raider on its search o
     here.ter_set( here.get_bub( blocked ), ter_str_id( "t_floor" ) );
     here.invalidate_map_cache( blocked.z() );
     here.build_map_cache( blocked.z(), true );
+    const tripoint_abs_ms reopened_start = raider.pos_abs();
+    const int reopened_distance = rl_dist( reopened_start, blocked );
+    REQUIRE( reopened_distance > 0 );
+    raider.path.clear();
+    raider.goto_to_this_pos = blocked;
+    // process_turn supplies this actor's ordinary speed.  Leave exactly one
+    // move available and let the real loaded-NPC loop pay for the next step.
+    raider.set_moves( 1 - raider.get_speed() );
+    process_monsters_and_npcs_turn_for_test();
+    CHECK( rl_dist( raider.pos_abs(), blocked ) < reopened_distance );
+    CHECK( raider.get_moves() < 1 );
 
     set_time_to_day();
     g->reset_light_level();
@@ -39646,6 +39657,30 @@ TEST_CASE( "committed shakedown admission uses canonical active NPC ownership",
             CHECK_FALSE( member->has_active_faction_alarm() );
             CHECK_FALSE( member->faction_alarm );
         }
+        const int player_hp = get_avatar().get_hp();
+        std::map<character_id, tripoint_abs_ms> positions;
+        std::map<character_id, int> health;
+        for( const character_id id : party ) {
+            npc *member = g->find_npc( id );
+            member->set_moves( 150 );
+            positions.emplace( id, member->pos_abs() );
+            health.emplace( id, member->get_hp() );
+        }
+        for( int repeat = 0; repeat < 2; ++repeat ) {
+            note_live_bandit_aftermath_for_test();
+            note_live_bandit_local_turn_sight_avoid_for_test();
+            CHECK( get_avatar().get_hp() == player_hp );
+            for( const character_id id : party ) {
+                const npc *member = g->find_npc( id );
+                REQUIRE( member != nullptr );
+                CHECK( member->get_moves() == 150 );
+                CHECK( member->pos_abs() == positions.at( id ) );
+                CHECK( member->get_hp() == health.at( id ) );
+                CHECK( bandit_live_world::is_active_shakedown_parley_member(
+                           overmap_buffer.global_state.bandit_live_world, id ) );
+                CHECK_FALSE( member->is_enemy() );
+            }
+        }
     }
 
     SECTION( "a defender attack releases combat after local admission" ) {
@@ -40600,24 +40635,75 @@ TEST_CASE( "loaded hostile approach retires the saved rally guard for the reserv
         REQUIRE( lead->sees( here, get_avatar() ) );
         const int player_hp = get_avatar().get_hp();
         const int lead_distance = rl_dist( lead->pos_bub( here ), center );
-        note_live_bandit_aftermath_for_test();
-        note_live_bandit_local_turn_sight_avoid_for_test();
+        std::map<character_id, tripoint_abs_ms> before_contact_positions;
+        std::map<character_id, int> before_contact_hp;
+        for( const character_id id : party_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            member->set_moves( 200 );
+            before_contact_positions.emplace( id, member->pos_abs() );
+            before_contact_hp.emplace( id, member->get_hp() );
+        }
+        for( int repeat = 0; repeat < 2; ++repeat ) {
+            note_live_bandit_aftermath_for_test();
+            note_live_bandit_local_turn_sight_avoid_for_test();
+            CHECK( get_avatar().get_hp() == player_hp );
+            for( const character_id id : party_ids ) {
+                const npc *member = g->find_npc( id );
+                REQUIRE( member != nullptr );
+                CHECK( member->get_moves() == 200 );
+                CHECK( member->pos_abs() == before_contact_positions.at( id ) );
+                CHECK( member->get_hp() == before_contact_hp.at( id ) );
+            }
+        }
+        process_overmap_npc_move_for_test();
+        CHECK( get_avatar().get_hp() == player_hp );
+        for( const character_id id : party_ids ) {
+            const npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->get_moves() == 200 );
+            CHECK( member->pos_abs() == before_contact_positions.at( id ) );
+            CHECK( member->get_hp() == before_contact_hp.at( id ) );
+        }
         for( const character_id id : party_ids ) {
             npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
             CHECK( member->is_active() );
             CHECK( member->sees( here, get_avatar() ) );
             CHECK( member->get_attitude() == NPCATT_KILL );
-            member->set_moves( 200 );
         }
+        const item_location initial_weapon = lead->get_wielded_item();
+        const int initial_ammo = initial_weapon ? initial_weapon->ammo_remaining() : -1;
+        const double initial_recoil = lead->recoil_total();
         process_monsters_and_npcs_turn_for_test();
         for( const character_id id : party_ids ) {
             npc *member = g->find_npc( id );
             REQUIRE( member != nullptr );
             CHECK( member->get_moves() < 200 );
         }
-        CHECK( ( get_avatar().get_hp() < player_hp ||
-                 rl_dist( lead->pos_bub( here ), center ) < lead_distance ) );
+        // A ranged attacker may spend its first paid turn aiming.  Keep the
+        // positive assault check on a real shot, movement or damage, while
+        // letting ordinary subsequent turns complete that setup.
+        const auto observed_assault = [&]() {
+            const item_location weapon = lead->get_wielded_item();
+            return get_avatar().get_hp() < player_hp ||
+                   rl_dist( lead->pos_bub( here ), center ) < lead_distance ||
+                   ( initial_ammo > 0 && weapon && weapon->ammo_remaining() < initial_ammo );
+        };
+        for( int turn = 0; turn < 5 && !observed_assault(); ++turn ) {
+            calendar::turn += 1_turns;
+            process_monsters_and_npcs_turn_for_test();
+        }
+        const item_location lead_weapon = lead->get_wielded_item();
+        INFO( "lead_before=" << before_contact_positions.at( lead->getID() ).to_string() <<
+              " lead_after=" << lead->pos_abs().to_string() <<
+              " player_hp_before=" << player_hp << " player_hp_after=" << get_avatar().get_hp() <<
+              " moves_after=" << lead->get_moves() <<
+              " weapon=" << ( lead_weapon ? lead_weapon->tname() : "unarmed" ) <<
+              " ammo_before=" << initial_ammo << " ammo_after=" <<
+              ( lead_weapon ? lead_weapon->ammo_remaining() : -1 ) <<
+              " recoil_before=" << initial_recoil << " recoil_after=" << lead->recoil_total() );
+        CHECK( observed_assault() );
         CHECK( lead->getID() == party_ids.front() );
         CHECK( contact_site->active_hostile_operation.reservation.activity_id == operation_id );
 
