@@ -404,33 +404,118 @@ def publish_alarm_evidence(directory: Path, *, run_id: str, binding_id: str) -> 
             "retrieval": "evidence_display.py --sha256 DIGEST --selector alarms --limit 20"}
 
 
-def _turn_config(directory: Path) -> tuple[dict | None, str | None]:
-    """Read an explicit, scenario-owned turn-alarm configuration.
-
-    There are intentionally no fallback millisecond thresholds here.  A run
-    without a scenario expectation is still measurable, but it is not silently
-    judged against an empty-map or developer-machine default.
-    """
-    config = read_json(directory / TURN_CONFIG_NAME)
+def _validate_turn_config(config: Any) -> str | None:
+    if not isinstance(config, dict):
+        return "missing_or_invalid_turn_configuration"
     required_numbers = ("spike_seconds", "slow_turn_seconds", "incomplete_turn_seconds",
                         "stalled_observation_seconds")
     if config.get("schema") != "caol-performance-turn-config-v1":
-        return None, "missing_or_invalid_turn_configuration"
+        return "missing_or_invalid_turn_configuration"
     if not isinstance(config.get("provenance"), str) or not config["provenance"].strip():
-        return None, "turn_configuration_has_no_provenance"
+        return "turn_configuration_has_no_provenance"
     if any(not _finite_number(config.get(key), positive=True) for key in required_numbers):
-        return None, "turn_configuration_needs_finite_positive_thresholds"
+        return "turn_configuration_needs_finite_positive_thresholds"
     if not isinstance(config.get("window_turns"), int) or isinstance(config["window_turns"], bool) \
             or not 1 <= config["window_turns"] <= TURN_WINDOW_LIMIT:
-        return None, "turn_configuration_window_turns_out_of_range"
+        return "turn_configuration_window_turns_out_of_range"
     if not _finite_number(config.get("tail_percentile")) or not 0 < config["tail_percentile"] <= 1:
-        return None, "turn_configuration_tail_percentile_invalid"
+        return "turn_configuration_tail_percentile_invalid"
     if not isinstance(config.get("sustained_turns"), int) or isinstance(config["sustained_turns"], bool) \
             or not 1 <= config["sustained_turns"] <= config["window_turns"]:
-        return None, "turn_configuration_sustained_turns_invalid"
+        return "turn_configuration_sustained_turns_invalid"
     if not isinstance(config.get("expected_progress"), bool):
-        return None, "turn_configuration_expected_progress_invalid"
+        return "turn_configuration_expected_progress_invalid"
+    return None
+
+
+def validate_diagnostic_setup(config: Any, overrides: Mapping[str, Any]) -> None:
+    """An opt-in diagnostic scenario selects both consumers, never default thresholds."""
+    error = _validate_turn_config(config)
+    if error:
+        raise ValueError(error)
+    encoded = json.dumps(config, allow_nan=False).encode("utf-8")
+    if len(encoded) > 16384:
+        raise ValueError("turn_configuration_too_large")
+    if overrides.get("RAID_PERFORMANCE_DIAGNOSTIC", "normal") != "normal":
+        raise ValueError("diagnostic_setup_conflicts_with_native_mode")
+
+
+def prepare_diagnostic_setup(directory: Path, config: Any,
+                             overrides: Mapping[str, Any]) -> None:
+    """Install the selected configuration before launch, without replacing a session's config."""
+    validate_diagnostic_setup(config, overrides)
+    if overrides.get("RAID_PERFORMANCE_DIAGNOSTIC") != "normal":
+        raise ValueError("diagnostic_setup_native_override_missing")
+    if not directory.is_dir() or (directory / "game-process.json").exists():
+        raise ValueError("diagnostic_setup_requires_unlaunched_session")
+    path = directory / TURN_CONFIG_NAME
+    if path.exists():
+        if read_json(path) == config:
+            return  # An unchanged prelaunch retry does not replace configuration.
+        raise ValueError("diagnostic_setup_existing_configuration_differs")
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(config, stream, allow_nan=False)
+
+
+def diagnostic_readiness(config: Any, native_extrema: Mapping[str, Any]) -> dict:
+    """Describe observed capabilities, not a configuration-write success."""
+    snapshot = native_extrema.get("snapshot", {})
+    sample = snapshot.get("individual_max") or {}
+    observed = (native_extrema.get("status") == "retained" and
+                sample.get("process_cpu_seconds") is not None and
+                sample.get("stages_seconds") is not None and
+                sample.get("metric_unavailable_reason") is None)
+    return {"assessment_configured": config is not None,
+            "native_cpu_stages": "observed" if observed else "unavailable",
+            "reason": None if observed else sample.get("metric_unavailable_reason", "no_native_measurement"),
+            "game_turn": sample.get("game_turn"),
+            "native_process_instance": snapshot.get("native_process_instance"),
+            "scope": "retained run-bound observation; not proof of current workload or fresh configuration"}
+
+
+def _turn_config(directory: Path) -> tuple[dict | None, str | None]:
+    """Read explicit scenario expectations; never invent alarm thresholds."""
+    config = read_json(directory / TURN_CONFIG_NAME)
+    error = _validate_turn_config(config)
+    if error:
+        return None, error
     return config, None
+
+
+def configure_turn_assessment(directory: Path, binding_id: str, config: Any) -> dict:
+    """Publish explicit thresholds only into the currently owned session."""
+    error = _validate_turn_config(config)
+    if error:
+        raise ValueError(error)
+    try:
+        encoded = json.dumps(config, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise ValueError("turn_configuration_not_valid_json") from error
+    if len(encoded) > 16384:
+        raise ValueError("turn_configuration_too_large")
+    owner = read_json(directory / "performance-owner.json")
+    if owner.get("binding_id") != binding_id:
+        raise ValueError("performance_binding_mismatch")
+    _require_record_owner(directory, owner)
+    current_process = sample_child_resources(owner["pid"])
+    if (current_process.get("pid") != owner["pid"] or
+            current_process.get("process_identity") != owner["process_identity"]):
+        raise ValueError("performance_process_identity_changed")
+    status = read_json(directory / "status.json")
+    if status.get("binding_id") != binding_id or status.get("state") != "ready":
+        raise ValueError("performance_session_not_ready")
+    path = directory / TURN_CONFIG_NAME
+    if path.exists():
+        raise ValueError("turn_configuration_already_exists")
+    def guard():
+        _require_record_owner(directory, owner)
+        current = read_json(directory / "status.json")
+        if current.get("binding_id") != binding_id or current.get("state") != "ready":
+            raise ValueError("performance_session_not_ready")
+    write_json(path, dict(config), guard=guard)
+    return {"ok": True, "run_id": owner["run_id"], "binding_id": binding_id,
+            "configuration": str(path), "provenance": config["provenance"],
+            "native_refresh_seconds_max": 30}
 
 
 def _trace_path(directory: Path) -> Path | None:
@@ -1356,6 +1441,7 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
                                            if completed else {"status": "unavailable", "reason": "no_completed_turn"})
     assessment["selected_native_packets"] = packet_handles
     assessment["native_extrema"] = native_extrema
+    assessment["diagnostic_readiness"] = diagnostic_readiness(config, native_extrema)
     assessment["native_slow_receipts"] = native_slow_receipts
     assessment["selected_packet_archive"] = str(directory / "cockpit-evidence.sqlite")
     assessment["alarm_retention"] = retain_alarm_evidence(

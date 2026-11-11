@@ -191,6 +191,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/cockpit_evidence.py",
     "tools/openclaw_harness/harness_log_window.py",
     "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/process_performance.py",
     "tools/openclaw_harness/gameplay_display.py",
     "tools/openclaw_harness/startup_dialog.py",
     "tools/openclaw_harness/ocr_image.swift",
@@ -2723,9 +2724,16 @@ def resolve_scenario_profile_option_overrides(
     overrides = normalize_profile_option_overrides(
         scenario.get("profile_option_overrides", {})
     )
+    diagnostic_config = scenario.get("performance_turn_config")
+    def effective_overrides() -> Dict[str, str]:
+        if diagnostic_config is not None:
+            from process_performance import validate_diagnostic_setup
+            validate_diagnostic_setup(diagnostic_config, overrides)
+            overrides["RAID_PERFORMANCE_DIAGNOSTIC"] = "normal"
+        return overrides
     raw_platform_overrides = scenario.get("profile_option_overrides_by_platform", {})
     if raw_platform_overrides in (None, {}):
-        return overrides
+        return effective_overrides()
     if not isinstance(raw_platform_overrides, dict):
         raise ValueError("profile_option_overrides_by_platform must be a JSON object")
 
@@ -2741,7 +2749,7 @@ def resolve_scenario_profile_option_overrides(
         raw_platform_overrides.get(selected_platform, {})
     )
     overrides.update(selected_overrides)
-    return overrides
+    return effective_overrides()
 
 
 def parse_profile_option_args(raw_options: Sequence[str]) -> Dict[str, str]:
@@ -33881,6 +33889,14 @@ def continuation_saved_world_snapshot(
     return snapshot
 
 
+def continuation_profile_option_overrides(scenario: Mapping[str, Any],
+                                          overrides: Dict[str, str]) -> Dict[str, str]:
+    """Keep explicit options for a fresh declared snapshot, not in-run reentry."""
+    if scenario.get("saved_world_snapshot") and not scenario.get("post_relaunch"):
+        return dict(overrides)
+    return {}
+
+
 def run_probe_post_relaunch(
     *,
     initial_pid: int,
@@ -44401,7 +44417,8 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         fixture_profile = ""
         profile_snapshot = ""
         profile_snapshot_profile = ""
-        profile_option_overrides = {}
+        profile_option_overrides = continuation_profile_option_overrides(
+            scenario, profile_option_overrides)
         replace_existing_worlds = False
         post_relaunch = None
     runtime_contract = scenario.get("runtime_contract", {})
@@ -44533,6 +44550,17 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             post_finalize_hook=post_finalize_hook,
         )
         return 2
+
+    diagnostic_config = scenario.get("performance_turn_config")
+    if diagnostic_config is not None and isinstance(scenario.get("controlled_camp_setup"), Mapping):
+        raise ValueError("diagnostic_setup_requires_standard_cockpit_start")
+    if diagnostic_config is not None and not args.dry_run:
+        from process_performance import prepare_diagnostic_setup
+        diagnostic_session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
+        if not diagnostic_session:
+            raise ValueError("diagnostic_setup_requires_selected_cockpit_session")
+        prepare_diagnostic_setup(Path(diagnostic_session), diagnostic_config,
+                                 profile_option_overrides)
 
     if handoff and bool(getattr(args, "launch_only", False)):
         return run_launch_only_handoff(

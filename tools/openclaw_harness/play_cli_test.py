@@ -2,6 +2,7 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -653,12 +654,115 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual((self.session / "play-client.json").read_bytes(), before)
         self.assertEqual(len(self.requests()), 1)
 
+    def test_performance_configure_is_explicit_bound_and_consumed(self):
+        import process_performance as perf
+        from r009_technical_witness import sample_child_resources
+        owner = {"pid": os.getpid(), "run_id": "run-a", "binding_id": "bound-a",
+                 "process_identity": sample_child_resources(os.getpid())["process_identity"],
+                 "source_binding": {"head": "source-a"}}
+        self.write("performance-owner.json", owner)
+        config = {"schema": "caol-performance-turn-config-v1", "provenance": "camp comparison",
+                  "window_turns": 4, "tail_percentile": 0.95, "spike_seconds": 0.1,
+                  "slow_turn_seconds": 0.1, "sustained_turns": 2,
+                  "incomplete_turn_seconds": 5.0, "stalled_observation_seconds": 5.0,
+                  "expected_progress": True}
+        source = self.session / "explicit-config.json"
+        source.write_text(json.dumps(config))
+        result = self.cli("performance-configure", "--config", str(source))
+        self.assertEqual(result["run_id"], "run-a")
+        self.assertEqual(perf._turn_config(self.session), (config, None))
+        trace = self.session / "semantic.native.events.jsonl"
+        events = [{"event": "turn", "stage": stage, "run_id": "run-a",
+                   "process_instance": "native-a", "turn_id": "1", "sequence": sequence,
+                   "game_turn": 100, "game_minutes": 10, "wall_time_seconds": 10 + sequence,
+                   "simulation_seconds": seconds, "phase": "simulation", "owner": "game::do_turn"}
+                  for stage, sequence, seconds in (("start", 1, 0), ("end", 2, 0.2))]
+        trace.write_text("".join(perf.TURN_TRACE_PREFIX + json.dumps(event) + "\n" for event in events))
+        with patch("evidence_display.STORE", self.session / "evidence"):
+            assessment = perf.collect_turn_assessment(self.session, "bound-a")
+        self.assertIn("spike", {alarm["kind"] for alarm in assessment["alarms"]})
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        self.assertEqual(perf._turn_config(self.session), (config, None))
+        (self.session / perf.TURN_CONFIG_NAME).unlink()
+        plain = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                "performance-configure", "--config", str(source)],
+                               capture_output=True, text=True)
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        self.assertIn("Turn assessment configured for run run-a", plain.stdout)
+
+    def test_performance_configure_rejects_bad_config_and_wrong_owner(self):
+        import process_performance as perf
+        from r009_technical_witness import sample_child_resources
+        owner = {"pid": os.getpid(), "run_id": "run-a", "binding_id": "other",
+                 "process_identity": sample_child_resources(os.getpid())["process_identity"],
+                 "source_binding": {"head": "source-a"}}
+        self.write("performance-owner.json", owner)
+        config = {"schema": "caol-performance-turn-config-v1", "provenance": "camp comparison",
+                  "window_turns": 4, "tail_percentile": 0.95, "spike_seconds": 0.1,
+                  "slow_turn_seconds": 0.1, "sustained_turns": 2,
+                  "incomplete_turn_seconds": 5.0, "stalled_observation_seconds": 5.0,
+                  "expected_progress": True}
+        source = self.session / "explicit-config.json"
+        source.write_text(json.dumps(config))
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        owner["binding_id"] = "bound-a"
+        self.write("performance-owner.json", owner)
+        owner["process_identity"] = "not-the-current-process"
+        self.write("performance-owner.json", owner)
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        owner["process_identity"] = sample_child_resources(os.getpid())["process_identity"]
+        self.write("performance-owner.json", owner)
+        self.write("status.json", {"binding_id": "bound-a", "state": "safe_to_cleanup"})
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        self.write("status.json", {"binding_id": "bound-a", "state": "ready"})
+        config["spike_seconds"] = 0
+        source.write_text(json.dumps(config))
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        self.assertFalse((self.session / perf.TURN_CONFIG_NAME).exists())
+        config["spike_seconds"] = 0.1
+        config["extra"] = float("nan")
+        source.write_text(json.dumps(config))
+        self.cli("performance-configure", "--config", str(source), ok=False)
+        self.assertFalse((self.session / perf.TURN_CONFIG_NAME).exists())
+
+    def test_performance_consumer_changes_runtime_source_binding(self):
+        import startup_harness
+        root = self.session / "repo"
+        source = root / "tools/openclaw_harness/process_performance.py"
+        source.parent.mkdir(parents=True)
+        source.write_text("value = 1\n")
+        subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(root), "add", str(source.relative_to(root))], check=True)
+        subprocess.run(["git", "-C", str(root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "commit", "-qm", "baseline"], check=True)
+        with patch("startup_harness.repo_root", return_value=root):
+            before = startup_harness.runtime_source_binding()
+            source.write_text("value = 2\n")
+            after = startup_harness.runtime_source_binding()
+        self.assertTrue(before["ok"] and after["ok"])
+        self.assertNotEqual(before["sha256"], after["sha256"])
+
+    def test_declared_saved_checkpoint_preserves_explicit_native_option(self):
+        import startup_harness as harness
+        scenario = {"saved_world_snapshot": "/task/owned/checkpoint",
+                    "profile_option_overrides": {"RAID_PERFORMANCE_DIAGNOSTIC": "normal"}}
+        declared = harness.resolve_scenario_profile_option_overrides(scenario)
+        selected = harness.continuation_profile_option_overrides(scenario, declared)
+        options = self.session / "options.json"
+        options.write_text("[]")
+        self.assertEqual(harness.apply_option_overrides_to_file(options, selected)["applied"], declared)
+        self.assertEqual(json.loads(options.read_text())[0]["value"], "normal")
+        self.assertEqual(harness.continuation_profile_option_overrides(
+            {**scenario, "post_relaunch": {"steps": ["save"]}}, declared), {})
+        self.assertEqual(harness.continuation_profile_option_overrides({}, declared), {})
+
     def test_performance_samples_actual_owned_process_under_request_lock(self):
         import os
         from r009_technical_witness import sample_child_resources
         initial = sample_child_resources(os.getpid())
         owner = {"pid": os.getpid(), "run_id": "test-process", "binding_id": "bound-a",
-                 "process_identity": initial["process_identity"], "platform": initial["platform"]}
+                 "process_identity": initial["process_identity"], "platform": initial["platform"],
+                 "source_binding": {"runtime_binding_sha256": "test-source"}}
         self.write("performance-owner.json", owner)
         self.write("performance-context.json", {"owner": owner, "context_id": "c1",
                    "context": {"phase": "unknown", "source": "test_process_fixture"}})

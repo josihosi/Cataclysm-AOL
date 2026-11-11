@@ -1255,6 +1255,8 @@ def main(argv=None):
     performance = commands.add_parser("performance", help="Read CPU/RSS/action intervals, including while a request is pending")
     performance.add_argument("--sample-seconds", type=float, help="Measure a fresh owned-process CPU interval without bridge input")
     performance.add_argument("--retain-max", action="store_true", help="Retain exact native records for the selected current-window maximum, if still available")
+    performance_configure = commands.add_parser("performance-configure", help="Install explicit scenario turn-alarm thresholds for the current run")
+    performance_configure.add_argument("--config", type=Path, required=True, help="JSON configuration with scenario provenance and explicit thresholds")
     release_max = commands.add_parser("release-max", help="Release one consumed selected-maximum artifact owned by this session")
     release_max.add_argument("--run-id", required=True, help="Exact run ID from the retained selection")
     release_max.add_argument("--measurement-id", required=True, help="Exact selected measurement ID")
@@ -1359,7 +1361,11 @@ def main(argv=None):
         else:
             with session_lock(args.session / "play-client.lock"):
                 client = PlayerClient(args.session)
-                if args.command == "look":
+                if args.command == "performance-configure":
+                    from process_performance import configure_turn_assessment
+                    config = json.loads(args.config.read_text(encoding="utf-8"))
+                    result = configure_turn_assessment(client.session, client.binding, config)
+                elif args.command == "look":
                     if client.state.get("sealed_terminal"):
                         status = json.loads((args.session / "status.json").read_text(encoding="utf-8"))
                         if (status.get("binding_id") != client.binding or
@@ -1493,6 +1499,17 @@ def main(argv=None):
                                    startup_error=startup_error, operation_availability=operation_availability,
                                    inspection_request_id=getattr(args, "request_id", None) if args.command == "inspect" else None,
                                    show_local_map=show_local_map)
+        if args.command == "performance-configure" and result.get("ok"):
+            text = ("Turn assessment configured for run " + result["run_id"] +
+                    ". This does not enable native CPU/stage diagnostics. Check play performance "
+                    "diagnostic_readiness after the next native refresh (up to 30 seconds).")
+        if args.command == "performance":
+            readiness = result.get("turn_assessment", {}).get("diagnostic_readiness", {})
+            if readiness:
+                text += ("\nNative CPU/stages: " + readiness["native_cpu_stages"] +
+                         " (retained turn " + str(readiness.get("game_turn")) + "); assessment config: " +
+                         ("available" if readiness["assessment_configured"] else "unavailable") +
+                         ". " + (readiness.get("reason") or "Check this observation matches the test question."))
         if args.command == "look" and show_local_map and result.get("state") == "pending":
             text += "\nLocal map when ready → play collect --map"
         if args.command == "controls":
