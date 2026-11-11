@@ -319,8 +319,15 @@ struct raid_perf_row {
     double cpu_seconds = 0;
     double input_seconds = 0;
     double save_seconds = 0;
+    std::size_t locker_resource_attempts = 0;
+    std::size_t locker_cpu_samples = 0;
+    double locker_cpu_seconds = 0;
+    double locker_body_wall_seconds = 0;
+    double locker_probe_fence_wall_seconds = 0;
 #if defined(__APPLE__)
     std::optional<std::array<std::uint64_t, 6>> process_resource_delta;
+    std::size_t locker_resource_samples = 0;
+    std::array<std::uint64_t, 4> locker_resource_delta{};
 #endif
     debug_sink_statistics sink;
     std::array<double, raid_perf_stage_count> stages{};
@@ -401,6 +408,72 @@ void raid_perf_scope::restart( raid_perf_stage target )
     start( target, true );
 }
 
+camp_locker_resource_scope::camp_locker_resource_scope()
+{
+    if( !raid_perf_current ) {
+        return;
+    }
+    const char *const option = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+    if( !option || option[0] == '\0' || option[0] == '0' ) {
+        return;
+    }
+    row = raid_perf_current;
+    ++row->locker_resource_attempts;
+    probe_started = std::chrono::steady_clock::now();
+#if defined(__APPLE__)
+    rusage_info_v4 resource{};
+    if( proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                         reinterpret_cast<rusage_info_t *>( &resource ) ) == 0 ) {
+        resource_started = { resource.ri_proc_start_abstime, resource.ri_pageins,
+                             resource.ri_diskio_bytesread, resource.ri_diskio_byteswritten,
+                             resource.ri_runnable_time };
+        resource_valid = true;
+    }
+#endif
+#if !defined(_WIN32)
+    cpu_started = std::clock();
+#endif
+    body_started = std::chrono::steady_clock::now();
+}
+
+camp_locker_resource_scope::~camp_locker_resource_scope()
+{
+    if( !row ) {
+        return;
+    }
+    const auto body_finished = std::chrono::steady_clock::now();
+#if !defined(_WIN32)
+    const std::clock_t cpu_finished = std::clock();
+    if( cpu_started != static_cast<std::clock_t>( -1 ) &&
+        cpu_finished != static_cast<std::clock_t>( -1 ) && cpu_finished >= cpu_started ) {
+        row->locker_cpu_seconds += static_cast<double>( cpu_finished - cpu_started ) / CLOCKS_PER_SEC;
+        ++row->locker_cpu_samples;
+    }
+#endif
+#if defined(__APPLE__)
+    rusage_info_v4 resource{};
+    if( resource_valid && proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                                          reinterpret_cast<rusage_info_t *>( &resource ) ) == 0 &&
+        resource.ri_proc_start_abstime == resource_started[0] &&
+        resource.ri_pageins >= resource_started[1] &&
+        resource.ri_diskio_bytesread >= resource_started[2] &&
+        resource.ri_diskio_byteswritten >= resource_started[3] &&
+        resource.ri_runnable_time >= resource_started[4] ) {
+        row->locker_resource_delta[0] += resource.ri_pageins - resource_started[1];
+        row->locker_resource_delta[1] += resource.ri_diskio_bytesread - resource_started[2];
+        row->locker_resource_delta[2] += resource.ri_diskio_byteswritten - resource_started[3];
+        row->locker_resource_delta[3] += resource.ri_runnable_time - resource_started[4];
+        ++row->locker_resource_samples;
+    }
+#endif
+    const auto probe_finished = std::chrono::steady_clock::now();
+    row->locker_body_wall_seconds +=
+        std::chrono::duration<double>( body_finished - body_started ).count();
+    row->locker_probe_fence_wall_seconds +=
+        std::chrono::duration<double>( body_started - probe_started ).count() +
+        std::chrono::duration<double>( probe_finished - body_finished ).count();
+}
+
 bool raid_perf_nav_build_active()
 {
     return raid_perf_current && raid_perf_current->nav_build_depth != 0;
@@ -474,6 +547,55 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
     js.member( "process_cpu_seconds", row.cpu_seconds );
     js.member( "input_seconds", row.input_seconds );
     js.member( "save_seconds", row.save_seconds );
+    if( row.locker_resource_attempts ) {
+        js.member( "camp_locker_collection_resources" );
+        js.start_object();
+        js.member( "scope", "process_wide_during_locker_collection_excludes_input_and_save" );
+#if defined(_WIN32)
+        js.member( "fence_scope", "body_wall_only_cpu_and_darwin_resources_unavailable" );
+#elif defined(__APPLE__)
+        js.member( "fence_scope", "body_wall_inside_cpu_fences_inside_resource_fences" );
+#else
+        js.member( "fence_scope", "body_wall_inside_cpu_fences_darwin_resources_unavailable" );
+#endif
+        js.member( "attempts", row.locker_resource_attempts );
+        js.member( "body_wall_seconds", row.locker_body_wall_seconds );
+        js.member( "probe_fence_wall_seconds", row.locker_probe_fence_wall_seconds );
+        js.member( "cpu_samples", row.locker_cpu_samples );
+        if( row.locker_cpu_samples == row.locker_resource_attempts ) {
+            js.member( "process_cpu_seconds", row.locker_cpu_seconds );
+        } else {
+            js.member( "process_cpu_seconds" );
+            js.write_null();
+#if defined(_WIN32)
+            js.member( "process_cpu_unavailable_reason", "unsupported_platform" );
+#else
+            js.member( "process_cpu_unavailable_reason", "clock_unavailable" );
+#endif
+        }
+#if defined(__APPLE__)
+        js.member( "resource_samples", row.locker_resource_samples );
+        if( row.locker_resource_samples == row.locker_resource_attempts ) {
+            js.member( "pageins", row.locker_resource_delta[0] );
+            js.member( "disk_read_bytes", row.locker_resource_delta[1] );
+            js.member( "disk_write_bytes", row.locker_resource_delta[2] );
+            // Darwin task-wide runnable time uses Mach absolute ticks.
+            js.member( "runnable_ticks", row.locker_resource_delta[3] );
+            static const mach_timebase_info_data_t locker_timebase = []() {
+                mach_timebase_info_data_t value{};
+                if( mach_timebase_info( &value ) != KERN_SUCCESS ) {
+                    value = {};
+                }
+                return value;
+            }();
+            if( locker_timebase.denom != 0 ) {
+                js.member( "timebase_numer", locker_timebase.numer );
+                js.member( "timebase_denom", locker_timebase.denom );
+            }
+        }
+#endif
+        js.end_object();
+    }
 #if defined(__APPLE__)
     if( row.process_resource_delta ) {
         // These are whole-process, whole-turn counters: input and save
@@ -563,6 +685,11 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->cpu_seconds = row.cpu_seconds;
     copy->input_seconds = row.input_seconds;
     copy->save_seconds = row.save_seconds;
+    copy->locker_resource_attempts = row.locker_resource_attempts;
+    copy->locker_cpu_samples = row.locker_cpu_samples;
+    copy->locker_cpu_seconds = row.locker_cpu_seconds;
+    copy->locker_body_wall_seconds = row.locker_body_wall_seconds;
+    copy->locker_probe_fence_wall_seconds = row.locker_probe_fence_wall_seconds;
     copy->sink = row.sink;
     copy->stages = row.stages;
     copy->stage_calls = row.stage_calls;
@@ -583,6 +710,8 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->channel_output = row.channel_output;
 #if defined(__APPLE__)
     copy->process_resource_delta = row.process_resource_delta;
+    copy->locker_resource_samples = row.locker_resource_samples;
+    copy->locker_resource_delta = row.locker_resource_delta;
 #endif
     return copy;
 }

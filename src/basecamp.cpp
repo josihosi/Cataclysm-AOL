@@ -3200,6 +3200,7 @@ camp_locker_live_state collect_camp_locker_live_state(
     camp_locker_service_probe *probe = nullptr )
 {
     raid_perf_scope diagnostic_scope( raid_perf_stage::camp_locker_collection );
+    camp_locker_resource_scope resource_scope;
     camp_locker_live_state live_state;
     live_state.current_items = collect_camp_locker_current_items( worker );
     live_state.worker_items = collect_camp_locker_worker_items( worker );

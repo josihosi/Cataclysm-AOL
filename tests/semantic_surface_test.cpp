@@ -3830,8 +3830,6 @@ TEST_CASE( "rejected transport stays inside the native input owner until a real 
 }
 
 #if !defined(TILES)
-extern "C" int ungetch( int );
-
 TEST_CASE( "debug prompt retains native keyboard continuation outside semantic mode",
            "[semantic_surface][debug_error_prompt_067]" )
 {
@@ -4501,8 +4499,6 @@ TEST_CASE( "debug file is bounded during one long running process", "[debug][nat
     CHECK( retained.find( "latest-current-diagnostic" ) != std::string::npos );
 }
 
-
-extern "C" int flushinp();
 
 #if !defined(TILES)
 TEST_CASE( "avatar activity driver publishes its actual tired travel decision",

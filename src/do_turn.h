@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <chrono>
+#include <array>
+#include <ctime>
 #include <map>
 #include <optional>
 #include <string>
@@ -95,6 +97,29 @@ class raid_perf_scope
         raid_perf_row *row;
         raid_perf_stage stage;
         std::chrono::steady_clock::time_point started;
+};
+
+// Opt-in process-wide CPU and Darwin resource deltas for the synchronous
+// Locker collection only. No sampling is performed outside a diagnostic row.
+class camp_locker_resource_scope
+{
+    public:
+        camp_locker_resource_scope();
+        ~camp_locker_resource_scope();
+        camp_locker_resource_scope( const camp_locker_resource_scope & ) = delete;
+        camp_locker_resource_scope &operator=( const camp_locker_resource_scope & ) = delete;
+
+    private:
+        raid_perf_row *row = nullptr;
+#if !defined(_WIN32)
+        std::clock_t cpu_started = static_cast<std::clock_t>( -1 );
+#endif
+        std::chrono::steady_clock::time_point probe_started;
+        std::chrono::steady_clock::time_point body_started;
+#if defined(__APPLE__)
+        std::array<std::uint64_t, 5> resource_started{};
+        bool resource_valid = false;
+#endif
 };
 
 // Exclude only a native input acquisition outside handle_action's existing
