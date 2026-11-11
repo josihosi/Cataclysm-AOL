@@ -402,6 +402,7 @@ void zone_manager_ui::display_zone_manager()
     // get zones with distance between player and
     // zone center point <= MAX_VIEW_DISTANCE or all zones, if show_all_zones is true
     auto get_zones = [&]() {
+        mgr.ensure_unique_zone_identities();
         std::vector<zone_manager::ref_zone_data> zones;
         if( show_all_zones ) {
             zones = mgr.get_zones( zones_faction );

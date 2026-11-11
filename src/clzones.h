@@ -415,7 +415,12 @@ class zone_data
         shared_ptr_fast<zone_options> options;
         bool is_displayed;
         std::string identity;
+        // Prefer a valid persisted identity over a newly generated legacy ID
+        // when old data contains a collision.
+        bool identity_restored = false; // NOLINT(cata-serialize)
         std::optional<int64_t> semantic_revision;
+
+        friend class zone_manager;
 
     public:
         zone_data() {
@@ -610,6 +615,7 @@ class zone_manager
 
     private:
         static const int MAX_DISTANCE = MAX_VIEW_DISTANCE;
+        static void repair_duplicate_identities( const std::vector<zone_data *> &loaded );
         std::vector<zone_data> zones;
         //Containers for Revert functionality for Vehicle Zones
         //Pointer to added zone to be removed
@@ -646,6 +652,9 @@ class zone_manager
         }
 
         void clear();
+        // Repair ambiguous semantic identities at Zone Manager presentation,
+        // including currently loaded vehicle zones. Contents and layout are preserved.
+        void ensure_unique_zone_identities();
 
         // For addition of regular and vehicle zones
         void add( const std::string &name, const zone_type_id &type, const faction_id &faction,

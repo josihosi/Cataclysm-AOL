@@ -1,5 +1,6 @@
 #include <array>
 #include <climits>
+#include <filesystem>
 #include <functional>
 #include <initializer_list>
 #include <list>
@@ -31,6 +32,7 @@
 #include "map.h"
 #include "map_helpers.h"
 #include "npc.h"
+#include "path_info.h"
 #include "player_activity.h"
 #include "player_helpers.h"
 #include "pocket_type.h"
@@ -123,6 +125,167 @@ TEST_CASE( "zone_data_new_instances_have_distinct_identities", "[zones][identity
     CHECK_FALSE( first.get_identity().empty() );
     CHECK_FALSE( second.get_identity().empty() );
     CHECK( first.get_identity() != second.get_identity() );
+}
+
+TEST_CASE( "zone_data_loaded_identity_is_reserved_before_new_zone_creation", "[zones][identity]" )
+{
+    const zone_data seed( "seed", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                          tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    const auto serial = std::stoull( seed.get_identity().substr( 5 ) );
+    // The default constructor consumes one ID before deserialize restores the
+    // saved value. Without reservation, the next new zone reuses this ID.
+    const std::string saved_id = "zone-" + std::to_string( serial + 2 );
+    const std::string saved = R"({"identity":")" + saved_id + R"(",
+        "name":"saved custom label", "type":"LOOT_DEFAULT", "faction":"your_followers",
+        "invert":false, "enabled":true, "is_vehicle":false, "is_personal":false,
+        "start":[1,2,0], "end":[1,2,0], "is_displayed":false})";
+    zone_data loaded;
+    loaded.deserialize( json_loader::from_string( saved ).get_object() );
+    const zone_data created( "new", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                             tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+
+    CHECK( loaded.get_identity() == saved_id );
+    CHECK( loaded.get_name() == "saved custom label" );
+    CHECK( created.get_identity() != saved_id );
+}
+
+TEST_CASE( "duplicate_saved_zone_identities_are_repaired_without_losing_zones",
+           "[zones][identity]" )
+{
+    clear_avatar();
+    clear_map();
+    zone_manager &manager = zone_manager::get_manager();
+    manager.clear();
+    const std::string suffix = "_identity_repair_test";
+    on_out_of_scope cleanup( [&] {
+        manager.clear();
+        std::filesystem::remove( ( PATH_INFO::player_base_save_path() +
+                                   ".zones" + suffix + ".json" ).get_unrelative_path() );
+        std::filesystem::remove( ( PATH_INFO::world_base_save_path() /
+                                   ( "zones" + suffix + ".json" ) ).get_unrelative_path() );
+    } );
+    const std::string saved = R"([
+        {"identity":"zone-6", "name":"original custom", "type":"LOOT_DEFAULT",
+         "faction":"your_followers", "invert":false, "enabled":true,
+         "is_vehicle":false, "is_personal":false, "start":[1,2,0], "end":[1,2,0], "is_displayed":false},
+        {"identity":"zone-6", "name":"duplicate custom", "type":"LOOT_CUSTOM", "mark":"stick",
+         "faction":"your_followers", "invert":false, "enabled":false,
+         "is_vehicle":false, "is_personal":false, "start":[3,4,0], "end":[3,4,0], "is_displayed":false},
+        {"identity":"owner-custom-id", "name":"unique custom", "type":"LOOT_DEFAULT",
+         "faction":"your_followers", "invert":false, "enabled":true,
+         "is_vehicle":false, "is_personal":false, "start":[5,6,0], "end":[5,6,0], "is_displayed":false}
+    ])";
+    manager.deserialize( json_loader::from_string( saved ) );
+    // General planner access is read-only and does not perform identity work.
+    const auto before_presentation = manager.get_zones( faction_your_followers );
+    REQUIRE( before_presentation.size() == 3 );
+    CHECK( before_presentation[0].get().get_identity() == "zone-6" );
+    CHECK( before_presentation[1].get().get_identity() == "zone-6" );
+    REQUIRE( manager.save_zones( suffix ) );
+    manager.clear();
+    manager.load_zones( suffix );
+    const auto loaded = manager.get_zones( faction_your_followers );
+    REQUIRE( loaded.size() == 3 );
+    CHECK( loaded[0].get().get_identity() == "zone-6" );
+    CHECK( loaded[1].get().get_identity() != "zone-6" );
+    CHECK( loaded[2].get().get_identity() == "owner-custom-id" );
+    CHECK( loaded[0].get().get_name() == "original custom" );
+    CHECK( loaded[1].get().get_name() == "duplicate custom" );
+    CHECK( loaded[2].get().get_name() == "unique custom" );
+    CHECK( loaded[1].get().get_type() == zone_type_id( "LOOT_CUSTOM" ) );
+    const auto *custom_options = dynamic_cast<const loot_options *>( &loaded[1].get().get_options() );
+    REQUIRE( custom_options != nullptr );
+    CHECK( custom_options->get_mark() == "stick" );
+    CHECK_FALSE( loaded[1].get().get_enabled() );
+    CHECK( loaded[1].get().get_start_point() == tripoint_abs_ms( 3, 4, 0 ) );
+    const std::string repaired = loaded[1].get().get_identity();
+    CHECK( manager.get_zones( faction_your_followers )[1].get().get_identity() == repaired );
+    std::ostringstream stream;
+    JsonOut json( stream );
+    manager.serialize( json );
+    manager.clear();
+    manager.deserialize( json_loader::from_string( stream.str() ) );
+    manager.ensure_unique_zone_identities();
+    const auto reloaded = manager.get_zones( faction_your_followers );
+    REQUIRE( reloaded.size() == 3 );
+    CHECK( reloaded[0].get().get_identity() == "zone-6" );
+    CHECK( reloaded[1].get().get_identity() == repaired );
+    CHECK( reloaded[2].get().get_identity() == "owner-custom-id" );
+    CHECK( reloaded[1].get().get_name() == "duplicate custom" );
+    const auto *reloaded_options = dynamic_cast<const loot_options *>( &reloaded[1].get().get_options() );
+    REQUIRE( reloaded_options != nullptr );
+    CHECK( reloaded_options->get_mark() == "stick" );
+}
+
+TEST_CASE( "duplicate_vehicle_zone_identity_is_repaired_without_losing_either_zone",
+           "[zones][identity][vehicle]" )
+{
+    clear_avatar();
+    clear_map();
+    zone_manager &manager = zone_manager::get_manager();
+    manager.clear();
+    on_out_of_scope cleanup( [&] { manager.clear(); } );
+    map &here = get_map();
+    const tripoint_bub_ms ground_pos{ 5, 5, 0 };
+    const tripoint_bub_ms cart_pos{ 6, 5, 0 };
+    here.ter_set( ground_pos, ter_t_floor );
+    here.ter_set( cart_pos, ter_t_floor );
+    const tripoint_abs_ms ground_abs = here.get_abs( ground_pos );
+    manager.add( "Ground custom", zone_type_LOOT_DEFAULT, faction_your_followers,
+                 false, true, ground_abs, ground_abs );
+    auto regular = manager.get_zones( faction_your_followers );
+    REQUIRE( regular.size() == 1 );
+    const std::string original = regular[0].get().get_identity();
+    zone_data vehicle_copy = regular[0].get();
+    vehicle *cart = here.add_vehicle( vehicle_prototype_test_shopping_cart, cart_pos,
+                                      0_degrees, 0, veh_spawn_status::UNDAMAGED );
+    REQUIRE( cart != nullptr );
+    cart->set_owner( get_avatar() );
+    const auto cargo = here.veh_at( cart_pos ).cargo();
+    REQUIRE( cargo );
+    manager.create_vehicle_loot_zone( *cart, cargo->mount_pos(), vehicle_copy, &here );
+
+    manager.ensure_unique_zone_identities();
+    const auto loaded = manager.get_zones( faction_your_followers );
+    REQUIRE( loaded.size() == 2 );
+    CHECK( loaded[0].get().get_identity() == original );
+    CHECK( loaded[1].get().get_identity() != original );
+    CHECK( loaded[0].get().get_name() == "Ground custom" );
+    CHECK( loaded[1].get().get_name() == "Ground custom" );
+    CHECK( loaded[1].get().get_is_vehicle() );
+}
+
+TEST_CASE( "legacy_generated_identity_does_not_displace_a_saved_identity",
+           "[zones][identity]" )
+{
+    clear_avatar();
+    clear_map();
+    zone_manager &manager = zone_manager::get_manager();
+    manager.clear();
+    on_out_of_scope cleanup( [&] { manager.clear(); } );
+    const zone_data seed( "seed", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                          tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    const auto serial = std::stoull( seed.get_identity().substr( 5 ) );
+    const std::string saved_id = "zone-" + std::to_string( serial + 2 );
+    const std::string saved = R"([
+        {"name":"legacy custom", "type":"LOOT_DEFAULT", "faction":"your_followers",
+         "invert":false, "enabled":true, "is_vehicle":false, "is_personal":false,
+         "start":[1,2,0], "end":[1,2,0], "is_displayed":false},
+        {"identity":")" + saved_id + R"(", "name":"saved custom", "type":"LOOT_FOOD",
+         "faction":"your_followers", "invert":false, "enabled":true,
+         "is_vehicle":false, "is_personal":false, "start":[3,4,0], "end":[3,4,0], "is_displayed":false}
+    ])";
+    manager.deserialize( json_loader::from_string( saved ) );
+    const auto before = manager.get_zones( faction_your_followers );
+    REQUIRE( before.size() == 2 );
+    REQUIRE( before[0].get().get_identity() == saved_id );
+    REQUIRE( before[1].get().get_identity() == saved_id );
+    manager.ensure_unique_zone_identities();
+    const auto after = manager.get_zones( faction_your_followers );
+    CHECK( after[0].get().get_identity() != saved_id );
+    CHECK( after[1].get().get_identity() == saved_id );
+    CHECK( after[0].get().get_name() == "legacy custom" );
+    CHECK( after[1].get().get_name() == "saved custom" );
 }
 
 TEST_CASE( "zone_data_copy_preserves_identity", "[zones][identity]" )

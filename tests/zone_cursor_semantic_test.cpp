@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -396,4 +398,76 @@ TEST_CASE( "zone selection uses stable identity and faction changes only the fil
     REQUIRE( zones.get_zones( faction ).size() == 2 );
     CHECK( zones.get_zones( faction )[1].get().get_identity() == second );
     zones.clear();
+}
+
+TEST_CASE( "zone manager selects a new zone after loading duplicate saved identities",
+           "[semantic_surface][zone_cursor][zones][identity]" )
+{
+    zone_test_imgui imgui;
+    clear_avatar();
+    clear_map();
+    zone_manager &zones = zone_manager::get_manager();
+    zones.clear();
+    on_out_of_scope cleanup( [&] { zones.clear(); } );
+    const tripoint_abs_ms position = get_avatar().pos_abs();
+    const faction_id faction( "your_followers" );
+    zones.add( "Original", zone_type_id( "LOOT_UNSORTED" ), faction, false, true, position, position );
+    zones.add( "Duplicate", zone_type_id( "LOOT_FOOD" ), faction, false, true, position, position );
+    const auto before = zones.get_zones( faction );
+    REQUIRE( before.size() == 2 );
+    const std::string first_id = before[0].get().get_identity();
+    const std::string second_id = before[1].get().get_identity();
+    std::ostringstream stream;
+    JsonOut json( stream );
+    zones.serialize( json );
+    std::string saved = stream.str();
+    const auto second_at = saved.find( second_id );
+    REQUIRE( second_at != std::string::npos );
+    saved.replace( second_at, second_id.size(), first_id );
+    zones.clear();
+    zones.deserialize( json_loader::from_string( saved ) );
+    zones.add( "New", zone_type_id( "LOOT_DEFAULT" ), faction, false, true, position, position );
+    const auto loaded = zones.get_zones( faction );
+    REQUIRE( loaded.size() == 3 );
+    CHECK( loaded[0].get().get_identity() == first_id );
+    CHECK( loaded[1].get().get_identity() == first_id );
+    const std::string new_id = loaded[2].get().get_identity();
+    CHECK( new_id != first_id );
+
+    semantic_surface_manager manager( "zone-loaded-identity-run" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope parent( manager, "world", "World" );
+    int state = 0;
+    int requests = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor & descriptor ) {
+        if( descriptor.kind != "zone_manager" ) {
+            return;
+        }
+        std::set<std::string> ids;
+        for( const semantic_action_descriptor &action : descriptor.valid_actions ) {
+            if( action.id == "zone.select" ) {
+                CHECK( ids.insert( action.stable_id ).second );
+            }
+        }
+        CHECK( ids.size() == 3 );
+        if( state == 0 ) {
+            state = 1;
+            REQUIRE( manager.submit_request( { manager.run_id(), descriptor.surface_id,
+                                               descriptor.frame_id, std::to_string( ++requests ),
+                                               "zone.select", new_id, {} } ) );
+        } else {
+            CHECK( descriptor.payload.at( "zone_id" ) == new_id );
+            state = 2;
+            REQUIRE( manager.submit_request( { manager.run_id(), descriptor.surface_id,
+                                               descriptor.frame_id, std::to_string( ++requests ),
+                                               "zone.close", std::nullopt, {} } ) );
+        }
+    } );
+    zone_manager_ui::display_zone_manager();
+    CHECK( state == 2 );
+    const auto presented = zones.get_zones( faction );
+    REQUIRE( presented.size() == 3 );
+    CHECK( presented[0].get().get_identity() == first_id );
+    CHECK( presented[1].get().get_identity() != first_id );
+    CHECK( presented[1].get().get_identity() != new_id );
 }

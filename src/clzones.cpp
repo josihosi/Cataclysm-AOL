@@ -2,12 +2,17 @@
 
 #include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <climits>
 #include <functional>
 #include <iosfwd>
 #include <iterator>
+#include <limits>
 #include <string>
+#include <string_view>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "activity_actor_definitions.h"
 #include "avatar.h"
@@ -52,11 +57,32 @@
 
 static const faction_id faction_your_followers( "your_followers" );
 
+static std::atomic<uint64_t> next_zone_identity { 0 };
+
+static void reserve_zone_identity( const std::string &identity )
+{
+    constexpr std::string_view prefix = "zone-";
+    if( identity.compare( 0, prefix.size(), prefix ) != 0 ) {
+        return;
+    }
+    const char *const begin = identity.data() + prefix.size();
+    const char *const end = identity.data() + identity.size();
+    uint64_t value = 0;
+    const auto parsed = std::from_chars( begin, end, value );
+    if( parsed.ec != std::errc{} || parsed.ptr != end ||
+        value == std::numeric_limits<uint64_t>::max() ) {
+        return;
+    }
+    uint64_t current = next_zone_identity.load( std::memory_order_relaxed );
+    while( current < value && !next_zone_identity.compare_exchange_weak(
+               current, value, std::memory_order_relaxed ) ) {
+    }
+}
+
 std::string zone_data::new_identity()
 {
-    static std::atomic<uint64_t> next_identity { 0 };
     return string_format( "zone-%llu",
-                          static_cast<unsigned long long>( next_identity.fetch_add( 1 ) + 1 ) );
+                          static_cast<unsigned long long>( next_zone_identity.fetch_add( 1 ) + 1 ) );
 }
 
 void zone_data::note_semantic_mutation()
@@ -1755,6 +1781,51 @@ void zone_manager::rotate_zones( map &target_map, const int turns )
     }
 }
 
+void zone_manager::repair_duplicate_identities( const std::vector<zone_data *> &loaded )
+{
+    std::unordered_set<std::string> reserved;
+    std::unordered_map<std::string, zone_data *> preferred;
+    for( zone_data *zone : loaded ) {
+        reserved.insert( zone->identity );
+        if( zone->identity.empty() ) {
+            continue;
+        }
+        const auto existing = preferred.find( zone->identity );
+        if( existing == preferred.end() ) {
+            preferred.emplace( zone->identity, zone );
+        } else if( !existing->second->identity_restored && zone->identity_restored ) {
+            existing->second = zone;
+        }
+    }
+    for( zone_data *zone : loaded ) {
+        if( !zone->identity.empty() && preferred.at( zone->identity ) == zone ) {
+            continue;
+        }
+        std::string replacement;
+        do {
+            replacement = zone_data::new_identity();
+        } while( reserved.count( replacement ) != 0 );
+        zone->identity = replacement;
+        zone->identity_restored = false;
+        reserved.insert( replacement );
+    }
+}
+
+void zone_manager::ensure_unique_zone_identities()
+{
+    map &here = get_map();
+    auto vzones = here.get_vehicle_zones( here.get_abs_sub().z() );
+    std::vector<zone_data *> loaded;
+    loaded.reserve( this->zones.size() + vzones.size() );
+    for( zone_data &zone : this->zones ) {
+        loaded.push_back( &zone );
+    }
+    loaded.insert( loaded.end(), vzones.begin(), vzones.end() );
+    // Old saves may already contain duplicated IDs. Repair only duplicates,
+    // retaining every zone and every unambiguous existing identity.
+    repair_duplicate_identities( loaded );
+}
+
 std::vector<zone_manager::ref_zone_data> zone_manager::get_zones( const faction_id &fac )
 {
     auto zones = std::vector<ref_zone_data>();
@@ -1878,8 +1949,11 @@ void zone_data::deserialize( const JsonObject &data )
     data.allow_omitted_members();
     if( data.has_member( "identity" ) ) {
         data.read( "identity", identity );
+        identity_restored = !identity.empty();
+        reserve_zone_identity( identity );
     } else {
         identity = zone_data::new_identity();
+        identity_restored = false;
     }
     if( data.has_member( "semantic_revision" ) ) {
         int64_t revision = 0;
@@ -1993,6 +2067,12 @@ void zone_manager::load_zones( std::string const &suffix )
         zones.clear();
     }
     load_world_zones( suffix );
+    std::vector<zone_data *> loaded;
+    loaded.reserve( zones.size() );
+    for( zone_data &zone : zones ) {
+        loaded.push_back( &zone );
+    }
+    repair_duplicate_identities( loaded );
     revert_vzones();
     added_vzones.clear();
     changed_vzones.clear();
