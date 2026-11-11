@@ -123,17 +123,27 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         persist-credentials: false
-    - name: Install GCC Curses build dependencies
+    - name: Verify or install GCC Curses build dependencies
       run: |
-        # Use Ubuntu's archive directly in this fallback, independently of the
-        # runner mirror whose DNS failure can prevent the shader prerequisite.
-        codename="$(awk -F= '$1 == "VERSION_CODENAME" { print $2 }' /etc/os-release)"
-        test -n "$codename"
-        sources="$RUNNER_TEMP/caol-zone-ubuntu.list"
-        printf 'deb http://archive.ubuntu.com/ubuntu %s main universe\ndeb http://archive.ubuntu.com/ubuntu %s-updates main universe\ndeb http://security.ubuntu.com/ubuntu %s-security main universe\n' "$codename" "$codename" "$codename" > "$sources"
-        apt_opts=(-o "Dir::Etc::sourcelist=$sources" -o "Dir::Etc::sourceparts=-")
-        sudo apt-get "${apt_opts[@]}" update
-        sudo apt-get "${apt_opts[@]}" install -y libncursesw5-dev ccache gettext parallel g++-14
+        ready=true
+        if ! command -v g++-14; then echo 'Missing GCC 14 compiler'; ready=false; fi
+        if ! command -v msgfmt; then echo 'Missing gettext msgfmt for the standard tests target'; ready=false; fi
+        if command -v g++-14 && ! printf '#include <ncurses.h>\n#include <libintl.h>\nint main() { return 0; }\n' | g++-14 -x c++ - -lncursesw -o "$RUNNER_TEMP/caol-zone-dependency-check"; then
+          echo 'GCC 14 Curses/gettext header or library preflight failed'
+          ready=false
+        fi
+        if [ "$ready" = true ]; then
+          echo 'Using the preinstalled GCC 14, gettext and Curses development libraries.'
+        else
+          # Avoid the runner mirror whose DNS failure can prevent the shader job.
+          codename="$(awk -F= '$1 == "VERSION_CODENAME" { print $2 }' /etc/os-release)"
+          test -n "$codename"
+          sources="$RUNNER_TEMP/caol-zone-ubuntu.list"
+          printf 'deb http://archive.ubuntu.com/ubuntu %s main universe\ndeb http://archive.ubuntu.com/ubuntu %s-updates main universe\ndeb http://security.ubuntu.com/ubuntu %s-security main universe\n' "$codename" "$codename" "$codename" > "$sources"
+          apt_opts=(-o "Dir::Etc::sourcelist=$sources" -o "Dir::Etc::sourceparts=-")
+          sudo apt-get "${apt_opts[@]}" update
+          sudo apt-get "${apt_opts[@]}" install -y libncursesw5-dev gettext g++-14
+        fi
         sudo locale-gen en_US.UTF-8 de_DE.UTF-8
     - name: Restore compiler cache
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -143,10 +153,11 @@ jobs:
         restore-keys: |
           ccache-${{ github.ref_name }}-linux-gcc-14--
           ccache-master-linux-gcc-14--
-    - name: Prepare and build using the existing GCC Curses route
+    - name: Build the GCC Curses test executable
       run: |
-        bash ./build-scripts/requirements.sh
-        bash ./build-scripts/gha_compile_only.sh
+        cache=0
+        if command -v ccache; then cache=1; fi
+        make -j 3 tests CCACHE="$cache" LINTJSON=0 DEBUG_SYMBOLS=1 FRAMEWORK=1 UNIVERSAL_BINARY=1
     - name: Check zone identity and Zone Manager controls
       run: python3 tests/zone_identity_ci.py tests/cata_test
 
