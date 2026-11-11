@@ -7185,8 +7185,9 @@ TEST_CASE( "active_native_migo_plan_separates_hostile_recognition_from_targeting
                 REQUIRE( indexes.count( name ) == 1 );
                 return durations.get_float( indexes.at( name ) );
             };
-            for( const std::string &name : { "migo_local_plan", "migo_plan_native_targeting",
-                                            "migo_plan_species_hook", "migo_plan_hostile_recognition",
+            for( const std::string name : {
+                     "migo_local_plan", "migo_plan_native_targeting",
+                     "migo_plan_species_hook", "migo_plan_hostile_recognition",
                      "scout_actor_read", "scout_view_build", "scout_view_cache",
                      "scout_light_read", "scout_light_dependencies", "scout_light_native",
                      "scout_actor_predicate", "scout_reader_retire"

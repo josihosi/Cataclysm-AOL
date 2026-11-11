@@ -82,7 +82,9 @@ TEST_CASE( "star_vampire_blood_drinking_requires_character_target", "[eoc][matta
     feral.add_effect( efftype_id( "grabbed" ), 1_minutes );
     noncharacter.add_effect( efftype_id( "grabbed" ), 1_minutes );
     int offset = 0;
-    for( const std::string &id : { "mon_star_vampire", "mon_star_vampire_coiling", "mon_dish_head" } ) {
+    for( const std::string id : {
+             "mon_star_vampire", "mon_star_vampire_coiling", "mon_dish_head"
+         } ) {
         CAPTURE( id );
         monster &vampire = spawn_test_monster( id, origin + point::east * ( 3 + offset++ ) );
         vampire.add_effect( efftype_id( "grabbing" ), 1_minutes );

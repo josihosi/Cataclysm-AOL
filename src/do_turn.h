@@ -85,10 +85,13 @@ class raid_perf_scope
     public:
         explicit raid_perf_scope( raid_perf_stage stage, bool enabled = true );
         ~raid_perf_scope();
+        void restart( raid_perf_stage stage );
         raid_perf_scope( const raid_perf_scope & ) = delete;
         raid_perf_scope &operator=( const raid_perf_scope & ) = delete;
 
     private:
+        void start( raid_perf_stage stage, bool enabled );
+        void finish();
         raid_perf_row *row;
         raid_perf_stage stage;
         std::chrono::steady_clock::time_point started;

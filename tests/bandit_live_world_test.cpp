@@ -53814,7 +53814,6 @@ TEST_CASE( "unloaded homeward survivor retains forced incapacity and escape",
 
 }
 
-bool reject_local_coarse_candidate_for_test_once();
 
 TEST_CASE( "local homeward blocked service cannot fund a later edge",
            "[bandit_live_world][local_blocked_coarse_work]" )

@@ -2022,7 +2022,7 @@ TEST_CASE( "actual vehicle interaction close preserves native state and restores
         close = { owner.run_id, owner.surface_id, owner.frame_id, "close-vehicle",
                   "vehicle_interaction.close", std::nullopt, {}
                 };
-        for( const std::string &negative : {
+        for( const std::string negative : {
                  "install", "wrong_run", "stale_frame", "wrong_surface"
              } ) {
             auto rejected = close;
@@ -2632,7 +2632,7 @@ TEST_CASE( "native overmap editor owns catalog placement cancellation and receip
                 CHECK( owner.frame_id != child_owners.back().frame_id );
             }
             if( step == 0 ) {
-                for( const std::string &reason : {
+                for( const std::string reason : {
                          "wrong_run", "wrong_surface", "stale_frame"
                      } ) {
                     auto invalid = request( owner, "overmap.place", owner.payload.at( "selected_stable_id" ) );

@@ -357,8 +357,15 @@ static std::size_t raid_perf_wait_generation()
 }
 
 raid_perf_scope::raid_perf_scope( raid_perf_stage target, bool enabled ) :
-    row( enabled ? raid_perf_current : nullptr ), stage( target )
+    row( nullptr ), stage( target )
 {
+    start( target, enabled );
+}
+
+void raid_perf_scope::start( raid_perf_stage target, bool enabled )
+{
+    row = enabled ? raid_perf_current : nullptr;
+    stage = target;
     if( row ) {
         ++row->stage_calls[static_cast<std::size_t>( stage )];
         if( stage == raid_perf_stage::physical_navigation_view_build ) {
@@ -372,6 +379,11 @@ raid_perf_scope::raid_perf_scope( raid_perf_stage target, bool enabled ) :
 
 raid_perf_scope::~raid_perf_scope()
 {
+    finish();
+}
+
+void raid_perf_scope::finish()
+{
     if( row ) {
         row->stages[static_cast<std::size_t>( stage )] +=
             std::chrono::duration<double>( std::chrono::steady_clock::now() - started ).count();
@@ -381,6 +393,12 @@ raid_perf_scope::~raid_perf_scope()
             --row->nav_lookup_depth;
         }
     }
+}
+
+void raid_perf_scope::restart( raid_perf_stage target )
+{
+    finish();
+    start( target, true );
 }
 
 bool raid_perf_nav_build_active()
@@ -20334,8 +20352,7 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
 
 void monmove()
 {
-    std::optional<raid_perf_scope> creature_section;
-    creature_section.emplace( raid_perf_stage::creature_monsters );
+    raid_perf_scope creature_section( raid_perf_stage::creature_monsters );
     g->cleanup_dead();
     map &m = get_map();
     avatar &u = get_avatar();
@@ -20450,8 +20467,7 @@ void monmove()
     // monster::die function is not called.
     g->despawn_nonlocal_monsters();
 
-    creature_section.reset();
-    creature_section.emplace( raid_perf_stage::creature_npc_preparation );
+    creature_section.restart( raid_perf_stage::creature_npc_preparation );
 
     // Wake owned ordinary sleep before either pair selection or scheduler
     // exclusion. Forced incapacity and flight remain native survival facts.
@@ -20625,8 +20641,7 @@ void monmove()
     // movement goal.  Commit it before ordinary NPC processing can consume or
     // replace the selected member's OMT route in this same turn.
     complete_live_bandit_homeward_boundary_steps( pair_homeward_boundary_steps );
-    creature_section.reset();
-    creature_section.emplace( raid_perf_stage::creature_npc_actions );
+    creature_section.restart( raid_perf_stage::creature_npc_actions );
     for( npc &guy : g->all_npcs() ) {
         const bool profiled_covert_member =
             profiled_covert_member_ids.count( guy.getID() ) > 0;
