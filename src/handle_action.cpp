@@ -462,55 +462,61 @@ static void openclaw_harness_semantic_surface_descriptor(
         return;
     }
 
-    std::ostringstream breadcrumbs;
-    breadcrumbs << '[';
-    for( size_t index = 0; index < descriptor.breadcrumbs.size(); ++index ) {
-        if( index > 0 ) {
-            breadcrumbs << ',';
+    const std::string serialized = [&]() {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::semantic_descriptor_build,
+                                          raid_perf_journal_active() );
+        std::ostringstream breadcrumbs;
+        breadcrumbs << '[';
+        for( size_t index = 0; index < descriptor.breadcrumbs.size(); ++index ) {
+            if( index > 0 ) {
+                breadcrumbs << ',';
+            }
+            breadcrumbs << openclaw_harness_quote_action_value( descriptor.breadcrumbs[index] );
         }
-        breadcrumbs << openclaw_harness_quote_action_value( descriptor.breadcrumbs[index] );
-    }
-    breadcrumbs << ']';
+        breadcrumbs << ']';
 
-    std::ostringstream payload;
-    payload << '{';
-    for( auto iter = descriptor.payload.begin(); iter != descriptor.payload.end(); ++iter ) {
-        if( iter != descriptor.payload.begin() ) {
-            payload << ',';
+        std::ostringstream payload;
+        payload << '{';
+        for( auto iter = descriptor.payload.begin(); iter != descriptor.payload.end(); ++iter ) {
+            if( iter != descriptor.payload.begin() ) {
+                payload << ',';
+            }
+            payload << openclaw_harness_quote_action_value( iter->first ) << ':'
+                    << openclaw_harness_quote_action_value( iter->second );
         }
-        payload << openclaw_harness_quote_action_value( iter->first ) << ':'
-                << openclaw_harness_quote_action_value( iter->second );
-    }
-    payload << '}';
+        payload << '}';
 
-    std::ostringstream actions;
-    actions << '[';
-    for( size_t index = 0; index < descriptor.valid_actions.size(); ++index ) {
-        const semantic_action_descriptor &action = descriptor.valid_actions[index];
-        if( index > 0 ) {
-            actions << ',';
+        std::ostringstream actions;
+        actions << '[';
+        for( size_t index = 0; index < descriptor.valid_actions.size(); ++index ) {
+            const semantic_action_descriptor &action = descriptor.valid_actions[index];
+            if( index > 0 ) {
+                actions << ',';
+            }
+            actions << "{\"id\":" << openclaw_harness_quote_action_value( action.id )
+                    << ",\"stable_id\":" << openclaw_harness_quote_action_value( action.stable_id )
+                    << ",\"label\":" << openclaw_harness_quote_action_value( action.label )
+                    << ",\"enabled\":" << ( action.enabled ? "true" : "false" ) << '}';
         }
-        actions << "{\"id\":" << openclaw_harness_quote_action_value( action.id )
-                << ",\"stable_id\":" << openclaw_harness_quote_action_value( action.stable_id )
-                << ",\"label\":" << openclaw_harness_quote_action_value( action.label )
-                << ",\"enabled\":" << ( action.enabled ? "true" : "false" ) << '}';
-    }
-    actions << ']';
+        actions << ']';
 
-    std::ostringstream event;
-    event << "{\"event\":\"surface_descriptor\",\"schema_version\":"
-          << descriptor.schema_version << openclaw_harness_semantic_event_clock()
-          << ",\"is_night\":" << ( is_night( calendar::turn ) ? "true" : "false" )
-          << ",\"run_id\":" << openclaw_harness_quote_action_value( descriptor.run_id )
-          << ",\"surface_id\":" << openclaw_harness_quote_action_value( descriptor.surface_id )
-          << ",\"frame_id\":" << openclaw_harness_quote_action_value( descriptor.frame_id )
-          << ",\"kind\":" << openclaw_harness_quote_action_value( descriptor.kind )
-          << ",\"breadcrumbs\":" << breadcrumbs.str()
-          << ",\"payload\":" << payload.str()
-          << ",\"live_hostile_operation\":" << (
-              descriptor.kind == "world" ? openclaw_harness_live_hostile_operation_snapshot() : "null" )
-          << ",\"valid_actions\":" << actions.str() << '}';
-    openclaw_harness_write_semantic_step_event( event.str() );
+        std::ostringstream event;
+        event << "{\"event\":\"surface_descriptor\",\"schema_version\":"
+              << descriptor.schema_version << openclaw_harness_semantic_event_clock()
+              << ",\"is_night\":" << ( is_night( calendar::turn ) ? "true" : "false" )
+              << ",\"run_id\":" << openclaw_harness_quote_action_value( descriptor.run_id )
+              << ",\"surface_id\":" << openclaw_harness_quote_action_value( descriptor.surface_id )
+              << ",\"frame_id\":" << openclaw_harness_quote_action_value( descriptor.frame_id )
+              << ",\"kind\":" << openclaw_harness_quote_action_value( descriptor.kind )
+              << ",\"breadcrumbs\":" << breadcrumbs.str()
+              << ",\"payload\":" << payload.str()
+              << ",\"live_hostile_operation\":" << (
+                  descriptor.kind == "world" ? openclaw_harness_live_hostile_operation_snapshot() : "null" )
+              << ",\"valid_actions\":" << actions.str() << '}';
+        return event.str();
+    }
+    ();
+    openclaw_harness_write_semantic_step_event( serialized );
 }
 
 static void openclaw_harness_semantic_surface_receipt(
@@ -521,29 +527,35 @@ static void openclaw_harness_semantic_surface_receipt(
         return;
     }
 
-    std::ostringstream event;
-    event << "{\"event\":\"surface_receipt\",\"run_id\":"
-          << openclaw_harness_quote_action_value( run_id ) << openclaw_harness_semantic_event_clock()
-          << ",\"request_id\":" << openclaw_harness_quote_action_value( receipt.request_id )
-          << ",\"requested_run_id\":" << openclaw_harness_quote_action_value(
-              receipt.requested_run_id )
-          << ",\"requested_surface_id\":" << openclaw_harness_quote_action_value(
-              receipt.requested_surface_id )
-          << ",\"requested_frame_id\":" << openclaw_harness_quote_action_value(
-              receipt.requested_frame_id )
-          << ",\"consuming_surface_id\":" << openclaw_harness_quote_action_value(
-              receipt.consuming_surface_id )
-          << ",\"consuming_frame_id\":" << openclaw_harness_quote_action_value(
-              receipt.consuming_frame_id )
-          << ",\"action_id\":" << openclaw_harness_quote_action_value( receipt.action_id )
-          << ",\"accepted\":" << ( receipt.accepted ? "true" : "false" )
-          << ",\"rejection_reason\":" << openclaw_harness_quote_action_value(
-              receipt.rejection_reason )
-          << ",\"resulting_frame_id\":" << openclaw_harness_quote_action_value(
-              receipt.resulting_frame_id )
-          << ",\"outcome\":" << openclaw_harness_quote_action_value(
-              receipt.outcome ) << '}';
-    openclaw_harness_write_semantic_step_event( event.str() );
+    const std::string serialized = [&]() {
+        raid_perf_scope diagnostic_scope( raid_perf_stage::semantic_receipt_build,
+                                          raid_perf_journal_active() );
+        std::ostringstream event;
+        event << "{\"event\":\"surface_receipt\",\"run_id\":"
+              << openclaw_harness_quote_action_value( run_id ) << openclaw_harness_semantic_event_clock()
+              << ",\"request_id\":" << openclaw_harness_quote_action_value( receipt.request_id )
+              << ",\"requested_run_id\":" << openclaw_harness_quote_action_value(
+                  receipt.requested_run_id )
+              << ",\"requested_surface_id\":" << openclaw_harness_quote_action_value(
+                  receipt.requested_surface_id )
+              << ",\"requested_frame_id\":" << openclaw_harness_quote_action_value(
+                  receipt.requested_frame_id )
+              << ",\"consuming_surface_id\":" << openclaw_harness_quote_action_value(
+                  receipt.consuming_surface_id )
+              << ",\"consuming_frame_id\":" << openclaw_harness_quote_action_value(
+                  receipt.consuming_frame_id )
+              << ",\"action_id\":" << openclaw_harness_quote_action_value( receipt.action_id )
+              << ",\"accepted\":" << ( receipt.accepted ? "true" : "false" )
+              << ",\"rejection_reason\":" << openclaw_harness_quote_action_value(
+                  receipt.rejection_reason )
+              << ",\"resulting_frame_id\":" << openclaw_harness_quote_action_value(
+                  receipt.resulting_frame_id )
+              << ",\"outcome\":" << openclaw_harness_quote_action_value(
+                  receipt.outcome ) << '}';
+        return event.str();
+    }
+    ();
+    openclaw_harness_write_semantic_step_event( serialized );
 }
 
 // This handoff lasts for exactly one ACTION_SAVE execution.  The World

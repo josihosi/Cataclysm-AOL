@@ -5,6 +5,7 @@
 #include "cata_shader.h"
 #endif
 #include "cuboid_rectangle.h"
+#include "do_turn.h"
 #include "point.h"
 
 #if defined(TILES)
@@ -1210,7 +1211,10 @@ void refresh_display()
 #endif
     draw_gamepad_radial_menu();
     const auto present_started = std::chrono::steady_clock::now();
-    RenderPresent( renderer );
+    {
+        raid_perf_scope present_scope( raid_perf_stage::render_present, raid_perf_journal_active() );
+        RenderPresent( renderer );
+    }
     openclaw_harness_trace_r028_render_present(
         std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - present_started ).count() );

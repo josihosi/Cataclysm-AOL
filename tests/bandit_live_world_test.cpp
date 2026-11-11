@@ -899,6 +899,208 @@ TEST_CASE( "committed raid separates actual target choice from raw sight before 
         CHECK( sighted.goto_to_this_pos == live_operation.sweep.pending() );
     }
 
+    SECTION( "target reassessment distinguishes sight, obstruction and search precedence" ) {
+        // Keep the actor and hostile operation fixed while changing only the
+        // intervening tile.  A transparent window permits sight but blocks
+        // the actual attack line; opening it must restore the combat target.
+        sighted.personality.aggression = -20;
+        get_avatar().set_wielded_item( item( itype_id( "battleaxe" ) ) );
+        on_out_of_scope remove_test_weapon( []() {
+            get_avatar().remove_weapon();
+        } );
+        const auto trace_path = std::filesystem::temp_directory_path() /
+                                "caol-pursuit-target-assessment-control.jsonl";
+        REQUIRE_FALSE( std::filesystem::exists( trace_path ) );
+        const std::array<const char *, 8> trace_names = {{
+                "OPENCLAW_HARNESS_RAID_ACTOR_TRACE", "OPENCLAW_HARNESS_RUN_ID",
+                "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH",
+                "OPENCLAW_HARNESS_DECISION_TRACE_GROUP_ID", "OPENCLAW_HARNESS_DECISION_TRACE_NPC_IDS",
+                "OPENCLAW_HARNESS_DECISION_TRACE_FROM_TURN", "OPENCLAW_HARNESS_DECISION_TRACE_TO_TURN"
+            }
+        };
+        std::array<std::optional<std::string>, 8> previous_trace_environment;
+        for( std::size_t index = 0; index < trace_names.size(); ++index ) {
+            if( const char *value = std::getenv( trace_names[index] ) ) {
+                previous_trace_environment[index] = value;
+            }
+            unset_test_env( trace_names[index] );
+        }
+        on_out_of_scope restore_trace_environment( [trace_names, previous_trace_environment, trace_path]() {
+            raid_decision_trace::native_recorder().closeout();
+            for( std::size_t index = 0; index < trace_names.size(); ++index ) {
+                if( previous_trace_environment[index] ) {
+                    set_test_env( trace_names[index], previous_trace_environment[index]->c_str(), 1 );
+                } else {
+                    unset_test_env( trace_names[index] );
+                }
+            }
+            std::error_code ignored;
+            std::filesystem::remove( trace_path, ignored );
+        } );
+        const tripoint_bub_ms actor = sighted.pos_bub( here );
+        const tripoint_bub_ms blocker = actor + point( 1, 0 );
+        get_avatar().setpos( here, actor + point( 3, 0 ) );
+        const auto rebuild_sight = [&]() {
+            here.invalidate_map_cache( 0 );
+            here.build_map_cache( 0, true );
+            here.update_visibility_cache( 0 );
+        };
+        rebuild_sight();
+        REQUIRE( sighted.sees( here, get_avatar().pos_bub( here ) ) );
+        REQUIRE( sighted.sees( here, get_avatar() ) );
+        REQUIRE( here.passable( blocker ) );
+        rng_set_engine_seed( 3326257994U );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == &get_avatar() );
+        CHECK_FALSE( std::filesystem::exists( trace_path ) );
+        const std::string actor_id = std::to_string( sighted.getID().get_value() );
+        set_test_env( trace_names[0], "pursuit-gates-control", 1 );
+        set_test_env( trace_names[1], "pursuit-gates-control", 1 );
+        set_test_env( trace_names[2], "pursuit-gates-control", 1 );
+        set_test_env( trace_names[3], trace_path.string().c_str(), 1 );
+        set_test_env( trace_names[4], "pursuit-gates-control", 1 );
+        set_test_env( trace_names[5], actor_id.c_str(), 1 );
+        std::ostringstream rng_before_trace_init;
+        rng_before_trace_init << rng_get_engine();
+        REQUIRE( raid_decision_trace::native_recorder().enabled() );
+        std::ostringstream rng_after_trace_init;
+        rng_after_trace_init << rng_get_engine();
+        CHECK( rng_before_trace_init.str() == rng_after_trace_init.str() );
+        rng_set_engine_seed( 3326257994U );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == &get_avatar() );
+        std::ostringstream rng_before_trace_emit;
+        rng_before_trace_emit << rng_get_engine();
+        sighted.trace_hostile_decision_for_harness( "assessment_open", "control" );
+        std::ostringstream rng_after_trace_emit;
+        rng_after_trace_emit << rng_get_engine();
+        CHECK( rng_before_trace_emit.str() == rng_after_trace_emit.str() );
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sighted.current_target() == &get_avatar() );
+        CHECK_FALSE( sighted.goto_to_this_pos );
+
+        here.ter_set( blocker, ter_str_id( "t_window" ) );
+        rebuild_sight();
+        REQUIRE_FALSE( here.passable( blocker ) );
+        REQUIRE( sighted.sees( here, get_avatar().pos_bub( here ) ) );
+        REQUIRE( sighted.sees( here, get_avatar() ) );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == nullptr );
+        sighted.trace_hostile_decision_for_harness( "assessment_window", "control" );
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sighted.goto_to_this_pos.has_value() );
+        const auto search_goal = sighted.goto_to_this_pos;
+
+        here.ter_set( blocker, ter_str_id( "t_floor" ) );
+        rebuild_sight();
+        REQUIRE( sighted.sees( here, get_avatar().pos_bub( here ) ) );
+        REQUIRE( sighted.sees( here, get_avatar() ) );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == &get_avatar() );
+        sighted.trace_hostile_decision_for_harness( "assessment_reopened", "control" );
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sighted.current_target() == &get_avatar() );
+        CHECK( sighted.goto_to_this_pos == search_goal );
+
+        here.ter_set( blocker, ter_str_id( "t_wall" ) );
+        rebuild_sight();
+        REQUIRE_FALSE( sighted.sees( here, get_avatar().pos_bub( here ) ) );
+        REQUIRE_FALSE( sighted.sees( here, get_avatar() ) );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == nullptr );
+        sighted.trace_hostile_decision_for_harness( "assessment_wall", "control" );
+        live_cannibal_raid_advance_site_search_for_test( live_site );
+        CHECK( sighted.goto_to_this_pos.has_value() );
+
+        // A visible but low-priority player is a distinct gate from the
+        // transparent obstacle: the line is clear and the score loses.
+        here.ter_set( blocker, ter_str_id( "t_floor" ) );
+        get_avatar().remove_weapon();
+        get_avatar().setpos( here, actor + point( 3, 15 ) );
+        sighted.personality.aggression = 20;
+        rebuild_sight();
+        REQUIRE( sighted.sees( here, get_avatar().pos_bub( here ) ) );
+        REQUIRE( sighted.sees( here, get_avatar() ) );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == nullptr );
+        sighted.trace_hostile_decision_for_harness( "assessment_low_priority", "control" );
+
+        // The search destination can remain stored while combat owns the NPC's
+        // next paid action. Exercise the real motor, not just its target cache.
+        get_avatar().setpos( here, actor + point( 3, 0 ) );
+        rebuild_sight();
+        sighted.personality.aggression = 10;
+        sighted.personality.bravery = 20;
+        sighted.set_wielded_item( item( itype_id( "battleaxe" ) ) );
+        sighted.regen_ai_cache();
+        REQUIRE( sighted.current_target() == &get_avatar() );
+        const int before_distance = rl_dist( sighted.pos_bub( here ), get_avatar().pos_bub( here ) );
+        const int before_hp = get_avatar().get_hp();
+        sighted.set_moves( 100 );
+        sighted.move();
+        CHECK( sighted.get_moves() < 100 );
+        CHECK( ( rl_dist( sighted.pos_bub( here ), get_avatar().pos_bub( here ) ) < before_distance ||
+                 get_avatar().get_hp() < before_hp ) );
+        sighted.trace_hostile_decision_for_harness( "assessment_stale", "control" );
+        sighted.set_moves( 100 );
+        sighted.move();
+        raid_decision_trace::native_recorder().closeout();
+        std::ifstream trace_input( trace_path );
+        REQUIRE( trace_input.good() );
+        std::set<std::string> observed;
+        std::set<std::pair<int, int>> motor_positions;
+        bool stale_assessment_was_null = false;
+        std::string trace_line;
+        while( std::getline( trace_input, trace_line ) ) {
+            JsonObject record = native_trace_value( trace_line ).get_object();
+            record.allow_omitted_members();
+            if( record.get_string( "event" ) != "raid_actor_action" ||
+                record.get_int( "npc_id" ) != sighted.getID().get_value() ) {
+                continue;
+            }
+            const std::string action = record.get_string( "action" );
+            if( action == "assessment_stale" ) {
+                stale_assessment_was_null = record.has_null( "avatar_target_assessment" );
+                continue;
+            }
+            if( record.get_string( "reason" ) == "execute_action" &&
+                record.has_object( "avatar_target_assessment" ) ) {
+                const JsonObject actual = record.get_object( "avatar_target_assessment" );
+                actual.allow_omitted_members();
+                const auto assessed_position = actual.get_array( "actor_position_abs" );
+                const auto emitted_position = record.get_array( "position_abs" );
+                CHECK( assessed_position.get_int( 0 ) == emitted_position.get_int( 0 ) );
+                CHECK( assessed_position.get_int( 1 ) == emitted_position.get_int( 1 ) );
+                motor_positions.emplace( emitted_position.get_int( 0 ), emitted_position.get_int( 1 ) );
+            }
+            if( action != "assessment_open" && action != "assessment_window" &&
+                action != "assessment_reopened" && action != "assessment_wall" &&
+                action != "assessment_low_priority" ) {
+                continue;
+            }
+            JsonObject actual = record.get_object( "avatar_target_assessment" );
+            actual.allow_omitted_members();
+            CHECK( actual.get_bool( "tile_sight" ) == ( action != "assessment_wall" ) );
+            if( action == "assessment_wall" ) {
+                CHECK( actual.has_null( "clear_attack_line" ) );
+                CHECK( actual.has_null( "priority" ) );
+            } else if( action == "assessment_window" ) {
+                CHECK_FALSE( actual.get_bool( "clear_attack_line" ) );
+                CHECK( actual.has_null( "priority" ) );
+            } else if( action == "assessment_low_priority" ) {
+                CHECK( actual.get_bool( "clear_attack_line" ) );
+                CHECK( actual.get_float( "priority" ) <= actual.get_float( "incumbent_priority" ) );
+            } else {
+                CHECK( actual.get_bool( "clear_attack_line" ) );
+                CHECK( actual.get_float( "priority" ) > actual.get_float( "incumbent_priority" ) );
+            }
+            observed.insert( action );
+        }
+        CHECK( observed.size() == 5 );
+        CHECK( stale_assessment_was_null );
+        CHECK( motor_positions.size() >= 2 );
+    }
+
     SECTION( "one member engaging a real target leaves other members searching" ) {
         get_avatar().setpos( here, here.get_bub( sighted.pos_abs() + point( 3, 3 ) ) );
         here.update_visibility_cache( 0 );

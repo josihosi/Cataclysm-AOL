@@ -5420,7 +5420,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
         { "OPENCLAW_HARNESS_SEMANTIC_RUN_ID", run },
         { "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH", trace.string() },
         { "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", std::nullopt },
-        { "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", receipt_session.string() }
+        { "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", receipt_session.string() },
+        { "OPENCLAW_HARNESS_TURN_RESOURCES", "1" }
     };
     std::map<std::string, std::optional<std::string>> previous;
     for( const auto &entry : settings ) {
@@ -5491,6 +5492,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
     int highest_slow_count = 0;
     int intervals = 0;
     int receiver_scans = 0;
+    int journal_calls = 0;
+    int redraw_attempts = 0;
+    int npc_resource_attempts = 0;
+    int item_resource_attempts = 0;
     std::ifstream input( trace );
     std::string line;
     while( std::getline( input, line ) ) {
@@ -5545,7 +5550,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
         for( const std::string name : {
                  "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit",
                  "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
-                 "npc_find_item", "npc_pick_up_item"
+                 "npc_find_item", "npc_pick_up_item", "npc_decision_trace", "npc_decision_publish",
+                 "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish",
+                 "native_journal_compact",
+                 "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
              } ) {
             CHECK( std::count( names.begin(), names.end(), name ) == 1 );
         }
@@ -5554,6 +5562,58 @@ TEST_CASE( "performance interval output preserves the real World successor",
             const TextJsonObject row = row_value.get_object();
             row.allow_omitted_members();
             CHECK( row.get_array( "stages_seconds" ).size() == names.size() );
+            const auto stage_calls = row.get_array( "stage_calls" );
+            const auto stage_index = [&]( const std::string & name ) {
+                return std::distance( names.begin(), std::find( names.begin(), names.end(), name ) );
+            };
+            journal_calls += stage_calls.get_int( stage_index( "native_journal_publish" ) );
+            for( const auto &window : {
+                     std::make_pair( "npc_action_resources", &npc_resource_attempts ),
+                     std::make_pair( "item_resources", &item_resource_attempts )
+                 } ) {
+                if( row.has_object( window.first ) ) {
+                    const auto resources = row.get_object( window.first );
+                    resources.allow_omitted_members();
+                    CHECK( resources.get_string( "scope" ) ==
+                           "process-wide deltas in native owner window; other threads may contribute; disk bytes are not wait time; samples are opt-in" );
+                    const int attempts = resources.get_int( "attempts" );
+                    *window.second += attempts;
+                    CHECK( attempts > 0 );
+                    CHECK( resources.get_int( "cpu_samples" ) <= attempts );
+                    CHECK( resources.get_float( "probe_fence_wall_seconds" ) >= 0 );
+#if defined(__APPLE__)
+                    CHECK( resources.get_int( "resource_samples" ) <= attempts );
+                    const int fault_samples = resources.get_int( "fault_samples" );
+                    const int vm_samples = resources.get_int( "vm_samples" );
+                    CHECK( fault_samples <= attempts );
+                    CHECK( vm_samples <= attempts );
+                    CHECK( resources.has_member( "faults" ) == ( fault_samples == attempts ) );
+                    CHECK( resources.has_member( "decompressions" ) == ( vm_samples == attempts ) );
+                    CHECK( resources.has_member( "swapin_ledger_delta" ) == ( vm_samples == attempts ) );
+#endif
+                }
+            }
+            if( row.has_object( "redraw_resources" ) ) {
+                const auto resources = row.get_object( "redraw_resources" );
+                resources.allow_omitted_members();
+                CHECK( resources.get_string( "scope" ) ==
+                       "process-wide deltas during pre-input redraw only; other threads may contribute; disk bytes are not wait time; samples are opt-in" );
+                const int attempts = resources.get_int( "attempts" );
+                redraw_attempts += attempts;
+                CHECK( attempts > 0 );
+                CHECK( resources.get_int( "cpu_samples" ) <= attempts );
+                CHECK( resources.get_float( "probe_fence_wall_seconds" ) >= 0 );
+#if defined(__APPLE__)
+                CHECK( resources.get_int( "resource_samples" ) <= attempts );
+                const int fault_samples = resources.get_int( "fault_samples" );
+                const int vm_samples = resources.get_int( "vm_samples" );
+                CHECK( fault_samples <= attempts );
+                CHECK( vm_samples <= attempts );
+                CHECK( resources.has_member( "faults" ) == ( fault_samples == attempts ) );
+                CHECK( resources.has_member( "decompressions" ) == ( vm_samples == attempts ) );
+                CHECK( resources.has_member( "swapin_ledger_delta" ) == ( vm_samples == attempts ) );
+#endif
+            }
             if( row.has_member( "migo_receiver_scan" ) ) {
                 ++receiver_scans;
                 const auto scan = row.get_object( "migo_receiver_scan" );
@@ -5578,6 +5638,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
     }
     CHECK( ( mode == "off" ? intervals == 0 : intervals >= 1 ) );
     CHECK( ( mode == "off" ? receiver_scans == 0 : receiver_scans == 1 ) );
+    CHECK( ( mode == "off" ? journal_calls == 0 : journal_calls > 0 ) );
+    CHECK( ( mode == "off" ? redraw_attempts == 0 : redraw_attempts > 0 ) );
+    CHECK( ( mode == "off" ? npc_resource_attempts == 0 : npc_resource_attempts > 0 ) );
+    CHECK( ( mode == "off" ? item_resource_attempts == 0 : item_resource_attempts > 0 ) );
     CHECK( extrema_snapshots >= 1 );
     input.close();
     // Extend this same native process to a complete non-overlapping window.
@@ -5645,7 +5709,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                     const auto names = detail.get_string_array( "stage_names" );
                     for( const std::string name : {
                              "camp_locker_downtime", "camp_locker_collection",
-                             "camp_locker_service", "npc_find_item", "npc_pick_up_item"
+                             "camp_locker_service", "npc_find_item", "npc_pick_up_item",
+                             "npc_decision_trace", "npc_decision_publish", "semantic_descriptor_build",
+                             "semantic_receipt_build", "native_journal_publish", "native_journal_compact",
+                             "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
                          } ) {
                         CHECK( std::count( names.begin(), names.end(), name ) == 1 );
                     }

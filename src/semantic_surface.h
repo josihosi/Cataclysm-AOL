@@ -26,7 +26,7 @@ void prevent_semantic_wake_descriptor_inheritance();
 // Diagnostic history is disposable; current input/receipt records are lossless.
 bool write_native_semantic_event( const std::string &event );
 // Raw diagnostic JSON has no semantic input authority; both formats share bounds.
-bool write_native_diagnostic_event( const std::string &event );
+bool write_native_diagnostic_event( const std::string &event, bool measure = true );
 
 struct semantic_surface_descriptor {
     int schema_version = 1;

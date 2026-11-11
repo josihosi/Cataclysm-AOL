@@ -20,6 +20,7 @@
 #endif
 
 #include "debug.h"
+#include "do_turn.h"
 #include "filesystem.h"
 #include "json.h"
 
@@ -72,7 +73,7 @@ class native_semantic_journal
             path( std::move( path ) ), run( std::move( run ) ) {}
 
         bool append( const std::string &event, native_record_format format,
-                     native_journal_failure &failure ) {
+                     native_journal_failure &failure, bool measure ) {
             std::istringstream input( event );
             TextJsonIn jsin( input );
             const TextJsonObject object = jsin.get_object();
@@ -256,7 +257,7 @@ class native_semantic_journal
             // plus the diagnostic allowance. Initial publication also replaces
             // any unrelated previous process's file with a fresh generation.
             if( !published || disk_bytes + row->text.size() > diagnostic_bytes + pinned_bytes + 512 ) {
-                return compact( failure );
+                return compact( failure, measure );
             }
             failure.field = "none";
             failure.stage = "append_open";
@@ -296,7 +297,9 @@ class native_semantic_journal
         }
 
     private:
-        bool compact( native_journal_failure &failure ) {
+        bool compact( native_journal_failure &failure, bool measure ) {
+            raid_perf_scope diagnostic_scope( raid_perf_stage::native_journal_compact, measure &&
+                                              raid_perf_journal_active() );
             std::vector<std::shared_ptr<const record>> rows;
             for( const auto &pin : pins ) {
                 if( std::find( recent.begin(), recent.end(), pin.second ) == recent.end() &&
@@ -411,7 +414,7 @@ bool same_actions( const std::vector<semantic_action_descriptor> &left,
     }
     return true;
 }
-bool write_native_event( const std::string &event, native_record_format format )
+bool write_native_event( const std::string &event, native_record_format format, bool measure )
 {
     const char *run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     const char *bound = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
@@ -419,6 +422,8 @@ bool write_native_event( const std::string &event, native_record_format format )
     if( !run || !bound || !path || !*run || !*path || std::string( run ) != bound ) {
         return false;
     }
+    raid_perf_scope diagnostic_scope( raid_perf_stage::native_journal_publish, measure &&
+                                      raid_perf_journal_active() );
     static std::mutex mutex;
     const std::lock_guard<std::mutex> lock( mutex );
     static std::string identity;
@@ -433,7 +438,7 @@ bool write_native_event( const std::string &event, native_record_format format )
     bool written = false;
     native_journal_failure failure;
     try {
-        written = journal->append( event, format, failure );
+        written = journal->append( event, format, failure, measure );
     } catch( const JsonError &error ) {
         native_journal_json_location( error, failure );
     } catch( const std::exception & ) {
@@ -487,12 +492,12 @@ void prevent_semantic_wake_descriptor_inheritance()
 
 bool write_native_semantic_event( const std::string &event )
 {
-    return write_native_event( event, native_record_format::semantic );
+    return write_native_event( event, native_record_format::semantic, true );
 }
 
-bool write_native_diagnostic_event( const std::string &event )
+bool write_native_diagnostic_event( const std::string &event, bool measure )
 {
-    return write_native_event( event, native_record_format::diagnostic );
+    return write_native_event( event, native_record_format::diagnostic, measure );
 }
 
 semantic_surface_manager::semantic_surface_manager( std::string run_id ) : run_id_( std::move(

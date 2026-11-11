@@ -10,8 +10,10 @@
 #include <deque>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <iterator>
 #include <list>
+#include <limits>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -319,6 +321,7 @@ void recorder::write( const std::string &row, const bool critical )
     if( critical ? critical_truncated : normal_truncated ) {
         return;
     }
+    raid_perf_scope diagnostic_scope( raid_perf_stage::npc_decision_publish );
     const auto publish = [&]( const std::string & event ) {
         const binding native = environment_binding();
         if( native.valid() && native.path == source.path && native.run_id == source.run_id ) {
@@ -1861,9 +1864,45 @@ npc_short_term_cache::closest_enemy_to_friendly_distance() const
     return distance;
 }
 
+namespace
+{
+// Decision-local diagnostic operands for the existing opt-in actor trace.
+// No perception, path, or random calculation is repeated for this snapshot.
+struct avatar_target_assessment_trace {
+    bool valid = false;
+    int npc_id = -1;
+    int turn = -1;
+    std::optional<tripoint_abs_ms> actor_position;
+    std::optional<tripoint_abs_ms> avatar_position;
+    std::optional<bool> tile_sight;
+    std::optional<bool> hostile;
+    std::optional<bool> clear_attack_line;
+    std::optional<float> threat;
+    std::optional<int> distance;
+    std::optional<int> scaled_distance;
+    std::optional<float> priority;
+    std::optional<float> incumbent_priority;
+};
+thread_local avatar_target_assessment_trace avatar_assessment_trace;
+} // namespace
+
 void npc::assess_danger()
 {
     const map &here = get_map();
+
+    avatar_assessment_trace = {};
+    raid_decision_trace::recorder &assessment_recorder = raid_decision_trace::native_recorder();
+    if( assessment_recorder.enabled() ) {
+        const auto scope = raid_decision_trace::environment_selected_npcs();
+        const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+        if( !scope.valid() || ( scope.includes( getID().get_value() ) && scope.includes_turn( turn ) ) ) {
+            avatar_assessment_trace.valid = true;
+            avatar_assessment_trace.npc_id = getID().get_value();
+            avatar_assessment_trace.turn = turn;
+            avatar_assessment_trace.actor_position = pos_abs();
+            avatar_assessment_trace.avatar_position = get_player_character().pos_abs();
+        }
+    }
 
     float highest_priority = 1.0f;
     int hostile_count = 0;  // for tallying nearby threatening enemies
@@ -1897,6 +1936,9 @@ void npc::assess_danger()
                                      llm_state.target_turns_remaining > 0 &&
                                      !llm_state.target_hint.empty();
     bool sees_player = sees( here, player_character.pos_bub( here ) );
+    if( avatar_assessment_trace.valid ) {
+        avatar_assessment_trace.tile_sight = sees_player;
+    }
     basecamp *camp_patrol_response_camp = nullptr;
     if( assigned_camp && job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 ) {
         if( std::optional<basecamp *> camp = overmap_buffer.find_camp( assigned_camp->xy() );
@@ -2199,7 +2241,13 @@ void npc::assess_danger()
     const std::string & warning ) {
         int dist = rl_dist( pos_bub(), foe.pos_bub() );
         // ignore targets behind glass even if we can see them
-        if( !clear_shot_reach( pos_bub(), foe.pos_bub(), false ) ) {
+        const bool clear_attack_line = clear_shot_reach( pos_bub(), foe.pos_bub(), false );
+        if( avatar_assessment_trace.valid && foe.is_avatar() ) {
+            avatar_assessment_trace.clear_attack_line = clear_attack_line;
+            avatar_assessment_trace.threat = foe_threat;
+            avatar_assessment_trace.distance = dist;
+        }
+        if( !clear_attack_line ) {
             // still warn about enemies behind impassable glass walls, but not as
             // often. since NPC threats have a higher chance of ignoring soft
             // obstacles, we'll ignore them here.
@@ -2217,6 +2265,9 @@ void npc::assess_danger()
         }
 
         int scaled_distance = std::max( 1, ( 100 * dist ) / foe.get_speed() );
+        if( avatar_assessment_trace.valid && foe.is_avatar() ) {
+            avatar_assessment_trace.scaled_distance = scaled_distance;
+        }
         ai_cache.total_danger += foe_threat / scaled_distance;
         if( must_retreat || no_fighting ) {
             return 0.0f;
@@ -2240,6 +2291,10 @@ void npc::assess_danger()
                                  is_too_close ? std::max( foe_threat, NPC_DANGER_VERY_LOW ) : 0.0f );
             if( camp_patrol_response ) {
                 priority = std::max( priority, foe_threat );
+            }
+            if( avatar_assessment_trace.valid && foe.is_avatar() ) {
+                avatar_assessment_trace.priority = priority;
+                avatar_assessment_trace.incumbent_priority = highest_priority;
             }
             add_directional_threat( cur_threat_map, direction_from( pos_bub(), foe.pos_bub() ),
                                     priority );
@@ -2293,6 +2348,9 @@ void npc::assess_danger()
     if( sees_player ) {
         const bool player_is_hostile =
             attitude_to( player_character ) == Attitude::HOSTILE || guaranteed_hostile();
+        if( avatar_assessment_trace.valid ) {
+            avatar_assessment_trace.hostile = player_is_hostile;
+        }
         // Mod for the player's danger level, weight it higher if player is very
         // close When the player is almost adjacent, it can exceed max danger
         // ratings, so the NPC will try hard not to break and run while in
@@ -3959,6 +4017,7 @@ void npc::trace_hostile_decision_for_harness( const std::string &action,
     if( !trace.enabled() || is_dead() ) {
         return;
     }
+    raid_perf_scope diagnostic_scope( raid_perf_stage::npc_decision_trace );
     const int numeric_id = getID().get_value();
     const raid_decision_trace::selected_npc_scope selected =
         raid_decision_trace::environment_selected_npcs();
@@ -4135,6 +4194,58 @@ void npc::trace_hostile_decision_for_harness( const std::string &action,
                                          q( bandit_live_world::to_string( outing->owner ) ) : "null" )
             << ",\"outing_waypoint_index\":" << ( outing != nullptr ?
                     outing->waypoint_index : -1 );
+    // Reuse only operands produced by this actor's current-turn assessment.
+    // A null field means that the native decision did not reach that gate.
+    std::ostringstream assessment;
+    assessment << std::setprecision( std::numeric_limits<float>::max_digits10 );
+    const auto &read = avatar_assessment_trace;
+    const bool assessment_valid = read.valid && read.npc_id == numeric_id &&
+                                  read.turn == to_turns<int>( calendar::turn - calendar::turn_zero ) &&
+                                  read.actor_position && *read.actor_position == position &&
+                                  read.avatar_position && *read.avatar_position == get_avatar().pos_abs();
+    if( assessment_valid ) {
+        const auto position_json = [&assessment]( const std::optional<tripoint_abs_ms> &p ) {
+            if( p ) {
+                assessment << '[' << p->x() << ',' << p->y() << ',' << p->z() << ']';
+            } else {
+                assessment << "null";
+            }
+        };
+        const auto boolean_json = [&assessment]( const std::optional<bool> &v ) {
+            assessment << ( v ? ( *v ? "true" : "false" ) : "null" );
+        };
+        const auto number_json = [&assessment]( const auto & v ) {
+            if( v && std::isfinite( static_cast<double>( *v ) ) ) {
+                assessment << *v;
+            } else {
+                assessment << "null";
+            }
+        };
+        assessment << "{\"actor_position_abs\":";
+        position_json( read.actor_position );
+        assessment << ",\"avatar_position_abs\":";
+        position_json( read.avatar_position );
+        assessment << ",\"tile_sight\":";
+        boolean_json( read.tile_sight );
+        assessment << ",\"hostile\":";
+        boolean_json( read.hostile );
+        assessment << ",\"clear_attack_line\":";
+        boolean_json( read.clear_attack_line );
+        assessment << ",\"threat\":";
+        number_json( read.threat );
+        assessment << ",\"distance\":";
+        number_json( read.distance );
+        assessment << ",\"scaled_distance\":";
+        number_json( read.scaled_distance );
+        assessment << ",\"priority\":";
+        number_json( read.priority );
+        assessment << ",\"incumbent_priority\":";
+        number_json( read.incumbent_priority );
+        assessment << '}';
+    } else {
+        assessment << "null";
+    }
+    payload << ",\"avatar_target_assessment\":" << assessment.str();
     const std::string key = hostile_site != nullptr ?
                             hostile_site->active_hostile_operation.reservation.activity_id + '#' +
                             std::to_string( hostile_site->active_hostile_operation.reservation.generation ) +
@@ -4160,6 +4271,7 @@ void npc::trace_hostile_decision_for_harness( const std::string &action,
                << '|' << operation_for_actor->reservation.actor_route_waypoint
                << '|' << operation_for_actor->site_search_waypoint;
     }
+    change << '|' << assessment.str();
     trace.record( key, "raid_actor_action",
                   to_turns<int>( calendar::turn - calendar::turn_zero ), payload.str(), change.str() );
 }

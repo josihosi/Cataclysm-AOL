@@ -5,7 +5,9 @@
 #endif
 #if defined(__APPLE__)
 #include <libproc.h>
+#include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <sys/proc_info.h>
 #include <sys/resource.h>
 #include <unistd.h>
 #endif
@@ -311,6 +313,83 @@ static constexpr std::array<const char *, raid_perf_query_event_count> raid_perf
     "deferred_probe", "deferred_member_ineligible",
     "walk", "open_door", "goal_reached", "unknown_geometry", "fire_refused", "no_route", "other_refusal"
 };
+#if defined(__APPLE__)
+// Process-wide VM indicators only: counts are not wait durations.  A missing,
+// decreasing, or saturated counter is deliberately not reported as zero.
+struct vm_window_counts {
+    std::size_t fault_samples = 0;
+    std::size_t vm_samples = 0;
+    std::uint64_t faults = 0;
+    std::uint64_t decompressions = 0;
+    std::uint64_t swapin_ledger_delta = 0;
+    proc_taskinfo task_start{};
+    task_vm_info_data_t vm_start{};
+    bool task_valid = false;
+    bool vm_valid = false;
+
+    void begin() {
+        task_valid = proc_pidinfo( getpid(), PROC_PIDTASKINFO, 0, &task_start,
+                                   sizeof( task_start ) ) == sizeof( task_start );
+        mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+        vm_valid = task_info( mach_task_self(), TASK_VM_INFO,
+                              reinterpret_cast<task_info_t>( &vm_start ), &count ) == KERN_SUCCESS &&
+                   count >= TASK_VM_INFO_REV6_COUNT;
+    }
+    void end() {
+        proc_taskinfo task_end{};
+        if( task_valid && proc_pidinfo( getpid(), PROC_PIDTASKINFO, 0, &task_end,
+                                        sizeof( task_end ) ) == sizeof( task_end ) &&
+            task_start.pti_faults >= 0 && task_end.pti_faults >= task_start.pti_faults &&
+            task_end.pti_faults < INT_MAX ) {
+            faults += static_cast<std::uint64_t>( task_end.pti_faults - task_start.pti_faults );
+            ++fault_samples;
+        }
+        task_vm_info_data_t vm_end{};
+        mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+        if( vm_valid && task_info( mach_task_self(), TASK_VM_INFO,
+                                   reinterpret_cast<task_info_t>( &vm_end ), &count ) == KERN_SUCCESS &&
+            count >= TASK_VM_INFO_REV6_COUNT && vm_start.decompressions >= 0 &&
+            vm_end.decompressions >= vm_start.decompressions && vm_end.decompressions < INT_MAX &&
+            vm_start.ledger_swapins >= 0 && vm_end.ledger_swapins >= vm_start.ledger_swapins ) {
+            decompressions += static_cast<std::uint64_t>( vm_end.decompressions - vm_start.decompressions );
+            swapin_ledger_delta += static_cast<std::uint64_t>( vm_end.ledger_swapins -
+                                   vm_start.ledger_swapins );
+            ++vm_samples;
+        }
+    }
+    void serialize( JsonOut &js, std::size_t attempts ) const {
+        js.member( "fault_samples", fault_samples );
+        if( fault_samples == attempts ) {
+            js.member( "faults", faults );
+        }
+        js.member( "vm_samples", vm_samples );
+        if( vm_samples == attempts ) {
+            js.member( "decompressions", decompressions );
+            js.member( "swapin_ledger_delta", swapin_ledger_delta );
+        }
+    }
+};
+#endif
+
+enum class work_resource_window : std::size_t {
+    npc_actions,
+    items,
+    redraw,
+    count
+};
+
+struct work_resource_counts {
+    std::size_t attempts = 0;
+    std::size_t cpu_samples = 0;
+    double cpu_seconds = 0;
+    double probe_fence_wall_seconds = 0;
+#if defined(__APPLE__)
+    std::size_t resource_samples = 0;
+    std::array<std::uint64_t, 4> resource_delta{};
+    vm_window_counts vm;
+#endif
+};
+
 struct raid_perf_row {
     int turn = 0;
     std::size_t wait_begin = 0;
@@ -319,6 +398,8 @@ struct raid_perf_row {
     double cpu_seconds = 0;
     double input_seconds = 0;
     double save_seconds = 0;
+    std::array<work_resource_counts, static_cast<std::size_t>( work_resource_window::count )>
+    work_resources{};
     std::size_t locker_resource_attempts = 0;
     std::size_t locker_cpu_samples = 0;
     double locker_cpu_seconds = 0;
@@ -352,9 +433,90 @@ struct raid_perf_row {
     migo_tower::receiver_observation receiver_scan;
 };
 static raid_perf_row *raid_perf_current = nullptr;
+static thread_local bool raid_perf_turn_thread = false;
+static thread_local bool raid_perf_outside_simulation = false;
+
+bool raid_perf_journal_active()
+{
+    return raid_perf_turn_thread && !raid_perf_outside_simulation;
+}
 static std::vector<raid_perf_row> raid_perf_rows;
 static std::string raid_perf_mode = "off";
 static bool raid_perf_receiver_captured = false;
+
+// Optional process-wide counters over the redraw, NPC-action and item windows.
+// The window boundaries are native owners; no per-actor log is introduced.
+class work_resource_scope
+{
+    public:
+        explicit work_resource_scope( work_resource_window window ) {
+            const char *option = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+            if( !raid_perf_journal_active() || !option || !*option || *option == '0' ) {
+                return;
+            }
+            counts = &raid_perf_current->work_resources[static_cast<std::size_t>( window )];
+            ++counts->attempts;
+            const auto fence_start = std::chrono::steady_clock::now();
+#if defined(__APPLE__)
+            counts->vm.begin();
+            rusage_info_v4 usage{};
+            if( proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                                 reinterpret_cast<rusage_info_t *>( &usage ) ) == 0 ) {
+                start = { usage.ri_proc_start_abstime, usage.ri_pageins, usage.ri_diskio_bytesread,
+                          usage.ri_diskio_byteswritten, usage.ri_runnable_time
+                        };
+                valid = true;
+            }
+#endif
+#if !defined(_WIN32)
+            cpu_start = std::clock();
+#endif
+            counts->probe_fence_wall_seconds += std::chrono::duration<double>(
+                                                    std::chrono::steady_clock::now() - fence_start ).count();
+        }
+        ~work_resource_scope() {
+            if( !counts ) {
+                return;
+            }
+            const auto fence_start = std::chrono::steady_clock::now();
+#if !defined(_WIN32)
+            const std::clock_t cpu_end = std::clock();
+            if( cpu_start != static_cast<std::clock_t>( -1 ) && cpu_end != static_cast<std::clock_t>( -1 ) &&
+                cpu_end >= cpu_start ) {
+                counts->cpu_seconds += static_cast<double>( cpu_end - cpu_start ) / CLOCKS_PER_SEC;
+                ++counts->cpu_samples;
+            }
+#endif
+#if defined(__APPLE__)
+            counts->vm.end();
+            rusage_info_v4 usage{};
+            if( valid && proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
+                                          reinterpret_cast<rusage_info_t *>( &usage ) ) == 0 &&
+                usage.ri_proc_start_abstime == start[0] && usage.ri_pageins >= start[1] &&
+                usage.ri_diskio_bytesread >= start[2] && usage.ri_diskio_byteswritten >= start[3] &&
+                usage.ri_runnable_time >= start[4] ) {
+                counts->resource_delta[0] += usage.ri_pageins - start[1];
+                counts->resource_delta[1] += usage.ri_diskio_bytesread - start[2];
+                counts->resource_delta[2] += usage.ri_diskio_byteswritten - start[3];
+                counts->resource_delta[3] += usage.ri_runnable_time - start[4];
+                ++counts->resource_samples;
+            }
+#endif
+            counts->probe_fence_wall_seconds += std::chrono::duration<double>(
+                                                    std::chrono::steady_clock::now() - fence_start ).count();
+        }
+        work_resource_scope( const work_resource_scope & ) = delete;
+        work_resource_scope &operator=( const work_resource_scope & ) = delete;
+    private:
+        work_resource_counts *counts = nullptr;
+#if !defined(_WIN32)
+        std::clock_t cpu_start = static_cast<std::clock_t>( -1 );
+#endif
+#if defined(__APPLE__)
+        bool valid = false;
+        std::array<std::uint64_t, 5> start{};
+#endif
+};
 
 static std::size_t raid_perf_wait_generation()
 {
@@ -528,7 +690,9 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
     "stalker_target_acquisition", "stalker_target_recheck",
     "stalker_invisible_avatar_read",
     "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
-    "npc_find_item", "npc_pick_up_item"
+    "npc_find_item", "npc_pick_up_item", "npc_decision_trace", "npc_decision_publish",
+    "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish", "native_journal_compact",
+    "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -547,6 +711,52 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
     js.member( "process_cpu_seconds", row.cpu_seconds );
     js.member( "input_seconds", row.input_seconds );
     js.member( "save_seconds", row.save_seconds );
+    for( std::size_t index = 0; index < row.work_resources.size(); ++index ) {
+        const work_resource_counts &counts = row.work_resources[index];
+        if( !counts.attempts ) {
+            continue;
+        }
+        const auto window = static_cast<work_resource_window>( index );
+        const char *name = window == work_resource_window::npc_actions ? "npc_action_resources" :
+                           window == work_resource_window::items ? "item_resources" : "redraw_resources";
+        js.member( name );
+        js.start_object();
+        js.member( "scope", window == work_resource_window::redraw ?
+                   "process-wide deltas during pre-input redraw only; other threads may contribute; disk bytes are not wait time; samples are opt-in" :
+                   "process-wide deltas in native owner window; other threads may contribute; disk bytes are not wait time; samples are opt-in" );
+        js.member( "attempts", counts.attempts );
+        js.member( "cpu_samples", counts.cpu_samples );
+        js.member( "probe_fence_wall_seconds", counts.probe_fence_wall_seconds );
+        if( counts.cpu_samples == counts.attempts ) {
+            js.member( "cpu_seconds", counts.cpu_seconds );
+        } else {
+            js.member( "cpu_seconds" );
+            js.write_null();
+        }
+#if defined(__APPLE__)
+        js.member( "resource_samples", counts.resource_samples );
+        counts.vm.serialize( js, counts.attempts );
+        if( counts.resource_samples == counts.attempts ) {
+            js.member( "pageins", counts.resource_delta[0] );
+            js.member( "disk_read_bytes", counts.resource_delta[1] );
+            js.member( "disk_write_bytes", counts.resource_delta[2] );
+            js.member( "runnable_ticks", counts.resource_delta[3] );
+            static const mach_timebase_info_data_t timebase = []() {
+                mach_timebase_info_data_t result{};
+                if( mach_timebase_info( &result ) != KERN_SUCCESS ) {
+                    result = {};
+                }
+                return result;
+            }
+            ();
+            if( timebase.denom != 0 ) {
+                js.member( "timebase_numer", timebase.numer );
+                js.member( "timebase_denom", timebase.denom );
+            }
+        }
+#endif
+        js.end_object();
+    }
     if( row.locker_resource_attempts ) {
         js.member( "camp_locker_collection_resources" );
         js.start_object();
@@ -685,6 +895,7 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->cpu_seconds = row.cpu_seconds;
     copy->input_seconds = row.input_seconds;
     copy->save_seconds = row.save_seconds;
+    copy->work_resources = row.work_resources;
     copy->locker_resource_attempts = row.locker_resource_attempts;
     copy->locker_cpu_samples = row.locker_cpu_samples;
     copy->locker_cpu_seconds = row.locker_cpu_seconds;
@@ -753,6 +964,8 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
                "Scalar branch visits, not distinct query/goal identities or timing. Inputs no_segment/segment_empty/segment_present and terminal walk/open_door/goal_reached/unknown_geometry/fire_refused/no_route/other_refusal each partition physical_navigation_read calls. Context resets precede the read; only positive resets discard an existing prefix. Qualification rejections and store/reuse counts overlap input/outcome groups. cross_z counts actual input level differences. deferred_member_ineligible is a deferred unreachable probe for a member already listed at exclusion, which cannot satisfy reconsider's new-member condition; no behavior is suppressed. No failed-result cache or per-query output." );
     js.member( "channel_output_scope",
                "run-bound audit record/open/explicit-flush calls and completed logical bytes; not physical disk I/O" );
+    js.member( "semantic_journal_scope",
+               "WALL: descriptor/receipt construction excludes journal publication; journal_publish includes lock, parsing, retention and append or compaction, while journal_compact nests inside it. Performance packet writes are excluded to prevent self-accounting; no extra events or altered publication. Input/save phases are excluded; do not add nested stages or infer physical I/O or CPU." );
     js.member( "stage_names", raid_perf_stage_names );
     js.member( "rows" );
     js.start_array();
@@ -809,7 +1022,7 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
         raid_perf_flush_after_wait( static_cast<std::size_t>( slowest - raid_perf_rows.begin() ) );
         return;
     }
-    write_native_diagnostic_event( packet );
+    write_native_diagnostic_event( packet, false );
     raid_perf_rows.clear();
     // A scan in the currently open row has not been emitted with these older
     // completed rows. It already owns the first-scan slot of the next batch.
@@ -942,7 +1155,7 @@ static bool write_native_performance_extrema( const native_performance_extrema &
         js.write_null();
     }
     js.end_object();
-    return write_native_diagnostic_event( stream.str() );
+    return write_native_diagnostic_event( stream.str(), false );
 }
 
 // This producer is run-bound and opt-in through the existing native
@@ -1149,7 +1362,7 @@ static bool publish_slow_receipts( slow_receipt_runtime &state, double now, bool
     js.end_array();
     js.end_object();
     const std::string payload = stream.str();
-    const bool success = payload.size() <= 32768 && write_native_diagnostic_event( payload );
+    const bool success = payload.size() <= 32768 && write_native_diagnostic_event( payload, false );
     receipts.published( now, success );
     return success;
 }
@@ -1224,6 +1437,8 @@ class openclaw_harness_turn_trace
                     diagnostic_.turn = game_turn;
                     diagnostic_.wait_begin = raid_perf_wait_generation();
                     raid_perf_current = &diagnostic_;
+                    raid_perf_turn_thread = true;
+                    raid_perf_outside_simulation = false;
                     cpu_started_ = std::clock();
                     sink_started_ = get_debug_sink_statistics();
 #if defined(__APPLE__)
@@ -1318,6 +1533,8 @@ class openclaw_harness_turn_trace
                         diagnostic_.stages[static_cast<std::size_t>( raid_perf_stage::turn_world_tail )]
                     };
                     raid_perf_rows.push_back( std::move( diagnostic_ ) );
+                    raid_perf_turn_thread = false;
+                    raid_perf_outside_simulation = false;
                     raid_perf_current = nullptr;
                 }
                 extrema_sample.end_sequence = openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
@@ -1428,6 +1645,7 @@ class openclaw_harness_turn_trace
         void phase_begin( const char *phase ) {
             if( enabled_ && !outside_simulation_started_ ) {
                 outside_simulation_started_ = std::chrono::steady_clock::now();
+                raid_perf_outside_simulation = true;
                 if( raid_perf_current ) {
                     outside_cpu_started_ = std::clock();
                 }
@@ -1458,6 +1676,7 @@ class openclaw_harness_turn_trace
                 outside_simulation_phase_.clear();
                 openclaw_harness_write_turn_trace( "turn_phase", "end", "simulation", turn_id_, game_turn_,
                                                    game_minutes_, 0.0 );
+                raid_perf_outside_simulation = false;
             }
         }
 
@@ -20771,6 +20990,7 @@ void monmove()
     // replace the selected member's OMT route in this same turn.
     complete_live_bandit_homeward_boundary_steps( pair_homeward_boundary_steps );
     creature_section.restart( raid_perf_stage::creature_npc_actions );
+    work_resource_scope npc_resources( work_resource_window::npc_actions );
     for( npc &guy : g->all_npcs() ) {
         const bool profiled_covert_member =
             profiled_covert_member_ids.count( guy.getID() ) > 0;
@@ -20791,6 +21011,7 @@ void monmove()
         }
         m.creature_in_field( guy );
         if( !guy.has_effect( effect_npc_suspend ) ) {
+            raid_perf_scope npc_process_scope( raid_perf_stage::npc_process_turn );
             guy.process_turn();
         }
         guy.reconcile_alarm_response();
@@ -20840,7 +21061,10 @@ void monmove()
                     record_live_bandit_ingress_motor( guy, "native_survival" );
                 }
                 homeward_trace.action( "npc_move", "native_survival branch selected" );
-                guy.move();
+                {
+                    raid_perf_scope npc_move_scope( raid_perf_stage::npc_normal_move );
+                    guy.move();
+                }
             } else if( assembly_order != pair_assembly_orders.end() ) {
                 homeward_trace.action( "assembly_order", "assembly order precedes homeward motor" );
                 if( guy.has_flag( json_flag_CANNOT_MOVE ) ||
@@ -21147,7 +21371,10 @@ void monmove()
                     // Once committed contact ends the covert relationship, ordinary combat owns
                     // the actor again.
                     homeward_trace.action( "npc_move", "homeward relationship read returned no relationship" );
-                    guy.move();
+                    {
+                        raid_perf_scope npc_move_scope( raid_perf_stage::npc_normal_move );
+                        guy.move();
+                    }
                 } else if( guy.has_flag( json_flag_CANNOT_MOVE ) ) {
                     homeward_trace.action( "move_pause", "CANNOT_MOVE flag", "blocked" );
                     if( immediate_field_hazard && relationship->phase ==
@@ -21494,7 +21721,10 @@ void monmove()
                     guy.move_pause();
                 }
             } else {
-                guy.move();
+                {
+                    raid_perf_scope npc_move_scope( raid_perf_stage::npc_normal_move );
+                    guy.move();
+                }
             }
             if( moves == guy.get_moves() ) {
                 // Count every time we exit npc::move() without spending any moves.
@@ -21529,6 +21759,7 @@ void monmove()
         }
 
         if( !guy.is_dead() ) {
+            raid_perf_scope npc_body_scope( raid_perf_stage::npc_body_update );
             guy.npc_update_body();
         }
     }
@@ -25087,7 +25318,11 @@ bool game::do_turn()
                     if( !u.activity && uquit != QUIT_WATCH
                         && ( !u.has_distant_destination() || calendar::once_every( 10_seconds ) ) ) {
                         wait_popup_reset();
-                        ui_manager::redraw();
+                        {
+                            raid_perf_scope redraw_scope( raid_perf_stage::pre_input_redraw );
+                            work_resource_scope redraw_resources( work_resource_window::redraw );
+                            ui_manager::redraw();
+                        }
                         // This trace observes the turn-loop boundary only.  The
                         // initial semantic producer lives at the render boundary,
                         // which can execute before this loop is entered.
@@ -25198,6 +25433,7 @@ bool game::do_turn()
     }
     {
         raid_perf_scope diagnostic_scope( raid_perf_stage::items );
+        work_resource_scope item_resources( work_resource_window::items );
         m.process_items();
     }
     explosion_handler::process_explosions();
