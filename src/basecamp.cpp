@@ -1113,8 +1113,7 @@ static std::optional<camp_locker_slot> classify_camp_locker_item_impl(
         }
         return utility_storage_capacity( it );
     };
-    const std::optional<units::volume> eager_storage = eager_capacity ?
-            std::optional<units::volume>( read_storage() ) : std::nullopt;
+    const units::volume eager_storage = eager_capacity ? read_storage() : 0_ml;
 
     if( is_camp_locker_draped_overlay_onepiece( it ) ) {
         return std::nullopt;
@@ -1161,7 +1160,7 @@ static std::optional<camp_locker_slot> classify_camp_locker_item_impl(
         return camp_locker_slot::belt;
     }
     if( covers_torso ) {
-        const units::volume storage = eager_storage ? *eager_storage : read_storage();
+        const units::volume storage = eager_capacity ? eager_storage : read_storage();
         if( storage >= 6_liter ) {
             return camp_locker_slot::bag;
         }

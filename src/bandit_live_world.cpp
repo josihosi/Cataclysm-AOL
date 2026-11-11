@@ -10324,11 +10324,13 @@ void scout_assessment_provenance::serialize( JsonOut &json ) const
 void scout_assessment_provenance::deserialize( const JsonObject &jo )
 {
     scout_assessment_provenance candidate;
-    for( const std::string &name : { "activity_id", "generation", "captured_minutes",
-                                     "reducer_known", "target_inputs", "route_inputs", "bounty_known",
-                                     "bounty_value", "bounty_inputs", "returned_optical_known",
-                                     "habitation_before", "habitation_delta", "habitation_shared",
-                                     "habitation_private_delta", "returned_optical_inputs" } ) {
+    for( const std::string name : {
+             "activity_id", "generation", "captured_minutes",
+             "reducer_known", "target_inputs", "route_inputs", "bounty_known",
+             "bounty_value", "bounty_inputs", "returned_optical_known",
+             "habitation_before", "habitation_delta", "habitation_shared",
+             "habitation_private_delta", "returned_optical_inputs"
+         } ) {
         if( !jo.has_member( name ) ) {
             jo.throw_error( "scout assessment provenance is incomplete" );
         }

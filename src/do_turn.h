@@ -245,6 +245,7 @@ bool dematerialize_live_bandit_structural_handoffs_for_test();
 bool dematerialize_live_bandit_structural_handoffs_with_quiesce_failure_for_test( int member_id );
 void process_monsters_and_npcs_turn_for_test();
 void process_overmap_npc_move_for_test();
+bool reject_local_coarse_candidate_for_test_once();
 bool advance_live_bandit_hostile_returns_for_test();
 bool materialize_committed_bandit_shakedown_for_test( bandit_live_world::site_record &site );
 bool complete_live_bandit_homeward_boundary_for_test();

@@ -416,28 +416,28 @@ void raid_perf_note_query( raid_perf_query_event event )
 }
 
 static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_names {
-        "migo_operations", "horde_movement", "population", "fields", "items", "map_cache",
-        "signal_total", "signal_discovery", "signal_hordes", "creatures", "overmap_npcs",
-        "pre_input_world", "post_input_action",
-        "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit", "human_activation",
-        "watch_preflight", "watch_optical_read", "watch_record_view",
-        "migo_service_local_navigation", "migo_service_abstract_navigation",
-        "migo_local_plan", "migo_local_move",
-        "migo_local_prepare_navigation", "migo_abstract_prepare_navigation",
-        "physical_navigation_read", "physical_navigation_view_build", "physical_navigation_native_route",
-        "nav_view_lookup", "nav_view_miss_load", "nav_view_level_setup",
-        "migo_plan_native_targeting", "migo_plan_species_hook", "migo_plan_hostile_recognition",
-        "scout_actor_read", "scout_view_build", "scout_view_cache", "scout_light_read",
-        "scout_light_dependencies", "scout_light_native", "scout_actor_predicate", "scout_reader_retire",
-        "creature_monsters", "creature_npc_preparation", "creature_npc_actions",
-        "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
-        "tail_prepare", "tail_world_work", "tail_finish",
-        "signal_rider_maintenance", "signal_stalkers", "signal_riders",
-        "signal_cannibals", "signal_migo",
-        "stalker_target_acquisition", "stalker_target_recheck",
-        "stalker_invisible_avatar_read",
-        "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
-        "npc_find_item", "npc_pick_up_item"
+    "migo_operations", "horde_movement", "population", "fields", "items", "map_cache",
+    "signal_total", "signal_discovery", "signal_hordes", "creatures", "overmap_npcs",
+    "pre_input_world", "post_input_action",
+    "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit", "human_activation",
+    "watch_preflight", "watch_optical_read", "watch_record_view",
+    "migo_service_local_navigation", "migo_service_abstract_navigation",
+    "migo_local_plan", "migo_local_move",
+    "migo_local_prepare_navigation", "migo_abstract_prepare_navigation",
+    "physical_navigation_read", "physical_navigation_view_build", "physical_navigation_native_route",
+    "nav_view_lookup", "nav_view_miss_load", "nav_view_level_setup",
+    "migo_plan_native_targeting", "migo_plan_species_hook", "migo_plan_hostile_recognition",
+    "scout_actor_read", "scout_view_build", "scout_view_cache", "scout_light_read",
+    "scout_light_dependencies", "scout_light_native", "scout_actor_predicate", "scout_reader_retire",
+    "creature_monsters", "creature_npc_preparation", "creature_npc_actions",
+    "turn_setup", "turn_activity_prep", "turn_input_loop", "turn_world_tail",
+    "tail_prepare", "tail_world_work", "tail_finish",
+    "signal_rider_maintenance", "signal_stalkers", "signal_riders",
+    "signal_cannibals", "signal_migo",
+    "stalker_target_acquisition", "stalker_target_recheck",
+    "stalker_invisible_avatar_read",
+    "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
+    "npc_find_item", "npc_pick_up_item"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -706,7 +706,8 @@ static void write_extrema_sample( JsonOut &js, const native_performance_sample &
     js.member( "detailed_diagnostic" );
     if( sample.detailed_row ) {
         js.start_object();
-        js.member( "scope", "same-turn diagnostic wall stages and calls; nested stages can overlap and include waits; resource counters include input and save" );
+        js.member( "scope",
+                   "same-turn diagnostic wall stages and calls; nested stages can overlap and include waits; resource counters include input and save" );
         js.member( "stage_names", raid_perf_stage_names );
         js.member( "row" );
         write_raid_perf_row( js, *sample.detailed_row, true );
