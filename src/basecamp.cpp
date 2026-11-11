@@ -23,6 +23,7 @@
 #include "crafting.h"
 #include "damage.h"
 #include "debug.h"
+#include "do_turn.h"
 #include "event.h"
 #include "event_bus.h"
 #include "faction.h"
@@ -1061,7 +1062,8 @@ int camp_locker_outerwear_rain_adjustment(
 }
 } // namespace
 
-std::optional<camp_locker_slot> classify_camp_locker_item( const item &it )
+static std::optional<camp_locker_slot> classify_camp_locker_item_impl(
+    const item &it, bool eager_capacity, int *capacity_reads )
 {
     if( it.is_gun() ) {
         return camp_locker_slot::ranged_weapon;
@@ -1105,7 +1107,14 @@ std::optional<camp_locker_slot> classify_camp_locker_item( const item &it )
     const bool outer = armor_has_layer_on_any(
                            it, layer_level::OUTER,
     {body_part_torso, body_part_leg_l, body_part_leg_r} );
-    const units::volume storage = utility_storage_capacity( it );
+    auto read_storage = [&]() {
+        if( capacity_reads ) {
+            ++*capacity_reads;
+        }
+        return utility_storage_capacity( it );
+    };
+    const std::optional<units::volume> eager_storage = eager_capacity ?
+            std::optional<units::volume>( read_storage() ) : std::nullopt;
 
     if( is_camp_locker_draped_overlay_onepiece( it ) ) {
         return std::nullopt;
@@ -1152,6 +1161,7 @@ std::optional<camp_locker_slot> classify_camp_locker_item( const item &it )
         return camp_locker_slot::belt;
     }
     if( covers_torso ) {
+        const units::volume storage = eager_storage ? *eager_storage : read_storage();
         if( storage >= 6_liter ) {
             return camp_locker_slot::bag;
         }
@@ -1165,6 +1175,17 @@ std::optional<camp_locker_slot> classify_camp_locker_item( const item &it )
     }
 
     return std::nullopt;
+}
+
+std::optional<camp_locker_slot> classify_camp_locker_item( const item &it )
+{
+    return classify_camp_locker_item_impl( it, false, nullptr );
+}
+
+std::optional<camp_locker_slot> classify_camp_locker_item_for_test(
+    const item &it, bool eager_capacity, int &capacity_reads )
+{
+    return classify_camp_locker_item_impl( it, eager_capacity, &capacity_reads );
 }
 
 namespace
@@ -3179,6 +3200,7 @@ camp_locker_live_state collect_camp_locker_live_state(
     const std::vector<camp_locker_reservation> &reservations,
     camp_locker_service_probe *probe = nullptr )
 {
+    raid_perf_scope diagnostic_scope( raid_perf_stage::camp_locker_collection );
     camp_locker_live_state live_state;
     live_state.current_items = collect_camp_locker_current_items( worker );
     live_state.worker_items = collect_camp_locker_worker_items( worker );
@@ -4451,6 +4473,7 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
 
 bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe )
 {
+    raid_perf_scope diagnostic_scope( raid_perf_stage::camp_locker_downtime );
     if( !has_locker_zone() ) {
         if( basecamp_ai::should_show_camp_job_report(
                 worker, basecamp_ai::camp_job_report_kind::locker_exception, "no-locker-zone" ) ) {
@@ -4609,8 +4632,12 @@ bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_p
     // Service removes this worker's reservations, which never exclude its own items.
     const bool recollect = probe && probe->reference_service_recollection;
     const camp_locker_preparation preparation{ locker_tiles, live_state };
-    const bool applied_changes = service_camp_locker_impl(
-                                     worker, nullptr, true, recollect ? nullptr : &preparation, probe );
+    bool applied_changes;
+    {
+        raid_perf_scope service_scope( raid_perf_stage::camp_locker_service );
+        applied_changes = service_camp_locker_impl(
+                              worker, nullptr, true, recollect ? nullptr : &preparation, probe );
+    }
     locker_service_queue.erase( locker_service_queue.begin() );
     worker.set_value( "camp_locker_last_service_turn", to_turn<int>( calendar::turn ) );
     locker_next_service_turn =

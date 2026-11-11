@@ -435,7 +435,9 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
         "signal_rider_maintenance", "signal_stalkers", "signal_riders",
         "signal_cannibals", "signal_migo",
         "stalker_target_acquisition", "stalker_target_recheck",
-        "stalker_invisible_avatar_read"
+        "stalker_invisible_avatar_read",
+        "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
+        "npc_find_item", "npc_pick_up_item"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -588,6 +590,8 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
                "WALL: scout_actor_read includes geometry build/cache, light_read and actor_predicate. view_build covers actor geometry/probe and light view construction; view_cache covers geometry preparation and dirty native lighting cache rebuilds. light_read includes light dependencies and native passes; light_native includes solar callbacks, whose physical summaries also count in light_dependencies. Dependencies groups plane admission and uncached solar-summary reads, not physical disk time. reader_retire includes owned views/readers disposal. These stages also observe other shared scout callers; do not add nested durations or infer actor identity. No extra queries or events." );
     js.member( "creature_scope",
                "WALL: disjoint children of creatures in monmove. creature_monsters includes monster turns/plan/move, cleanup and despawn; creature_npc_preparation includes sleep reconciliation, shared party/covert preparation and homeward boundary handoff; creature_npc_actions includes native NPC processing/actions/body updates and final handoff/return recording. Counts are monmove phase entries, not actors/actions. Shared scout stages may nest in any child; raw WALL can include nested input waits, so do not add nested durations or infer exclusive simulation/CPU/identity. Same fixed row/packet cadence, no extra work." );
+    js.member( "camp_locker_scope",
+               "WALL: camp_locker_downtime includes collection and service; camp_locker_collection covers live-state collection wherever called, including post-service recollection; camp_locker_service is the due service call and may include collection. npc_find_item and npc_pick_up_item cover native NPC pickup search and action. These stages may overlap their parents; calls count invocations, not workers, items or successful transfers. Durations may include nested waits and are not CPU time." );
     js.member( "watch_scope",
                "Actual preflight/read/record_view calls; eligible record_view calls are not confirmed writes; cached views sum each preflight's retained geometry/lighting views, including failed lighting, not per-read allocations or unique world cells" );
     js.member( "debug_sink_scope",
@@ -702,7 +706,7 @@ static void write_extrema_sample( JsonOut &js, const native_performance_sample &
     js.member( "detailed_diagnostic" );
     if( sample.detailed_row ) {
         js.start_object();
-        js.member( "scope", "same-turn diagnostic wall stages and calls; resource counters include input and save" );
+        js.member( "scope", "same-turn diagnostic wall stages and calls; nested stages can overlap and include waits; resource counters include input and save" );
         js.member( "stage_names", raid_perf_stage_names );
         js.member( "row" );
         write_raid_perf_row( js, *sample.detailed_row, true );

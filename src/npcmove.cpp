@@ -47,6 +47,7 @@
 #include "creature.h"
 #include "creature_tracker.h"
 #include "debug.h"
+#include "do_turn.h"
 #include "dialogue_chatbin.h"
 #include "dispersion.h"
 #include "effect.h"
@@ -6550,6 +6551,7 @@ void npc::see_item_say_smth( const itype_id &object, const std::string &smth )
 
 void npc::find_item()
 {
+    raid_perf_scope diagnostic_scope( raid_perf_stage::npc_find_item );
     if( is_hallucination() ) {
         see_item_say_smth( itype_thorazine,
                            chat_snippets().snip_no_to_thorazine.translated() );
@@ -6741,6 +6743,7 @@ template <typename T> std::list<item> npc_pickup_from_stack( npc &who, T &items 
 
 void npc::pick_up_item()
 {
+    raid_perf_scope diagnostic_scope( raid_perf_stage::npc_pick_up_item );
     if( is_hallucination() ) {
         return;
     }

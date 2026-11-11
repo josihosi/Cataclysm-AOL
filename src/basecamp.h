@@ -357,6 +357,10 @@ struct camp_locker_slot_plan {
 using camp_locker_plan = std::map<camp_locker_slot, camp_locker_slot_plan>;
 
 std::optional<camp_locker_slot> classify_camp_locker_item( const item &it );
+// Connected classification control: compare the former eager capacity read
+// against the production path and count those reads, not elapsed time.
+std::optional<camp_locker_slot> classify_camp_locker_item_for_test(
+    const item &it, bool eager_capacity, int &capacity_reads );
 int score_camp_locker_item(
     camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt,

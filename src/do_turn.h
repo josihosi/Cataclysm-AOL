@@ -52,7 +52,9 @@ enum class raid_perf_stage : std::size_t {
     signal_rider_maintenance, signal_stalkers, signal_riders,
     signal_cannibals, signal_migo,
     stalker_target_acquisition, stalker_target_recheck,
-    stalker_invisible_avatar_read, count
+    stalker_invisible_avatar_read,
+    camp_locker_downtime, camp_locker_collection, camp_locker_service,
+    npc_find_item, npc_pick_up_item, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,

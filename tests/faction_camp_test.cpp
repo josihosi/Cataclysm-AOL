@@ -545,6 +545,43 @@ TEST_CASE( "camp_locker_item_classification", "[camp][locker]" )
            camp_locker_slot::ranged_weapon );
 }
 
+TEST_CASE( "camp_locker_classification_defers_unneeded_capacity_reads", "[camp][locker]" )
+{
+    const std::vector<itype_id> types = {
+        itype_briefs, itype_socks, itype_gloves_leather, itype_sneakers,
+        itype_jeans, itype_hazmat_suit, itype_mask_dust, itype_tool_belt,
+        itype_bholster, itype_knee_pads, itype_hakama, itype_tshirt,
+        itype_vest, itype_backpack, itype_helmet_army, itype_glock_19,
+        itype_id( "quiver_large" )
+    };
+    int eager_reads = 0;
+    int deferred_reads = 0;
+    for( const itype_id &type : types ) {
+        CAPTURE( type );
+        const item it( type );
+        const auto reference = classify_camp_locker_item_for_test( it, true, eager_reads );
+        const auto observed = classify_camp_locker_item_for_test( it, false, deferred_reads );
+        CHECK( observed == reference );
+        CHECK( classify_camp_locker_item( it ) == reference );
+    }
+    INFO( "capacity reads: eager=" << eager_reads << " deferred=" << deferred_reads );
+    CHECK( eager_reads > deferred_reads );
+    int helmet_eager = 0;
+    int helmet_deferred = 0;
+    const item helmet( itype_helmet_army );
+    CHECK( classify_camp_locker_item_for_test( helmet, true, helmet_eager ) ==
+           classify_camp_locker_item_for_test( helmet, false, helmet_deferred ) );
+    CHECK( helmet_eager == 1 );
+    CHECK( helmet_deferred == 0 );
+    int backpack_eager = 0;
+    int backpack_deferred = 0;
+    const item backpack( itype_backpack );
+    CHECK( classify_camp_locker_item_for_test( backpack, true, backpack_eager ) ==
+           classify_camp_locker_item_for_test( backpack, false, backpack_deferred ) );
+    CHECK( backpack_eager == 1 );
+    CHECK( backpack_deferred == 1 );
+}
+
 TEST_CASE( "camp_locker_zone_candidate_gathering", "[camp][locker]" )
 {
     clear_avatar();

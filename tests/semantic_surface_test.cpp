@@ -5547,7 +5547,9 @@ TEST_CASE( "performance interval output preserves the real World successor",
         CHECK( object.get_string( "run_id" ) == run );
         const auto names = object.get_string_array( "stage_names" );
         for( const std::string name : {
-                 "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit"
+                 "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit",
+                 "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
+                 "npc_find_item", "npc_pick_up_item"
              } ) {
             CHECK( std::count( names.begin(), names.end(), name ) == 1 );
         }
@@ -5645,6 +5647,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                     const auto detail = sample.get_object( "detailed_diagnostic" );
                     detail.allow_omitted_members();
                     const auto names = detail.get_string_array( "stage_names" );
+                    for( const std::string name : { "camp_locker_downtime", "camp_locker_collection",
+                                                    "camp_locker_service", "npc_find_item", "npc_pick_up_item" } ) {
+                        CHECK( std::count( names.begin(), names.end(), name ) == 1 );
+                    }
                     const auto row = detail.get_object( "row" );
                     row.allow_omitted_members();
                     CHECK( row.get_int( "turn" ) == sample.get_int( "game_turn" ) );
