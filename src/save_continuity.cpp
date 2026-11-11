@@ -74,7 +74,8 @@ void write_bytes( const fs::path &path, const std::string &bytes )
 
 void write_intent( const fs::path &path, const std::string &bytes )
 {
-    const fs::path stage = path.string() + ".pending";
+    fs::path stage = path;
+    stage += ".pending";
     on_out_of_scope cleanup( [&]() {
         std::error_code ec;
         fs::remove( stage, ec );
@@ -659,7 +660,8 @@ void archive_retirement( const fs::path &world )
             }
             // Copy/verify before removing the source also supports a world
             // symlink on a different volume. A failed archive is never deletion.
-            const fs::path stage = destination.string() + ".retirement-pending";
+            fs::path stage = destination;
+            stage += ".retirement-pending";
             require_graveyard_path( stage );
             if( fs::exists( stage ) ) {
                 throw std::runtime_error( "graveyard staging is already occupied" );

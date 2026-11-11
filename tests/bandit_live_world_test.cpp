@@ -65166,7 +65166,7 @@ TEST_CASE( "retirement excludes the character only after verified archival and c
     const fs::path world = fs::u8path( PATH_INFO::savedir() ) / "r067-retirement-files";
     const fs::path root = world.parent_path() / ".save-continuity" / world.filename();
     const fs::path graveyard = PATH_INFO::graveyarddir_path().get_unrelative_path() /
-                               "r067-owned-retirement";
+                               fs::u8path( "r067-owned-retirement-测试" );
     REQUIRE_FALSE( fs::exists( world ) );
     REQUIRE_FALSE( fs::exists( graveyard ) );
     on_out_of_scope cleanup( [&]() {
@@ -65228,7 +65228,8 @@ TEST_CASE( "retirement excludes the character only after verified archival and c
     CHECK_THROWS( save_continuity::publish_complete( world, 11, "survivor" ) );
     write( world / "dimension/map", "one corpse owns the marker" );
     fs::create_directories( graveyard );
-    const fs::path stage = ( graveyard / dead_file ).string() + ".retirement-pending";
+    fs::path stage = graveyard / dead_file;
+    stage += ".retirement-pending";
     if( failure == "transfer" ) {
         fs::create_directory( stage );
         CHECK_THROWS( save_continuity::archive_retirement( world ) );

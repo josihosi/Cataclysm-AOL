@@ -164,6 +164,17 @@ jobs:
         py -3 tests/bandit_exit_cost_adapter_control.py
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    - name: Check Unicode retirement archival (Windows)
+      run: |
+        $output = & .\Cataclysm-test-vcpkg-static-Release-x64.exe '[save_continuity_067][retirement_files]' --rng-seed 48151 2>&1 | Out-String
+        $status = $LASTEXITCODE
+        Write-Host $output
+        if ($status -ne 0) { exit $status }
+        if ($output -notmatch 'All tests passed \([1-9][0-9]* assertions? in 1 test case\)') {
+          Write-Error 'Unicode retirement fixture did not report a passing executed test case.'
+          exit 1
+        }
+
     - name: Get ccache cache age cutoff
       id: get-cache-age
       run: |
