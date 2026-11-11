@@ -164,6 +164,13 @@ jobs:
         py -3 tests/bandit_exit_cost_adapter_control.py
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    - name: Check zone identity and Zone Manager controls (Windows)
+      id: zone_controls
+      continue-on-error: true
+      run: |
+        py -3 tests/zone_identity_ci.py .\Cataclysm-test-vcpkg-static-Release-x64.exe
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     - name: Check Unicode retirement archival (Windows)
       run: |
         $output = & .\Cataclysm-test-vcpkg-static-Release-x64.exe '[save_continuity_067][retirement_files]' --rng-seed 48151 2>&1 | Out-String
@@ -239,6 +246,10 @@ jobs:
       if: ${{ github.ref_name != 'master' }}
       run: |
           .\Cataclysm-test-vcpkg-static-Release-x64.exe --min-duration 20 --rng-seed time --order lex --wait-for-keypress exit
+
+    - name: Report zone control failure
+      if: ${{ always() && steps.zone_controls.outcome == 'failure' }}
+      run: exit 1
 
     - name: Dump disk usage logs if job failed
       if: failure()
