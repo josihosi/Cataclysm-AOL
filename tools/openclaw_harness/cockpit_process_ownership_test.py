@@ -13,6 +13,137 @@ import startup_harness as harness
 from cockpit_file_bridge import FileBackedCockpitBridge
 
 class ProcessOwnershipTest(unittest.TestCase):
+    def test_eof_scenario_cleanup_reuses_only_bound_explicit_abort(self):
+        expected = {"pid": 123, "birth_identity": "birth-a", "command": "/test/cataclysm"}
+        owned = {"status": "alive", "pid": 123, "expected": expected}
+        frame = {"event": "surface_descriptor", "schema_version": 1, "run_id": "run-a",
+                 "frame_id": "frame-a", "surface_id": "world-a", "kind": "world",
+                 "breadcrumbs": ["World"], "payload": {}, "valid_actions": []}
+        for change in ("none", "birth", "run", "binding"):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                session = root / "session"
+                session.mkdir()
+                trace = root / "native.log"
+                trace.write_text("")
+                (root / "process.json").write_text(json.dumps({"run_id": "run-a", "pid": 123,
+                                                               "process_generation": expected}))
+                def cleanup(pid, **kwargs):
+                    if cleanup_mock.call_count == 1:
+                        return {"status": "retained_explicit_abort_refused", "native_exit_credit": False}
+                    return {"status": "explicit_abort_exit_unobserved_process_retained"
+                            if kwargs["explicit_quit"] else "retained_waiting_for_player_quit",
+                            "native_exit_credit": False}
+                with patch.dict(os.environ, {"OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
+                                             "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound"}), \
+                        patch.object(harness, "semantic_step_source_trace", return_value=trace), \
+                        patch.object(harness, "current_semantic_step_frame", return_value=frame), \
+                        patch.object(harness, "current_owned_process_generation", return_value=owned), \
+                        patch("process_performance.ProcessPerformance"), \
+                        patch.object(harness, "cleanup_game_process", side_effect=cleanup) as cleanup_mock:
+                    service = harness.open_cockpit_game_service(profile="test", run_dir=root,
+                        run_id="run-a", trace_start_offset=0, pid=123, session_id="test", live_session=True)
+                    try:
+                        inputs = io.StringIO(json.dumps({"action": "game.observe"}) + "\n" +
+                                             json.dumps({"action": "run.quit", "abort": True}) + "\n")
+                        output = io.StringIO()
+                        self.assertEqual(harness.serve_cockpit_live(service, inputs, output), 1)
+                        replies = [json.loads(line) for line in output.getvalue().splitlines()]
+                        self.assertEqual(replies[-1]["error"], "client_disconnected")
+                        self.assertEqual(cleanup_mock.call_count, 1)
+                        authority_path = root / "cockpit.player_quit.json"
+                        authority = json.loads(authority_path.read_text())
+                        self.assertEqual((authority["run_id"], authority["binding_id"], authority["pid"]),
+                                         ("run-a", "bound", 123))
+                        self.assertEqual(authority["process_generation"]["expected"]["birth_identity"], "birth-a")
+                        if change == "birth":
+                            authority["process_generation"]["expected"]["birth_identity"] = "birth-b"
+                        elif change == "run":
+                            authority["run_id"] = "run-b"
+                        elif change == "binding":
+                            authority["binding_id"] = "other"
+                        authority_path.write_text(json.dumps(authority))
+                        report = {"mode": "probe", "steps": []}
+                        with redirect_stdout(io.StringIO()):
+                            harness.finalize_probe_report(root, report, cleanup_pid=123)
+                        self.assertEqual(cleanup_mock.call_count, 2)
+                        kwargs = cleanup_mock.call_args.kwargs
+                        self.assertEqual(kwargs["expected_process_generation"], expected)
+                        self.assertEqual(kwargs["explicit_quit"], change == "none")
+                        self.assertEqual(kwargs["explicit_abort"], change == "none")
+                        self.assertFalse(report["cleanup"]["native_exit_credit"])
+                        self.assertNotIn("exit_code", report["cleanup"])
+                    finally:
+                        service.live_channel.archive.close()
+
+    def test_live_abort_calls_cleanup_only_for_original_bound_generation(self):
+        expected = {"pid": 123, "birth_identity": "birth-a", "command": "/test/cataclysm"}
+        owned = {"status": "alive", "pid": 123, "expected": expected}
+        frame = {"event": "surface_descriptor", "schema_version": 1, "run_id": "run-a",
+                 "frame_id": "frame-a", "surface_id": "world-a", "kind": "world",
+                 "breadcrumbs": ["World"], "payload": {}, "valid_actions": []}
+        for changed in (False, True):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                session = root / "session"
+                session.mkdir()
+                trace = root / "native.log"
+                trace.write_text("")
+                with patch.dict(os.environ, {"OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
+                                             "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound"}), \
+                        patch.object(harness, "semantic_step_source_trace", return_value=trace), \
+                        patch.object(harness, "current_semantic_step_frame", return_value=frame), \
+                        patch.object(harness, "current_owned_process_generation", return_value=owned) as identity, \
+                        patch("process_performance.ProcessPerformance"), \
+                        patch.object(harness, "cleanup_game_process", return_value={"status": "terminated", "native_exit_credit": False}) as cleanup:
+                    service = harness.open_cockpit_game_service(profile="test", run_dir=root,
+                        run_id="run-a", trace_start_offset=0, pid=123, session_id="test", live_session=True)
+                    try:
+                        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+                        if changed:
+                            identity.return_value = {"status": "alive", "pid": 123,
+                                                     "expected": {**expected, "birth_identity": "birth-b"}}
+                        result = service.call({"action": "run.quit", "abort": True})
+                        self.assertTrue(result["ok"], result)
+                        if changed:
+                            cleanup.assert_not_called()
+                            self.assertEqual(result["result"]["cleanup"]["status"],
+                                             "retained_process_identity_unavailable")
+                            self.assertFalse((root / "cockpit.player_quit.json").exists())
+                        else:
+                            cleanup.assert_called_once()
+                            self.assertEqual(cleanup.call_args.kwargs["expected_process_generation"], expected)
+                            authority = json.loads((root / "cockpit.player_quit.json").read_text())
+                            self.assertTrue(authority["explicit_player_abort"])
+                            self.assertEqual((authority["run_id"], authority["binding_id"], authority["pid"]),
+                                             ("run-a", "bound", 123))
+                    finally:
+                        service.live_channel.archive.close()
+
+    def test_terminal_signal_requires_observed_owned_exit(self):
+        expected = {"pid": 123, "birth_identity": "birth", "command": "/test/cataclysm"}
+        for observed_status, signal_state, cleanup_status in (
+                ("alive", "cleanup_unconfirmed", "graceful_quit_unconfirmed_process_retained"),
+                ("identity_changed", "cleanup_unconfirmed", "graceful_quit_unconfirmed_process_retained"),
+                ("exited", "safe_to_cleanup", "already_exited")):
+            with self.subTest(observed_status=observed_status), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                session = root / "session"
+                session.mkdir()
+                report = {"mode": "probe", "steps": [], "cleanup": {
+                    "pid": 123, "status": "graceful_quit_unconfirmed_process_retained",
+                    "native_exit_credit": False}}
+                owned = {"status": observed_status, "pid": 123, "expected": expected}
+                with patch.dict(os.environ, {"OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
+                                             "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound"}), \
+                        patch.object(harness, "current_owned_process_generation", return_value=owned), \
+                        redirect_stdout(io.StringIO()):
+                    harness.finalize_probe_report(root, report)
+                signal = json.loads((session / "cockpit.bridge.safe_to_cleanup.json").read_text())
+                self.assertEqual(signal["state"], signal_state)
+                self.assertEqual(signal["cleanup"]["status"], cleanup_status)
+                self.assertFalse(signal["cleanup"]["native_exit_credit"])
+
     def test_staged_cleanup_requires_exact_launch_executable_and_quit(self):
         pid = 812345
         executable = "/test/.build/cataclysm.next"
@@ -93,7 +224,11 @@ class ProcessOwnershipTest(unittest.TestCase):
             bridge.prepare()
             process = Mock(pid=123)
             command = "/test/cataclysm-tiles --userdir /test/disposable"
-            with patch.object(harness, "pid_command", return_value=command):
+            generation = {"pid": 123, "alive": True, "birth_identity": "birth-a",
+                          "command": command}
+            with patch.object(harness, "process_generation_snapshot", return_value=generation), \
+                    patch.object(harness, "_process_generation_snapshot", return_value=generation), \
+                    patch.object(harness.os, "kill") as kill:
                 harness.record_bridge_game_process(process, {
                     "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
                     "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound",
@@ -105,12 +240,14 @@ class ProcessOwnershipTest(unittest.TestCase):
                                (session / "game-process.generations.jsonl").read_text().splitlines()]
                 self.assertEqual(generations[-1]["process_generation"]["pid"], 123)
                 retained = bridge._emergency_cleanup()
-                self.assertEqual(retained["game"]["status"], "retained_process_identity_unavailable")
-            with patch.object(harness, "pid_command", return_value="unrelated process"), patch.object(harness, "cleanup_game_process") as cleanup:
-                bridge._startup_progress = {"pid": 123}
+                self.assertEqual(retained["game"]["status"], "retained_waiting_for_player_quit")
+                kill.assert_not_called()
+            reused = {**generation, "birth_identity": "birth-b"}
+            with patch.object(harness, "_process_generation_snapshot", return_value=reused), \
+                    patch.object(harness.os, "kill") as kill:
                 result = bridge._emergency_cleanup()
-                cleanup.assert_not_called()
-                self.assertEqual(result["ownership"], "process_exited_or_identity_changed")
+                self.assertEqual(result["game"]["status"], "retained_process_identity_changed")
+                kill.assert_not_called()
 
     def test_process_record_publishes_actual_run_log_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:

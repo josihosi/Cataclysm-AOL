@@ -248,6 +248,16 @@ CLEANUP_ACCEPTED_STATUSES = {
     "killed",
 }
 
+
+def cleanup_is_accepted(cleanup: Any) -> bool:
+    """Accept the Windows abort only when its handle observed process exit."""
+    if not isinstance(cleanup, Mapping):
+        return False
+    status = str(cleanup.get("status", ""))
+    if status == "explicit_abort_terminated":
+        return cleanup.get("os_exit_observed") is True
+    return status in CLEANUP_ACCEPTED_STATUSES
+
 PORTAL_STORM_WEATHER_IDS = {
     "portal_storm",
     "early_portal_storm",
@@ -6700,6 +6710,20 @@ def open_cockpit_game_service(
             performance.stop()
         return state
 
+    def abort_owned_process(reason: str) -> Mapping[str, Any]:
+        owned = current_owned_process_generation(Path(run_dir))
+        expected = owned.get("expected", {})
+        if (owned.get("status") not in {"alive", "exited"} or owned.get("pid") != pid or
+                not isinstance(expected, Mapping) or
+                not process_generation_matches(original_process_generation, expected)):
+            return {"status": "retained_process_identity_unavailable", "native_exit_credit": False}
+        write_cockpit_player_quit_authority(
+            Path(run_dir), owned, run_id=run_id, binding_id=binding_id,
+            stop_reason=reason, explicit_abort=True,
+        )
+        return cleanup_game_process(pid, explicit_quit=True, explicit_abort=True,
+                                    run_dir=Path(run_dir), expected_process_generation=expected)
+
     if live_session and pid and read_process_state().get("alive"):
         from process_performance import ProcessPerformance
         performance_directory = Path(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR") or run_dir)
@@ -6735,6 +6759,7 @@ def open_cockpit_game_service(
         causal_boundary_precondition=causal_boundary_precondition,
         dispatch_player_fire_setup=player_fire_setup,
         cancel_request=read_cancel_request if live_session else None,
+        abort_owned_process=abort_owned_process if live_session else None,
     )
     service = CockpitService( run_channel=channel, allowed_live_operations=allowed_live_operations )
     service.live_channel = channel
@@ -7036,6 +7061,19 @@ def read_completed_cockpit_final(
     return {}
 
 
+def write_cockpit_player_quit_authority(
+    run_dir: Path, owned: Mapping[str, Any], *, run_id: str, binding_id: str,
+    stop_reason: str, explicit_abort: bool,
+) -> None:
+    """Persist the existing run/generation-bound authority before disposal."""
+    write_json(run_dir / "cockpit.player_quit.json", {
+        "schema": "caol-cockpit-player-quit-v1", "pid": int(owned.get("pid", 0) or 0),
+        "command_sha256": process_command_identity(owned.get("expected", {})),
+        "process_generation": owned, "run_id": run_id, "binding_id": binding_id,
+        "stop_reason": stop_reason, "explicit_player_abort": explicit_abort,
+    })
+
+
 def finalize_cockpit_live_session(
     run_dir: Path, pid: int, report: Mapping[str, Any], *, cleanup_process: bool = True,
     final_path: Optional[Path] = None,
@@ -7048,15 +7086,13 @@ def finalize_cockpit_live_session(
     cleanup_pid = int(owned.get("pid", 0) or 0)
     explicit_quit = report.get("termination_requested") is True
     if explicit_quit:
-        write_json(run_dir / "cockpit.player_quit.json", {
-            "schema": "caol-cockpit-player-quit-v1", "pid": cleanup_pid,
-            "command_sha256": process_command_identity(owned.get("expected", {})),
-            "process_generation": owned,
-            "run_id": report.get("run_id"),
-            "binding_id": report.get("binding_id"), "stop_reason": report.get("stop_reason"),
-            "explicit_player_abort": report.get("closure_kind") == "explicit_abort" and
-                isinstance(report.get("stop_detail"), Mapping) and report["stop_detail"].get("explicit_player_abort") is True,
-        })
+        write_cockpit_player_quit_authority(
+            run_dir, owned, run_id=report.get("run_id"), binding_id=report.get("binding_id"),
+            stop_reason=report.get("stop_reason"),
+            explicit_abort=(report.get("closure_kind") == "explicit_abort" and
+                            isinstance(report.get("stop_detail"), Mapping) and
+                            report["stop_detail"].get("explicit_player_abort") is True),
+        )
     if not cleanup_process:
         cleanup = {
             "status": "deferred_to_scenario_terminalization",
@@ -25704,6 +25740,27 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             transforms.append({"kind": kind, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "target_lead_id": target_lead_id, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "branch": str(raw.get("branch", "reopened_demand") or "").strip(), "report_policy": report_policy, "preserve_member_records": preserve_member_records})
             continue
 
+        if kind == "bandit_ordinary_scout_fixture_footing":
+            allowed = {"kind", "player_save", "site_id", "target_omt", "member_positions_ms"}
+            if set(raw) - allowed:
+                raise SystemExit(f"Fixture save_transforms[{index}] ordinary-scout footing has unexpected fields in {manifest_path}")
+            site_id = str(raw.get("site_id", "")).strip()
+            target = raw.get("target_omt")
+            positions = raw.get("member_positions_ms")
+            integer = lambda x: isinstance(x, int) and not isinstance(x, bool)
+            if not site_id or not isinstance(target, list) or len(target) != 3 or not all(map(integer, target)) or not isinstance(positions, dict) or len(positions) != 2:
+                raise SystemExit(f"Fixture save_transforms[{index}] ordinary-scout footing requires a site, target and two member positions in {manifest_path}")
+            try:
+                members = {int(k): v for k, v in positions.items()}
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] invalid ordinary-scout member IDs in {manifest_path}")
+            if len(members) != 2 or any(not isinstance(v, list) or len(v) != 3 or not all(map(integer, v)) for v in members.values()) or len({tuple(v) for v in members.values()}) != 2:
+                raise SystemExit(f"Fixture save_transforms[{index}] invalid ordinary-scout positions in {manifest_path}")
+            if any([v[0] // 24, v[1] // 24, v[2]] != target for v in members.values()):
+                raise SystemExit(f"Fixture save_transforms[{index}] ordinary-scout positions must share the target OMT in {manifest_path}")
+            transforms.append({"kind": kind, "player_save": player_save, "site_id": site_id, "target_omt": list(target), "member_positions_ms": members})
+            continue
+
         if kind == "bandit_hostile_operation_bootstrap":
             unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes", "rally_omt", "member_rally_positions_ms", "phase", "simulation_owner", "handoff_epoch", "member_contact_positions_ms"})
             if unexpected_keys:
@@ -27175,6 +27232,7 @@ NATURAL_ECOLOGY_FORBIDDEN_FIXTURE_TRANSFORMS = frozenset({
     "bandit_clear_site_evidence",
     "bandit_clone_site",
     "bandit_site_roster_shape",
+    "bandit_ordinary_scout_fixture_footing",
     "game_turn",
 })
 
@@ -31476,8 +31534,10 @@ def apply_bandit_projection_leases_transform(world_dir: Path, transform: Dict[st
     found = set()
     for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
         plain_path = None
+        keep_plain = True
         try:
             plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+            keep_plain = not bool(payload.get("_created_plain", False))
             npcs = payload.get("npcs", [])
             if not isinstance(npcs, list):
                 continue
@@ -31506,7 +31566,7 @@ def apply_bandit_projection_leases_transform(world_dir: Path, transform: Dict[st
                 touched.append(str(overmap_path.relative_to(world_dir)))
         finally:
             if plain_path is not None and plain_path.exists():
-                cleanup_extracted_overmap(plain_path, keep=False)
+                cleanup_extracted_overmap(plain_path, keep=keep_plain)
     missing = sorted(requested_ids - found)
     if missing:
         raise SystemExit(f"Fixture projection leases transform could not find NPC ids: {missing}")
@@ -32379,6 +32439,75 @@ def _fixture_sync_home_body_factions(
     finally:
         for plain, _version, _payload, created in loaded:
             cleanup_extracted_overmap(plain, keep=not created)
+
+
+def apply_bandit_ordinary_scout_fixture_footing_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Place already-owned legacy scout bodies in a disposable, zero-credit footing."""
+    path = world_dir / "dimension_data.gsav"
+    version, sep, text = path.read_text(encoding="utf-8").partition("\n")
+    if not sep:
+        raise SystemExit("Ordinary-scout footing: dimension header missing")
+    payload = json.loads(text)
+    sites = payload.get("overmapbuffer", {}).get("bandit_live_world", {}).get("sites", [])
+    selected = [site for site in sites if site.get("site_id") == transform["site_id"]]
+    if len(selected) != 1:
+        raise SystemExit("Ordinary-scout footing: site identity missing or duplicated")
+    site = selected[0]
+    positions = transform["member_positions_ms"]
+    ids = set(positions)
+    if (int(site.get("schema_version", 0) or 0) >= 10 or site.get("active_outing") or
+            site.get("active_job_type") != "scout" or not site.get("active_group_id") or
+            set(site.get("active_member_ids", [])) != ids or
+            any(m.get("state") != "local_contact" for m in site.get("members", []) if m.get("npc_id") in ids)):
+        raise SystemExit("Ordinary-scout footing requires the matching legacy local scout roster")
+    for member_id in ids:
+        if sum(m.get("npc_id") == member_id for m in site.get("members", [])) != 1 or any(
+                other is not site and any(m.get("npc_id") == member_id for m in other.get("members", []))
+                for other in sites):
+            raise SystemExit("Ordinary-scout footing: member is missing, duplicated or owned by another site")
+    target = transform["target_omt"]
+    anchor = site.get("anchor", [])
+    if len(anchor) != 3 or anchor[2] != target[2] or max(abs(anchor[0] - target[0]), abs(anchor[1] - target[1])) < 10:
+        raise SystemExit("Ordinary-scout footing requires a home at least ten OMT away")
+    _, _, player_payload, _ = load_saved_player_payload(world_dir, transform.get("player_save", ""))
+    player = player_payload.get("player", {}).get("location", [])
+    if len(player) != 3 or [player[0] // 24, player[1] // 24, player[2]] != target or player in positions.values():
+        raise SystemExit("Ordinary-scout footing requires the player at a distinct tile in the target OMT")
+    # Validate every body before changing any payload, and never move a body to a different overmap file.
+    staged = []
+    found = {}
+    try:
+        for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+            plain, overmap_version, overmap = extract_overmap_payload(overmap_path)
+            staged.append((overmap_path, plain, overmap_version, overmap))
+            for body in overmap.get("npcs", []):
+                if body.get("id") not in ids and body.get("location") in positions.values():
+                    raise SystemExit("Ordinary-scout footing: destination occupied by another NPC")
+                if body.get("id") in ids:
+                    member_id = body["id"]
+                    if member_id in found:
+                        raise SystemExit("Ordinary-scout footing: duplicate concrete member")
+                    old = body.get("location", [])
+                    new = positions[member_id]
+                    if len(old) != 3 or [old[0] // (24 * OMAPX), old[1] // (24 * OMAPY)] != [new[0] // (24 * OMAPX), new[1] // (24 * OMAPY)]:
+                        raise SystemExit("Ordinary-scout footing cannot move a member across overmap files")
+                    found[member_id] = (body, list(old), overmap_path)
+        if set(found) != ids:
+            raise SystemExit("Ordinary-scout footing: concrete member missing")
+        site["active_target_omt"] = list(target)
+        for member_id, (body, _, _) in found.items():
+            body["location"] = list(positions[member_id])
+        path.write_text(version + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        for overmap_path, plain, overmap_version, overmap in staged:
+            if any(record[2] == overmap_path for record in found.values()):
+                write_overmap_payload(plain, overmap_version, overmap)
+    finally:
+        for _, plain, _, overmap in staged:
+            cleanup_extracted_overmap(plain, keep=not bool(overmap.get("_created_plain", False)))
+    return {"kind": "bandit_ordinary_scout_fixture_footing", "world": world_dir.name,
+            "site_id": transform["site_id"], "target_omt": target,
+            "members": {str(i): {"from": old, "to": positions[i]} for i, (_, old, _) in found.items()},
+            "gameplay_credit": False}
 
 
 def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
@@ -33475,6 +33604,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
+            continue
+        if kind == "bandit_ordinary_scout_fixture_footing":
+            reports.append(apply_bandit_ordinary_scout_fixture_footing_transform(world_dir, transform))
             continue
         if kind == "bandit_registered_staffed_observer_bootstrap":
             reports.append(apply_bandit_registered_staffed_observer_bootstrap_transform(world_dir, transform))
@@ -43158,10 +43290,28 @@ def finalize_probe_report(
         owned = current_owned_process_generation(Path(run_dir)) \
             if run_dir is not None else {}
         current_pid = int(owned.get("pid", 0) or 0)
+        try:
+            launch = json.loads((Path(run_dir) / "process.json").read_text(encoding="utf-8")) \
+                if run_dir is not None else {}
+        except (OSError, ValueError):
+            launch = {}
+        authority_generation = quit_request.get("process_generation", {}) if isinstance(quit_request, Mapping) else {}
+        authority_expected = authority_generation.get("expected", {}) if isinstance(authority_generation, Mapping) else {}
+        owned_expected = owned.get("expected", {})
+        launch_run_id = launch.get("run_id") if isinstance(launch, Mapping) else None
+        bridge_binding = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "").strip()
+        # The explicit abort survives channel EOF: the scenario owner may
+        # complete it, but only for the same run, binding and process birth.
         explicit_quit = isinstance(quit_request, Mapping) and \
             quit_request.get("schema") == "caol-cockpit-player-quit-v1" and \
             quit_request.get("pid") == current_pid and \
-            process_command_identity(quit_request) == process_command_identity(owned.get("expected", {})) and bool(process_command_identity(quit_request))
+            bool(quit_request.get("run_id")) and bool(quit_request.get("binding_id")) and \
+            (not launch_run_id or quit_request.get("run_id") == launch_run_id) and \
+            (not bridge_binding or quit_request.get("binding_id") == bridge_binding) and \
+            isinstance(authority_expected, Mapping) and isinstance(owned_expected, Mapping) and \
+            bool(owned_expected.get("birth_identity")) and \
+            process_generation_matches(authority_expected, owned_expected) and \
+            process_command_identity(quit_request) == process_command_identity(owned_expected) and bool(process_command_identity(quit_request))
         pending_recovery = pending_adaptive_semantic_recovery(report)
         if pending_recovery is not None and not explicit_quit:
             # A report can describe an incomplete transaction, but it cannot
@@ -43182,7 +43332,7 @@ def finalize_probe_report(
             if owned.get("status") == "alive":
                 report["cleanup"] = cleanup_game_process(
                     current_pid, explicit_quit=explicit_quit,
-                    explicit_abort=quit_request.get("explicit_player_abort") is True, run_dir=run_dir,
+                    explicit_abort=explicit_quit and quit_request.get("explicit_player_abort") is True, run_dir=run_dir,
                     expected_process_generation=owned["expected"],
                 )
             elif owned.get("status") == "exited":
@@ -43202,6 +43352,26 @@ def finalize_probe_report(
                         "reason": "report finalization could not authenticate the current owned process",
                     },
                 }
+    cleanup = report.get("cleanup")
+    # The bounded termination wait can end just before the owned process does.
+    # Re-observe that same recorded generation once, without sending a signal.
+    if (run_dir is not None and isinstance(cleanup, Mapping) and
+            cleanup.get("status") in {"graceful_quit_unconfirmed_process_retained",
+                                      "explicit_abort_exit_unobserved_process_retained"}):
+        owned = current_owned_process_generation(Path(run_dir))
+        expected = owned.get("expected", {})
+        prior_expected = cleanup.get("expected_process_generation", {})
+        windows_abort = cleanup.get("status") == "explicit_abort_exit_unobserved_process_retained"
+        if (owned.get("status") == "exited" and
+                isinstance(expected, Mapping) and expected.get("birth_identity") and
+                process_command_identity(expected) and owned.get("pid") == cleanup.get("pid") and
+                (not windows_abort or (isinstance(prior_expected, Mapping) and
+                 process_generation_matches(prior_expected, expected) and
+                 isinstance(owned.get("observed"), Mapping) and owned["observed"].get("alive") is False))):
+            report["cleanup"] = {"status": "already_exited", "pid": owned["pid"],
+                                 "process_generation": owned, "native_exit_credit": False,
+                                 **({"native_save_credit": False, "normal_exit_credit": False} if windows_abort else {}),
+                                 "prior_cleanup": dict(cleanup)}
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
@@ -43223,8 +43393,7 @@ def finalize_probe_report(
         post_finalize_hook is not None
         and report_path is not None
         and str(report.get("mode", "")) == "probe"
-        and isinstance(cleanup, Mapping)
-        and str(cleanup.get("status", "")) in CLEANUP_ACCEPTED_STATUSES
+        and cleanup_is_accepted(cleanup)
     ):
         post_finalize_hook(report_path, report)
     bridge_session_dir = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "").strip()
@@ -43237,7 +43406,8 @@ def finalize_probe_report(
         write_json(signal_path, {
             "schema": "caol-cockpit-scenario-terminalization-v1",
             "binding_id": bridge_binding_id,
-            "state": "safe_to_cleanup",
+            "state": "safe_to_cleanup" if cleanup_is_accepted(cleanup) else
+                     "cleanup_unconfirmed",
             "report_path": str(report_path.resolve()),
             "report_sha256": sha256_file(report_path)[0],
             "cleanup": report.get("cleanup", {}),
@@ -43540,7 +43710,6 @@ def repeatability_run_summary(
     contract = report.get("contract", {}) if isinstance(report.get("contract"), dict) else {}
     portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
     expectation_results, helper_lines = evaluate_repeatability_expectations(report, expectations)
-    cleanup_status = str(cleanup.get("status", "")).strip()
     return {
         "run": ordinal,
         "returncode": returncode,
@@ -43556,7 +43725,7 @@ def repeatability_run_summary(
         "version_matches_repo_head": startup_screen.get("version_matches_repo_head"),
         "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
         "cleanup": cleanup,
-        "cleanup_ok": cleanup_status in CLEANUP_ACCEPTED_STATUSES,
+        "cleanup_ok": cleanup_is_accepted(cleanup),
         "portal_storm_warning": portal_storm_warning,
         "expectations": expectation_results,
         "helper_tail_lines": helper_lines,

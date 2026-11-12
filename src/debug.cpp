@@ -828,6 +828,7 @@ class bounded_debug_stream : public std::ostream
                 }
                 int sync() override {
                     sink_flushes.fetch_add( 1, std::memory_order_relaxed );
+                    raid_perf_scope timing( raid_perf_stage::debug_sink_flush, raid_perf_debug_sink_active() );
                     output.flush();
                     return output ? 0 : -1;
                 }
@@ -846,7 +847,10 @@ class bounded_debug_stream : public std::ostream
                         }
                         const std::streamsize available = static_cast<std::streamsize>( limit - bytes );
                         const std::streamsize part = std::min( count - written, available );
-                        output.write( data + written, part );
+                        {
+                            raid_perf_scope timing( raid_perf_stage::debug_sink_write, raid_perf_debug_sink_active() );
+                            output.write( data + written, part );
+                        }
                         if( !output ) {
                             break;
                         }

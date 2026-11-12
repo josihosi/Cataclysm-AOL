@@ -168,6 +168,89 @@ class NativeLeaseAdoptionTest(unittest.TestCase):
 
 
 class ExplicitGameDisposalTest(unittest.TestCase):
+    def test_eof_disposal_finalizer_and_bridge_require_confirmed_exit(self):
+        import io
+        from unittest.mock import Mock
+        from cockpit_file_bridge import FileBackedCockpitBridge
+        import cockpit_live_session_test as fixtures
+        import scenario_registry_cli
+        import hashlib
+
+        session = self.root / 'bridge-finalizer'
+        session.mkdir()
+        owned = {'pid': 123, 'status': 'alive', 'expected': self.expected}
+        trace = self.run / 'native.log'
+        trace.write_text('')
+        manifest = self.run / 'fixture.json'
+        manifest.write_text('{}')
+        digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        frame = {**fixtures.frame(1, 100), 'run_id': 'owned-run', 'frame_id': 'owned-run:1'}
+        observed = {'pid': 123, 'alive': True, 'birth_identity': self.expected['birth_identity'],
+                    'executable_path': self.expected['executable_path'], 'command': 'owned game command'}
+        for case in ('observed', 'unobserved', 'late_exit', 'changed_birth', 'ambiguous_absence'):
+            with self.subTest(case=case):
+                (self.run / 'cockpit.player_quit.json').unlink(missing_ok=True)
+                self.wait_result = 0 if case == 'observed' else 258
+                late_expected = dict(self.expected)
+                if case == 'changed_birth':
+                    late_expected['birth_identity'] = 'windows-filetime:999'
+                later = {'pid': 123, 'status': 'exited', 'expected': late_expected,
+                         'observed': {'pid': 123, 'alive': None if case == 'ambiguous_absence' else False}}
+                identities = [owned, later if case in ('late_exit', 'changed_birth', 'ambiguous_absence') else owned]
+                hook = Mock()
+                report = {'mode': 'probe', 'steps': [], 'contract': {'profile': 'fixture'},
+                          'scenario_manifest': {'source': {'path': str(manifest), 'sha256': digest}},
+                          'proof_classification': {'status': 'amber'}}
+                with patch.dict(os.environ, {'OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR': str(session),
+                                            'OPENCLAW_COCKPIT_BRIDGE_BINDING_ID': 'native-binding'}), \
+                     patch.object(startup_harness, 'current_owned_process_generation', return_value=owned) as identity, \
+                     patch.object(startup_harness, '_process_generation_snapshot', return_value=observed), \
+                     patch.object(native, 'WindowsProcessInspector', return_value=self.inspector), \
+                     patch.object(startup_harness, 'semantic_step_source_trace', return_value=trace), \
+                     patch.object(startup_harness, 'current_semantic_step_frame', return_value=frame), \
+                     patch('process_performance.ProcessPerformance', side_effect=ValueError('fixture')), \
+                     patch('sys.stdout', new_callable=io.StringIO):
+                    service = startup_harness.open_cockpit_game_service(profile='test', run_dir=self.run,
+                        run_id='owned-run', trace_start_offset=0, pid=123, session_id='test', live_session=True,
+                        cleanup_on_finish=False)
+                    try:
+                        self.termination_ok = False
+                        incoming = io.StringIO(json.dumps({'action': 'game.observe'}) + '\n' +
+                                               json.dumps({'action': 'run.quit', 'abort': True}) + '\n')
+                        output = io.StringIO()
+                        self.assertEqual(startup_harness.serve_cockpit_live(service, incoming, output), 1)
+                        replies = [json.loads(line) for line in output.getvalue().splitlines()]
+                        self.assertEqual(replies[-1]['error'], 'client_disconnected')
+                        self.assertEqual(replies[-2]['result']['cleanup']['status'], 'retained_explicit_abort_refused')
+                    finally:
+                        service.live_channel.archive.close()
+                    self.termination_ok = True
+                    identity.side_effect = identities
+                    startup_harness.finalize_probe_report(self.run, report, cleanup_pid=123,
+                                                         post_finalize_hook=hook)
+                accepted = case in ('observed', 'late_exit')
+                cleanup = report['cleanup']
+                self.assertEqual(cleanup['status'], {'observed': 'explicit_abort_terminated',
+                    'late_exit': 'already_exited'}.get(case, 'explicit_abort_exit_unobserved_process_retained'))
+                if case == 'observed':
+                    self.assertTrue(cleanup['os_exit_observed'])
+                for credit in ('native_exit_credit', 'native_save_credit', 'normal_exit_credit'):
+                    self.assertFalse(cleanup[credit])
+                self.assertEqual(hook.call_count, int(accepted))
+                migration = scenario_registry_cli._migration_report_terminal(
+                    {'source_path': str(manifest.resolve()), 'source_sha256': digest, 'profile': 'fixture'},
+                    self.run / 'probe.report.json', report)
+                self.assertEqual(migration is not None, accepted)
+                signal = json.loads((session / 'cockpit.bridge.safe_to_cleanup.json').read_text())
+                self.assertEqual(signal['state'], 'safe_to_cleanup' if accepted else 'cleanup_unconfirmed')
+                bridge = FileBackedCockpitBridge(session, ['unused'], binding_id='native-binding')
+                bridge._child = Mock(returncode=0, stdout=SimpleNamespace(buffer=io.BytesIO()))
+                bridge._terminal_request_id = 'finish'
+                self.assertEqual(bridge._await_scenario_terminalization(), 0 if accepted else 1)
+                self.assertEqual(json.loads((session / 'status.json').read_text())['state'],
+                                 'safe_to_cleanup' if accepted else 'terminalization_failed')
+        self.assertFalse(startup_harness.cleanup_is_accepted({'status': 'explicit_abort_terminated'}))
+
     def setUp(self):
         import socket
         self.stack = ExitStack()
@@ -314,6 +397,16 @@ class ExplicitGameDisposalTest(unittest.TestCase):
         self.assertFalse(result['native_exit_credit'])
         self.assertEqual(self.closed,[999,999])
 
+    def test_exit_code_read_failure_after_termination_does_not_report_refusal(self):
+        self.kernel.GetExitCodeProcess = lambda handle, output: False
+        result = self.cleanup()
+        self.assertEqual(result['status'], 'explicit_abort_exit_unobserved_process_retained')
+        self.assertEqual(self.terminated, [(999, 1)])
+        self.assertIn('exit_observation_error', result)
+        self.assertNotIn('os_exit_observed', result)
+        self.assertFalse(result['native_exit_credit'])
+        self.assertFalse(result['native_save_credit'])
+
     def test_explicit_boolean_without_owning_abort_receipt_is_insufficient(self):
         quit=json.loads((self.run/'cockpit.player_quit.json').read_text());quit.pop('explicit_player_abort')
         self.write('cockpit.player_quit.json',quit)
@@ -340,24 +433,73 @@ class ExplicitGameDisposalTest(unittest.TestCase):
         self.assertEqual(self.cleanup()['status'],'explicit_abort_terminated')
         self.assertEqual((self.run/'probe.report.json').read_bytes(),raw)
 
-    def test_public_quit_abort_finalizer_produces_separate_disposal_authority(self):
+    def test_public_abort_persists_authority_before_windows_disposal(self):
         import cockpit_live_session_test as fixtures
-        service,_=fixtures.LiveSessionTest().service([fixtures.frame(1,100)], binding=['native-binding'])
-        service.run_channel._run_id='owned-run';service.run_channel._binding_id='native-binding'
-        service.run_channel._finalize_session=lambda report: startup_harness.finalize_cockpit_live_session(self.run,123,report)
-        owned={'pid':123,'status':'alive','expected':self.expected}
-        with patch.object(startup_harness,'current_owned_process_generation',return_value=owned), \
-             patch.object(startup_harness,'_process_generation_snapshot',return_value={
-                 'pid':123,'alive':True,'birth_identity':self.expected['birth_identity'],
-                 'executable_path':self.expected['executable_path'],'command':'owned game command'}), \
-             patch.object(native,'WindowsProcessInspector',return_value=self.inspector):
-            result=service.call({'action':'run.quit','abort':True,'stop_reason':'explicit disposable setup recovery'})
-        self.assertTrue(result['ok'], {k:result.get(k) for k in ('error','reason','detail')})
-        self.assertEqual(result['result']['cleanup']['status'],'explicit_abort_terminated')
-        final=json.loads((self.run/'cockpit.live.final.json').read_text())
-        self.assertEqual(final['closure_kind'],'explicit_abort')
-        self.assertFalse(final['native_save_credit']);self.assertFalse(final['normal_exit_credit'])
-        self.assertTrue(json.loads((self.run/'cockpit.player_quit.json').read_text())['explicit_player_abort'])
+        (self.run / 'cockpit.player_quit.json').unlink()
+        session = self.root / 'bridge'
+        session.mkdir()
+        trace = self.run / 'native.log'
+        trace.write_text('')
+        frame = {**fixtures.frame(1, 100), 'run_id': 'owned-run', 'frame_id': 'owned-run:1'}
+        owned = {'pid': 123, 'status': 'alive', 'expected': self.expected}
+        observed = {'pid': 123, 'alive': True, 'birth_identity': self.expected['birth_identity'],
+                    'executable_path': self.expected['executable_path'], 'command': 'owned game command'}
+        with patch.dict(os.environ, {'OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR': str(session),
+                                    'OPENCLAW_COCKPIT_BRIDGE_BINDING_ID': 'native-binding'}), \
+             patch.object(startup_harness, 'semantic_step_source_trace', return_value=trace), \
+             patch.object(startup_harness, 'current_semantic_step_frame', return_value=frame), \
+             patch.object(startup_harness, 'current_owned_process_generation', return_value=owned), \
+             patch.object(startup_harness, '_process_generation_snapshot', return_value=observed), \
+             patch.object(native, 'WindowsProcessInspector', return_value=self.inspector), \
+             patch('process_performance.ProcessPerformance', side_effect=ValueError('fixture')):
+            service = startup_harness.open_cockpit_game_service(profile='test', run_dir=self.run,
+                run_id='owned-run', trace_start_offset=0, pid=123, session_id='test', live_session=True,
+                cleanup_on_finish=False)
+            self.addCleanup(service.live_channel.archive.close)
+            self.assertTrue(service.call({'action': 'game.observe'})['ok'])
+            with patch.object(startup_harness, 'write_cockpit_player_quit_authority',
+                              side_effect=OSError('controlled authority write failure')):
+                refusal = service.call({'action': 'run.quit', 'abort': True})
+            self.assertFalse(refusal['ok'])
+            self.assertEqual(self.opened, [])
+            self.assertEqual(self.terminated, [])
+            self.assertFalse((self.run / 'cockpit.player_quit.json').exists())
+            self.assertFalse((self.run / 'cockpit.live.final.json').exists())
+            self.termination_ok = False
+            refused = service.call({'action': 'run.quit', 'abort': True,
+                                    'stop_reason': 'first explicit attempt'})
+            self.assertTrue(refused['ok'], refused)
+            self.assertEqual(refused['result']['cleanup']['status'], 'retained_explicit_abort_refused')
+            self.assertTrue(refused['result']['retry_allowed'])
+            self.assertEqual(self.terminated, [(999, 1)])
+            self.assertTrue(service.call({'action': 'game.observe'})['ok'])
+            self.assertEqual(self.terminated, [(999, 1)])  # Observation never retries disposal.
+            self.assertEqual(service.call({'action': 'game.act', 'observation_id': 'owned-run:1',
+                                           'action_id': 'world.wait'})['error'],
+                             'abort_exit_observation_pending')
+            self.snapshot = replace(self.snapshot, birth_identity='windows-filetime:999')
+            drift = service.call({'action': 'run.quit', 'abort': True,
+                                  'stop_reason': 'retry with changed identity'})
+            self.assertEqual(drift['result']['cleanup']['status'], 'retained_explicit_abort_refused')
+            self.assertEqual(self.terminated, [(999, 1)])
+            self.snapshot = replace(self.snapshot, birth_identity=self.expected['birth_identity'])
+            self.termination_ok = True
+            result = service.call({'action': 'run.quit', 'abort': True,
+                                   'stop_reason': 'owned disposal test'})
+        self.assertTrue(result['ok'], result)
+        self.assertEqual(result['result']['state'], 'exit_observation_pending')
+        self.assertEqual(result['result']['cleanup']['status'], 'explicit_abort_terminated')
+        self.assertEqual(self.terminated, [(999, 1), (999, 1)])
+        authority = json.loads((self.run / 'cockpit.player_quit.json').read_text())
+        self.assertTrue(authority['explicit_player_abort'])
+        self.assertEqual((authority['run_id'], authority['binding_id'], authority['pid']),
+                         ('owned-run', 'native-binding', 123))
+        self.assertEqual(authority['command_sha256'], self.expected['command_sha256'])
+        self.assertEqual(authority['stop_reason'], 'owned disposal test')
+        self.assertFalse(result['result']['native_exit_credit'])
+        self.assertFalse(result['result']['native_save_credit'])
+        self.assertFalse((self.run / 'cockpit.live.final.json').exists())
+
 
 if __name__ == "__main__":
     unittest.main()

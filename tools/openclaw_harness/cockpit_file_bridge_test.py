@@ -13,8 +13,8 @@ import tempfile
 import threading
 import time
 import unittest
-from types import MappingProxyType
-from contextlib import redirect_stdout
+from types import MappingProxyType, SimpleNamespace
+from contextlib import nullcontext, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -418,21 +418,55 @@ class CockpitFileBridgeTest(unittest.TestCase):
                 thread.join(4)
                 self.assertFalse(thread.is_alive(), "explicit cleanup must not wait for descriptor")
                 final = json.loads((directory / "status.json").read_text())
-                self.assertEqual(final["state"], "cleaned")
+                self.assertEqual(final["state"], "terminalization_failed")
                 self.assertEqual(final["reason"], "explicit_pre_descriptor_cleanup")
-                self.assertEqual(final["cleanup"]["status"], "accepted")
+                self.assertEqual(final["cleanup"]["status"], "unconfirmed")
                 self.assertEqual(final["cleanup"]["ownership"],
                                  "unconfirmed_missing_process_record")
                 self.assertIsNotNone(bridge._child.poll())
                 marker = json.loads((directory / "controls" / "pre-descriptor-cleanup.json").read_text())
                 self.assertEqual(marker, {"control": "cleanup", "binding_id": "bound-a"})
-                self.assertEqual(bridge.cleanup(directory, "bound-a"),
-                                 {"ok": True, "cleanup": "already_accepted"})
+                self.assertFalse(bridge.cleanup(directory, "bound-a")["ok"])
             finally:
                 if bridge._child is not None and bridge._child.poll() is None:
                     bridge._child.terminate()
                     bridge._child.wait(timeout=3)
                 thread.join(3)
+
+    def test_pre_descriptor_cleanup_does_not_accept_retained_game(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", "import time; time.sleep(60)"],
+                binding_id="bound-a", require_session_ready=True)
+            retained = {"game": {"pid": 123, "status": "retained_waiting_for_player_quit"},
+                        "native_exit_credit": False}
+            with patch.object(bridge, "_emergency_cleanup", return_value=retained):
+                thread = threading.Thread(target=bridge.serve, daemon=True)
+                thread.start()
+                try:
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        if (directory / "status.json").is_file() and json.loads(
+                                (directory / "status.json").read_text()).get("state") == "starting":
+                            break
+                        time.sleep(0.01)
+                    else:
+                        self.fail("bridge did not start")
+                    self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+                    thread.join(4)
+                    self.assertFalse(thread.is_alive())
+                    final = json.loads((directory / "status.json").read_text())
+                    self.assertEqual(final["state"], "terminalization_failed")
+                    self.assertEqual(final["cleanup"]["status"], "unconfirmed")
+                    self.assertEqual(final["cleanup"]["game"]["status"],
+                                     "retained_waiting_for_player_quit")
+                finally:
+                    if bridge._child is not None and bridge._child.poll() is None:
+                        bridge._child.terminate()
+                        bridge._child.wait(timeout=3)
+                    thread.join(3)
+                    bridge._close_child_streams()
 
     def test_partial_startup_record_can_timeout_then_resume_without_losing_next_record(self):
         child = (
@@ -1174,7 +1208,7 @@ for line in sys.stdin:
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); "
                 "line=json.loads(sys.stdin.readline()); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); time.sleep(.2); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}}))"
             )
             bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
                                               binding_id="bound-a", require_session_ready=True)
@@ -1205,7 +1239,7 @@ for line in sys.stdin:
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','run_id':'run-a','declared_reentry_ready':True,'native_save_completion':{'status':'matched','completion':{'schema':'caol-native-save-completion-v1','run_id':'run-a','serializer_result':'saved','save_succeeded':True,'request_id':'save-1','requested_surface_id':'world','requested_frame_id':'frame','world_name':'world','player_save_id':'player','artifact_identity':{'kind':'harness_run_directory','value':'/run'}}}}}),flush=True); "
                 "print(json.dumps({'cockpit_live_session':d('second')}),flush=True); sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}}))"
             )
             bridge = FileBackedCockpitBridge(
                 directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
@@ -1395,7 +1429,7 @@ for line in sys.stdin:
                 "'run_id':'run-a','binding_id':'native-second','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}}))"
             )
             bridge = FileBackedCockpitBridge(
                 directory, [sys.executable, "-u", "-c", wrapper], binding_id="bound-a",
@@ -1407,12 +1441,14 @@ for line in sys.stdin:
             while not (directory / "status.json").is_file() or \
                     json.loads((directory / "status.json").read_text())["state"] != "ready":
                 time.sleep(0.01)
-            game = subprocess.Popen([sys.executable, "-u", "-c", "pass"])
-            from startup_harness import pid_command
+            game = subprocess.Popen([sys.executable, "-u", "-c", "import time; time.sleep(.2)"])
+            from startup_harness import pid_command, process_generation_snapshot
+            generation = process_generation_snapshot(game.pid)
             game.wait(timeout=2)
             self.assertEqual(pid_command(game.pid), "")
             (directory / "game-process.json").write_text(json.dumps({
-                "pid": game.pid, "binding_id": "bound-a", "command": "/registered/native/game",
+                "pid": game.pid, "binding_id": "bound-a", "command_sha256": generation["command_sha256"],
+                "process_generation": generation,
             }))
             wrapper_pid = bridge._child.pid
             self.assertTrue(bridge.send_request(
@@ -1473,7 +1509,7 @@ for line in sys.stdin:
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); "
                 "sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}}))"
             )
             bridge = FileBackedCockpitBridge(
                 directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
@@ -1510,9 +1546,13 @@ for line in sys.stdin:
                 "frame = {'run_id':'run-a','frame_id':'frame-a','event':'surface_descriptor','schema_version':1,'surface_id':'world-a','kind':'world','breadcrumbs':['World'],'payload':{},'valid_actions':[{'id':'world.pause','stable_id':'','label':'Pause','enabled':True}]}",
                 "def finalize(report):",
                 "    path = os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'], 'cockpit.bridge.safe_to_cleanup.json')",
-                "    with open(path, 'w') as sink: json.dump({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'},sink)",
+                "    with open(path, 'w') as sink: json.dump({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}},sink)",
                 "    return {}",
-                "channel = cockpit.CockpitRunChannel(lambda:frame, binding_id='native-a',read_binding_id=lambda:'native-a',finalize_session=finalize)",
+                "process = {'run_id':'run-a','pid':123,'alive':True,'exit_code':None}",
+                "def abort(reason):",
+                "    process['alive'] = False",
+                "    return {'status':'terminated','native_exit_credit':False}",
+                "channel = cockpit.CockpitRunChannel(lambda:frame, binding_id='native-a',read_binding_id=lambda:'native-a',finalize_session=finalize,read_process_state=lambda:process,abort_owned_process=abort)",
                 "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True)",
                 "startup_harness.serve_cockpit_live(cockpit.CockpitService(run_channel=channel),sys.stdin,sys.stdout)",
             ])
@@ -1529,9 +1569,14 @@ for line in sys.stdin:
                 requests = [
                     ("failed-move", {"action":"game.raw_move_relative","raw_move_relative":{"enabled":True,"offset_ms":[1,0],"bound":{"basis":"path_progress","source":"one requested square","unit":"steps","maximum":1,"progress_required":True}}}),
                     ("fresh-look", {"action":"game.observe"}),
-                    ("quit", {"action":"run.quit"}),
+                    ("quit", {"action":"run.quit","abort":True}),
+                    ("exit-look", {"action":"game.observe"}),
                 ]
                 for request_id, request in requests:
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline and json.loads(
+                            (directory / "status.json").read_text()).get("state") != "ready":
+                        time.sleep(.01)
                     self.assertTrue(bridge.send_request(directory,request_id=request_id,binding_id="bound-a",request=request)["ok"])
                     deadline = time.monotonic() + 5
                     receipt = directory / "responses" / (request_id + ".json")
@@ -1545,6 +1590,18 @@ for line in sys.stdin:
                         self.assertFalse(bridge._terminal_request_id)
                     else:
                         self.assertTrue(response["ok"], response)
+                    if request_id == "quit":
+                        self.assertEqual(response["result"]["state"], "exit_observation_pending")
+                    if request_id == "exit-look":
+                        self.assertEqual(response["result"]["surface"]["kind"], "process_exited")
+                        exit_observation = response["result"]["observation_id"]
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and json.loads(
+                        (directory / "status.json").read_text()).get("state") != "ready":
+                    time.sleep(.01)
+                self.assertTrue(bridge.send_request(directory, request_id="finish", binding_id="bound-a",
+                    request={"action":"run.finish", "observation_id":exit_observation,
+                             "stop_reason":"closed", "unused_authority":"released"})["ok"])
                 thread.join(5)
                 self.assertFalse(thread.is_alive())
                 self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
@@ -1552,6 +1609,133 @@ for line in sys.stdin:
                 if bridge._child is not None and bridge._child.poll() is None:
                     bridge.cleanup(directory,"bound-a")
                     thread.join(5)
+
+    def test_windows_cleanup_marker_allows_exit_witness_and_finish_once(self):
+        import cockpit_file_bridge as bridge_module
+        import select
+
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = "\n".join([
+                "import json, os, sys",
+                "sys.path.insert(0, " + repr(str(Path(__file__).resolve().parent)) + ")",
+                "import cockpit, startup_harness, cockpit_witness_test as fixture",
+                "process = {'run_id':'run-a','pid':123,'alive':True,'exit_code':None}",
+                "def abort(reason):",
+                "    process['alive'] = False",
+                "    return {'status':'terminated','native_exit_credit':False}",
+                "def finalize(report):",
+                "    path = os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'], "
+                "'cockpit.bridge.safe_to_cleanup.json')",
+                "    with open(path, 'w') as sink: json.dump({"
+                "'schema':'caol-cockpit-scenario-terminalization-v1',"
+                "'binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],"
+                "'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}},sink)",
+                "    return {}",
+                "channel = cockpit.CockpitRunChannel(fixture.frame, binding_id='native-a',"
+                "read_binding_id=lambda:'native-a',finalize_session=finalize,"
+                "read_process_state=lambda:process,abort_owned_process=abort,"
+                "witness_charter=fixture.CHARTER,witness_identity={'scenario_id':'scenario-a',"
+                "'source_identity':'source-a','executable_identity':'exe-a'})",
+                "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1',"
+                "'entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a',"
+                "'bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True)",
+                "startup_harness.serve_cockpit_live(cockpit.CockpitService(run_channel=channel),sys.stdin,sys.stdout)",
+            ])
+            if os.name == "nt":
+                platform, replacement, reader = nullcontext(), nullcontext(), nullcontext()
+            else:
+                windows_os = SimpleNamespace(**{**vars(os), "name": "nt"})
+                platform = patch.object(bridge_module, "os", windows_os)
+                replacement = patch("windows_native_process.replace_with_readers", side_effect=os.replace)
+                reader = patch("windows_native_process.pipe_readable",
+                               side_effect=lambda fd, timeout: bool(select.select([fd], [], [], timeout)[0]))
+            with platform, replacement, reader:
+                bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
+                                                  binding_id="bound-a", require_session_ready=True)
+                thread = threading.Thread(target=bridge.serve, daemon=True)
+                thread.start()
+                try:
+                    def wait_ready():
+                        deadline = time.monotonic() + 5
+                        while time.monotonic() < deadline:
+                            if (directory / "status.json").is_file():
+                                status = json.loads((directory / "status.json").read_text())
+                                if status.get("state") == "ready":
+                                    return status
+                            time.sleep(.01)
+                        self.fail("bridge did not become ready")
+
+                    def request(request_id, payload):
+                        wait_ready()
+                        self.assertTrue(bridge.send_request(directory, request_id=request_id,
+                                        binding_id="bound-a", request=payload)["ok"])
+                        path = directory / "responses" / (request_id + ".json")
+                        deadline = time.monotonic() + 5
+                        while not path.exists() and time.monotonic() < deadline:
+                            time.sleep(.01)
+                        self.assertTrue(path.exists())
+                        return json.loads(path.read_text())
+
+                    wait_ready()
+                    self.assertTrue(request("before", {"action": "game.observe"})["ok"])
+                    wait_ready()
+                    self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        status = wait_ready()
+                        if status.get("abort_cleanup"):
+                            break
+                        time.sleep(.01)
+                    else:
+                        self.fail("abort was not accepted")
+                    self.assertEqual(status["abort_cleanup"]["status"], "terminated")
+                    self.assertTrue((directory / "controls" / "pre-descriptor-cleanup.json").is_file())
+                    time.sleep(.1)  # The retained Windows marker must not replay while reporting.
+                    ended = request("exit", {"action": "game.observe"})
+                    self.assertEqual(ended["result"]["surface"]["kind"], "process_exited")
+                    observation_id = ended["result"]["observation_id"]
+                    terminal = {"observation_id": observation_id, "stop_reason": "settled",
+                                "unused_authority": "released"}
+                    sealed = request("witness", {"action": "run.witness", **terminal})
+                    self.assertTrue(sealed["ok"], sealed)
+                    time.sleep(.1)
+                    self.assertIsNone(bridge._child.poll())
+                    witness = {"verdict": "proved", "smallest_supported_claim": "The native frame reported minute 100.",
+                               "causal_account": "The bound native observation supplies the minute.",
+                               "citations": [{"citation_id": "J0002", "meaning": "native minute",
+                                              "checks": {"value.game_minutes": 100}}],
+                               "recommended_disposition": "accept", "evidence_ceiling": "focused"}
+                    finished = request("finish", {"action": "run.finish", **terminal, "witness": witness})
+                    self.assertTrue(finished["ok"], finished)
+                    validation = finished["result"]["stop_detail"]["witness_validation"]
+                    self.assertEqual(validation["status"], "mechanically_valid")
+                    thread.join(5)
+                    self.assertFalse(thread.is_alive())
+                    self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
+                finally:
+                    if bridge._child is not None and bridge._child.poll() is None:
+                        bridge._child.terminate()
+                        bridge._child.wait(timeout=3)
+                    thread.join(3)
+
+    def test_acknowledged_cleanup_marker_does_not_hide_a_new_bound_request(self):
+        import cockpit_file_bridge as bridge_module
+
+        with tempfile.TemporaryDirectory() as temp:
+            bridge = FileBackedCockpitBridge(Path(temp) / "session", ["unused"], binding_id="bound-a")
+            bridge.prepare()
+            marker = bridge.controls_dir / "pre-descriptor-cleanup.json"
+            bridge_module._atomic_json(marker, {"control": "cleanup", "binding_id": "foreign"})
+            self.assertFalse(bridge._startup_cleanup_requested())
+            bridge_module._atomic_json(marker, {"control": "cleanup", "binding_id": "bound-a"})
+            first = bridge._startup_cleanup_marker_identity()
+            self.assertIsNotNone(first)
+            bridge._acknowledged_cleanup_marker = first
+            self.assertFalse(bridge._startup_cleanup_requested())
+            bridge_module._atomic_json(marker, {"control": "cleanup", "binding_id": "bound-a"})
+            self.assertTrue(bridge._startup_cleanup_requested())
+            self.assertNotEqual(first, bridge._startup_cleanup_marker_identity())
 
     def test_legacy_error_final_does_not_authorize_game_cleanup(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -1561,7 +1745,7 @@ for line in sys.stdin:
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
                 "print(json.dumps({'ok':False,'error':'fail_closed','final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}}))"
             )
             bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
                                               binding_id="bound-a", require_session_ready=True)
@@ -1587,7 +1771,7 @@ for line in sys.stdin:
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); "
                 "sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
-                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'})); "
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'already_exited'}})); "
                 "sys.stdout.write('x'*200000); sys.stdout.flush()"
             )
             bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
@@ -1604,6 +1788,33 @@ for line in sys.stdin:
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
             self.assertEqual((directory / "terminal.stdout.log").stat().st_size, 200000)
+
+    def test_live_finish_rejects_safe_signal_with_retained_game(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = (
+                "import json,os,sys; "
+                "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True); "
+                "sys.stdin.readline(); print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup','cleanup':{'status':'graceful_quit_unconfirmed_process_retained'}}))"
+            )
+            bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
+                                              binding_id="bound-a", require_session_ready=True)
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if (directory / "status.json").is_file() and json.loads(
+                        (directory / "status.json").read_text())["state"] == "ready":
+                    break
+                time.sleep(0.01)
+            else:
+                self.fail("bridge did not become ready")
+            bridge.send_request(directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"})
+            thread.join(3)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(json.loads((directory / "status.json").read_text())["state"],
+                             "terminalization_failed")
 
     def test_live_finish_without_terminalization_signal_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -1,0 +1,70 @@
+{
+  "name": "travelling_ordinary_pair_preflight_001",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "Disposable zero-credit ordinary scout pair, road footing and local ownership claims; native perception, contact and outcomes remain unproven.",
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [
+        13,
+        9,
+        0
+      ]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 14,
+      "active_outside_member_count": 2,
+      "active_member_state": "local_contact",
+      "active_job_type": "scout",
+      "active_target_id": "player@141,41,0"
+    },
+    {
+      "kind": "bandit_active_sortie_clock",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "active_job_type": "scout",
+      "active_sortie_started_minutes": 8159,
+      "active_sortie_local_contact_minutes": 8159
+    },
+    {
+      "kind": "bandit_ordinary_scout_fixture_footing",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "target_omt": [
+        141,
+        41,
+        0
+      ],
+      "member_positions_ms": {
+        "4": [
+          3388,
+          1005,
+          0
+        ],
+        "5": [
+          3389,
+          1005,
+          0
+        ]
+      }
+    },
+    {
+      "kind": "bandit_projection_leases",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "activity_id": "overmap_special:bandit_camp@140,51,0#fixture_active_pressure",
+      "owner": "local",
+      "generation": 1,
+      "handoff_epoch": 1,
+      "last_advanced_minutes": 8159,
+      "npc_ids": [
+        4,
+        5
+      ]
+    }
+  ]
+}

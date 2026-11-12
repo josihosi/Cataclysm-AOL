@@ -58,7 +58,8 @@ enum class raid_perf_stage : std::size_t {
     camp_locker_downtime, camp_locker_collection, camp_locker_service,
     npc_find_item, npc_pick_up_item, npc_decision_trace, npc_decision_publish,
     semantic_descriptor_build, semantic_receipt_build, native_journal_publish, native_journal_compact,
-    pre_input_redraw, render_present, npc_process_turn, npc_normal_move, npc_body_update, count
+    pre_input_redraw, render_present, npc_process_turn, npc_normal_move, npc_body_update,
+    debug_sink_write, debug_sink_flush, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,
@@ -77,6 +78,7 @@ enum class raid_perf_query_event : std::size_t {
 };
 // True only on the thread owning the currently active diagnostic turn.
 bool raid_perf_journal_active();
+bool raid_perf_debug_sink_active();
 bool raid_perf_query_active();
 void raid_perf_note_query( raid_perf_query_event event );
 

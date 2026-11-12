@@ -411,6 +411,7 @@ struct raid_perf_row {
     std::array<std::uint64_t, 4> locker_resource_delta{};
 #endif
     debug_sink_statistics sink;
+    bool debug_sink_timing_enabled = false;
     std::array<double, raid_perf_stage_count> stages{};
     std::array<std::size_t, raid_perf_stage_count> stage_calls{};
     std::array<std::size_t, raid_perf_nav_event_count> nav_counts{};
@@ -435,10 +436,15 @@ struct raid_perf_row {
 static raid_perf_row *raid_perf_current = nullptr;
 static thread_local bool raid_perf_turn_thread = false;
 static thread_local bool raid_perf_outside_simulation = false;
+static thread_local bool raid_perf_debug_sink_enabled = false;
 
 bool raid_perf_journal_active()
 {
     return raid_perf_turn_thread && !raid_perf_outside_simulation;
+}
+bool raid_perf_debug_sink_active()
+{
+    return raid_perf_debug_sink_enabled && raid_perf_journal_active();
 }
 static std::vector<raid_perf_row> raid_perf_rows;
 static std::string raid_perf_mode = "off";
@@ -692,7 +698,8 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
     "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",
     "npc_find_item", "npc_pick_up_item", "npc_decision_trace", "npc_decision_publish",
     "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish", "native_journal_compact",
-    "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
+    "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update",
+    "debug_sink_write", "debug_sink_flush"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -851,6 +858,7 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
     js.member( "debug_log_flushes", row.sink.flushes );
     js.member( "debug_log_replacements", row.sink.replacements );
     js.member( "debug_log_replacement_seconds", row.sink.replacement_nanoseconds / 1e9 );
+    js.member( "debug_sink_timing_enabled", row.debug_sink_timing_enabled );
     js.member( "stages_seconds", row.stages );
     js.member( "stage_calls", row.stage_calls );
     js.member( "nav_view_counts" );
@@ -902,6 +910,7 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->locker_body_wall_seconds = row.locker_body_wall_seconds;
     copy->locker_probe_fence_wall_seconds = row.locker_probe_fence_wall_seconds;
     copy->sink = row.sink;
+    copy->debug_sink_timing_enabled = row.debug_sink_timing_enabled;
     copy->stages = row.stages;
     copy->stage_calls = row.stage_calls;
     copy->nav_counts = row.nav_counts;
@@ -953,7 +962,7 @@ static void raid_perf_flush_after_wait( std::optional<std::size_t> selected_max 
     js.member( "watch_scope",
                "Actual preflight/read/record_view calls; eligible record_view calls are not confirmed writes; cached views sum each preflight's retained geometry/lighting views, including failed lighting, not per-read allocations or unique world cells" );
     js.member( "debug_sink_scope",
-               "logical file-sink bytes/flushes over the whole turn including input/save; not physical disk bytes" );
+               "logical file-sink bytes/flushes over the whole turn including input/save; not physical disk bytes. Optional debug_sink_write and debug_sink_flush stages time only their synchronous sink calls on the owning simulation thread; input/save and diagnostic packet publication excluded, wall time not physical I/O or CPU; rotation is separate" );
     js.member( "turn_partition_scope",
                "WALL simulation partitions, excluding the same native input and save intervals as simulation_seconds. Setup ends after population; activity_prep ends before the input loop; input_loop ends after that loop; world_tail ends at turn exit. Its disjoint children tail_prepare end after vehicle movement, tail_world_work ends after overmap NPC processing, and tail_finish ends at turn exit. Existing stages may nest inside partitions; process CPU is whole-turn only, not partition CPU. No extra events." );
     js.member( "signal_callback_scope",
@@ -1439,10 +1448,13 @@ class openclaw_harness_turn_trace
                     raid_perf_current = &diagnostic_;
                     raid_perf_turn_thread = true;
                     raid_perf_outside_simulation = false;
+                    const char *const resource_option = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+                    raid_perf_debug_sink_enabled = resource_option && resource_option[0] != '\0' &&
+                                                   resource_option[0] != '0';
+                    diagnostic_.debug_sink_timing_enabled = raid_perf_debug_sink_enabled;
                     cpu_started_ = std::clock();
                     sink_started_ = get_debug_sink_statistics();
 #if defined(__APPLE__)
-                    const char *const resource_option = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
                     if( resource_option && resource_option[0] != '\0' && resource_option[0] != '0' ) {
                         rusage_info_v4 resource{};
                         if( proc_pid_rusage( getpid(), RUSAGE_INFO_V4,
@@ -1535,6 +1547,7 @@ class openclaw_harness_turn_trace
                     raid_perf_rows.push_back( std::move( diagnostic_ ) );
                     raid_perf_turn_thread = false;
                     raid_perf_outside_simulation = false;
+                    raid_perf_debug_sink_enabled = false;
                     raid_perf_current = nullptr;
                 }
                 extrema_sample.end_sequence = openclaw_harness_write_turn_trace( "turn", "end", "simulation", turn_id_,
@@ -6136,6 +6149,13 @@ std::vector<tripoint_bub_ms> live_hostile_search_route(
             settings.avoid_dangerous_fields = false;
         }
         const auto route_with_native_avoid = [&]( const npc::path_avoid_diagnostic & diagnostic ) {
+            const bool fire_comparison = policy == hostile_search_route_policy::fire_diagnosis;
+            bandit_live_world_probe::scoped_section route_probe( fire_comparison ?
+                    bandit_live_world_probe::section::hostile_search_fire_comparison :
+                    bandit_live_world_probe::section::hostile_search_route_solve );
+            bandit_live_world_probe::increment( fire_comparison ?
+                    bandit_live_world_probe::counter::hostile_search_fire_comparisons :
+                    bandit_live_world_probe::counter::hostile_search_route_solves );
             std::string reason;
             const auto native = member.get_path_avoid( [&]( const auto & cell, const auto why,
             const Creature * occupant ) {
@@ -6181,6 +6201,10 @@ std::vector<tripoint_bub_ms> live_hostile_search_route(
                 // Diagnostic comparison only: retry with the member-specific avoid predicate
                 // disabled to distinguish its dynamic blockers from an otherwise absent route.
                 relaxed_route_evaluated = true;
+                bandit_live_world_probe::scoped_section relaxed_probe(
+                    bandit_live_world_probe::section::hostile_search_relaxed_diagnostic );
+                bandit_live_world_probe::increment(
+                    bandit_live_world_probe::counter::hostile_search_relaxed_diagnostics );
                 relaxed_route = here.route( member.pos_bub( here ),
                                             pathfinding_target::point( local_goal ),
                                             settings,

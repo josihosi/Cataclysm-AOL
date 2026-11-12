@@ -36,6 +36,66 @@ class ProcessExitTest(unittest.TestCase):
                                     witness_evidence_ceiling="zero-credit")
         return channel, process, read, dispatch
 
+    def test_abort_stays_live_until_actual_exit_then_allows_normal_reporting(self):
+        channel, process, _, dispatch = self.channel()
+        service = CockpitService(run_channel=channel)
+        old = service.call({"action": "game.observe"})["result"]
+        cleanup = Mock(return_value={"status": "graceful_quit_unconfirmed_process_retained",
+                                     "signal": "SIGTERM", "native_exit_credit": False})
+        channel._abort_owned_process = cleanup
+        pending = service.call({"action": "run.quit", "abort": True})
+        self.assertTrue(pending["ok"])
+        self.assertEqual(pending["result"]["state"], "exit_observation_pending")
+        self.assertEqual(channel.status()["state"], "active")
+        self.assertEqual(service.call({"action": "game.act", "observation_id": old["observation_id"],
+                                       "action_id": "world.move.north"})["error"],
+                         "abort_exit_observation_pending")
+        dispatch.assert_not_called()
+        self.assertTrue(service.call({"action": "run.quit", "abort": True})["ok"])
+        cleanup.assert_called_once()
+        self.assertEqual(service.call({"action": "run.witness", "observation_id": old["observation_id"],
+                                       "stop_reason": "done", "unused_authority": "released"})["error"],
+                         "native_exit_required_before_reporting")
+        process.update(alive=False, exit_code=None)
+        ended = service.call({"action": "game.observe"})["result"]
+        self.assertEqual(ended["surface"]["kind"], "process_exited")
+        self.assertFalse(ended["surface"]["facts"]["gameplay_credit"])
+        finished = service.call({"action": "run.finish", "observation_id": ended["observation_id"],
+                                 "stop_reason": "done", "unused_authority": "released"})
+        self.assertTrue(finished["ok"], finished)
+        self.assertEqual(finished["result"]["closure_kind"], "explicit_abort")
+        self.assertFalse(finished["result"]["native_exit_credit"])
+
+    def test_started_but_unobserved_abort_is_not_reissued(self):
+        channel, _, _, _ = self.channel()
+        service = CockpitService(run_channel=channel)
+        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+        cleanup = Mock(return_value={"status": "explicit_abort_exit_unobserved_process_retained",
+                                     "native_exit_credit": False})
+        channel._abort_owned_process = cleanup
+        for _ in range(2):
+            pending = service.call({"action": "run.quit", "abort": True})
+            self.assertTrue(pending["ok"])
+            self.assertFalse(pending["result"]["retry_allowed"])
+        cleanup.assert_called_once()
+
+    def test_refused_abort_then_external_exit_does_not_claim_abort_termination(self):
+        channel, process, _, _ = self.channel()
+        service = CockpitService(run_channel=channel)
+        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+        channel._abort_owned_process = Mock(return_value={"status": "retained_explicit_abort_refused",
+                                                         "native_exit_credit": False})
+        refused = service.call({"action": "run.quit", "abort": True})
+        self.assertTrue(refused["result"]["retry_allowed"])
+        process.update(alive=False, exit_code=None)
+        ended = service.call({"action": "game.observe"})["result"]
+        finished = service.call({"action": "run.finish", "observation_id": ended["observation_id"],
+                                 "stop_reason": "external exit", "unused_authority": "released"})
+        self.assertTrue(finished["ok"], finished)
+        self.assertNotEqual(finished["result"].get("closure_kind"), "explicit_abort")
+        self.assertTrue(finished["result"]["stop_detail"]["abort_requested"])
+        self.assertNotIn("explicit_player_abort", finished["result"]["stop_detail"])
+
     def test_live_seal_and_finish_refuse_without_mutation_and_save_quit_still_works(self):
         channel, process, _, dispatch = self.channel()
         observed = channel.observe()

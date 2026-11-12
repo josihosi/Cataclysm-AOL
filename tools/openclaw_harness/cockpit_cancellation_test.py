@@ -34,7 +34,9 @@ class CancellationTest(unittest.TestCase):
                         patch.object(startup, "semantic_step_source_trace", return_value=self.trace),
                         patch.object(startup, "current_semantic_step_frame", side_effect=lambda **_: self.current),
                         patch.object(startup, "refresh_semantic_step_trace", return_value=(self.trace, self.trace)),
-                        patch.object(startup, "semantic_wake_pipe_contract", return_value={"status": "bound", "path": "test"})):
+                        patch.object(startup, "semantic_wake_pipe_contract", return_value={
+                            "status": "bound", "path": "test",
+                            "contract": {"transport": "named_fifo", "run_id": "run-a"}})):
             context.start()
             self.addCleanup(context.stop)
         self.service = startup.open_cockpit_game_service(profile="test", run_dir=self.run,

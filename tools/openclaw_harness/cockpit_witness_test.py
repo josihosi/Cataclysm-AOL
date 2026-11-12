@@ -98,6 +98,39 @@ class CockpitWitnessTest(unittest.TestCase):
         self.assertEqual(detail["witness_validation"]["status"], "mechanically_valid")
         self.assertEqual(detail["evidence_journal"]["identity"]["binding_id"], "binding-a")
 
+    def test_unknown_exit_can_seal_independent_native_gameplay_witness(self) -> None:
+        service = self.service()
+        observed = service.call({"action": "game.observe"})["result"]
+        service.run_channel._abort_owned_process = lambda _reason: {
+            "status": "graceful_quit_unconfirmed_process_retained", "signal": "SIGTERM",
+            "native_exit_credit": False}
+        self.assertTrue(service.call({"action": "run.quit", "abort": True})["ok"])
+        service.run_channel._read_process_state = lambda: {
+            "run_id": "run-a", "pid": 123, "alive": False,
+            "identity_status": "exited", "exit_code": None,
+        }
+        ended = service.call({"action": "game.observe"})["result"]
+        self.assertEqual(ended["surface"]["kind"], "process_exited")
+        self.assertIsNone(ended["surface"]["facts"]["exit_code"])
+        self.assertFalse(ended["surface"]["facts"]["gameplay_credit"])
+        self.assertEqual(ended["surface"]["facts"]["save_outcome"], "not_established_by_process_exit")
+        sealed = service.call({"action": "run.witness", "observation_id": ended["observation_id"],
+                               "stop_reason": "bound process absent", "unused_authority": "released"})
+        self.assertTrue(sealed["ok"], sealed)
+        witness = {
+            "verdict": "proved", "smallest_supported_claim": "A native frame reported minute 100.",
+            "causal_account": "The prior bound native frame supplies the fact; process absence supplies no gameplay or save credit.",
+            "citations": [{"citation_id": "J0002", "meaning": "bound native minute", "checks": {"value.game_minutes": 100}}],
+            "recommended_disposition": "accept", "evidence_ceiling": "focused",
+        }
+        finished = service.call({"action": "run.finish", "observation_id": ended["observation_id"],
+                                 "stop_reason": "bound process absent", "unused_authority": "released", "witness": witness})
+        self.assertTrue(finished["ok"], finished)
+        self.assertEqual(finished["result"]["stop_detail"]["witness_validation"]["status"], "mechanically_valid")
+        self.assertEqual(finished["result"]["closure_kind"], "explicit_abort")
+        self.assertFalse(finished["result"]["native_exit_credit"])
+        self.assertEqual(observed["game_minutes"], 100)
+
     def test_ordinary_result_skips_whole_journal_and_keeps_optional_review_separate(self):
         from unittest.mock import patch
         service = self.service()

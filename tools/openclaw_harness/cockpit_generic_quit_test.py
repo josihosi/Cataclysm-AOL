@@ -26,41 +26,30 @@ class GenericQuitTest(unittest.TestCase):
         self.assertEqual(finals, [])
         self.assertTrue(service.call({"action": "game.observe"})["ok"])
 
-    def test_explicit_abort_actual_finalizer_intercepts_signal_without_native_credit(self):
-        service, _ = fixtures.LiveSessionTest().service([fixtures.frame(1, 100)])
+    def test_explicit_abort_uses_bound_cleanup_before_terminalization(self):
+        service, finals = fixtures.LiveSessionTest().service([fixtures.frame(1, 100)])
         self.assertTrue(service.call({"action": "game.observe"})["ok"])
         generation = {"pid": 123, "alive": True, "birth_identity": "fixture-birth",
                       "command": "/fixture/cataclysm --userdir /fixture/owned"}
-        owned = {"pid": 123, "status": "alive", "expected": generation}
         current = dict(generation)
         def intercepted(pid, signal):
             self.assertEqual(pid, 123)
             self.assertEqual(signal, harness.signal.SIGTERM)
             current["alive"] = False
-        with tempfile.TemporaryDirectory() as temp:
-            directory = Path(temp)
-            service.run_channel._finalize_session = lambda report: harness.finalize_cockpit_live_session(
-                directory, 123, report)
-            with patch.object(harness, "current_owned_process_generation", return_value=owned), \
-                    patch.object(harness, "_process_generation_snapshot", side_effect=lambda *a, **k: dict(current)), \
-                    patch.object(harness.os, "kill", side_effect=intercepted) as signal:
-                result = service.call({"action": "run.quit", "abort": True,
-                                       "stop_reason": "explicit test abort, never native save"})
-            if harness.os.name == "nt":
-                signal.assert_not_called()
-                self.assertEqual(result["result"]["cleanup"]["status"],
-                                 "graceful_quit_unconfirmed_process_retained")
-                self.assertTrue(result["result"]["cleanup"]["observed_process_generation"]["alive"])
-            else:
-                signal.assert_called_once_with(123, harness.signal.SIGTERM)
-                self.assertEqual(result["result"]["cleanup"]["status"], "terminated")
-            self.assertTrue(result["ok"])
-            report = json.loads((directory / "cockpit.live.final.json").read_text())
-            self.assertEqual(report["closure_kind"], "explicit_abort")
-            self.assertTrue(report["stop_detail"]["explicit_player_abort"])
-            for key in ("native_exit_credit", "native_save_credit", "normal_exit_credit", "declared_reentry_ready"):
-                self.assertFalse(report[key])
-            self.assertFalse(report["cleanup"]["native_exit_credit"])
+        service.run_channel._abort_owned_process = lambda _reason: harness.cleanup_game_process(
+            123, explicit_quit=True, explicit_abort=True, expected_process_generation=generation)
+        with patch.object(harness, "_process_generation_snapshot", side_effect=lambda *a, **k: dict(current)), \
+                patch.object(harness.os, "kill", side_effect=intercepted) as signal:
+            result = service.call({"action": "run.quit", "abort": True})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"]["state"], "exit_observation_pending")
+        if harness.os.name != "nt":
+            signal.assert_called_once_with(123, harness.signal.SIGTERM)
+            self.assertEqual(result["result"]["cleanup"]["status"], "terminated")
+        self.assertFalse(result["result"]["native_exit_credit"])
+        self.assertFalse(result["result"]["native_save_credit"])
+        self.assertEqual(service.run_channel.status()["state"], "active")
+        self.assertEqual(finals, [])
 
     def test_bridge_explicit_cleanup_forwards_abort_not_graceful_quit(self):
         from cockpit_file_bridge import FileBackedCockpitBridge
@@ -78,6 +67,22 @@ class GenericQuitTest(unittest.TestCase):
             self.assertTrue(request["abort"])
             self.assertEqual(request["action"], "run.quit")
             cleanup.assert_not_called()
+
+    def test_bridge_abort_pending_keeps_live_channel(self):
+        from cockpit_file_bridge import FileBackedCockpitBridge
+        with tempfile.TemporaryDirectory() as temp:
+            bridge = FileBackedCockpitBridge(Path(temp) / "session", ["unused"],
+                                             binding_id="fixture-binding", require_session_ready=True)
+            bridge.prepare()
+            bridge._child = Mock(pid=123, stdin=io.StringIO())
+            bridge._child.poll.return_value = None
+            pending = {"ok": True, "result": {"schema": "caol-cockpit-abort-pending-v1",
+                       "state": "exit_observation_pending", "cleanup": {"status": "graceful_quit_unconfirmed_process_retained"}}}
+            with patch.object(bridge, "_read_complete_response", return_value=json.dumps(pending)), \
+                    patch.object(bridge, "_emergency_cleanup") as cleanup:
+                self.assertFalse(bridge._handle_request(json.dumps({"control": "cleanup", "binding_id": "fixture-binding"})))
+            cleanup.assert_not_called()
+            self.assertEqual(json.loads(bridge.status_path.read_text())["state"], "ready")
 
     def test_existing_native_reporting_is_not_an_abort(self):
         service, finals = fixtures.LiveSessionTest().service([fixtures.frame(1, 100)])

@@ -526,10 +526,15 @@ def dispose_owned_game(run_dir, expected, *, wait_seconds=5.0, inspector=None):
                   'operation': 'explicit_disposal', 'pid': expected['pid'],
                   'birth_identity': expected['birth_identity'], 'native_exit_credit': False,
                   'native_save_credit': False, 'normal_exit_credit': False}
-        if k.WaitForSingleObject(handle, int(wait_seconds * 1000)) == 0:
-            code = w.DWORD()
-            checked(k.GetExitCodeProcess(handle, c.byref(code)))
-            result.update(status='explicit_abort_terminated', exit_code=int(code.value), os_exit_observed=True)
+        try:
+            if k.WaitForSingleObject(handle, int(wait_seconds * 1000)) == 0:
+                code = w.DWORD()
+                checked(k.GetExitCodeProcess(handle, c.byref(code)))
+                result.update(status='explicit_abort_terminated', exit_code=int(code.value), os_exit_observed=True)
+        except (OSError, ValueError, KeyError) as error:
+            # TerminateProcess already succeeded. A failed observation must
+            # never look like permission to issue another termination.
+            result['exit_observation_error'] = str(error)
         return result
     finally:
         k.CloseHandle(handle)

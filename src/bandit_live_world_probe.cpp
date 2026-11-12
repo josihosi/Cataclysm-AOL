@@ -1584,6 +1584,9 @@ std::string_view to_string( const section target )
         "loaded_covert_member_motor",
         "loaded_covert_overmap_route_solve",
         "loaded_covert_local_path_solve",
+        "hostile_search_route_solve",
+        "hostile_search_fire_comparison",
+        "hostile_search_relaxed_diagnostic",
     };
     return names[enum_index( target )];
 }
@@ -1608,6 +1611,9 @@ std::string_view to_string( const counter target )
         "loaded_covert_local_path_solves",
         "transition_stream_bytes_read",
         "transition_stream_records_validated",
+        "hostile_search_route_solves",
+        "hostile_search_fire_comparisons",
+        "hostile_search_relaxed_diagnostics",
     };
     return names[enum_index( target )];
 }

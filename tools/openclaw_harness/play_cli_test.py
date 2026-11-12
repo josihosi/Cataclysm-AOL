@@ -1600,6 +1600,34 @@ class PlayerCliTest(unittest.TestCase):
         self.assertFalse(json.loads((self.session / "play-client.json").read_text()).get("finished"))
         self.assertEqual(self.cli("look")["state"], "pending")
 
+    def test_abort_pending_keeps_client_live_and_requires_fresh_observation(self):
+        self.observe()
+        pending = self.cli("quit", "--abort", "--reason", "authorized abort")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "schema": "caol-cockpit-abort-pending-v1", "state": "exit_observation_pending",
+            "cleanup": {"status": "graceful_quit_unconfirmed_process_retained"}}})
+        result = self.cli("collect")
+        self.assertEqual(result["state"], "abort_exit_observation_pending")
+        self.assertEqual(result["next"], "look")
+        state = json.loads((self.session / "play-client.json").read_text())
+        self.assertFalse(state.get("finished"))
+        self.assertNotIn("observation_id", state)
+        self.assertEqual(self.cli("look")["state"], "pending")
+
+    def test_refused_abort_offers_explicit_retry_without_reissuing_it(self):
+        self.observe()
+        pending = self.cli("quit", "--abort", "--reason", "first attempt")
+        self.reply(pending["request_id"], {"ok": True, "result": {
+            "schema": "caol-cockpit-abort-pending-v1", "state": "exit_observation_pending",
+            "cleanup": {"status": "retained_explicit_abort_refused"}, "retry_allowed": True}})
+        result = self.cli("collect")
+        self.assertEqual(result["state"], "abort_exit_observation_pending")
+        self.assertIn("explicit quit --abort retry", result["next"])
+        self.assertEqual(len(self.requests()), 2)
+        retry = self.cli("quit", "--abort", "--reason", "explicit retry")
+        self.assertEqual(retry["state"], "pending")
+        self.assertEqual(len(self.requests()), 3)
+
     def test_declared_reentry_releases_old_grants_before_new_observation(self):
         self.write("play-client.json", {"binding_id": "bound-a",
                    "session_generation": 0, "process_exited": True,
@@ -1806,6 +1834,68 @@ class PlayerCliTest(unittest.TestCase):
         complete = self.cli("repeat", "--resume")
         self.assertEqual(complete["state"], "completed")
         self.assertEqual(complete["completed_count"], 2)
+
+    def test_collected_repeat_then_abort_retires_without_more_native_input(self):
+        for progressed in (True, False):
+            with self.subTest(progressed=progressed):
+                self.repeat_look()
+                pending = self.cli("repeat", "world.autoattack", "--count", "3")
+                action_id = pending["outstanding_request_id"]
+                self.assertEqual(self.cli("quit", "--abort", ok=False)["error"], "request_in_flight")
+                self.repeat_reply(action_id, step=1, turn=101 if progressed else 100)
+                collected = self.cli("collect", "--request-id", action_id)
+                response_hash = collected["receipt"]["response_sha256"]
+                quit_request = self.cli("quit", "--abort", "--reason", "authorized abort")
+                self.reply(quit_request["request_id"], {"ok": True, "result": {
+                    "schema": "caol-cockpit-abort-pending-v1", "state": "exit_observation_pending",
+                    "cleanup": {"status": "explicit_abort_exit_unobserved_process_retained"},
+                    "native_exit_credit": False, "native_save_credit": False}})
+                self.assertEqual(self.cli("collect")["state"], "abort_exit_observation_pending")
+                repeat = json.loads((self.session / "play-client.json").read_text())["repeat"]
+                self.assertEqual(repeat["status"], "interrupted" if progressed else "failed")
+                self.assertEqual(repeat["completed_count"], int(progressed))
+                self.assertEqual(repeat["requested_count"] - repeat["completed_count"], 3 - int(progressed))
+                self.assertIsNone(repeat["outstanding"])
+                self.assertEqual(repeat["receipt_handles"], [{"request_id": action_id,
+                    "response_sha256": response_hash, "native_action_id": "world.autoattack",
+                    "native_accepted": True}])
+                resumed = self.cli("repeat", "--resume", ok=progressed)
+                self.assertEqual(resumed["completed_count"], int(progressed))
+                self.assertEqual(len([r for r in self.requests() if r["request"].get("action") == "game.act"]), 1)
+                look = self.cli("look")
+                self.reply(look["request_id"], {"ok": True, "result": {"observation_id": "process-exit",
+                    "run_id": "repeat-run", "surface": {"kind": "process_exited", "facts": {}, "actions": []}}})
+                self.assertEqual(self.cli("collect")["state"], "process_exited")
+                report = self.cli("journal", "--reason", "observed exit")
+                self.assertEqual(report["state"], "pending")
+                self.assertEqual(next(r for r in self.requests() if r["request_id"] == report["request_id"])
+                                 ["request"]["action"], "run.witness")
+                # Fresh independent fixture state for the next subcase.
+                for path in self.session.glob("requests/*.json"):
+                    path.unlink()
+                (self.session / "play-client.json").unlink()
+
+    def test_rejected_abort_keeps_settled_repeat_resumable(self):
+        self.repeat_look()
+        pending = self.cli("repeat", "world.autoattack", "--count", "2")
+        action_id = pending["outstanding_request_id"]
+        self.repeat_reply(action_id, step=1)
+        self.cli("collect", "--request-id", action_id)
+        quit_request = self.cli("quit", "--abort")
+        self.reply(quit_request["request_id"], {"ok": False, "error": "binding_drift"})
+        self.cli("collect", ok=False)
+        resumed = self.cli("repeat", "--resume")
+        self.assertEqual(resumed["completed_count"], 1)
+        self.assertEqual(resumed["state"], "pending")
+        self.assertNotEqual(resumed["outstanding_request_id"], action_id)
+        self.assertEqual(len([r for r in self.requests() if r["request"].get("action") == "game.act"]), 1)
+        observation_id = json.loads((self.session / "play-client.json").read_text())["pending"]["request_id"]
+        self.reply(observation_id, {"ok": True, "result": {
+            "observation_id": "repeat-frame-1-fresh", "run_id": "repeat-run", "game_turn": 101,
+            "game_minutes": 10, "avatar_moves": 1000, "surface": self.repeat_surface("world.autoattack")}})
+        next_step = self.cli("repeat", "--resume")
+        self.assertEqual(next_step["completed_count"], 1)
+        self.assertEqual(len([r for r in self.requests() if r["request"].get("action") == "game.act"]), 2)
 
     def test_repeat_cancelled_request_stops_without_another_press(self):
         self.repeat_look()

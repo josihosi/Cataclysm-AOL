@@ -7,6 +7,7 @@ import json
 import io
 import sys
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 
 HARNESS_DIR = Path(__file__).resolve().parent
@@ -116,8 +117,11 @@ def r019_fixture_actor(**overrides: object) -> dict[str, object]:
 
 class LiveSessionTest(unittest.TestCase):
     def test_missing_receipt_then_fresh_observation_can_act_and_explicitly_quit(self):
-        service, finals = self.service([frame(1, 100), frame(2, 101)])
+        process = {"run_id": "live-proof", "pid": 42, "alive": True, "identity_status": "alive"}
+        service, finals = self.service([frame(1, 100), frame(2, 101)], process_state=process)
         channel = service.run_channel
+        channel._abort_owned_process = Mock(return_value={"status": "explicit_abort_exit_unobserved_process_retained",
+                                                         "native_exit_credit": False})
         dispatch = channel._dispatch_advertised_action
         channel._dispatch_advertised_action = lambda *args: {}
         observed = service.call({"action": "game.observe"})["result"]
@@ -140,12 +144,25 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(finals, [])
         quit_result = service.call({"action": "run.quit", "abort": True, "stop_reason": "player ends recovery trial"})
         self.assertTrue(quit_result["ok"])
+        self.assertEqual(quit_result["result"]["state"], "exit_observation_pending")
+        self.assertEqual(finals, [])
+        channel._abort_owned_process.assert_called_once()
+        process.update(alive=False, identity_status="exited", exit_code=None)
+        ended = service.call({"action": "game.observe"})["result"]
+        finish = service.call({"action": "run.finish", "observation_id": ended["observation_id"],
+                               "stop_reason": "recovery trial ended", "unused_authority": "released"})
+        self.assertTrue(finish["ok"], finish)
         self.assertEqual(len(finals), 1)
         self.assertTrue(finals[0]["stop_detail"]["explicit_player_quit"])
+        self.assertFalse(finals[0]["native_exit_credit"])
 
     def test_binding_drift_withholds_input_until_restored_and_quit_needs_no_frame(self):
         binding = ["binding-a"]
-        service, finals = self.service([frame(1, 100)], binding=binding)
+        process = {"run_id": "live-proof", "pid": 42, "alive": True, "identity_status": "alive"}
+        service, finals = self.service([frame(1, 100)], binding=binding, process_state=process)
+        cleanup = Mock(return_value={"status": "explicit_abort_exit_unobserved_process_retained",
+                                     "native_exit_credit": False})
+        service.run_channel._abort_owned_process = cleanup
         observed = service.call({"action": "game.observe"})["result"]
         binding[0] = "wrong-binding"
         for action in ("game.observe", "game.act", "game.observe"):
@@ -157,8 +174,21 @@ class LiveSessionTest(unittest.TestCase):
         binding[0] = "binding-a"
         self.assertTrue(service.call({"action": "game.observe"})["ok"])
         binding[0] = "wrong-binding"
-        self.assertTrue(service.call({"action": "run.quit", "abort": True})["ok"])
+        self.assertEqual(service.call({"action": "run.quit", "abort": True})["error"], "binding_drift")
+        cleanup.assert_not_called()
+        binding[0] = "binding-a"
+        pending = service.call({"action": "run.quit", "abort": True})
+        self.assertTrue(pending["ok"], pending)
+        self.assertEqual(pending["result"]["state"], "exit_observation_pending")
+        self.assertEqual(finals, [])
+        cleanup.assert_called_once()
+        process.update(alive=False, identity_status="exited", exit_code=None)
+        ended = service.call({"action": "game.observe"})["result"]
+        finished = service.call({"action": "run.finish", "observation_id": ended["observation_id"],
+                                 "stop_reason": "aborted", "unused_authority": "released"})
+        self.assertTrue(finished["ok"], finished)
         self.assertEqual(len(finals), 1)
+        self.assertFalse(finals[0]["native_exit_credit"])
 
     def test_adapter_exception_is_request_failure_and_next_request_recovers(self):
         service, finals = self.service([frame(1, 100), frame(2, 101)])

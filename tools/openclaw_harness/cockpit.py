@@ -59,6 +59,23 @@ _BOUND_BASES = {
 
 _KEEP_WATCH_SAFE_CLASSIFICATIONS = {"safe_flavour", "safe_prompt"}
 
+
+def _abort_cleanup_retryable(cleanup: Mapping[str, Any]) -> bool:
+    """Only a new explicit request can retry a known pre-termination refusal."""
+    status = cleanup.get("status")
+    return status in {
+        "retained_explicit_abort_refused", "retained_process_identity_unavailable",
+        "retained_process_executable_changed", "permission_denied",
+        "invalid_pid", "skipped_non_cataclysm_process",
+    } or (status == "retained_process_identity_changed" and not cleanup.get("signal"))
+
+
+def _abort_cleanup_initiated(cleanup: Mapping[str, Any]) -> bool:
+    return bool(cleanup.get("signal")) or cleanup.get("status") in {
+        "terminated", "terminated_during_kill_escalation", "killed",
+        "explicit_abort_terminated", "explicit_abort_exit_unobserved_process_retained",
+    }
+
 # Native distraction_type names from enums.h/activity_type.cpp. Unknown future
 # types remain untrusted; only the three native stop types and actual damage
 # interrupt a typed activity distraction in safe wait mode.
@@ -95,6 +112,7 @@ class CockpitRunChannel:
         causal_boundary_precondition: Optional[Callable[[], Mapping[str, Any]]] = None,
         dispatch_player_fire_setup: Optional[Callable[[Mapping[str, Any]], Mapping[str, Any]]] = None,
         cancel_request: Optional[Callable[[], Mapping[str, Any]]] = None,
+        abort_owned_process: Optional[Callable[[str], Mapping[str, Any]]] = None,
     ) -> None:
         self._read_native_frame = read_native_frame
         self._dispatch_advertised_action = dispatch_advertised_action
@@ -114,6 +132,8 @@ class CockpitRunChannel:
         self._read_binding_id = read_binding_id
         self._mutate_binding_for_control = mutate_binding_for_control
         self._finalize_session = finalize_session
+        self._abort_owned_process = abort_owned_process
+        self._abort_result: Optional[Dict[str, Any]] = None
         self._await_native_completion = await_native_completion
         self._enforce_continuation_bounds = enforce_continuation_bounds
         self._proof_step_label = str(proof_step_label).strip()
@@ -4115,6 +4135,11 @@ class CockpitRunChannel:
         return {"ok": True, "result": self._stop(canonical_reason, {
             "observation_id": str(observation_id),
             "unused_authority": disposition,
+            **({"abort_requested": True, "abort_cleanup": self._abort_result}
+               if self._abort_result is not None else {}),
+            **({"explicit_player_quit": True, "explicit_player_abort": True}
+               if self._abort_result is not None and
+               _abort_cleanup_initiated(self._abort_result) else {}),
             **({"gameplay_outcome": reported_outcome} if reported_outcome is not None else {}),
             **({"requested_stop_reason": reason} if canonical_reason != reason else {}),
             **({"target_receipt": target_receipt} if target_receipt else {}),
@@ -4139,6 +4164,8 @@ class CockpitRunChannel:
 
     def quit(self, reason: str = "player_quit", *, abort: bool = False) -> Dict[str, Any]:
         """Never translate an ordinary quit request into process termination."""
+        if self._state != "active":
+            return {"ok": False, "error": "live_session_finished"}
         if abort is not True:
             return {"ok": False, "error": "native_graceful_close_required",
                     "termination_requested": False,
@@ -4157,10 +4184,23 @@ class CockpitRunChannel:
                     or self.archive.binding_id != self._binding_id or not self._binding_matches()):
                 return {"ok": False, "error": "startup_abort_identity_unavailable"}
             self._run_id = run_id
-        return {"ok": True, "result": self._stop(reason or "player_abort", {
-            "unused_authority": "released", "explicit_player_quit": True,
-            "explicit_player_abort": True, "gameplay_credit": False,
-        })}
+        if not self._binding_matches():
+            return {"ok": False, "error": "binding_drift"}
+        if self._abort_result is None or _abort_cleanup_retryable(self._abort_result):
+            if self._abort_owned_process is None:
+                return {"ok": False, "error": "bound_abort_cleanup_unavailable"}
+            cleanup = self._abort_owned_process(reason or "player_abort")
+            if not isinstance(cleanup, Mapping):
+                return {"ok": False, "error": "bound_abort_cleanup_invalid"}
+            self._abort_result = dict(cleanup)
+        return {"ok": True, "result": {
+            "schema": "caol-cockpit-abort-pending-v1", "state": "exit_observation_pending",
+            "cleanup": self._abort_result, "native_exit_credit": False,
+            "native_save_credit": False, "normal_exit_credit": False,
+            "retry_allowed": _abort_cleanup_retryable(self._abort_result),
+            "next_action": "game.observe or a new explicit run.quit abort" if
+                           _abort_cleanup_retryable(self._abort_result) else "game.observe",
+        }}
 
     def close_unfinished(self) -> Dict[str, Any]:
         return self._fail_operation("client_disconnected", {"unused_authority": "revoked"})
@@ -4265,7 +4305,8 @@ class CockpitService:
                action in self._allowed_live_operations
 
     def _player_operation_availability(self) -> Dict[str, bool]:
-        return {action: self.run_channel is not None and self._live_operation_is_allowed(action)
+        return {action: self.run_channel is not None and self.run_channel._abort_result is None and
+                self._live_operation_is_allowed(action)
                 for action in ("game.act", "game.wait", "game.move_relative")}
 
     def call(self, request: Mapping[str, Any]) -> Dict[str, Any]:
@@ -4287,6 +4328,9 @@ class CockpitService:
         if unknown:
             return {"ok": False, "error": "unsupported fields", "fields": sorted(map(str, unknown))}
         action = str(request.get("action", "")).strip().lower()
+        if (self.run_channel is not None and self.run_channel._abort_result is not None and
+                action.startswith("game.") and action not in {"game.observe", "game.look", "game.controls"}):
+            return {"ok": False, "error": "abort_exit_observation_pending", "next_action": "game.observe"}
         if action == "game.controls":
             return {"ok": True, "result": player_controls(self._player_operation_availability())}
         if action.startswith("game.") and not self._live_operation_is_allowed(action):

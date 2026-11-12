@@ -4465,6 +4465,7 @@ TEST_CASE( "rejected receipt and travel types cannot alter later journal retenti
 
 TEST_CASE( "debug file is bounded during one long running process", "[debug][native_log_window]" )
 {
+    CHECK_FALSE( raid_perf_debug_sink_active() );
     namespace fs = std::filesystem;
     const fs::path directory = fs::temp_directory_path() /
                                ( "caol-debug-window-" + std::to_string(
@@ -5450,8 +5451,16 @@ TEST_CASE( "performance interval output preserves the real World successor",
     scoped_imgui_context imgui;
     restore_on_out_of_scope<bool> restore_test_mode( test_mode );
     test_mode = false;
+    deinitDebug();
+    setupDebug( DebugOutput::file );
+    on_out_of_scope restore_debug_sink( [] {
+        deinitDebug();
+        setupDebug( DebugOutput::std_err );
+    } );
     ui_adaptor root;
-    root.on_redraw( []( ui_adaptor & ) {} );
+    root.on_redraw( []( ui_adaptor & ) {
+        DebugLog( D_INFO, D_MAIN ) << "bounded sink timing control";
+    } );
     ui_manager::redraw();
     // Keep the production descriptor/receipt writers installed. Native input
     // uses its currently configured Pause key, never a synthesized descriptor.
@@ -5462,7 +5471,9 @@ TEST_CASE( "performance interval output preserves the real World successor",
     on_out_of_scope restore_scan( [&] { overmap_buffer.global_state.migo_towers.last_signal_scan = old_scan; } );
     overmap_buffer.global_state.migo_towers.last_signal_scan = -1;
     reset_live_light_sample_cache();
-    for( int turn = 0; turn < 3; ++turn ) {
+    for( int turn = 0; turn < 4; ++turn ) {
+        assign_test_environment( "OPENCLAW_HARNESS_TURN_RESOURCES", turn == 1 ? "0" : "1" );
+        root.invalidate_ui();
         REQUIRE( ungetch( pause->front() ) != -1 );
         u.set_moves( 100 );
         const auto before = calendar::turn;
@@ -5493,6 +5504,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
     int intervals = 0;
     int receiver_scans = 0;
     int journal_calls = 0;
+    int sink_write_calls = 0;
+    int sink_flush_calls = 0;
+    int sink_enabled_rows = 0;
+    int sink_disabled_rows = 0;
     int redraw_attempts = 0;
     int npc_resource_attempts = 0;
     int item_resource_attempts = 0;
@@ -5553,7 +5568,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
                  "npc_find_item", "npc_pick_up_item", "npc_decision_trace", "npc_decision_publish",
                  "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish",
                  "native_journal_compact",
-                 "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
+                 "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update",
+                 "debug_sink_write", "debug_sink_flush"
              } ) {
             CHECK( std::count( names.begin(), names.end(), name ) == 1 );
         }
@@ -5561,12 +5577,23 @@ TEST_CASE( "performance interval output preserves the real World successor",
         for( const TextJsonValue row_value : object.get_array( "rows" ) ) {
             const TextJsonObject row = row_value.get_object();
             row.allow_omitted_members();
+            const bool sink_enabled = row.get_bool( "debug_sink_timing_enabled" );
+            sink_enabled_rows += sink_enabled;
+            sink_disabled_rows += !sink_enabled;
             CHECK( row.get_array( "stages_seconds" ).size() == names.size() );
             const auto stage_calls = row.get_array( "stage_calls" );
             const auto stage_index = [&]( const std::string & name ) {
                 return std::distance( names.begin(), std::find( names.begin(), names.end(), name ) );
             };
             journal_calls += stage_calls.get_int( stage_index( "native_journal_publish" ) );
+            const int writes = stage_calls.get_int( stage_index( "debug_sink_write" ) );
+            const int flushes = stage_calls.get_int( stage_index( "debug_sink_flush" ) );
+            sink_write_calls += writes;
+            sink_flush_calls += flushes;
+            if( !sink_enabled ) {
+                CHECK( writes == 0 );
+                CHECK( flushes == 0 );
+            }
             for( const auto &window : {
                      std::make_pair( "npc_action_resources", &npc_resource_attempts ),
                      std::make_pair( "item_resources", &item_resource_attempts )
@@ -5639,6 +5666,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
     CHECK( ( mode == "off" ? intervals == 0 : intervals >= 1 ) );
     CHECK( ( mode == "off" ? receiver_scans == 0 : receiver_scans == 1 ) );
     CHECK( ( mode == "off" ? journal_calls == 0 : journal_calls > 0 ) );
+    CHECK( ( mode == "off" ? sink_write_calls == 0 : sink_write_calls > 0 ) );
+    CHECK( ( mode == "off" ? sink_flush_calls == 0 : sink_flush_calls > 0 ) );
+    CHECK( ( mode == "off" ? sink_enabled_rows == 0 : sink_enabled_rows > 0 ) );
+    CHECK( ( mode == "off" ? sink_disabled_rows == 0 : sink_disabled_rows > 0 ) );
     CHECK( ( mode == "off" ? redraw_attempts == 0 : redraw_attempts > 0 ) );
     CHECK( ( mode == "off" ? npc_resource_attempts == 0 : npc_resource_attempts > 0 ) );
     CHECK( ( mode == "off" ? item_resource_attempts == 0 : item_resource_attempts > 0 ) );

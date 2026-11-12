@@ -229,6 +229,7 @@ class FileBackedCockpitBridge:
         self._terminal_request_id = ""
         self._startup_progress: dict[str, Any] = {}
         self._startup_failure: dict[str, Any] = {}
+        self._acknowledged_cleanup_marker: tuple[int, int, int, int, str] | None = None
         self._active_session_descriptor: dict[str, Any] = {}
         self._reentry_failure: dict[str, Any] | None = None
         self._child_environment: dict[str, str] = {}
@@ -239,15 +240,24 @@ class FileBackedCockpitBridge:
         from startup_harness import process_generation_snapshot
         self._bridge_generation = process_generation_snapshot(os.getpid())
 
-    def _startup_cleanup_requested(self) -> bool:
-        """Read only an explicit bound cleanup while no public owner exists."""
+    def _startup_cleanup_marker_identity(self) -> tuple[int, int, int, int, str] | None:
+        """Identify one bound marker; an accepted instance is never replayed."""
         marker = self.controls_dir / "pre-descriptor-cleanup.json"
         try:
-            request = json.loads(marker.read_text(encoding="utf-8"))
+            with marker.open("rb") as stream:
+                raw = stream.read()
+                stat = os.fstat(stream.fileno())
+            request = json.loads(raw.decode("utf-8"))
         except (OSError, UnicodeError, ValueError):
-            return False
-        return (isinstance(request, Mapping) and request.get("control") == "cleanup"
-                and request.get("binding_id") == self.binding_id)
+            return None
+        if not (isinstance(request, Mapping) and request.get("control") == "cleanup"
+                and request.get("binding_id") == self.binding_id):
+            return None
+        identity = (stat.st_dev, stat.st_ino, stat.st_mtime_ns, stat.st_size, _digest(raw))
+        return None if identity == self._acknowledged_cleanup_marker else identity
+
+    def _startup_cleanup_requested(self) -> bool:
+        return self._startup_cleanup_marker_identity() is not None
 
     def _start_child(self, command: Sequence[str], *, append_stderr: bool) -> None:
         """Start the declared initial or saved-world continuation owner."""
@@ -803,6 +813,7 @@ class FileBackedCockpitBridge:
             if envelope.get("control") == "cleanup":
                 if str(envelope.get("binding_id", "")) != self.binding_id:
                     raise ValueError("request_binding_drift")
+                marker_identity = self._startup_cleanup_marker_identity()
                 if self._reentry_failure is not None:
                     cleanup = self._emergency_cleanup(explicit_quit=True)
                     self._write_status(
@@ -822,6 +833,15 @@ class FileBackedCockpitBridge:
                     terminal_line = self._read_complete_response()
                     terminal = json.loads(terminal_line) if terminal_line else {}
                     final = terminal.get("result") if isinstance(terminal, Mapping) else None
+                    if (isinstance(final, Mapping) and
+                            final.get("schema") == "caol-cockpit-abort-pending-v1" and
+                            final.get("state") == "exit_observation_pending"):
+                        if marker_identity is not None:
+                            self._acknowledged_cleanup_marker = marker_identity
+                        self._write_status("ready", child_pid=self._child.pid,
+                                           session_descriptor=self._active_session_descriptor,
+                                           abort_cleanup=final.get("cleanup", {}))
+                        return False
                     if not isinstance(final, Mapping) or final.get("schema") != "caol-cockpit-live-final-v1":
                         cleanup = self._emergency_cleanup(explicit_quit=True)
                         self._write_status("cleaned", reason="explicit_quit_without_terminal_report", cleanup=cleanup)
@@ -1005,6 +1025,7 @@ class FileBackedCockpitBridge:
 
     def _await_scenario_terminalization(self) -> int:
         """Only the scenario owner may certify that its final report and ingestion are done."""
+        from startup_harness import cleanup_is_accepted
         assert self._child is not None
         # The terminal request reply has already been retained.  The scenario
         # child can now emit its compact immutable-report index before exit;
@@ -1028,7 +1049,13 @@ class FileBackedCockpitBridge:
         accepted = self._child.returncode == 0 and isinstance(signal, Mapping) and \
                    signal.get("schema") == "caol-cockpit-scenario-terminalization-v1" and \
                    signal.get("binding_id") == self.binding_id and \
-                   signal.get("state") == "safe_to_cleanup"
+                   signal.get("state") == "safe_to_cleanup" and \
+                   cleanup_is_accepted(signal.get("cleanup"))
+        if accepted and (self.session_dir / "game-process.json").exists():
+            observed = self._owned_game_process_evidence()
+            generation = observed.get("observed_process_generation", {})
+            accepted = (observed.get("status") == "exited_or_identity_changed" and
+                        isinstance(generation, Mapping) and generation.get("alive") is False)
         if not accepted:
             self._write_status("terminalization_failed", terminal_request_id=self._terminal_request_id,
                                child_exit_code=self._child.returncode, child_stderr="child.stderr.log",
@@ -1079,10 +1106,15 @@ class FileBackedCockpitBridge:
                     raise _ExplicitPreDescriptorCleanup()
             except _ExplicitPreDescriptorCleanup:
                 cleanup = self._emergency_cleanup()
-                self._write_status("cleaned", reason="explicit_pre_descriptor_cleanup",
+                from startup_harness import cleanup_is_accepted
+                game_cleanup = cleanup.get("game", {})
+                accepted = cleanup_is_accepted(game_cleanup)
+                self._write_status("cleaned" if accepted else "terminalization_failed",
+                                   reason="explicit_pre_descriptor_cleanup",
                                    child_exit_code=self._child.returncode,
-                                   cleanup={"status": "accepted", **cleanup})
-                return 0
+                                   cleanup={"status": "accepted" if accepted else "unconfirmed",
+                                            **cleanup})
+                return 0 if accepted else 1
             except ValueError as exc:
                 self._write_status("process_dead", child_pid=self._child.pid,
                                    reason=str(exc),

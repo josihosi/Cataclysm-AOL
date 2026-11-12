@@ -84,7 +84,7 @@ import production_capture
 from command_receipts import read_command_artifact, write_command_artifact
 from registry_query_output import load_run_report, query_page, plain_registry_output
 from startup_harness import (
-    CLEANUP_ACCEPTED_STATUSES,
+    cleanup_is_accepted,
     fixture_source_binding,
     profile_snapshot_source_binding,
     resolve_fixture_payload,
@@ -698,7 +698,7 @@ def _migration_report_terminal(
         str(Path(str(source.get("path", ""))).resolve()) != receipt["source_path"]
         or str(source.get("sha256", "")).strip().lower() != receipt["source_sha256"]
         or report_profile != receipt["profile"]
-        or str(cleanup.get("status", "")) not in CLEANUP_ACCEPTED_STATUSES
+        or not cleanup_is_accepted(cleanup)
     ):
         return None
     proof = report.get("proof_classification")

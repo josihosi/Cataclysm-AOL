@@ -640,6 +640,22 @@ class PlayerClient:
         confirmed_terminal = (isinstance(terminal, dict)
                               and terminal.get("schema") == "caol-cockpit-live-final-v1"
                               and terminal.get("state") == "finished")
+        abort_pending = (pending["request"]["action"] == "run.quit" and
+                         isinstance(terminal, dict) and
+                         terminal.get("schema") == "caol-cockpit-abort-pending-v1" and
+                         terminal.get("state") == "exit_observation_pending")
+        if abort_pending and response.get("ok") is True:
+            repeat = self.state.get("repeat")
+            if isinstance(repeat, dict) and repeat.get("status") in {"running", "pending"}:
+                outstanding = repeat.get("outstanding")
+                if isinstance(outstanding, dict):
+                    cached = self.state.get("last_collected_result")
+                    if isinstance(cached, dict) and cached.get("request_id") == outstanding.get("request_id"):
+                        self._repeat_settle_action(cached, outstanding)
+                    else:
+                        self._repeat_finish("failed", "exact_response_unavailable")
+                if repeat.get("status") in {"running", "pending"}:
+                    self._repeat_finish("interrupted", "player_abort_requested")
         if terminal_request and confirmed_terminal:
             self.state["finished"] = True
             reported = terminal.get("stop_detail", {}).get("gameplay_outcome")
@@ -690,7 +706,13 @@ class PlayerClient:
         if terminal_request and confirmed_terminal:
             output.update(state="finishing", cleanup_pending=True,
                           note="Finish accepted; collect reports scenario cleanup. Native save/exit evidence remains separate.")
-        if terminal_request and not confirmed_terminal:
+        if abort_pending:
+            self.state.pop("observation_id", None)
+            retry_allowed = terminal.get("retry_allowed") is True
+            output.update(state="abort_exit_observation_pending",
+                          next="look or an explicit quit --abort retry" if retry_allowed else "look",
+                          note="Abort requested; observe the bound process exit before reporting.")
+        if terminal_request and not confirmed_terminal and not abort_pending:
             output.update(ok=False, state="unconfirmed_terminal_response",
                           error="explicit_finish_or_quit_has_no_terminal_receipt",
                           next="quit --reason REASON or inspect retained evidence" if self.state.get("sealed_terminal") else "look",
@@ -709,6 +731,13 @@ class PlayerClient:
                     "request_id": self.state["pending"]["request_id"]}
         if self.state.get("finished"):
             return {"ok": False, "error": "session_already_finished"}
+        if request.get("action") == "run.quit" and isinstance(repeat, dict) and \
+                repeat.get("status") in {"running", "pending"} and isinstance(repeat.get("outstanding"), dict):
+            outstanding = repeat["outstanding"]
+            cached = self.state.get("last_collected_result")
+            if not isinstance(cached, dict) or cached.get("request_id") != outstanding.get("request_id"):
+                return {"ok": False, "error": "repeat_exact_response_unavailable", "next": "collect"}
+            self._repeat_settle_action(cached, outstanding)
         request_id = "play-" + uuid.uuid4().hex
         if repeat_internal and request.get("action") == "game.act":
             outstanding = repeat.get("outstanding") if isinstance(repeat, dict) else None
@@ -854,6 +883,50 @@ class PlayerClient:
         self.save()
         return self._repeat_result()
 
+    def _repeat_settle_action(self, result: dict[str, Any], outstanding: dict[str, Any]) -> dict[str, Any] | None:
+        """Account for one collected native receipt without submitting another action."""
+        repeat = self.state["repeat"]
+        request_id = outstanding["request_id"]
+        repeat["status"] = "running"
+        bridge_receipt = result.get("receipt", {})
+        native = (result.get("response", {}).get("outcome", {}).get("native_receipt", {})
+                  if isinstance(result.get("response"), dict) else {})
+        repeat["receipt_handles"].append({
+            "request_id": request_id,
+            "response_sha256": bridge_receipt.get("response_sha256"),
+            "native_action_id": native.get("action_id"),
+            "native_accepted": native.get("accepted"),
+        })
+        repeat["outstanding"] = None
+        after = self._repeat_native_state(self.display_snapshot())
+        repeat["current_owner"] = after["owner"]
+        if type(after["turn"]) is int:
+            repeat["last_native_turn"] = after["turn"]
+        before = outstanding["before"]
+        if not result.get("ok") or result.get("state") not in {"collected", "process_exited"}:
+            return self._repeat_finish("interrupted", "native_rejected_or_cancelled")
+        if native.get("accepted") is not True or native.get("action_id") != repeat["action_id"]:
+            return self._repeat_finish("failed", "native_receipt_rejected_or_mismatched")
+        progressed = ((type(before.get("turn")) is int and type(after["turn"]) is int and
+                       after["turn"] > before["turn"]) or
+                      (type(before.get("moves")) is int and type(after["moves"]) is int and
+                       after["moves"] < before["moves"]))
+        if not progressed:
+            return self._repeat_finish("failed", "native_action_progress_unproved")
+        repeat["completed_count"] += 1
+        self.save()
+        if after["owner"] != "world":
+            return self._repeat_finish("interrupted", "owner_changed")
+        if not before.get("health") or not after["health"] or before["health"].keys() != after["health"].keys():
+            return self._repeat_finish("interrupted", "avatar_health_unavailable")
+        if any(after["health"][part] < hp for part, hp in before["health"].items()):
+            return self._repeat_finish("interrupted", "avatar_harm")
+        if result.get("state") == "process_exited":
+            return self._repeat_finish("interrupted", "terminal_session")
+        if repeat["completed_count"] == repeat["requested_count"]:
+            return self._repeat_finish("completed", "count_reached")
+        return None
+
     def repeat(self, action: str | None, count: int | None, wait_seconds: float,
                *, resume: bool = False, abort: bool = False) -> dict[str, Any]:
         allowed = {"world.pause", "world.autoattack"}
@@ -901,44 +974,9 @@ class PlayerClient:
                     repeat["status"] = "pending"
                     self.save()
                     return self._repeat_result()
-                repeat["status"] = "running"
-                bridge_receipt = result.get("receipt", {})
-                native = (result.get("response", {}).get("outcome", {}).get("native_receipt", {})
-                          if isinstance(result.get("response"), dict) else {})
-                repeat["receipt_handles"].append({
-                    "request_id": request_id,
-                    "response_sha256": bridge_receipt.get("response_sha256"),
-                    "native_action_id": native.get("action_id"),
-                    "native_accepted": native.get("accepted"),
-                })
-                repeat["outstanding"] = None
-                after = self._repeat_native_state(self.display_snapshot())
-                repeat["current_owner"] = after["owner"]
-                if type(after["turn"]) is int:
-                    repeat["last_native_turn"] = after["turn"]
-                before = outstanding["before"]
-                if not result.get("ok") or result.get("state") not in {"collected", "process_exited"}:
-                    return self._repeat_finish("interrupted", "native_rejected_or_cancelled")
-                if native.get("accepted") is not True or native.get("action_id") != repeat["action_id"]:
-                    return self._repeat_finish("failed", "native_receipt_rejected_or_mismatched")
-                progressed = ((type(before.get("turn")) is int and type(after["turn"]) is int and
-                               after["turn"] > before["turn"]) or
-                              (type(before.get("moves")) is int and type(after["moves"]) is int and
-                               after["moves"] < before["moves"]))
-                if not progressed:
-                    return self._repeat_finish("failed", "native_action_progress_unproved")
-                repeat["completed_count"] += 1
-                self.save()
-                if after["owner"] != "world":
-                    return self._repeat_finish("interrupted", "owner_changed")
-                if not before.get("health") or not after["health"] or before["health"].keys() != after["health"].keys():
-                    return self._repeat_finish("interrupted", "avatar_health_unavailable")
-                if any(after["health"][part] < hp for part, hp in before["health"].items()):
-                    return self._repeat_finish("interrupted", "avatar_harm")
-                if result.get("state") == "process_exited":
-                    return self._repeat_finish("interrupted", "terminal_session")
-                if repeat["completed_count"] == repeat["requested_count"]:
-                    return self._repeat_finish("completed", "count_reached")
+                settled = self._repeat_settle_action(result, outstanding)
+                if settled is not None:
+                    return settled
                 continue
             pending = self.state.get("pending")
             if isinstance(pending, dict):

@@ -1,0 +1,44 @@
+{
+  "name": "travelling_ordinary_melee_follow_001",
+  "source_fixture": "travelling_ordinary_pair_preflight_001",
+  "source_profile": "live-debug",
+  "description": "Zero-credit equipment variant for the same ordinary scout roster and footing: give members 4/5 melee weapons in their existing tiles, without changing NPC decisions, paths, actions, injury or time.",
+  "save_transforms": [
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 4,
+      "offset_ms": [
+        3,
+        0,
+        0
+      ],
+      "ensure_follower": false,
+      "items": [
+        {
+          "typeid": "bat",
+          "count": 1,
+          "slot": "weapon"
+        }
+      ]
+    },
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 5,
+      "offset_ms": [
+        4,
+        0,
+        0
+      ],
+      "ensure_follower": false,
+      "items": [
+        {
+          "typeid": "machete",
+          "count": 1,
+          "slot": "weapon"
+        }
+      ]
+    }
+  ]
+}
