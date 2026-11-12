@@ -16,6 +16,7 @@
 #include "coordinate_conversions.h"
 #include "cuboid_rectangle.h"
 #include "debug.h"
+#include "do_turn.h"
 #include "filesystem.h"
 #include "flexbuffer_json.h"
 #include "game_constants.h"
@@ -293,10 +294,12 @@ bool map_memory::prepare_region( const tripoint_abs_ms &p1, const tripoint_abs_m
             point_abs_sm( cache_pos.xy() ),
             point_abs_sm( cache_pos.xy() + cache_size ) );
         if( rect.contains( sm_p1.xy() ) && rect.contains( sm_p2.xy() ) ) {
+            raid_perf_note_map_memory_region( false );
             return false;
         }
     }
 
+    raid_perf_note_map_memory_region( true );
     dbg( D_INFO ) << "Preparing memory map for area: pos: " << sm_pos << " size: " << sm_size;
 
     cache_pos = sm_pos;

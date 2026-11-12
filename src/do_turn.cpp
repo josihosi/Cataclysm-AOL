@@ -400,6 +400,8 @@ struct redraw_interval {
     std::uint64_t anchor_before_ns = 0;
     std::uint64_t anchor_wall_ns = 0;
     std::uint64_t anchor_after_ns = 0;
+    std::uint64_t body_start_ns = 0;
+    std::uint64_t body_end_ns = 0;
 };
 
 struct raid_perf_row {
@@ -433,6 +435,7 @@ struct raid_perf_row {
     std::string redraw_worst_panel_id;
     std::size_t redraw_interval_count = 0;
     std::size_t redraw_intervals_dropped = 0;
+    std::array<std::size_t, 2> redraw_map_memory_regions{};
     std::array<std::size_t, raid_perf_nav_event_count> nav_counts{};
     std::array<std::size_t, raid_perf_query_event_count> query_counts{};
     std::size_t nav_build_depth = 0;
@@ -457,6 +460,7 @@ static thread_local bool raid_perf_turn_thread = false;
 static thread_local bool raid_perf_outside_simulation = false;
 static thread_local bool raid_perf_debug_sink_enabled = false;
 static thread_local int raid_perf_redraw_depth = 0;
+static thread_local int raid_perf_map_memory_depth = 0;
 
 bool raid_perf_journal_active()
 {
@@ -615,6 +619,10 @@ void raid_perf_scope::start( raid_perf_stage target, bool enabled )
                                              std::chrono::steady_clock::now().time_since_epoch() ).count();
             }
         }
+        if( redraw_detail && stage == raid_perf_stage::redraw_tile_memory ) {
+            body_started = std::chrono::steady_clock::now();
+            ++raid_perf_map_memory_depth;
+        }
     }
 }
 
@@ -626,6 +634,11 @@ raid_perf_scope::~raid_perf_scope()
 void raid_perf_scope::finish()
 {
     if( row ) {
+        if( redraw_detail && stage == raid_perf_stage::redraw_tile_memory ) {
+            --raid_perf_map_memory_depth;
+        }
+        const auto body_ended = redraw_detail && stage == raid_perf_stage::redraw_tile_memory ?
+                                std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         const auto cpu_end = redraw_detail ? redraw_thread_cpu_ns() : std::nullopt;
         const auto ended = std::chrono::steady_clock::now();
         row->stages[static_cast<std::size_t>( stage )] +=
@@ -645,6 +658,12 @@ void raid_perf_scope::finish()
                 worst.end_ns = end_ns;
                 worst.thread_cpu_available = cpu_available;
                 worst.thread_cpu_ns = cpu_available ? *cpu_end - *redraw_thread_cpu_started : 0;
+                if( stage == raid_perf_stage::redraw_tile_memory ) {
+                    worst.body_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                              body_started.time_since_epoch() ).count();
+                    worst.body_end_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                            body_ended.time_since_epoch() ).count();
+                }
                 if( stage == raid_perf_stage::redraw_panel_draw && panel_id ) {
                     row->redraw_worst_panel_id = panel_id->substr( 0, 128 );
                 }
@@ -781,6 +800,13 @@ bool raid_perf_query_active()
 bool raid_perf_redraw_active()
 {
     return raid_perf_turn_thread && raid_perf_redraw_depth > 0;
+}
+
+void raid_perf_note_map_memory_region( bool rebuilt )
+{
+    if( raid_perf_turn_thread && raid_perf_map_memory_depth > 0 && raid_perf_current ) {
+        ++raid_perf_current->redraw_map_memory_regions[rebuilt ? 1 : 0];
+    }
 }
 
 void raid_perf_note_query( raid_perf_query_event event )
@@ -1016,6 +1042,10 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
         js.member( "thread_cpu_seconds", row.redraw_thread_cpu_seconds );
         js.member( "thread_cpu_samples", row.redraw_thread_cpu_samples );
         js.member( "worst_panel_id", row.redraw_worst_panel_id );
+        js.member( "map_memory_region_contained", row.redraw_map_memory_regions[0] );
+        js.member( "map_memory_region_rebuilt", row.redraw_map_memory_regions[1] );
+        js.member( "map_memory_body_scope",
+                   "wall bounds exclude CPU probes; CPU bounds include body wall-clock reads" );
         js.member( "intervals_dropped", row.redraw_intervals_dropped );
         js.member( "intervals" );
         js.start_array();
@@ -1047,6 +1077,10 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
             js.member( "stage_index", i );
             js.member( "start_monotonic_ns", interval.start_ns );
             js.member( "end_monotonic_ns", interval.end_ns );
+            if( i == *redraw_detail_index( raid_perf_stage::redraw_tile_memory ) ) {
+                js.member( "body_start_monotonic_ns", interval.body_start_ns );
+                js.member( "body_end_monotonic_ns", interval.body_end_ns );
+            }
             if( interval.thread_cpu_available ) {
                 js.member( "thread_cpu_ns", interval.thread_cpu_ns );
             } else {
@@ -1117,6 +1151,7 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->redraw_worst_panel_id = row.redraw_worst_panel_id;
     copy->redraw_interval_count = row.redraw_interval_count;
     copy->redraw_intervals_dropped = row.redraw_intervals_dropped;
+    copy->redraw_map_memory_regions = row.redraw_map_memory_regions;
     copy->nav_counts = row.nav_counts;
     copy->query_counts = row.query_counts;
     copy->discovered_sources = row.discovered_sources;

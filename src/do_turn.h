@@ -88,6 +88,7 @@ bool raid_perf_journal_active();
 bool raid_perf_debug_sink_active();
 // True only inside the measured pre-input redraw on the owning turn thread.
 bool raid_perf_redraw_active();
+void raid_perf_note_map_memory_region( bool rebuilt );
 bool raid_perf_query_active();
 void raid_perf_note_query( raid_perf_query_event event );
 
@@ -114,6 +115,7 @@ class raid_perf_scope
         const std::string *panel_id;
         raid_perf_stage stage;
         std::chrono::steady_clock::time_point started;
+        std::chrono::steady_clock::time_point body_started;
         std::optional<std::uint64_t> redraw_thread_cpu_started;
         bool redraw_detail = false;
         std::uint64_t redraw_anchor_before_ns = 0;

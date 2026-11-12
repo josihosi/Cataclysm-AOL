@@ -5460,19 +5460,27 @@ TEST_CASE( "performance interval output preserves the real World successor",
     ui_adaptor root;
     root.on_redraw( []( ui_adaptor & ) {
         DebugLog( D_INFO, D_MAIN ) << "bounded sink timing control";
+        {
+            raid_perf_scope memory_scope( raid_perf_stage::redraw_tile_memory,
+                                          raid_perf_redraw_active() );
+            static bool alternate = false;
+            alternate = !alternate;
+            const tripoint_abs_ms test_pos( alternate ? 200000 : 200100, 200000, 0 );
+            get_avatar().prepare_map_memory_region( test_pos, test_pos );
+            get_avatar().prepare_map_memory_region( test_pos, test_pos );
+        }
         // Optional, finite same-process timing of the actual scope machinery.
         // It does not measure drawing or establish whole-turn overhead.
         static bool overhead_measured = false;
         if( !overhead_measured && std::getenv( "CAOL_REDRAW_SCOPE_OVERHEAD_PROBE" ) &&
             raid_perf_redraw_active() ) {
             overhead_measured = true;
-            const std::string panel_id = "overhead-control";
             constexpr int repeats = 5000;
             const auto measure = [&]( const bool active, const char *resources ) {
                 assign_test_environment( "OPENCLAW_HARNESS_TURN_RESOURCES", std::string( resources ) );
                 const auto before = std::chrono::steady_clock::now();
                 for( int i = 0; i < repeats; ++i ) {
-                    raid_perf_scope scope( raid_perf_stage::redraw_panel_draw, active, &panel_id );
+                    raid_perf_scope scope( raid_perf_stage::redraw_tile_memory, active );
                 }
                 return std::chrono::duration<double, std::nano>(
                            std::chrono::steady_clock::now() - before ).count() / repeats;
@@ -5482,7 +5490,7 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 const double ordinary_ns = measure( true, "0" );
                 const double detailed_ns = measure( true, "1" );
                 std::fprintf( stderr,
-                              "redraw_scope_overhead_ns round=%d inactive=%.1f ordinary=%.1f detailed=%.1f n=%d\n",
+                              "map_memory_scope_overhead_ns round=%d inactive=%.1f ordinary=%.1f detailed=%.1f n=%d\n",
                               round, inactive_ns, ordinary_ns, detailed_ns, repeats );
             }
         }
@@ -5632,6 +5640,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 CHECK( timing.get_array( "thread_cpu_seconds" ).size() == 24 );
                 CHECK( timing.get_array( "thread_cpu_samples" ).size() == 24 );
                 CHECK( timing.get_string( "worst_panel_id" ).size() <= 128 );
+                CHECK( timing.get_string( "map_memory_body_scope" ) ==
+                       "wall bounds exclude CPU probes; CPU bounds include body wall-clock reads" );
+                CHECK( timing.get_int( "map_memory_region_contained" ) > 0 );
+                CHECK( timing.get_int( "map_memory_region_rebuilt" ) > 0 );
 #if defined(__APPLE__)
                 CHECK( timing.get_array( "thread_cpu_samples" ).get_int( 0 ) > 0 );
 #endif
@@ -5666,6 +5678,14 @@ TEST_CASE( "performance interval output preserves the real World successor",
                     CHECK( interval.get_float( "end_monotonic_ns" ) >
                            interval.get_float( "start_monotonic_ns" ) );
                     CHECK( interval.has_member( "thread_cpu_ns" ) );
+                    if( interval.get_int( "stage_index" ) == 21 ) {
+                        CHECK( interval.get_float( "body_start_monotonic_ns" ) >=
+                               interval.get_float( "start_monotonic_ns" ) );
+                        CHECK( interval.get_float( "body_end_monotonic_ns" ) >=
+                               interval.get_float( "body_start_monotonic_ns" ) );
+                        CHECK( interval.get_float( "end_monotonic_ns" ) >=
+                               interval.get_float( "body_end_monotonic_ns" ) );
+                    }
                 }
             }
             const int writes = stage_calls.get_int( stage_index( "debug_sink_write" ) );
