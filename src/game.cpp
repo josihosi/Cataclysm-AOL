@@ -3726,12 +3726,18 @@ void game::draw( ui_adaptor &ui )
     }
 
     ter_view_p.z() = ( u.pos_bub() + u.view_offset ).z();
-    here.build_map_cache( ter_view_p.z() );
-    here.update_visibility_cache( ter_view_p.z() );
+    {
+        raid_perf_scope cache_scope( raid_perf_stage::redraw_game_cache, raid_perf_redraw_active() );
+        here.build_map_cache( ter_view_p.z() );
+        here.update_visibility_cache( ter_view_p.z() );
+    }
 
     werase( w_terrain );
     void_blink_curses();
-    draw_ter();
+    {
+        raid_perf_scope terrain_scope( raid_perf_stage::redraw_game_terrain, raid_perf_redraw_active() );
+        draw_ter();
+    }
     for( auto it = draw_callbacks.begin(); it != draw_callbacks.end(); ) {
         shared_ptr_fast<draw_callback_t> cb = it->lock();
         if( cb ) {
@@ -3746,12 +3752,19 @@ void game::draw( ui_adaptor &ui )
     if( blink_active_phase ) {
         draw_blink_curses();
     }
-    wnoutrefresh( w_terrain );
+    {
+        raid_perf_scope refresh_scope( raid_perf_stage::redraw_game_refresh, raid_perf_redraw_active() );
+        wnoutrefresh( w_terrain );
+    }
 
-    draw_panels( true );
+    {
+        raid_perf_scope panels_scope( raid_perf_stage::redraw_game_panels, raid_perf_redraw_active() );
+        draw_panels( true );
+    }
 
     // Publish the bound initial semantic frame only after the real HUD has
     // rendered and only while the native world input owner is active.
+    raid_perf_scope semantic_scope( raid_perf_stage::redraw_game_semantic, raid_perf_redraw_active() );
     input_context world_context = get_default_mode_input_context();
     input_context::scoped_activation world_input_owner( world_context );
     openclaw_harness_semantic_initial_world_frame_if_ready(
@@ -3815,6 +3828,10 @@ void game::draw_panels( bool force_draw )
                         log_height -= tmp_h;
                         continue;
                     }
+                    // This existing semantic stage aggregates widget discovery and
+                    // semantic-frame publication; panel drawing is outside it.
+                    raid_perf_scope widget_scope( raid_perf_stage::redraw_game_semantic,
+                                                  raid_perf_redraw_active() );
                     const ::widget_id &panel_widget = panel.get_widget();
                     const auto contains_widget = []( const ::widget_id & widget_id,
                                                      const std::initializer_list<std::string_view> &expected_ids,

@@ -21,6 +21,7 @@
 #include "cursesdef.h"
 #include "debug.h"
 #include "display.h"
+#include "do_turn.h"
 #include "flexbuffer_json.h"
 #include "game.h"
 #include "game_constants.h"
@@ -341,12 +342,16 @@ static void decorate_panel( std::string_view name, const catacurses::window &w )
 
 static void draw_messages( const draw_args &args )
 {
+    raid_perf_scope log_scope( raid_perf_stage::redraw_log_panel, raid_perf_redraw_active() );
     const catacurses::window &w = args._win;
 
     werase( w );
     int line = getmaxy( w ) - 1;
     int maxlength = getmaxx( w );
-    Messages::display_messages( w, 1, 0 /*topline*/, maxlength - 1, line );
+    {
+        raid_perf_scope message_scope( raid_perf_stage::redraw_log_messages, raid_perf_redraw_active() );
+        Messages::display_messages( w, 1, 0 /*topline*/, maxlength - 1, line );
+    }
     wnoutrefresh( w );
 }
 

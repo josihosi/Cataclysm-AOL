@@ -5509,6 +5509,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
     int sink_enabled_rows = 0;
     int sink_disabled_rows = 0;
     int redraw_attempts = 0;
+    int redraw_callback_calls = 0;
+    int redraw_thread_timing_rows = 0;
     int npc_resource_attempts = 0;
     int item_resource_attempts = 0;
     std::ifstream input( trace );
@@ -5569,7 +5571,11 @@ TEST_CASE( "performance interval output preserves the real World successor",
                  "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish",
                  "native_journal_compact",
                  "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update",
-                 "debug_sink_write", "debug_sink_flush"
+                 "debug_sink_write", "debug_sink_flush", "redraw_frame_begin", "redraw_callbacks",
+                 "redraw_frame_end", "redraw_game_cache", "redraw_game_terrain", "redraw_game_refresh",
+                 "redraw_game_panels",
+                 "redraw_game_semantic", "redraw_present", "redraw_buffer_scope_enter",
+                 "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
              } ) {
             CHECK( std::count( names.begin(), names.end(), name ) == 1 );
         }
@@ -5586,6 +5592,52 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 return std::distance( names.begin(), std::find( names.begin(), names.end(), name ) );
             };
             journal_calls += stage_calls.get_int( stage_index( "native_journal_publish" ) );
+            redraw_callback_calls += stage_calls.get_int( stage_index( "redraw_callbacks" ) );
+            if( row.has_object( "redraw_thread_timing" ) ) {
+                ++redraw_thread_timing_rows;
+                const auto timing = row.get_object( "redraw_thread_timing" );
+                timing.allow_omitted_members();
+                CHECK( timing.get_string( "scope" ) ==
+                       "owning thread; CPU samples are inside the monotonic wall interval" );
+                CHECK( timing.get_array( "stage_indices" ).size() == 15 );
+                CHECK( timing.get_array( "thread_cpu_seconds" ).size() == 15 );
+                CHECK( timing.get_array( "thread_cpu_samples" ).size() == 15 );
+#if defined(__APPLE__)
+                CHECK( timing.get_array( "thread_cpu_samples" ).get_int( 0 ) > 0 );
+#endif
+                const auto intervals = timing.get_array( "intervals" );
+                CHECK( intervals.size() >= 1 );
+                CHECK( intervals.size() <= 4 );
+                for( const TextJsonObject &interval : intervals ) {
+                    interval.allow_omitted_members();
+                    CHECK( interval.get_float( "end_monotonic_ns" ) >
+                           interval.get_float( "start_monotonic_ns" ) );
+                    CHECK( interval.get_float( "anchor_monotonic_after_ns" ) >=
+                           interval.get_float( "anchor_monotonic_before_ns" ) );
+                    CHECK( interval.get_float( "anchor_monotonic_before_ns" ) >=
+                           interval.get_float( "start_monotonic_ns" ) );
+                    CHECK( interval.get_float( "anchor_monotonic_after_ns" ) <=
+                           interval.get_float( "end_monotonic_ns" ) );
+                    CHECK( interval.get_float( "anchor_unix_ns" ) > 0 );
+                    CHECK( interval.has_member( "thread_cpu_ns" ) );
+#if defined(__APPLE__)
+                    CHECK( interval.get_float( "thread_cpu_ns" ) <=
+                           interval.get_float( "end_monotonic_ns" ) -
+                           interval.get_float( "start_monotonic_ns" ) + 1000000 );
+#endif
+                }
+                const auto worst = timing.get_array( "worst_stage_intervals" );
+                CHECK( worst.size() >= 1 );
+                CHECK( worst.size() <= 15 );
+                for( const TextJsonObject &interval : worst ) {
+                    interval.allow_omitted_members();
+                    CHECK( interval.get_int( "stage_index" ) >= 0 );
+                    CHECK( interval.get_int( "stage_index" ) < 15 );
+                    CHECK( interval.get_float( "end_monotonic_ns" ) >
+                           interval.get_float( "start_monotonic_ns" ) );
+                    CHECK( interval.has_member( "thread_cpu_ns" ) );
+                }
+            }
             const int writes = stage_calls.get_int( stage_index( "debug_sink_write" ) );
             const int flushes = stage_calls.get_int( stage_index( "debug_sink_flush" ) );
             sink_write_calls += writes;
@@ -5671,6 +5723,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
     CHECK( ( mode == "off" ? sink_enabled_rows == 0 : sink_enabled_rows > 0 ) );
     CHECK( ( mode == "off" ? sink_disabled_rows == 0 : sink_disabled_rows > 0 ) );
     CHECK( ( mode == "off" ? redraw_attempts == 0 : redraw_attempts > 0 ) );
+    CHECK( ( mode == "off" ? redraw_callback_calls == 0 : redraw_callback_calls > 0 ) );
+    CHECK( ( mode == "off" ? redraw_thread_timing_rows == 0 : redraw_thread_timing_rows > 0 ) );
     CHECK( ( mode == "off" ? npc_resource_attempts == 0 : npc_resource_attempts > 0 ) );
     CHECK( ( mode == "off" ? item_resource_attempts == 0 : item_resource_attempts > 0 ) );
     CHECK( extrema_snapshots >= 1 );
@@ -5743,7 +5797,11 @@ TEST_CASE( "performance interval output preserves the real World successor",
                              "camp_locker_service", "npc_find_item", "npc_pick_up_item",
                              "npc_decision_trace", "npc_decision_publish", "semantic_descriptor_build",
                              "semantic_receipt_build", "native_journal_publish", "native_journal_compact",
-                             "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update"
+                             "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update",
+                             "redraw_frame_begin", "redraw_callbacks", "redraw_frame_end", "redraw_game_cache",
+                             "redraw_game_terrain", "redraw_game_refresh", "redraw_game_panels", "redraw_game_semantic",
+                             "redraw_present", "redraw_buffer_scope_enter", "redraw_buffer_scope_exit",
+                             "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
                          } ) {
                         CHECK( std::count( names.begin(), names.end(), name ) == 1 );
                     }

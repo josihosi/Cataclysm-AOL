@@ -390,6 +390,18 @@ struct work_resource_counts {
 #endif
 };
 
+static constexpr std::size_t redraw_detail_stage_count = 15;
+static constexpr std::size_t redraw_interval_limit = 4;
+struct redraw_interval {
+    std::uint64_t start_ns = 0;
+    std::uint64_t end_ns = 0;
+    std::uint64_t thread_cpu_ns = 0;
+    bool thread_cpu_available = false;
+    std::uint64_t anchor_before_ns = 0;
+    std::uint64_t anchor_wall_ns = 0;
+    std::uint64_t anchor_after_ns = 0;
+};
+
 struct raid_perf_row {
     int turn = 0;
     std::size_t wait_begin = 0;
@@ -414,6 +426,12 @@ struct raid_perf_row {
     bool debug_sink_timing_enabled = false;
     std::array<double, raid_perf_stage_count> stages{};
     std::array<std::size_t, raid_perf_stage_count> stage_calls{};
+    std::array<double, redraw_detail_stage_count> redraw_thread_cpu_seconds{};
+    std::array<std::size_t, redraw_detail_stage_count> redraw_thread_cpu_samples{};
+    std::array<redraw_interval, redraw_interval_limit> redraw_intervals{};
+    std::array<redraw_interval, redraw_detail_stage_count> redraw_worst_stage_intervals{};
+    std::size_t redraw_interval_count = 0;
+    std::size_t redraw_intervals_dropped = 0;
     std::array<std::size_t, raid_perf_nav_event_count> nav_counts{};
     std::array<std::size_t, raid_perf_query_event_count> query_counts{};
     std::size_t nav_build_depth = 0;
@@ -437,6 +455,7 @@ static raid_perf_row *raid_perf_current = nullptr;
 static thread_local bool raid_perf_turn_thread = false;
 static thread_local bool raid_perf_outside_simulation = false;
 static thread_local bool raid_perf_debug_sink_enabled = false;
+static thread_local int raid_perf_redraw_depth = 0;
 
 bool raid_perf_journal_active()
 {
@@ -449,6 +468,31 @@ bool raid_perf_debug_sink_active()
 static std::vector<raid_perf_row> raid_perf_rows;
 static std::string raid_perf_mode = "off";
 static bool raid_perf_receiver_captured = false;
+
+static std::optional<std::uint64_t> redraw_thread_cpu_ns()
+{
+#if !defined(_WIN32) && defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec value {};
+    if( clock_gettime( CLOCK_THREAD_CPUTIME_ID, &value ) == 0 && value.tv_sec >= 0 &&
+        value.tv_nsec >= 0 ) {
+        return static_cast<std::uint64_t>( value.tv_sec ) * 1000000000ULL +
+               static_cast<std::uint64_t>( value.tv_nsec );
+    }
+#endif
+    return std::nullopt;
+}
+
+static std::optional<std::size_t> redraw_detail_index( raid_perf_stage value )
+{
+    if( value == raid_perf_stage::pre_input_redraw ) {
+        return 0;
+    }
+    if( value >= raid_perf_stage::redraw_frame_begin && value <= raid_perf_stage::redraw_terrain_tiles ) {
+        return 1 + static_cast<std::size_t>( value ) -
+               static_cast<std::size_t>( raid_perf_stage::redraw_frame_begin );
+    }
+    return std::nullopt;
+}
 
 // Optional process-wide counters over the redraw, NPC-action and item windows.
 // The window boundaries are native owners; no per-actor log is introduced.
@@ -541,14 +585,34 @@ void raid_perf_scope::start( raid_perf_stage target, bool enabled )
 {
     row = enabled ? raid_perf_current : nullptr;
     stage = target;
+    redraw_detail = false;
+    redraw_thread_cpu_started.reset();
     if( row ) {
         ++row->stage_calls[static_cast<std::size_t>( stage )];
         if( stage == raid_perf_stage::physical_navigation_view_build ) {
             ++row->nav_build_depth;
         } else if( stage == raid_perf_stage::nav_view_lookup ) {
             ++row->nav_lookup_depth;
+        } else if( stage == raid_perf_stage::pre_input_redraw ) {
+            ++raid_perf_redraw_depth;
         }
         started = std::chrono::steady_clock::now();
+        if( raid_perf_turn_thread && redraw_detail_index( stage ).has_value() &&
+            ( stage == raid_perf_stage::pre_input_redraw || raid_perf_redraw_depth > 0 ) ) {
+            const char *const resources = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+            redraw_detail = resources && resources[0] != '\0' && resources[0] != '0';
+        }
+        if( redraw_detail ) {
+            redraw_thread_cpu_started = redraw_thread_cpu_ns();
+            if( stage == raid_perf_stage::pre_input_redraw ) {
+                redraw_anchor_before_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                              std::chrono::steady_clock::now().time_since_epoch() ).count();
+                redraw_anchor_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                            std::chrono::system_clock::now().time_since_epoch() ).count();
+                redraw_anchor_after_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                             std::chrono::steady_clock::now().time_since_epoch() ).count();
+            }
+        }
     }
 }
 
@@ -560,12 +624,54 @@ raid_perf_scope::~raid_perf_scope()
 void raid_perf_scope::finish()
 {
     if( row ) {
+        const auto cpu_end = redraw_detail ? redraw_thread_cpu_ns() : std::nullopt;
+        const auto ended = std::chrono::steady_clock::now();
         row->stages[static_cast<std::size_t>( stage )] +=
-            std::chrono::duration<double>( std::chrono::steady_clock::now() - started ).count();
+            std::chrono::duration<double>( ended - started ).count();
+        if( redraw_detail ) {
+            const auto index = *redraw_detail_index( stage );
+            const bool cpu_available = redraw_thread_cpu_started && cpu_end &&
+                                       *cpu_end >= *redraw_thread_cpu_started;
+            const auto start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                      started.time_since_epoch() ).count();
+            const auto end_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                    ended.time_since_epoch() ).count();
+            redraw_interval &worst = row->redraw_worst_stage_intervals[index];
+            if( end_ns > start_ns && static_cast<std::uint64_t>( end_ns - start_ns ) >
+                worst.end_ns - worst.start_ns ) {
+                worst.start_ns = start_ns;
+                worst.end_ns = end_ns;
+                worst.thread_cpu_available = cpu_available;
+                worst.thread_cpu_ns = cpu_available ? *cpu_end - *redraw_thread_cpu_started : 0;
+            }
+            if( cpu_available ) {
+                row->redraw_thread_cpu_seconds[index] +=
+                    static_cast<double>( *cpu_end - *redraw_thread_cpu_started ) / 1e9;
+                ++row->redraw_thread_cpu_samples[index];
+            }
+            if( stage == raid_perf_stage::pre_input_redraw ) {
+                if( row->redraw_interval_count < redraw_interval_limit ) {
+                    redraw_interval &interval = row->redraw_intervals[row->redraw_interval_count++];
+                    interval.start_ns = start_ns;
+                    interval.end_ns = end_ns;
+                    interval.thread_cpu_available = cpu_available;
+                    interval.anchor_before_ns = redraw_anchor_before_ns;
+                    interval.anchor_wall_ns = redraw_anchor_wall_ns;
+                    interval.anchor_after_ns = redraw_anchor_after_ns;
+                    if( cpu_available ) {
+                        interval.thread_cpu_ns = *cpu_end - *redraw_thread_cpu_started;
+                    }
+                } else {
+                    ++row->redraw_intervals_dropped;
+                }
+            }
+        }
         if( stage == raid_perf_stage::physical_navigation_view_build ) {
             --row->nav_build_depth;
         } else if( stage == raid_perf_stage::nav_view_lookup ) {
             --row->nav_lookup_depth;
+        } else if( stage == raid_perf_stage::pre_input_redraw ) {
+            --raid_perf_redraw_depth;
         }
     }
 }
@@ -667,6 +773,11 @@ bool raid_perf_query_active()
     return raid_perf_current != nullptr;
 }
 
+bool raid_perf_redraw_active()
+{
+    return raid_perf_turn_thread && raid_perf_redraw_depth > 0;
+}
+
 void raid_perf_note_query( raid_perf_query_event event )
 {
     if( raid_perf_current ) {
@@ -699,7 +810,11 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
     "npc_find_item", "npc_pick_up_item", "npc_decision_trace", "npc_decision_publish",
     "semantic_descriptor_build", "semantic_receipt_build", "native_journal_publish", "native_journal_compact",
     "pre_input_redraw", "render_present", "npc_process_turn", "npc_normal_move", "npc_body_update",
-    "debug_sink_write", "debug_sink_flush"
+    "debug_sink_write", "debug_sink_flush",
+    "redraw_frame_begin", "redraw_callbacks", "redraw_frame_end",
+    "redraw_game_cache", "redraw_game_terrain", "redraw_game_refresh", "redraw_game_panels",
+    "redraw_game_semantic", "redraw_present", "redraw_buffer_scope_enter",
+    "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -861,6 +976,71 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
     js.member( "debug_sink_timing_enabled", row.debug_sink_timing_enabled );
     js.member( "stages_seconds", row.stages );
     js.member( "stage_calls", row.stage_calls );
+    if( row.redraw_interval_count || row.redraw_intervals_dropped ) {
+        js.member( "redraw_thread_timing" );
+        js.start_object();
+        js.member( "scope", "owning thread; CPU samples are inside the monotonic wall interval" );
+        js.member( "stage_indices", std::array<std::size_t, redraw_detail_stage_count> {
+            static_cast<std::size_t>( raid_perf_stage::pre_input_redraw ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_frame_begin ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_callbacks ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_frame_end ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_game_cache ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_game_terrain ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_game_refresh ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_game_panels ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_game_semantic ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_present ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_buffer_scope_enter ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_buffer_scope_exit ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_log_panel ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_log_messages ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_terrain_tiles )
+        } );
+        js.member( "thread_cpu_seconds", row.redraw_thread_cpu_seconds );
+        js.member( "thread_cpu_samples", row.redraw_thread_cpu_samples );
+        js.member( "intervals_dropped", row.redraw_intervals_dropped );
+        js.member( "intervals" );
+        js.start_array();
+        for( std::size_t i = 0; i < row.redraw_interval_count; ++i ) {
+            const redraw_interval &interval = row.redraw_intervals[i];
+            js.start_object();
+            js.member( "start_monotonic_ns", interval.start_ns );
+            js.member( "end_monotonic_ns", interval.end_ns );
+            js.member( "anchor_monotonic_before_ns", interval.anchor_before_ns );
+            js.member( "anchor_unix_ns", interval.anchor_wall_ns );
+            js.member( "anchor_monotonic_after_ns", interval.anchor_after_ns );
+            if( interval.thread_cpu_available ) {
+                js.member( "thread_cpu_ns", interval.thread_cpu_ns );
+            } else {
+                js.member( "thread_cpu_ns" );
+                js.write_null();
+            }
+            js.end_object();
+        }
+        js.end_array();
+        js.member( "worst_stage_intervals" );
+        js.start_array();
+        for( std::size_t i = 0; i < row.redraw_worst_stage_intervals.size(); ++i ) {
+            const redraw_interval &interval = row.redraw_worst_stage_intervals[i];
+            if( interval.end_ns == 0 ) {
+                continue;
+            }
+            js.start_object();
+            js.member( "stage_index", i );
+            js.member( "start_monotonic_ns", interval.start_ns );
+            js.member( "end_monotonic_ns", interval.end_ns );
+            if( interval.thread_cpu_available ) {
+                js.member( "thread_cpu_ns", interval.thread_cpu_ns );
+            } else {
+                js.member( "thread_cpu_ns" );
+                js.write_null();
+            }
+            js.end_object();
+        }
+        js.end_array();
+        js.end_object();
+    }
     js.member( "nav_view_counts" );
     js.start_object();
     for( std::size_t i = 0; i < raid_perf_nav_event_count; ++i ) {
@@ -913,6 +1093,12 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->debug_sink_timing_enabled = row.debug_sink_timing_enabled;
     copy->stages = row.stages;
     copy->stage_calls = row.stage_calls;
+    copy->redraw_thread_cpu_seconds = row.redraw_thread_cpu_seconds;
+    copy->redraw_thread_cpu_samples = row.redraw_thread_cpu_samples;
+    copy->redraw_intervals = row.redraw_intervals;
+    copy->redraw_worst_stage_intervals = row.redraw_worst_stage_intervals;
+    copy->redraw_interval_count = row.redraw_interval_count;
+    copy->redraw_intervals_dropped = row.redraw_intervals_dropped;
     copy->nav_counts = row.nav_counts;
     copy->query_counts = row.query_counts;
     copy->discovered_sources = row.discovered_sources;

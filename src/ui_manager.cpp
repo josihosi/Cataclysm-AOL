@@ -10,6 +10,7 @@
 #include "cata_imgui.h"
 #include "cata_scope_helpers.h"
 #include "cursesdef.h"
+#include "do_turn.h"
 #include "point.h"
 
 #if defined(EMSCRIPTEN)
@@ -394,6 +395,7 @@ void ui_adaptor::redraw_invalidated( )
 #endif
     // This boolean is needed when a debug error is thrown inside redraw_invalidated
     if( !imgui_frame_started ) {
+        raid_perf_scope frame_scope( raid_perf_stage::redraw_frame_begin, raid_perf_redraw_active() );
 #if defined(TILES)
         imclient->new_frame( buf_w, buf_h );
 #else
@@ -494,7 +496,10 @@ void ui_adaptor::redraw_invalidated( )
                 if( ui.invalidated || ui.is_imgui ) {
                     if( ui.redraw_cb ) {
                         ui.default_cursor();
-                        ui.redraw_cb( ui );
+                        {
+                            raid_perf_scope callback_scope( raid_perf_stage::redraw_callbacks, raid_perf_redraw_active() );
+                            ui.redraw_cb( ui );
+                        }
                         if( ui.cursor_type == cursor::last ) {
                             ui.record_term_cursor();
                             cata_assert( ui.cursor_type != cursor::last );
@@ -530,7 +535,10 @@ void ui_adaptor::redraw_invalidated( )
         return;
     }
 #endif
-    imclient->end_frame();
+    {
+        raid_perf_scope frame_scope( raid_perf_stage::redraw_frame_end, raid_perf_redraw_active() );
+        imclient->end_frame();
+    }
     imgui_frame_started = false;
 
     // if any ImGui window needed to calculate the size of its contents,

@@ -59,7 +59,12 @@ enum class raid_perf_stage : std::size_t {
     npc_find_item, npc_pick_up_item, npc_decision_trace, npc_decision_publish,
     semantic_descriptor_build, semantic_receipt_build, native_journal_publish, native_journal_compact,
     pre_input_redraw, render_present, npc_process_turn, npc_normal_move, npc_body_update,
-    debug_sink_write, debug_sink_flush, count
+    debug_sink_write, debug_sink_flush,
+    redraw_frame_begin, redraw_callbacks, redraw_frame_end,
+    redraw_game_cache, redraw_game_terrain, redraw_game_refresh, redraw_game_panels,
+    redraw_game_semantic, redraw_present, redraw_buffer_scope_enter,
+    redraw_buffer_scope_exit, redraw_log_panel, redraw_log_messages,
+    redraw_terrain_tiles, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,
@@ -79,6 +84,8 @@ enum class raid_perf_query_event : std::size_t {
 // True only on the thread owning the currently active diagnostic turn.
 bool raid_perf_journal_active();
 bool raid_perf_debug_sink_active();
+// True only inside the measured pre-input redraw on the owning turn thread.
+bool raid_perf_redraw_active();
 bool raid_perf_query_active();
 void raid_perf_note_query( raid_perf_query_event event );
 
@@ -103,6 +110,11 @@ class raid_perf_scope
         raid_perf_row *row;
         raid_perf_stage stage;
         std::chrono::steady_clock::time_point started;
+        std::optional<std::uint64_t> redraw_thread_cpu_started;
+        bool redraw_detail = false;
+        std::uint64_t redraw_anchor_before_ns = 0;
+        std::uint64_t redraw_anchor_wall_ns = 0;
+        std::uint64_t redraw_anchor_after_ns = 0;
 };
 
 // Opt-in process-wide CPU and Darwin resource deltas for the synchronous

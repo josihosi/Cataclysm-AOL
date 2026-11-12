@@ -1213,6 +1213,7 @@ void refresh_display()
     const auto present_started = std::chrono::steady_clock::now();
     {
         raid_perf_scope present_scope( raid_perf_stage::render_present, raid_perf_journal_active() );
+        raid_perf_scope redraw_present_scope( raid_perf_stage::redraw_present, raid_perf_redraw_active() );
         RenderPresent( renderer );
     }
     openclaw_harness_trace_r028_render_present(
@@ -1429,6 +1430,7 @@ void display_buffer_scope_clear_recovery_required()
 
 display_buffer_draw_scope::display_buffer_draw_scope( const bool allow_during_recovery )
 {
+    raid_perf_scope entry_scope( raid_perf_stage::redraw_buffer_scope_enter, raid_perf_redraw_active() );
     if( display_buffer_scope_depth++ != 0 ) {
         // Inner scopes inherit the outer scope's validity. No bind work.
         return;
@@ -1480,6 +1482,7 @@ void display_buffer_draw_scope::abort_unbind()
 
 display_buffer_draw_scope::~display_buffer_draw_scope()
 {
+    raid_perf_scope exit_scope( raid_perf_stage::redraw_buffer_scope_exit, raid_perf_redraw_active() );
     --display_buffer_scope_depth;
     if( !outermost_ ) {
         return;
@@ -3908,13 +3911,16 @@ void cata_cursesport::curses_drawwindow( const catacurses::window &w )
 
         // game::w_terrain can be drawn by the tilecontext.
         // skip the normal drawing code for it.
-        tilecontext->draw(
-            point( win->pos.x * fontwidth, win->pos.y * fontheight ),
-            g->ter_view_p,
-            TERRAIN_WINDOW_TERM_WIDTH * font->width,
-            TERRAIN_WINDOW_TERM_HEIGHT * font->height,
-            overlay_strings,
-            color_blocks );
+        {
+            raid_perf_scope tiles_scope( raid_perf_stage::redraw_terrain_tiles, raid_perf_redraw_active() );
+            tilecontext->draw(
+                point( win->pos.x * fontwidth, win->pos.y * fontheight ),
+                g->ter_view_p,
+                TERRAIN_WINDOW_TERM_WIDTH * font->width,
+                TERRAIN_WINDOW_TERM_HEIGHT * font->height,
+                overlay_strings,
+                color_blocks );
+        }
 
         // color blocks overlay
         if( !color_blocks.second.empty() ) {
