@@ -19,6 +19,19 @@ CLI = Path(__file__).with_name("play_cli.py")
 
 
 class PlayerCliTest(unittest.TestCase):
+    def test_finish_rejects_journal_label_before_submission_and_accepts_observation_id(self):
+        client = PlayerClient(self.session)
+        client.state["terminal_observation_id"] = "run-a:frame:terminal"
+        with patch.object(client, "_reporting_exit_refusal", return_value=None), \
+                patch.object(client, "submit", return_value={"ok": True}) as submit:
+            result = client.finish(None, 0, outcome={"citations": [{"observation_id": "J0004"}]})
+            self.assertEqual(result["error"], "outcome_citation_requires_observation_id")
+            self.assertIn("witness journal", result["next"])
+            submit.assert_not_called()
+            outcome = {"citations": [{"observation_id": "run-a:frame:7"}]}
+            self.assertTrue(client.finish(None, 0, outcome=outcome)["ok"])
+            self.assertEqual(submit.call_args.args[0]["outcome"], outcome)
+
     def test_typed_omt_preview_and_move_require_preview_identity(self):
         self.observe()
         self.cli("act", "world.debug_omt_teleport", "--omt", "-4", "7", "-1", ok=False)
@@ -1124,6 +1137,15 @@ class PlayerCliTest(unittest.TestCase):
         pending = self.cli("look")
         self.reply(pending["request_id"], service.call({"action": "game.observe"}))
         self.cli("collect")
+        invalid = self.cli("finish", "--outcome", "Observed outcome", "--cite", "J0004", ok=False)
+        self.assertEqual(invalid["error"], "outcome_citation_requires_observation_id")
+        self.assertIn("witness journal", invalid["next"])
+        plain = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                "finish", "--outcome", "Observed outcome", "--cite", "J0004"],
+                               capture_output=True, text=True)
+        self.assertEqual(plain.returncode, 1, plain.stderr + plain.stdout)
+        self.assertIn("witness journal", plain.stdout)
+        self.assertEqual(len(self.requests()), 1)
         finish = self.cli("finish", "--outcome", "Fight achieved the selected gameplay result",
                           "--verdict", "positive", "--unknown", "Per-bandit participation unobserved",
                           "--cite", prior["observation_id"], "--select", "game_minutes")

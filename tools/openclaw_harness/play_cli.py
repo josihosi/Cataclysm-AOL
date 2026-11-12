@@ -1085,6 +1085,12 @@ class PlayerClient:
         refusal = self._reporting_exit_refusal()
         if refusal is not None:
             return refusal
+        if isinstance(outcome, dict) and isinstance(outcome.get("citations"), list):
+            for citation in outcome["citations"]:
+                identity = citation.get("observation_id") if isinstance(citation, dict) else None
+                if isinstance(identity, str) and re.fullmatch(r"J\d+", identity):
+                    return {"ok": False, "error": "outcome_citation_requires_observation_id",
+                            "next": "Use a native observation ID from play look or inspect; J labels identify witness journal entries, not outcome observations."}
         terminal = self.state.get("sealed_terminal") or {
             "observation_id": self.state.get("terminal_observation_id"),
             "stop_reason": "outcome_reported" if outcome is not None else "witness_reported",
@@ -1353,7 +1359,8 @@ def main(argv=None):
     report.add_argument("--witness", type=Path, help="Optional detailed witness review; selected paths generate typed values")
     finish.add_argument("--verdict", choices=("positive", "negative", "inconclusive"), default="inconclusive")
     finish.add_argument("--unknown", action="append", default=[], help="Unresolved secondary observation")
-    finish.add_argument("--cite", action="append", default=[], help="Existing native observation ID to cite")
+    finish.add_argument("--cite", action="append", default=[],
+                        help="Existing native observation ID from look or inspect; J labels are witness journal entries")
     finish.add_argument("--select", action="append", default=[], help="Selected native fields; their exact values are derived")
     # argparse accepts global options before a subcommand only.  Keep the
     # same destination and default when a caller places this display choice
