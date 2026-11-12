@@ -2,6 +2,7 @@
 import sys
 import tempfile
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch
@@ -226,9 +227,8 @@ class ProcessExitTest(unittest.TestCase):
         self.assertEqual(confirmed["advertised_actions"], [])
 
     def test_revoked_cached_exit_can_be_freshly_observed_without_rearming(self):
-        with tempfile.TemporaryDirectory() as root:
-            archive = Archive(Path(root) / "evidence.sqlite", run_id="run-a", binding_id="bound-a")
-            self.addCleanup(archive.close)
+        with tempfile.TemporaryDirectory() as root, \
+                closing(Archive(Path(root) / "evidence.sqlite", run_id="run-a", binding_id="bound-a")) as archive:
             process = {"run_id": "run-a", "pid": 123, "alive": False, "exit_code": 0,
                        "identity_status": "matched", "evidence_ref": "game-process-exit.json"}
             channel = CockpitRunChannel(world, Mock(), archive=archive, binding_id="bound-a",

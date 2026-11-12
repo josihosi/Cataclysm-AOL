@@ -33,7 +33,9 @@ TEST_CASE( "hostile search route work across paid blocked turns and opening",
     map &here = get_map();
     get_avatar().setpos( here, tripoint_bub_ms( 5, 5, 0 ) );
     get_avatar().set_mutation( trait_id( "DEBUG_CLOAK" ) );
-    on_out_of_scope uncloak( []() { get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) ); } );
+    on_out_of_scope uncloak( []() {
+        get_avatar().unset_mutation( trait_id( "DEBUG_CLOAK" ) );
+    } );
     npc &actor = spawn_npc( point_bub_ms( 50, 50 ), "thug" );
     actor.set_attitude( NPCATT_KILL );
     actor.set_hunger( 0 );
@@ -92,7 +94,7 @@ TEST_CASE( "hostile search route work across paid blocked turns and opening",
     }
     using namespace bandit_live_world_probe;
     session probe( collection_mode::timings );
-    const auto get = []( const snapshot &s, counter c ) {
+    const auto get = []( const snapshot & s, counter c ) {
         return s.counters[static_cast<std::size_t>( c )];
     };
     int paid = 0;
@@ -121,8 +123,10 @@ TEST_CASE( "hostile search route work across paid blocked turns and opening",
     const auto relaxed = get( blocked, counter::hostile_search_relaxed_diagnostics );
     std::cout << "HOSTILE_BLOCKED profile=" << site.site_id << " paid=" << paid
               << " normal=" << normal << " fire=" << fire << " relaxed=" << relaxed
-              << " normal_ns=" << blocked.sections[static_cast<std::size_t>( section::hostile_search_route_solve )].inclusive.total_ns
-              << " fire_ns=" << blocked.sections[static_cast<std::size_t>( section::hostile_search_fire_comparison )].inclusive.total_ns << '\n';
+              << " normal_ns=" << blocked.sections[static_cast<std::size_t>
+                      ( section::hostile_search_route_solve )].inclusive.total_ns
+              << " fire_ns=" << blocked.sections[static_cast<std::size_t>
+                      ( section::hostile_search_fire_comparison )].inclusive.total_ns << '\n';
     CHECK( paid == 4 );
     REQUIRE( normal > 0 );
     CHECK( relaxed == 0 );

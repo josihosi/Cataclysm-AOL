@@ -6154,8 +6154,8 @@ std::vector<tripoint_bub_ms> live_hostile_search_route(
                     bandit_live_world_probe::section::hostile_search_fire_comparison :
                     bandit_live_world_probe::section::hostile_search_route_solve );
             bandit_live_world_probe::increment( fire_comparison ?
-                    bandit_live_world_probe::counter::hostile_search_fire_comparisons :
-                    bandit_live_world_probe::counter::hostile_search_route_solves );
+                                                bandit_live_world_probe::counter::hostile_search_fire_comparisons :
+                                                bandit_live_world_probe::counter::hostile_search_route_solves );
             std::string reason;
             const auto native = member.get_path_avoid( [&]( const auto & cell, const auto why,
             const Creature * occupant ) {
