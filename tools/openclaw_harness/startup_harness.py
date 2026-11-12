@@ -44814,8 +44814,20 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("disposable saved-world purpose requires a snapshot or fixture")
     if explicit_saved_world_snapshot:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
+    # A selected declaration's initial saved-world bootstrap is represented as
+    # a continuation too.  A fresh copy of that exact declared source still
+    # needs custody; a genuine reentry or an existing destination must not
+    # acquire disposable ownership retroactively.
+    declared_snapshot = str(scenario.get("saved_world_snapshot", "") or "").strip()
+    destination = save_dir_for_profile(profile) / world if world else None
+    fresh_declared_continuation = bool(
+        post_relaunch_continuation and declared_snapshot and explicit_saved_world_snapshot and
+        Path(declared_snapshot).expanduser().resolve() ==
+        Path(explicit_saved_world_snapshot).expanduser().resolve() and destination is not None and
+        not destination.exists() and not destination.is_symlink())
     declared_snapshot_disposable = bool(
-        explicit_saved_world_snapshot and not post_relaunch_continuation and
+        explicit_saved_world_snapshot and
+        (not post_relaunch_continuation or fresh_declared_continuation) and
         isinstance(runtime_contract, Mapping) and runtime_contract.get("disposable_copy") is True )
     if ( getattr(args, "disposable_saved_world", False) or
          (fixture_disposable and not explicit_saved_world_snapshot) or
