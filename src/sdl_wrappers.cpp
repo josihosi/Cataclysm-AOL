@@ -13,6 +13,9 @@
 #include "cata_shader.h"
 #endif
 #include "debug.h"
+#if defined(TILES)
+#include "do_turn.h"
+#endif
 #include "point.h"
 
 #if defined(USE_SDL3)
@@ -495,17 +498,29 @@ bind_result permanent_render_target_bind( const SDL_Renderer_Ptr &renderer, SDL_
         return bind_result::refused_pre_switch;
     }
 #if SDL_MAJOR_VERSION >= 3
-    if( vp && !vp->flush() ) {
+    const bool flush_ok = [&]() {
+        raid_perf_scope scope( raid_perf_stage::redraw_target_flush, raid_perf_redraw_active() );
+        return !vp || vp->flush();
+    }
+    ();
+    if( !flush_ok ) {
         // Unsafe shader-state bind: do not switch the target. Latch recovery.
         renderer_boundary_signal_recovery_required();
         return bind_result::failed_in_switch;
     }
-    const bool failed = printErrorIf( !SDL_SetRenderTarget( renderer.get(), target ),
-                                      "SDL_SetRenderTarget failed" );
+    const bool failed = [&]() {
+        raid_perf_scope scope( raid_perf_stage::redraw_target_switch, raid_perf_redraw_active() );
+        return printErrorIf( !SDL_SetRenderTarget( renderer.get(), target ), "SDL_SetRenderTarget failed" );
+    }
+    ();
 #else
     ( void )vp;
-    const bool failed = printErrorIf( SDL_SetRenderTarget( renderer.get(), target ) != 0,
-                                      "SDL_SetRenderTarget failed" );
+    const bool failed = [&]() {
+        raid_perf_scope scope( raid_perf_stage::redraw_target_switch, raid_perf_redraw_active() );
+        return printErrorIf( SDL_SetRenderTarget( renderer.get(), target ) != 0,
+                             "SDL_SetRenderTarget failed" );
+    }
+    ();
 #endif
     if( failed ) {
         // SDL may have mutated target state before failing; latch recovery.

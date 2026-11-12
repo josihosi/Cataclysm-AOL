@@ -64,7 +64,9 @@ enum class raid_perf_stage : std::size_t {
     redraw_game_cache, redraw_game_terrain, redraw_game_refresh, redraw_game_panels,
     redraw_game_semantic, redraw_present, redraw_buffer_scope_enter,
     redraw_buffer_scope_exit, redraw_log_panel, redraw_log_messages,
-    redraw_terrain_tiles, count
+    redraw_terrain_tiles, redraw_panel_newwin, redraw_panel_draw, redraw_window_text,
+    redraw_terrain_overlay, redraw_target_flush, redraw_target_switch,
+    redraw_tile_memory, redraw_tile_points, redraw_tile_layers, count
 };
 enum class raid_perf_nav_event : std::size_t {
     resident_hit, resident_null, buffer_miss, archive_load_calls,
@@ -98,7 +100,8 @@ struct raid_perf_row;
 class raid_perf_scope
 {
     public:
-        explicit raid_perf_scope( raid_perf_stage stage, bool enabled = true );
+        explicit raid_perf_scope( raid_perf_stage stage, bool enabled = true,
+                                  const std::string *panel_id = nullptr );
         ~raid_perf_scope();
         void restart( raid_perf_stage stage );
         raid_perf_scope( const raid_perf_scope & ) = delete;
@@ -108,6 +111,7 @@ class raid_perf_scope
         void start( raid_perf_stage stage, bool enabled );
         void finish();
         raid_perf_row *row;
+        const std::string *panel_id;
         raid_perf_stage stage;
         std::chrono::steady_clock::time_point started;
         std::optional<std::uint64_t> redraw_thread_cpu_started;

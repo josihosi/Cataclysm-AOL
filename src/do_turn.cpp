@@ -390,7 +390,7 @@ struct work_resource_counts {
 #endif
 };
 
-static constexpr std::size_t redraw_detail_stage_count = 15;
+static constexpr std::size_t redraw_detail_stage_count = 24;
 static constexpr std::size_t redraw_interval_limit = 4;
 struct redraw_interval {
     std::uint64_t start_ns = 0;
@@ -430,6 +430,7 @@ struct raid_perf_row {
     std::array<std::size_t, redraw_detail_stage_count> redraw_thread_cpu_samples{};
     std::array<redraw_interval, redraw_interval_limit> redraw_intervals{};
     std::array<redraw_interval, redraw_detail_stage_count> redraw_worst_stage_intervals{};
+    std::string redraw_worst_panel_id;
     std::size_t redraw_interval_count = 0;
     std::size_t redraw_intervals_dropped = 0;
     std::array<std::size_t, raid_perf_nav_event_count> nav_counts{};
@@ -487,7 +488,8 @@ static std::optional<std::size_t> redraw_detail_index( raid_perf_stage value )
     if( value == raid_perf_stage::pre_input_redraw ) {
         return 0;
     }
-    if( value >= raid_perf_stage::redraw_frame_begin && value <= raid_perf_stage::redraw_terrain_tiles ) {
+    if( value >= raid_perf_stage::redraw_frame_begin &&
+        value <= raid_perf_stage::redraw_tile_layers ) {
         return 1 + static_cast<std::size_t>( value ) -
                static_cast<std::size_t>( raid_perf_stage::redraw_frame_begin );
     }
@@ -575,8 +577,8 @@ static std::size_t raid_perf_wait_generation()
            activity.input_generation() : 0;
 }
 
-raid_perf_scope::raid_perf_scope( raid_perf_stage target, bool enabled ) :
-    row( nullptr ), stage( target )
+raid_perf_scope::raid_perf_scope( raid_perf_stage target, bool enabled, const std::string *label ) :
+    row( nullptr ), panel_id( label ), stage( target )
 {
     start( target, enabled );
 }
@@ -643,6 +645,9 @@ void raid_perf_scope::finish()
                 worst.end_ns = end_ns;
                 worst.thread_cpu_available = cpu_available;
                 worst.thread_cpu_ns = cpu_available ? *cpu_end - *redraw_thread_cpu_started : 0;
+                if( stage == raid_perf_stage::redraw_panel_draw && panel_id ) {
+                    row->redraw_worst_panel_id = panel_id->substr( 0, 128 );
+                }
             }
             if( cpu_available ) {
                 row->redraw_thread_cpu_seconds[index] +=
@@ -814,7 +819,9 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
     "redraw_frame_begin", "redraw_callbacks", "redraw_frame_end",
     "redraw_game_cache", "redraw_game_terrain", "redraw_game_refresh", "redraw_game_panels",
     "redraw_game_semantic", "redraw_present", "redraw_buffer_scope_enter",
-    "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
+    "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles",
+    "redraw_panel_newwin", "redraw_panel_draw", "redraw_window_text", "redraw_terrain_overlay",
+    "redraw_target_flush", "redraw_target_switch", "redraw_tile_memory", "redraw_tile_points", "redraw_tile_layers"
 };
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
@@ -995,10 +1002,20 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
             static_cast<std::size_t>( raid_perf_stage::redraw_buffer_scope_exit ),
             static_cast<std::size_t>( raid_perf_stage::redraw_log_panel ),
             static_cast<std::size_t>( raid_perf_stage::redraw_log_messages ),
-            static_cast<std::size_t>( raid_perf_stage::redraw_terrain_tiles )
+            static_cast<std::size_t>( raid_perf_stage::redraw_terrain_tiles ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_panel_newwin ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_panel_draw ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_window_text ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_terrain_overlay ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_target_flush ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_target_switch ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_tile_memory ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_tile_points ),
+            static_cast<std::size_t>( raid_perf_stage::redraw_tile_layers )
         } );
         js.member( "thread_cpu_seconds", row.redraw_thread_cpu_seconds );
         js.member( "thread_cpu_samples", row.redraw_thread_cpu_samples );
+        js.member( "worst_panel_id", row.redraw_worst_panel_id );
         js.member( "intervals_dropped", row.redraw_intervals_dropped );
         js.member( "intervals" );
         js.start_array();
@@ -1097,6 +1114,7 @@ static std::shared_ptr<const raid_perf_row> copy_extrema_detail( const raid_perf
     copy->redraw_thread_cpu_samples = row.redraw_thread_cpu_samples;
     copy->redraw_intervals = row.redraw_intervals;
     copy->redraw_worst_stage_intervals = row.redraw_worst_stage_intervals;
+    copy->redraw_worst_panel_id = row.redraw_worst_panel_id;
     copy->redraw_interval_count = row.redraw_interval_count;
     copy->redraw_intervals_dropped = row.redraw_intervals_dropped;
     copy->nav_counts = row.nav_counts;

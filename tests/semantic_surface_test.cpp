@@ -5460,6 +5460,32 @@ TEST_CASE( "performance interval output preserves the real World successor",
     ui_adaptor root;
     root.on_redraw( []( ui_adaptor & ) {
         DebugLog( D_INFO, D_MAIN ) << "bounded sink timing control";
+        // Optional, finite same-process timing of the actual scope machinery.
+        // It does not measure drawing or establish whole-turn overhead.
+        static bool overhead_measured = false;
+        if( !overhead_measured && std::getenv( "CAOL_REDRAW_SCOPE_OVERHEAD_PROBE" ) &&
+            raid_perf_redraw_active() ) {
+            overhead_measured = true;
+            const std::string panel_id = "overhead-control";
+            constexpr int repeats = 5000;
+            const auto measure = [&]( const bool active, const char *resources ) {
+                assign_test_environment( "OPENCLAW_HARNESS_TURN_RESOURCES", std::string( resources ) );
+                const auto before = std::chrono::steady_clock::now();
+                for( int i = 0; i < repeats; ++i ) {
+                    raid_perf_scope scope( raid_perf_stage::redraw_panel_draw, active, &panel_id );
+                }
+                return std::chrono::duration<double, std::nano>(
+                           std::chrono::steady_clock::now() - before ).count() / repeats;
+            };
+            for( int round = 0; round < 5; ++round ) {
+                const double inactive_ns = measure( false, "0" );
+                const double ordinary_ns = measure( true, "0" );
+                const double detailed_ns = measure( true, "1" );
+                std::fprintf( stderr,
+                              "redraw_scope_overhead_ns round=%d inactive=%.1f ordinary=%.1f detailed=%.1f n=%d\n",
+                              round, inactive_ns, ordinary_ns, detailed_ns, repeats );
+            }
+        }
     } );
     ui_manager::redraw();
     // Keep the production descriptor/receipt writers installed. Native input
@@ -5575,7 +5601,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                  "redraw_frame_end", "redraw_game_cache", "redraw_game_terrain", "redraw_game_refresh",
                  "redraw_game_panels",
                  "redraw_game_semantic", "redraw_present", "redraw_buffer_scope_enter",
-                 "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
+                 "redraw_buffer_scope_exit", "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles",
+                 "redraw_panel_newwin", "redraw_panel_draw", "redraw_window_text", "redraw_terrain_overlay",
+                 "redraw_target_flush", "redraw_target_switch", "redraw_tile_memory", "redraw_tile_points",
+                 "redraw_tile_layers"
              } ) {
             CHECK( std::count( names.begin(), names.end(), name ) == 1 );
         }
@@ -5599,9 +5628,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 timing.allow_omitted_members();
                 CHECK( timing.get_string( "scope" ) ==
                        "owning thread; CPU samples are inside the monotonic wall interval" );
-                CHECK( timing.get_array( "stage_indices" ).size() == 15 );
-                CHECK( timing.get_array( "thread_cpu_seconds" ).size() == 15 );
-                CHECK( timing.get_array( "thread_cpu_samples" ).size() == 15 );
+                CHECK( timing.get_array( "stage_indices" ).size() == 24 );
+                CHECK( timing.get_array( "thread_cpu_seconds" ).size() == 24 );
+                CHECK( timing.get_array( "thread_cpu_samples" ).size() == 24 );
+                CHECK( timing.get_string( "worst_panel_id" ).size() <= 128 );
 #if defined(__APPLE__)
                 CHECK( timing.get_array( "thread_cpu_samples" ).get_int( 0 ) > 0 );
 #endif
@@ -5628,11 +5658,11 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 }
                 const auto worst = timing.get_array( "worst_stage_intervals" );
                 CHECK( worst.size() >= 1 );
-                CHECK( worst.size() <= 15 );
+                CHECK( worst.size() <= 24 );
                 for( const TextJsonObject &interval : worst ) {
                     interval.allow_omitted_members();
                     CHECK( interval.get_int( "stage_index" ) >= 0 );
-                    CHECK( interval.get_int( "stage_index" ) < 15 );
+                    CHECK( interval.get_int( "stage_index" ) < 24 );
                     CHECK( interval.get_float( "end_monotonic_ns" ) >
                            interval.get_float( "start_monotonic_ns" ) );
                     CHECK( interval.has_member( "thread_cpu_ns" ) );
@@ -5801,7 +5831,10 @@ TEST_CASE( "performance interval output preserves the real World successor",
                              "redraw_frame_begin", "redraw_callbacks", "redraw_frame_end", "redraw_game_cache",
                              "redraw_game_terrain", "redraw_game_refresh", "redraw_game_panels", "redraw_game_semantic",
                              "redraw_present", "redraw_buffer_scope_enter", "redraw_buffer_scope_exit",
-                             "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles"
+                             "redraw_log_panel", "redraw_log_messages", "redraw_terrain_tiles",
+                             "redraw_panel_newwin", "redraw_panel_draw", "redraw_window_text", "redraw_terrain_overlay",
+                             "redraw_target_flush", "redraw_target_switch", "redraw_tile_memory", "redraw_tile_points",
+                             "redraw_tile_layers"
                          } ) {
                         CHECK( std::count( names.begin(), names.end(), name ) == 1 );
                     }

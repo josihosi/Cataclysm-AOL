@@ -3818,9 +3818,18 @@ void game::draw_panels( bool force_draw )
             h += spacer;
             if( panel.toggle && panel.render() && h > 0 ) {
                 if( panel.always_draw || draw_this_turn ) {
-                    catacurses::window w = catacurses::newwin( h, panel.get_width(),
-                                           point( sidebar_right ? TERMX - panel.get_width() : 0, y ) );
-                    int tmp_h = panel.draw( { u, w, panel.get_widget() } );
+                    catacurses::window w = [&]() {
+                        raid_perf_scope scope( raid_perf_stage::redraw_panel_newwin, raid_perf_redraw_active() );
+                        return catacurses::newwin( h, panel.get_width(),
+                                                   point( sidebar_right ? TERMX - panel.get_width() : 0, y ) );
+                    }
+                    ();
+                    int tmp_h = [&]() {
+                        raid_perf_scope scope( raid_perf_stage::redraw_panel_draw, raid_perf_redraw_active(),
+                                               &panel.get_id() );
+                        return panel.draw( { u, w, panel.get_widget() } );
+                    }
+                    ();
                     h += tmp_h;
                     // lines skipped for rendering -> reclaim space in the sidebar
                     if( tmp_h < 0 ) {

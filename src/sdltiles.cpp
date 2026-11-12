@@ -622,6 +622,12 @@ static void detect_renderer_backend()
                               ? SDL_GetStringProperty( props, SDL_PROP_RENDERER_NAME_STRING, "" )
                               : "";
     dbg( D_INFO ) << "SDL renderer in use: " << ( actual_name ? actual_name : "unknown" );
+    const char *const resources = std::getenv( "OPENCLAW_HARNESS_TURN_RESOURCES" );
+    if( resources && resources[0] != '\0' && resources[0] != '0' ) {
+        // One startup/recreation observation, in the existing diagnostic log.
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_renderer_backend: actual=" <<
+                                   ( actual_name && *actual_name ? actual_name : "unknown" );
+    }
     if( actual_name && std::string( actual_name ).find( "direct3d" ) != std::string::npos ) {
         direct3d_mode = true;
     }
@@ -3759,6 +3765,7 @@ void cata_tiles::draw_om( const point &dest, const tripoint_abs_omt &center_abs_
 static bool draw_window( Font_Ptr &font, const catacurses::window &w, const point &offset,
                          const bool force_full = false )
 {
+    raid_perf_scope text_scope( raid_perf_stage::redraw_window_text, raid_perf_redraw_active() );
     if( scaling_factor > 1 ) {
         const point buffer_dims = compute_display_buffer_dims();
         RenderSetLogicalSize( renderer, buffer_dims.x, buffer_dims.y );
@@ -3922,7 +3929,8 @@ void cata_cursesport::curses_drawwindow( const catacurses::window &w )
                 color_blocks );
         }
 
-        // color blocks overlay
+        // color blocks and text overlay (separate from tile drawing).
+        raid_perf_scope overlay_scope( raid_perf_stage::redraw_terrain_overlay, raid_perf_redraw_active() );
         if( !color_blocks.second.empty() ) {
             SDL_BlendMode blend_mode;
             GetRenderDrawBlendMode( renderer, blend_mode ); // save the current blend mode

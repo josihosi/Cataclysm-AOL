@@ -36,6 +36,7 @@
 #include "cursesport.h"
 #include "debug.h"
 #include "dialogue.h"
+#include "do_turn.h"
 #include "enum_conversions.h"
 #include "enums.h"
 #include "field.h"
@@ -676,10 +677,13 @@ void cata_tiles::draw( const point &dest, const tripoint_bub_ms &center, int wid
     here.prev_bottom_right = bottom_right;
     here.prev_o = o;
 
-    you.prepare_map_memory_region(
-        here.get_abs( tripoint_bub_ms( min_mm_reg.x, min_mm_reg.y, center.z() ) ),
-        here.get_abs( tripoint_bub_ms( max_mm_reg.x, max_mm_reg.y, center.z() ) )
-    );
+    {
+        raid_perf_scope scope( raid_perf_stage::redraw_tile_memory, raid_perf_redraw_active() );
+        you.prepare_map_memory_region(
+            here.get_abs( tripoint_bub_ms( min_mm_reg.x, min_mm_reg.y, center.z() ) ),
+            here.get_abs( tripoint_bub_ms( max_mm_reg.x, max_mm_reg.y, center.z() ) )
+        );
+    }
 
     //set up a default tile for the edges outside the render area
     visibility_type offscreen_type = visibility_type::HIDDEN;
@@ -720,6 +724,7 @@ void cata_tiles::draw( const point &dest, const tripoint_bub_ms &center, int wid
     }
 
     if( here.draw_points_cache_dirty ) {
+        raid_perf_scope scope( raid_perf_stage::redraw_tile_points, raid_perf_redraw_active() );
         here.draw_points_cache_dirty = false;
         // overlay_strings and color_blocks are generated with draw_points and thus are cleared together
         here.draw_points_cache.clear();
@@ -1014,6 +1019,8 @@ void cata_tiles::draw( const point &dest, const tripoint_bub_ms &center, int wid
     // are considered visible here to simplify the logic.)
     int cur_zlevel = std::max( center.z() - fov_3d_z_range, -OVERMAP_DEPTH );
     bool draw_aborted = false;
+    std::optional<raid_perf_scope> layers_scope( std::in_place, raid_perf_stage::redraw_tile_layers,
+            raid_perf_redraw_active() );
     while( cur_zlevel <= center.z() && !draw_aborted ) {
         const half_open_rectangle<point> &cur_any_tile_range = is_isometric()
                 ? z_any_tile_range[center.z() - cur_zlevel] : top_any_tile_range;
@@ -1403,6 +1410,7 @@ void cata_tiles::draw( const point &dest, const tripoint_bub_ms &center, int wid
         }
         cur_zlevel += 1;
     }
+    layers_scope.reset();
 
     // display number of monsters to spawn in mapgen preview
     for( int row = top_any_tile_range.p_min.y; row < top_any_tile_range.p_max.y; row ++ ) {
