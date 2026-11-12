@@ -825,12 +825,15 @@ TEST_CASE( "natural hunting blind watch uses the production selector and exact p
                                blind_pos.z() ) ).id().str() == "field" );
     CHECK( overmap_buffer.ter( target ).id().str() == "field" );
 
-    // Overmap placement alone does not create the physical target geometry
-    // required by the production optical reader. Prepare it through ordinary
-    // native map loading; the reader still decides visibility and route safety.
+    // Overmap placement alone does not create the physical ray geometry
+    // required by the production optical reader. Prepare the blind and the
+    // corridor through ordinary native loading; the reader still decides
+    // visibility and route safety.
     {
-        tinymap target_geometry;
-        target_geometry.load( target, false );
+        for( int y = blind_pos.y(); y <= target.y(); ++y ) {
+            tinymap ray_geometry;
+            ray_geometry.load( tripoint_abs_omt( blind_pos.x(), y, blind_pos.z() ), false );
+        }
     }
 
     bandit_live_world::world_state world;
