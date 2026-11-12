@@ -1,4 +1,5 @@
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,8 @@
 #include "coordinates.h"
 #include "do_turn.h"
 #include "game.h"
+#include "json.h"
+#include "json_loader.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
@@ -92,4 +95,40 @@ TEST_CASE( "ordinary loaded road contact callbacks conserve the NPC action budge
     }
     // This is an eligible rolling-road ambush, not a silent no-contact case.
     CHECK( ( first.get_attitude() == NPCATT_KILL || second.get_attitude() == NPCATT_KILL ) );
+
+    // Reload through the native local owner, then replace one body with its
+    // serialized same-ID copy. Contact callbacks must still only set intent.
+    g->reload_npcs();
+    npc *loaded = g->find_npc( ids.front() );
+    REQUIRE( loaded );
+    const tripoint_abs_ms loaded_position = loaded->pos_abs();
+    const int loaded_hp = loaded->get_hp();
+    loaded->on_unload();
+    std::ostringstream body_bytes;
+    JsonOut body_json( body_bytes );
+    loaded->serialize( body_json );
+    g->remove_npc( ids.front() );
+    auto old_body = overmap_buffer.remove_npc( ids.front() );
+    REQUIRE( old_body );
+    auto replacement = make_shared_fast<npc>();
+    replacement->deserialize( json_loader::from_string( body_bytes.str() ).get_object() );
+    REQUIRE( replacement->getID() == ids.front() );
+    REQUIRE( replacement.get() != old_body.get() );
+    overmap_buffer.insert_npc( replacement );
+    g->load_npcs();
+    REQUIRE( g->find_npc( ids.front() ) == replacement.get() );
+    REQUIRE( replacement->pos_abs() == loaded_position );
+    replacement->set_moves( 150 );
+    const int player_hp_after_reload = player.get_hp();
+    for( int repeat = 0; repeat < 2; ++repeat ) {
+        note_live_bandit_aftermath_for_test();
+        note_live_bandit_local_turn_sight_avoid_for_test();
+        CHECK( replacement->get_moves() == 150 );
+        CHECK( replacement->pos_abs() == loaded_position );
+        CHECK( replacement->get_hp() == loaded_hp );
+        CHECK( player.get_hp() == player_hp_after_reload );
+    }
+    process_monsters_and_npcs_turn_for_test();
+    CHECK( replacement->get_moves() < 150 );
+    CHECK( ( replacement->pos_abs() != loaded_position || player.get_hp() < player_hp_after_reload ) );
 }
