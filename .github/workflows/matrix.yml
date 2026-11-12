@@ -203,6 +203,8 @@ jobs:
         make -j 3 tests CCACHE="$cache" LINTJSON=0 DEBUG_SYMBOLS=1 FRAMEWORK=1 UNIVERSAL_BINARY=1
     - name: Check zone identity and Zone Manager controls
       run: python3 tests/zone_identity_ci.py tests/cata_test
+    - name: Check travelling contact ownership and hostile route controls
+      run: python3 tests/travelling_contact_ci.py tests/cata_test
 
   varied_builds:
     needs: [ skip-duplicates-code, skip-duplicates-data, matrix-variables, compile-shaders ]
@@ -436,6 +438,9 @@ jobs:
     - name: Check zone identity and Zone Manager controls (GNU)
       if: ${{ env.SKIP == 'false' && runner.os == 'Linux' && matrix.tiles == 0 && (matrix.compiler == 'g++-9' || matrix.compiler == 'g++-14') }}
       run: python3 tests/zone_identity_ci.py tests/cata_test
+    - name: Check travelling contact ownership and hostile route controls (Linux)
+      if: ${{ env.SKIP == 'false' && matrix.test-stage == 1 && runner.os == 'Linux' }}
+      run: python3 tests/travelling_contact_ci.py tests/cata_test
     - name: post-build ccache manipulation
       if: ${{ env.SKIP == 'false' && !failure() && (runner.os == 'Linux' || runner.os == 'macOS') && matrix.ccache_key != '' }}
       run: |

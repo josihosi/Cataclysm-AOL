@@ -171,6 +171,11 @@ jobs:
         py -3 tests/zone_identity_ci.py .\Cataclysm-test-vcpkg-static-Release-x64.exe
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    - name: Check travelling contact ownership and hostile route controls (Windows)
+      run: |
+        py -3 tests/travelling_contact_ci.py .\Cataclysm-test-vcpkg-static-Release-x64.exe
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     - name: Check Unicode retirement archival (Windows)
       run: |
         $output = & .\Cataclysm-test-vcpkg-static-Release-x64.exe '[save_continuity_067][retirement_files]' --rng-seed 48151 2>&1 | Out-String
