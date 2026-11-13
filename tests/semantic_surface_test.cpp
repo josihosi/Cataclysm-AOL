@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <clocale>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -18,6 +19,10 @@
 #include <atomic>
 #include <ctime>
 #include <vector>
+
+#if defined(__APPLE__)
+#include <pthread.h>
+#endif
 
 #include "cata_catch.h"
 #include "harness_light_fixture.h"
@@ -5383,6 +5388,11 @@ TEST_CASE( "turn driven dialogue input is excluded without replaying its effect"
 TEST_CASE( "performance interval output preserves the real World successor",
            "[semantic_surface][raid_performance_output_route]" )
 {
+#if defined(__APPLE__)
+    std::uint64_t expected_thread_uid = 0;
+    REQUIRE( pthread_threadid_np( nullptr, &expected_thread_uid ) == 0 );
+    REQUIRE( expected_thread_uid != 0 );
+#endif
     const std::string mode = GENERATE( "normal", "quiet_signal", "off" );
     override_option diagnostic( "RAID_PERFORMANCE_DIAGNOSTIC", mode );
     override_option autosave( "AUTOSAVE", "false" );
@@ -5664,6 +5674,11 @@ TEST_CASE( "performance interval output preserves the real World successor",
                            interval.get_float( "end_monotonic_ns" ) );
                     CHECK( interval.get_float( "anchor_unix_ns" ) > 0 );
                     CHECK( interval.has_member( "thread_cpu_ns" ) );
+#if defined(__APPLE__)
+                    CHECK( interval.get_string( "thread_uid" ) == std::to_string( expected_thread_uid ) );
+#else
+                    CHECK( interval.get_member( "thread_uid" ).test_null() );
+#endif
                     for( const char *field : {
                              "window_state_before", "window_state_after"
                          } ) {

@@ -7,6 +7,7 @@
 #include <libproc.h>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <pthread.h>
 #include <sys/proc_info.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -397,6 +398,7 @@ struct redraw_interval {
     std::uint64_t end_ns = 0;
     std::uint64_t thread_cpu_ns = 0;
     bool thread_cpu_available = false;
+    std::optional<std::uint64_t> thread_uid;
     std::uint64_t anchor_before_ns = 0;
     std::uint64_t anchor_wall_ns = 0;
     std::uint64_t anchor_after_ns = 0;
@@ -704,6 +706,12 @@ void raid_perf_scope::finish()
                     interval.anchor_after_ns = redraw_anchor_after_ns;
                     interval.window_before = redraw_window_started;
                     interval.window_after = window_ended;
+#if defined(__APPLE__)
+                    std::uint64_t thread_uid = 0;
+                    if( pthread_threadid_np( nullptr, &thread_uid ) == 0 && thread_uid != 0 ) {
+                        interval.thread_uid = thread_uid;
+                    }
+#endif
                     if( cpu_available ) {
                         interval.thread_cpu_ns = cpu_end_ns - *redraw_thread_cpu_started;
                     }
@@ -1099,6 +1107,12 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
             js.member( "anchor_monotonic_before_ns", interval.anchor_before_ns );
             js.member( "anchor_unix_ns", interval.anchor_wall_ns );
             js.member( "anchor_monotonic_after_ns", interval.anchor_after_ns );
+            if( interval.thread_uid ) {
+                js.member( "thread_uid", std::to_string( *interval.thread_uid ) );
+            } else {
+                js.member( "thread_uid" );
+                js.write_null();
+            }
             js.member( "window_state_before" );
             write_redraw_window_state( js, interval.window_before );
             js.member( "window_state_after" );
