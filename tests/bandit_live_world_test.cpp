@@ -58703,7 +58703,32 @@ TEST_CASE( "activity demand keeps native semantic ownership through Pay trade su
            ( complete ? "paid" : "fight" ) );
     if( complete ) {
         CHECK( get_avatar().amount_of( itype_id( "knife_combat" ) ) == 0 );
-        CHECK( scene.collector->amount_of( itype_id( "knife_combat" ) ) == 1 );
+        CHECK( scene.collector->amount_of( itype_id( "knife_combat" ) ) == 0 );
+        tinymap store;
+        store.load( scene.site().anchor, false );
+        int paid_sources = 0;
+        for( const auto &p : store.cast_to_map()->points_on_zlevel( scene.site().anchor.z() ) ) {
+            for( const item &goods : store.cast_to_map()->i_at( p ) ) {
+                if( !goods.has_var( "shakedown_source" ) ) {
+                    continue;
+                }
+                const auto receipt = json_loader::from_string( goods.get_var( "shakedown_source",
+                                     "" ) ).get_object();
+                receipt.allow_omitted_members();
+                for( const JsonObject source : receipt.get_array( "property" ) ) {
+                    source.allow_omitted_members();
+                    if( std::to_string( source.get_int( "source_uid" ) ) == payment_uid ) {
+                        ++paid_sources;
+                        CHECK( goods.typeId() == itype_id( "knife_combat" ) );
+                        CHECK( goods.get_owner() == scene.collector->get_fac_id() );
+                        CHECK( receipt.get_int( "receiver_id" ) == get_avatar().getID().get_value() );
+                        CHECK( receipt.get_int( "collector_id" ) == scene.collector->getID().get_value() );
+                        CHECK( receipt.get_int( "quantity" ) == 1 );
+                    }
+                }
+            }
+        }
+        CHECK( paid_sources == 1 );
         CHECK( scene.site().active_hostile_operation.phase ==
                bandit_live_world::hostile_operation_phase::returning_home );
     } else {
