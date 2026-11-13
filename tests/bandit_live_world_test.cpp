@@ -74846,6 +74846,61 @@ TEST_CASE( "C++-built normal level-one report commits only an exact authorized c
                  record.sense == bandit_live_world::sortie_observation_sense::smoke ) &&
                record.expiry_minutes < report.delivered_minutes;
     } ) );
+    // Dated numeric aggregates alone are not a tactical observation. Keep
+    // the original invalid fixture as an explicit authorization negative.
+    {
+        bandit_live_world::site_record numeric_only = *base_site;
+        numeric_only.camp_decision = bandit_live_world::camp_decision_record();
+        numeric_only.acted_reports.clear();
+        numeric_only.next_routine_dispatch_eligible_minutes = -1;
+        numeric_only.current_scout_report = report;
+        numeric_only.applied_report_generation = report.source_generation;
+        numeric_only.next_outing_generation = report.source_generation + 1;
+        REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( numeric_only ) ==
+                 bandit_live_world::camp_decision_transition_result::applied );
+        const auto numeric_reads = live_bandit_response_member_power_reads_for_test( numeric_only );
+        const auto numeric_party = bandit_live_world::select_capable_response_party(
+                                       numeric_only, report.action_policy, report.assessment.danger_high, numeric_reads );
+        REQUIRE( numeric_party.eligible );
+        const auto rejected = bandit_live_world::evaluate_response_authorization(
+                                  numeric_only, report.delivered_minutes + 60, numeric_party, numeric_reads );
+        CHECK_FALSE( rejected.authorized );
+        CHECK( rejected.rejection_reason == "response danger is unknown pending relevant observation" );
+    }
+
+    // The positive contract uses typed shared observations and the production
+    // reducer; the earlier expired optical entries remain expired and distinct.
+    bandit_live_world::active_outing_state observed;
+    observed.activity_id = report.source_activity_id;
+    observed.generation = report.source_generation;
+    observed.last_advanced_minutes = report.delivered_minutes;
+    observed.target_lead_revision = report.target_lead_revision;
+    observed.target_footprint = { report.target_omt };
+    observed.target_id = report.target_id;
+    observed.member_ids = report.carrier_ids;
+    observed.selected_watch_omt = journey.legal_watch;
+    observed.assessment = report.assessment;
+    for( const int age : {
+             50, 30, 10
+         } ) {
+        auto visual = make_typed_visual_observation(
+                          report.carrier_ids.front(), report.target_lead_revision,
+                          report.delivered_minutes - age,
+                          "visible-defenders:" + report.target_omt.to_string(),
+                          bandit_live_world::sortie_observation_share_state::reported );
+        visual.source_omt = report.target_omt;
+        visual.receiver_omt = journey.legal_watch;
+        observed.observations.push_back( visual );
+        report.observations.push_back( std::move( visual ) );
+    }
+    report.assessment = bandit_live_world::summarize_normal_scout_assessment( observed );
+    REQUIRE( report.assessment.provenance );
+    REQUIRE( report.assessment.provenance->reducer_known );
+    REQUIRE( report.assessment.provenance->bounty_known );
+    REQUIRE( report.assessment.bounty_estimate == 1 );
+    REQUIRE( report.assessment.threshold_class ==
+             bandit_live_world::scout_assessment_threshold_class::normal );
+
     // Start this isolated report contract from an unpinned decision while
     // retaining the real Native site, members, and map state in the copy.
     base_site->camp_decision = bandit_live_world::camp_decision_record();
