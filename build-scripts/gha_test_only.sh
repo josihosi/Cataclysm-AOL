@@ -28,7 +28,8 @@ function run_test
     if [ "$(uname -s)" = Linux ] && [ -z "${WINE:-}" ] &&
        [ "${test_bin##*/}" != cata_test-tiles ] &&
        { [ "${CMAKE:-0}" = 1 ] || [ "${TILES:-0}" != 1 ]; }; then
-        if [ -z "${TERM:-}" ] || [ "$TERM" = unknown ] || ! infocmp "$TERM" >/dev/null 2>&1; then
+        if [ -z "${TERM:-}" ] || [ "$TERM" = unknown ] ||
+           ! printenv TERM >/dev/null 2>&1 || ! infocmp "$TERM" >/dev/null 2>&1; then
             if ! command -v infocmp >/dev/null 2>&1 || ! infocmp xterm >/dev/null 2>&1; then
                 echo 'Linux curses tests require infocmp and xterm terminfo' >&2
                 return 1
