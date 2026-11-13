@@ -23,6 +23,20 @@ function run_test
     prefix=$2
     shift 2
 
+    # Headless Linux runners can inherit TERM=unknown, which makes ncurses
+    # terminate before UI tests run. Preserve a usable caller-provided TERM.
+    if [ "$(uname -s)" = Linux ] && [ -z "${WINE:-}" ] &&
+       [ "${test_bin##*/}" != cata_test-tiles ] &&
+       { [ "${CMAKE:-0}" = 1 ] || [ "${TILES:-0}" != 1 ]; }; then
+        if [ -z "${TERM:-}" ] || [ "$TERM" = unknown ] || ! infocmp "$TERM" >/dev/null 2>&1; then
+            if ! command -v infocmp >/dev/null 2>&1 || ! infocmp xterm >/dev/null 2>&1; then
+                echo 'Linux curses tests require infocmp and xterm terminfo' >&2
+                return 1
+            fi
+            export TERM=xterm
+        fi
+    fi
+
     $WINE "$test_bin" ${cata_test_opts} "$@" 2>&1 | sed -E 's/^(::(warning|error|debug)[^:]*::)?/\1'"$prefix"'/' || test_exit_code="${PIPESTATUS[0]}" sed_exit_code="${PIPESTATUS[1]}"
     if [ "$test_exit_code" -ne "0" ]
     then
