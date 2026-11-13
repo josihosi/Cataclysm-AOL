@@ -1,0 +1,186 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.signal_loaded_bubble_edge_001",
+  "description": "Focused native loaded-map edge continuation from the retained signal world. Inherited lead records and existing items are zero-credit setup; only a newly sustained ordinary source, ordinary travel across the qualified centered-map edge, and actual sampler rediscovery are considered.",
+  "profile": "signal-loaded-bubble-edge-001",
+  "config_profile": "dev-harness",
+  "world": "TestSetup00",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-source-change-001/save/TestSetup00",
+  "suppress_profile_startup_input": true,
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "run_class": "non_combat",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.world": "TestSetup00",
+    "runtime.loaded_bubble_edge_scope": "ordinary_avatar_travel_across_predicted_loaded_map_edge_and_return_with_same_absolute_source",
+    "runtime.inherited_save_tree_sha256": "8ad91d96553830bf878641985ab46947e8674890a186ee51c3feb60831627197",
+    "capabilities.r_caol.inherited_signal_footing": "zero_credit_saved_world_from_prior_native_signal_journey",
+    "capabilities.r_caol.loaded_source_edge": "ordinary_native_source_sustained_through_edge_crossing_with_actual_position_turn_trace_and_reacquisition_phase"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.move_relative",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "fixture-state-as-proof",
+      "debug:emit_sound",
+      "debug:inject_signal",
+      "debug:inject_observation",
+      "debug:inject_report",
+      "debug:inject_dispatch",
+      "debug:inject_target_knowledge",
+      "debug:inject_member",
+      "debug:inject_route",
+      "debug:inject_owner",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "ocr",
+      "raw-save-rewrite-after-install",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native file bridge"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "signal-loaded-bubble-edge-001",
+    "fixture": "exact retained native source-change save; inherited state is zero-credit",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-signal-persistence-001",
+      "profile": "signal-loaded-bubble-edge-001",
+      "fixture": "exact retained native source-change save; inherited state is zero-credit",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "input": [
+        "advertised native actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {
+    "saved_world_source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-source-change-001/save/TestSetup00",
+    "native_sources": [
+      "src/physical_light.cpp",
+      "src/do_turn.cpp"
+    ],
+    "native_executable": "cataclysm-signal-persistence-001"
+  },
+  "setup_classification": {
+    "kind": "focused_control",
+    "reason": "Only the loaded-source edge behavior is in scope. Inherited save, actors and leads are zero-credit setup; this run must not replay scouting, return support or persistence.",
+    "representative_remote_credit": false
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_loaded_edge_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait",
+          "world.save_quit"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false,
+        "allow_saved_native_input_owner": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_loaded_source_edge",
+      "objective": "First qualify this actual saved World: exact absolute avatar/source positions and z, brazier fire/fuel, other sources of the same signal class, survival and current actors/lead clocks. If one sustainable identifiable source and safe ordinary movement are unavailable, stop inconclusive without source or time injection. If viable, sustain only that source using available ordinary fuel and the advertised native lighter/action. Record its loaded source receipt/physical state, time and initial turn. Apply the code-grounded normal-centering invariant: for source (3492,3588,0), starting avatar (3493,3588,0), predicted source-inbounds boundary is avatar x3563 inside and x3564 outside. State this as a qualified geometric inference, not direct runtime origin evidence. Move east by ordinary native steps with actual positions and turns; capture at x3563, x3564 and reverse to x3563. Keep source burning and inspect the actual R008 channel only at its real five-minute cadence. Reverse to avatar x3563 and stop there. Do not return to the source tile yet: at x3563 the source is within the qualified loaded geometry, while the avatar is still too far away to select that tile unconditionally. Wait only until the source absolute-coordinate discovery phase, recording the actual sampler trace turn/phase/source position and the real R008 recipient record if its separate five-minute cadence falls during this interval. Then return physically to the brazier and inspect actual fire/smoke/fuel/age and lead last_seen/last_checked. Compare source/lead state before crossing, immediately outside, at the inside boundary/re-discovery, and on physical return. Separate the 900-turn source sampler from the five-minute recipient cadence; do not claim that the source stayed lit while out of bounds unless reentry evidence shows it. Preserve inherited clue and report identities/clocks as setup; no new scouting or lead creation is claimed.",
+      "proof_targets": [
+        "fresh isolated profile, exact source-bound product and same saved world",
+        "initial actual source absolute position/class/fire/fuel and sole-source qualification",
+        "actual avatar absolute positions and game turns on both sides of predicted boundary and on reverse crossing",
+        "qualified normal map centering invariant and explicitly labeled geometric loaded-bound inference",
+        "actual signal/receiver records on each observed five-minute cadence, without treating absent rows as exact unload",
+        "actual fire/source state and source-discovery trace for the same absolute source on return, with real 900-turn phase and game time",
+        "survival and actor/world continuity; no support, observation, report or persistence replay",
+        "native save/exit and exact owned process/helper closure if operation reaches end",
+        "actual source age/field and lead last_seen/last_checked before crossing, outside, on inside-boundary re-discovery, and after physical return; distinguish legitimate loaded refresh from an unobserved offscreen interval"
+      ],
+      "authority": [
+        "currently advertised native actions",
+        "bounded observed native waits",
+        "ordinary native movement",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "inherited fixture/save state earns zero gameplay credit",
+        "no injected or debug-created source, clue, actor, perception, report or time",
+        "no teleport, keyboard, mouse, inventory.details or raw save editing",
+        "single isolated signal source only; check competing same-class sources before attribution",
+        "do not infer unload solely from absent R008 packet; distinguish direct native receipt from geometry inference",
+        "bind every movement and source observation to actual returned turn/minute; never infer turns from distance",
+        "do not renew fire age or suppress starvation across out-of-bounds transitions",
+        "do not claim actor-specific scouting, return support or persistence in this focused run",
+        "do not claim continuous burning or exact source state while out of bounds; only assert what actual pre-crossing, post-reentry and source trace evidence supports",
+        "reverse to x3563 and wait there for the real source phase before physically returning to source tile"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "evidence_contract": {
+    "claim": "A single ordinary sustained source at a qualified absolute map tile can be followed through an ordinary loaded-map edge and back; actual movement/time and any source rediscovery are bound to native receipts. Loaded-bound transition uses explicitly labeled code-grounded geometric inference unless direct runtime evidence is available.",
+    "failure_rule": "No actual positions/turns on both sides of the edge, loss/starvation or ambiguity of the source, competing-source ambiguity, no native return/discovery evidence, or unresolved process/build/profile binding leaves this focused behavior unproved."
+  },
+  "proof_gates": [
+    {
+      "id": "signal_loaded_edge_worker_session_bound",
+      "label": "New native edge attempt reaches one source-bound worker-controlled session",
+      "boundary_step": "operate_loaded_source_edge",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": true,
+            "same_run": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Game time:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "signal_loaded_edge_worker_session_bound"
+    ],
+    "terminal": [
+      "signal_loaded_edge_worker_session_bound"
+    ],
+    "capability_gates": {
+      "capabilities.r_caol.loaded_source_edge": {
+        "terminal": [
+          "signal_loaded_edge_worker_session_bound"
+        ]
+      }
+    }
+  }
+}

@@ -271,6 +271,40 @@ class ScenarioRegistryContractTest(unittest.TestCase):
                     with self.assertRaises(ManifestValidationError):
                         validate_manifest(declaration, path=path)
 
+    def test_signal_loaded_edge_admits_only_exact_v2_name(self) -> None:
+        path = HARNESS_DIR / "scenarios/bandit.signal_loaded_bubble_edge_001.json"
+        declaration = json.loads(path.read_text(encoding="utf-8"))
+        validate_manifest(declaration, path=path)
+        self.assertEqual(declaration["manifest_version"], 2)
+        self.assertTrue(declaration["runtime_contract"]["grants_gameplay_proof"])
+        self.assertIn("zero-credit", declaration["setup_classification"]["reason"])
+        self.assertIn("fixture-state-as-proof", declaration["runtime_contract"]["forbidden_input"])
+        self.assertTrue(declaration["proof_gates"])
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(dict(declaration, manifest_version=1), path=path)
+        declaration["name"] += "_other"
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(declaration, path=path)
+
+
+    def test_signal_persistence_continuation_admits_only_exact_name(self) -> None:
+        path = HARNESS_DIR / "scenarios/bandit.signal_persistence_reentry_001.json"
+        declaration = json.loads(path.read_text(encoding="utf-8"))
+        validate_manifest(declaration, path=path)
+        self.assertEqual(declaration["manifest_version"], 2)
+        self.assertTrue(declaration["runtime_contract"]["grants_gameplay_proof"])
+        self.assertIn("zero-credit", declaration["setup_classification"]["reason"])
+        self.assertIn("fixture-state-as-proof", declaration["runtime_contract"]["forbidden_input"])
+        self.assertTrue(declaration["saved_world_snapshot"])
+        self.assertTrue(declaration["proof_gates"])
+        legacy = dict(declaration, manifest_version=1)
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(legacy, path=path)
+        declaration["name"] += "_other"
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(declaration, path=path)
+
+
     def test_blocked_open_ring_declaration_keeps_setup_out_of_proof(self) -> None:
         path = HARNESS_DIR / "scenarios/cannibal.travelling_pursuit_blocked_open_ring_002.json"
         declaration = json.loads(path.read_text(encoding="utf-8"))

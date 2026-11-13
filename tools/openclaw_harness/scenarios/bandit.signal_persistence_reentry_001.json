@@ -1,0 +1,248 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.signal_persistence_reentry_001",
+  "description": "Focused same-world persistence verification from the exact native signal save. All inherited actors, signal observations and leads are zero-credit setup; this run proves only its own native source transition and the exact lead state across a fresh save, process exit and reload.",
+  "profile": "signal-persistence-reentry-001",
+  "config_profile": "dev-harness",
+  "world": "TestSetup00",
+  "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-edge-001/save/TestSetup00",
+  "suppress_profile_startup_input": true,
+  "observer_character": true,
+  "installed_save_player": "#VGVzdDAw.sav.zzip",
+  "run_class": "non_combat",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.world": "TestSetup00",
+    "runtime.signal_persistence_scope": "same_saved_world_exact_original_and_report_leads_across_fresh_native_save_reload",
+    "runtime.inherited_save_tree_sha256": "cc47962551f1704a4554c5ff5c628fc0e2e8ae0aa35516bd801ff5d34ff2b6ac",
+    "capabilities.r_caol.inherited_signal_footing": "diagnostic_zero_credit_saved_world_with_native_signal_and_report_leads",
+    "capabilities.r_caol.signal_identity_persistence": "fresh_native_save_exit_reload_preserves_exact_original_and_report_lead_identities_clocks_and_origins",
+    "capabilities.r_caol.native_source_change": "ordinary_player_relights_and_extinguishes_existing_brazier_if_native_inventory_and_fuel_allow"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "fixture-state-as-proof",
+      "debug:emit_sound",
+      "debug:inject_signal",
+      "debug:inject_observation",
+      "debug:inject_report",
+      "debug:inject_dispatch",
+      "debug:inject_target_knowledge",
+      "debug:inject_member",
+      "debug:inject_route",
+      "debug:inject_owner",
+      "hostile-teleport",
+      "keyboard",
+      "mouse",
+      "ocr",
+      "raw-save-rewrite-after-install",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native file bridge"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "signal-persistence-reentry-001",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-signal-persistence-001",
+      "profile": "signal-persistence-reentry-001",
+      "fixture": "exact native saved-world snapshot; inherited state is zero-credit",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "input": [
+        "advertised native actions"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {
+    "saved_world_source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-edge-001/save/TestSetup00",
+    "native_sources": [
+      "src/bandit_live_world.cpp",
+      "src/physical_light.cpp",
+      "src/do_turn.cpp",
+      "src/scout_observation.cpp"
+    ],
+    "native_executable": "cataclysm-signal-persistence-001"
+  },
+  "setup_classification": {
+    "kind": "focused_control",
+    "reason": "Same-world persistence boundary only. The inherited world, actors, source, original clue and distinct returned smoke/light leads are zero-credit setup from a diagnostic bootstrap; this continuation does not replay or claim scouting, observation or return behavior.",
+    "representative_remote_credit": false
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_exact_saved_signal_snapshot",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "Fresh isolated profile signal-persistence-reentry-001 installs the exact native saved TestSetup00 snapshot; inherited source, original clue and returned report records remain zero-credit setup."
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_exact_saved_signal_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.examine",
+          "world.inventory",
+          "world.save_quit"
+        ],
+        "required_state": "world",
+        "allow_saved_native_input_owner": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "verify_inherited_signal_state_and_change_source",
+      "objective": "Use the exact saved-world snapshot as zero-credit inherited footing. Before input, read the same world/player and capture the original camp smoke clue ID, source key, source sample, last_seen and last_checked plus the distinct returned smoke/light report IDs, keys, origins and clocks. Do not re-run discovery, scout dispatch, observation, return or source qualification. If the inherited lighter and brazier fuel are present and native controls allow, natively relight the existing brazier, capture its before/after source fields at the actual game minute, then natively extinguish it and capture the second before/after source fields and actual minute. Add no source, item, time, signal or actor by debug/setup. If native source change is unavailable, record the concrete missing current control or item and continue the persistence check, leaving source-change proof unclaimed. Preserve the inherited clue/report state, perform the required native save/quit and exit through the main-menu quit path.",
+      "proof_targets": [
+        "current source-bound product and fresh isolated profile",
+        "exact saved-world source path and installed-world identity with no fixture reinstall",
+        "zero-credit inherited source, actor, original clue and separate smoke/light report records",
+        "baseline exact original and report lead identities, origins, source keys/samples and clocks",
+        "ordinary native relight/extinguish of the existing brazier, if available, with accepted receipts and actual before/after game time and source fields",
+        "fresh native save completion and exact saved world/turn after the new source interaction",
+        "native process exit before reentry"
+      ],
+      "authority": [
+        "currently advertised native actions",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "all inherited world, party, source, observations, reports and clocks are zero-credit setup",
+        "do not replay discovery, dispatch, scouting, observation or physical return",
+        "do not inject signal, clue, report, observation, member, route, source, time or support",
+        "do not teleport or use avatar/debug setup after snapshot installation",
+        "perform source changes only through currently advertised native actions and existing ordinary lighter/fuel",
+        "do not infer bubble-edge timing from this persistence check",
+        "record an unavailable source-change prerequisite honestly without abandoning the persistence comparison"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 45.0,
+      "observe_interval_seconds": 0.1
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "save_and_exit_native_signal_continuation",
+      "objective": "After baseline comparison and any ordinary native source interaction, save the same disposable continuation world and exit through native main-menu quit. Record exact save success and turn.",
+      "observation_timeout_seconds": 30.0,
+      "observation_interval_seconds": 0.1,
+      "required_action_chain": [
+        "world.save_quit",
+        "prompt.yes",
+        "main_menu.quit",
+        "prompt.yes"
+      ]
+    }
+  ],
+  "evidence_contract": {
+    "claim": "In a new native run, inherited signal/report records are explicitly zero-credit setup. After an ordinary native save and process exit, a fresh process loading the same saved world preserves the exact original signal clue and distinct report-origin lead identities, source/origin fields and independent clocks. An optional ordinary native source change is separately timed from its accepted pre/post receipts.",
+    "failure_rule": "No fresh native save completion, no exact process exit/reload, changed or conflated lead identities/origins/clocks, source mismatch, fixture reinstall, injected or replayed observation/return, or unresolved process/build/profile binding leaves persistence unproved. A missing ordinary source tool/fuel leaves only the optional source-change boundary unproved."
+  },
+  "proof_gates": [
+    {
+      "id": "signal_reentry_worker_session_bound",
+      "label": "New proof-bearing continuation reaches one worker-controlled same-save live session",
+      "boundary_step": "verify_inherited_signal_state_and_change_source",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": true,
+            "same_run": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Game time:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "signal_reentry_worker_session_bound"
+    ],
+    "terminal": [
+      "signal_reentry_worker_session_bound"
+    ],
+    "capability_gates": {
+      "capabilities.r_caol.signal_identity_persistence": {
+        "terminal": [
+          "signal_reentry_worker_session_bound"
+        ]
+      }
+    }
+  },
+  "post_relaunch": {
+    "terminal_save_step_label": "save_and_exit_native_signal_continuation",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "load_saved_signal_continuation_after_exit",
+        "seconds": 1.0,
+        "capture_after": true,
+        "expected_visible_fact": "A new process loads the same native saved world with no fixture reinstall; the source state and saved lead records match the fresh save boundary."
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "verify_signal_state_after_reload",
+        "objective": "Read the reloaded native world at its current minute without advancing time. Compare the original smoke clue and separate structural smoke/light report leads to the pre-save baseline and fresh native save receipt: exact IDs, source keys/origins/samples, last_seen, last_checked and outcomes. Confirm the brazier/source fields match the post-interaction saved state. Do not alter leads, actors, source, time or world state. Close natively and verify exact process exit.",
+        "proof_targets": [
+          "new process generation and same source-world identity",
+          "exact original clue ID, source key/sample and independent last_seen/last_checked match the pre-save state",
+          "exact distinct smoke and light report IDs, source keys and observation clocks match the pre-save state",
+          "source fields match the post-interaction save where the optional interaction was available",
+          "second native process exit and bridge/launcher lifecycle closure"
+        ],
+        "invariants": [
+          "reload the exact confirmed native save without fixture reinstall",
+          "no added time or mutations during comparison",
+          "do not repeat scouting or infer its attribution from the inherited state",
+          "do not infer any loaded-bubble-edge transition"
+        ],
+        "live_operations": [
+          "game.act"
+        ],
+        "transition_timeout_seconds": 45.0,
+        "observe_interval_seconds": 0.1
+      },
+      {
+        "kind": "semantic_terminal_action_chain",
+        "label": "close_reloaded_signal_world",
+        "objective": "Exit the reloaded native World through Save and Quit and the main-menu quit, then verify process exit.",
+        "observation_timeout_seconds": 30.0,
+        "observation_interval_seconds": 0.1,
+        "required_action_chain": [
+          "world.save_quit",
+          "prompt.yes",
+          "main_menu.quit",
+          "prompt.yes"
+        ]
+      }
+    ]
+  }
+}

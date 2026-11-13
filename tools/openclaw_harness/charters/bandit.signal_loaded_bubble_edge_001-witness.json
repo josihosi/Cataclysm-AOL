@@ -1,0 +1,31 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "One freshly sustained native source is followed across the qualified loaded-map edge and back with actual positions, turns, source condition, and discovery phase; inherited signal records are zero-credit setup.",
+  "material_proof": "Exact retained source-save tree and current product binding; actual initial source class/absolute position/fuel and competing-source qualification; native action receipts and actual game time for lighting/fuel; ordinary movement receipts with actual avatar absolute positions around predicted inbounds boundary and on return; code-grounded normal map centering invariant; actual source state/trace/R008 records only at their real cadences; native source reacquisition at its actual discovery phase; exact process exit and bindings.",
+  "current_uncertainty": "Whether the retained world still has one viable sustained source and safe ordinary path, whether same-class sources compete, and whether the source survives the out-of-bounds interval. The centered-map geometry is a code-grounded inference, not direct origin/inbounds instrumentation.",
+  "material_contradiction": [
+    "The source is absent, exhausted or cannot be kept identifiable through movement.",
+    "Avatar positions fail to support the qualified normal centering geometry, or movement cannot safely reach both sides.",
+    "A second same-class source prevents attribution.",
+    "The source disappears or renews without a native time-bound cause.",
+    "No returned sampler discovery exists at the expected real phase, or evidence is only an absent R008 packet.",
+    "Any inherited clue, report, scouting or return is credited as new behavior.",
+    "The product/profile/world/process binding is not exact."
+  ],
+  "already_accepted_evidence": [
+    "Earlier signal corroboration, returned report leads, save/reload persistence and timed source change retain their prior separate scopes and receive no repeated credit."
+  ],
+  "forbidden_shortcuts": [
+    "Debug or setup source injection, clue/observation/report/actor/time mutation.",
+    "Avatar teleportation or save rewriting.",
+    "Using keyboard/mouse, OCR or inventory.details.",
+    "Treating R008 absence as exact unload turn or fixture state as gameplay proof.",
+    "Attributing a source when a same-class competitor has not been ruled out."
+  ],
+  "honest_stop_conditions": [
+    "If source, fuel or safe route are missing, record exact native qualification and finish inconclusive without fabricating behavior.",
+    "If trace growth is not bounded or sustained source validity cannot be verified, stop the edge experiment and report that boundary.",
+    "If fire expires, source changes or the world becomes unsafe, retain the real outcome and do not renew age/time artificially."
+  ],
+  "requested_evidence_ceiling": "focused"
+}
