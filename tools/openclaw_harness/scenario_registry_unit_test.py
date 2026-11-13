@@ -271,6 +271,33 @@ class ScenarioRegistryContractTest(unittest.TestCase):
                     with self.assertRaises(ManifestValidationError):
                         validate_manifest(declaration, path=path)
 
+    def test_blocked_open_ring_declaration_keeps_setup_out_of_proof(self) -> None:
+        path = HARNESS_DIR / "scenarios/cannibal.travelling_pursuit_blocked_open_ring_002.json"
+        declaration = json.loads(path.read_text(encoding="utf-8"))
+        validate_manifest(declaration, path=path)
+        runtime = declaration["runtime_contract"]
+        self.assertTrue(runtime["grants_gameplay_proof"])
+        self.assertFalse(runtime["setup_only_debug"])
+        self.assertIn("fixture-state-as-proof", runtime["forbidden_input"])
+        self.assertTrue(any("zero-credit" in item for item in runtime["invariants"]))
+        gate = declaration["proof_gates"][0]
+        self.assertTrue(gate["expectations"][0]["predicate"]["gameplay_credit"])
+        self.assertEqual(declaration["proof_route"]["terminal"], [gate["id"]])
+        declaration["name"] += "_other"
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(declaration, path=path)
+
+    def test_blocked_open_ring_admits_only_exact_name(self) -> None:
+        declaration = self.checkpoint_manifest()
+        declaration["name"] = "cannibal.travelling_pursuit_blocked_open_ring_002"
+        declaration["runtime_contract"]["grants_gameplay_proof"] = True
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = self.write_manifest(Path(temp_dir), "ring.json", declaration)
+            validate_manifest(declaration, path=path)
+            declaration["name"] += "_other"
+            with self.assertRaises(ManifestValidationError):
+                validate_manifest(declaration, path=path)
+
     def test_selected_natural_expedition_may_declare_proof_without_promoting_other_names(self) -> None:
         declaration = self.versioned_manifest()
         declaration["name"] = "bandit.r_caol_r050_natural_mixed_expedition_luna_20261103"

@@ -1,0 +1,166 @@
+{
+  "profile": "travelling-pursuit-obstacle-focused-001",
+  "world": "McWilliams",
+  "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/travelling-pursuit-obstacle-focused-001/save/McWilliams",
+  "name": "pursuit_avatar_ring_open_003",
+  "source_fixture": "pursuit_avatar_ring_002_source_001",
+  "source_profile": "travelling-pursuit-obstacle-focused-001",
+  "description": "Disclosed zero-credit 5x5 enclosure with one initially open barred gate, player-only relocation and locksmith kit. Native pursuit must be established before any ordinary close or response; no actor or target state is injected.",
+  "source_world_sha256": "66422f0e53ec1bff3bbf8f17102a230bd96c1994569c99a4583e4416f51768da",
+  "save_transforms": [
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            0,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            1,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            1,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            2,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            2,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            3,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            3,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            4,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            4,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            0,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            4,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "t_strconc_wall_w",
+          "offset_ms": [
+            4,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "t_door_bar_o",
+          "offset_ms": [
+            0,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "picklocks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [
+        1,
+        1,
+        0
+      ]
+    }
+  ]
+}

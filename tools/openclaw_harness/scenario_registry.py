@@ -112,6 +112,7 @@ _GAMEPLAY_PROOF_ALLOWED_V1 = frozenset({
     "zombie_rider.live_native_hunt_continuity_mcw",
 })
 _GAMEPLAY_PROOF_ALLOWED_V2 = _GAMEPLAY_PROOF_ALLOWED_V1 | {
+    "cannibal.travelling_pursuit_blocked_open_ring_002",
     "bandit.r029_natural_sound_route_mcw",
     "cannibal.r029_ground_positive_route_mcw",
     "cannibal.r029_natural_route_roof_mcw",

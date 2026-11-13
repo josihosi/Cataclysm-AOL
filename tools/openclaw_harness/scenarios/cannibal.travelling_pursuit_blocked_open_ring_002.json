@@ -1,0 +1,195 @@
+{
+  "manifest_version": 2,
+  "name": "cannibal.travelling_pursuit_blocked_open_ring_002",
+  "description": "Native pursuit continuation from a disclosed initially open single-entry ring: qualify actor and target, observe ordinary closure and recurring opportunities, then actual response to a relevant route change.",
+  "profile": "travelling-pursuit-blocked-open-ring-004",
+  "world": "McWilliams",
+  "fixture": "pursuit_avatar_ring_open_003",
+  "fixture_profile": "travelling-pursuit-obstacle-focused-001",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "config_profile": "dev-harness",
+  "run_class": "combat",
+  "observer_character": false,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.travel.visible_pursuit_boundary": "visible_pursuit_and_loaded_boundary",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.travel.source_binding": "cannibal.travelling_pursuit_blocked_open_ring_002:fixture"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "cockpit:game.move_relative"
+    ],
+    "forbidden_input": [
+      "debug:inject_local_contact",
+      "debug:inject_dispatch",
+      "debug:inject_operation",
+      "debug:inject_actor",
+      "debug:inject_combat_outcome",
+      "hostile-teleport",
+      "raw-save-rewrite-after-install",
+      "fixture-state-as-proof"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "travelling-pursuit-blocked-open-ring-004",
+    "config_profile": "dev-harness",
+    "fixture": "pursuit_avatar_ring_open_003",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "travelling-pursuit-blocked-open-ring-004",
+      "fixture": "pursuit_avatar_ring_open_003",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": [
+        "worker-owned live cockpit"
+      ],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true,
+    "invariants": [
+      "the prepared open-gate perimeter, cleared furniture, one locksmith kit and avatar relocation are disclosed zero-credit setup",
+      "no direct operation/contact/actor mutation",
+      "no injected perception, target, path, combat result or elapsed time",
+      "preserve actual consequences and first divergence",
+      "no OCR or rendered text as native gameplay proof"
+    ]
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/travelling-pursuit-obstacle-focused-001/pursuit_avatar_ring_open_003/manifest.json",
+    "native_source": "src/do_turn.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "proof_gates": [
+    {
+      "id": "blocked_open_ring_native_bound",
+      "label": "Source-bound native blocked/open pursuit observation",
+      "boundary_step": "operate_travelling_pursuit_boundary",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "blocked_open_ring_native_bound"
+    ],
+    "terminal": [
+      "blocked_open_ring_native_bound"
+    ],
+    "capability_gates": {
+      "capabilities.travel.visible_pursuit_boundary": {
+        "terminal": [
+          "blocked_open_ring_native_bound"
+        ]
+      }
+    }
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_travelling_pursuit_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world"
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_travelling_pursuit_boundary",
+      "objective": "First qualify actual actor, operation, target and gate; then observe ordinary closure and recurring opportunities or honest native opening, bash, target loss or goal change, followed by actual response to a relevant change.",
+      "proof_targets": [
+        "exact run, source tree, fixture transformation, player and actor/group/outing identity",
+        "native avatar target, sight/attack eligibility, gate state and actor position after setup",
+        "actual blocked/bashing/detour behavior and target or intent transitions across turns",
+        "actual ordinary opening/refusal and subsequent approach/attack/reacquisition if observed",
+        "ordinary timing, outcomes and truthful closeout"
+      ],
+      "authority": [
+        "advertised native actions",
+        "worker-chosen native waits or movement",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "reinforced ring, initially open barred gate, player-only relocation and lockpick kit are zero-credit setup",
+        "no direct actor, operation, target, perception, route, combat result or time mutation",
+        "the gate is the only prepared perimeter entry; native opening, bashing, target loss or detour is not suppressed",
+        "no OCR or rendered text as native gameplay proof",
+        "preserve consequences and first divergence"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "run.witness",
+        "run.finish",
+        "game.move_relative"
+      ],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "evidence_contract": {
+    "claim": "actual retained hostile pursuit and response to ordinary closure/reopening at a single-entry gate",
+    "failure_rule": "Fixture geometry and player relocation do not prove pursuit, perception, a blocked path, or route response; all must be native-observed after launch."
+  },
+  "raid_actor_trace": true,
+  "decision_trace_actor_ids": [
+    5,
+    6
+  ],
+  "profile_option_overrides": {
+    "RAID_PERFORMANCE_DIAGNOSTIC": "normal"
+  },
+  "performance_turn_config": {
+    "schema": "caol-performance-turn-config-v1",
+    "provenance": "R-CAOL-TRAVELLING-COST-pursuit-001 ordinary turn alarms; 100 ms threshold is diagnostic",
+    "window_turns": 100,
+    "tail_percentile": 0.95,
+    "spike_seconds": 0.1,
+    "slow_turn_seconds": 0.1,
+    "sustained_turns": 3,
+    "incomplete_turn_seconds": 10.0,
+    "stalled_observation_seconds": 30.0,
+    "expected_progress": true
+  }
+}
