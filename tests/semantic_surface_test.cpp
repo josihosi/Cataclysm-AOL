@@ -5646,6 +5646,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
                 CHECK( timing.get_int( "map_memory_region_rebuilt" ) > 0 );
 #if defined(__APPLE__)
                 CHECK( timing.get_array( "thread_cpu_samples" ).get_int( 0 ) > 0 );
+#elif defined(_WIN32)
+                CHECK( timing.get_array( "thread_cpu_samples" ).get_int( 0 ) == 0 );
 #endif
                 const auto intervals = timing.get_array( "intervals" );
                 CHECK( intervals.size() >= 1 );
@@ -5675,6 +5677,8 @@ TEST_CASE( "performance interval output preserves the real World successor",
                     CHECK( interval.get_float( "thread_cpu_ns" ) <=
                            interval.get_float( "end_monotonic_ns" ) -
                            interval.get_float( "start_monotonic_ns" ) + 1000000 );
+#elif defined(_WIN32)
+                    CHECK( interval.get_member( "thread_cpu_ns" ).test_null() );
 #endif
                 }
                 const auto worst = timing.get_array( "worst_stage_intervals" );
@@ -5687,6 +5691,9 @@ TEST_CASE( "performance interval output preserves the real World successor",
                     CHECK( interval.get_float( "end_monotonic_ns" ) >
                            interval.get_float( "start_monotonic_ns" ) );
                     CHECK( interval.has_member( "thread_cpu_ns" ) );
+#if defined(_WIN32)
+                    CHECK( interval.get_member( "thread_cpu_ns" ).test_null() );
+#endif
                     if( interval.get_int( "stage_index" ) == 21 ) {
                         CHECK( interval.get_float( "body_start_monotonic_ns" ) >=
                                interval.get_float( "start_monotonic_ns" ) );

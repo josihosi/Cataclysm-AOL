@@ -652,14 +652,21 @@ void raid_perf_scope::finish()
         const raid_perf_window_state window_ended = redraw_detail &&
                 stage == raid_perf_stage::pre_input_redraw ? raid_perf_get_window_state() :
                 raid_perf_window_state{};
-        const auto cpu_end = redraw_detail ? redraw_thread_cpu_ns() : std::nullopt;
+        std::uint64_t cpu_end_ns = 0;
+        bool cpu_end_available = false;
+        if( redraw_detail ) {
+            if( const auto sample = redraw_thread_cpu_ns() ) {
+                cpu_end_ns = *sample;
+                cpu_end_available = true;
+            }
+        }
         const auto ended = std::chrono::steady_clock::now();
         row->stages[static_cast<std::size_t>( stage )] +=
             std::chrono::duration<double>( ended - started ).count();
         if( redraw_detail ) {
             const auto index = *redraw_detail_index( stage );
-            const bool cpu_available = redraw_thread_cpu_started && cpu_end &&
-                                       *cpu_end >= *redraw_thread_cpu_started;
+            const bool cpu_available = redraw_thread_cpu_started && cpu_end_available &&
+                                       cpu_end_ns >= *redraw_thread_cpu_started;
             const auto start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                       started.time_since_epoch() ).count();
             const auto end_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -670,7 +677,7 @@ void raid_perf_scope::finish()
                 worst.start_ns = start_ns;
                 worst.end_ns = end_ns;
                 worst.thread_cpu_available = cpu_available;
-                worst.thread_cpu_ns = cpu_available ? *cpu_end - *redraw_thread_cpu_started : 0;
+                worst.thread_cpu_ns = cpu_available ? cpu_end_ns - *redraw_thread_cpu_started : 0;
                 if( stage == raid_perf_stage::redraw_tile_memory ) {
                     worst.body_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                               body_started.time_since_epoch() ).count();
@@ -683,7 +690,7 @@ void raid_perf_scope::finish()
             }
             if( cpu_available ) {
                 row->redraw_thread_cpu_seconds[index] +=
-                    static_cast<double>( *cpu_end - *redraw_thread_cpu_started ) / 1e9;
+                    static_cast<double>( cpu_end_ns - *redraw_thread_cpu_started ) / 1e9;
                 ++row->redraw_thread_cpu_samples[index];
             }
             if( stage == raid_perf_stage::pre_input_redraw ) {
@@ -698,7 +705,7 @@ void raid_perf_scope::finish()
                     interval.window_before = redraw_window_started;
                     interval.window_after = window_ended;
                     if( cpu_available ) {
-                        interval.thread_cpu_ns = *cpu_end - *redraw_thread_cpu_started;
+                        interval.thread_cpu_ns = cpu_end_ns - *redraw_thread_cpu_started;
                     }
                 } else {
                     ++row->redraw_intervals_dropped;
