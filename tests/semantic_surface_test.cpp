@@ -5662,6 +5662,15 @@ TEST_CASE( "performance interval output preserves the real World successor",
                            interval.get_float( "end_monotonic_ns" ) );
                     CHECK( interval.get_float( "anchor_unix_ns" ) > 0 );
                     CHECK( interval.has_member( "thread_cpu_ns" ) );
+                    for( const char *field : {
+                             "window_state_before", "window_state_after"
+                         } ) {
+                        const TextJsonObject state = interval.get_object( field );
+                        state.allow_omitted_members();
+                        CHECK_FALSE( state.get_bool( "available" ) );
+                        CHECK_FALSE( state.has_member( "minimized" ) );
+                        CHECK_FALSE( state.has_member( "input_focus" ) );
+                    }
 #if defined(__APPLE__)
                     CHECK( interval.get_float( "thread_cpu_ns" ) <=
                            interval.get_float( "end_monotonic_ns" ) -

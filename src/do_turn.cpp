@@ -402,6 +402,8 @@ struct redraw_interval {
     std::uint64_t anchor_after_ns = 0;
     std::uint64_t body_start_ns = 0;
     std::uint64_t body_end_ns = 0;
+    raid_perf_window_state window_before;
+    raid_perf_window_state window_after;
 };
 
 struct raid_perf_row {
@@ -486,6 +488,13 @@ static std::optional<std::uint64_t> redraw_thread_cpu_ns()
 #endif
     return std::nullopt;
 }
+
+#if !defined(TILES)
+raid_perf_window_state raid_perf_get_window_state()
+{
+    return {};
+}
+#endif
 
 static std::optional<std::size_t> redraw_detail_index( raid_perf_stage value )
 {
@@ -611,6 +620,7 @@ void raid_perf_scope::start( raid_perf_stage target, bool enabled )
         if( redraw_detail ) {
             redraw_thread_cpu_started = redraw_thread_cpu_ns();
             if( stage == raid_perf_stage::pre_input_redraw ) {
+                redraw_window_started = raid_perf_get_window_state();
                 redraw_anchor_before_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                               std::chrono::steady_clock::now().time_since_epoch() ).count();
                 redraw_anchor_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -639,6 +649,9 @@ void raid_perf_scope::finish()
         }
         const auto body_ended = redraw_detail && stage == raid_perf_stage::redraw_tile_memory ?
                                 std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+        const raid_perf_window_state window_ended = redraw_detail &&
+                stage == raid_perf_stage::pre_input_redraw ? raid_perf_get_window_state() :
+                raid_perf_window_state{};
         const auto cpu_end = redraw_detail ? redraw_thread_cpu_ns() : std::nullopt;
         const auto ended = std::chrono::steady_clock::now();
         row->stages[static_cast<std::size_t>( stage )] +=
@@ -682,6 +695,8 @@ void raid_perf_scope::finish()
                     interval.anchor_before_ns = redraw_anchor_before_ns;
                     interval.anchor_wall_ns = redraw_anchor_wall_ns;
                     interval.anchor_after_ns = redraw_anchor_after_ns;
+                    interval.window_before = redraw_window_started;
+                    interval.window_after = window_ended;
                     if( cpu_available ) {
                         interval.thread_cpu_ns = *cpu_end - *redraw_thread_cpu_started;
                     }
@@ -849,6 +864,26 @@ static const std::array<std::string, raid_perf_stage_count> raid_perf_stage_name
     "redraw_panel_newwin", "redraw_panel_draw", "redraw_window_text", "redraw_terrain_overlay",
     "redraw_target_flush", "redraw_target_switch", "redraw_tile_memory", "redraw_tile_points", "redraw_tile_layers"
 };
+
+static void write_redraw_window_state( JsonOut &js, const raid_perf_window_state &state )
+{
+    js.start_object();
+    js.member( "available", state.available );
+    if( state.available ) {
+        js.member( "source", "SDL_GetWindowFlags" );
+        js.member( "window_id", state.window_id );
+        js.member( "hidden", state.hidden );
+        js.member( "minimized", state.minimized );
+        js.member( "input_focus", state.input_focus );
+        js.member( "occluded" );
+        if( state.occluded ) {
+            js.write( *state.occluded );
+        } else {
+            js.write_null();
+        }
+    }
+    js.end_object();
+}
 
 static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bounded_extrema = false )
 {
@@ -1057,6 +1092,10 @@ static void write_raid_perf_row( JsonOut &js, const raid_perf_row &row, bool bou
             js.member( "anchor_monotonic_before_ns", interval.anchor_before_ns );
             js.member( "anchor_unix_ns", interval.anchor_wall_ns );
             js.member( "anchor_monotonic_after_ns", interval.anchor_after_ns );
+            js.member( "window_state_before" );
+            write_redraw_window_state( js, interval.window_before );
+            js.member( "window_state_after" );
+            write_redraw_window_state( js, interval.window_after );
             if( interval.thread_cpu_available ) {
                 js.member( "thread_cpu_ns", interval.thread_cpu_ns );
             } else {

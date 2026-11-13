@@ -150,6 +150,25 @@ static Font_Ptr map_font;
 static Font_Ptr overmap_font;
 
 static SDL_Window_Ptr window;
+
+raid_perf_window_state raid_perf_get_window_state()
+{
+    raid_perf_window_state state;
+    if( !window ) {
+        return state;
+    }
+    const auto flags = SDL_GetWindowFlags( window.get() );
+    state.available = true;
+    state.window_id = SDL_GetWindowID( window.get() );
+    state.hidden = ( flags & SDL_WINDOW_HIDDEN ) != 0;
+    state.minimized = ( flags & SDL_WINDOW_MINIMIZED ) != 0;
+    state.input_focus = ( flags & SDL_WINDOW_INPUT_FOCUS ) != 0;
+#if SDL_MAJOR_VERSION >= 3
+    state.occluded = ( flags & SDL_WINDOW_OCCLUDED ) != 0;
+#endif
+    return state;
+}
+
 static SDL_Renderer_Ptr renderer;
 static Uint32 pixel_format = SDL_PIXELFORMAT_UNKNOWN;
 static SDL_Texture_Ptr display_buffer;

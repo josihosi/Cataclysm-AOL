@@ -98,6 +98,19 @@ bool raid_perf_nav_build_active();
 bool raid_perf_nav_lookup_active();
 void raid_perf_note_nav( raid_perf_nav_event event );
 struct raid_perf_row;
+// Renderer-owned state sampled only for an opted-in native redraw interval.
+// It describes SDL's current window state, not OS scheduling or wait causes.
+struct raid_perf_window_state {
+    bool available = false;
+    std::uint32_t window_id = 0;
+    bool hidden = false;
+    bool minimized = false;
+    bool input_focus = false;
+    std::optional<bool> occluded;
+};
+
+raid_perf_window_state raid_perf_get_window_state();
+
 class raid_perf_scope
 {
     public:
@@ -117,6 +130,7 @@ class raid_perf_scope
         std::chrono::steady_clock::time_point started;
         std::chrono::steady_clock::time_point body_started;
         std::optional<std::uint64_t> redraw_thread_cpu_started;
+        raid_perf_window_state redraw_window_started;
         bool redraw_detail = false;
         std::uint64_t redraw_anchor_before_ns = 0;
         std::uint64_t redraw_anchor_wall_ns = 0;
