@@ -41304,21 +41304,37 @@ TEST_CASE( "loaded cannibal approach requires a reachable target boundary",
 TEST_CASE( "R009_M025_full_owner_reload_preserves_cannibal_daylight_rally",
            "[bandit][live_world][R009-M025][cannibal][raid][darkness][save][live_adapter]" )
 {
+    const bool outside_activation = GENERATE( false, true );
+    CAPTURE( outside_activation );
     clear_npcs();
     const time_point saved_turn = calendar::turn;
+    const time_point saved_start = calendar::start_of_cataclysm;
+    const time_point saved_game_start = calendar::start_of_game;
+    const auto saved_player = get_avatar().pos_abs();
     bandit_live_world::world_state saved_world = overmap_buffer.global_state.bandit_live_world;
     std::vector<character_id> generated_npc_ids;
-    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn,
+    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn, saved_start, saved_game_start,
+                                                  saved_player,
                         saved_world = std::move( saved_world )]() mutable {
         for( const character_id id : generated_npc_ids )
         {
             g->remove_npc( id );
             overmap_buffer.remove_npc( id );
         }
+        g->place_player_overmap( project_to<coords::omt>( saved_player ), false );
+        get_avatar().setpos( saved_player, false );
         overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
         calendar::turn = saved_turn;
+        calendar::start_of_cataclysm = saved_start;
+        calendar::start_of_game = saved_game_start;
         clear_creatures();
     } );
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
+    const tripoint_abs_omt near_view( 25, 20, 0 );
+    const tripoint_abs_omt view = outside_activation ? tripoint_abs_omt( 100, 120, 0 ) : near_view;
+    REQUIRE( g->place_player_overmap( view, false ) );
+    get_avatar().setpos( project_to<coords::ms>( view ) + point( SEEX, SEEY ), false );
 
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::register_abstract_site( world,
@@ -41451,6 +41467,17 @@ TEST_CASE( "R009_M025_full_owner_reload_preserves_cannibal_daylight_rally",
     process_overmap_npc_move_for_test();
     calendar::turn += 1_minutes;
     process_overmap_npc_move_for_test();
+    if( outside_activation ) {
+        const auto &frozen = overmap_buffer.global_state.bandit_live_world.sites.front();
+        REQUIRE( frozen.active_hostile_operation.phase ==
+                 bandit_live_world::hostile_operation_phase::waiting_night );
+        REQUIRE_FALSE( frozen.active_hostile_operation.reservation.activation.active );
+        REQUIRE( g->place_player_overmap( near_view, false ) );
+        get_avatar().setpos( project_to<coords::ms>( near_view ) + point( SEEX, SEEY ), false );
+        process_overmap_npc_move_for_test();
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+    }
     REQUIRE( overmap_buffer.global_state.bandit_live_world.sites.front().active_hostile_operation.phase
              ==
              bandit_live_world::hostile_operation_phase::approaching );
@@ -71159,8 +71186,14 @@ class r067_fresh_scout_journey
             std::int64_t ground_uid = 0;
             bool copied_on_drop = false;
         };
+        struct native_magazine_asset {
+            native_cargo_asset asset;
+            std::multiset<std::pair<std::string, int>> contents;
+        };
         std::map<character_id, native_cargo_asset> native_bones;
         std::map<character_id, native_cargo_asset> native_reload_belts;
+        std::map<character_id, std::vector<native_magazine_asset>> native_safety_magazines;
+        bool track_safety_magazines = false;
         std::vector<std::tuple<tripoint_abs_ms, std::int64_t, std::string>> encounter_weapons;
         std::string departure_witness;
         bool concealed_avatar = false;
@@ -71194,7 +71227,25 @@ class r067_fresh_scout_journey
             return result;
         }
 
-        void check_native_ground_custody( const npc &actor, native_cargo_asset &asset ) {
+        static std::multiset<std::pair<std::string, int>> item_tree( const item &root ) {
+            std::multiset<std::pair<std::string, int>> result;
+            std::function<void( const item & )> collect = [&]( const item & value ) {
+                result.emplace( value.typeId().str() + ":" + value.get_var( "r067_fresh_cargo" ),
+                                value.charges );
+                for( const auto *pocket : value.get_pockets( []( const item_pocket & ) {
+                return true;
+            } ) ) {
+                    for( const auto *child : pocket->all_items_top() ) {
+                        collect( *child );
+                    }
+                }
+            };
+            collect( root );
+            return result;
+        }
+
+        void check_native_ground_custody( const npc &actor, native_cargo_asset &asset,
+                                          const std::multiset<std::pair<std::string, int>> *contents = nullptr ) {
             const auto id = actor.getID();
             const auto provenance = std::to_string( id.get_value() );
             const auto check_contents = [&]( const item & value ) {
@@ -71202,6 +71253,9 @@ class r067_fresh_scout_journey
                 REQUIRE( value.charges == 0 );
                 if( asset.ammunition ) {
                     REQUIRE( value.ammo_remaining() == *asset.ammunition );
+                }
+                if( contents ) {
+                    REQUIRE( item_tree( value ) == *contents );
                 }
             };
             if( !asset.ground_position ) {
@@ -71289,6 +71343,10 @@ class r067_fresh_scout_journey
         int abstract_entries = 0;
         int samples = 0;
         int reloads = 0;
+
+        void track_generated_magazine_custody() {
+            track_safety_magazines = true;
+        }
 
         void start( const bool cannibal, const bool stay_at_source = false,
                     const bool conceal_avatar = false, const bool unarmed_encounter = false,
@@ -71556,6 +71614,22 @@ class r067_fresh_scout_journey
                 item token( itype_id( "rock" ) );
                 token.set_var( "r067_fresh_cargo", std::to_string( id.get_value() ) );
                 cargo_uids[id] = actor->i_add( token )->uid().get_value();
+                if( track_safety_magazines ) {
+                    for( const auto &[value, path] : r067_native_owned_item_paths( *actor ) ) {
+                        if( !value->is_magazine() ) {
+                            continue;
+                        }
+                        const auto uid = value->uid().get_value();
+                        const std::string tag = "r067_safety_magazine_" + std::to_string( uid );
+                        // The actor is mutable; the traversal exposes const pointers
+                        // so its inventory cannot be structurally changed here.
+                        const_cast<item *>( value )->set_var( tag, std::to_string( id.get_value() ) );
+                        native_safety_magazines[id].push_back( {
+                            { value->typeId(), tag, uid, value->ammo_remaining(), std::nullopt, 0, false },
+                            item_tree( *value )
+                        } );
+                    }
+                }
                 cargo[id] = inventory( *actor );
                 const cata::event::data_type consumed_food_filter{
                     { "character", cata_variant( id ) },
@@ -72279,6 +72353,24 @@ class r067_fresh_scout_journey
                             }
                         }
                         REQUIRE( matches == 1 );
+                    }
+                }
+                for( auto &magazine : native_safety_magazines[id] ) {
+                    int carried = 0;
+                    for( const auto &[value, path] : r067_native_owned_item_paths( *actor ) ) {
+                        if( value->get_var( magazine.asset.tag ) == std::to_string( id.get_value() ) ) {
+                            REQUIRE( value->typeId() == magazine.asset.type );
+                            REQUIRE( value->ammo_remaining() == *magazine.asset.ammunition );
+                            REQUIRE( item_tree( *value ) == magazine.contents );
+                            ++carried;
+                        }
+                    }
+                    REQUIRE( carried <= 1 );
+                    if( carried == 0 ) {
+                        // Account only the same tagged Native item at its
+                        // witnessed destination, with its original contents.
+                        check_native_ground_custody( *actor, magazine.asset, &magazine.contents );
+                        current_items.insert( magazine.contents.begin(), magazine.contents.end() );
                     }
                 }
                 if( current_items != cargo.at( id ) ) {
@@ -77476,6 +77568,7 @@ TEST_CASE( "allocated scout safety distinguishes present threats from departed n
     const bool cannibal = GENERATE( false, true );
     CAPTURE( cannibal );
     r067_fresh_scout_journey journey;
+    journey.track_generated_magazine_custody();
     journey.start( cannibal, false, true );
     journey.reach_watch();
     journey.reach_loaded_watch();
@@ -77574,10 +77667,18 @@ TEST_CASE( "allocated scout safety distinguishes present threats from departed n
         REQUIRE( observer->faction_alarm_requires_response() );
         CHECK( reason == "received_alarm" );
         const auto assessment = r067_return_record_bytes( journey.site().active_outing.assessment );
+        std::vector<std::string> observations_before;
+        for( const auto &observation : journey.site().active_outing.observations ) {
+            observations_before.push_back( serialize_sortie_observation( observation ) );
+        }
         advance_live_bandit_local_scout_assessments_for_test();
         REQUIRE( journey.site().active_outing.phase == scout_phase::observing );
         REQUIRE_FALSE( journey.site().active_outing.assessment.readiness_latched );
-        REQUIRE( journey.site().active_outing.observations.empty() );
+        REQUIRE( journey.site().active_outing.observations.size() == observations_before.size() );
+        for( std::size_t i = 0; i < observations_before.size(); ++i ) {
+            CHECK( serialize_sortie_observation( journey.site().active_outing.observations[i] ) ==
+                   observations_before[i] );
+        }
         REQUIRE( journey.site().active_outing.assessment.interruption );
         REQUIRE( journey.site().active_outing.assessment.interruption->pending() );
         INFO( "before received-warning assessment=" << assessment );
@@ -80176,6 +80277,7 @@ TEST_CASE( "authenticated frontier motor and retained consumed order reach the o
     const auto old_turn = calendar::turn;
     const auto old_start = calendar::start_of_cataclysm;
     const auto old_game_start = calendar::start_of_game;
+    const auto old_player = get_avatar().pos_abs();
     const auto clear_imported = []() {
         clear_npcs();
         for( int id : { 4, 5 } ) {
@@ -80188,6 +80290,8 @@ TEST_CASE( "authenticated frontier motor and retained consumed order reach the o
     clear_imported();
     on_out_of_scope restore( [&]() {
         clear_imported();
+        g->place_player_overmap( project_to<coords::omt>( old_player ), false );
+        get_avatar().setpos( old_player, false );
         overmap_buffer.global_state.bandit_live_world = old_world;
         calendar::turn = old_turn;
         calendar::start_of_cataclysm = old_start;
@@ -80207,6 +80311,11 @@ TEST_CASE( "authenticated frontier motor and retained consumed order reach the o
     calendar::turn = time_point::from_turn( provenance.get_int( "turn" ) );
     calendar::start_of_cataclysm = time_point::from_turn( provenance.get_int( "calendar_start" ) );
     calendar::start_of_game = time_point::from_turn( provenance.get_int( "game_start" ) );
+    // Keep the retained party within its real activation range, but outside
+    // the loaded bubble, so ordinary overmap movement owns the return.
+    const tripoint_abs_omt activation_view( 145, 149, 0 );
+    g->place_player_overmap( activation_view, false );
+    get_avatar().setpos( project_to<coords::ms>( activation_view ) + point( SEEX, SEEY ), false );
     std::vector<std::pair<tripoint_abs_omt, oter_id>> old_terrain;
     for( JsonObject tile : fixture.get_array( "terrain" ) ) {
         tripoint_abs_omt position;
@@ -80243,6 +80352,7 @@ TEST_CASE( "authenticated frontier motor and retained consumed order reach the o
         auto actor = overmap_buffer.find_npc( id );
         REQUIRE( actor );
         REQUIRE_FALSE( actor->is_active() );
+        REQUIRE( rl_dist( actor->pos_abs_omt(), get_avatar().pos_abs_omt() ) <= 40 );
         REQUIRE( actor->pos_abs_omt() == target );
         REQUIRE( actor->goal == npc::no_goal_point );
         REQUIRE( actor->mission == NPC_MISSION_GUARD );
