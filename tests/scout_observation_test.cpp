@@ -3604,6 +3604,7 @@ TEST_CASE( "active structural scouts separate coarse hostile optics from real da
            "[scout_observation][bandit][npc]" )
 {
     const bool cannibal = GENERATE( false, true );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
     const time_point old_turn = calendar::turn;
     const tripoint_abs_ms old_avatar_position = get_avatar().pos_abs();
     const bandit_live_world::world_state old_world =
@@ -3746,25 +3747,30 @@ TEST_CASE( "active structural scouts separate coarse hostile optics from real da
         REQUIRE( observer.faction_alarm->received_attack.value_or( false ) );
         REQUIRE( observer.faction_alarm_requires_response() );
 
-        get_avatar().setpos( here, tripoint_bub_ms( 112, 66, 0 ), false );
-        monster *unseen_hostile = g->place_critter_at( mtype_id( "mon_zombie" ),
-                                  tripoint_bub_ms( 20, 66, 0 ) );
-        REQUIRE( unseen_hostile );
-        unseen_hostile->anger = 100;
-        unseen_hostile->setpos( here.get_abs( tripoint_bub_ms( -8, 66, 0 ) ) );
-        REQUIRE_FALSE( here.inbounds( unseen_hostile->pos_abs() ) );
-        REQUIRE( rl_dist( observer.pos_abs(), unseen_hostile->pos_abs() ) <= MAX_VIEW_DISTANCE );
-        scout_observation::site_reader unknown_optics;
-        const scout_observation::visibility_read unknown = unknown_optics.read(
-                    observer, observer.pos_abs(), unseen_hostile->pos_abs() );
-        INFO( unknown.reason );
-        CHECK_FALSE( unknown.known );
-        CHECK( unknown_optics.perceived_threats( observer ).empty() );
+        get_avatar().setpos( here, tripoint_bub_ms( 60, 66, 0 ), false );
+        scout_observation::site_reader current_optics;
+        // The earlier real attacker is gone; its received warning remains.
+        // Missing geometry is covered by the dedicated unavailable-geometry section.
+        CHECK( current_optics.perceived_threats( observer ).empty() );
         CHECK( observer.faction_alarm_requires_response() );
-        CHECK_FALSE( unknown_optics.watching_member( active_site, observer ) );
-        CHECK( unknown_optics.read_character( observer, get_avatar() ).visible );
-        CHECK( unknown_optics.read_signal( observer, observer.pos_abs(), get_avatar().pos_abs(),
-        { get_avatar().pos_abs_omt() } ).visible );
+        CHECK_FALSE( current_optics.watching_member( active_site, observer ) );
+        // A native bat hit can knock the scout down. Check that gate, then
+        // model recovery for the separate post-injury sight checks; the injury
+        // and received alarm remain in place.
+        if( observer.has_effect( efftype_id( "downed" ) ) ) {
+            CHECK_FALSE( current_optics.read_character( observer, get_avatar() ).visible );
+            observer.remove_effect( efftype_id( "downed" ) );
+        }
+        const auto player_read = current_optics.read_character( observer, get_avatar() );
+        const auto signal_read = current_optics.read_signal( observer, observer.pos_abs(),
+                                 get_avatar().pos_abs(),
+        { get_avatar().pos_abs_omt() } );
+        INFO( player_read.reason );
+        INFO( signal_read.reason );
+        CHECK( player_read.known );
+        CHECK( signal_read.known );
+        CHECK( player_read.visible );
+        CHECK( signal_read.visible );
 
         std::ostringstream bytes;
         JsonOut writer( bytes );
@@ -3776,8 +3782,8 @@ TEST_CASE( "active structural scouts separate coarse hostile optics from real da
         CHECK( bandit_live_world::active_operation_duty_site_for( world, loaded.getID() ) ==
                &active_site );
         CHECK( loaded.faction_alarm_requires_response() );
-        CHECK( unknown_optics.read_character( loaded, get_avatar() ).visible );
-        CHECK( unknown_optics.read_signal( loaded, loaded.pos_abs(), get_avatar().pos_abs(),
+        CHECK( current_optics.read_character( loaded, get_avatar() ).visible );
+        CHECK( current_optics.read_signal( loaded, loaded.pos_abs(), get_avatar().pos_abs(),
         { get_avatar().pos_abs_omt() } ).visible );
         SECTION( "incapacitated or field-blocked partner retains actual perceived threats" ) {
             const bool field = GENERATE( false, true );

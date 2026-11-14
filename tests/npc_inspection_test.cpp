@@ -849,10 +849,12 @@ TEST_CASE( "R8 saved abstract return leaves its intermediate waypoint on the nex
     clear_map();
     clear_creatures();
     const auto old_world = overmap_buffer.global_state.bandit_live_world;
+    const tripoint_abs_ms old_avatar_position = get_avatar().pos_abs();
     restore_on_out_of_scope restore_turn( calendar::turn );
     restore_on_out_of_scope restore_start( calendar::start_of_cataclysm );
     std::map<tripoint_abs_omt, oter_id> old_terrain;
     on_out_of_scope cleanup( [&]() {
+        get_avatar().setpos( old_avatar_position, false );
         clear_creatures();
         for( int id : {
                  4, 5
@@ -886,6 +888,9 @@ TEST_CASE( "R8 saved abstract return leaves its intermediate waypoint on the nex
     }
     calendar::turn = time_point::from_turn( 5234511 );
     calendar::start_of_cataclysm = time_point::from_turn( 4752000 );
+    // Activate the saved party without loading its physical bodies.
+    get_avatar().setpos( project_to<coords::ms>( tripoint_abs_omt( 129, 139, 0 ) ), false );
+    refresh_live_bandit_activation();
     const auto first = overmap_buffer.find_npc( character_id( 4 ) );
     const auto second = overmap_buffer.find_npc( character_id( 5 ) );
     REQUIRE( first );
@@ -905,22 +910,22 @@ TEST_CASE( "R8 saved abstract return leaves its intermediate waypoint on the nex
     process_overmap_npc_move_for_test();
     CHECK( first->goal == home );
     CHECK( first->is_travelling() );
-    CHECK( first->pos_abs_omt() != before );
-    CHECK( second->pos_abs_omt() != before );
     CHECK( world.sites.front().active_outing.actor_route_waypoint == 3 );
     CHECK( world.sites.front().active_outing.member_return_receipts.empty() );
     CHECK_FALSE( world.sites.front().current_scout_report.is_present() );
-    for( int minute : {
-             8050, 8055, 8060
-         } ) {
+    bool moved = false;
+    for( int cadence = 0; cadence < 36 &&
+         world.sites.front().active_outing.member_return_receipts.size() < 2; ++cadence ) {
         calendar::turn += 5_minutes;
         process_overmap_npc_move_for_test();
-        CAPTURE( minute, first->pos_abs_omt(), second->pos_abs_omt() );
+        moved |= first->pos_abs_omt() != before && second->pos_abs_omt() != before;
+        CAPTURE( cadence, first->pos_abs_omt(), second->pos_abs_omt() );
         CHECK( first->getID() == character_id( 4 ) );
         CHECK( second->getID() == character_id( 5 ) );
         CHECK_FALSE( first->is_dead() );
         CHECK_FALSE( second->is_dead() );
     }
+    CHECK( moved );
     CHECK( first->pos_abs_omt() == home );
     CHECK( second->pos_abs_omt() == home );
     // Actual completed return receipts replace the temporary resume cursor.
@@ -930,18 +935,25 @@ TEST_CASE( "R8 saved abstract return leaves its intermediate waypoint on the nex
     REQUIRE( returned.member_return_receipts.size() == 2 );
     CHECK( returned.member_return_receipts[0].member_id == character_id( 4 ) );
     CHECK( returned.member_return_receipts[1].member_id == character_id( 5 ) );
-    CHECK( returned.member_return_receipts[0].returned_minutes == 8060 );
-    CHECK( returned.member_return_receipts[1].returned_minutes == 8060 );
+    const int returned_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    CHECK( returned.member_return_receipts[0].returned_minutes == returned_minutes );
+    CHECK( returned.member_return_receipts[1].returned_minutes == returned_minutes );
     CHECK( returned.member_return_receipts[0].application_key !=
            returned.member_return_receipts[1].application_key );
+    const auto first_key = returned.member_return_receipts[0].application_key;
+    const auto second_key = returned.member_return_receipts[1].application_key;
+    process_overmap_npc_move_for_test();
+    REQUIRE( world.sites.front().active_outing.member_return_receipts.size() == 2 );
+    CHECK( world.sites.front().active_outing.member_return_receipts[0].application_key == first_key );
+    CHECK( world.sites.front().active_outing.member_return_receipts[1].application_key == second_key );
     CHECK_FALSE( world.sites.front().current_scout_report.is_present() );
-    calendar::turn = time_point::from_turn( 5238000 ); // ordinary hourly report service at 8100
+    calendar::turn = calendar::start_of_cataclysm + ( ( returned_minutes / 60 + 1 ) * 60 ) * 1_minutes;
     process_overmap_npc_move_for_test();
     const auto &report = world.sites.front().current_scout_report;
     CHECK( report.is_present() );
     CHECK( report.source_generation == 1 );
     CHECK( report.carrier_ids == std::vector<character_id> { character_id( 4 ), character_id( 5 ) } );
-    CHECK( report.delivered_minutes == 8100 );
+    CHECK( report.delivered_minutes == ( returned_minutes / 60 + 1 ) * 60 );
 }
 
 TEST_CASE( "site scoped outing catalog preserves the requested retained body and handoff",

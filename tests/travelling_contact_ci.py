@@ -14,6 +14,8 @@ SELECTIONS = (
     "hostile search route work across paid blocked turns and opening",
     "robbery visit fixture uses a valid clock after a retained world",
     "bandit_structural_outing_planner_selects_forest_and_town_jobs",
+    "R8 saved abstract return leaves its intermediate waypoint on the next motor cadence",
+    "active structural scouts separate coarse hostile optics from real danger",
 )
 PASS = re.compile(r"^All tests passed \(([1-9][0-9]*) assertions? in 1 test case\)$", re.MULTILINE)
 
