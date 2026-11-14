@@ -23506,7 +23506,9 @@ void overmap_npc_move()
         }
         const tripoint_abs_omt destination = outing.shared_route[destination_index];
         for( const auto &member : *bodies ) {
-            if( identity_held_members.count( member->getID() ) ||
+            const bool waiting_for_watch_partner = member->pos_abs_omt() == destination &&
+                                                   member->omt_path.empty() && pending_abstract_scout_arrival_order( *member );
+            if( ( identity_held_members.count( member->getID() ) && !waiting_for_watch_partner ) ||
                 committed_homeward_member_ids.count( member->getID() ) ||
                 blocked_ingress_members.count( member->getID() ) ||
                 body_catch_up_blocked.count( member->getID() ) ||

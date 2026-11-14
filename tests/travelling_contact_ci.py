@@ -14,6 +14,13 @@ SELECTIONS = (
     "hostile search route work across paid blocked turns and opening",
     "robbery visit fixture uses a valid clock after a retained world",
     "bandit_structural_outing_planner_selects_forest_and_town_jobs",
+    "actual watch motor retains only its unconsumed pair order",
+    "actual dispatched faction party receives attack alert and retains native flight",
+    "authenticated scouts disengage homeward without dismissing a current alert",
+    "assessment return transfers preserve the deadline clock and real physical progress",
+    "bandit_road_opportunity_is_physically_scouted_without_fabricating_bounty",
+    "bandit_structural_outing_arrival_is_once_only_after_reload",
+    "bandit_structural_outing_consumes_bounty_on_arrival_after_interest_survives",
     "R8 saved abstract return leaves its intermediate waypoint on the next motor cadence",
     "active structural scouts separate coarse hostile optics from real danger",
 )

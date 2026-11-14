@@ -590,9 +590,11 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
     clear_map();
     clear_creatures();
     const auto old_world = overmap_buffer.global_state.bandit_live_world;
+    const auto old_avatar_position = get_avatar().pos_abs();
     restore_on_out_of_scope restore_turn( calendar::turn );
     restore_on_out_of_scope restore_start( calendar::start_of_cataclysm );
     on_out_of_scope cleanup( [&]() {
+        get_avatar().setpos( old_avatar_position, false );
         clear_creatures();
         for( int id : {
                  4, 5
@@ -610,9 +612,20 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
     bandit_live_world::site_record site;
     site.deserialize( fixture.get_object( "site" ) );
     world.sites.push_back( site );
+    calendar::turn = time_point::from_turn( 5301599 );
+    calendar::start_of_cataclysm = calendar::turn - 9159_minutes;
     for( JsonObject record : fixture.get_array( "actors" ) ) {
+        record.allow_omitted_members();
         auto actor = make_shared_fast<npc>();
-        actor->deserialize( record );
+        // Declared initial bodies for this motor/ownership control, not a
+        // rewind of retained physiology from an unrelated saved turn.
+        const character_id id( record.get_int( "id" ) );
+        const auto *member = site.find_member( id );
+        REQUIRE( member );
+        actor->load_npc_template( npc_template_id( member->npc_template_id ) );
+        actor->setID( id, true );
+        actor->set_fac( faction_id( "hells_raiders" ) );
+        REQUIRE( actor->get_last_updated() == calendar::turn );
         actor->spawn_at_precise( project_to<coords::ms>( site.active_outing.shared_route[1] ) +
                                  point( actor->getID().get_value(), 12 ) );
         actor->goal = site.active_outing.selected_watch_omt;
@@ -620,8 +633,8 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
         actor->set_mission( NPC_MISSION_TRAVELLING );
         overmap_buffer.insert_npc( actor );
     }
-    calendar::turn = time_point::from_turn( 5301599 );
-    calendar::start_of_cataclysm = calendar::turn - 9159_minutes;
+    get_avatar().setpos( project_to<coords::ms>( tripoint_abs_omt( 129, 139, 0 ) ), false );
+    refresh_live_bandit_activation();
     auto first = overmap_buffer.find_npc( character_id( 4 ) );
     auto second = overmap_buffer.find_npc( character_id( 5 ) );
     const auto watch = first->goal;
@@ -631,11 +644,22 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
         world.sites.front().serialize( json );
         return out.str();
     };
+    const auto now_minutes = [&]() {
+        return to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    };
+    const auto service_until = [&]( const auto & complete ) {
+        for( int cadence = 0; cadence < 24 && !complete(); ++cadence ) {
+            calendar::turn += 5_minutes;
+            process_overmap_npc_move_for_test();
+        }
+        REQUIRE( complete() );
+    };
     SECTION( "partial completion reload then second motor commits once and returns" ) {
         first->travel_overmap( watch );
         CHECK( first->goal == watch );
         CHECK( first->is_travelling() );
         CHECK( first->omt_path.empty() );
+        const auto arrived_position = first->pos_abs();
         const auto first_guard = first->guard_pos;
         REQUIRE( live_bandit_scout_watch_order_pending( *first ) );
         const auto arrived_bytes = r067_diagnostic_actor_bytes( *first );
@@ -663,13 +687,16 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
         first = overmap_buffer.find_npc( character_id( 4 ) );
         second = overmap_buffer.find_npc( character_id( 5 ) );
         REQUIRE( live_bandit_scout_watch_order_pending( *first ) );
-        process_overmap_npc_move_for_test();
+        service_until( [&]() {
+            return second->pos_abs_omt() == watch;
+        } );
         REQUIRE( second->pos_abs_omt() == watch );
+        CHECK( first->pos_abs() == arrived_position );
         prepare_live_bandit_abstract_scout_travel_for_test();
         auto &outing = world.sites.front().active_outing;
         CHECK( outing.waypoint_index == 2 );
         CHECK( outing.actor_route_waypoint == 2 );
-        CHECK( outing.assessment.observation_started_minutes == 9159 );
+        CHECK( outing.assessment.observation_started_minutes == now_minutes() );
         CHECK( first->goal == npc::no_goal_point );
         CHECK( second->goal == npc::no_goal_point );
         CHECK( first->mission == NPC_MISSION_GUARD );
@@ -684,14 +711,17 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
         const auto &current = world.sites.front().active_outing;
         CHECK( bandit_live_world::advance_structural_scout_assessment(
                    world.sites.front(), current.activity_id, current.generation,
-                   current.target_lead_revision, 9640 ) != bandit_live_world::scout_assessment_result::rejected );
+                   current.target_lead_revision, now_minutes() ) !=
+               bandit_live_world::scout_assessment_result::rejected );
         CHECK( world.sites.front().active_outing.phase ==
                bandit_live_world::scout_phase::returning_report );
         prepare_live_bandit_abstract_scout_travel_for_test();
         REQUIRE( first->is_travelling() );
         REQUIRE_FALSE( first->omt_path.empty() );
         const auto before = first->pos_abs_omt();
-        process_overmap_npc_move_for_test();
+        service_until( [&]() {
+            return first->pos_abs_omt() != before;
+        } );
         CHECK( first->pos_abs_omt() != before );
         CHECK( first->getID() == character_id( 4 ) );
         CHECK( second->getID() == character_id( 5 ) );
@@ -732,6 +762,7 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
         second->remove_effect( efftype_id( "narcosis" ) );
         second->remove_effect( efftype_id( "downed" ) );
         second->set_attitude( NPCATT_NULL );
+        second->remove_effect( efftype_id( "npc_flee_player" ) );
         CAPTURE( first->pos_abs().to_string(), second->pos_abs().to_string(), first->goal.to_string(),
                  second->goal.to_string() );
         prepare_live_bandit_abstract_scout_travel_for_test();
@@ -739,24 +770,31 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
     }
     SECTION( "partial pair survival interruption does not move the unready member" ) {
         first->travel_overmap( watch );
-        second->set_attitude( NPCATT_FLEE );
+        second->add_effect( efftype_id( "narcosis" ), 1_hours );
         const auto second_position = second->pos_abs();
+        const auto first_position = first->pos_abs();
+        const auto active_before = world.sites.front().active_outing.activation.active_turns;
+        calendar::turn += 5_minutes;
         process_overmap_npc_move_for_test();
+        CHECK( world.sites.front().active_outing.activation.active_turns > active_before );
+        CHECK( first->pos_abs() == first_position );
         CHECK( second->pos_abs() == second_position );
-        CHECK( ( second->get_attitude() == NPCATT_FLEE ||
-                 second->get_attitude() == NPCATT_FLEE_TEMP ) );
+        CHECK( second->has_effect( efftype_id( "narcosis" ) ) );
         CHECK( first->goal == watch );
         CHECK( world.sites.front().active_outing.assessment.observation_started_minutes == -1 );
-        second->set_attitude( NPCATT_NULL );
-        process_overmap_npc_move_for_test();
+        second->remove_effect( efftype_id( "narcosis" ) );
+        service_until( [&]() {
+            return second->pos_abs_omt() == watch;
+        } );
         CHECK( second->pos_abs_omt() == watch );
-        CHECK( world.sites.front().active_outing.assessment.observation_started_minutes == 9159 );
+        CHECK( world.sites.front().active_outing.assessment.observation_started_minutes == now_minutes() );
     }
     SECTION( "release abort casualty and invalid ownership clean the pending destination" ) {
         first->travel_overmap( watch );
         REQUIRE( first->goal == watch );
         const int invalidation = GENERATE( 0, 1, 2, 3, 4, 5, 6, 7, 8 );
         CAPTURE( invalidation );
+        const auto second_position = second->pos_abs();
         auto &outing = world.sites.front().active_outing;
         switch( invalidation ) {
             case 0:
@@ -801,20 +839,29 @@ TEST_CASE( "actual watch motor retains only its unconsumed pair order",
             }
         }
         CHECK_FALSE( live_bandit_scout_watch_order_pending( *first ) );
+        calendar::turn += 1_turns;
         process_overmap_npc_move_for_test();
-        CHECK( first->goal != watch );
         if( invalidation == 2 ) {
             // Existing casualty service may immediately give the survivor a
             // real homeward route; cleanup must not erase that new order.
             CHECK( first->is_travelling() );
             CHECK_FALSE( first->omt_path.empty() );
             CHECK( world.sites.front().active_outing.casualty_ids.size() == 1 );
+        } else if( invalidation == 7 ) {
+            CHECK( second->goal == watch );
+            CHECK( live_bandit_scout_watch_order_pending( *first ) );
+        } else if( invalidation == 3 ) {
+            // This owner cannot erase a foreign projection's order. It also
+            // cannot use that order to certify this pair's watch arrival.
+            CHECK( first->get_bandit_live_world_projection_lease().site_id == "foreign" );
+            CHECK( first->pos_abs_omt() == watch );
+            CHECK( second->pos_abs() == second_position );
         } else {
+            CHECK( first->goal != watch );
             CHECK( first->omt_path.empty() );
             CHECK( first->mission == NPC_MISSION_GUARD );
         }
-        CHECK( world.sites.front().active_outing.assessment.observation_started_minutes ==
-               ( invalidation == 7 ? 9159 : -1 ) );
+        CHECK( world.sites.front().active_outing.assessment.observation_started_minutes == -1 );
         // A wrong pending partner goal can be re-assigned by the real current
         // route writer, followed by actual motor completion. That is progress,
         // not acceptance of the old wrong order.

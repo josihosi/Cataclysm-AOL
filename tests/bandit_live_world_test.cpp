@@ -13868,12 +13868,23 @@ TEST_CASE( "bandit_road_opportunity_is_physically_scouted_without_fabricating_bo
     site = &world.sites.front();
     CHECK( site->active_outing.phase == bandit_live_world::scout_phase::returning_home );
 
+    const auto returning_ids = site->active_outing.member_ids;
+    REQUIRE( returning_ids.size() == 2 );
+    for( const auto id : returning_ids ) {
+        REQUIRE( site->find_member( id ) );
+        CHECK( site->find_member( id )->state == bandit_live_world::member_state::outbound );
+    }
     const bandit_live_world::structural_outing_result returned =
         bandit_live_world::advance_structural_bounty_outings( world, 240,
     []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
         return bandit_live_world::structural_threat_read{};
     } );
-    CHECK( returned.members_returned == 0 );
+    CHECK( returned.members_returned == static_cast<int>( returning_ids.size() ) );
+    for( const auto id : returning_ids ) {
+        CHECK( site->find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+    CHECK( bandit_live_world::advance_structural_bounty_outings( world, 240, {} ).members_returned ==
+           0 );
     CHECK( site->active_outing.activity_id.empty() );
     CHECK( site->returned_cargo_stock.supply_units == 0 );
     CHECK( site->returned_cargo_stock.trade_value == 0 );
@@ -21975,12 +21986,23 @@ TEST_CASE( "bandit_structural_outing_consumes_bounty_on_arrival_after_interest_s
     CHECK( site.find_member( character_id( 14600 ) )->state ==
            bandit_live_world::member_state::outbound );
 
+    const auto returning_ids = site.active_outing.member_ids;
+    REQUIRE( returning_ids.size() == 2 );
+    for( const auto id : returning_ids ) {
+        REQUIRE( site.find_member( id ) );
+        CHECK( site.find_member( id )->state == bandit_live_world::member_state::outbound );
+    }
     const bandit_live_world::structural_outing_result returned =
         bandit_live_world::advance_structural_bounty_outings( world, 240,
     []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
         return bandit_live_world::structural_threat_read{};
     } );
-    CHECK( returned.members_returned == 0 );
+    CHECK( returned.members_returned == static_cast<int>( returning_ids.size() ) );
+    for( const auto id : returning_ids ) {
+        CHECK( site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+    CHECK( bandit_live_world::advance_structural_bounty_outings( world, 240, {} ).members_returned ==
+           0 );
     CHECK( site.active_outing.activity_id.empty() );
     CHECK( site.active_outing.member_ids.empty() );
     CHECK( site.find_member( character_id( 14600 ) )->state ==
@@ -22104,12 +22126,19 @@ TEST_CASE( "bandit_structural_outing_arrival_is_once_only_after_reload",
     bandit_live_world::world_state returning_home = round_trip_world( after_stalk );
     CHECK( returning_home.sites.front().active_outing.shared_route == plan.shared_route );
     CHECK( returning_home.sites.front().active_outing.waypoint_index == 2 );
+    const auto returning_ids = returning_home.sites.front().active_outing.member_ids;
+    REQUIRE( returning_ids.size() == 2 );
+    for( const auto id : returning_ids ) {
+        REQUIRE( returning_home.sites.front().find_member( id ) );
+        CHECK( returning_home.sites.front().find_member( id )->state ==
+               bandit_live_world::member_state::outbound );
+    }
     const bandit_live_world::structural_outing_result returned =
         bandit_live_world::advance_structural_bounty_outings( returning_home, 240,
     []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
         return bandit_live_world::structural_threat_read{};
     } );
-    CHECK( returned.members_returned == 0 ); // Physical receipts already transitioned both members.
+    CHECK( returned.members_returned == static_cast<int>( returning_ids.size() ) );
     CHECK( returning_home.sites.front().active_outing.activity_id.empty() );
     CHECK( returning_home.sites.front().active_outing.member_ids.empty() );
     CHECK( returning_home.sites.front().find_member( character_id( 14900 ) )->state ==
@@ -22123,6 +22152,7 @@ TEST_CASE( "bandit_structural_outing_arrival_is_once_only_after_reload",
     } );
     CHECK( repeat.active_outings_considered == 0 );
     CHECK( repeat.arrivals_processed == 0 );
+    CHECK( repeat.members_returned == 0 );
     CHECK( completed_site.intelligence_map.find_lead( lead_id )->times_harvested == 1 );
 
     const std::vector<std::pair<tripoint_abs_omt, std::string>> terrain = {
@@ -55055,7 +55085,11 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     auto &initial_world = overmap_buffer.global_state.bandit_live_world;
     const auto selected_site = scene.site();
     initial_world.sites = { selected_site };
+    calendar::turn = calendar::start_of_cataclysm + 7800_minutes;
     scene.site().active_outing = {};
+    // The declared pre-dispatch scene predates the saved activation clock.
+    // Native activation will enroll these newly constructed home bodies.
+    scene.site().home_activation = {};
     for( auto &lead : scene.site().intelligence_map.leads ) {
         lead.last_checked_minutes = -1;
         lead.last_scouted_minutes = -1;
@@ -55065,19 +55099,7 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     for( auto &member : scene.site().members ) {
         member.state = bandit_live_world::member_state::at_home;
         member.wounded_or_unready = false;
-        if( member.npc_id == character_id( 4 ) || member.npc_id == character_id( 5 ) ) {
-            auto &actor = scene.actor( member.npc_id.get_value() );
-            g->remove_npc( member.npc_id );
-            actor.spawn_at_precise( member.home_spawn_tile );
-            actor.clear_bandit_live_world_projection_lease();
-            actor.goal = npc::no_goal_point;
-            actor.omt_path.clear();
-            actor.set_mission( NPC_MISSION_NULL );
-            actor.remove_effect( efftype_id( "sleep" ) );
-            actor.remove_effect( efftype_id( "lying_down" ) );
-            actor.set_sleepiness( 0 );
-            actor.set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
-        }
+
     }
     // This is a declared pre-dispatch test condition, not a replay of the
     // historical final save. Supply, roster and scheduler begin at the known
@@ -55095,10 +55117,15 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     reserve.home_spawn_tile += point( 1, 0 );
     scene.site().members.push_back( reserve );
     scene.site().spawn_tiles.push_back( { reserve.home_spawn_tile, 1 } );
-    ++scene.site().living_total;
+    scene.site().living_total = static_cast<int>( scene.site().members.size() );
+    // New declared home bodies have this start, not the saved future clocks.
     for( int id : {
-             6, 7
+             4, 5, 6, 7
          } ) {
+        g->remove_npc( character_id( id ) );
+        while( overmap_buffer.find_npc( character_id( id ) ) ) {
+            overmap_buffer.remove_npc( character_id( id ) );
+        }
         auto actor = make_shared_fast<npc>();
         actor->load_npc_template( npc_template_id( cannibal ? "cannibal_hunter" : "bandit" ) );
         actor->setID( character_id( id ), true );
@@ -55107,7 +55134,9 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
             return value.npc_id == character_id( id );
         } );
         actor->spawn_at_precise( member->home_spawn_tile );
+        actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
         actor->set_sleepiness( 0 );
+        REQUIRE( actor->get_last_updated() == calendar::turn );
         overmap_buffer.insert_npc( actor );
     }
     scene.site().supply_last_update_minutes = 7800;
@@ -55165,6 +55194,15 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     const auto membership = scene.site().active_outing.member_ids;
     const std::string operation = scene.site().active_outing.activity_id;
     const int generation = scene.site().active_outing.generation;
+    const auto alarm_bytes = []( const std::optional<npc_alarm> &alarm ) {
+        std::ostringstream bytes;
+        JsonOut out( bytes );
+        if( alarm ) {
+            alarm->serialize( out );
+        }
+        return bytes.str();
+    };
+    const auto previous_recipient_alarm = alarm_bytes( recipient.faction_alarm );
     recipient.set_sleepiness( 400 );
     recipient.fall_asleep( 1_hours );
     if( condition == "narcosis" ) {
@@ -55207,6 +55245,7 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     player_add_headlamp();
     item attack_weapon( itype_id( "fire_ax" ) );
     REQUIRE( attacker.wield( attack_weapon ) );
+    const auto attack_position = source.pos_abs();
     const int hp = source.get_hp();
     for( int hit = 0; hit < 5 && source.get_hp() == hp; ++hit ) {
         attacker.set_moves( 100 );
@@ -55214,12 +55253,21 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     }
     REQUIRE( source.get_hp() < hp );
     REQUIRE_FALSE( source.is_dead() );
+    REQUIRE( source.faction_alarm );
+    REQUIRE( source.faction_alarm->received_attack.value_or( false ) );
+    REQUIRE( source.faction_alarm->incident == attack_position );
+    const auto attack_alarm = alarm_bytes( source.faction_alarm );
+    REQUIRE( attack_alarm != previous_recipient_alarm );
     // Deliver this turn's attack alert before player movement consumes the
     // sound queue, as do_turn does before avatar sound handling.
     for( npc &actor : g->all_npcs() ) {
         sounds::process_sound_markers( &actor );
     }
-    const bool attack_delivered = recipient.has_active_faction_alarm();
+    const auto heard_attack = [&]() {
+        return recipient.has_active_faction_alarm() &&
+               alarm_bytes( recipient.faction_alarm ) == attack_alarm;
+    };
+    const bool attack_delivered = heard_attack();
     // The attacker withdraws by actual local walking, leaving room for native
     // response/flight; no defender is relocated to manufacture progress.
     for( int step = 0; step < 4; ++step ) {
@@ -55293,7 +55341,7 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
                       << " same_source=" << ( &source == &scene.actor( 4 ) )
                       << " recipient_moves=" << recipient.get_moves() << '\n';
         }
-        delivered |= recipient.has_active_faction_alarm();
+        delivered |= heard_attack();
         physical_response |= recipient.pos_abs() != before_recipient;
         flight |= source.get_attitude() == NPCATT_FLEE_TEMP ||
                   source.has_effect( efftype_id( "npc_run_away" ) );
@@ -55310,7 +55358,8 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     CAPTURE( cannibal, condition, delivered, physical_response, flight, flight_motion,
              before_source, source.pos_abs(), recipient.pos_abs() );
     if( condition == "narcosis" ) {
-        CHECK_FALSE( delivered ); // Actual narcosis is deaf, not telepathic.
+        CHECK_FALSE( delivered ); // Actual narcosis cannot hear the new attack.
+        CHECK( alarm_bytes( recipient.faction_alarm ) == previous_recipient_alarm );
         CHECK( recipient.in_sleep_state() );
         CHECK( recipient.pos_abs() == before_recipient );
         return;
@@ -62279,7 +62328,7 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
     first.regen_ai_cache();
     second.regen_ai_cache();
     REQUIRE( first.has_active_faction_alarm() );
-    REQUIRE( first.faction_alarm_requires_response() );
+    CHECK_FALSE( first.faction_alarm_requires_response() );
     REQUIRE_FALSE( first.current_target() );
     // Native HIT_AND_RUN/IGNORE remains HOSTILE. The decision also needs an
     // actual retreating, passable route; these zero-cache values are not safety.
@@ -62296,6 +62345,23 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
         }
     }
     REQUIRE( saw_hostile_dog );
+    // A visible IGNORE animal is not an attack. The warning-specific route
+    // cases instead use genuine uncertainty about the retained incident.
+    // Other cases below establish their own current danger/incapacity.
+    if( mode != "incident_hazard" && mode != "combat" && mode != "adjacent_threat" &&
+        mode != "forced_sleep" && mode != "flight" && mode != "unavailable_source" ) {
+        const auto ray = line_to( first.pos_bub(), here.get_bub( incident ) );
+        REQUIRE( ray.size() > 4 );
+        for( const auto &point : here.points_in_radius( ray[ray.size() / 2], 1 ) ) {
+            REQUIRE( point != first.pos_bub() );
+            REQUIRE( point != second.pos_bub() );
+            here.ter_set( point, ter_id( "t_wall" ) );
+        }
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        REQUIRE_FALSE( first.sees( here, here.get_bub( incident ) ) );
+        REQUIRE_FALSE( second.sees( here, here.get_bub( incident ) ) );
+    }
     std::optional<tripoint_bub_ms> stale_next;
     std::optional<tripoint_bub_ms> later_hazard;
     const auto waypoint_target = [&]( const npc & member ) {
@@ -62420,6 +62486,7 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
         first.set_attitude( NPCATT_FLEE );
         second.set_attitude( NPCATT_FLEE );
     }
+    REQUIRE( first.faction_alarm_requires_response() );
     r067_reply_capture trace( "alarm-disengagement-" + mode, true, 5 );
     if( mode == "scheduler" || mode == "forced_sleep" ) {
         first.set_moves( 0 );
@@ -62455,7 +62522,9 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
         CHECK( first.is_travelling() );
         CHECK( first.has_active_faction_alarm() );
         CHECK( first.faction_alarm->until == until );
-        CHECK( first.faction_alarm_requires_response() );
+        if( !first.sees( here, here.get_bub( incident ) ) ) {
+            CHECK( first.faction_alarm_requires_response() );
+        }
         // Movement is not an assessment, return receipt or report.
         CHECK( scene.site().active_outing.assessment.observation_started_minutes == -1 );
         CHECK_FALSE( scene.site().current_scout_report.is_present() );
@@ -62497,19 +62566,42 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
             if( !first.path.empty() ) {
                 CHECK( first.path.front() == *later_hazard );
             }
-            const auto before_hazard = first.pos_abs();
             first.regen_ai_cache();
             first.set_moves( 100 );
             first.move();
-            CHECK( first.pos_abs() == before_hazard );
+            // Native survival may stop or take a safe detour. It must not
+            // execute the now-dangerous cached step.
+            CHECK( first.pos_bub() != *later_hazard );
+            CHECK_FALSE( first.sees_dangerous_field( first.pos_bub() ) );
             CHECK( first.faction_alarm->until == until );
         }
-    } else if( mode != "combat" && mode != "flight" && mode != "adjacent_threat" ) {
+    } else if( mode == "wrong_home" ) {
+        // A generic sound investigation is still allowed. The scout alarm
+        // helper cannot replace a foreign destination with an owned home step.
+        CHECK( first.goal != scene.site().anchor );
+        CHECK( second.goal != scene.site().anchor );
+        CHECK( first.has_active_faction_alarm() );
+    } else if( mode == "foreign_owner" ) {
+        CHECK( scene.site().active_outing.owner == bandit_live_world::simulation_owner::abstract );
+        CHECK_FALSE( bandit_live_world::read_active_covert_scout_homeward_member(
+                         overmap_buffer.global_state.bandit_live_world, first.getID() ) );
+        CHECK( first.has_active_faction_alarm() );
+    } else if( mode == "blocked" || mode == "forced_sleep" ) {
         CHECK( first.pos_abs() == first_position );
         CHECK( second.pos_abs() == second_position );
         if( mode == "forced_sleep" ) {
             CHECK( first.in_sleep_state() );
             CHECK( second.in_sleep_state() );
+        }
+    } else if( mode == "dog_ahead" || mode == "incident_hazard" ||
+               mode == "immediate_trap" || mode == "unavailable_source" ) {
+        // Rejecting the scout homeward override does not freeze ordinary
+        // investigation or survival. Its actual chosen step must remain safe.
+        CHECK_FALSE( first.sees_dangerous_field( first.pos_bub() ) );
+        CHECK_FALSE( second.sees_dangerous_field( second.pos_bub() ) );
+        if( mode == "immediate_trap" ) {
+            CHECK( here.tr_at( first.pos_bub() ).id != trap_str_id( "tr_beartrap" ) );
+            CHECK( here.tr_at( second.pos_bub() ).id != trap_str_id( "tr_beartrap" ) );
         }
     }
     raid_decision_trace::native_recorder().closeout();
@@ -62863,6 +62955,7 @@ TEST_CASE( "assessment return transfers preserve the deadline clock and real phy
         clock_outing.route_clock_travel_minutes = 0;
         clock_outing.route_clock_homeward_minutes = 0;
         clock_outing.route_clock_homeward_actual = true;
+        clock_outing.route_clock_speed = test_road_coarse_model().slowest_speed;
         clock_outing.missing_deadline_minutes = deadline + 360;
         REQUIRE( commit_local_pair_handoff( clock_site, handoff,
         []( const auto & ) {
@@ -62883,6 +62976,13 @@ TEST_CASE( "assessment return transfers preserve the deadline clock and real phy
         CHECK_FALSE( refresh_structural_coarse_homeward_clock( clock_site, *clock_cursor,
                      members, paths, now + 1, test_road_coarse_model() ) );
         CHECK( clock_site.active_outing.expected_return_minutes == deadline );
+        auto slower_site = clock_site;
+        auto slower_model = test_road_coarse_model();
+        --slower_model.slowest_speed;
+        const auto slower_cursor = current_external_simulation_cursor( slower_site );
+        REQUIRE( slower_cursor );
+        CHECK( refresh_structural_coarse_homeward_clock( slower_site, *slower_cursor,
+                members, paths, now + 1, slower_model ) );
         REQUIRE( commit_local_pair_handoff( *site, handoff,
         []( const auto & ) {
             return true;
