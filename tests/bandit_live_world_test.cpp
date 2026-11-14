@@ -14523,6 +14523,9 @@ TEST_CASE( "bandit_structural_outing_planner_selects_forest_and_town_jobs",
         site.anchor, tripoint_abs_omt( 13, 20, 0 ), town_omt, site.anchor
     } );
 
+    // The upsert replaces the site; a lead pointer obtained before it is stale.
+    forest = site.intelligence_map.find_lead( forest_id );
+    REQUIRE( forest != nullptr );
     bandit_live_world::camp_map_lead route_limit = *forest;
     route_limit.lead_id = "route-limit";
     route_limit.omt = tripoint_abs_omt( 19, 20, 0 );
@@ -55549,6 +55552,10 @@ struct r066_visit_scene {
         previous_turn( calendar::turn ), previous_player( get_avatar().pos_abs() ) {
         clear_map();
         clear_avatar();
+        // A prior retained-world fixture may leave a later calendar origin.
+        // Keep the declared report and visit times in that world's timeline.
+        set_time( std::max( { calendar::turn, calendar::start_of_cataclysm + 6_minutes,
+                              calendar::start_of_game } ) );
         set_time_to_day();
         target = get_avatar().pos_abs_omt() + point( unloaded ? 20 : 0, 0 );
         get_avatar().i_add( item( itype_id( "knife_combat" ), calendar::turn ) );
@@ -55752,6 +55759,40 @@ struct r066_visit_scene {
                 bandit_encounter_goods_pool_for_test( input, receiver ) );
     }
 };
+}
+
+TEST_CASE( "robbery visit fixture uses a valid clock after a retained world",
+           "[bandit_live_world][encounter_066][fixture_clock_067]" )
+{
+    const bool retained_world = GENERATE( false, true );
+    CAPTURE( retained_world );
+    restore_on_out_of_scope restore_turn( calendar::turn );
+    restore_on_out_of_scope restore_start( calendar::start_of_cataclysm );
+    restore_on_out_of_scope restore_game_start( calendar::start_of_game );
+    calendar::turn = calendar::turn_zero;
+    calendar::start_of_cataclysm = time_point::from_turn( retained_world ? 4752000 : 0 );
+    calendar::start_of_game = time_point::from_turn( retained_world ? 5212800 : 0 );
+    const auto expected_start = calendar::start_of_cataclysm;
+    const auto expected_game_start = calendar::start_of_game;
+    {
+        r066_visit_scene scene;
+        REQUIRE( scene.site().current_scout_report.is_present() );
+        CHECK( scene.site().current_scout_report.delivered_minutes >= 0 );
+        CHECK( scene.minutes() >= 6 );
+        CHECK( calendar::turn >= calendar::start_of_game );
+        auto valid = scene.site();
+        valid.camp_decision = {};
+        valid.acted_reports.clear();
+        auto invalid = valid;
+        invalid.current_scout_report.delivered_minutes = -2;
+        CHECK( bandit_live_world::accept_current_scout_report_for_assessment( valid ) ==
+               bandit_live_world::camp_decision_transition_result::applied );
+        CHECK( bandit_live_world::accept_current_scout_report_for_assessment( invalid ) ==
+               bandit_live_world::camp_decision_transition_result::rejected );
+    }
+    CHECK( calendar::turn == calendar::turn_zero );
+    CHECK( calendar::start_of_cataclysm == expected_start );
+    CHECK( calendar::start_of_game == expected_game_start );
 }
 
 TEST_CASE( "actual robbery sound wakes all ordinary local hearers before contact",
@@ -56255,6 +56296,7 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
     REQUIRE( surface.valid );
     item &gift = *get_map().i_at( tile ).begin();
     const auto type = gift.typeId();
+    const auto source_uid = gift.uid().get_value();
     trade_ui::trade_result_t response;
     response.traded = true;
     response.items_you = { { item_location( map_cursor( tile ), &gift ), 1 } };
@@ -56264,19 +56306,39 @@ TEST_CASE( "camp response pays from physical goods and resolves only once",
              scene.site().anchor ) );
     CHECK( get_map().i_at( tile ).empty() );
     CHECK_FALSE( scene.collector->has_amount( type, 1 ) );
-    tinymap home;
-    home.load( scene.site().anchor, false );
-    int deposited = 0;
-    for( const auto &tile : home.cast_to_map()->points_on_zlevel( scene.site().anchor.z() ) ) {
-        for( const auto &goods : home.cast_to_map()->i_at( tile ) ) {
-            deposited += goods.typeId() == type ? 1 : 0;
+    const auto deposited_source_count = [&]() {
+        tinymap home;
+        home.load( scene.site().anchor, false );
+        int deposited = 0;
+        for( const auto &position : home.cast_to_map()->points_on_zlevel( scene.site().anchor.z() ) ) {
+            for( const auto &goods : home.cast_to_map()->i_at( position ) ) {
+                if( !goods.has_var( "shakedown_source" ) ) {
+                    continue;
+                }
+                const auto receipt = json_loader::from_string( goods.get_var( "shakedown_source",
+                                     "" ) ).get_object();
+                receipt.allow_omitted_members();
+                for( const JsonObject source : receipt.get_array( "property" ) ) {
+                    source.allow_omitted_members();
+                    if( source.get_int( "source_uid" ) == source_uid ) {
+                        ++deposited;
+                        CHECK( goods.typeId() == type );
+                        CHECK( goods.get_owner() == scene.collector->get_fac_id() );
+                        CHECK( receipt.get_int( "receiver_id" ) == receiver.getID().get_value() );
+                        CHECK( receipt.get_int( "collector_id" ) == scene.collector->getID().get_value() );
+                        CHECK( receipt.get_int( "quantity" ) == 1 );
+                    }
+                }
+            }
         }
-    }
-    CHECK( deposited == 1 );
+        return deposited;
+    };
+    CHECK( deposited_source_count() == 1 );
     CHECK( r054_actor_bytes( get_avatar() ) == distant_inventory );
     const auto collector_paid = r054_actor_bytes( *scene.collector );
     CHECK_FALSE( npc_trading::complete_trade_to_stash( *scene.collector, receiver, response,
                  scene.site().anchor ) );
+    CHECK( deposited_source_count() == 1 );
     CHECK( r054_actor_bytes( *scene.collector ) == collector_paid );
     REQUIRE( commit_bandit_shakedown_payment_for_test( scene.site(), surface,
              surface.demanded_value ) );

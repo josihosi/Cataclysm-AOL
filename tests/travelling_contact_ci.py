@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the connected travelling contact and hostile route controls."""
+"""Run connected travelling controls and repaired fixture regressions."""
 
 import argparse
 from pathlib import Path
@@ -12,6 +12,8 @@ import tempfile
 SELECTIONS = (
     "ordinary loaded road contact callbacks conserve the NPC action budget",
     "hostile search route work across paid blocked turns and opening",
+    "robbery visit fixture uses a valid clock after a retained world",
+    "bandit_structural_outing_planner_selects_forest_and_town_jobs",
 )
 PASS = re.compile(r"^All tests passed \(([1-9][0-9]*) assertions? in 1 test case\)$", re.MULTILINE)
 
