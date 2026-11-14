@@ -55678,6 +55678,7 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     bool flight = false;
     bool flight_motion = false;
     std::ostringstream flight_state_trace;
+    std::ostringstream selected_action_trace;
     for( int tick = 0; tick < 30 && !source.is_dead() && !recipient.is_dead(); ++tick ) {
         for( npc &actor : g->all_npcs() ) {
             sounds::process_sound_markers( &actor );
@@ -55693,7 +55694,45 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
                                << " target_player=" << ( source.current_target() == &attacker )
                                << " danger=" << source.get_ai_danger() << " moves=" << source.get_moves();
         }
-        scene.step();
+        if( condition == "flight" && tick == 1 ) {
+            // Existing bounded in-memory debug messages expose the action at
+            // selection time. Restore the caller's debug state after one turn.
+            const bool debug_before = debug_mode;
+            const auto filters_before = debugmode::enabled_filters;
+            {
+                restore_on_out_of_scope<bool> restore_debug( debug_mode );
+                restore_on_out_of_scope<std::unordered_set<debugmode::debug_filter>>
+                        restore_filters( debugmode::enabled_filters );
+                debug_mode = true;
+                debugmode::enabled_filters.clear();
+                debugmode::enabled_filters.emplace( debugmode::DF_NPC );
+                const auto messages_before = Messages::recent_messages( 100 );
+                const auto trace_alarm = [&]( const char *when ) {
+                    const bool response = source.faction_alarm_requires_response();
+                    const bool visible = source.faction_alarm &&
+                                         here.inbounds( here.get_bub( source.faction_alarm->incident ) ) &&
+                                         source.sees( here, here.get_bub( source.faction_alarm->incident ) );
+                    selected_action_trace << when << " alarm_response=" << response
+                                          << " incident_visible=" << visible << '\n';
+                };
+                trace_alarm( "before" );
+                scene.step();
+                trace_alarm( "after" );
+                for( const auto &message : Messages::recent_messages( 100 ) ) {
+                    if( std::find( messages_before.begin(), messages_before.end(), message ) ==
+                        messages_before.end() &&
+                        ( message.second.find( " chose action " ) != std::string::npos ||
+                          ( message.second.find( "NPC " ) != std::string::npos &&
+                            message.second.find( ": target = " ) != std::string::npos ) ) ) {
+                        selected_action_trace << message.first << ' ' << message.second << '\n';
+                    }
+                }
+            }
+            CHECK( debug_mode == debug_before );
+            CHECK( debugmode::enabled_filters == filters_before );
+        } else {
+            scene.step();
+        }
         if( condition == "flight" ) {
             flight_state_trace << " after=" << source.pos_abs()
                                << " attitude=" << static_cast<int>( source.get_attitude() )
@@ -55729,6 +55768,8 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     }
     // These are pre/post cached states, not the decision inside NPC::move.
     INFO( "bounded flight state trace\n" << flight_state_trace.str() );
+    INFO( "one-turn NPC decisions; source=" << source.get_name() << "\n" <<
+          selected_action_trace.str() );
     CAPTURE( cannibal, condition, delivered, physical_response, flight, flight_motion,
              before_source, source.pos_abs(), recipient.pos_abs() );
     if( condition == "narcosis" ) {
@@ -73377,7 +73418,9 @@ class r067_fresh_scout_journey
             }
             trace_native_reload_assets( "before_registered_save" );
             g->save_is_dirty = false;
-            REQUIRE( g->save() );
+            const bool saved = g->save();
+            INFO( "registered save result=" << g->last_save_result() );
+            REQUIRE( saved );
             trace_native_reload_assets( "after_registered_save" );
             r067_handover_reload( name );
             ++reloads;
@@ -78518,11 +78561,15 @@ TEST_CASE( "retained physical scouts withdraw from genuine danger and report hom
     }
     map &here = get_map();
     std::optional<tripoint_bub_ms> hostile_tile;
+    // Keep the actual threat inside the watch OMT, but leave enough room for
+    // the physical pair to depart without requiring an adjacent collision at
+    // a boundary staging tile. Neither its actions nor the pair's are forced.
     for( const point offset : {
-             point( -1, 0 ), point( 0, -1 ), point( 1, 0 ), point( 0, 1 )
+             point( -4, 0 ), point( 0, -4 ), point( 4, 0 ), point( 0, 4 )
          } ) {
         const auto candidate = first->pos_bub( here ) + offset;
-        if( here.passable( candidate ) && g->is_empty( candidate ) &&
+        if( here.inbounds( candidate ) && here.passable( candidate ) && g->is_empty( candidate ) &&
+            first->sees( here, candidate ) &&
             project_to<coords::omt>( here.get_abs( candidate ) ) == first->pos_abs_omt() ) {
             hostile_tile = candidate;
             break;
