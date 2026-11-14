@@ -1380,8 +1380,10 @@ TEST_CASE( "committed raid separates actual target choice from raw sight before 
         live_operation.phase = bandit_live_world::hostile_operation_phase::returning_home;
         sighted.set_mission( NPC_MISSION_NULL );
         sighted.rules.set_flag( ally_rule::follow_close );
+        REQUIRE_FALSE( sighted.is_player_ally() );
+        REQUIRE( sighted.sees( here, get_avatar() ) );
         sighted.regen_ai_cache();
-        CHECK( sighted.current_target() == nullptr );
+        CHECK( sighted.current_target() == &get_avatar() );
     }
 
     SECTION( "no member sees the avatar, so the real site search is assigned" ) {
@@ -62902,10 +62904,12 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
         REQUIRE( first.sees( here, threat ) );
         REQUIRE( first.attitude_to( threat ) == Creature::Attitude::HOSTILE );
         if( mode == "combat" ) {
-            // Countercontrol for the actual native combat branch. The saved
-            // follow_close rule otherwise suppresses target selection through
-            // native must_retreat, even with a visible adjacent hostile.
+            // Countercontrol for the actual native combat branch.
             first.rules.clear_flag( ally_rule::follow_close );
+        } else {
+            // Exercise the targetless-threat safety check with a real rule
+            // that suppresses engagement, independently of follow spacing.
+            first.rules.set_flag( ally_rule::forbid_engage );
         }
         first.regen_ai_cache();
         if( mode == "combat" ) {
@@ -70967,18 +70971,32 @@ TEST_CASE( "homeward pair reaches its boundary through ordinary paid movement",
     auto second = overmap_buffer.find_npc( ids.back() );
     REQUIRE( first );
     REQUIRE( second );
+    if( cannibal ) {
+        // The retained bodies came from a bandit save; qualify their native
+        // faction to match the cannibal roster used in this variant.
+        first->set_fac( faction_id( "cannibal_camp" ) );
+        second->set_fac( faction_id( "cannibal_camp" ) );
+        REQUIRE( first->get_fac_id() == faction_id( "cannibal_camp" ) );
+        REQUIRE( second->get_fac_id() == faction_id( "cannibal_camp" ) );
+        REQUIRE( first->attitude_to( *second ) == Creature::Attitude::FRIENDLY );
+        REQUIRE( second->attitude_to( *first ) == Creature::Attitude::FRIENDLY );
+    }
     const auto origin = first->pos_abs_sm() - point( 4, 8 );
     get_map().load( tripoint_abs_sm( origin.xy(), 1 ), false );
     get_avatar().setpos( get_map(), tripoint_bub_ms( 48, 48, 1 ), false );
     for( const auto &tile : get_map().points_in_radius( get_avatar().pos_bub(), 1 ) ) {
         get_map().ter_set( tile, ter_id( tile == get_avatar().pos_bub() ? "t_floor" : "t_wall" ) );
     }
+    get_map().invalidate_map_cache( 1 );
+    get_map().build_map_cache( 1, true );
     g->reload_npcs();
     // Isolate this setup from unrelated monsters; do not suppress later
     // survival decisions or remove threats during the action sequence.
     clear_creatures();
     REQUIRE( first->is_active() );
     REQUIRE( second->is_active() );
+    REQUIRE_FALSE( first->sees( get_map(), get_avatar() ) );
+    REQUIRE_FALSE( second->sees( get_map(), get_avatar() ) );
     REQUIRE( scene.site().active_outing.owner == simulation_owner::local );
     if( obstructed ) {
         // Add one real obstacle to a selected ordinary path. The map and

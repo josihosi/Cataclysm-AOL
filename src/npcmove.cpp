@@ -1977,6 +1977,7 @@ void npc::assess_danger()
                                     overmap_buffer.global_state.bandit_live_world, getID() ) != nullptr;
     const bool must_retreat =
         !active_assault && !llm_attack_override && !camp_patrol_response &&
+        is_player_ally() &&
         rules.has_flag( ally_rule::follow_close ) &&
         !too_close( pos_bub(), player_character.pos_bub(), follow_distance() ) &&
         !is_guarding();
@@ -2266,6 +2267,9 @@ void npc::assess_danger()
             avatar_assessment_trace.distance = dist;
         }
         if( !clear_attack_line ) {
+            add_msg_debug( debugmode::DF_NPC_COMBATAI,
+                           "%s ignored %s because there's an obstacle in between.",
+                           name, bogey );
             // still warn about enemies behind impassable glass walls, but not as
             // often. since NPC threats have a higher chance of ignoring soft
             // obstacles, we'll ignore them here.
@@ -2273,10 +2277,6 @@ void npc::assess_danger()
                 warn_about( "monster", 10_minutes, bogey, dist, foe.pos_bub() );
             }
             return 0.0f;
-        } else {
-            add_msg_debug( debugmode::DF_NPC_COMBATAI,
-                           "%s ignored %s because there's an obstacle in between.",
-                           name, bogey );
         }
         if( foe_threat > ( 8.0f + personality.bravery + rng( 0, 5 ) ) ) {
             warn_about( "monster", 10_minutes, bogey, dist, foe.pos_bub() );

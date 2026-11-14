@@ -21,6 +21,7 @@
 #include <ratio>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -936,6 +937,9 @@ bool game::save_player_data()
         std::filesystem::path tmp_path = save_path;
         tmp_path.concat( ".tmp" ); // NOLINT(cata-u8-path)
         std::optional<zzip> z = zzip::load( save_path );
+        if( !z ) {
+            throw std::runtime_error( "Unable to open compressed player save" );
+        }
         saved_data = z->add_file( ( playerfile + SAVE_EXTENSION ).get_unrelative_path().filename(),
                                   save.str() );
         if( saved_data && z->compact_to( tmp_path, 2.0 ) ) {
@@ -1155,7 +1159,7 @@ bool game::save()
         // save, including any persisted crossing acknowledgement above.
         bandit_live_world_probe::record_certification_save_receipt(
             to_turns<int>( calendar::turn - calendar::turn_zero ),
-            PATH_INFO::world_base_save_path().get_unrelative_path().string() );
+            PATH_INFO::world_base_save_path().get_unrelative_path().u8string() );
 #if defined(EMSCRIPTEN)
         // This will allow the window to be closed without a prompt, until do_turn()
         // is called.

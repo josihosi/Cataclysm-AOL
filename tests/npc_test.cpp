@@ -1745,6 +1745,45 @@ TEST_CASE( "faction_hostile_npc_detects_player_threat", "[npc][npc_ai]" )
     CHECK( bandit.current_target() == static_cast<Creature *>( &player_character ) );
 }
 
+TEST_CASE( "follow close limits target selection only for player allies", "[npc][npc_ai]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+    avatar &player = get_avatar();
+    npc &guy = spawn_npc( player.pos_bub().xy() + point( 5, 0 ), "thug" );
+    guy.set_mission( NPC_MISSION_NULL );
+    guy.rules.set_flag( ally_rule::follow_close );
+    guy.rules.clear_flag( ally_rule::forbid_engage );
+    REQUIRE_FALSE( guy.is_guarding() );
+
+    SECTION( "hostile recognizes the player" ) {
+        REQUIRE_FALSE( guy.is_player_ally() );
+        REQUIRE( guy.sees( get_map(), player ) );
+        player.set_wielded_item( item( itype_id( "battleaxe" ) ) );
+        guy.personality.aggression = -20;
+        const float threat = guy.evaluate_character( player, false, true );
+        const int distance = rl_dist( guy.pos_bub(), player.pos_bub() );
+        const int scaled_distance = std::max( 1, 100 * distance / player.get_speed() );
+        REQUIRE( threat - 2.0f * ( scaled_distance - 1 ) > 1.0f );
+        guy.regen_ai_cache();
+        CHECK( guy.current_target() == static_cast<Creature *>( &player ) );
+    }
+    SECTION( "follower retains the spacing rule" ) {
+        guy.set_attitude( NPCATT_FOLLOW );
+        guy.set_fac( faction_your_followers );
+        REQUIRE( guy.is_player_ally() );
+        monster &threat = spawn_test_monster( "mon_zombie_hulk", guy.pos_bub() + point::east );
+        REQUIRE( guy.sees( get_map(), threat ) );
+        guy.regen_ai_cache();
+        CHECK( guy.current_target() == nullptr );
+        guy.rules.clear_flag( ally_rule::follow_close );
+        guy.regen_ai_cache();
+        CHECK( guy.current_target() == static_cast<Creature *>( &threat ) );
+    }
+}
+
 TEST_CASE( "ecology_covert_scout_relationship_is_exact_and_actor_specific",
            "[npc][npc_ai][bandit][covert_disposition]" )
 {

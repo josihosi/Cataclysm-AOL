@@ -1705,6 +1705,111 @@ TEST_CASE( "production powered roof lamp emits the elevated light envelope",
     CHECK( light->range_cap_omt == 40 );
 }
 
+TEST_CASE( "firelight escapes through a distant transparent opening", "[physical_light][fire_escape]" )
+{
+    restore_on_out_of_scope restore_turn( calendar::turn );
+    const bandit_live_world::world_state previous_world = overmap_buffer.global_state.bandit_live_world;
+    on_out_of_scope restore_world( [&]() {
+        overmap_buffer.global_state.bandit_live_world = previous_world;
+        reset_live_light_sample_cache();
+    } );
+    clear_avatar();
+    clear_map_with_vision( -1, 2, false );
+    map &here = get_map();
+    const tripoint_bub_ms source = get_avatar().pos_bub();
+    const tripoint_bub_ms opening = source + tripoint( 4, 1, 0 );
+    const tripoint_bub_ms exterior = source + tripoint( 5, 1, 0 );
+    for( int x = -5; x <= 4; ++x ) {
+        for( int y = -5; y <= 5; ++y ) {
+            here.ter_set( source + tripoint( x, y, 0 ), ter_str_id( "t_floor" ) );
+            here.ter_set( source + tripoint( x, y, 1 ), ter_str_id( "t_flat_roof" ) );
+            if( x == -5 || x == 4 || y == -5 || y == 5 ) {
+                here.ter_set( source + tripoint( x, y, 0 ), ter_str_id( "t_wall" ) );
+            }
+        }
+    }
+    here.ter_set( opening, ter_str_id( "t_window_open" ) );
+    here.add_field( source, field_type_id( "fd_fire" ), 1 );
+    const auto rebuild = [&]() {
+        for( int z = 0; z <= 1; ++z ) {
+            here.invalidate_map_cache( z );
+            here.build_map_cache( z );
+        }
+    };
+    rebuild();
+    REQUIRE_FALSE( here.is_outside( source ) );
+    REQUIRE( here.is_outside( exterior ) );
+    REQUIRE( here.sees( source, exterior, 5, false ) );
+    CHECK( physical_light::evaluate_escape( here, source ).side_leakage == 0 );
+    CHECK( physical_light::evaluate_escape( here, source, true ).side_leakage == 2 );
+    // Even with fire present, the co-located lamp must use its original
+    // aperture geometry. Daylight suppresses the fire channel, so a light
+    // sample here would specifically expose a lamp provenance regression.
+    calendar::turn = calendar::turn_zero + 12_hours;
+    {
+        scoped_weather_override clear_weather( WEATHER_CLEAR );
+        here.add_item( source, powered_flashlight() );
+        overmap_buffer.global_state.bandit_live_world.clear();
+        reset_live_light_sample_cache();
+        run_live_light_delivery_for_test();
+        const auto &samples = live_light::samples_for_turn( calendar::turn );
+        const tripoint_abs_ms source_abs = here.get_abs( source );
+        CHECK( std::none_of( samples.begin(), samples.end(), [&]( const auto & sample ) {
+            return sample.source_ms == source_abs && sample.mark.kind == "light";
+        } ) );
+        here.i_clear( source );
+    }
+    // Exercise the loaded-source producer and fire-specific night/weather
+    // projection, rather than crediting geometry alone as signal delivery.
+    calendar::turn = night_time( calendar::turn ) + 2_hours;
+    REQUIRE( is_night( calendar::turn ) );
+    {
+        scoped_weather_override fog( weather_type_id( "fog" ) );
+        fog.with_windspeed( 0 );
+        overmap_buffer.global_state.bandit_live_world.clear();
+        reset_live_light_sample_cache();
+        run_live_light_delivery_for_test();
+        const auto &samples = live_light::samples_for_turn( calendar::turn );
+        const tripoint_abs_ms source_abs = here.get_abs( source );
+        const auto light = std::find_if( samples.begin(), samples.end(), [&]( const auto &sample ) {
+            return sample.source_ms == source_abs && sample.mark.kind == "light";
+        } );
+        REQUIRE( light != samples.end() );
+        CHECK( light->range_cap_ms > 0 );
+        CHECK( light->range_cap_ms <= 2 * SEEX * 2 );
+        CHECK( std::none_of( samples.begin(), samples.end(), [&]( const auto &sample ) {
+            return sample.source_ms == source_abs && sample.mark.kind == "smoke";
+        } ) );
+    }
+
+    // A closed transparent window still lets light through; drawn curtains
+    // or a wall in front of the opening block it.
+    here.ter_set( opening, ter_str_id( "t_window_domestic" ) );
+    rebuild();
+    CHECK( here.sees( source, exterior, 5, false ) );
+    CHECK( physical_light::evaluate_escape( here, source, true ).side_leakage == 2 );
+    here.ter_set( opening, ter_str_id( "t_curtains" ) );
+    rebuild();
+    CHECK_FALSE( here.sees( source, exterior, 5, false ) );
+    CHECK( physical_light::evaluate_escape( here, source, true ).side_leakage == 0 );
+    here.ter_set( opening, ter_str_id( "t_window_open" ) );
+    for( int y = -4; y <= 4; ++y ) {
+        here.ter_set( source + tripoint( 2, y, 0 ), ter_str_id( "t_wall" ) );
+    }
+    rebuild();
+    CHECK_FALSE( here.sees( source, exterior, 5, false ) );
+    CHECK( physical_light::evaluate_escape( here, source, true ).side_leakage == 0 );
+    // This extension is tied to the actual fire field; it does not change
+    // the existing aperture calibration for unrelated item lights.
+    for( int y = -4; y <= 4; ++y ) {
+        here.ter_set( source + tripoint( 2, y, 0 ), ter_str_id( "t_floor" ) );
+    }
+    here.remove_field( source, field_type_id( "fd_fire" ) );
+    rebuild();
+    CHECK( here.sees( source, exterior, 5, false ) );
+    CHECK( physical_light::evaluate_escape( here, source ).side_leakage == 0 );
+}
+
 TEST_CASE( "elevated light requires an exposed roof deck", "[physical_light][optics]" )
 {
     clear_avatar();

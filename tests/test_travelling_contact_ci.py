@@ -15,12 +15,16 @@ import travelling_contact_ci as route
 
 class TravellingContactCITest(unittest.TestCase):
     def test_catalogue_preserves_existing_controls_and_one_guarded_addition(self):
-        self.assertEqual(len(route.SELECTIONS), 42)
-        self.assertEqual(len(set(route.SELECTIONS)), 42)
+        self.assertEqual(len(route.SELECTIONS), 46)
+        self.assertEqual(len(set(route.SELECTIONS)), 46)
+        self.assertIn("firelight escapes through a distant transparent opening", route.SELECTIONS)
+        self.assertIn("unicode world saves with unicode receipt tree entries", route.SELECTIONS)
+        self.assertIn("quicksave_reports_confirmed_turn_and_recovers_after_failed_write", route.SELECTIONS)
+        self.assertIn("follow close limits target selection only for player allies", route.SELECTIONS)
         self.assertIn("homeward pair reaches its boundary through ordinary paid movement", route.SELECTIONS)
         self.assertIn("homeward boundary crossing awaits a physically incapacitated survivor", route.SELECTIONS)
-        self.assertNotIn(route.CURSES_ONLY_NOOP, route.SELECTIONS[:29])
-        self.assertEqual(route.SELECTIONS[29:].count(route.CURSES_ONLY_NOOP), 1)
+        self.assertNotIn(route.CURSES_ONLY_NOOP, route.SELECTIONS[:32])
+        self.assertEqual(route.SELECTIONS[32:].count(route.CURSES_ONLY_NOOP), 1)
         self.assertFalse(any("benchmark" in selection.lower() for selection in route.SELECTIONS))
 
     def run_with(self, tiles, marker_output, outcomes):

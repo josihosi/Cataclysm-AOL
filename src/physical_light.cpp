@@ -7,6 +7,7 @@
 #include "item.h"
 #include "item_pocket.h"
 #include "itype.h"
+#include "lightmap.h"
 #include "map.h"
 #include "mapbuffer.h"
 #include "mapdata.h"
@@ -378,7 +379,7 @@ loaded_z_source_index loaded_source_sampler::sample( const Character &carrier, m
     return result;
 }
 
-escape evaluate_escape( map &here, const tripoint_bub_ms &source )
+escape evaluate_escape( map &here, const tripoint_bub_ms &source, bool fire_light )
 {
     escape result;
     result.exposed_to_sky = here.is_outside( source );
@@ -398,6 +399,51 @@ escape evaluate_escape( map &here, const tripoint_bub_ms &source )
                 continue;
             }
             result.side_leakage = 2;
+        }
+    }
+    // A real fire can illuminate an opening farther away than the local
+    // aperture check. Search only transparent connected tiles within the
+    // native range of this fire's own emission, and require a direct ray to
+    // an exterior tile: a winding passage is not a line of sight. Ordinary
+    // lamps keep their existing local-aperture calibration.
+    const field_entry *fire = here.get_field( source, field_fd_fire );
+    if( fire_light && !result.exposed_to_sky && result.side_leakage == 0 && fire &&
+        fire->is_field_alive() ) {
+        const int radius = std::min( MAX_VIEW_DISTANCE,
+                                     LIGHT_RANGE( fire->get_intensity_level().light_emitted ) );
+        if( radius > aperture_radius ) {
+            const int width = 2 * radius + 1;
+            std::vector<bool> visited( width * width, false );
+            std::vector<point> pending = { point( 0, 0 ) };
+            visited[radius * width + radius] = true;
+            for( std::size_t i = 0; i < pending.size() && result.side_leakage == 0; ++i ) {
+                for( int dx = -1; dx <= 1 && result.side_leakage == 0; ++dx ) {
+                    for( int dy = -1; dy <= 1; ++dy ) {
+                        if( dx == 0 && dy == 0 ) {
+                            continue;
+                        }
+                        const point next = pending[i] + point( dx, dy );
+                        if( std::abs( next.x ) > radius || std::abs( next.y ) > radius ) {
+                            continue;
+                        }
+                        const int index = ( next.y + radius ) * width + next.x + radius;
+                        if( visited[index] ) {
+                            continue;
+                        }
+                        visited[index] = true;
+                        const tripoint_bub_ms candidate = source + tripoint( next, 0 );
+                        if( !here.inbounds( candidate ) || rl_dist( source, candidate ) > radius ||
+                            !here.is_transparent_wo_fields( candidate ) ) {
+                            continue;
+                        }
+                        if( here.is_outside( candidate ) && here.sees( source, candidate, radius, false ) ) {
+                            result.side_leakage = 2;
+                            break;
+                        }
+                        pending.push_back( next );
+                    }
+                }
+            }
         }
     }
     const ter_id terrain = here.ter( source );

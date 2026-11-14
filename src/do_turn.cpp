@@ -9828,6 +9828,7 @@ struct live_bandit_local_source_reading {
     std::optional<tripoint_abs_ms> light_source_pos;
     bool outside = false;
     int side_leakage = 0;
+    int fire_side_leakage = 0;
     bool elevated_roof_exposed = false;
 };
 
@@ -13831,6 +13832,10 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
         reading.fire_intensity = source.fire_intensity;
         reading.smoke_intensity = source.smoke_intensity;
         live_bandit_note_light_geometry( reading, here, here.get_bub( source.position ) );
+        if( source.fire_intensity > 0 ) {
+            reading.fire_side_leakage = physical_light::evaluate_escape(
+                                            here, here.get_bub( source.position ), true ).side_leakage;
+        }
     }
 
     // Item emitters are collected as individual records so their power and
@@ -13911,7 +13916,8 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
             adapter_reading.light_source = fire_channel ?
                                            bandit_mark_generation::light_source_band::ordinary : reading.light_source;
             adapter_reading.outside = reading.outside;
-            adapter_reading.side_leakage = reading.side_leakage;
+            adapter_reading.side_leakage = fire_channel && reading.fire_intensity > 0 ?
+                                           reading.fire_side_leakage : reading.side_leakage;
             adapter_reading.elevated_roof_exposed = reading.elevated_roof_exposed;
             adapter_reading.smoke_weather = weather_band;
             adapter_reading.light_time = light_time;
@@ -17599,7 +17605,7 @@ std::optional<bool> live_light::tended_fire_conspicuous( const tripoint_abs_ms &
     if( fire <= 0 ) {
         return false;
     }
-    const physical_light::escape escape = physical_light::evaluate_escape( here, p );
+    const physical_light::escape escape = physical_light::evaluate_escape( here, p, true );
     bandit_mark_generation::local_field_signal_reading reading;
     reading.fire_intensity = fire;
     reading.smoke_intensity = here.get_field_intensity( p, fd_smoke );

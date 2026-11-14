@@ -273,7 +273,7 @@ std::string certification_receipt_facts( const bandit_live_world_probe::transiti
 std::string world_tree_sha256( const std::string &world_path )
 {
     std::error_code error;
-    const std::filesystem::path root( world_path );
+    const std::filesystem::path root = std::filesystem::u8path( world_path );
     if( world_path.empty() || !std::filesystem::is_directory( root, error ) || error ) {
         return "";
     }
@@ -282,7 +282,7 @@ std::string world_tree_sha256( const std::string &world_path )
          !error && iterator != end; iterator.increment( error ) ) {
         const std::filesystem::path relative = iterator->path().lexically_relative( root );
         const bool excluded = std::any_of( relative.begin(), relative.end(), []( const auto & part ) {
-            const std::string value = part.string();
+            const std::string value = part.u8string();
             return value == "harness_runs" || value == "cache" || value == "__pycache__" || value == ".git";
         } );
         if( excluded ) {
@@ -299,14 +299,14 @@ std::string world_tree_sha256( const std::string &world_path )
         return "";
     }
     std::sort( files.begin(), files.end(), [&root]( const auto & lhs, const auto & rhs ) {
-        return lhs.lexically_relative( root ).generic_string() < rhs.lexically_relative(
-                   root ).generic_string();
+        return lhs.lexically_relative( root ).generic_u8string() < rhs.lexically_relative(
+                   root ).generic_u8string();
     } );
     sha256 digest;
     static constexpr char domain[] = "caol-world-save:v1\0";
     digest.update( domain, sizeof( domain ) - 1 );
     for( const std::filesystem::path &path : files ) {
-        const std::string relative = path.lexically_relative( root ).generic_string();
+        const std::string relative = path.lexically_relative( root ).generic_u8string();
         std::ifstream input( path, std::ios::binary );
         if( !input ) {
             return "";
@@ -1548,9 +1548,6 @@ void record_certification_save_receipt( const int game_minutes, const std::strin
                 "OPENCLAW_CERTIFICATION_PREVIOUS_WORLD_TREE_SHA256" );
     event.certification_previous_world_save_sha256 = required_environment(
                 "OPENCLAW_CERTIFICATION_PREVIOUS_WORLD_SAVE_SHA256" );
-    event.certification_current_world_tree_sha256 = world_tree_sha256( world_path );
-    event.certification_current_world_save_sha256 = event.certification_current_world_tree_sha256;
-    event.certification_process_pid = current_process_pid();
     const std::string sequence = required_environment( "OPENCLAW_CERTIFICATION_SAVE_SEQUENCE" );
     const auto parsed = std::from_chars( sequence.data(), sequence.data() + sequence.size(),
                                          event.certification_save_sequence );
@@ -1558,12 +1555,16 @@ void record_certification_save_receipt( const int game_minutes, const std::strin
         capability.empty() ||
         event.certification_previous_world_tree_sha256.size() != 64 ||
         event.certification_previous_world_save_sha256.size() != 64 ||
-        event.certification_current_world_tree_sha256.size() != 64 ||
-        event.certification_current_world_save_sha256.size() != 64 ||
         parsed.ec != std::errc() || parsed.ptr != sequence.data() + sequence.size() ||
         event.certification_save_sequence == 0 ) {
         return;
     }
+    event.certification_current_world_tree_sha256 = world_tree_sha256( world_path );
+    event.certification_current_world_save_sha256 = event.certification_current_world_tree_sha256;
+    if( event.certification_current_world_tree_sha256.size() != 64 ) {
+        return;
+    }
+    event.certification_process_pid = current_process_pid();
     event.certification_proof = hmac_sha256( capability, certification_receipt_facts( event ) );
     record_live_transition_event( std::move( event ) );
 }

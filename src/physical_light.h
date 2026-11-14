@@ -134,7 +134,8 @@ loaded_z_source_index index_loaded_z_sources( const Character &carrier, map &her
  * are not.  The bounded scan prevents a deep interior hall from borrowing a
  * distant opening's exposure.
  */
-escape evaluate_escape( map &here, const tripoint_bub_ms &source );
+escape evaluate_escape( map &here, const tripoint_bub_ms &source,
+                        bool fire_light = false );
 
 /**
  * Decide whether an already-escaped bright source is detectable by one
