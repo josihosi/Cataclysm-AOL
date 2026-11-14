@@ -15,6 +15,7 @@ SELECTIONS = (
     "robbery visit fixture uses a valid clock after a retained world",
     "bandit_structural_outing_planner_selects_forest_and_town_jobs",
     "actual watch motor retains only its unconsumed pair order",
+    "alarm fixture isolates persisted route threats and restores their custody",
     "actual dispatched faction party receives attack alert and retains native flight",
     "authenticated scouts disengage homeward without dismissing a current alert",
     "assessment return transfers preserve the deadline clock and real physical progress",
