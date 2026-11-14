@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import ExitStack, closing, redirect_stderr, redirect_stdout
+from dataclasses import replace
 from unittest import mock
 
 
@@ -568,18 +569,23 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             tokens = (
                 (scenario_registry_cli._registry_launch_probe_namespace,
                  scenario_registry_cli.RegistryLaunchToken(
-                     "launch", True, "current", "cli", str(selected), source_sha256)),
+                     "launch", True, "current", declaration["name"], str(selected), source_sha256)),
                 (scenario_registry_cli._registry_bootstrap_probe_namespace,
                  scenario_registry_cli.RegistryBootstrapToken(
-                     "bootstrap", True, "current", "cli", str(selected), {}, source_sha256)),
+                     "bootstrap", True, "current", declaration["name"], str(selected), {}, source_sha256)),
                 (scenario_registry_cli._registry_repair_probe_namespace,
                  RegistryRepairToken(
-                     "repair", True, "current", "cli", str(selected), {}, source_sha256)),
+                     "repair", True, "current", declaration["name"], str(selected), {}, source_sha256)),
             )
+            namespaces = []
             with mock.patch.object(startup_harness, "scenarios_root", return_value=root / "absent-canonical"):
                 for adapt, token in tokens:
                     with self.subTest(adapter=adapt.__name__):
+                        with self.assertRaisesRegex(ScenarioRegistryStoreError, "identity differs"):
+                            adapt(replace(token, scenario=selected.stem))
                         namespace = adapt(token, post_relaunch_continuation=True)
+                        self.assertEqual(namespace.scenario, declaration["name"])
+                        namespaces.append(namespace)
                         self.assertEqual(namespace.registry_selected_source_path, str(selected.resolve()))
                         self.assertEqual(namespace.registry_selected_source_sha256, source_sha256)
                         observed = []
@@ -594,12 +600,13 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                 startup_harness.run_probe_mode(namespace)
                         self.assertEqual(observed[0]["selected_marker"], "selected")
                         self.assertEqual(observed[0]["path"], str(selected.resolve()))
+                self.assertEqual(len(namespaces), len(tokens))
                 changed = dict(declaration)
                 changed["selected_marker"] = "changed after selection"
                 self.write_json(selected, changed)
-                stale_namespace = namespace
-                with self.assertRaisesRegex(SystemExit, "Selected scenario source changed"):
-                    startup_harness.run_probe_mode(stale_namespace)
+                for namespace in namespaces:
+                    with self.assertRaisesRegex(SystemExit, "Selected scenario source changed"):
+                        startup_harness.run_probe_mode(namespace)
 
     def test_public_registry_launch_rejects_changed_source_and_wrong_token(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -885,7 +892,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             scenarios = root / "scenarios"
             scenarios.mkdir()
             manifest_path = scenarios / "bootstrap.json"
-            self.write_json(manifest_path, self.strict_manifest())
+            declaration = self.strict_manifest()
+            self.write_json(manifest_path, declaration)
             executable = root / "cataclysm-tiles"
             executable.write_bytes(b"bootstrap runtime")
             connection = open_registry(str(root / "registry.sqlite3"))
@@ -897,7 +905,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     runtime_binding=self.bootstrap_runtime(executable),
                 )
                 self.assertTrue(bootstrap.accepted)
-                self.assertEqual(bootstrap.scenario, "bootstrap")
+                self.assertEqual(bootstrap.scenario, declaration["name"])
                 self.assertFalse(reload_selection_token_for_launch(connection, bootstrap.token_id).accepted)
                 claimed = claim_bootstrap_token_for_launch(connection, bootstrap.token_id)
                 self.assertTrue(claimed.accepted)
@@ -1567,9 +1575,10 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 repair_token="repair-token",
                 session_dir=str(session_dir),
             )
-            self.write_json(root / "repair.json", self.strict_manifest())
+            declaration = self.strict_manifest()
+            self.write_json(root / "repair.json", declaration)
             selection = RegistryRepairToken(
-                "repair-token", True, "current", "repair", str(root / "repair.json"),
+                "repair-token", True, "current", declaration["name"], str(root / "repair.json"),
                 {"executable_sha256": "exe", "runtime_source_sha256": "source"},
                 source_sha256=hashlib.sha256((root / "repair.json").read_bytes()).hexdigest(),
             )
@@ -1699,7 +1708,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(result, 23)
             run_probe.assert_called_once()
             self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
-            expected = startup_harness.build_parser().parse_args(["probe", "cli", "--compact-stdout"])
+            expected = startup_harness.build_parser().parse_args(["probe", self.strict_manifest()["name"], "--compact-stdout"])
             expected.adaptive_semantic_autodrive = True
             received = vars(run_probe.call_args.args[0]).copy()
             receipt = json.loads(received.pop("registry_launch_receipt"))
@@ -2784,15 +2793,17 @@ class ScenarioRegistryCliTest(unittest.TestCase):
     def test_post_relaunch_continuation_does_not_count_its_initial_session_as_reentry(self):
         with tempfile.TemporaryDirectory() as temporary:
             source = Path(temporary) / "scenario.json"
-            source.write_text(json.dumps({
+            declaration = {
+                "name": "reentry.fixture",
                 "steps": [{"label": "saved", "kind": "wait"}],
                 "post_relaunch": {
                     "terminal_save_step_label": "saved",
                     "steps": [{"kind": "cockpit_live_session"}],
                 },
-            }), encoding="utf-8")
+            }
+            source.write_text(json.dumps(declaration), encoding="utf-8")
             selection = argparse.Namespace(
-                source_path=str(source), scenario="scenario",
+                source_path=str(source), scenario=declaration["name"],
                 source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
             )
             self.assertEqual(
@@ -2803,16 +2814,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     selection, post_relaunch_continuation=True,
                 ), 0
             )
-            source.write_text(json.dumps({
-                "steps": [{"label": "saved", "kind": "wait"}],
-                "post_relaunch": {
-                    "terminal_save_step_label": "saved",
-                    "steps": [
-                        {"kind": "cockpit_live_session"},
-                        {"kind": "cockpit_live_session"},
-                    ],
-                },
-            }), encoding="utf-8")
+            declaration["post_relaunch"]["steps"].append({"kind": "cockpit_live_session"})
+            source.write_text(json.dumps(declaration), encoding="utf-8")
             selection.source_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
             self.assertEqual(
                 scenario_registry_cli._declared_live_session_reentries(

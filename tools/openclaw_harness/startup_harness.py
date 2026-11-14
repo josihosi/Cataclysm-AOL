@@ -24400,10 +24400,15 @@ def launch_game(
     transition_event_path: str = "",
     executable: str = "",
     terminal_transport: str = "auto",
+    diagnostic_semantic_transport: bool = True,
 ) -> subprocess.Popen[str]:
     exe = Path(executable).resolve() if executable else detect_executable()
     terminal = should_use_curses_terminal(exe, terminal_transport)
+    if terminal and not diagnostic_semantic_transport:
+        raise ValueError("semantic-free diagnostic launch requires Tiles manual input")
     lease = current_owner(userdir_for_profile(profile))
+    if not diagnostic_semantic_transport and lease is None:
+        raise WritableRootConflict("semantic-free diagnostic launch requires a run-bound writable-root owner")
     if terminal and lease is None:
         raise WritableRootConflict("terminal launch requires the existing run-bound writable-root owner")
     if lease is not None:
@@ -24424,13 +24429,23 @@ def launch_game(
     binding = bind_transition_event_stream(
         run_dir, run_id=transition_event_run_id, event_path=transition_event_path
     )
+    if not diagnostic_semantic_transport and lease.run_id != binding["run_id"]:
+        raise WritableRootConflict("semantic-free diagnostic launch requires matching run ownership")
     env["OPENCLAW_HARNESS_RUN_ID"] = binding["run_id"]
     # This opt-in tag gates the native R-019 lifecycle stream to the exact
     # launch binding.  It is diagnostic-only and never changes report credit.
     if env.get("OPENCLAW_HARNESS_R019_LIFECYCLE_ACTOR_ID", "").strip():
         env["OPENCLAW_HARNESS_R019_LIFECYCLE_RUN_ID"] = binding["run_id"]
-    env.update(semantic_run_binding_child_environment(binding["run_id"]))
-    env.update(semantic_request_transport_child_environment(run_dir, binding["run_id"]))
+    if diagnostic_semantic_transport:
+        env.update(semantic_run_binding_child_environment(binding["run_id"]))
+        env.update(semantic_request_transport_child_environment(run_dir, binding["run_id"]))
+    else:
+        # A manual-input comparison must not inherit another run's transport.
+        # RUN_ID remains bound for process custody; it does not enable native
+        # semantic publication without the separate matching semantic ID.
+        for key in list(env):
+            if key.startswith("OPENCLAW_HARNESS_SEMANTIC_"):
+                env.pop(key)
     env["OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"] = binding["event_path"]
     env.pop("OPENCLAW_HARNESS_SCENARIO", None)
     if scenario:
@@ -24549,13 +24564,17 @@ def launch_game(
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
     # Tiles polls the native request transport from its own input loop.  POSIX
     # also binds a wake FIFO; Windows uses the run-owned JSONL request path.
-    read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
+    if diagnostic_semantic_transport:
+        read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
+    else:
+        read_fd, write_fd, wake_environment = -1, -1, {}
     env.update(wake_environment)
     # The semantic cockpit addresses this child after the short-lived startup
     # command returns.  Give Tiles the same independent session ownership as
     # the PTY route so launcher teardown cannot turn a live semantic request
     # into ESRCH.
-    wake_fds = {"pass_fds": (read_fd, write_fd, *inherited_lease)} if read_fd >= 0 else {}
+    passed_fds = (read_fd, write_fd, *inherited_lease) if read_fd >= 0 else tuple(inherited_lease)
+    wake_fds = {"pass_fds": passed_fds} if passed_fds else {}
     try:
         if lease is not None:
             lease.begin_launch()
@@ -24585,14 +24604,15 @@ def launch_game(
     if write_fd >= 0:
         os.close(write_fd)
     wake_key = (str(run_dir.resolve()), binding["run_id"])
-    append_semantic_wake_observation(run_dir, {
-        "schema": "caol-semantic-wake-observation-v1",
-        "event": "writer_bound",
-        "run_id": binding["run_id"],
-        "transport": "named_fifo" if read_fd >= 0 else "jsonl_poll",
-        "pid": process.pid,
-        "writer_pid": None,
-    })
+    if diagnostic_semantic_transport:
+        append_semantic_wake_observation(run_dir, {
+            "schema": "caol-semantic-wake-observation-v1",
+            "event": "writer_bound",
+            "run_id": binding["run_id"],
+            "transport": "named_fifo" if read_fd >= 0 else "jsonl_poll",
+            "pid": process.pid,
+            "writer_pid": None,
+        })
 
     def release_wake_pipe_after_exit() -> None:
         exit_code = process.wait()

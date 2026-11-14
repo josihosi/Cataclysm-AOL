@@ -142,6 +142,66 @@ class StartupEnvironmentTest(unittest.TestCase):
                 options["stdout"].close()
                 options["stderr"].close()
 
+    def test_semantic_free_tiles_launch_requires_matching_owner_and_removes_transport(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            process = mock.Mock(pid=None)
+            owner = mock.Mock(run_id="run-a", inherited_fds=())
+            env = {"OPENCLAW_HARNESS_SEMANTIC_RUN_ID": "stale",
+                   "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": "/stale",
+                   "OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD": "123"}
+            with mock.patch.object(harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(harness, "current_owner", return_value=owner), \
+                    mock.patch.object(harness, "open_semantic_wake_pipe") as wake, \
+                    mock.patch.object(harness, "record_bridge_game_process"), \
+                    mock.patch.object(harness.threading, "Thread"), \
+                    mock.patch.object(harness.subprocess, "Popen", return_value=process) as launch:
+                harness.launch_game("fixture", "World", root, executable="/bin/cataclysm",
+                                    child_environment=env, transition_event_run_id="run-a",
+                                    diagnostic_semantic_transport=False)
+                options = launch.call_args.kwargs
+                self.assertEqual(options["env"]["OPENCLAW_HARNESS_RUN_ID"], "run-a")
+                self.assertFalse(any(k.startswith("OPENCLAW_HARNESS_SEMANTIC_")
+                                     for k in options["env"]))
+                wake.assert_not_called()
+                options["stdout"].close()
+                options["stderr"].close()
+                with self.assertRaises(harness.WritableRootConflict):
+                    harness.launch_game("fixture", "World", root, executable="/bin/cataclysm",
+                                        child_environment=env, transition_event_run_id="other",
+                                        diagnostic_semantic_transport=False)
+
+            with mock.patch.object(harness, "should_use_curses_terminal", return_value=False), \
+                    mock.patch.object(harness, "current_owner", return_value=None):
+                with self.assertRaises(harness.WritableRootConflict):
+                    harness.launch_game("fixture", "World", root, executable="/bin/cataclysm",
+                                        diagnostic_semantic_transport=False)
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX executable and inherited lease")
+    def test_semantic_free_tiles_child_is_owned_and_cannot_inherit_semantic_binding(self):
+        with tempfile.TemporaryDirectory() as raw:
+            base = Path(raw).resolve()
+            root, run = base / "profile", base / "run"
+            run.mkdir()
+            helper = base / "game"
+            helper.write_text('#!/bin/sh\nprintf "%s\\n" "${OPENCLAW_HARNESS_RUN_ID}" '
+                              '"${OPENCLAW_HARNESS_SEMANTIC_RUN_ID-unset}" '
+                              '"${OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH-unset}"\nsleep 1\n')
+            helper.chmod(0o755)
+            with mock.patch.object(harness, "userdir_for_profile", return_value=root), \
+                    mock.patch.object(harness, "should_use_curses_terminal", return_value=False):
+                with harness.own_writable_root(root, "run-a", harness.process_generation_snapshot,
+                                               harness.process_generation_matches) as owner:
+                    child = harness.launch_game("fixture", "World", run, executable=str(helper),
+                        child_environment={"PATH": os.environ.get("PATH", ""),
+                                           "OPENCLAW_HARNESS_SEMANTIC_RUN_ID": "stale",
+                                           "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": "/stale"},
+                        transition_event_run_id="run-a", diagnostic_semantic_transport=False)
+                    self.assertEqual(owner.record["game_generation"]["pid"], child.pid)
+                    self.assertEqual(child.wait(timeout=10), 0)
+                    self.assertEqual((run / "game.stdout.log").read_text().splitlines(),
+                                     ["run-a", "unset", "unset"])
+
     def test_registered_world_reentry_uses_explicit_metadata_without_argv(self):
         from cockpit_file_bridge import FileBackedCockpitBridge
         with tempfile.TemporaryDirectory() as raw:

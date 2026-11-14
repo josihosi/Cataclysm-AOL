@@ -32876,6 +32876,15 @@ TEST_CASE( "bandit_live_world_normal_scout_assessment_is_exact_at_120_minutes",
     CHECK( site.current_scout_report.assessment.exit_reason ==
            "normal watch assessment complete" );
     CHECK( site.current_scout_report.target_id == "player-camp" );
+    // These windows were accepted by the real typed-observation producer,
+    // summarized at the watch, and published by the authenticated return above.
+    // A later read must age tactical certainty from the observed evidence, not
+    // make the journey home freshen all three historical visual windows.
+    REQUIRE( site.current_scout_report.delivered_minutes < 270 + 12 * 60 );
+    const auto dated_age = bandit_live_world::evaluate_scout_report_at(
+                               site.current_scout_report, 270 + 12 * 60 );
+    REQUIRE( dated_age.valid );
+    CHECK( dated_age.certainty == 70 );
     CHECK( site.next_routine_dispatch_eligible_minutes == 320 + 48 * 60 );
     CHECK( site.camp_decision.state ==
            bandit_live_world::camp_decision_state::report_awaiting_assessment );

@@ -146,6 +146,20 @@ Cataclysm.exe.lastcodeanalysissucceeded
 *.sw?
 *~
 \#*
+# These exact R050 character files are canonical initial-save inputs.
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.ano.json
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.log
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.mm1/
+/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.mm1/*
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.mm1/#VGVzdDAw.mm1.cold.zzip
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.mm1/#VGVzdDAw.mm1.hot.zzip
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.mm1/#VGVzdDAw.mm1.warm.zzip
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.pt
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.sav.zzip
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.seen.0.0
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.zones.json
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAw.zoneszmgr-temp.json
+!/tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/save/TestSetup00/#VGVzdDAwX2RpYXJ5.json
 gmon.out
 
 # System Files

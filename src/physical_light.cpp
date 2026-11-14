@@ -1,6 +1,7 @@
 #include "physical_light.h"
 
 #include "character.h"
+#include "debug.h"
 #include "field.h"
 #include "vehicle.h"
 #include "item.h"
@@ -16,8 +17,10 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <functional>
 #include <map>
+#include <string_view>
 #include <vector>
 
 namespace physical_light
@@ -313,6 +316,10 @@ void loaded_source_sampler::reset()
 loaded_z_source_index loaded_source_sampler::sample( const Character &carrier, map &here,
         const int turn )
 {
+    static const bool trace_discovery = []() {
+        const char *value = std::getenv( "OPENCLAW_HARNESS_SOURCE_DISCOVERY_TRACE" );
+        return value != nullptr && std::string_view( value ) == "1";
+    }();
     if( turn < last_turn ) {
         reset();
     }
@@ -322,6 +329,12 @@ loaded_z_source_index loaded_source_sampler::sample( const Character &carrier, m
     const tripoint_bub_ms carrier_pos = carrier.pos_bub();
     std::set<tripoint_abs_ms> selected;
     selected.swap( active_tiles );
+    // The opt-in receipt records existing sampler decisions, without changing
+    // which tiles are selected or how long discovered sources remain active.
+    std::set<tripoint_abs_ms> previously_active;
+    if( trace_discovery ) {
+        previously_active = selected;
+    }
     selected.insert( here.get_abs( carrier_pos ) );
 
     // Select directly from absolute-coordinate phases, rather than walking
@@ -345,6 +358,14 @@ loaded_z_source_index loaded_source_sampler::sample( const Character &carrier, m
         const tripoint_bub_ms p = here.get_bub( pos );
         if( here.inbounds( p ) && append_tile_sources( result, here, p, carrier_pos ) ) {
             active_tiles.insert( pos );
+            if( trace_discovery && previously_active.count( pos ) == 0 ) {
+                DebugLog( D_INFO, DC_ALL ) << "physical_light source_discovery turn=" << turn
+                                          << " phase=" << phase << " source=" << pos.to_string()
+                                          << " carrier_tile=" << ( p == carrier_pos ? "yes" : "no" )
+                                          << " fire=" << here.get_field_intensity( p, field_fd_fire )
+                                          << " smoke=" << here.get_field_intensity( p, field_fd_smoke )
+                                          << '\n';
+            }
         }
     }
     // Moving owners already have compact native collections.  Do not search

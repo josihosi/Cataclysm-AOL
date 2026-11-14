@@ -269,13 +269,14 @@ class TerminalModeIsolationTest(unittest.TestCase):
                 process = SimpleNamespace(pid=100, args=['bound-process'])
                 if selected_term is not None:
                     process._openclaw_launch_term = selected_term
-                generation = {'pid': 100, 'birth_identity': 'current'}
+                generation = {'pid': 100, 'birth_identity': 'current',
+                              'command_sha256': __import__('hashlib').sha256(b'bound-process').hexdigest()}
                 context = dict(vars(harness), run_dir=run, proc=process,
                     process_generation=generation,
                     transition_binding={'run_id': 'current-run', 'event_path': 'events'},
                     userdir_for_profile=lambda _: run, profile='current',
                     terminal_native_transport=selected_term is not None,
-                    plan=SimpleNamespace(harness_new_world=False, harness_raw_seed=False,
+                    plan=SimpleNamespace(executable=sys.executable, harness_new_world=False, harness_raw_seed=False,
                                          harness_bandit_feasibility=False),
                     child_environment={}, wait_diagnostic=False, debug_size=123,
                     killed_pids=[], certification_lease=None)
@@ -283,6 +284,7 @@ class TerminalModeIsolationTest(unittest.TestCase):
                 record = json.loads((run/'process.json').read_text())
                 self.assertEqual(record.get('TERM'), selected_term)
                 self.assertEqual(record['pid'], 100)
+                self.assertEqual(record['executable_path'], sys.executable)
                 self.assertEqual(record['run_id'], 'current-run')
                 self.assertEqual(record['process_generation'], generation)
                 self.assertEqual(record['semantic_step_trace_start_offset'], 123)
