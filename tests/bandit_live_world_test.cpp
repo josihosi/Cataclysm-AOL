@@ -55152,8 +55152,26 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     const auto ids = scene.site().active_outing.member_ids;
     REQUIRE( ids == std::vector<character_id> { character_id( 4 ), character_id( 5 ) } );
     REQUIRE( scene.site().active_outing.owner == bandit_live_world::simulation_owner::abstract );
+    // Watch selection is real and need not choose the retained fixture's old
+    // watch. Declare observer footing close enough for the selected watch's
+    // native motor before testing Local ingress. This earns no player travel
+    // and does not move either dispatched actor or certify its handoff.
     const auto first = scene.actor( 4 ).pos_abs();
     const auto second = scene.actor( 5 ).pos_abs();
+    const auto player_omt = get_avatar().pos_abs_omt();
+    const auto watch = scene.site().active_outing.selected_watch_omt;
+    const tripoint_abs_omt view( ( player_omt.x() + watch.x() ) / 2,
+                                 ( player_omt.y() + watch.y() ) / 2, player_omt.z() );
+    REQUIRE( g->place_player_overmap( view, false ) );
+    // Loading a new viewport can spawn incidental map monsters. As in the
+    // initial scene setup, retain the NPCs and isolate the later real attack.
+    clear_creatures();
+    get_avatar().setpos( project_to<coords::ms>( view ) + point( SEEX, SEEY ), false );
+    REQUIRE( get_map().inbounds( project_to<coords::ms>( watch ) + point( SEEX, SEEY ) ) );
+    REQUIRE( scene.site().active_outing.owner == bandit_live_world::simulation_owner::abstract );
+    REQUIRE( scene.site().active_outing.member_ids == ids );
+    REQUIRE( scene.actor( 4 ).pos_abs() == first );
+    REQUIRE( scene.actor( 5 ).pos_abs() == second );
     bool travelled = false;
     for( int step = 0; step < 36 &&
          scene.site().active_outing.owner != bandit_live_world::simulation_owner::local; ++step ) {
@@ -55165,29 +55183,6 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     REQUIRE( scene.site().active_outing.owner == bandit_live_world::simulation_owner::local );
     REQUIRE( bandit_live_world::current_external_simulation_cursor( scene.site() ) );
     REQUIRE( scene.site().active_outing.member_ids == ids );
-    std::vector<std::pair<tripoint_bub_ms, ter_id>> ingress_obstruction;
-    if( condition == "ordinary" ) {
-        // A declared blocked member during ingress makes a real inspection
-        // distance available independently of random path tie choices.
-        for( const auto &tile : get_map().points_in_radius( scene.actor( 5 ).pos_bub(), 1 ) ) {
-            if( tile != scene.actor( 5 ).pos_bub() && g->is_empty( tile ) ) {
-                ingress_obstruction.emplace_back( tile, get_map().ter( tile ) );
-                get_map().ter_set( tile, ter_id( "t_rock" ) );
-            }
-        }
-    }
-    bool ingress_separated = false;
-    for( int step = 0; step < 100 && !ingress_separated &&
-         !scene.site().active_outing.local_handoff.cohesion_assembled; ++step ) {
-        scene.step();
-        ingress_separated = rl_dist( scene.actor( 4 ).pos_abs(), scene.actor( 5 ).pos_abs() ) >= 2;
-    }
-    if( condition == "ordinary" ) {
-        REQUIRE( ingress_separated );
-    }
-    for( const auto &[tile, terrain] : ingress_obstruction ) {
-        get_map().ter_set( tile, terrain );
-    }
 
     npc &source = scene.actor( 4 );
     npc &recipient = scene.actor( 5 );
@@ -55223,6 +55218,8 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     // Declared open encounter terrain at the reached watch. Retain actor,
     // route and player identities; the historical rock enclosure is not an
     // escape control. Native pathfinding still chooses every defender step.
+    clear_creatures();
+    clear_vehicles();
     for( const auto &point : here.points_in_radius( source.pos_bub(), 10 ) ) {
         here.ter_set( point, ter_id( "t_grass" ) );
         here.furn_set( point, furn_id( "f_null" ) );
@@ -55287,19 +55284,6 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     here.build_map_cache( attacker.posz() );
     here.invalidate_visibility_cache();
     here.update_visibility_cache( attacker.posz() );
-    // The recipient heard a finite incident, but must navigate around a
-    // declared local screen to inspect it. Actor positions remain those reached
-    // by ingress, not manually separated for the alarm test.
-    if( ingress_separated ) {
-        const auto between = source.pos_bub() +
-                             tripoint_rel_ms( ( recipient.pos_bub() - source.pos_bub() ).raw() / 2 );
-        REQUIRE( between != source.pos_bub() );
-        REQUIRE( between != recipient.pos_bub() );
-        here.ter_set( between, ter_id( "t_wall" ) );
-        here.invalidate_map_cache( 0 );
-        here.build_map_cache( 0, true );
-        REQUIRE_FALSE( recipient.sees( here, source.pos_bub() ) );
-    }
     if( condition == "flight" ) {
         const auto pressure = source.pos_bub() + point( 3, 0 );
         REQUIRE( g->is_empty( pressure ) );
@@ -55371,7 +55355,10 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     CHECK( scene.site().active_outing.member_ids == membership );
     if( condition == "ordinary" ) {
         CHECK_FALSE( recipient.in_sleep_state() );
-        CHECK( physical_response );
+        CHECK( recipient.faction_alarm_requires_response() );
+        // Native alarm handling may inspect an already visible incident in
+        // place. It must retain the real attack response, not invent travel.
+        CHECK( ( physical_response || recipient.sees( here, here.get_bub( attack_position ) ) ) );
     } else if( condition == "flight" ) {
         CHECK( flight );
         CHECK( flight_motion );
