@@ -257,6 +257,19 @@ cancellation or new frame is created. Existing waiting alarms use a100-turn mean
 not each individual turn. General non-wait alarms require the explicit session turn config;
 missing config is measured_unassessed, missing bound owner/trace is unavailable.
 
+To assess a run with explicit scenario expectations, use `play --session SESSION
+performance-configure --config FILE`. The JSON must contain schema
+`caol-performance-turn-config-v1`, nonempty `provenance`, positive
+`spike_seconds`, `slow_turn_seconds`, `incomplete_turn_seconds` and
+`stalled_observation_seconds`, integer `window_turns` (1–256) and
+`sustained_turns` (1–window), `tail_percentile` in (0,1], and boolean
+`expected_progress`. The command checks the current bound owner, refuses to
+overwrite an existing configuration, and sends no game input. Native monitoring
+rechecks the file at most every 30 seconds; check `play performance` for actual
+native acceptance before interpreting alarms. A threshold is an observation
+trigger, not an automatic gameplay failure. Existing waiting alarms remain
+independent. Configuration does not add new per-stage instrumentation.
+
 Shakedown Trade marks `payment_destination=bandit_home_stash`; generic Trade marks `trader`.
 Successful shakedown goods go to actual persistent items in the bound home OMT, independently
 of physical party return. Failed storage retains the offer for native correction/cancel and

@@ -1,6 +1,17 @@
 # E4B companion journey — continuous native playtest
 
-Owner-selected protocol, 2026-10-05. Current execution and host readiness belong in the assignment/results. This is the configured-LLM arm of the [product suite](playtest-suite.md#current-shared-two-round-execution--2026-10-12), not a separate test framework or dispatch. Sol oversight assigns one direct GPT-6 Luna game owner, who travels with the same allied NPC and returns issues to that Sol without spawning another player or chaperone. Sol diagnoses without acquiring input. No coordinator message or new game is implied by this document.
+Owner-selected protocol, 2026-10-05. Current execution and host readiness belong in the assignment/results. This is the configured-LLM arm of the [product suite](playtest-suite.md#coverage-repeat-starts-and-current-results), not a separate test framework or dispatch. Sol oversight assigns one direct GPT-6 Luna game owner, who travels with the same allied NPC and returns issues to that Sol without spawning another player or chaperone. Sol diagnoses without acquiring input. No coordinator message or new game is implied by this document.
+
+## Scenario intent and setup latitude
+
+This is the model-mediated category of the [suite](playtest-suite.md#scenario-intent-and-closed-categories).
+The trip supplies connected context for commands, changed orders, inventory, danger and memory;
+incidental avatar walking is not a separate acceptance test. Preserve actual NPC follow/move,
+scavenge and danger responses and the prepared-start rules below. General teleport/setup advice
+does not authorize changing protected prompts, injecting responses or bypassing the tested
+command. Natural surprises are valuable inputs to the evaluation; neither perfect obedience nor
+a prescribed collection of random encounters is required. Finish the selected command journey
+or identify a concrete failure/blocker, rather than ending at an uneventful partial trip.
 
 ## Outcome and protected instructions
 

@@ -82,8 +82,12 @@ GPT-6.1 Terra normally chaperones each assigned story and spawns one direct GPT-
 Only Luna operates native input, with one owner per game/save and no extra player layer. Give Luna
 the concrete scene's premise, behavior to observe, relevant setup freedoms and current save/build/input
 binding, with recipe details only where useful. Luna handles ordinary
-survival, setup, recovery, saves and exit without per-step approval. The chaperone owns diagnosis
-and closeout; the coordinator owns priorities, capacity and lifecycle, and the mutator owns
+survival, setup, recovery, saves and exit without per-step approval. The chaperone owns test functionality through diagnosis and closeout: establish that the
+prepared scene and essential observations can answer the question, resolve ordinary setup defects
+within the assignment, and carry known missing prerequisites into the next attempt. A declared
+setting or successful configuration write is not evidence that the running game emits the needed
+measurements. Keep that responsibility with the chaperone rather than returning each routine
+setup step for coordinator approval. The coordinator owns priorities, capacity and lifecycle, and the mutator owns
 semantic working-contract changes unless delegated. Preserve original ownership and pending input;
 a worker return or timeout does not prove process exit.
 

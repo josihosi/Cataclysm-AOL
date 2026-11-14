@@ -110,9 +110,20 @@ source bytes. A useful read-only check is:
 python3 tools/openclaw_harness/scenario_registry_cli.py --json lint-declarations "$SCENARIO_SOURCE"
 ```
 
-Saved reentry clears `profile_option_overrides`. Preserve the intended model/settings through
-an explicit `config_profile` seeded from the verified configuration, and check the effective
-options before speech. A declaration's overrides alone do not prove the resumed configuration.
+A fresh declared `saved_world_snapshot` without `post_relaunch` retains explicit
+`profile_option_overrides`. In-run reentry with an explicit `post_relaunch` retains its verified
+configuration instead of reapplying setup overrides. Check effective options; a declaration alone
+does not prove the running configuration.
+
+For a causal timing test, put the existing explicit threshold configuration in the selected
+scenario as `performance_turn_config` (the same object accepted by `play performance-configure`).
+Startup validates it, selects native `RAID_PERFORMANCE_DIAGNOSTIC=normal`, and installs the Python
+assessment configuration in the unlaunched selected session. Conflicting native modes or a
+continuation that drops the override are reported before launch. Ordinary scenarios are unchanged.
+`play performance-configure` remains a live threshold-only command; it cannot turn native detail on.
+Use `play performance` and its `diagnostic_readiness` observation to distinguish configured
+assessment from observed native CPU/stages. Inspect the indicated run/turn and relevant stage
+coverage for the actual question; old retained maxima do not prove fresh readiness.
 
 ### Fresh HUD or saved input owner
 

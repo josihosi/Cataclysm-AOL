@@ -5,6 +5,16 @@ inputs or prerequisites. Use the current selected handoff and current controls.
 
 Owner-requested controlled variant of the [roof recipe](smoke-raid-replay.md#roof-variant). Purpose: observe the faction journey and building entry/stairs without the southern city's zombie population overwhelming the travellers. This is an edited fixture, not proof of natural world generation or a replacement for the original city run. The available variant inputs and historical roof summary follow; its raw result record was consumed. select actual compatible bytes and current receipts rather than treating this preparation recipe as a live status report.
 
+## Scenario intent and setup latitude
+
+This is a controlled signal/response and roof-access variant of the [suite](playtest-suite.md#scenario-intent-and-closed-categories),
+not an open-world travel certification. The countryside fixture reduces unrelated urban combat;
+actual signal reception, report, response, connected roof access and selected combat remain real.
+Avatar transit to setup/observation positions may be shortened. Native NPC ascent and the
+selected interior search/stair behavior cannot be replaced by teleportation. Roof arrival by a
+valid alternative route proves arrival, not every stair route. Natural interference remains a
+real observation; it does not erase an unmet roof/contact claim or mandate an encounter quota.
+
 ## Prepare two reusable starts
 
 Use a disposable copy of the existing clean **pre-signal** two-brazier house reference, selected through the existing registry. Preserve house footprint, interior/roof/stairs, braziers/fuel/lighter, avatar and defender setup, clock/weather and the original cannibal camp placement/roster policy. Record the exact parent save and all setup differences. Do not turn the progressed R040 death save into a fresh-discovery baseline by deleting its journal.

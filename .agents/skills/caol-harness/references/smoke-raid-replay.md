@@ -14,6 +14,15 @@ links retained results and current gaps. Ordinary-view attacks and attributed ki
 their bound run/build scope; a saved-contact continuation does not prove fresh smoke admission.
 Reuse the controls below with the selected build, not historical timing or actor IDs.
 
+## Scenario intent and setup latitude
+
+This recipe owns the signal-to-response claims in the [suite categories](playtest-suite.md#scenario-intent-and-closed-categories).
+Keep actual ignition/channel reception, scout observation, report and selected raid/encounter
+endpoint connected. Avatar travel to ignition or observation positions is setup unless that
+movement/exposure is itself selected. NPC travel, building entry, sight and combat remain native
+proof. Preserve channel, roof/indoor and viewer variants; a smoke pass does not prove light.
+Unexpected encounters are evidence, not a requirement to reproduce every incidental creature.
+
 ## Start
 
 For a fresh full-story test, select the designated coherent pre-signal save and perform the

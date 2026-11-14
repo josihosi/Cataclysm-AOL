@@ -12,8 +12,7 @@ use honestly labelled interventions, rerun, or abandon an unproductive approach 
 the same outcome. Establish that the relevant condition had an opportunity to occur before
 interpreting its absence. Recover earlier success and compare its premises with the present run;
 communicate missing premises or ambiguity so the coordinator can steer the same investigation.
-A gameplay bug requires both observed contradiction under valid conditions and its causal code path;
-unsettled reproduction stays on the work ledger. When evidence ends one strategy, retire it and
+A demonstrated gameplay contradiction under valid conditions is a bug finding even when its causal code path remains unresolved. Keep the reproduction, first divergence and open causal question in the existing work ledger; do not claim a repair or retest pass without its evidence. When evidence ends one strategy, retire it and
 continue through a materially different evidence-backed route while recoverable work remains.
 
 Repository-owned implementation, registry or manifest binding, scenario, fixture, harness, build,
@@ -27,6 +26,8 @@ materially different owner outcome, a real external decision, a capability unava
 authorized repository route, or irreversible user-data risk. Preserve the exact uncertainty when it
 is not settled. Do not invent retry counts, observation windows, read quotas, or other limits.
 
+A preferred diagnostic tool is a tactic, not the assigned outcome. When it is unavailable, use an authorized alternative that can answer the question or bound the missing evidence; do not make optional owner-operated setup a prerequisite. Distinguish finishing a bounded investigation from proving every historical cause. Preserve unresolved findings and their useful recurrence trigger without repeating completed work merely to recreate lost evidence. This does not waive a demonstrated defect, expand the outcome, or override an explicit owner stop.
+
 ## Preserve truth
 
 Use authoritative state and direct receipts. Keep source, executable, scenario, run, world, player,
@@ -34,11 +35,7 @@ actor, and ownership binding wherever the claim depends on them. Preserve contra
 and the evidence ceiling. Setup, debug intervention, diagnostic replay, focused proof, continuous
 certification, and Windows feel remain distinct classes; prose cannot promote one into another.
 
-Choose evidence that can decide the current question. Keep verbose output in digest-bound artifacts
-and return stable journal identities and narrow query keys instead of copying bulk output into the
-result. Compact output must preserve enough metadata to find the full evidence losslessly; metrics
-such as bytes, entries, elapsed time, and checkpoint count diagnose context shape but never become
-quotas. A first divergence is valuable diagnostic evidence, but the worker decides whether to
+Keep concise playtest findings and reproduction steps linked to the tested Git commit and run identity in existing task context. Delete generated saves, verbose logs, captures, proof archives and superseded builds after use; do not copy them for history. Keep only the current necessary working build/cache. Git preserves code history. Metrics such as bytes, entries, elapsed time, and checkpoint count diagnose context shape but never become quotas. A first divergence is valuable diagnostic evidence, but the worker decides whether to
 inspect, repair, change tactics, rerun, or finish. Mechanical failures such as stale authority,
 missing receipts, false binding, fabricated observations, hidden contradictions, and unowned cleanup
 remain hard failures.

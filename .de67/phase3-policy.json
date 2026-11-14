@@ -4,6 +4,7 @@
   "fallback": {
     "action": "inspect_state",
     "reads": [
+      "dfs",
       "ledger",
       "clock"
     ],

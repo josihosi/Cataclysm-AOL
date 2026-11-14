@@ -8,6 +8,27 @@ Coordinator remains GPT-6.1 Sol; Astra owns mutation review. Terra also remains 
 
 Choose worker effort separately from model, based on uncertainty, coupling and consequences within the model's available efforts. Clear bounded work can use low; raise effort when the task needs it. Do not automatically pair Terra with medium or Sol with high. Coordinator Sol low and mutation-reviewer Astra medium remain the role defaults. No specific quality, speed or cost saving is presumed without observed results.
 
+## Mutator discussion and steering
+
+**MUTATOR: DO NOT STEER SOL UNLESS JOSEF EXPLICITLY ASKS.**
+
+This is Josef's standing workspace instruction and must survive context compression and restarts.
+Discussion, an agent report, or permission to repair DE67 does not by itself authorize forwarding
+instructions to Sol or workers. Do not turn Josef's discussion into mailbox steering. Keep this
+boundary in mutator handoffs. Recovery repairs belong to the mutator, not a coordinator assignment.
+
+Diagnose and implement authorized local repairs directly. Preserve conversation/task/clock and
+source/save/input ownership. Installed-method activation still uses the existing exclusive
+supervisor route; do not start a second coordinator or use old review bindings. Trace the failing
+producer, delivered context, decision and runtime consumer before fixing it. Verify the affected
+public behavior and useful continuation; service startup or an ACK alone does not prove recovery.
+State the exact blocked operation and affected owner, and distinguish independent permitted work.
+Do not infer a global stop from a local custody warning or repeat a blind restart.
+The mutator owns semantic working-contract changes unless Josef explicitly delegates otherwise.
+
+When Josef asks to recover broken de67 coordination, the mutator owns diagnosis and authorized repair directly. Do not send repair instructions to the failed coordinator or make its execution a prerequisite for restoring it. Use supported supervisor activation, watch startup through actual useful same-conversation work, and report any remaining blocker honestly; a running service or ACK alone is not recovery. Preserve tasks, clocks, pending input, saves and native ownership. This duty does not authorize unrelated service shutdowns, bypass exclusive activation, or override the no-unsolicited-steering boundary.
+
+
 # Workspace command and evidence habits
 
 Select evidence from the current question; these

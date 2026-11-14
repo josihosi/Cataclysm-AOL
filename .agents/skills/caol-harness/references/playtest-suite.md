@@ -43,37 +43,142 @@ continuing to30 actual game days total with minimal logging and brief failure-fo
 
 ## Scenario intent and closed categories
 
-Interpret recipe start/end conditions through
+Each scenario tests a gameplay question. Interpret its start/end conditions and recipe through
 [the skill's test-design guidance](../SKILL.md#own-a-scenario-through-its-outcome), including when
-an arm uses strict wording. Preserve conditions that make the gameplay question meaningful; adapt
-incidental setup rather than turn examples into acceptance gates. A nearby camp can isolate signal
-reception but cannot establish a believable long expedition; a routing test need not arrange visibility
-at an arbitrary exact distance. Compare the prepared scene with its intended premise and revise the
-setup when it does not exercise the behavior. Keep genuine failures and coverage limits visible.
-Current assignments select relevant behavior and variants; historical recipes add no runs or new
-acceptance obligations. Existing accepted evidence retains its original scope.
+an arm uses strict wording. Preserve conditions that make the question meaningful; adapt incidental
+setup rather than turn examples into acceptance gates. A nearby camp can isolate signal reception
+but cannot establish a believable long expedition; a routing test need not arrange visibility at an
+arbitrary exact distance. Once the concrete scene is prepared, judge whether it actually exercises
+the intended behavior and change the setup if it does not. Keep genuine failure and coverage limits
+visible. The current assignment selects the relevant behavior and variants; these categories add no
+runs and do not rewrite accepted evidence. There are six categories, with every family assigned once.
+Cross-cutting loading, reload, platform, visibility and performance conditions remain variants.
 
-## Current shared two-round execution — 2026-10-12
+### Signal, knowledge and response
 
-Current scheduling, parallel host allocations, repair batches and release sequencing belong in
-the [owner context](../../../../.de67/owner-context.md) and work ledger. This index supplies the
-scenario outcomes and reusable methods. A complete shared round combines the assigned outcomes
-across hosts; focused completion and source-bound components do not silently fill a clean round.
+**Families:** 1, 1v, 2, 3, 3c, 3r, 4r, 7, X3. **Question:** Does actual perception become grounded knowledge and a purposeful response?
 
-The index retains20 families:13 faction families, X1–X6 and E4B, with required subvariants
-explicit. The [current results](../../../../.de67/task-logs/R-MAINT-SCENARIO-CONSOLIDATION-mac-capacity-001/PLAYTEST-RESULTS.md)
-and ledger own counts, assignments, source-bound proof and remaining work. This recipe is not a
-second status tracker. A shared round requires its assigned full outcomes on the selected source;
-focused proof remains useful without being relabelled a full round.
+**Finish:** Reach the selected observation, report/decision and encounter endpoint; ignition or dispatch alone is insufficient.
 
-Fresh full-story admissions start from the scenario's designated coherent initial/pre-scenario
-save, before the first required story stage, rather than the latest checkpoint. Follow the
-[selection and launch](selection-and-launch.md) distinction between a clean starting fixture,
-a focused checkpoint run and continuation of the same observed journey. Ordinary save/reload
-preserves connected evidence; a historical checkpoint does not prove skipped stages. Focused
-completion may use a nearest compatible checkpoint, as X4 and X4b explicitly do, and earns only
-the behavior actually exercised. Existing accepted proof and valid active games need no automatic
-replay or interruption.
+**Essential conditions:** Actual observer, channel, source age/identity, faction and receiver. Use [smoke and raid](smoke-raid-replay.md) and the individual arm below for concrete controls and variants.
+
+### Encounters and threat response
+
+**Families:** 3f, 5, 8, X2. **Question:** Do actors fight, flee, defend or exercise restraint for the danger they actually perceive?
+
+**Finish:** Resolve the encounter and assigned aftermath; proximity or a menu alone is insufficient.
+
+**Essential conditions:** Actual sight, capability, target, shots/damage/casualties and threat changes. Use [contact and withdrawal](rural-roof-replay.md#panic-and-withdrawal-regression) and the individual arm below for concrete controls and variants.
+
+### Transactions and interrupted work
+
+**Families:** 4, X1, X5. **Question:** Do real goods, payment and work survive interaction and interruption?
+
+**Finish:** Finish settlement/return or resumed work, with the required persistence check and no loss or duplication.
+
+**Essential conditions:** Actual payer, selected goods, destination loading, work activity and interruption. Use [payment branches](bandit-journeys.md) and the individual arm below for concrete controls and variants.
+
+### Continuity across simulation boundaries
+
+**Families:** 6a–6o (family 6), X4, X4b. **Question:** Do the same actors, knowledge, casualties and obligations survive absence, loading and reload?
+
+**Finish:** Exercise the selected transition and downstream outcome; crossing a boundary alone is insufficient.
+
+**Essential conditions:** Member identity, living/dead status, elapsed time, ownership, source provenance and physical custody. Use [6a–6o recipes](away-return-journeys.md) and the individual arm below for concrete controls and variants.
+
+### Integrated survival
+
+**Families:** X6. **Question:** Do ordinary actions compose into a coherent survival trip?
+
+**Finish:** Finish leave/scavenge/trouble/return/rest/leave with consistent actors, items and orders. Judge needs only where selected.
+
+**Essential conditions:** Native consequences and natural interactions; avatar walking itself is not an acceptance criterion. Use [X6 journey](#x6-longer-mixed-survival-trip) and the individual arm below for concrete controls and variants.
+
+### Model-mediated companion behavior
+
+**Families:** E4B. **Question:** Does the actual protected model understand and carry out supported commands in a continuous trip?
+
+**Finish:** Judge command effects, revisions, danger and return/reload; distinguish model judgment from runner failure.
+
+**Essential conditions:** Exact selected model/fixture, unchanged protected instructions, first attempts, request/NPC identity and native application. Use [protected companion protocol](llm-companion-journey.md) and the individual arm below for concrete controls and variants.
+A category is covered only when its assigned constituent claims are answered, not when one
+representative passes. A proved bug or harness blocker is a justified end to an attempt, with
+concrete evidence and remaining coverage; it does not make an unfinished category pass. An event
+that never occurred leaves that claim open. A legitimate refusal, defeat or retreat answers a
+claim only when that is an allowed outcome of the mechanism actually exercised. Keep live counts
+in existing results, not this taxonomy.
+
+### What must stay real, and what can be setup
+
+**Required behavior:** retain the selected scenario's causal chain and endpoint. **Essential
+conditions:** preserve whichever variables distinguish that claim—actual sight, source height,
+loaded owner, native elapsed time, item custody, danger or model input. **Flexible setup:** use
+permitted avatar mutations, teleportation and prepared fixtures to remove unrelated effort.
+Walking the avatar is not a default acceptance condition. A shortcut must not perform the tested
+NPC action, fabricate knowledge, bypass the measured encounter or stand in for elapsed time.
+The more specific restrictions in the owning protocol still apply, especially protected model
+configuration and controlled casualty/fixture setup.
+
+| Scenario / variant | Essential observation; latitude outside it |
+| --- | --- |
+| 1/1v, 3/3c/3r, 7 | Actual channel reception, watch/report and selected raid/contact. Preserve smoke-only, light-only, combined and ordinary/viewer distinctions. Avatar transit can be shortened; NPC ascent/contact and real exposure cannot be teleported into proof. |
+| 2, 4r | Native admission, signal removal and subsequent routine observation/return. Empty observations can be correct; they do not prove populated-site or haul behavior. |
+| 3f, 5, 8 | Actual fear/withdrawal, effective Fight, or patrol defense/peaceful restraint respectively. Setup may bring the scene into reach; actual targets/actions and aftermath decide the verdict. Patrol assignment alone does not prove defense. |
+| 4, X1 | Actual receiver, debit/deposit, departure/home outcome and once-only effects. Fund/setup and avatar positioning are flexible; Pay versus Fight and loaded versus unloaded destination remain distinct branches. |
+| X2 | Independent rider contact, sight loss/reacquisition and ammunition effects. Avatar teleport is allowed for separation; it does not prove a continuous pursuit path or ordinary walking. |
+| X3 | Real original observation/report and distinct newer source knowledge. Teleport between source controls is allowed; do not manufacture discovery or silently credit an unobserved second source. |
+| X4/X4b | Controlled casualty or real ambush, surviving actors' continuation, custody and reload. Use each variant's explicitly permitted setup; induced death proves persistence, not combat lethality. |
+| X5 | Real unfinished activity, actual interruption and completed recovery or legitimate terminal decision. Bring the interruption into reach; do not replace the worker/activity with a new one and call that recovery. |
+| X6 | Connected trip state through scavenge, trouble, return, rest and renewed departure. Teleport incidental transit; keep real interactions and native time/needs when those are measured. No extra walk-home test. |
+| E4B | Actual configured model requests and native effects across all selected command routes. Preserve its prepared-fixture, first-attempt and protected-instruction rules; generic setup latitude does not override them. |
+
+Family 6 has its own [phase-specific intent](away-return-journeys.md#scenario-intent-and-setup-latitude).
+
+### Room for surprises, without an expanding finish line
+
+Keep natural encounters in the story when they are compatible with the measured claim. A dog
+in bushes can expose a real perception bug without becoming a mandatory dog encounter in every
+replay. Observe meaningful surprises, retain their causal evidence and continue the original
+outcome when possible. If a surprise destroys a necessary condition, preserve what it proved
+and use a compatible continuation or selected branch for the missing claim. Do not erase a real
+failure, force a favorable outcome, or add every discovery to every scenario's acceptance rules.
+X6 and E4B provide integrated exploration; focused scenarios can also discover surprises without
+becoming unbounded exploratory campaigns.
+
+### Combine runs by shared evidence, not by category labels
+
+Reduce duplicate setup where the same actors and native sequence genuinely answer several
+claims: 4 + X1 + 6g for payment/return, X3 + 6d/6o for report/source continuity, X4 + 6k–6m
+for casualty handover, or X5 within a compatible patrol/companion journey with real local work.
+These are opportunities, not required bundles. Credit only exercised conditions. Mutually
+exclusive choices need separate compatible branches; faction, channel and caller differences
+remain explicit. A focused checkpoint answers its segment, not skipped full-start stages.
+No family is removed by this categorization; decide any later reduction from demonstrated
+coverage equivalence, rather than from similar names or a single shared component test.
+
+## Coverage, repeat starts and current results
+
+This catalogue describes stable claims and reusable methods; it does not schedule a campaign.
+The [owner context](../../../../.de67/owner-context.md), [work ledger](../../../../.de67/work-ledger.md)
+and [existing collection results](../../../../.de67/task-logs/harness-approval-simplification-20261009/f9b-gameplay-collection-20261016/current.json)
+own current assignments, accepted variants, build scope and remaining work. Inspect the current
+judgment/round-stop fields rather than historical counts in that result. Do not restart an accepted
+variant or a cancelled round merely to make this document look current.
+
+Both repeat routes matter. A coherent pre-scenario fixture proves the full chain when observed;
+a nearest compatible checkpoint makes a focused regression or continuation cheap and proves only
+its exercised stages. Ordinary save/reload preserves earlier evidence from the same journey.
+Use [selection and launch](selection-and-launch.md) to select either route. Record unavailable
+checkpoint bytes as unavailable and use the established recreation recipe; do not invent a save.
+
+Keep successful and failed observations in the existing result with build/run, start/variant,
+actual scope and decisive finding. Historical known-good, current verification, regression and
+never-proved behavior are different facts. A later failure does not erase an earlier success.
+A category is **green for the tested scope** only when every required constituent is supported
+and no unresolved defect contradicts it. Otherwise state open, in progress, needs repair, or
+blocked with concrete evidence in that existing result. Closing a game is not closing coverage.
+Reopen only affected claims after a relevant change or contradiction; unrelated changes and
+clerical edits do not reset the suite. Optional exploration does not create an endless obligation.
 
 ## Save continuity within faction journeys — 2026-10-08
 
@@ -86,27 +191,19 @@ Inspect existing complete-save publication and coherent fallback before selectin
 Exact scope and research: [save-resilience decision](/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.de67/task-logs/save-resilience-owner-20261008/scope-and-protocol.md). These are planned acceptance checks, not native launch authority.
 
 
-## Current ordered scope — owner corrections, 2026-10-06
+## Coverage boundaries and reusable starts
 
 Josef selects four tracks for this expansion: **cannibals, bandits, zombie rider, and local Gemma 4 E4B commands**. Stalker and launcher/clean-install testing are out of this pass; their historical contracts/evidence remain intact and are not deleted or reactivated here. Do not turn the expansion into a general CDDA audit. The thirteen faction arms below remain coverage families. Fresh full-round stories use their specified coherent initial saves; focused completion uses compatible retained state and preserves accepted components. Neither a checkpoint nor production controls prove skipped full-start stages.
 
-Local model behaviour and character scope is **evaluation and report only**; the later owner-selected companion protocol additionally permits repairs of demonstrated runner issues, without changing model instructions or gameplay policy. Josef's handcrafted model instructions must remain unchanged, including actual loaded templates, defaults, snapshot representation and response grammar. Do not tune prompts, sampling/configuration, parsing or gameplay implementation to improve the score during this evaluation. The intended existing local model is `gemma4:e4b`; verify the actual selected model/endpoint when preparing Windows. The owner's informal “E4B gemini 4” reference is interpreted as that existing Gemma selection, not permission to substitute a Gemini cloud model. Installation/readiness for using that local model is a preparation dependency, not a reopened launcher certification project. This planning update launches no game and installs no model.
+Local model behaviour and character scope is **evaluation and report only**; the later owner-selected companion protocol additionally permits repairs of demonstrated runner issues, without changing model instructions or gameplay policy. Josef's handcrafted model instructions must remain unchanged, including actual loaded templates, defaults, snapshot representation and response grammar. Do not tune prompts, sampling/configuration, parsing or gameplay implementation to improve the score during this evaluation. The intended existing local model is `gemma4:e4b`; verify the actual selected model/endpoint when preparing the authorized host. The owner's informal “E4B gemini 4” reference is interpreted as that existing Gemma selection, not permission to substitute a Gemini cloud model. Installation/readiness for using that local model is a preparation dependency, not a reopened launcher certification project. This planning update launches no game and installs no model.
 
-### Ordered coverage and reusable starts
+### Scenario index
 
 The ledger owns active assignments, stops and exact current receipts; this index does not dispatch or resume a game. Use the assigned full-start or focused completion route with one named outcome and one native input owner per writable game. Judge encounter behavior, remaining coverage and native closeout separately. Natural attacker defeat can be a valid survival result without proving an unreached discovery, route or contact stage; retain that result while finishing the missing behavior. Indoor raids require their selected contact/combat outcome; payment stories require the actual payer, once-only settlement and physical return, with the resident departure order intact.
 
-| Priority | Story / detailed procedure | Start and distinct question |
-| --- | --- | --- |
-| 1 | Current cannibal and bandit journeys, historical arms below | Use the specified initial faction save and execute setup through the selected terminal outcome. Existing continuations finish only their diagnostic scope. A legitimate readiness/power/night refusal is not a guaranteed-raid failure. |
-| 2 | [E4B companion journey](llm-companion-journey.md) | R037 prepared companion derivative; one continuous character/command trip, protected prompts and runner-only repairs. |
-| 3a | [X1: loaded/unloaded payment destination](#x1-payment-across-loaded-and-unloaded-home-maps) | Initial bandit save; reach payment naturally, then exercise the selected native stash map path and conservation. |
-| 3b | [X2: two-rider contact and ammunition continuity](#x2-two-rider-contact-and-ammunition-continuity) | Existing two-rider/sight-loss seeds; owner-authorized avatar debug teleportation. Independent of faction payment. |
-| 4a | [X3: old report and newer signal](#x3-returning-report-meets-a-new-source) | Initial real camp/scout fixture; establish the original report during this journey, then manage the distinct new source with authorized avatar debug teleportation. |
-| 4b | [X4: interrupted party and casualty persistence](#x4-party-survivor-and-casualty-handover) | Nearest compatible active pair/outbound or homeward save; authorized avatar setup and one exact bandit debug kill. Extends 6k–6m without another return campaign. |
-| 4c | [X4b: rider ambush during bandit return](#x4b-rider-ambush-during-bandit-return) | Compatible living homeward/paid-departure checkpoint; one hostile zombie rider near the loaded party. Prove native threat response and subsequent return, not scripted death. |
-| 5 | [X5: interrupted work through recovery](#x5-interrupted-work-through-recovery) | Specified initial activity/faction fixture; perform setup and reach contact in this journey, then establish completed recovery. |
-| 6 | [X6: longer mixed survival trip](#x6-longer-mixed-survival-trip) | Specified initial survival fixture; one complete leave/trouble/return/rest/leave story to find accumulating state. |
+The family/variant index below and X1–X6 sections own the concrete starts and outcomes.
+E4B uses its [protected companion recipe](llm-companion-journey.md). Choose a story for its
+missing claim, not its place in a historical priority list.
 
 The existing signal, night, terrain, contact and away/return variants supply coverage within the
 canonical20 families, not an extra practice campaign before them. Preserve the selected full roof
@@ -139,13 +236,13 @@ Use the [complete companion protocol](llm-companion-journey.md) for the single s
 
 ### Cross-cutting safeguards, without extra campaigns
 
-Use the same accepted gameplay source on Mac curses/Tiles and Windows with platform deltas explicit; never replace an executable beneath a live run. Share immutable input saves safely, but give each game disjoint writable profile/world/config/cache, session/request/input and evidence identities. One central coordinator selects stories/capacity; Sol oversight delivers each full protocol to one direct Luna game owner and handles diagnosis. Sol does not acquire native input. Two games sharing a local-model server need distinct request/run/NPC correlation; `req_0` alone is not identity. Reconnect must reconcile a possibly still-running request instead of repeating its effects.
+Use the host and frontend selected in the current assignment, with platform deltas explicit; never replace an executable beneath a live run. Share immutable input saves safely, but give each game disjoint writable profile/world/config/cache, session/request/input and evidence identities. One central coordinator selects stories/capacity; Sol oversight delivers each full protocol to one direct Luna game owner and handles diagnosis. Sol does not acquire native input. Two games sharing a local-model server need distinct request/run/NPC correlation; `req_0` alone is not identity. Reconnect must reconcile a possibly still-running request instead of repeating its effects.
 
-Keep performance monitoring during aggressive batching. Combine waits only with unchanged policy and no required decision between them; preserve prompts, danger and alarms. Separate model/cold-start/queue wait, harness collection and host contention from actual simulation turn cost. An alarm whose original trace rotated away has unknown cause; preserve the decisive interval before cleanup. Increase concurrency from observed capacity and useful work, not a fixed RAM cap, while keeping the shared Windows laptop usable.
+Keep performance monitoring during aggressive batching. Combine waits only with unchanged policy and no required decision between them; preserve prompts, danger and alarms. Separate model/cold-start/queue wait, harness collection and host contention from actual simulation turn cost. An alarm whose original trace rotated away has unknown cause; preserve the decisive interval before cleanup. Increase concurrency from observed capacity and useful work, not a fixed RAM cap, while respecting current host availability.
 
 For gameplay fixes, reuse the nearest production caller test and retained failed save; verify the original failure and meaningful negative control rather than asserting only internal flags. Strong cross-cutting invariants are real actor/item conservation, one simulation/input owner, no duplicate transaction/return, evidence retaining original age/identity, and persistence across reload. Short controlled sequences can cover rare stale/retry/failure branches more cheaply than full native journeys. A helper pass is not native proof; a thousand assertions are not a thousand scenarios. No tests or fixes are added merely to satisfy a quota.
 
-Use one existing arm/task result with compact original handles. Classify setup, checker, model and gameplay failures separately. Preserve the owner-directed whole-final-sweep restart after a confirmed game defect; exploratory variation does not retroactively erase accepted earlier proof or trigger full replays for clerical errors. The selected final pass includes the applicable agreed four-track cases, with unresolved dependencies explicit; there is no launcher/stalker inclusion by implication. Clean finished owned processes and disposable fixtures after retaining necessary proof/recovery bytes; no log forest or second coverage database. This expansion is ordered test scope, not new visibility/pursuit/fallback policy.
+Use one existing arm/task result with compact original handles. Classify setup, checker, model and gameplay failures separately. Retest the demonstrated defect and affected claims under the current owner scope; do not resurrect a cancelled round or replay unrelated accepted proof. Keep unresolved dependencies explicit; there is no launcher/stalker inclusion by implication. Clean finished owned processes and disposable fixtures after retaining necessary proof/recovery bytes; no log forest or second coverage database. This expansion is ordered test scope, not new visibility/pursuit/fallback policy.
 
 ## Added transition stories — owner-selected 2026-10-05
 
@@ -224,7 +321,7 @@ Watch whether an old impact-ready token can be spent after separation without an
 
 **Start:** useful surviving standard-camp checkpoint, with normal supplies and actual world threats. One coherent trip: leave camp → scavenge → encounter trouble → return and reorganize → sleep/rest → leave again. Reuse observations from X3–X5 where applicable instead of restarting their setup. Keep faction conclusions separate and do not provoke every faction merely to fill the story.
 
-**Batches:** ordinary travel and useful long waits between actual decisions; inspect effects at departure, encounter resolution, return and second departure. If testing needs, keep Debug Life Support off from the declared start and supply food/water/rest; if keeping it on to isolate state continuity, label this a continuity trip and claim no needs-survival coverage. Do not opportunistically disable it halfway and call the whole run ordinary survival. Use avatar setup only to isolate the stated continuity question; an ordinary survival trip retains the needs and exposure it intends to test.
+**Batches:** use practical avatar transit, including permitted teleportation, and useful native waits between actual decisions; avatar walking and an ordinary walk-home route are not acceptance conditions; inspect effects at departure, encounter resolution, return and second departure. If testing needs, keep Debug Life Support off from the declared start and supply food/water/rest; if keeping it on to isolate state continuity, label this a continuity trip and claim no needs-survival coverage. Do not opportunistically disable it halfway and call the whole run ordinary survival. Keep real scavenging, encounters, inventory/order changes and rest. Teleportation does not supply elapsed time, satisfy needs or prove a skipped pursuit/exposure segment; retain those conditions only when they are part of the selected claim.
 
 **End:** actors/items/orders/knowledge remain consistent over repeated use, no accumulated duplicates or inexplicable stale orders, save/reload continuity where useful, and performance assessed through the existing configured traces. Stop when the named trip answers its questions; no arbitrary overnight soak or loop quota. Death or an unrecoverable divergence is an honest bounded result with retained evidence, not an erased attempt.
 
@@ -241,12 +338,12 @@ instructions. Current results and the ledger record actual completion and remain
 | 2. Admission → extinguish → routine outings | Shared smoke setup, then [signal-off branch](#signal-off-routine-branch); independent clean pre-signal start, then native admission and extinction. Admitted-roster continuations are diagnostic only. | R018 empty watch/return/report (historical). Populated observations, different POIs and actual haul remain R019 work. |
 | 3. Roof smoke | [Roof variant](smoke-raid-replay.md#roof-variant), actual weather/range and source height. | R033 measured party margin (historical); R034 native assessment and report (historical) credited bound smoke, reached certainty5, returned scouts4/5 and delivered report revision1 at minute9000. The five-member camp declined a raid at minute9060 for insufficient party power. R068 full-start roof death (historical) separately proves clean pre-signal ignition through report, natural assault and attributed fatal actor4 damage on old0bdc/74c64. It does not prove an independent light channel or current-build success. |
 | 3c. Combined smoke + light | Exposed roof/open-window compatible geometry; verify both channels, then the faction journey. | Smoke-only success does not pass this arm. Verify independent light range/LOS; branch by faction and report each separately. |
-| 3r. Rural roof; optional dual-faction variant | [Rural roof protocol](rural-roof-replay.md); offline clean pre-signal countryside fixture A, A+bandit fixture B. | R048 roof arrival/combat (historical) proved IDs5/7 on z1; fatal killer unknown. R050 bandit-only derivative is prepared; R051 (historical) reached smoke lead and a separate terrain outing, blocked before departure. Interior stairs/search and bandit demand remain open. |
-| 3f. Panicked raider withdrawal | [Rural panic branch](rural-roof-replay.md#panic-and-withdrawal-regression), real raid contact; one induced fleeing member and calm companion. | Planned: escape downstairs, homeward route and return/casualty continuity; roof arrival credited separately. Active bandit Fight control. |
+| 3r. Rural roof; optional dual-faction variant | [Rural roof protocol](rural-roof-replay.md); offline clean pre-signal countryside fixture A, A+bandit fixture B. | R048 roof arrival/combat (historical) proved IDs5/7 on z1; fatal killer unknown. R050 bandit-only derivative is prepared; R051 (historical) reached smoke lead and a separate terrain outing, blocked before departure. At that historical checkpoint, interior stairs/search and bandit demand were unproved; current disposition is in the linked results. |
+| 3f. Panicked raider withdrawal | [Rural panic branch](rural-roof-replay.md#panic-and-withdrawal-regression), real raid contact; one induced fleeing member and calm companion. | Historical plan: escape downstairs, homeward route and return/casualty continuity; roof arrival credited separately. Retain the bandit Fight control at its recorded scope. |
 | 4. Bandit smoke → peaceful payment/debt → departure/return | [Bandit branches](bandit-journeys.md), initial bandit save for full discovery/contact proof; compatible pre-choice checkpoints for focused payment/return checks. | R051 run1fe37273 on40bfb2be resumed saved funded/fire state; it proves its recorded continuation, once-only payment, counted custody and both bandits saved home. It is not itself an initial-save replay; bind the earlier clean fixture and ignition segment separately. [Verified segment](bandit-journeys.md#verified-roof-smoke-and-gold-payment-segment). Other signal, receiver, activity and debt branches remain separate; no blanket bandit pass. |
-| 4r. Bandit admission → signal off → routine outings | [Bandit routine branch](bandit-journeys.md), own faction start. | Shared controls are reusable; bandit-specific travel/observation/cargo/knowledge still needs native proof. |
+| 4r. Bandit admission → signal off → routine outings | [Bandit routine branch](bandit-journeys.md), own faction start. | Shared controls are reusable; judge bandit-specific travel/observation/cargo/knowledge from its own linked native results. |
 | 5. Bandit refusal → effective armed fight | [Bandit branches](bandit-journeys.md), independent initial bandit save through the natural pre-choice sequence. | Actual shots, damage, targets and casualties required; peaceful branch proves no fighting outcome. |
-| 6. Leave base → loot → return; exposure and bubble handovers | [Away/return variations 6a–6o](away-return-journeys.md), preferably both factions in the validated rural fixture. | Planned: 24h absences at scout/watch/report/response/payment phases, exposed stalking, pursuit knowledge, split pairs, casualties, reload, vertical crossings and burnout/relight. Preserve independent faction outcomes; no native pass yet. |
+| 6. Leave base → loot → return; exposure and bubble handovers | [Away/return variations 6a–6o](away-return-journeys.md), preferably both factions in the validated rural fixture. | Coverage questions: 24h absences at scout/watch/report/response/payment phases, exposed stalking, pursuit knowledge, split pairs, casualties, reload, vertical crossings and burnout/relight. Preserve independent faction outcomes; current native verdicts belong in the linked results. |
 | 7. Lamp light only | Independent electrical/lamp save; replay relevant faction branches with light and no smoke. | Existing R033 lamp-only start; actual staffed light reception/watch be14 retained at limited scope, return/report unfinished. No smoke substitute. |
 | 8. Patrol → intruder defense; peaceful restraint | Prepared two-NPC patrol/locker start; see patrol detail below. | Preserve accepted assignment/locker evidence; actual mobilization/combat and paid-shakedown restraint remain separate outcomes. |
 | X1. Loaded/unloaded payment-home path | [X1 procedure](#x1-payment-across-loaded-and-unloaded-home-maps) | Real native basket debit/home goods once and reload; prove actual loaded/tinymap path, not distance. |
@@ -255,16 +352,13 @@ instructions. Current results and the ledger record actual completion and remain
 | X4. Survivor/casualty handover (incl. X4b) | [X4 procedure](#x4-party-survivor-and-casualty-handover), [X4b](#x4b-rider-ambush-during-bandit-return) | Actual original member/casualty custody, survivor progress/home/report/reload; source corrections do not pass the native arm. |
 | X5. Interrupted work / recovery | [X5 procedure](#x5-interrupted-work-through-recovery) | Real ordinary activity/contact interruption and completed continuation. Pulp resumption and natural-stamina cancellation are affected segments, not a whole-family pass. |
 | X6. Longer mixed survival trip | [X6 procedure](#x6-longer-mixed-survival-trip) | Whole leave/trouble/return/rest/leave with real survival; old X6 unknown close and historical Casey cause remain protected/unknown. |
-| E4B. Companion journey | [Existing companion route](llm-companion-journey.md) | Actual configured model/service readiness and full command trip; preserve owner model instructions, no assumed Windows-native readiness or model substitution. |
+| E4B. Companion journey | [Existing companion route](llm-companion-journey.md) | Actual configured model/service readiness and full command trip; preserve owner model instructions, no assumed host readiness or model substitution. |
 
-An explicitly requested full pass includes these arms; historical “no need to repeat” notes do not
-excuse an arm from that pass. Historical matrices outside this index remain reference evidence,
-not extra mandatory tests. Run independent arms concurrently only on proven isolated run roots and supported host/transport capabilities, with one Luna input owner per game. Keep required Tiles input exclusive and shared model/service mutations coordinated. The current owner context and ledger select repair batches and restart timing. A focused saved regression establishes its affected behavior, not a complete shared round. Harness-only or clerical corrections do not automatically require replay of unrelated gameplay.
-Accepted first-run proof keeps its source-bound scope. Derive regression checks from retained
-native evidence, and repair query/schema/checker errors against those artifacts instead of
-replaying successful gameplay. A new native run needs changed behavior, a material unresolved
-behavioral question, or an explicitly assigned capacity experiment. Current owner context governs final-sweep restart requirements; clerical corrections alone do not trigger gameplay replay. Continue independent arms when useful, keeping build boundaries honest. No finite pass
-proves absence of every bug: it establishes these journeys under their recorded conditions.
+The assigned constituent claims determine coverage; optional variants do not silently add tests.
+Run independent arms concurrently only on isolated writable roots and supported authorized hosts,
+with one Luna input owner per game. Keep required Tiles input exclusive and shared model/service
+mutations coordinated. Current owner context selects remaining work; this index neither mandates
+a whole-suite replay nor reopens accepted claims.
 
 Use the [suite evidence map](playtest-evidence-map.md) to select existing capture and queries, and identify scoped proof gaps before an arm. It covers the away/return subcases too.
 
@@ -274,9 +368,9 @@ Random creature encounters may change the planned timing through alarms, combat,
 
 Historical example: in the bulky-M240 pre-payment scouting run1f6c2094, the party alarm stopped renewing, scouts5/6 resumed travel at8130 and physically reached home at8140. The exact stimulus was not recorded, so the nearby bullpup is not attributed as the trigger. Home arrival is positive evidence; typed assessment/report and payment remain separate boundaries.
 
-## Final clean sweep and finite edge-case selection — 2026-10-05
+## Focused regression choices
 
-Current owner context and the ledger own final-round sequencing and repair batches. Preserve
+Current owner context and the ledger own completion scope and repair batches. Preserve
 source-bound successes and finish missing behavior from compatible recovery state. A different
 journey's late checkpoint cannot prove skipped full-start stages. Query or capture mistakes should
 be repaired against available evidence where possible; replay only the behavior still needed.
@@ -284,8 +378,8 @@ If a test condition was not reached, adapt the setup and continue. A real defect
 retains its concrete repair/retest obligation; an unexplained incomplete attempt is not completion.
 
 The following five concrete edge cases refine existing arms; they are not five extra copies of
-the same journey or a combinatorial cross-product. Reuse already applicable controls and include
-the relevant branch in the final pass. Actual fixture identities and live command bindings belong
+the same journey or a combinatorial cross-product. Reuse already applicable controls and select
+the branch that answers the current regression question. Actual fixture identities and live command bindings belong
 in each selected start brief, never guessed from this design table.
 
 For a full-start pass, reach these checkpoints within that journey. Focused completion can use a compatible checkpoint and earns the observed boundary, not skipped earlier stages.

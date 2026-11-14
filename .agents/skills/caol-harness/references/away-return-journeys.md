@@ -2,6 +2,24 @@
 
 Owner-expanded suite arm 6. These are coverage definitions, not a current run-status table or new product rules. Exact receipts distinguish accepted segments from remaining gaps. Reuse the shared smoke/bandit controls, safe-wait policy and decision points. Coordinator assigns the complete selected arm and intended outcome, coordinating shared resources and genuine blockers. Luna chooses compatible subcases and ordinary recovery through that outcome; preserve successful segments as they are exercised. No full Cartesian product of weather, terrain, faction and timing is required.
 
+## Scenario intent and setup latitude
+
+These are the continuity category of the [closed suite taxonomy](playtest-suite.md#scenario-intent-and-closed-categories).
+The phase is the controlled variable, not the avatar's walking distance.
+
+| Arms | Required mechanism | Setup latitude / limit |
+| --- | --- | --- |
+| 6a–6g | Actual day-away interval at the named discovery, outbound, watch, report, response, contact or paid-return phase; grounded downstream state on return | Avatar teleport may establish absence. Preserve actual unload and native 24-hour time; do not move NPCs or advance their phase artificially. |
+| 6h–6i | Actual reciprocal exposure followed by purposeful egress/watch/withdrawal, report and selected response; 6i additionally preserves this across absence | Keep exposure real. Afterward avatar transit can be shortened unless it is the stimulus being measured; seeing through debug vision is not reciprocal exposure. |
+| 6j | Seen escape versus unseen departure and evidence-grounded pursuit | Preserve the actual visible movement/LOS break for this comparison. Teleport to prepare geometry, not to claim the skipped escape was observed. |
+| 6k–6m | Split-party ownership, casualty continuity and reload at actual handover | Avatar teleport can cross the bubble. Keep native actor transfer, identity and receipts real; induced casualty uses X4's distinct authorization and attribution. |
+| 6n | Real vertical/terrain connections and correct actor/source z | Traverse the connection being tested natively; unrelated approach travel may be shortened. Avatar placement on another floor alone is not stair/path proof. |
+| 6o | Actual finite-fuel burnout, subsequent relight and retained/new knowledge | Avatar teleport can establish absence; verify fuel, refueling and loading rather than force extinction or clear knowledge. |
+
+Finish each selected arm's stated downstream claim. A valid empty report can settle observation
+content but cannot substitute for a return/report that never happened. Natural encounters may
+supply useful additional coverage without adding a new mandatory arm.
+
 ## Shared start and proof
 
 Prefer the rural dual-camp fixture for simultaneous cannibal/bandit logging, once native loading is validated. Keep the city variant for zombie pressure; it answers a different survival question. Both factions should progress naturally: do not synchronize dispatch, seed knowledge or force hostility to make the comparison tidy. Track each site's operation/generation, actual members and outcome separately. If one faction interferes with the other, retain that result and use a separate compatible single-faction arm only to isolate an unresolved mechanism.
@@ -38,7 +56,7 @@ At meaningful crossings compare same-ID position/z, life/HP, mission/goal/path, 
 
 ## Boundary stress branches, using the nearest compatible successful segment
 
-6k — Bubble edge and split pair. Walk far enough to load/unload a moving party, then back across once, including a case with one scout inside and its partner outside. Inspect the first ownership transfer; repeat crossings only if they exercise a changed state. No duplicate actors, stranded partner, cursor rewind or boundary-corner stall.
+6k — Bubble edge and split pair. Position the avatar, using permitted teleportation if useful, to load/unload a moving party, then cross back once, including a case with one scout inside and its partner outside. Inspect the first ownership transfer; repeat crossings only if they exercise a changed state. No duplicate actors, stranded partner, cursor rewind or boundary-corner stall.
 
 6l — Survivor crossing. If combat naturally kills or incapacitates one member, cross the bubble and return; also retain a zero-survivor outcome when it occurs. Living members must retain their appropriate state, casualties must stay resolved. Natural death earns combat attribution only from native evidence. The owner-selected X4 debug kill is a supported separate setup variant for survivor/casualty persistence; it needs no repeated natural fight to manufacture the same condition.
 

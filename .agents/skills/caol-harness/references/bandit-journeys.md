@@ -5,11 +5,26 @@ inputs or prerequisites. Use the current selected handoff and current controls.
 
 Extend the existing [suite](playtest-suite.md); keep assignments and verdicts in the work ledger. The R051 payment continuation is verified at the bound build below; its brief starts from saved funded/fire state, so it is not independent full-start proof. Other branches retain their own unproved outcomes; the R051/R052 site and travel queries below have been exercised.
 
+## Scenario intent and setup latitude
+
+The [suite categories](playtest-suite.md#scenario-intent-and-closed-categories) separate this
+recipe's payment/work claims from Fight and signal/routine-outing claims. Select the intended
+branch: real receiver and once-only goods/debt plus departure/home, effective native Fight and
+its aftermath, or actual routine observation/return. Preserve the conditions that distinguish
+that branch; do not require every branch in one game. Avatar teleport and practical setup can
+remove incidental travel. They cannot replace a bandit's return, the payer's local goods,
+physical contact, or the native decision. A spontaneous fight may answer combat questions but
+does not prove peaceful restraint; finish that missing condition from a compatible branch.
+
 ## Reuse the common procedure
 
 The [R050 pre-signal fixture](../../../../tools/openclaw_harness/fixtures/saves/live-debug/r050_rural_roof_bandit_only_v1/manifest.json)
-is a prepared bandit start. Its camp129,149 and distant cabin103,167 are distinct sites; select
-actual compatible bytes through the registry. A progressed profile is a continuation, not a
+is a historical prepared bandit start, not an automatically eligible representative start.
+Its camp129,149 and cabin103,167 are distinct sites: check BOTH actual home footprints against
+the selected source/player area. With the historical source OMT131,143, the camp anchor is only
+6 OMT away, already below the10-OMT minimum; the farther cabin does not make the near camp valid.
+Use it only for an explicitly focused control until its representative replacement is prepared
+and measured (default15 OMT). Select actual compatible bytes through the registry. A progressed profile is a continuation, not a
 fresh start. Historical R051 payment proof remains scoped to its original funded/fire state.
 
 Use the [smoke recipe](smoke-raid-replay.md#start) for bound start/current-state checks, ordinary ignition, explicit `safe` waits, saving without movement, and actor/evidence retrieval. Reuse its controls and query shapes, **not cannibal night gates, actor IDs, operation IDs or assumed timing**. Resolve menus and IDs live. Reuse setup already completed in this same full-start run; read returned observations instead of adding routine look/save calls. A historical setup checkpoint cannot replace the new journey's beginning.
