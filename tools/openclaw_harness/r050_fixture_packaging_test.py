@@ -24,7 +24,7 @@ class R050FixturePackagingTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.environment = {**os.environ, "GIT_INDEX_FILE": str(Path(temporary.name) / "index")}
         self.git("read-tree", "--empty")
-        self.git("add", "--", str(FIXTURE))
+        self.git("add", "--", FIXTURE.as_posix())
         self.manifest = json.loads((ROOT / FIXTURE / "manifest.json").read_text(encoding="utf-8"))
 
     def git(self, *arguments: str) -> bytes:
@@ -35,7 +35,7 @@ class R050FixturePackagingTest(unittest.TestCase):
 
     def packaged_world(self) -> dict[str, bytes]:
         result = {}
-        for entry in self.git("ls-files", "--stage", "-z", "--", str(WORLD)).split(b"\0"):
+        for entry in self.git("ls-files", "--stage", "-z", "--", WORLD.as_posix()).split(b"\0"):
             if not entry:
                 continue
             metadata, path = entry.split(b"\t", 1)
@@ -65,13 +65,14 @@ class R050FixturePackagingTest(unittest.TestCase):
 
     def test_local_player_does_not_hide_its_absence_from_the_package(self) -> None:
         self.assertTrue((ROOT / WORLD / PLAYER).is_file())
-        self.git("update-index", "--force-remove", "--", str(WORLD / PLAYER))
+        self.git("update-index", "--force-remove", "--", (WORLD / PLAYER).as_posix())
         with self.assertRaisesRegex(AssertionError, "missing the declared initial player"):
             self.assert_canonical_world(self.packaged_world())
 
     def test_replacement_player_blob_is_rejected(self) -> None:
-        other_blob = self.git("rev-parse", ":" + str(WORLD / "master.gsav")).strip().decode("ascii")
-        self.git("update-index", "--cacheinfo", "100644," + other_blob + "," + str(WORLD / PLAYER))
+        # Git index expressions use repository paths on every host, including Windows.
+        other_blob = self.git("rev-parse", ":" + (WORLD / "master.gsav").as_posix()).strip().decode("ascii")
+        self.git("update-index", "--cacheinfo", "100644," + other_blob + "," + (WORLD / PLAYER).as_posix())
         with self.assertRaisesRegex(AssertionError, "initial player bytes changed"):
             self.assert_canonical_world(self.packaged_world())
 
@@ -80,7 +81,7 @@ class R050FixturePackagingTest(unittest.TestCase):
                      WORLD / "#VGVzdDAw.mm1/#unrelated.zzip",
                      WORLD / "#VGVzdDAw.mm1/unrelated.bin"]:
             with self.subTest(path=path):
-                self.git("check-ignore", "--quiet", "--no-index", "--", str(path))
+                self.git("check-ignore", "--quiet", "--no-index", "--", path.as_posix())
 
 
 if __name__ == "__main__":
