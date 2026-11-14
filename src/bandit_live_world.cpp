@@ -21372,6 +21372,12 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                 continue;
             }
         }
+        // A nonterminal threat or assessment reduction may replace candidate
+        // and invalidate its lead vector while the outing continues.
+        lead = candidate.intelligence_map.find_lead( outing.target_id );
+        if( lead == nullptr ) {
+            continue;
+        }
         if( outing.phase == scout_phase::lost ) {
             const bool all_members_confirmed_dead = confirmed_dead_party( candidate );
             if( loss_can_close( candidate ) ) {
