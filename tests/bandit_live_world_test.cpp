@@ -55172,13 +55172,96 @@ TEST_CASE( "actual dispatched faction party receives attack alert and retains na
     REQUIRE( scene.site().active_outing.member_ids == ids );
     REQUIRE( scene.actor( 4 ).pos_abs() == first );
     REQUIRE( scene.actor( 5 ).pos_abs() == second );
+    const auto ingress_frame = [&]() {
+        std::ostringstream out;
+        out << "turn=" << to_turns<int>( calendar::turn - calendar::turn_zero )
+            << " cataclysm=" << to_turns<int>( calendar::start_of_cataclysm - calendar::turn_zero )
+            << " game_start=" << to_turns<int>( calendar::start_of_game - calendar::turn_zero )
+            << " map=" << get_map().get_abs_sub() << " player=" << get_avatar().pos_abs()
+            << " watch=" << watch;
+        const auto *current = overmap_buffer.global_state.bandit_live_world.find_site(
+                                  selected_site.site_id );
+        if( current ) {
+            const auto &outing = current->active_outing;
+            out << " activity=" << outing.activity_id << " generation=" << outing.generation
+                << " owner=" << static_cast<int>( outing.owner ) << " epoch=" << outing.handoff_epoch
+                << " phase=" << static_cast<int>( outing.phase ) << " waypoint=" << outing.waypoint_index
+                << " actor_waypoint=" << outing.actor_route_waypoint
+                << " cursor=" << outing.last_advanced_minutes
+                << " active=" << outing.activation.active
+                << " active_delta=" << outing.activation.active_delta_turns
+                << " active_turns=" << outing.activation.active_turns
+                << " serviced=" << outing.coarse_work.serviced_active_turns
+                << " work=" << outing.coarse_work.work_millis
+                << " edge_cost=" << outing.coarse_work.edge_cost_millis
+                << " edge_bound=" << outing.coarse_work.edge_bound
+                << " forecast_speed=" << outing.route_clock_speed
+                << " forecast_remaining=" << outing.route_clock_remaining_minutes
+                << " forecast_stale=" << outing.route_clock_stale
+                << " forecast_unavailable=" << outing.route_clock_outbound_unavailable;
+        } else {
+            out << " site=missing";
+        }
+        for( const auto id : ids ) {
+            const auto body = overmap_buffer.find_npc( id );
+            out << "\nmember=" << id.get_value();
+            if( !body ) {
+                out << " missing";
+                continue;
+            }
+            out << " pos=" << body->pos_abs() << " active=" << body->is_active()
+                << " inbounds=" << get_map().inbounds( body->pos_abs() )
+                << " goal=" << body->goal << " path=" << body->omt_path.size()
+                << " moves=" << body->get_moves() << " speed=" << body->get_speed()
+                << " body_turn=" << to_turns<int>( body->get_last_updated() - calendar::turn_zero )
+                << " dead=" << body->is_dead() << " asleep=" << body->in_sleep_state()
+                << " incapacitated=" << body->duty_incapacitated()
+                << " attitude=" << static_cast<int>( body->get_attitude() )
+                << " lease=" << body->get_bandit_live_world_projection_lease().present;
+        }
+        return out.str();
+    };
+    const auto initial_ingress = ingress_frame();
+    std::string first_ingress_refusal;
+    std::string last_ingress_events;
+    std::uint64_t dropped_ingress_events = 0;
     bool travelled = false;
     for( int step = 0; step < 36 &&
          scene.site().active_outing.owner != bandit_live_world::simulation_owner::local; ++step ) {
+        // Keep the existing recorder bound per public service, so a later
+        // refusal cannot be hidden by the earlier cadence's event cap.
+        bandit_live_world_probe::session trace(
+            bandit_live_world_probe::collection_mode::transition_events );
         calendar::turn += 5_minutes;
         process_overmap_npc_move_for_test();
         travelled |= scene.actor( 4 ).pos_abs() != first && scene.actor( 5 ).pos_abs() != second;
+        std::vector<const bandit_live_world_probe::transition_event *> events;
+        for( const auto &event : trace.result().transition_events ) {
+            if( event.transition == "scout_travel_prepare" || event.transition == "scout_motor_service" ||
+                event.transition == "scout_watch_arrival_service" ) {
+                events.push_back( &event );
+                if( first_ingress_refusal.empty() &&
+                    ( event.outcome.find( "held" ) != std::string::npos || event.outcome == "rejected" ) ) {
+                    first_ingress_refusal = event.transition + ':' + event.outcome + ':' + event.reason +
+                                            "\n" + ingress_frame();
+                }
+            }
+        }
+        dropped_ingress_events += trace.result().dropped_transition_events;
+        std::ostringstream last;
+        for( std::size_t i = events.size() > 8 ? events.size() - 8 : 0; i < events.size(); ++i ) {
+            const auto &event = *events[i];
+            last << event.at_minutes << ':' << event.transition << ':' << event.outcome
+                 << ':' << event.reason << '\n';
+        }
+        last_ingress_events = last.str();
     }
+    const auto final_ingress = ingress_frame();
+    INFO( "initial ingress\n" << initial_ingress );
+    INFO( "first retained refusal\n" << first_ingress_refusal );
+    INFO( "final ingress\n" << final_ingress );
+    INFO( "last retained service events, dropped=" << dropped_ingress_events << '\n' <<
+          last_ingress_events );
     CHECK( travelled );
     REQUIRE( scene.site().active_outing.owner == bandit_live_world::simulation_owner::local );
     REQUIRE( bandit_live_world::current_external_simulation_cursor( scene.site() ) );
