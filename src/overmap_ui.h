@@ -139,6 +139,7 @@ enum class ecology_faction_filter_mode {
     all,
     bandits,
     cannibals,
+    migos,
 };
 
 // drawing relevant data, e.g. what to draw.

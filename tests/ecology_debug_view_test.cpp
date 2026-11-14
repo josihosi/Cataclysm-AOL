@@ -10,6 +10,8 @@
 #include "cata_catch.h"
 #include "json.h"
 #include "json_loader.h"
+#include "migo_population.h"
+#include "migo_tower_ai.h"
 
 namespace
 {
@@ -341,6 +343,7 @@ TEST_CASE( "ecology_debug_view_sorts_co_located_z_levels_and_reads_selected_deta
         world.sites.front().members.front().npc_id, tripoint_abs_ms(), tripoint_abs_ms(),
         tripoint_abs_ms(), tripoint_abs_ms(), 55, false
     } );
+    selected_outing.local_handoff.cohesion_best_staging_distances.push_back( 0 );
     selected_outing.observations.emplace_back(
         "burn@140,51,1", "route burned", 80, 140, true,
         bandit_live_world::sortie_observation_kind::burn, "burned" );
@@ -587,4 +590,116 @@ TEST_CASE( "ecology_debug_view_removes_terminal_entities_and_survives_owner_save
     REQUIRE( returned.entities.size() == 1 );
     CHECK( returned.entities.front().id == "camp/observer-site-8" );
     CHECK_FALSE( returned.selected );
+}
+
+TEST_CASE( "ecology_view_reads_migo_leases_without_mutating_them",
+           "[ecology_debug][migo]" )
+{
+    bandit_live_world::world_state humans;
+    migo_population::world_state population;
+    migo_tower::world_state towers;
+    population.sites.emplace_back();
+    auto &site = population.sites.back();
+    site.id = "tower-a";
+    site.anchor = tripoint_abs_omt( 10, 20, 0 );
+    site.tower = true;
+    site.seed_committed = true;
+    site.members.emplace_back();
+    auto &member = site.members.back();
+    member.token.site_id = site.id;
+    member.token.member_id = "member-a";
+    member.owner = migo_population::representation::abstract;
+    member.assignment = migo_population::duty::dispatched;
+    member.hp = 50;
+    member.current_position = project_to<coords::ms>( tripoint_abs_omt( 12, 20, 0 ) );
+    towers.sites.emplace_back();
+    auto &tower = towers.sites.back();
+    tower.site_id = site.id;
+    tower.operation.emplace();
+    tower.operation->generation = 7;
+    tower.operation->source.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    tower.operation->sweep.begin( tower.operation->source.source_omt, 7 );
+    tower.operation->members.emplace_back();
+    tower.operation->members.back().member_id = member.token.member_id;
+    auto serialize = []( const auto &world ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        world.serialize( json );
+        return out.str();
+    };
+    const std::string population_before = serialize( population );
+    const std::string towers_before = serialize( towers );
+    ecology_debug::query_request request;
+    request.migo_population = &population;
+    request.migo_towers = &towers;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.empty() );
+    request.enabled = true;
+    auto view = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( view.entities.size() == 2 );
+    auto dispatched = std::find_if( view.entities.begin(), view.entities.end(), []( const auto &row ) {
+        return row.kind == ecology_debug::entity_kind::migo_dispatch;
+    } );
+    REQUIRE( dispatched != view.entities.end() );
+    const std::string id = dispatched->id;
+    CHECK( dispatched->omt == tripoint_abs_omt( 12, 20, 0 ) );
+    request.selected_id = id;
+    view = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( view.selected );
+    REQUIRE( tower.operation->sweep.pending() );
+    CHECK( view.selected->target == project_to<coords::omt>( *tower.operation->sweep.pending() ) );
+    CHECK( view.selected->signal_source == tower.operation->source.source_omt );
+    CHECK( serialize( population ) == population_before );
+    CHECK( serialize( towers ) == towers_before );
+    migo_population::world_state reloaded_population;
+    migo_tower::world_state reloaded_towers;
+    reloaded_population.deserialize( json_loader::from_string( population_before ).get_object() );
+    reloaded_towers.deserialize( json_loader::from_string( towers_before ).get_object() );
+    request.migo_population = &reloaded_population;
+    request.migo_towers = &reloaded_towers;
+    const auto reloaded = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( reloaded.selected );
+    CHECK( reloaded.selected->entity_id == id );
+    request.migo_population = &population;
+    request.migo_towers = &towers;
+    member.current_position = project_to<coords::ms>( tripoint_abs_omt( 13, 20, 0 ) );
+    REQUIRE( site.transfer( member.token, migo_population::representation::abstract,
+                            migo_population::representation::local ) );
+    view = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( view.selected );
+    dispatched = std::find_if( view.entities.begin(), view.entities.end(), [&id]( const auto &row ) {
+        return row.id == id;
+    } );
+    REQUIRE( dispatched != view.entities.end() );
+    CHECK( dispatched->omt == tripoint_abs_omt( 13, 20, 0 ) );
+    CHECK( dispatched->loaded );
+    REQUIRE( site.transfer( member.token, migo_population::representation::local,
+                            migo_population::representation::abstract ) );
+    view = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( view.selected );
+    CHECK( view.selected->entity_id == id );
+    REQUIRE( site.transfer( member.token, migo_population::representation::abstract,
+                            migo_population::representation::local ) );
+    request.filters.camps = false;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    request.filters.camps = true;
+    request.filters.dispatches = false;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    request.filters.dispatches = true;
+    request.filters.loaded_only = true;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    request.filters.loaded_only = false;
+    member.current_position.reset();
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    member.current_position = project_to<coords::ms>( tripoint_abs_omt( 13, 20, 0 ) );
+    member.assignment = migo_population::duty::returning;
+    view = ecology_debug::query_bandit_ecology( humans, request );
+    REQUIRE( view.selected );
+    CHECK( view.selected->target == site.anchor );
+    tower.operation->members.front().settled = true;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    tower.operation->members.front().settled = false;
+    member.owner = migo_population::representation::dead;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.size() == 1 );
+    request.filters.migos = false;
+    CHECK( ecology_debug::query_bandit_ecology( humans, request ).entities.empty() );
 }

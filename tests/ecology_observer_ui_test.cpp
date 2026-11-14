@@ -33,6 +33,8 @@ TEST_CASE( "ecology_observer_marker_legend_is_stable_and_distinct",
     CHECK( cannibal_dispatch.first == "c" );
     CHECK( zombie_horde.first == "H" );
     CHECK( writhing_stalker.first == "S" );
+    CHECK( overmap_ui::ecology_marker_display( ecology_debug::entity_kind::migo_tower ).first == "M" );
+    CHECK( overmap_ui::ecology_marker_display( ecology_debug::entity_kind::migo_dispatch ).first == "m" );
     CHECK( bandit_camp.second == c_light_red );
     CHECK( cannibal_camp.second == c_red );
     CHECK( bandit_dispatch.second == c_yellow );
@@ -162,11 +164,17 @@ TEST_CASE( "ecology_observer_filter_contract_matches_human_and_json_views",
     CHECK_FALSE( dispatches.stalkers );
     CHECK_FALSE( loaded_cannibals.bandits );
     CHECK( loaded_cannibals.cannibals );
+    CHECK_FALSE( loaded_cannibals.migos );
+    const auto migos = overmap_ui::ecology_query_filters( overmap_ui::ecology_filter_mode::all,
+                       overmap_ui::ecology_faction_filter_mode::migos );
+    CHECK( migos.migos );
+    CHECK_FALSE( migos.bandits );
+    CHECK_FALSE( migos.cannibals );
     CHECK( loaded_cannibals.loaded_only );
     CHECK( overmap_ui::ecology_filter_labels( overmap_ui::ecology_filter_mode::camps ) ==
-           std::vector<std::string> { "camps", "bandits", "cannibals", "loaded+unloaded" } );
+           std::vector<std::string> { "camps", "bandits", "cannibals", "Mi-go", "loaded+unloaded" } );
     CHECK( overmap_ui::ecology_filter_labels( overmap_ui::ecology_filter_mode::dispatches ) ==
-           std::vector<std::string> { "dispatches", "bandits", "cannibals", "loaded+unloaded" } );
+           std::vector<std::string> { "dispatches", "bandits", "cannibals", "Mi-go", "loaded+unloaded" } );
     CHECK( overmap_ui::ecology_filter_labels( overmap_ui::ecology_filter_mode::all,
             overmap_ui::ecology_faction_filter_mode::bandits, true ) ==
            std::vector<std::string> { "camps", "dispatches", "bandits", "loaded" } );
@@ -240,10 +248,11 @@ TEST_CASE( "ecology_observer_export_uses_the_process_local_overmap_filter",
         CHECK( filters.get_bool( "camps" ) == camps_enabled );
         CHECK( filters.get_bool( "dispatches" ) == dispatches_enabled );
         JsonArray labels = filters.get_array( "labels" );
-        REQUIRE( labels.size() == 4 );
+        REQUIRE( labels.size() == 5 );
         CHECK( labels.next_string() == primary_label );
         CHECK( labels.next_string() == "bandits" );
         CHECK( labels.next_string() == "cannibals" );
+        CHECK( labels.next_string() == "Mi-go" );
         CHECK( labels.next_string() == "loaded+unloaded" );
     };
 

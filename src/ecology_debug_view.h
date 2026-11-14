@@ -17,6 +17,9 @@ namespace bandit_live_world
 struct world_state;
 } // namespace bandit_live_world
 
+namespace migo_population { struct world_state; }
+namespace migo_tower { struct world_state; }
+
 namespace ecology_debug
 {
 
@@ -31,12 +34,15 @@ enum class entity_kind {
     cannibal_dispatch,
     zombie_horde,
     writhing_stalker,
+    migo_tower,
+    migo_dispatch,
 };
 
 enum class entity_faction {
     bandit,
     cannibal,
     zombie,
+    migo,
 };
 
 enum class entity_owner {
@@ -60,6 +66,7 @@ struct query_filters {
     bool dispatches = true;
     bool bandits = true;
     bool cannibals = true;
+    bool migos = true;
     bool hordes = false;
     bool stalkers = false;
     bool loaded_only = false;
@@ -91,10 +98,12 @@ struct mobile_entity_read {
     entity_owner owner = entity_owner::abstract;
     bool loaded = false;
     std::string state;
+    std::string source_id;
     int generation = 0;
     std::optional<int> population;
     std::optional<int> interest;
     std::optional<tripoint_abs_omt> target;
+    std::optional<tripoint_abs_omt> signal_source;
     std::optional<int> hp_percent;
 };
 
@@ -104,6 +113,8 @@ struct query_request {
     query_region region;
     query_filters filters;
     std::string selected_id;
+    const migo_population::world_state *migo_population = nullptr;
+    const migo_tower::world_state *migo_towers = nullptr;
     std::function<bool( character_id )> member_is_loaded;
     std::function<std::optional<runtime_member_read>( character_id )> read_selected_member;
     std::function<entity_provenance( const std::string & )> provenance_for_entity;
@@ -169,6 +180,7 @@ struct selected_detail {
     std::optional<int> population;
     std::optional<int> interest;
     std::optional<tripoint_abs_omt> target;
+    std::optional<tripoint_abs_omt> signal_source;
     std::optional<int> hp_percent;
 };
 

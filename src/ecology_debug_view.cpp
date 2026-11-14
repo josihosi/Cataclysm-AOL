@@ -12,6 +12,8 @@
 #include <utility>
 
 #include "bandit_live_world.h"
+#include "migo_population.h"
+#include "migo_tower_ai.h"
 
 namespace ecology_debug
 {
@@ -129,6 +131,8 @@ bool mobile_kind_matches_faction( const mobile_entity_read &mobile )
             return mobile.faction == entity_faction::zombie;
         case entity_kind::writhing_stalker:
             return mobile.faction == entity_faction::zombie;
+        case entity_kind::migo_tower:
+        case entity_kind::migo_dispatch:
         case entity_kind::bandit_camp:
         case entity_kind::cannibal_camp:
         case entity_kind::bandit_dispatch:
@@ -181,6 +185,12 @@ std::string short_alias( entity_kind kind, const std::string &id )
             break;
         case entity_kind::cannibal_dispatch:
             prefix = "CD";
+            break;
+        case entity_kind::migo_tower:
+            prefix = "MT";
+            break;
+        case entity_kind::migo_dispatch:
+            prefix = "MD";
             break;
         case entity_kind::zombie_horde:
             prefix = "ZH";
@@ -332,11 +342,14 @@ selected_detail make_selected_detail( const candidate_read &candidate,
     detail.entity_id = candidate.id;
     if( candidate.mobile ) {
         detail.phase = candidate.mobile->state;
+        detail.source_camp_id = candidate.mobile->source_id;
         detail.destination = candidate.mobile->omt;
-        if( candidate.kind == entity_kind::zombie_horde ) {
+        if( candidate.kind == entity_kind::zombie_horde ||
+            candidate.kind == entity_kind::migo_tower || candidate.kind == entity_kind::migo_dispatch ) {
             detail.population = candidate.mobile->population;
             detail.interest = candidate.mobile->interest;
             detail.target = candidate.mobile->target;
+            detail.signal_source = candidate.mobile->signal_source;
             detail.destination = candidate.mobile->target.value_or( candidate.mobile->omt );
         } else {
             detail.hp_percent = candidate.mobile->hp_percent;
@@ -523,6 +536,81 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
             dispatch.authority_index = authority_index;
             if( point_in_region( omt, request.region ) || dispatch.id == request.selected_id ) {
                 retain_candidate( std::move( dispatch ) );
+            }
+        }
+    }
+    // Read only committed population leases and operation membership.  Individual
+    // members get stable markers because a dispatch can split across positions.
+    if( request.filters.migos && request.migo_population ) {
+        for( const migo_population::site_record &site : request.migo_population->sites ) {
+            if( !site.tower ) {
+                continue;
+            }
+            const migo_tower::site_state *tower = request.migo_towers ?
+                    request.migo_towers->find( site.id ) : nullptr;
+            auto retain_migo = [&]( mobile_entity_read row ) {
+                candidate_read candidate;
+                candidate.kind = row.kind;
+                candidate.faction = row.faction;
+                candidate.omt = row.omt;
+                candidate.id = row.id;
+                candidate.mobile = std::move( row );
+                if( point_in_region( candidate.omt, request.region ) ||
+                    candidate.id == request.selected_id ) {
+                    retain_candidate( std::move( candidate ) );
+                }
+            };
+            const std::string site_key = std::to_string( site.id.size() ) + ":" + site.id;
+            if( request.filters.camps ) {
+                mobile_entity_read row;
+                row.id = "migo/tower/" + site_key;
+                row.kind = entity_kind::migo_tower;
+                row.faction = entity_faction::migo;
+                row.omt = site.anchor;
+                row.state = tower && tower->operation && !tower->operation->resolved ?
+                            "operation active" : "no active operation";
+                row.population = site.living_count();
+                row.loaded = std::any_of( site.members.begin(), site.members.end(),
+                []( const migo_population::member_record & member ) {
+                    return member.owner == migo_population::representation::local &&
+                           member.assignment == migo_population::duty::available;
+                } );
+                retain_migo( std::move( row ) );
+            }
+            if( !request.filters.dispatches || !tower || !tower->operation ||
+                tower->operation->resolved ) {
+                continue;
+            }
+            const migo_tower::operation_record &operation = *tower->operation;
+            for( const migo_tower::operation_member &participant : operation.members ) {
+                const migo_population::member_record *member = site.find( participant.member_id );
+                if( participant.settled || participant.returned || !member || member->hp <= 0 ||
+                    member->owner == migo_population::representation::dead ||
+                    member->owner == migo_population::representation::slot ||
+                    member->assignment == migo_population::duty::available ||
+                    !member->current_position ) {
+                    continue;
+                }
+                mobile_entity_read row;
+                row.id = "migo/dispatch/" + site_key + "/" +
+                         std::to_string( operation.generation ) + "/" +
+                         std::to_string( participant.member_id.size() ) + ":" + participant.member_id;
+                row.source_id = "migo/tower/" + site_key;
+                row.kind = entity_kind::migo_dispatch;
+                row.faction = entity_faction::migo;
+                row.omt = project_to<coords::omt>( *member->current_position );
+                row.loaded = member->owner == migo_population::representation::local;
+                row.owner = row.loaded ? entity_owner::concrete : entity_owner::abstract;
+                row.state = member->assignment == migo_population::duty::returning ?
+                            "returning" : "dispatched";
+                row.population = 1;
+                row.signal_source = operation.source.source_omt;
+                if( member->assignment == migo_population::duty::returning ) {
+                    row.target = site.anchor;
+                } else if( const auto goal = operation.sweep.pending() ) {
+                    row.target = project_to<coords::omt>( *goal );
+                }
+                retain_migo( std::move( row ) );
             }
         }
     }
@@ -725,6 +813,10 @@ std::string to_string( entity_kind kind )
             return "bandit_dispatch";
         case entity_kind::cannibal_dispatch:
             return "cannibal_dispatch";
+        case entity_kind::migo_tower:
+            return "migo_tower";
+        case entity_kind::migo_dispatch:
+            return "migo_dispatch_member";
         case entity_kind::zombie_horde:
             return "zombie_horde";
         case entity_kind::writhing_stalker:
@@ -742,6 +834,8 @@ std::string to_string( entity_faction faction )
             return "cannibal";
         case entity_faction::zombie:
             return "zombie";
+        case entity_faction::migo:
+            return "migo";
     }
     return "zombie";
 }

@@ -302,6 +302,10 @@ std::pair<std::string, nc_color> overmap_ui::ecology_marker_display(
             return { "b", c_yellow };
         case ecology_debug::entity_kind::cannibal_dispatch:
             return { "c", c_pink };
+        case ecology_debug::entity_kind::migo_tower:
+            return { "M", c_magenta };
+        case ecology_debug::entity_kind::migo_dispatch:
+            return { "m", c_pink };
         case ecology_debug::entity_kind::zombie_horde:
             return { "H", c_light_green };
         case ecology_debug::entity_kind::writhing_stalker:
@@ -366,6 +370,8 @@ static std::string ecology_faction_filter_name(
             return _( "bandits" );
         case overmap_ui::ecology_faction_filter_mode::cannibals:
             return _( "cannibals" );
+        case overmap_ui::ecology_faction_filter_mode::migos:
+            return _( "Mi-go" );
     }
     return _( "all factions" );
 }
@@ -376,8 +382,12 @@ ecology_debug::query_filters overmap_ui::ecology_query_filters( ecology_filter_m
     ecology_debug::query_filters filters;
     filters.camps = filter != ecology_filter_mode::dispatches;
     filters.dispatches = filter != ecology_filter_mode::camps;
-    filters.bandits = faction_filter != ecology_faction_filter_mode::cannibals;
-    filters.cannibals = faction_filter != ecology_faction_filter_mode::bandits;
+    filters.bandits = faction_filter == ecology_faction_filter_mode::all ||
+                      faction_filter == ecology_faction_filter_mode::bandits;
+    filters.cannibals = faction_filter == ecology_faction_filter_mode::all ||
+                        faction_filter == ecology_faction_filter_mode::cannibals;
+    filters.migos = faction_filter == ecology_faction_filter_mode::all ||
+                    faction_filter == ecology_faction_filter_mode::migos;
     filters.loaded_only = loaded_only;
     return filters;
 }
@@ -392,11 +402,15 @@ std::vector<std::string> overmap_ui::ecology_filter_labels( ecology_filter_mode 
     if( filter != ecology_filter_mode::camps ) {
         labels.emplace_back( "dispatches" );
     }
-    if( faction_filter != ecology_faction_filter_mode::cannibals ) {
+    const ecology_debug::query_filters filters = ecology_query_filters( filter, faction_filter, loaded_only );
+    if( filters.bandits ) {
         labels.emplace_back( "bandits" );
     }
-    if( faction_filter != ecology_faction_filter_mode::bandits ) {
+    if( filters.cannibals ) {
         labels.emplace_back( "cannibals" );
+    }
+    if( filters.migos ) {
+        labels.emplace_back( "Mi-go" );
     }
     labels.emplace_back( loaded_only ? "loaded" : "loaded+unloaded" );
     return labels;
@@ -573,6 +587,8 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
         const std::optional<size_t> selected_authority_index = std::nullopt )
 {
     const auto query_started = std::chrono::steady_clock::now();
+    request.migo_population = &overmap_buffer.global_state.migo_populations;
+    request.migo_towers = &overmap_buffer.global_state.migo_towers;
     if( !request.provenance_for_entity ) {
         const std::string world_identity = current_ecology_world_id();
         const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
@@ -790,8 +806,7 @@ static std::string ecology_observer_json( bool monitor )
     ecology_debug::view_snapshot view;
     if( request.enabled && !monitor ) {
         view = query_live_ecology( request );
-    } else if( request.enabled && !request.selected_id.empty() &&
-               observer_data.ecology_selected_authority_index ) {
+    } else if( request.enabled && !request.selected_id.empty() ) {
         view = query_live_ecology( request, observer_data.ecology_selected_authority_index );
     }
     ecology_debug::snapshot_context context;
@@ -1235,7 +1250,12 @@ void overmap_sidebar::draw_ecology()
         return;
     }
     const ecology_debug::selected_detail &detail = *draw_data.ecology_view.selected;
-    draw_sidebar_text( string_format( _( "Source: %s" ), detail.source_camp_id ), c_light_gray );
+    if( detail.population ) {
+        draw_sidebar_text( string_format( _( "Population: %d" ), *detail.population ), c_light_gray );
+    }
+    if( !detail.source_camp_id.empty() ) {
+        draw_sidebar_text( string_format( _( "Source: %s" ), detail.source_camp_id ), c_light_gray );
+    }
     draw_sidebar_text( string_format( _( "Phase: %s" ), detail.phase ), c_light_gray );
     if( detail.last_transition_minutes >= 0 ) {
         draw_sidebar_text( string_format( _( "Last transition: %d (%s)" ),
@@ -1253,10 +1273,23 @@ void overmap_sidebar::draw_ecology()
         draw_sidebar_text( string_format( _( "Next deadline: %d" ), detail.next_deadline_minutes ),
                            c_light_gray );
     }
-    draw_sidebar_text( string_format( _( "Destination: %s; route %d OMTs" ),
-                                      detail.destination.to_string(),
-                                      static_cast<int>( detail.route.size() ) ),
-                       c_light_gray );
+    if( selected_marker->kind == ecology_debug::entity_kind::migo_dispatch ) {
+        if( detail.signal_source ) {
+            draw_sidebar_text( string_format( _( "Signal area: %s" ),
+                                              detail.signal_source->to_string() ), c_light_gray );
+        }
+        if( detail.target ) {
+            draw_sidebar_text( string_format( detail.phase == "returning" ? _( "Home: %s" ) :
+                                              _( "Shared sweep goal: %s" ),
+                                              detail.target->to_string() ), c_light_gray );
+        } else {
+            draw_sidebar_text( _( "Shared sweep goal: unavailable" ), c_dark_gray );
+        }
+    } else if( selected_marker->kind != ecology_debug::entity_kind::migo_tower ) {
+        draw_sidebar_text( string_format( _( "Destination: %s; route %d OMTs" ),
+                                          detail.destination.to_string(),
+                                          static_cast<int>( detail.route.size() ) ), c_light_gray );
+    }
     for( const ecology_debug::member_detail &member : detail.members ) {
         const std::string name = member.name.empty() ?
                                  string_format( "npc#%d", member.npc_id.get_value() ) : member.name;
@@ -3782,6 +3815,9 @@ static tripoint_abs_omt display()
                     data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::cannibals;
                     break;
                 case overmap_ui::ecology_faction_filter_mode::cannibals:
+                    data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::migos;
+                    break;
+                case overmap_ui::ecology_faction_filter_mode::migos:
                     data.ecology_faction_filter = overmap_ui::ecology_faction_filter_mode::all;
                     break;
             }

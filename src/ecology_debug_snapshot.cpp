@@ -239,6 +239,7 @@ void write_context( JsonOut &json, const snapshot_context &context,
     json.member( "dispatches", context.filters.dispatches );
     json.member( "bandits", context.filters.bandits );
     json.member( "cannibals", context.filters.cannibals );
+    json.member( "migos", context.filters.migos );
     json.member( "hordes", context.filters.hordes );
     json.member( "stalkers", context.filters.stalkers );
     json.member( "loaded_only", context.filters.loaded_only );
@@ -345,6 +346,7 @@ void write_selected( JsonOut &json, const std::optional<selected_detail> &select
     write_optional_int( json, "population", selected->population );
     write_optional_int( json, "interest", selected->interest );
     write_optional_omt( json, "target", selected->target );
+    write_optional_omt( json, "signal_source", selected->signal_source );
     write_optional_int( json, "hp_percent", selected->hp_percent );
     json.end_object();
 }
