@@ -145,7 +145,6 @@ constexpr int max_observed_defender_count = 32;
 constexpr std::size_t max_abstract_threat_id_length = 128;
 constexpr std::size_t max_structural_signal_reads = 4;
 constexpr std::size_t max_abstract_encounter_outcome_length = 128;
-constexpr int abstract_wound_recovery_minutes = 72 * 60;
 constexpr std::size_t max_camp_intelligence_leads = 64;
 constexpr std::size_t max_acted_report_summaries = 64;
 constexpr std::size_t max_live_signal_marks = 8;
@@ -17961,7 +17960,7 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         current.shared_route.empty() || current.waypoint_index < 0 ||
         current.waypoint_index >= static_cast<int>( current.shared_route.size() ) ||
         current.shared_route[static_cast<std::size_t>( current.waypoint_index )] != current_omt ||
-        !site.roster().valid ) {
+        !site.roster().valid || !current_external_simulation_cursor( site ) ) {
         return result;
     }
 
@@ -18005,6 +18004,38 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         return roster_valid;
     };
 
+    const auto retained_custody_is_valid = [&]() {
+        if( !outing.local_handoff.is_abstract_resume() ||
+            !crossing_receipt_has_current_owner( outing ) ||
+            !current_external_simulation_cursor( candidate ) ) {
+            return false;
+        }
+        int living = 0;
+        for( const character_id id : outing.member_ids ) {
+            const member_record *member = candidate.find_member( id );
+            if( !member ) {
+                return false;
+            }
+            const bool resolved = outing.member_is_resolved( id );
+            const bool casualty = std::find( outing.casualty_ids.begin(),
+                                             outing.casualty_ids.end(), id ) != outing.casualty_ids.end();
+            if( resolved || casualty ) {
+                if( !resolved || !casualty || member->state != member_state::dead ) {
+                    return false;
+                }
+            } else {
+                if( member->state == member_state::dead || member->state == member_state::missing ) {
+                    return false;
+                }
+                ++living;
+            }
+        }
+        return living > 0 && living <= 2;
+    };
+    if( !outing.local_handoff.members.empty() && !retained_custody_is_valid() ) {
+        return abstract_threat_resolution();
+    }
+
     if( encounter.active && current_omt != encounter.overlap_omt ) {
         const bool same_threat_overlaps = read.observed && read.overlap &&
                                           read.stable_threat_ids == encounter.stable_threat_ids;
@@ -18027,8 +18058,10 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
             result.encounter_cleared = true;
             result.notes.push_back( "abstract encounter cleared after one complete absent segment" );
         }
-    } else if( encounter.active && current_omt == encounter.overlap_omt ) {
+    } else if( encounter.active && current_omt == encounter.overlap_omt &&
+               encounter.absent_segment_advances != 0 ) {
         encounter.absent_segment_advances = 0;
+        result.changed = true;
     }
 
     if( !read.observed ) {
@@ -18090,6 +18123,9 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         if( !hard_danger ) {
             result.kind = abstract_threat_resolution_kind::observed_below_gate;
             result.notes.push_back( "visible forward threat remained below withdrawal gates" );
+            if( result.changed && candidate.roster().valid ) {
+                site = std::move( candidate );
+            }
             return result;
         }
         attempt_detour();
@@ -18103,6 +18139,20 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
                                 "visible forward danger selected an adjacent withdrawal detour" :
                                 "visible forward danger blocked the route and forced withdrawal" );
         if( candidate.roster().valid ) {
+            site = std::move( candidate );
+        }
+        return result;
+    }
+
+    const bool retained_physical_watch = !outing.local_handoff.members.empty() &&
+                                         outing.phase == scout_phase::observing &&
+                                         outing.local_handoff.route_position ==
+                                         structural_outing_travel_destination( outing );
+    if( !hard_danger && !read.local_reality && !retained_physical_watch ) {
+        // No encounter is charged for slipping past scattered threats. Fresh
+        // observations remain eligible to escalate when danger changes.
+        result.kind = abstract_threat_resolution_kind::observed_below_gate;
+        if( result.changed && candidate.roster().valid ) {
             site = std::move( candidate );
         }
         return result;
@@ -18132,6 +18182,11 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         return result;
     }
     result.changed = true;
+    // An unresolved legacy/local episode can encounter a changed threat after
+    // reload. Bind the eventual withdrawal to the current observed danger.
+    encounter.stable_threat_ids = read.stable_threat_ids;
+    encounter.danger_low = read.danger_low;
+    encounter.danger_high = read.danger_high;
 
     bool selected_detour = false;
     if( hard_danger ) {
@@ -18158,11 +18213,7 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         return result;
     }
 
-    struct member_power_record {
-        character_id npc_id;
-        int power = 0;
-    };
-    std::vector<member_power_record> surviving_members;
+    std::vector<character_id> surviving_members;
     for( const character_id &member_id : outing.member_ids ) {
         if( outing.member_is_resolved( member_id ) ||
             std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
@@ -18173,41 +18224,12 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         if( member == nullptr ) {
             return abstract_threat_resolution();
         }
-        const routine_member_capability capability = routine_capability_for_template(
-                    member->npc_template_id );
-        surviving_members.push_back( { member_id,
-                                       std::clamp( capability.observer + capability.escort + capability.defender,
-                                               1, 10 ) } );
+        surviving_members.push_back( member_id );
     }
     if( !outing.local_handoff.members.empty() ) {
-        // A retained handoff binds actual Native bodies. The modeled attrition
-        // reducer below cannot declare one of those living bodies missing or
-        // wounded. Request physical withdrawal; only Native settlement can
-        // change their injury/casualty/corpse/cargo custody.
-        if( !outing.local_handoff.is_abstract_resume() ||
-            !crossing_receipt_has_current_owner( outing ) ||
-            !current_external_simulation_cursor( candidate ) ||
-            surviving_members.empty() || surviving_members.size() > 2 ) {
-            return abstract_threat_resolution();
-        }
-        const bool confirmed_native_custody = std::all_of(
-        outing.member_ids.begin(), outing.member_ids.end(), [&]( const character_id id ) {
-            const auto *member = candidate.find_member( id );
-            if( !member ) {
-                return false;
-            }
-            const bool living = std::any_of( surviving_members.begin(), surviving_members.end(),
-            [id]( const member_power_record & survivor ) {
-                return survivor.npc_id == id;
-            } );
-            if( living ) {
-                return member->state != member_state::dead && member->state != member_state::missing;
-            }
-            return member->state == member_state::dead && outing.member_is_resolved( id ) &&
-                   std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), id ) !=
-                   outing.casualty_ids.end();
-        } );
-        if( !confirmed_native_custody || !begin_homeward_return() ) {
+        // A retained handoff binds actual Native bodies. Only Native
+        // settlement can change their injury/casualty/corpse/cargo custody.
+        if( !retained_custody_is_valid() || !begin_homeward_return() ) {
             return abstract_threat_resolution();
         }
         const bool singleton = surviving_members.size() == 1;
@@ -18224,78 +18246,21 @@ abstract_threat_resolution resolve_structural_abstract_threat( site_record &site
         site = std::move( candidate );
         return result;
     }
-    if( surviving_members.size() != 2 ) {
+    // Sharing an OMT is not combat. Preserve member/body custody; an
+    // impassable dangerous route causes withdrawal, not invented attrition.
+    if( surviving_members.size() != 2 || !begin_homeward_return() ) {
         return abstract_threat_resolution();
-    }
-    std::sort( surviving_members.begin(), surviving_members.end(),
-    []( const member_power_record & lhs, const member_power_record & rhs ) {
-        return std::tie( lhs.power, lhs.npc_id ) < std::tie( rhs.power, rhs.npc_id );
-    } );
-    member_record *lower_power_member = candidate.find_member( surviving_members[0].npc_id );
-    member_record *other_member = candidate.find_member( surviving_members[1].npc_id );
-    if( lower_power_member == nullptr || other_member == nullptr ) {
-        return abstract_threat_resolution();
-    }
-    const auto mark_missing = [&candidate, &outing, &trace_retained_resolution](
-    const character_id member_id ) {
-        if( !update_member_state( candidate, member_id, member_state::missing,
-                                  "abstract threat encounter marked member missing" ) ) {
-            trace_retained_resolution( "mark_missing", "member_update_refused" );
-            return false;
-        }
-        outing.casualty_ids.push_back( member_id );
-        outing.resolved_member_ids.push_back( member_id );
-        return true;
-    };
-    if( read.danger_high < party_power ) {
-        lower_power_member->wounded_or_unready = true;
-        lower_power_member->abstract_wound_until_minutes = minutes_after_saturated(
-                    now_minutes, abstract_wound_recovery_minutes );
-        lower_power_member->last_writeback_summary =
-            "abstract threat encounter wounded the lower-power scout";
-        encounter.outcome = "lower_power_member_wounded";
-        result.kind = abstract_threat_resolution_kind::wounded_pair;
-    } else if( read.danger_high < std::min( 200, 2 * party_power ) ) {
-        if( !mark_missing( lower_power_member->npc_id ) ) {
-            return abstract_threat_resolution();
-        }
-        other_member = candidate.find_member( surviving_members[1].npc_id );
-        if( other_member == nullptr ) {
-            return abstract_threat_resolution();
-        }
-        other_member->wounded_or_unready = true;
-        other_member->abstract_wound_until_minutes = minutes_after_saturated(
-                    now_minutes, abstract_wound_recovery_minutes );
-        other_member->last_writeback_summary =
-            "abstract threat encounter survivor returned wounded";
-        encounter.outcome = "one_missing_survivor_wounded";
-        result.kind = abstract_threat_resolution_kind::one_missing;
-    } else {
-        if( !mark_missing( surviving_members[0].npc_id ) ||
-            !mark_missing( surviving_members[1].npc_id ) ) {
-            return abstract_threat_resolution();
-        }
-        encounter.outcome = "all_members_missing";
-        result.kind = abstract_threat_resolution_kind::all_missing;
     }
     encounter.outcome_applied = true;
     encounter.last_applied_episode = encounter.episode;
-    if( result.kind == abstract_threat_resolution_kind::all_missing ) {
-        outing.phase = scout_phase::lost;
-        outing.last_progress_minutes = now_minutes;
-    } else if( !begin_homeward_return() ) {
-        return abstract_threat_resolution();
-    }
+    encounter.outcome = "blocked_route_withdrawal";
+    result.kind = abstract_threat_resolution_kind::withdrawal;
     result.outcome_applied = true;
-    result.notes.push_back( "abstract overlap applied one non-victory member outcome" );
-    if( !simulation_owner_state_is_consistent( outing ) ) {
-        trace_retained_resolution( "publication", "owner_inconsistent" );
+    result.notes.push_back( "offscreen scouts withdrew from dangerous overlap without combat" );
+    if( !simulation_owner_state_is_consistent( outing ) || !candidate.roster().valid ) {
         return abstract_threat_resolution();
     }
-    if( !candidate.roster().valid ) {
-        trace_retained_resolution( "publication", "roster_invalid" );
-        return abstract_threat_resolution();
-    }
+
     site = std::move( candidate );
     return result;
 }
@@ -21303,8 +21268,7 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
                         }
                         result.notes.insert( result.notes.end(), resolution.notes.begin(),
                                              resolution.notes.end() );
-                        if( resolution.changed ||
-                            resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
+                        if( resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
                             resolution.kind == abstract_threat_resolution_kind::withdrawal ||
                             resolution.kind == abstract_threat_resolution_kind::wounded_pair ||
                             resolution.kind == abstract_threat_resolution_kind::one_missing ||
@@ -21348,14 +21312,9 @@ structural_outing_result advance_structural_bounty_outings( world_state &state,
             trace_structural_outing( candidate, "deferred_threat_resolution",
                                      "valid=" + std::to_string( resolution.valid ) +
                                      " kind=" + std::to_string( static_cast<int>( resolution.kind ) ) );
-            if( resolution.valid && resolution.changed ) {
+            if( resolution.valid ) {
                 result.notes.insert( result.notes.end(), resolution.notes.begin(),
                                      resolution.notes.end() );
-                if( projection_commit && !projection_commit( site, candidate ) ) {
-                    continue;
-                }
-                site = std::move( candidate );
-                continue;
             }
             if( resolution.valid &&
                 ( resolution.kind == abstract_threat_resolution_kind::deferred_to_local ||
