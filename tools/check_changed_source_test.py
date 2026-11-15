@@ -135,6 +135,7 @@ class ChangedSourceEntryPointTest(unittest.TestCase):
             "tools/openclaw_harness/scenario_registry_cli.py",
             "build/generated.py",
             ".userdata/private.py",
+            ".openclaw/runtime.py",
             ".build/generated.py",
             "tools/openclaw_harness/build_logs/run.py",
             ".env/private.py",
@@ -567,6 +568,46 @@ class ChangedSourceEntryPointTest(unittest.TestCase):
             [sys.executable, str(ENTRY), "--files", relative], cwd=str(ROOT),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         )
+
+    @unittest.skipUnless(shutil.which("flake8"), "Flake8 is not installed")
+    def test_public_route_skips_openclaw_but_checks_owned_python(self):
+        version = lint.version_text("flake8", ["--version"])
+        expected = next(line.split("==", 1)[1] for line in
+                        (ROOT / "requirements-lint.txt").read_text(encoding="utf-8").splitlines()
+                        if line.startswith("flake8=="))
+        if not version or version.split()[0] != expected:
+            self.skipTest("the public route requires the pinned Flake8 version")
+        with tempfile.TemporaryDirectory(prefix="lint-runtime-", dir=str(ROOT / ".openclaw")) as runtime_dir, \
+                tempfile.TemporaryDirectory(prefix="lint-source-", dir=str(ROOT / "tools")) as source_dir:
+            runtime = Path(runtime_dir) / "generated.py"
+            source = Path(source_dir) / "owned.py"
+            runtime.write_text("value = missing_runtime_name\n", encoding="utf-8")
+            source.write_text("value = missing_owned_name\n", encoding="utf-8")
+            runtime_before = hashlib.sha256(runtime.read_bytes()).hexdigest()
+            source_before = hashlib.sha256(source.read_bytes()).hexdigest()
+
+            def check():
+                return subprocess.run(
+                    [sys.executable, str(ENTRY), "--files", str(runtime), str(source)],
+                    cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                )
+
+            bad = check()
+            self.assertEqual(bad.returncode, 1, bad.stdout)
+            self.assertIn("SKIPPED generated/user/runtime path: .openclaw/", bad.stdout)
+            self.assertIn("F821 undefined name 'missing_owned_name'", bad.stdout)
+            self.assertNotIn("F821 undefined name 'missing_runtime_name'", bad.stdout)
+            self.assertEqual(hashlib.sha256(runtime.read_bytes()).hexdigest(), runtime_before)
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), source_before)
+
+            source.write_text("value = 42\n", encoding="utf-8")
+            corrected_before = hashlib.sha256(source.read_bytes()).hexdigest()
+            fixed = check()
+            self.assertEqual(fixed.returncode, 0, fixed.stdout)
+            self.assertIn("PASS: flake8 on changed Python files", fixed.stdout)
+            self.assertIn("RESULT: full selected coverage passed", fixed.stdout)
+            self.assertEqual(hashlib.sha256(runtime.read_bytes()).hexdigest(), runtime_before)
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), corrected_before)
 
     def test_declaration_invalid_and_corrected_through_entry_point(self):
         with tempfile.TemporaryDirectory(prefix="check-changed-source-", dir=str(SCENARIOS)) as temp:

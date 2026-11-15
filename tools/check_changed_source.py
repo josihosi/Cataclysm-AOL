@@ -20,7 +20,7 @@ CPP_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 PY_SUFFIXES = {".py"}
 JSON_SUFFIXES = {".json"}
 EXCLUDED_PARTS = {
-    ".git", ".de67", ".venv", "venv", "__pycache__", ".build", "build", "build_w",
+    ".git", ".de67", ".openclaw", ".venv", "venv", "__pycache__", ".build", "build", "build_w",
     "obj", "obj_w", "dist", "distvenv", "userdata", "harness_runs", "sessions",
     "task-logs", "build_logs", "logs", "proof", "proofs", "captures", "cache",
     ".cache", ".pytest_cache", ".mypy_cache", ".ruff_cache", "artifacts", "generated",
