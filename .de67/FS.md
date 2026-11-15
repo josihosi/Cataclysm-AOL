@@ -2465,7 +2465,68 @@ Implementation status:
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-FEATURE-MAP-S001 claim=R-MAINT-FEATURE-MAP -->
 ### One canonical feature map and coherent existing DFS retrieval
-Current FS already contains all13 zombie/light archived slices; 36 semantic-surface/archive slices are absent. Reconcile `.de67/history/20260911-completed-semantic-surface-cockpit/FS.md` and `.de67/history/20260919-zombies-light-before-affordable-playtests/FS.md` into current feature knowledge, preserving IDs, provenance, accepted evidence and current owner intent. Do not reactivate obsolete requirements. Existing mutation_guard.extract_dfs_slices only returns exact selected same-claim blocks; policy_kernel._exploration_route uses it. Extend that existing retrieval for necessary shared feature context with cycle/duplication safeguards and explicit neighbor evidence boundaries; no new registry. Use the smoke feature pilot and a fresh worker to prove usable exercise/neighbor/pass-fail context. Method changes require exclusive method-candidate promotion, never live worker edits to installed method.
+This canonical knowledge reconciles the historical semantic-surface and zombie/light archives. Historical identities below are navigation to original evidence, not new active selectors, requirements or acceptance. Current owner direction and current product slices govern delivery. Historical red statuses, dates, clocks, repair tactics and campaigns do not become current obligations. Absence of an old marker does not prove absent implementation.
+
+#### Reconciled feature knowledge
+The semantic surface stack distinguishes native input owner, run/surface/frame identity, stable targets, requests and native receipts. Stale or malformed requests do not authorize action; duplicate requests reuse their receipt; unsupported owners expose no executable actions. World, overmap, inventory, dialogue, direction/targeting and generic menus have distinct adapters. Source/test handles: `src/semantic_surface.h`, `src/semantic_surface.cpp`, `tests/semantic_surface_test.cpp`. Historical evidence does not establish universal adapter coverage; inspect actual current advertised ownership for an interaction.
+
+The R-026 package composes independent living-NPC, camp-service, signal, persistence, hostile-ecology and flesh-raptor evidence. `tools/openclaw_harness/R026_PACKAGE_GUIDE.md` locates component receipts; its historical launch tactics are not a new campaign order. R-026 acceptance2 through `R-026-closure-final-package-binding-001` and R-037 acceptance2 through `R-037-closure-wait-hold-release-matrix-001` retain their independent original ceilings. The focused R-026 run lacks its own save/quit receipt; R-034 supplies separate persistence proof, not a retroactive upgrade. R-037 negative/inconclusive command rows remain assessed negative/inconclusive outcomes, not missing successes or passes. Package binding `c28981e4c612da706239bc8e2959852bfdb2957261241721d146fb42972d5f71` and classification `0f016d314481f3468ceed75a922c7e1695cf115861b9a64a5197ed0ccca23441` preserve those distinctions; the classification is not the later acceptance.
+
+R-029 distinguishes observer, lead, report, decision, operation, contact and movement ownership. Sound information or an outbound outing does not prove a returned report, authorized raid or local contact; each receipt stops at its named transitions. R-027/R-028 are historical redirects. R-036 finite matched evidence does not reinstate the withdrawn broad Mixed/AI performance campaigns.
+
+Historical delivery/context knowledge covers exact FS selection, compact evidence and result reuse. A semantic-search experiment does not prove an index shipped. Prompt-delivery S001 was superseded by S002; review-context records an owner-directed undo; checkpoint context was optional and advisory output non-authoritative. Historical cadence is not a present quota. Current installed behavior and owner decisions govern these methods.
+
+#### Historical identity navigation
+These36 identities resolve in `.de67/history/20260911-completed-semantic-surface-cockpit/FS.md`, SHA256 `59b33822cb050e6e07896a076e063336510ce3f63b69aecbeedbb072e92698c7`. Retrieve the exact marked slice for original detail and proof. The titles identify historical subjects, not current tasks.
+
+- `DE67-MAINT-CADENCE-S001` — Coordinator review cadence.
+- `R-SURFACE-001-S001` — 1. Semantic surface stack and frame identity.
+- `R-SURFACE-002-S001` — 2. Native semantic request and receipt path.
+- `R-SURFACE-003-S001` — 3. Shared generic menu and prompt instrumentation.
+- `R-SURFACE-004-S001` — 4. World semantic surface.
+- `R-SURFACE-005-S001` — 5. Overmap semantic surface.
+- `R-SURFACE-006-S001` — 6. Inventory semantic surfaces.
+- `R-SURFACE-007-S001` — 7. Dialogue semantic surface.
+- `R-SURFACE-008-S001` — 8. Direction and targeting semantic surfaces.
+- `R-SURFACE-009-S001` — 9. Broad input-owner coverage and hard stop.
+- `R-SURFACE-010-S001` — 10. Cockpit active-surface projection and end-to-end proof.
+- `R-SURFACE-011-S001` — 11. Current owner coverage after qualification.
+- `R-026-S001` — 12. Fresh package and retained acceptance.
+- `R-027-S001` — 12. Fresh package and retained acceptance.
+- `R-028-S001` — 12. Fresh package and retained acceptance.
+- `R-029-S001` — 13. Coherent bandit and cannibal discovery and contact.
+- `R-029-S002` — 13. Coherent bandit and cannibal discovery and contact.
+- `R-029-S003` — active hostile contact and single movement ownership.
+- `R-030-S001` — 14. Lossless CAOL evidence transport.
+- `R-031-S001` — 15. Fresh living NPC intent, context and routing.
+- `R-032-S001` — 16. Fresh camp establishment, missions and zones.
+- `R-033-S001` — 17. Fresh signal controls and world boundaries.
+- `R-034-S001` — 18. Fresh persistence and continuation.
+- `R-035-S001` — 19. Fresh flesh-raptor behavior.
+- `R-036-S001` — 20. Fresh integrated performance.
+- `R-MAINT-COMPACT-IO-S001` — Owner-authorized delivery tooling — cycle 9.
+- `R-MAINT-RESULT-REUSE-S001` — Owner-authorized delivery tooling — cycle 9.
+- `R-MAINT-CONSULT-S001` — Owner-authorized advisory integration — review d1cfc813605b.
+- `R-MAINT-PROMPT-DELIVERY-S001` — Owner-authorized advisory integration — review d1cfc813605b.
+- `R-MAINT-PROMPT-DELIVERY-S002` — Owner-scoped retrieval evaluation — 2026-09-08.
+- `R-MAINT-EVIDENCE-SEARCH-S001` — Current prompt delivery.
+- `R-MAINT-CONTEXT-ROUTING-S001` — Convenience evaluation and owner decision.
+- `R-MAINT-FS-MIGRATION-S001` — Declared functional slices reach worker context.
+- `R-MAINT-REVIEW-CONTEXT-S001` — Functional Specification identity and delivery projection.
+- `R-MAINT-CHECKPOINT-CONTEXT-S001` — Optional checkpoint command context.
+- `R-037-S001` — Local-LLM command coverage.
+
+The zombie/light archive `.de67/history/20260919-zombies-light-before-affordable-playtests/FS.md`, SHA256 `85174defb1f037b09e648b9fad8c4c6fe77f1476dbac3d86947cea6d28d2b4a3`, already has all13 exact identities in current FS; preserve those existing slices and statuses: `R-ZL-LIGHT-EMISSION-S001`, `R-ZL-LIGHT-OPTICS-S001`, `R-ZL-LIGHT-CONTINUITY-S001`, `R-ZL-STALKER-S001`, `R-ZL-RIDER-PURSUIT-S001`, `R-ZL-RIDER-IMPACT-S001`, `R-ZL-PREDATOR-LIFECYCLE-S001`, `R-ZL-EVOLUTION-S001`, `R-ZL-RIDER-BANDS-S001`, `R-ZL-ENCOUNTERS-S001`, `R-ZL-PLAYTEST-S001`, `R-MAINT-ASTRA-WORKER-S001`, `R-ZL-CREATURE-SPRITES-S001`.
+
+#### Shared retrieval and smoke-context acceptance boundary
+The promoted `extract_dfs_shared_context` route keeps exact owner-selected roots and follows standalone DFS-CONTEXT links with cycle/duplicate and overlap controls. Linked material is context, not additional selected work or acceptance. Existing task-library item/byte limits bound linked material, without clipping selected roots. Literal examples remain documentation under the existing guard fence scanner; this is not a full CommonMark guarantee.
+
+The two live links below are genuine dependencies of this feature-map smoke-context assessment. Retained Signal proof supplies finite-source/observer evidence and withdrawn-campaign limits; Signal range supplies independent range/tended-fire boundaries. A fresh reader should distinguish source identity, observer opportunity, expiry/occlusion and independent proof. No eligible receiver or blocked opportunity makes silence inconclusive. Reading these slices does not authorize replay of accepted claims.
+
+<!-- DE67:DFS-CONTEXT id=R-CAOL-SIGNAL-PROOF-S001 -->
+<!-- DE67:DFS-CONTEXT id=R-REL-SIGNAL-RANGE-S001 -->
+
+For first-smoke implementation or acceptance retrieve the complete current `R-CAOL-FIRST-SMOKE-S001`. The reviewed2741-byte question view is navigation only and does not replace the reviewed146046-byte root; these are source-specific sizes, not universal caps. Historical exercises are not current campaign orders. Remaining feature-map acceptance requires actual fresh-worker use of this canonical knowledge and installed linked route, demonstrating useful exercise/neighbor/pass-fail distinctions and honest uncertainty. Code promotion, synthetic fixtures and staging support acceptance alone do not close this claim. Retrieval verification does not itself require native replay.
 
 Implementation status:
 
