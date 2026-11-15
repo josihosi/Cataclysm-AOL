@@ -2,6 +2,8 @@
 """Check renderer binding and strict per-case execution in the CI route."""
 
 import os
+import io
+import contextlib
 import shutil
 import sys
 from pathlib import Path
@@ -15,8 +17,8 @@ import travelling_contact_ci as route
 
 class TravellingContactCITest(unittest.TestCase):
     def test_catalogue_preserves_existing_controls_and_one_guarded_addition(self):
-        self.assertEqual(len(route.SELECTIONS), 47)
-        self.assertEqual(len(set(route.SELECTIONS)), 47)
+        self.assertEqual(len(route.SELECTIONS), 50)
+        self.assertEqual(len(set(route.SELECTIONS)), 50)
         self.assertIn("map reload retires old vehicle cache before saved submaps are evicted", route.SELECTIONS)
         self.assertIn("firelight escapes through a distant transparent opening", route.SELECTIONS)
         self.assertIn("unicode world saves with unicode receipt tree entries", route.SELECTIONS)
@@ -27,6 +29,16 @@ class TravellingContactCITest(unittest.TestCase):
         self.assertNotIn(route.CURSES_ONLY_NOOP, route.SELECTIONS[:33])
         self.assertEqual(route.SELECTIONS[33:].count(route.CURSES_ONLY_NOOP), 1)
         self.assertFalse(any("benchmark" in selection.lower() for selection in route.SELECTIONS))
+
+    def test_original_regressions_run_both_reported_seeds(self):
+        selections = tuple(route.ORIGINAL_REGRESSION_SEEDS)
+        passed = (0, "All tests passed (1 assertion in 1 test case)\n")
+        with patch.object(route, "SELECTIONS", selections):
+            result, calls = self.run_with(True, route.TILES_MARKER, [passed] * 4)
+        self.assertEqual(result, 0)
+        self.assertEqual([(call.args[0][1], call.args[0][3]) for call in calls[1:]],
+                         [(selection, seed) for selection in selections
+                          for seed in ("1794708613", "1794710029")])
 
     def run_with(self, tiles, marker_output, outcomes):
         with tempfile.TemporaryDirectory() as directory:
@@ -144,6 +156,26 @@ class TravellingContactCITest(unittest.TestCase):
             result, calls = self.run_with(True, route.TILES_MARKER, outcomes)
         self.assertEqual(result, 1)
         self.assertEqual([call.args[0][1] for call in calls[1:]], list(selections))
+
+    def test_timeout_reports_bounded_partial_output_and_continues(self):
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / "cata_test"
+            binary.touch()
+            partial = (b"discarded-prefix\nR067_ALARM_VARIANT faction=cannibal mode=move\n" +
+                       b"x" * 16384 + b"last-variant")
+            responses = [subprocess.CompletedProcess([], 1, route.TILES_MARKER + "\n"),
+                         subprocess.TimeoutExpired("cata_test", 600, output=partial),
+                         subprocess.CompletedProcess([], 0, "All tests passed (1 assertion in 1 test case)\n")]
+            stderr = io.StringIO()
+            with patch.object(route, "SELECTIONS", ("slow", "later")), \
+                    patch.object(route.subprocess, "run", side_effect=responses) as runner, \
+                    contextlib.redirect_stderr(stderr):
+                self.assertEqual(route.run_controls(binary, True), 1)
+            self.assertIn("last-variant", stderr.getvalue())
+            self.assertIn("Last observed variant: R067_ALARM_VARIANT faction=cannibal mode=move",
+                          stderr.getvalue())
+            self.assertNotIn("discarded-prefix", stderr.getvalue())
+            self.assertEqual([call.args[0][1] for call in runner.call_args_list[1:]], ["slow", "later"])
 
     def test_renderer_mismatch_and_missing_markers_fail_closed(self):
         for tiles, marker in ((False, route.TILES_MARKER), (True, route.CURSES_ONLY_NOOP),

@@ -60,7 +60,14 @@ SELECTIONS = (
     "ecology overmap facts follow gated canonical migo projection",
     "native ecology no-op actions publish handled successor state",
     "semantic World exposes only registered native vehicle controls",
+    "retained scout fixture restores the avatar queued effects once",
+    "R051 separated awake homeward pair physically reunites on saved terrain",
+    "live_cannibal_raid_holds_at_rally_until_night_departure",
 )
+ORIGINAL_REGRESSION_SEEDS = {
+    "R051 separated awake homeward pair physically reunites on saved terrain": ("1794708613", "1794710029"),
+    "live_cannibal_raid_holds_at_rally_until_night_departure": ("1794708613", "1794710029"),
+}
 PASS = re.compile(r"^All tests passed \(([1-9][0-9]*) assertions? in 1 test case\)$", re.MULTILINE)
 CURSES_ONLY_NOOP = "native ecology no-op actions publish handled successor state"
 TILES_MARKER = "drain_planner_epoch_pack_unpack_roundtrips"
@@ -124,7 +131,9 @@ def run_controls(binary: Path, tiles: bool) -> int:
     if tiles:
         print(f"Tiles build: {CURSES_ONLY_NOOP} is compiled only for curses", flush=True)
     failed = False
-    for selection in SELECTIONS:
+    runs = ((selection, seed) for selection in SELECTIONS
+            for seed in ORIGINAL_REGRESSION_SEEDS.get(selection, ("33491075",)))
+    for selection, seed in runs:
         if tiles and selection == CURSES_ONLY_NOOP:
             continue
         case_env = None
@@ -137,16 +146,24 @@ def run_controls(binary: Path, tiles: bool) -> int:
         with tempfile.TemporaryDirectory(prefix="caol-travelling-ci-") as user_dir:
             try:
                 result = subprocess.run(
-                    [str(binary), selection, "--rng-seed", "33491075", "--use-colour", "no",
+                    [str(binary), selection, "--rng-seed", seed, "--use-colour", "no",
                      "--user-dir", user_dir], stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, errors="replace", check=False, timeout=600,
                     env=case_env,
                 )
-            except subprocess.TimeoutExpired:
-                print(f"Travelling control timed out: {selection}", file=sys.stderr, flush=True)
+            except subprocess.TimeoutExpired as error:
+                print(f"Travelling control timed out: {selection} (seed {seed})", file=sys.stderr, flush=True)
+                if error.stdout:
+                    output = error.stdout
+                    if isinstance(output, bytes):
+                        output = output.decode("utf-8", errors="replace")
+                    markers = [line for line in output.splitlines() if line.startswith("R067_ALARM_VARIANT ")]
+                    if markers:
+                        print(f"Last observed variant: {markers[-1]}", file=sys.stderr, flush=True)
+                    print(output[-16384:], file=sys.stderr, flush=True)
                 failed = True
                 continue
-        print(f"Travelling control {selection}: exit {result.returncode}", flush=True)
+        print(f"Travelling control {selection} (seed {seed}): exit {result.returncode}", flush=True)
         print(result.stdout, end="", flush=True)
         if result.returncode != 0 or not PASS.search(result.stdout):
             print(f"Travelling control failed or did not execute: {selection}", file=sys.stderr)

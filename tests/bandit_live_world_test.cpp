@@ -40253,6 +40253,16 @@ TEST_CASE( "committed shakedown admission uses canonical active NPC ownership",
     }
 }
 
+static std::vector<std::pair<std::string, int>> queued_effect_signatures( const queued_eocs &queue )
+{
+    std::vector<std::pair<std::string, int>> result;
+    for( const queued_eoc &entry : queue.list ) {
+        result.emplace_back( entry.eoc.str(), to_turns<int>( entry.time - calendar::turn_zero ) );
+    }
+    std::sort( result.begin(), result.end() );
+    return result;
+}
+
 TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
            "[bandit][live_world][cannibal][raid][darkness][live_adapter]" )
 {
@@ -40261,6 +40271,7 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
     JsonOut incoming_avatar_json( incoming_avatar_stream );
     get_avatar().serialize( incoming_avatar_json );
     const std::string incoming_avatar = incoming_avatar_stream.str();
+    const auto incoming_queue = queued_effect_signatures( get_avatar().queued_effect_on_conditions );
     const int incoming_stamina = get_avatar().get_stamina();
     const tripoint_abs_ms saved_avatar_position = get_avatar().pos_abs();
     clear_avatar();
@@ -40288,11 +40299,15 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
         calendar::start_of_game = saved_game_start;
         clear_creatures();
     } );
-    on_out_of_scope restore_player( [saved_avatar_position, incoming_avatar, incoming_stamina]() {
+    on_out_of_scope restore_player( [ = ]() {
         g->place_player_overmap( project_to<coords::omt>( saved_avatar_position ), false );
         clear_avatar();
+        // Character::load appends queued effects; replace the temporary
+        // fixture queue before restoring the caller's saved avatar.
+        get_avatar().queued_effect_on_conditions = queued_eocs{};
         get_avatar().setID( character_id(), true );
         get_avatar().deserialize( json_loader::from_string( incoming_avatar ).get_object() );
+        CHECK( queued_effect_signatures( get_avatar().queued_effect_on_conditions ) == incoming_queue );
         get_avatar().set_stamina( incoming_stamina );
         get_avatar().setpos( saved_avatar_position, false );
     } );
@@ -49779,6 +49794,9 @@ class r055_scene
             }
             g->place_player_overmap( old_player );
             clear_avatar();
+            // The saved avatar owns its queue.  Character::load appends, so
+            // discard only the temporary fixture queue before restoration.
+            get_avatar().queued_effect_on_conditions = queued_eocs{};
             get_avatar().setID( character_id(), true );
             get_avatar().deserialize( json_loader::from_string( old_avatar ).get_object() );
             get_avatar().set_stamina( old_avatar_stamina );
@@ -50109,6 +50127,41 @@ class r055_scene
         }
 
 };
+}
+
+TEST_CASE( "retained scout fixture restores the avatar queued effects once",
+           "[bandit][scout_fixture_isolation]" )
+{
+    avatar &player = get_avatar();
+    const queued_eocs original = player.queued_effect_on_conditions;
+    on_out_of_scope restore_queue( [&]() {
+        player.queued_effect_on_conditions = original;
+    } );
+    clear_avatar();
+    const queued_eoc first{ effect_on_condition_id( "EOC_social_reset_drugs" ), calendar::turn + 1_hours,
+        { { "scout_fixture_marker", diag_value( "first" ) } }
+    };
+    const queued_eoc second{ effect_on_condition_id( "EOC_nether_glass_event" ), calendar::turn + 2_hours,
+        { { "scout_fixture_marker", diag_value( "second" ) } }
+    };
+    player.queued_effect_on_conditions.push( first );
+    player.queued_effect_on_conditions.push( second );
+    const queued_eocs expected = player.queued_effect_on_conditions;
+    REQUIRE_FALSE( expected.empty() );
+    {
+        r055_scene scene;
+        scene.load( false, true, false, "tests/data/r067_alarm_return_8355.json" );
+    }
+    CHECK( queued_effect_signatures( player.queued_effect_on_conditions ) ==
+           queued_effect_signatures( expected ) );
+    for( const queued_eoc &entry : expected.list ) {
+        const auto &actual = player.queued_effect_on_conditions.list;
+        const auto found = std::find_if( actual.begin(), actual.end(), [&]( const queued_eoc & candidate ) {
+            return candidate.eoc == entry.eoc && candidate.time == entry.time;
+        } );
+        REQUIRE( found != actual.end() );
+        CHECK( found->context == entry.context );
+    }
 }
 
 
@@ -62782,6 +62835,8 @@ TEST_CASE( "authenticated scouts disengage homeward without dismissing a current
                                        "stale_local_path", "safe_detour",
                                        "later_hazard", "immediate_trap", "ordinary_navigation" );
     CAPTURE( cannibal, mode );
+    std::cout << "R067_ALARM_VARIANT faction=" << ( cannibal ? "cannibal" : "bandit" )
+              << " mode=" << mode << std::endl;
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     scoped_weather_override weather( weather_type_id( "fog" ) );
     const std::string fixture_path = "tests/data/r067_alarm_return_8355.json";
