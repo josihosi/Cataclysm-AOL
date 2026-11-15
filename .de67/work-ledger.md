@@ -11,5 +11,3 @@ This is the current work queue, not project history.
 - Keep genuine pauses explicit in the FS. Withdrawn work leaves this queue. If nothing actionable remains, report whether everything is finished or which specific decision prevents progress.
 
 ## Current selected work
-
-The selected alpha outcomes, lint checks and canonical feature-map outcome are accepted. Their durable records retain proof and limits. Deferred or withdrawn campaigns remain outside this queue. Broader open FS requirements and independent unresolved CI findings are not accepted by an empty queue.
