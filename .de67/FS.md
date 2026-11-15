@@ -2530,7 +2530,8 @@ For first-smoke implementation or acceptance retrieve the complete current `R-CA
 
 Implementation status:
 
-- [ ] 🔴 R-MAINT-FEATURE-MAP — One canonical feature map and coherent existing DFS retrieval.
+- [x] R-MAINT-FEATURE-MAP — One canonical feature map and coherent existing DFS retrieval.
+**Delivery status (2026-11-15).** Accepted from guarded canonical incorporation at9b5ac658295, reviewed installed retrieval66b7d0a1fb98 and actual fresh-worker adoption. Receipt d3fdf255 retains source/route and independent-neighbor evidence; closure receipt608e5b98 binds the current handoff. No gameplay replay, new neighbor acceptance, universal context cap or wider-suite pass is claimed.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-FEATURE-MAP-S001 claim=R-MAINT-FEATURE-MAP -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-SCENARIO-CONSOLIDATION-S001 claim=R-MAINT-SCENARIO-CONSOLIDATION -->

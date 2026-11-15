@@ -12,13 +12,4 @@ This is the current work queue, not project history.
 
 ## Current selected work
 
-- [ ] feature-map-retrieval-candidate — Stage the missing feature knowledge and a tested retrieval candidate.
-  - Method candidate: Stage only the existing R-MAINT-FEATURE-MAP-S001 outcome. Preserve feature identities, accepted proof, current owner selection and independent neighbor evidence. Do not edit active FS semantics, owner contracts, installed DE67 methods, policy or lifecycle state. An exclusive reviewer and supervisor own promotion and activation.
-  - Assignment feature-map-retrieval-candidate-001: Reconcile the specific archived feature slices named by R-MAINT-FEATURE-MAP-S001 into a coherent candidate for existing feature knowledge and bounded shared-context retrieval. Identify actual current omissions before adding anything. Deliver staged minimal changes and meaningful cycle/duplicate/same-claim versus neighbor-evidence controls, plus a fresh bounded smoke-feature context pilot. Preserve already delivered organization and do not launch a catalogue, gameplay or performance campaign. Outcome ends at a tested reviewable candidate, not installed activation or whole feature-map acceptance.
-  - Ownership: One Terra worker owns workspace staging; Root owns dispatch and publication. Current product and protected inputs stay unchanged.
-  - Subtasks:
-    - [open] knowledge-reconciliation :: Reconcile actual missing feature identities against current canonical knowledge without reactivating obsolete requirements.
-    - [open] bounded-retrieval :: Stage meaningful shared-context retrieval and controls using existing APIs without another registry.
-    - [open] reviewable-handoff :: Deliver a compact candidate and evidence for exclusive review; no live promotion.
-
-Lint and the selected alpha product outcomes are accepted. Deferred and withdrawn campaigns remain outside this queue. Existing external CI retains its exact identities and limits.
+The selected alpha outcomes, lint checks and canonical feature-map outcome are accepted. Their durable records retain proof and limits. Deferred or withdrawn campaigns remain outside this queue. Broader open FS requirements and independent unresolved CI findings are not accepted by an empty queue.
