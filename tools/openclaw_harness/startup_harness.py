@@ -32858,7 +32858,7 @@ def apply_bandit_registered_staffed_observer_bootstrap_transform(
         "returned_cargo_stock": {"supply_units": 0, "trade_value": 0},
         "retired_empty_site": False, "retirement_summary": "",
         "origin_disposition": "active_hostile", "origin_summary": "", "origin_changed_minutes": -1,
-        "acted_reports": [], "last_routine_resolved_minutes": -1,
+        "acted_reports": [],
         "last_shakedown_outcome": "", "shakedown_anger": 0, "shakedown_bandit_losses": 0,
         "shakedown_basecamp_defender_observation_pending": False,
         "shakedown_basecamp_defenders_at_fight": 0, "shakedown_caution": 0,

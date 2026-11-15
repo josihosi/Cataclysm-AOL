@@ -387,7 +387,6 @@ class CDDAJSONWriter(object):
 
         self.buf = StringIO()
         items = list(self.d.items())
-        global indent_multiplier
         self.indented_write("{\n")
         self.indent_multiplier += 1
         while items:

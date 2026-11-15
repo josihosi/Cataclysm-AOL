@@ -547,6 +547,21 @@ class ChangedSourceEntryPointTest(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertIn("flake8 is missing", output.getvalue())
 
+    def test_wrong_flake8_version_is_incomplete(self):
+        with tempfile.TemporaryDirectory(prefix="changed-source-flake8-") as temp:
+            root = Path(temp)
+            (root / ".flake8").touch()
+            (root / "requirements-lint.txt").write_text("flake8==7.3.0\n", encoding="utf-8")
+            output = io.StringIO()
+            with mock.patch.object(lint, "ROOT", root), \
+                    mock.patch.object(lint.shutil, "which", return_value="/test/flake8"), \
+                    mock.patch.object(lint, "version_text", return_value="7.0.0"), \
+                    mock.patch.object(lint, "run") as run_check, contextlib.redirect_stdout(output):
+                status = lint.run_flake8(["tools/example.py"])
+            self.assertEqual(status, 2)
+            self.assertIn("Flake8 must match CI version 7.3.0", output.getvalue())
+            run_check.assert_not_called()
+
     def invoke(self, relative):
         return subprocess.run(
             [sys.executable, str(ENTRY), "--files", relative], cwd=str(ROOT),
@@ -558,9 +573,28 @@ class ChangedSourceEntryPointTest(unittest.TestCase):
             directory = Path(temp)
             invalid = directory / "bad.json"
             valid = directory / "fixed.json"
+            legacy = directory / "legacy.json"
             registry_before = hashlib.sha256(REGISTRY_SOURCE.read_bytes()).hexdigest()
             invalid.write_text("[]\n", encoding="utf-8")
-            valid.write_text((SCENARIOS / "ambient.weird_item_reaction.json").read_text(encoding="utf-8"), encoding="utf-8")
+            runtime = {
+                "permitted_input": [], "forbidden_input": [], "setup_only_debug": False,
+                "disposable_copy": True, "helpers": [], "permissions": [], "platform": [],
+                "profile": "test", "fixture": "test", "grants_gameplay_proof": False,
+                "requirements": {key: None for key in (
+                    "os", "source", "executable", "profile", "fixture", "helper",
+                    "peekaboo", "input", "ocr", "cleanup",
+                )},
+            }
+            roles = ("precondition", "production_behavior", "terminal_persistence",
+                     "artifact_verdict", "disallowed_shortcuts")
+            manifest = {
+                "manifest_version": 1, "name": "lint.fixture",
+                "steps": [{"label": "step", "kind": "press"}],
+                "capabilities": {}, "runtime_contract": runtime,
+                "proof_route": {role: ["step"] for role in roles},
+            }
+            valid.write_text(json.dumps(manifest), encoding="utf-8")
+            legacy.write_text("{}\n", encoding="utf-8")
             invalid_before = hashlib.sha256(invalid.read_bytes()).hexdigest()
             bad_result = self.invoke(invalid.relative_to(ROOT).as_posix())
             self.assertEqual(bad_result.returncode, 1, bad_result.stdout)
@@ -570,7 +604,13 @@ class ChangedSourceEntryPointTest(unittest.TestCase):
             fixed_result = self.invoke(valid.relative_to(ROOT).as_posix())
             self.assertEqual(fixed_result.returncode, 0, fixed_result.stdout)
             self.assertIn("RESULT: full selected coverage passed", fixed_result.stdout)
+            self.assertIn("declarations: valid=1 review_required=0 invalid=0", fixed_result.stdout)
             self.assertEqual(hashlib.sha256(valid.read_bytes()).hexdigest(), valid_before)
+            legacy_before = hashlib.sha256(legacy.read_bytes()).hexdigest()
+            legacy_result = self.invoke(legacy.relative_to(ROOT).as_posix())
+            self.assertEqual(legacy_result.returncode, 0, legacy_result.stdout)
+            self.assertIn("declarations: valid=0 review_required=1 invalid=0", legacy_result.stdout)
+            self.assertEqual(hashlib.sha256(legacy.read_bytes()).hexdigest(), legacy_before)
             self.assertEqual(hashlib.sha256(REGISTRY_SOURCE.read_bytes()).hexdigest(), registry_before)
 
     @unittest.skipUnless(shutil.which("astyle"), "AStyle is not installed")

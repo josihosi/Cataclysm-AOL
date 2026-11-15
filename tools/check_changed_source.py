@@ -305,8 +305,19 @@ def run_flake8(paths):
     if not binary:
         print("INCOMPLETE: flake8 is missing; changed Python check skipped")
         return 2
+    requirements = ROOT / "requirements-lint.txt"
+    try:
+        expected = re.search(r"(?m)^flake8==([^\s#]+)\s*$", requirements.read_text(encoding="utf-8"))
+    except OSError:
+        expected = None
+    if expected is None:
+        print("INCOMPLETE: pinned Flake8 version missing from requirements-lint.txt")
+        return 2
     version = version_text(binary, ["--version"])
     print("Flake8: {}".format(version or "version unavailable"))
+    if not version or version.split()[0] != expected.group(1):
+        print("INCOMPLETE: Flake8 must match CI version {}".format(expected.group(1)))
+        return 2
     result = run([binary] + paths)
     if result is None:
         print("INCOMPLETE: flake8 could not be executed")

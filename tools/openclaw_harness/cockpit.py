@@ -12,7 +12,7 @@ from cockpit_archive import ArchiveMap, ArchiveSequence
 import json
 import secrets
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import startup_harness
 from semantic_state import valid_surface_breadcrumbs

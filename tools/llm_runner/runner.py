@@ -10,7 +10,7 @@ import traceback
 import uuid
 import urllib.request
 import urllib.error
-from typing import Any, Dict, Optional, TextIO, Tuple
+from typing import Any, Dict, List, Optional, TextIO, Tuple
 
 PROCESS_INSTANCE = uuid.uuid4().hex
 EVENT_SEQUENCE = 0

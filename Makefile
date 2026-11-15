@@ -1697,8 +1697,13 @@ $(ZZIP_BIN): $(ZZIP_SOURCES) $(BUILD_PREFIX)zstd.a
   # Remove SDL libraries used by cataclysm
 	$(subst $(LDFLAGS),,$(LINK.cc)) $(OUTPUT_OPTION) -MMD -MP -isystem src/third-party $^
 
+FLAKE8 ?= flake8
 python-check:
-	flake8
+	@expected=$$(sed -n 's/^flake8==//p' requirements-lint.txt); \
+	actual=$$($(FLAKE8) --version | sed -n '1s/ .*//p'); \
+	test -n "$$expected" && test "$$actual" = "$$expected" || \
+		{ echo "Flake8 version mismatch: need $$expected, found $$actual"; exit 2; }
+	$(FLAKE8) --jobs 4
 
 tests: version $(BUILD_PREFIX)cataclysm.a $(LOCALIZE_TEST_DEPS)
 	$(MAKE) -C tests

@@ -108,6 +108,22 @@ Changed Python files go to Flake8. JSON declarations under
 `tools/openclaw_harness/scenarios/` go to the existing read-only declaration
 linter.
 
+Install the same Python lint versions used by CI into a virtual environment:
+
+```sh
+python3 -m venv /tmp/caol-lint
+/tmp/caol-lint/bin/python -m pip install -r requirements-lint.txt
+PATH="/tmp/caol-lint/bin:$PATH" python3 tools/check_changed_source.py --files tools/check_changed_source.py
+PATH="/tmp/caol-lint/bin:$PATH" make python-check
+```
+
+The first command checks selected files; `make python-check` scans the wider
+source tree as CI does. Both require the pinned Flake8 version. The shared
+configuration checks syntax and I/O errors, duplicate keys, invalid control
+flow, and undefined names; it does not impose a repository-wide Python style
+rewrite. Generated, runtime, dependency and task-output directories are
+excluded. Fix ordinary findings in the worker's edit/check/rerun loop.
+
 AStyle runs only when the installed version matches CI's pinned 3.1; other
 versions are reported as incomplete before formatting analysis. The formatter
 uses dry-run mode and never rewrites source. The command does not build or
@@ -240,7 +256,7 @@ In addition to the usual means of creating a `tags` file via e.g. [`ctags`](http
 
 Cataclysm has a [clang-tidy configuration file](../../.clang-tidy) and if you have
 `clang-tidy` available you can run it to perform static analysis of the
-codebase.  CI runs `clang-tidy` from LLVM 18.0.0 (Ubuntu apt.llvm.org build),
+codebase.  CI runs `clang-tidy` from LLVM 22 (Ubuntu apt.llvm.org build),
 so for the most consistent results that is still the recommended baseline.
 The build scripts also accept `LLVM_VERSION=19|20|21|22` (and `LLVM_PREFIX`
 for non-Ubuntu install layouts) so the same workflow works against newer
@@ -270,15 +286,21 @@ We have written our own clang-tidy checks in a custom plugin.  Unfortunately,
 `clang-tidy` as distributed by LLVM doesn't support plugins, so making this
 work requires some extra steps.
 
-#### Extreme tl;dr for Ubuntu Focal (including WSL)
-The following set of commands should take you from zero to running clang-tidy equivalent to the CI job. This will lint all sources in a random order.
+#### Ubuntu 24.04: LLVM 22
+CI installs LLVM 22 from apt.llvm.org. The following commands set up the same
+tool major and run the existing build and analysis scripts; install this
+project's normal build dependencies first. The run script selects affected
+files when `files_changed` is present and otherwise analyzes all sources.
 ```sh
-sudo apt install build-essential cmake clang-18 libclang-18-dev llvm-18 llvm-18-dev llvm-18-tools pip
-sudo pip install compiledb lit
-test -f /usr/bin/python || sudo ln -s /usr/bin/python3 /usr/bin/python
-# The following commands invoke clang-tidy exactly like CI does
-COMPILER=clang++-18 CATA_CLANG_TIDY=clang-tidy-18 TILES=1 LOCALIZE=0 ./build-scripts/clang-tidy-build.sh
-COMPILER=clang++-18 CATA_CLANG_TIDY=clang-tidy-18 TILES=1 LOCALIZE=0 ./build-scripts/clang-tidy-run.sh
+wget -O llvm.sh https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 22 all
+sudo apt-get install -y python3-venv ninja-build cmake ccache jq gettext
+python3 -m venv /tmp/caol-tidy-venv
+/tmp/caol-tidy-venv/bin/pip install compiledb 'lit==18.1.8'
+export PATH="/tmp/caol-tidy-venv/bin:$PATH"
+LLVM_VERSION=22 COMPILER=clang++-22 CATA_CLANG_TIDY=clang-tidy-22 TILES=1 LOCALIZE=0 ./build-scripts/clang-tidy-build.sh
+LLVM_VERSION=22 COMPILER=clang++-22 CATA_CLANG_TIDY=clang-tidy-22 TILES=1 LOCALIZE=0 ./build-scripts/clang-tidy-run.sh
 ```
 
 To target another toolchain set `LLVM_VERSION` (and optionally `LLVM_PREFIX`)
@@ -294,13 +316,13 @@ which is honoured by `clang-tidy-build.sh`, `clang-tidy-run.sh`,
 `clang-tidy-wrapper.sh`, `tools/repeat_clang_tidy.sh`, and
 `tools/llama/clang_tidy.sh`.
 
-#### Ubuntu Focal
+#### Ubuntu Focal: historical LLVM 18 example
 
-If you are on Ubuntu Focal then you might be able to get it working the same
-way our CI does.  Add the LLVM 18 Focal source [listed
+For an older LLVM 18 setup, add the LLVM 18 Focal source [listed
 here](https://apt.llvm.org/) to your `sources.list`, install the needed packages (`clang-18
 libclang-18-dev llvm-18-dev llvm-18-tools`), and build Cataclysm with CMake,
-adding `-DCATA_CLANG_TIDY_PLUGIN=ON`.
+adding `-DCATA_CLANG_TIDY_PLUGIN=ON`. This historical configuration does not
+match current CI.
 
 [apt.llvm.org](https://apt.llvm.org) also has an automated install script.
 

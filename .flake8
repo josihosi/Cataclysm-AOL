@@ -1,14 +1,14 @@
 [flake8]
-exclude = .git,
-			__pycache__,
-			build,distvenv,
-			.venv,
-			lang/json,
-			tools/clang-tidy-plugin/test/check_clang_tidy.py
-ignore =
-    E265,
-    W504,
-    E203,
-    E501,
-    W503,
-    W605
+# Keep generated, runtime, vendored and local-environment files out of a
+# repository-wide scan. Explicit changed-source selection applies the same
+# exclusions before invoking Flake8.
+exclude =
+    .git, .de67, .openclaw, .userdata*, .build, .venv, venv, .env, .envs,
+    .cache, .pytest_cache, .mypy_cache, .ruff_cache, cache, secrets, .secrets, credentials,
+    __pycache__, build, build_w, obj, obj_w, dist, distvenv,
+    build_logs, task-logs, harness_runs, sessions, logs, proof, proofs, captures, artifacts, node_modules,
+    generated, third-party, lang/json,
+    tools/clang-tidy-plugin/test/check_clang_tidy.py
+# Correctness failures, rather than a repository-wide legacy style rewrite:
+# syntax/I/O, duplicate keys, bad comparisons, invalid control flow, undefined names.
+select = E9, F60, F63, F7, F82
