@@ -40460,6 +40460,11 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
     generated_npc_ids.push_back( second_defender_id );
     first_defender->set_fac( faction_your_followers );
     second_defender->set_fac( faction_your_followers );
+    // These are active friendly defenders, not test_talker dialogue fixtures.
+    first_defender->set_attitude( NPCATT_FOLLOW );
+    second_defender->set_attitude( NPCATT_FOLLOW );
+    REQUIRE( first_defender->is_player_ally() );
+    REQUIRE( second_defender->is_player_ally() );
     REQUIRE( first_defender->is_active() );
     REQUIRE( second_defender->is_active() );
 
@@ -40522,12 +40527,21 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
     CHECK( live_site.last_shakedown_outcome.empty() );
     CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
                      overmap_buffer.global_state.bandit_live_world, raid_ids.front() ) );
+    // The preceding native combat may create fresh casualties or withdrawals.
+    // Settle those facts once before checking repeated aftermath idempotence.
+    note_live_bandit_aftermath_for_test();
     const std::string after_raid_dispatch = serialize_site( live_site.active_hostile_operation );
     note_live_bandit_aftermath_for_test();
     CHECK( serialize_site( live_site.active_hostile_operation ) == after_raid_dispatch );
 
     SECTION( "reloaded committed contact reconciles an ordinary sleeper" ) {
-        npc *sleeper = g->find_npc( raid_ids.front() );
+        const auto eligible = std::find_if( raid_ids.begin(), raid_ids.end(), [&]( character_id id ) {
+            return bandit_live_world::active_local_assault_site_for(
+                       overmap_buffer.global_state.bandit_live_world, id ) != nullptr;
+        } );
+        REQUIRE( eligible != raid_ids.end() );
+        const character_id sleeper_id = *eligible;
+        npc *sleeper = g->find_npc( sleeper_id );
         REQUIRE( sleeper != nullptr );
         sleeper->set_sleepiness( 117 );
         sleeper->myclass = npc_class_id::NULL_ID();
@@ -40543,7 +40557,7 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
         REQUIRE( turn_handler::cleanup_at_end() );
         world_generator->set_active_world( nullptr );
         REQUIRE( g->load( world_name ) );
-        npc *loaded_sleeper = g->find_npc( raid_ids.front() );
+        npc *loaded_sleeper = g->find_npc( sleeper_id );
         REQUIRE( loaded_sleeper != nullptr );
         // Ordinary schedule reconciliation may wake the synthetic NPC during
         // load.  Restore the retained checkpoint's sleeping state on this
@@ -40554,11 +40568,11 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
         REQUIRE( loaded_sleeper->get_value( "active_assault_routine_reconciled" ).str().empty() );
         const bandit_live_world::site_record *loaded_assault =
             bandit_live_world::active_local_assault_site_for(
-                overmap_buffer.global_state.bandit_live_world, raid_ids.front() );
+                overmap_buffer.global_state.bandit_live_world, sleeper_id );
         REQUIRE( loaded_assault != nullptr );
-        REQUIRE( overmap_buffer.find_npc( raid_ids.front() ).get() == loaded_sleeper );
+        REQUIRE( overmap_buffer.find_npc( sleeper_id ).get() == loaded_sleeper );
         REQUIRE( bandit_live_world::is_active_shakedown_parley_member(
-                     overmap_buffer.global_state.bandit_live_world, raid_ids.front() ) == false );
+                     overmap_buffer.global_state.bandit_live_world, sleeper_id ) == false );
         process_overmap_npc_move_for_test();
         CHECK_FALSE( loaded_sleeper->has_effect( efftype_id( "sleep" ) ) );
         CHECK( loaded_sleeper->get_sleepiness() == 117 );
