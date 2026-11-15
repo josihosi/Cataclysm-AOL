@@ -21537,10 +21537,32 @@ void monmove()
                 }
                 homeward_trace.action( "npc_move", "native_survival branch selected" );
                 {
+                    std::optional<tripoint_abs_ms> native_homeward_goal =
+                        homeward_boundary != pair_homeward_boundary_steps.end() ?
+                        std::optional<tripoint_abs_ms>( homeward_boundary->second.departure ) : std::nullopt;
+                    if( guy.faction_alarm_requires_response() && guy.current_target() == nullptr &&
+                        pair_homeward_travel_ids.count( guy.getID() ) != 0 ) {
+                        const auto partner_id = pair_homeward_partner_ids.find( guy.getID() );
+                        const auto site_id = pair_homeward_site_ids.find( guy.getID() );
+                        npc *partner = partner_id == pair_homeward_partner_ids.end() ? nullptr :
+                                       g->find_npc( partner_id->second );
+                        const auto *site = site_id == pair_homeward_site_ids.end() ? nullptr :
+                                           overmap_buffer.global_state.bandit_live_world.find_site( site_id->second );
+                        if( partner && site &&
+                            ( rl_dist( guy.pos_abs(), partner->pos_abs() ) >
+                              bandit_live_world::local_pair_cohesion_radius() ||
+                              ( site->active_outing.local_handoff.cohesion_abort_return &&
+                                guy.pos_abs_omt() != partner->pos_abs_omt() ) ) ) {
+                            const auto reunion = live_bandit_homeward_reunion_path(
+                                                     guy, *partner, *site, m,
+                                                     live_bandit_homeward_reunion_request::separated );
+                            if( reunion.mover == guy.getID() && !reunion.path.empty() ) {
+                                native_homeward_goal = m.get_abs( reunion.path.back() );
+                            }
+                        }
+                    }
                     raid_perf_scope npc_move_scope( raid_perf_stage::npc_normal_move );
-                    guy.move( homeward_boundary != pair_homeward_boundary_steps.end() ?
-                              std::optional<tripoint_abs_ms>( homeward_boundary->second.departure ) :
-                              std::nullopt );
+                    guy.move( native_homeward_goal );
                 }
             } else if( assembly_order != pair_assembly_orders.end() ) {
                 homeward_trace.action( "assembly_order", "assembly order precedes homeward motor" );

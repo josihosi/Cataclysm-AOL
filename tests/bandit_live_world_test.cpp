@@ -40257,11 +40257,25 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
            "[bandit][live_world][cannibal][raid][darkness][live_adapter]" )
 {
     clear_npcs();
-    const time_point saved_turn = calendar::turn;
+    std::ostringstream incoming_avatar_stream;
+    JsonOut incoming_avatar_json( incoming_avatar_stream );
+    get_avatar().serialize( incoming_avatar_json );
+    const std::string incoming_avatar = incoming_avatar_stream.str();
+    const int incoming_stamina = get_avatar().get_stamina();
     const tripoint_abs_ms saved_avatar_position = get_avatar().pos_abs();
+    clear_avatar();
+    REQUIRE_FALSE( get_avatar().get_killer() );
+    REQUIRE_FALSE( get_avatar().is_dead_state() );
+    const time_point saved_turn = calendar::turn;
+    const time_point saved_cataclysm_start = calendar::start_of_cataclysm;
+    const time_point saved_game_start = calendar::start_of_game;
+    // The raid's absolute 12-hour turn must use its own calendar origin,
+    // regardless of the preceding test's saved world clock.
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::start_of_game = calendar::turn_zero;
     bandit_live_world::world_state saved_world = overmap_buffer.global_state.bandit_live_world;
     std::vector<character_id> generated_npc_ids;
-    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn,
+    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn, saved_cataclysm_start, saved_game_start,
                         saved_world = std::move( saved_world )]() mutable {
         for( const character_id id : generated_npc_ids )
         {
@@ -40270,10 +40284,16 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
         }
         overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
         calendar::turn = saved_turn;
+        calendar::start_of_cataclysm = saved_cataclysm_start;
+        calendar::start_of_game = saved_game_start;
         clear_creatures();
     } );
-    on_out_of_scope restore_player( [saved_avatar_position]() {
+    on_out_of_scope restore_player( [saved_avatar_position, incoming_avatar, incoming_stamina]() {
         g->place_player_overmap( project_to<coords::omt>( saved_avatar_position ), false );
+        clear_avatar();
+        get_avatar().setID( character_id(), true );
+        get_avatar().deserialize( json_loader::from_string( incoming_avatar ).get_object() );
+        get_avatar().set_stamina( incoming_stamina );
         get_avatar().setpos( saved_avatar_position, false );
     } );
 
@@ -49682,6 +49702,17 @@ class r055_scene
         time_point old_calendar_start = calendar::start_of_cataclysm;
         time_point old_game_start = calendar::start_of_game;
         tripoint_abs_omt old_player = get_avatar().pos_abs_omt();
+        std::map<character_id, std::pair<std::string, bool>> old_human_members =
+                    g->faction_manager_ptr->get( faction_id( "hells_raiders" ) )->members;
+        std::map<character_id, std::pair<std::string, bool>> old_cannibal_members =
+                    g->faction_manager_ptr->get( faction_id( "cannibal_camp" ) )->members;
+        int old_avatar_stamina = get_avatar().get_stamina();
+        std::string old_avatar = []() {
+            std::ostringstream out;
+            JsonOut json( out );
+            get_avatar().serialize( json );
+            return out.str();
+        }();
         std::vector<std::pair<tripoint_abs_omt, oter_id>> old_terrain;
         std::vector<std::pair<tripoint_abs_sm, std::string>> old_submaps;
         std::map<point_abs_om, std::string> old_hordes;
@@ -49733,6 +49764,12 @@ class r055_scene
                 }
             }
             g->place_player_overmap( old_player );
+            clear_avatar();
+            get_avatar().setID( character_id(), true );
+            get_avatar().deserialize( json_loader::from_string( old_avatar ).get_object() );
+            get_avatar().set_stamina( old_avatar_stamina );
+            g->faction_manager_ptr->get( faction_id( "hells_raiders" ) )->members = old_human_members;
+            g->faction_manager_ptr->get( faction_id( "cannibal_camp" ) )->members = old_cannibal_members;
             if( !added_submaps.empty() ) {
                 MAPBUFFER.clear_outside_reality_bubble();
             }
@@ -49883,6 +49920,20 @@ class r055_scene
             for( JsonObject record : fixture.get_array( "actors" ) ) {
                 auto actor = make_shared_fast<npc>();
                 actor->deserialize( record );
+                // Resolve each imported body's actual faction without changing
+                // the retained ownership of its carried items.
+                std::vector<std::pair<item *, faction_id>> item_owners;
+                actor->visit_items( [&]( item * value, item * ) {
+                    item_owners.emplace_back( value, value->get_owner() );
+                    return VisitResponse::NEXT;
+                } );
+                actor->set_fac( faction_id( cannibal ? "cannibal_camp" : "hells_raiders" ) );
+                for( const auto &[value, owner] : item_owners ) {
+                    value->set_owner( owner );
+                }
+                for( const auto &[value, owner] : item_owners ) {
+                    REQUIRE( value->get_owner() == owner );
+                }
                 // A preceding save/reload variant can leave this fixture ID
                 // in another loaded overmap. Remove only that imported ID
                 // before restoring its one authoritative fixture body.
@@ -50025,11 +50076,15 @@ class r055_scene
             process_monsters_and_npcs_turn_for_test();
         }
 
-        void reunite() {
+        void reunite( bool *observed_alarm = nullptr ) {
             int turns = 0;
             while( ( rl_dist( actor( 4 ).pos_abs(), actor( 5 ).pos_abs() ) >
                      bandit_live_world::local_pair_cohesion_radius() ||
                      actor( 4 ).pos_abs_omt() != actor( 5 ).pos_abs_omt() ) && turns < 300 ) {
+                if( observed_alarm && ( actor( 4 ).faction_alarm_requires_response() ||
+                                        actor( 5 ).faction_alarm_requires_response() ) ) {
+                    *observed_alarm = true;
+                }
                 step();
                 ++turns;
             }
@@ -50038,6 +50093,7 @@ class r055_scene
                      bandit_live_world::local_pair_cohesion_radius() );
             REQUIRE( actor( 4 ).pos_abs_omt() == actor( 5 ).pos_abs_omt() );
         }
+
 };
 }
 
@@ -50446,12 +50502,34 @@ TEST_CASE( "native covert watch consumes the ordinary schema eleven handoff",
     CHECK( bandit_live_world::burn_live_covert_scouts() == 0 );
 }
 
+TEST_CASE( "retained homeward fixture restores the incoming avatar",
+           "[bandit_live_world][separated_homeward_055][fixture_isolation]" )
+{
+    const auto position = get_avatar().pos_abs();
+    const int hp = get_avatar().get_hp();
+    const int pain = get_avatar().get_pain();
+    const int stamina = get_avatar().get_stamina();
+    {
+        r055_scene scene;
+        scene.load( false );
+    }
+    CHECK( get_avatar().pos_abs() == position );
+    CHECK( get_avatar().get_hp() == hp );
+    CHECK( get_avatar().get_pain() == pain );
+    CHECK( get_avatar().get_stamina() == stamina );
+}
+
 TEST_CASE( "R051 separated awake homeward pair physically reunites on saved terrain",
            "[bandit_live_world][separated_homeward_055][saved_geometry]" )
 {
     const bool cannibal = GENERATE( false, true );
     r055_scene scene;
     scene.load( cannibal );
+    const faction_id expected_faction( cannibal ? "cannibal_camp" : "hells_raiders" );
+    REQUIRE( scene.actor( 4 ).get_fac_id() == expected_faction );
+    REQUIRE( scene.actor( 5 ).get_fac_id() == expected_faction );
+    REQUIRE( scene.actor( 4 ).attitude_to( scene.actor( 5 ) ) != Creature::Attitude::HOSTILE );
+    REQUIRE( scene.actor( 5 ).attitude_to( scene.actor( 4 ) ) != Creature::Attitude::HOSTILE );
     REQUIRE( scene.actor( 4 ).pos_abs() == tripoint_abs_ms( 3150, 3450, 0 ) );
     REQUIRE( scene.actor( 5 ).pos_abs() == tripoint_abs_ms( 3096, 3479, 0 ) );
     REQUIRE( scene.site().active_outing.local_handoff.cohesion_abort_return );
@@ -50486,7 +50564,7 @@ TEST_CASE( "R051 separated awake homeward pair physically reunites on saved terr
         scene.step();
         ++turns;
     }
-    CAPTURE( turns, scene.actor( 4 ).pos_abs(), scene.actor( 5 ).pos_abs(),
+    CAPTURE( cannibal, turns, scene.actor( 4 ).pos_abs(), scene.actor( 5 ).pos_abs(),
              scene.actor( 4 ).omt_path, scene.actor( 5 ).omt_path );
     CHECK( scene.site().active_outing.owner == bandit_live_world::simulation_owner::abstract );
 }
@@ -50513,7 +50591,9 @@ TEST_CASE( "homeward reunion takes a safe detour away from the partner",
     CHECK( scene.actor( 4 ).pos_abs() == leader );
     REQUIRE( scene.actor( 5 ).pos_abs() != follower );
     CHECK( rl_dist( scene.actor( 4 ).pos_abs(), scene.actor( 5 ).pos_abs() ) > gap );
-    scene.reunite();
+    bool observed_alarm = false;
+    scene.reunite( &observed_alarm );
+    CHECK( observed_alarm );
     CHECK( scene.site().active_outing.member_return_receipts.empty() );
 }
 
@@ -64060,6 +64140,30 @@ void r067_stateful_return( const std::string &scenario, bool completed_cannibal 
     const bool frontier = scenario == "journey";
     const bool completed_watch = scenario == "completed" || scenario == "completed_casualty";
     const char *frontier_fixture = std::getenv( "CAOL_R067_FRONTIER_FIXTURE" );
+    // This helper performs real saves and reloads of the retained scene.  Keep
+    // those writes in a disposable world, then reload the caller's saved world.
+    REQUIRE( world_generator );
+    REQUIRE( world_generator->active_world );
+    const std::string original_world = world_generator->active_world->world_name;
+    const auto original_mods = world_generator->active_world->active_mod_order;
+    REQUIRE( g->save() );
+    const std::string isolated_world = "r067-stateful-fixture-isolated";
+    REQUIRE_FALSE( world_generator->has_world( isolated_world ) );
+    WORLD *owned_world = world_generator->make_new_world( isolated_world, original_mods );
+    REQUIRE( owned_world );
+    on_out_of_scope restore_world( [&]() {
+        clear_creatures();
+        overmap_buffer.clear();
+        MAPBUFFER.clear();
+        world_generator->set_active_world( nullptr );
+        if( WORLD *owned = world_generator->get_world( isolated_world ) ) {
+            save_continuity::forget( owned->folder_path().get_unrelative_path() );
+            world_generator->delete_world( isolated_world, true );
+        }
+        get_avatar() = avatar();
+        REQUIRE( g->load( original_world ) );
+    } );
+    world_generator->set_active_world( owned_world );
     r055_scene scene;
     scene.load( completed_watch ? completed_cannibal : frontier && seed % 2 == 0, !frontier, false,
                 completed_watch ? "tests/data/r067_handover_stability_8108.json" : frontier ?
@@ -69842,7 +69946,11 @@ TEST_CASE( "completed retained assessment reaches physical home and produces one
 TEST_CASE( "completed watch survives native danger and repeated bubble crossings",
            "[bandit_live_world][handover_stability_067][handover_stateful_067][handover_stateful_danger_067]" )
 {
+    const auto original_start = calendar::start_of_cataclysm;
+    const auto original_game_start = calendar::start_of_game;
     r067_stateful_return( "completed", GENERATE( false, true ) );
+    CHECK( calendar::start_of_cataclysm == original_start );
+    CHECK( calendar::start_of_game == original_game_start );
 }
 
 TEST_CASE( "committed runtime crossings reach home without an intervening save",

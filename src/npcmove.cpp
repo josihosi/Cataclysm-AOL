@@ -1108,9 +1108,14 @@ bool prepare_scout_alarm_homeward_step( npc &who,
                 continue;
             }
             const npc *partner = g->find_npc( id );
+            const bool reunion_endpoint = partner && homeward_departure &&
+                                          project_to<coords::omt>( *homeward_departure ) == partner->pos_abs_omt() &&
+                                          rl_dist( *homeward_departure, partner->pos_abs() ) <=
+                                          bandit_live_world::local_pair_cohesion_radius();
             if( !partner || !partner->is_active() || partner->is_dead() ||
                 !bandit_live_world::read_active_covert_scout_homeward_member( world, id ) ||
-                ( rl_dist( next, partner->pos_abs() ) > bandit_live_world::local_pair_cohesion_radius() &&
+                ( !reunion_endpoint &&
+                  rl_dist( next, partner->pos_abs() ) > bandit_live_world::local_pair_cohesion_radius() &&
                   rl_dist( next, partner->pos_abs() ) >= rl_dist( who.pos_abs(), partner->pos_abs() ) ) ) {
                 return false;
             }
