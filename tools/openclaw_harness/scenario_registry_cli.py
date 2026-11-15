@@ -1340,11 +1340,25 @@ def _selected_saved_world_defaults(selection: Any, *, post_relaunch_continuation
     scenario = _load_selected_scenario(selection)
     declared = str(scenario.get("saved_world_snapshot", "") or "").strip()
     snapshot = str(saved_world_snapshot or declared).strip()
+    profile = str(profile_override or scenario.get("profile", "") or "").strip()
     if scenario.get("name") in {"caol.reference_camp_open_focused_mcw", "caol.reference_camp_closed_focused_mcw", "caol.reference_camp_nearby_focused_mcw", "caol.reference_camp_gear_reload_focused_mcw", "caol.reference_camp_gear_reentry_focused_mcw"}:
-        if not declared or not snapshot or Path(snapshot).expanduser().resolve() != Path(declared).expanduser().resolve():
+        # The initial selection is bound to the owner reference.  A later
+        # segment may explicitly resume only the already-existing world in
+        # this declaration's own working profile; it may not substitute an
+        # arbitrary snapshot or a different profile for that reference.
+        declared_profile = str(scenario.get("profile", "") or "").strip()
+        world = str(scenario.get("world", "") or "").strip()
+        own_world = startup_harness.save_dir_for_profile(profile) / world if profile and world else None
+        explicit_own_continuation = (
+            post_relaunch_continuation and bool(saved_world_snapshot) and bool(profile_override)
+            and profile == declared_profile and own_world is not None and own_world.is_dir()
+            and Path(snapshot).expanduser().resolve() == own_world.resolve()
+        )
+        if not declared or not snapshot or (
+                Path(snapshot).expanduser().resolve() != Path(declared).expanduser().resolve()
+                and not explicit_own_continuation):
             raise ScenarioRegistryStoreError(
                 "reference-camp snapshot override differs from the authorized source; no token or game input was consumed")
-    profile = str(profile_override or scenario.get("profile", "") or "").strip()
     return bool(post_relaunch_continuation or declared), snapshot, profile
 
 

@@ -27,6 +27,9 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+SAVE_TREE_SHA256_ALGORITHM = "caol-production-nul-delimited-files-sha256-v1"
+
+
 def tree_sha256(path: Path) -> str:
     """Hash one saved world without relying on its absolute source location."""
     if not path.is_dir():
@@ -441,8 +444,10 @@ def build_observation_source_report(
             "receipt_count": len(gates),
         },
         "saved_world": {
-            "before": {"path": str(before_world.resolve()), "tree_sha256": tree_sha256(before_world)},
-            "after": {"path": str(after_world.resolve()), "tree_sha256": tree_sha256(after_world)},
+            "before": {"path": str(before_world.resolve()), "tree_sha256": tree_sha256(before_world),
+                       "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM},
+            "after": {"path": str(after_world.resolve()), "tree_sha256": tree_sha256(after_world),
+                      "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM},
         },
         "continuity": {
             "single_observation": True,
@@ -523,7 +528,8 @@ def write_observation_failure_report(
         if world is None:
             continue
         try:
-            worlds[label] = {"path": str(world.resolve()), "tree_sha256": tree_sha256(world)}
+            worlds[label] = {"path": str(world.resolve()), "tree_sha256": tree_sha256(world),
+                             "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM}
         except ProductionCaptureError as exc:
             worlds[label] = {"path": str(world.resolve()), "error": str(exc)}
     if worlds:
@@ -577,6 +583,9 @@ def validate_observation_source_report(
     for label in ("before", "after"):
         world = _object(_object(source.get("saved_world"), "saved world").get(label), f"saved world {label}")
         world_path = Path(str(world.get("path", ""))).resolve()
+        algorithm = world.get("tree_sha256_algorithm")
+        if algorithm is not None and algorithm != SAVE_TREE_SHA256_ALGORITHM:
+            raise ProductionCaptureError(f"saved world {label} uses an incompatible tree digest algorithm")
         if tree_sha256(world_path) != _sha256(world.get("tree_sha256"), f"saved world {label} hash"):
             raise ProductionCaptureError(f"saved world {label} was replaced or changed")
     # Reconstructing the source from its immutable probe detects synthetic or
@@ -586,6 +595,11 @@ def validate_observation_source_report(
         before_world=Path(str(_object(_object(source.get("saved_world"), "saved world").get("before"), "saved world before").get("path", ""))),
         after_world=Path(str(_object(_object(source.get("saved_world"), "saved world").get("after"), "saved world after").get("path", ""))),
     )
+    # Historical source reports predate the explicit algorithm label.  Keep
+    # validating their exact prior payload without weakening labeled reports.
+    for label in ("before", "after"):
+        if "tree_sha256_algorithm" not in source["saved_world"][label]:
+            reconstructed["saved_world"][label].pop("tree_sha256_algorithm", None)
     for key in ("scenario", "runtime", "fixture", "profile", "committed_transition_receipts", "saved_world", "continuity", "credit"):
         if source.get(key) != reconstructed.get(key):
             raise ProductionCaptureError(f"observation source {key} does not match its probe")
@@ -702,6 +716,7 @@ def capture_production_fixture(
         "source_path": str(source_world),
         "source_tree_sha256": source_sha256,
         "fixture_tree_sha256": destination_sha256,
+        "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
     }
     manifest = {
         "name": fixture_dir.name,

@@ -1741,6 +1741,11 @@ def sha256_tree(path: Path) -> Tuple[str, str]:
     return digest.hexdigest(), ""
 
 
+# This tree digest is not interchangeable with the bridge or production
+# capture digests, which serialize paths and directory entries differently.
+SAVE_TREE_SHA256_ALGORITHM = "caol-startup-length-prefixed-files-sha256-v1"
+
+
 def runtime_source_binding() -> Dict[str, Any]:
     """Hash the exact runtime diff plus untracked runtime file content.
 
@@ -3539,6 +3544,7 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         if not installed_error and installed_hash == source_hash:
             return {"status": "green_saved_world_snapshot_reused", "source": str(source_world),
                     "destination": str(destination), "source_sha256": source_hash,
+                    "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
                     "installed_sha256": installed_hash, "error": "", "fixture_reseed_skipped": True,
                     "profile_snapshot_skipped": True, "profile_copy_mode_policy": "existing_bytes_preserved"}
         if not replace:
@@ -3643,6 +3649,7 @@ def install_saved_world_snapshot(profile: str, target_world: str,
         "destination": str(destination),
         "source_sha256": source_hash,
         "installed_sha256": installed_hash,
+        "tree_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
         "error": installed_error,
         "fixture_reseed_skipped": True,
         "profile_snapshot_skipped": True,
@@ -3683,6 +3690,8 @@ def cleanup_disposable_saved_world(profile: str, world: str, run_id: str) -> Dic
 
     def validate(prior: Optional[Mapping[str, Any]]) -> None:
         _validate_closed_saved_world_owner(prior)
+        if prior.get("run_id") != run_id:
+            raise WritableRootConflict("disposable saved-world cleanup must name the current closed owner")
         if custody_dir.is_symlink() or record_path.is_symlink() or not record_path.is_file():
             raise WritableRootConflict("disposable saved-world custody record unavailable")
         try:
@@ -3692,7 +3701,9 @@ def cleanup_disposable_saved_world(profile: str, world: str, run_id: str) -> Dic
         if not isinstance(record, Mapping) or not re.fullmatch(r"[0-9a-f]{64}", str(record.get("source_sha256", ""))):
             raise WritableRootConflict("disposable saved-world custody is malformed")
         expected = {"schema": "caol-disposable-saved-world-v1", "purpose": "disposable_copy",
-                    "profile": profile, "world": world, "destination": str(destination), "run_id": run_id}
+                    "profile": profile, "world": world, "destination": str(destination)}
+        if not isinstance(record.get("run_id"), str) or not record["run_id"]:
+            raise WritableRootConflict("disposable saved-world custody is malformed")
         if destination.is_symlink() or any(record.get(k) != v for k, v in expected.items()):
             raise WritableRootConflict("disposable saved-world custody mismatch")
         if destination.exists():
@@ -34170,6 +34181,7 @@ def run_probe_post_relaunch(
             "source": str(live_world.resolve()),
             "snapshot": str(replacement_snapshot.resolve()),
             "sha256": replacement_snapshot_hash,
+            "sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
             "immutable_source": True,
         })
         # The registered bridge starts the replacement as a new child through
@@ -34182,6 +34194,7 @@ def run_probe_post_relaunch(
                 "source": str(live_world.resolve()),
                 "snapshot": str(replacement_snapshot.resolve()),
                 "sha256": replacement_snapshot_hash,
+                "sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
                 "immutable_source": True,
             })
 
@@ -39859,6 +39872,9 @@ def _validate_closed_fixture_custody(
     profile: str, world: str, source: Path,
 ) -> None:
     """A closed native receipt is authority for this exact world, not another run."""
+    algorithm = reference.get("source_sha256_algorithm")
+    if algorithm is not None and algorithm != SAVE_TREE_SHA256_ALGORITHM:
+        raise SystemExit("Closed-world reference uses an incompatible tree digest algorithm")
     if (reference.get("status") != "current_saved_world_reference"
             or reference.get("retained_copy") is not False
             or reference.get("profile") != profile or reference.get("world") != world
@@ -42977,6 +42993,7 @@ def describe_saved_world_state(profile: str, world_name: str, run_dir: Path, lab
         "world": world_name,
         "source": str(source_world.resolve()),
         "source_sha256": digest,
+        "source_sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
         "retained_copy": False,
     }
     write_json(run_dir / f"{label}.json", snapshot)

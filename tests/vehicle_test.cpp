@@ -11,6 +11,7 @@
 #include "avatar.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character.h"
 #include "character_attire.h"
 #include "coordinates.h"
@@ -19,7 +20,9 @@
 #include "enums.h"
 #include "item.h"
 #include "itype.h"
+#include "level_cache.h"
 #include "map.h"
+#include "mapbuffer.h"
 #include "map_helpers.h"
 #include "map_scale_constants.h"
 #include "player_activity.h"
@@ -69,6 +72,52 @@ static const vproto_id vehicle_prototype_unicycle_armored_wheel( "unicycle_armor
 static const vproto_id vehicle_prototype_unicycle_bike_wheel( "unicycle_bike_wheel" );
 static const vproto_id vehicle_prototype_unicycle_normal_wheel( "unicycle_normal_wheel" );
 static const vproto_id vehicle_prototype_wheelchair( "wheelchair" );
+
+TEST_CASE( "map reload retires old vehicle cache before saved submaps are evicted",
+           "[vehicle][map][savegame]" )
+{
+    const tripoint_abs_omt origin = project_to<coords::omt>( get_map().get_abs_sub() ) + point( 30,
+                                    30 );
+    const tripoint_abs_omt elsewhere = origin + point( 5, 0 );
+    const tripoint_omt_ms position( 10, 10, 0 );
+    tinymap local;
+    local.load( origin, true );
+    // Map generation may have placed vehicles in this disposable test area.
+    // Clear them before creating the bicycle whose cache lifetime is tested.
+    clear_vehicles( local.cast_to_map() );
+    REQUIRE( local.get_vehicles().empty() );
+    for( const tripoint_bub_ms &tile : local.cast_to_map()->points_in_radius(
+             tripoint_bub_ms( 10, 10, 0 ), 3 ) ) {
+        local.cast_to_map()->ter_set( tile, ter_id( "t_floor" ) );
+        local.cast_to_map()->furn_set( tile, furn_id( "f_null" ) );
+    }
+    REQUIRE_FALSE( local.veh_at( position ) );
+    vehicle *const original = local.add_vehicle( vehicle_prototype_bicycle, position, 0_degrees, 0,
+                              veh_spawn_status::UNDAMAGED, false );
+    REQUIRE( original );
+    on_out_of_scope cleanup( [&]() {
+        local.load( origin, true );
+        const optional_vpart_position found = local.veh_at( position );
+        if( found ) {
+            local.cast_to_map()->destroy_vehicle( &found->vehicle() );
+        }
+    } );
+    REQUIRE( local.cast_to_map()->access_cache( 0 ).vehicle_list.count( original ) == 1 );
+
+    local.load( elsewhere, false );
+    REQUIRE( local.cast_to_map()->access_cache( 0 ).vehicle_list.count( original ) == 0 );
+    REQUIRE( MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( origin ) ) );
+    MAPBUFFER.save();
+    CHECK_FALSE( MAPBUFFER.lookup_submap_cached( project_to<coords::sm>( origin ) ) );
+    local.load( origin, true );
+    const optional_vpart_position loaded = local.veh_at( position );
+    REQUIRE( loaded );
+    const tripoint_abs_sm cell = project_to<coords::sm>( local.get_abs( position ) );
+    const auto &parts = MAPBUFFER.vehicle_parts_at( cell );
+    CHECK( std::any_of( parts.begin(), parts.end(), [&]( const auto & part ) {
+        return part.first == &loaded->vehicle();
+    } ) );
+}
 
 TEST_CASE( "detaching_vehicle_unboards_passengers", "[vehicle]" )
 {

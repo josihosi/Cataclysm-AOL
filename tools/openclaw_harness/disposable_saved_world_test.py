@@ -172,9 +172,37 @@ with h.own_writable_root(root, 'later-run', h.process_generation_snapshot, h.pro
                                   str(self.root), str(snapshots)], capture_output=True, text=True, timeout=20)
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(record.read_bytes(), before_record)
-        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-1')['status'], 'removed')
+        with self.assertRaisesRegex(h.WritableRootConflict, 'current closed owner'):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertTrue((self.save / 'World').exists())
+        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'later-run')['status'], 'removed')
         self.assertFalse((self.save / 'World').exists())
         self.assertEqual(h.sha256_tree(snapshot), before_source)
+
+    def test_closed_continuation_supersedes_old_cleanup_authority(self):
+        self.create_closed_copy(run_id='run-1')
+        self.create_closed_copy(run_id='run-2')
+        world = self.save / 'World' / 'master.gsav'
+        world.write_bytes(b'newer retained world')
+        with self.assertRaisesRegex(h.WritableRootConflict, 'current closed owner'):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertEqual(world.read_bytes(), b'newer retained world')
+        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-2')['status'], 'removed')
+        self.assertFalse(world.exists())
+
+    def test_public_cleanup_rejects_stale_run_and_accepts_current_run(self):
+        self.create_closed_copy(run_id='run-1')
+        self.create_closed_copy(run_id='run-2')
+        command = ['startup_harness.py', 'cleanup-disposable-saved-world',
+                   '--profile', 'profile', '--world', 'World', '--run-id']
+        with mock.patch.object(sys, 'argv', command + ['run-1']):
+            with self.assertRaisesRegex(SystemExit, 'current closed owner'):
+                h.main()
+        self.assertTrue((self.save / 'World').exists())
+        output = io.StringIO()
+        with mock.patch.object(sys, 'argv', command + ['run-2']), redirect_stdout(output):
+            self.assertEqual(h.main(), 0)
+        self.assertEqual(json.loads(output.getvalue())['status'], 'removed')
 
     def test_fixture_fresh_transform_has_closed_run_custody_and_real_cleanup(self):
         payload = self.fixture_payload()
@@ -968,10 +996,12 @@ with h.own_writable_root(root, 'real-fixture-run', h.process_generation_snapshot
             return {**latest, 'alive': True} if pid == latest['pid'] else real_inspect(pid)
         with mock.patch.object(h, 'process_generation_snapshot', side_effect=live_latest):
             with self.assertRaises(h.WritableRootConflict):
-                h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+                h.cleanup_disposable_saved_world('profile', 'World', 'run-2')
         self.assertTrue((self.save / 'World').exists())
         self.assertEqual((self.root / '.harness-owner.lock').read_bytes(), before)
-        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-1')['status'], 'removed')
+        with self.assertRaisesRegex(h.WritableRootConflict, 'current closed owner'):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-2')['status'], 'removed')
         self.assertEqual((self.root / '.harness-owner.lock').read_bytes(), before)
         self.assertEqual(h.sha256_tree(self.source), self.source_hash)
 
@@ -993,7 +1023,9 @@ with h.own_writable_root(root, 'real-fixture-run', h.process_generation_snapshot
         self.create_closed_copy()
         self.assertEqual(self.create_closed_copy(run_id='run-2', launch=False),
                          'green_saved_world_snapshot_reused')
-        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-1')['status'], 'removed')
+        with self.assertRaisesRegex(h.WritableRootConflict, 'current closed owner'):
+            h.cleanup_disposable_saved_world('profile', 'World', 'run-1')
+        self.assertEqual(h.cleanup_disposable_saved_world('profile', 'World', 'run-2')['status'], 'removed')
 
     def test_reuse_retained_and_replacement_never_gain_disposal_authority(self):
         for existing, replace, disposable in [(True, False, True), (True, True, True), (False, False, False)]:

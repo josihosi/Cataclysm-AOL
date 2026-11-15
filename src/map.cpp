@@ -8777,6 +8777,12 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
     submaps_with_active_items_dirty.clear();
     set_abs_sub( w );
     clear_vehicle_level_caches();
+    // The old lists point into the previous map's submaps.  Those submaps may
+    // be evicted after a save, even when this load does not cache new vehicles.
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        clear_vehicle_list( z );
+    }
+    dirty_vehicle_list.clear();
     for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {
         for( int gridy = 0; gridy < my_MAPSIZE; gridy++ ) {
             loadn( { gridx, gridy }, update_vehicle );

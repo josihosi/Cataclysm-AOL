@@ -12,6 +12,8 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import production_capture
+import cockpit_file_bridge
+import startup_harness
 
 
 class ProductionCaptureTest(unittest.TestCase):
@@ -270,6 +272,32 @@ class ProductionCaptureTest(unittest.TestCase):
             source_path=source, runtime_binding=self.runtime,
         )
         self.assertEqual(observed["credit"], production_capture.OBSERVATION_CREDIT)
+
+    def test_observation_source_labels_digest_and_rejects_incompatible_algorithm(self) -> None:
+        source, before, _ = self.observation()
+        startup_hash, error = startup_harness.sha256_tree(before)
+        self.assertEqual(error, "")
+        self.assertEqual(len({startup_hash, cockpit_file_bridge._tree_digest(before),
+                              production_capture.tree_sha256(before)}), 3)
+        self.assertEqual(len({startup_harness.SAVE_TREE_SHA256_ALGORITHM,
+                              cockpit_file_bridge.SAVE_TREE_SHA256_ALGORITHM,
+                              production_capture.SAVE_TREE_SHA256_ALGORITHM}), 3)
+        payload = json.loads(source.read_text(encoding="utf-8"))
+        for world in payload["saved_world"].values():
+            self.assertEqual(world["tree_sha256_algorithm"],
+                             production_capture.SAVE_TREE_SHA256_ALGORITHM)
+        payload["saved_world"]["before"]["tree_sha256_algorithm"] = "caol-startup-length-prefixed-files-sha256-v1"
+        source.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaisesRegex(production_capture.ProductionCaptureError, "incompatible tree digest algorithm"):
+            production_capture.validate_observation_source_report(source_path=source, runtime_binding=self.runtime)
+
+        # Old signed reports omitted the label; their old bytes remain valid.
+        source, _, _ = self.observation()
+        payload = json.loads(source.read_text(encoding="utf-8"))
+        for world in payload["saved_world"].values():
+            world.pop("tree_sha256_algorithm")
+        source.write_text(json.dumps(payload), encoding="utf-8")
+        production_capture.validate_observation_source_report(source_path=source, runtime_binding=self.runtime)
 
     def test_observation_source_rejects_replacement_and_continuity_abuse(self) -> None:
         source, _, after = self.observation()

@@ -37,6 +37,7 @@ except ImportError:
 
 SCHEMA = "caol-cockpit-file-bridge-v1"
 TERMINALIZATION_SIGNAL = "cockpit.bridge.safe_to_cleanup.json"
+SAVE_TREE_SHA256_ALGORITHM = "caol-bridge-typed-entries-sha256-v1"
 
 
 def _bridge_identity_error(status: Mapping[str, Any], *, require_alive: bool = True) -> str:
@@ -520,6 +521,7 @@ class FileBackedCockpitBridge:
             "source": str(source),
             "snapshot": str(snapshot.resolve()),
             "sha256": source_hash,
+            "sha256_algorithm": SAVE_TREE_SHA256_ALGORITHM,
             "immutable_source": True,
         })
 

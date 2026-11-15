@@ -611,6 +611,8 @@ class CaptureWorkingFilesTest(unittest.TestCase):
             with patch.object(harness, "save_dir_for_profile", return_value=save.parent), \
                     patch.object(harness.shutil, "copytree", side_effect=AssertionError("proof copy")):
                 report = harness.describe_saved_world_state("profile", "TestWorld", run)
+                self.assertEqual(report["source_sha256_algorithm"],
+                                 "caol-startup-length-prefixed-files-sha256-v1")
                 self.assertEqual(report["source_sha256"], harness.sha256_tree(save)[0])
                 self.assertEqual(report["source"], str(save.resolve()))
                 self.assertFalse(report["retained_copy"])
@@ -2846,7 +2848,7 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result["status"], "green")
         self.assertEqual(result["feature_gate"], "startup_clean")
 
-    @patch("startup_harness.process_generation_snapshot", return_value={"pid": 42, "alive": True, "birth_identity": "birth", "command": "/Volumes/CodexBulk/cataclysm --world McWilliams"})
+    @patch("startup_harness.process_generation_snapshot", return_value={"pid": 42, "alive": True, "birth_identity": "birth", "executable_path": "/Volumes/CodexBulk/cataclysm", "command": "/Volumes/CodexBulk/cataclysm --world McWilliams"})
     @patch("startup_harness.compare_runtime_binding", return_value={"status": "matched"})
     @patch("startup_harness.pid_is_alive", return_value=True)
     @patch("startup_harness.pid_command", return_value="/Volumes/CodexBulk/cataclysm --world McWilliams")
@@ -2867,6 +2869,12 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertTrue(identity["ok"])
         self.assertEqual(identity["transport"], "terminal_native")
         self.assertEqual(result["feature_gate"], "startup_clean")
+        mismatch = terminal_native_startup_identity(
+            42, Path("/Volumes/CodexBulk/other"), {"schema": 1},
+            {"pid": 42, "birth_identity": "birth", "command": "/Volumes/CodexBulk/cataclysm --world McWilliams"},
+        )
+        self.assertFalse(mismatch["ok"])
+        self.assertEqual(mismatch["error"], "terminal_native_process_command_mismatch")
 
     def test_dismissed_debug_popup_keeps_startup_degraded_after_real_hud(self) -> None:
         result = startup_proof_classification(

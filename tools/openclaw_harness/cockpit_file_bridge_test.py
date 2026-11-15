@@ -268,6 +268,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
                 directory.mkdir()
                 child = "\n".join([
                     "import json, sys",
+                    "sys.path.insert(0, " + repr(str(Path(__file__).resolve().parent)) + ")",
                     "from types import SimpleNamespace",
                     "import startup_harness",
                     "payload = " + ascii(payload),
@@ -1324,6 +1325,8 @@ for line in sys.stdin:
             self.assertTrue(snapshot.is_dir())
             self.assertEqual((snapshot / "worldoptions.json").read_text(encoding="utf-8"), '{"saved":true}')
             self.assertEqual(pointer["sha256"], _tree_digest(snapshot))
+            self.assertEqual(pointer["sha256_algorithm"],
+                             "caol-bridge-typed-entries-sha256-v1")
 
     def test_post_relaunch_reentry_rejects_mismatched_completion_world_without_successor(self):
         """The saved World named by the native completion must match the bound owner."""

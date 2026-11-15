@@ -37,6 +37,7 @@ SELECTIONS = (
     "actual dispatched faction party receives attack alert and retains native flight",
     "follow close limits target selection only for player allies",
     "authenticated scouts disengage homeward without dismissing a current alert",
+    "map reload retires old vehicle cache before saved submaps are evicted",
     "homeward pair reaches its boundary through ordinary paid movement",
     "homeward boundary crossing awaits a physically incapacitated survivor",
     "assessment return transfers preserve the deadline clock and real physical progress",
