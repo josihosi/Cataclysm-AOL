@@ -27,6 +27,13 @@ and 35–50 OMT; vary faction/distance pairings across seeds. Record actual posi
 not a claim that every generated map naturally supplied that layout. Leave NPC capabilities,
 perception, mission decisions, casualties and movement under the normal production simulation.
 
+These bands describe homes relative to a travel route; they do not qualify every signal journey.
+For representative distant camp/tower sensing, measure source/player separation from the nearest
+home footprint edge and apply the [source placement](smoke-light-visibility.md#representative-source-placement)
+minimum of10 OMT (about15 is a useful default). A3–8 OMT source/home pairing is a close diagnostic
+control, not representative remote proof. Record actual geometry and active-party state for the
+selected workload; site placement or elapsed world-days alone does not establish active load.
+
 Enable and verify avatar invisibility and Debug Life Support (`DEBUG_LS`) individually using
 [setup controls](setup-and-interactions.md#mutation-setup-for-suite-runs). Life support removes
 needs noise, not incoming damage. Choose practical shelter/routes and supported avatar protection
@@ -98,6 +105,13 @@ throughput reference early in the run and at useful travel/reload milestones. Co
 simulated time against wall time for comparable actions; interrupted waits, rendering, loading
 and external/model waits must not be mislabelled as overmap simulation cost. No invented fixed
 threshold or continuous profiling is required.
+
+For a selected responsiveness comparison, retain a bounded completed wait or travel interval,
+its accepted game time, elapsed wall/simulation time and available turn distribution/frequency,
+plus actual active-party counts and purpose. Report sustained ordinary slowdown even when no
+single turn is extreme. Keep redraw, save, loading, model/input waits and overlapping host jobs
+separate where the existing measurements permit; a light or idle interval is not populated-load
+proof. Preserve original source/run handles before rotation when an interval changes the verdict.
 
 When native slow-turn receipts are available, the assessment exposes a run- and
 process-bound snapshot with at most eight coalesced records. It keeps counts and
