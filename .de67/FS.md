@@ -2459,7 +2459,8 @@ Deliver clear existing worker instructions and commands for the relevant changed
 
 Implementation status:
 
-- [ ] 🔴 R-MAINT-WORKER-LINT — Applicable worker checks produce actionable diagnostics without routine mutation.
+- [x] R-MAINT-WORKER-LINT — Applicable worker checks produce actionable diagnostics without routine mutation.
+**Delivery status (2026-11-15).** Accepted from retained declaration diagnostics and published3b428868702/c56276bbd64 local/CI checks. Bad inputs produce actionable errors, corrected inputs pass, and checks preserve source bytes. Hosted Flake8 and Python/JavaScript CodeQL passed. Current C++ CodeQL remains pending; independent General-suite and baseline cockpit failures are not claimed fixed. Receipts6b12cffb and2ec11e17 retain exact scope.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-WORKER-LINT-S001 claim=R-MAINT-WORKER-LINT -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-FEATURE-MAP-S001 claim=R-MAINT-FEATURE-MAP -->
