@@ -11,7 +11,7 @@
     "capabilities.r014.run_cleanup": "bound_process_and_session_cleanup",
     "runtime.r014.source_binding": "r013_wait_activity_interrupt_bootstrap_v1:r009-m095"
   },
-  "description": "R014 cockpit bootstrap from a fixture that clears active monsters and stages a hostile zombie dog six map squares east. Observe, issue one native action, recover only an advertised interruption, return a fresh observation, retain long-activity boundaries, finish, ingest and clean up. Setup grants no gameplay or certification credit.",
+  "description": "Does a fresh game hand off usable current controls to the player? Use the declared controlled footing and minimal bootstrap. Inspect the actual World or recoverable menu owner and choose an advertised action.",
   "evidence_contract": {
     "claim": "the current source-bound R-014 prototype footing is selectable and may receive exactly one canonical live cockpit authority; setup and bootstrap artifacts remain zero-credit",
     "failure_rule": "a changed source or fixture, missing required stabilizer, unadvertised native action or recovery, missing fresh observation or long-activity boundary, absent terminal report/ingestion, or failed cleanup leaves the R-014 live route unproved; no setup artifact may be promoted"
@@ -188,7 +188,7 @@
       ],
       "kind": "cockpit_live_session",
       "label": "r014_worker_owned_live_prototype",
-      "objective": "Use the bound cockpit to perform one advertised native action, recover only an advertised activity interruption if it occurs, receive a fresh observation, report the unsupported action once as a reusable gap, retrieve that gap for the declared companion scenario, and explicitly finish.",
+      "objective": "Does a fresh game hand off usable current controls to the player? Use the declared controlled footing and minimal bootstrap. Inspect the actual World or recoverable menu owner and choose an advertised action. Success boundary: The correct current-run owner accepts native input and returns a fresh result; no guessed key, forced sequence or stale frame counts.",
       "observe_interval_seconds": 0.1,
       "r014_step_evidence": true,
       "proof_targets": [
@@ -201,5 +201,43 @@
     }
   ],
   "wait_input_trace": true,
-  "world": "McWilliams"
+  "world": "McWilliams",
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "harness-input",
+    "family_title": "Native control diagnostics",
+    "family_purpose": "Verify native target identity, controls and read-only inspection.",
+    "variant": "Interactive cockpit handoff"
+  },
+  "playtest_recipe": {
+    "title": "Interactive cockpit handoff",
+    "question": "Does a fresh game hand off usable current controls to the player?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+      "profile": "r009-m095",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the declared controlled footing and minimal bootstrap. Inspect the actual World or recoverable menu owner and choose an advertised action.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the controlled declaration only for its stated diagnostic boundary. Inspect native controls and the pending request; do not replace the operation under test with a convenient different macro.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The correct current-run owner accepts native input and returns a fresh result; no guessed key, forced sequence or stale frame counts.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
+  }
 }

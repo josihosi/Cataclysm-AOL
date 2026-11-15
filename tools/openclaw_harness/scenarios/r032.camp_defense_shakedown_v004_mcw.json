@@ -1,8 +1,14 @@
 {
   "manifest_version": 1,
   "name": "r032.camp_defense_shakedown_v004_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "camp-payment-defense", "family_title": "Camp payment and defense", "family_purpose": "Observe camp-stock payment, patrol and defense through native play.", "variant": "Shakedown defense"},
-  "description": "Camp defense against a bandit shakedown, continuing the saved R032 Locker camp at 162,36. Character 25 and nearby storage remain; the fixture adds ten RobofacCoin in follower storage 31 map squares east. Set character 25’s patrol-only priority before creating CAMP_PATROL; orders, dispatch, contact and outcome remain native.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "human-encounters",
+    "family_title": "Demands, defense and settlement",
+    "family_purpose": "Follow genuine human encounters and their physical consequences.",
+    "variant": "Defenders meet a shakedown"
+  },
+  "description": "Do camp defenders react coherently when a genuine bandit demand reaches their camp? Use the prepared assigned camp and let the real encounter develop. Observe defender allegiance, positioning and the chosen player response without injecting commitment.",
   "profile": "r032-camp-defense-shakedown-exp008-20260924",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -88,7 +94,7 @@
       "kind": "cockpit_live_session",
       "label": "operate_r032_peaceful_shakedown_and_hostile_fight",
       "cleanup_on_finish": true,
-      "objective": "From the saved R032 Locker footing, natively verify camp and character:25, set all other job priorities to zero and patrol to 9 before creating the CAMP_PATROL zone, then observe the fresh guard plan and actual movement. Disclose the fixture-only CAMP_STORAGE coin tile, allow ordinary time until the existing staffed bandit camp creates a natural local shakedown, preserve the peaceful Pay/Fight demand via native save, and later use a separate fresh source run for the hostile Fight branch. Do not inject or edit bandit state.",
+      "objective": "Do camp defenders react coherently when a genuine bandit demand reaches their camp? Use the prepared assigned camp and let the real encounter develop. Observe defender allegiance, positioning and the chosen player response without injecting commitment. Success boundary: Defenders and bandits follow the actual demand/payment/fight outcome, preserving identities and accounting through departure.",
       "proof_targets": [
         "same R032 Assignment Camp [162,36,0], character:25/CAMP_RESIDENT and accepted Locker loadout",
         "fresh patrol plan created after native UI sets patrol-only priority 9 before native creation of CAMP_PATROL, exact actor roster/order and actual guard movement before contact",
@@ -138,6 +144,38 @@
     ],
     "disallowed_shortcuts": [
       "bind_r032_camp_defense_world"
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Defenders meet a shakedown",
+    "question": "Do camp defenders react coherently when a genuine bandit demand reaches their camp?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r032_camp_pay_stock_v001_mcw",
+      "profile": "r032-camp-defense-shakedown-exp008-20260924",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the prepared assigned camp and let the real encounter develop. Observe defender allegiance, positioning and the chosen player response without injecting commitment.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Defenders and bandits follow the actual demand/payment/fight outcome, preserving identities and accounting through departure.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

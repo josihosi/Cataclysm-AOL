@@ -19,36 +19,8 @@ import scenario_registry_cli  # noqa: E402
 
 
 class R029NaturalRouteRecipeTest(unittest.TestCase):
-    def test_committed_fight_persistence_route_declares_a_reentry_live_owner(self) -> None:
-        source = HARNESS / "scenarios" / "tmp.bandit_committed_fight_aftermath_persistence_probe_2026-09-10.json"
-        scenario = json.loads(source.read_text())
-        post_steps = scenario["post_relaunch"]["steps"]
-        self.assertEqual(post_steps[-1]["label"], "inspect_reloaded_committed_aftermath")
-        self.assertEqual(post_steps[-1]["kind"], "cockpit_live_session")
-        self.assertEqual(
-            scenario_registry_cli._declared_live_session_reentries(
-                type("Selection", (), {"source_path": str(source)})()
-            ),
-            1,
-        )
 
-    def test_post_relaunch_fire_audit_tracks_the_guarded_north_retreat(self) -> None:
-        scenario = json.loads((Path(__file__).resolve().parent / "scenarios" /
-                               "cannibal.r029_natural_route_roof_mcw.json").read_text())
-        persisted_fire_audit = scenario["post_relaunch"]["steps"][0]
-        self.assertEqual(persisted_fire_audit["label"], "audit_persisted_r029_player_fire")
-        # The brazier is deployed southeast (+1,+1); after the exact two-tile
-        # north retreat it is relative to the saved player at (+1,+3).
-        self.assertEqual(persisted_fire_audit["offsets"], [[1, 3, 0]])
 
-    def test_post_relaunch_recipe_uses_the_advertised_duration_primitive(self) -> None:
-        scenario = json.loads((Path(__file__).resolve().parent / "scenarios" /
-                               "cannibal.r029_natural_route_roof_mcw.json").read_text())
-        post_session = scenario["post_relaunch"]["steps"][1]
-        self.assertEqual(post_session["kind"], "cockpit_live_session")
-        self.assertEqual(post_session["keep_watch"]["recipe"], ["world.wait", "wait.1m"])
-        self.assertEqual(post_session["keep_watch"]["target_delta_game_minutes"], 9)
-        self.assertEqual(post_session["keep_watch"]["bound"]["maximum"], 9)
 
     def test_in_range_fixture_is_zero_credit_and_noncolliding(self) -> None:
         fixture = json.loads((HARNESS / "fixtures" / "saves" / "live-debug" /
@@ -90,16 +62,6 @@ class R029NaturalRouteRecipeTest(unittest.TestCase):
                 for placement in placements
             ))
 
-    def test_bandit_sound_route_requires_post_materialization_observer_binding(self) -> None:
-        scenario = json.loads((HARNESS / "scenarios" /
-                               "bandit.r029_natural_sound_route_mcw.json").read_text())
-        session = scenario["steps"][-1]
-        self.assertEqual(session["kind"], "cockpit_live_session")
-        self.assertIn("zero-credit structural-maintenance pass", session["objective"])
-        self.assertIn("nearer site concrete at-home member/readiness after structural materialization",
-                      session["proof_targets"])
-        self.assertIn("ordinary structural roster materialization are zero-credit",
-                      session["invariants"][0])
 
     def test_bandit_sound_fixture_clones_only_the_declared_zero_credit_observer(self) -> None:
         fixture = json.loads((HARNESS / "fixtures" / "saves" / "live-debug" /

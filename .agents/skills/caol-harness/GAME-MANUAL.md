@@ -97,21 +97,107 @@ For scenario authoring, reuse the existing registry and a relevant source manife
 its exact scenario query. [CONTROL_LOOKUP](../../../tools/openclaw_harness/CONTROL_LOOKUP.md)
 is the current detailed control catalogue. The old interaction matrix was consumed; use the
 relevant existing recipe and current native controls rather than that missing dependency.
-Validate a changed candidate before selection; record setup changes separately from native
-behavior. Use [family discovery](SKILL.md#find-a-playtest) for maintained variants and historical
-search; the registry remains the source for exact selection and qualification.
+### Write reusable instructions, not a transcript
+
+The maintained library has 50 distinct scenarios. Keep it useful rather than growing it with each
+run: replace a redundant recipe when a better one covers its question, and keep temporary variations
+in the current task brief. A lasting addition should cover a genuinely missing behavior; delete its
+superseded counterpart instead of archiving it. The catalogue is coverage, not a queue to execute.
+
+Prefer adapting a maintained setup to creating another scenario name. A separate declaration is
+useful when a materially different starting state or runtime requirement cannot be represented
+sensibly by the existing route. A new run, build, date, bug fix, weather setting, distance or actor
+count normally belongs in the current brief or a parameterized comparison in the existing recipe.
+Do not expand every combination into a permanent scenario. Before adding one, search the nearest
+family and explain the distinct reusable question in its description. This is ordinary authoring
+judgment, not a new approval gate or a requirement to run the whole library. Start from the prepared open
+or closed house when it saves work, then adapt the surrounding world to the question.
+
+Describe the question, relevant starting facts, permitted setup, useful observations and meaningful
+endpoint. Separate essential conditions from illustrative distances, order and commands. Let the
+player choose actions and supported batches from current controls, recover from ordinary prompts,
+and change an unhelpful tactic. A recipe is not a mandatory command queue or a promise of success.
+
+When copying a declaration, replace obsolete descriptions, family labels, source claims, objectives,
+steps and proof targets together. Keep only relevant constraints. Check the result against the
+actual save and brief, rather than merely making lint pass. Never lower gameplay-evidence eligibility
+to silence a validation error when gameplay evidence is the task. `setup_only_debug` currently
+classifies the whole run as setup support; it does not mean “this gameplay test also contains setup.”
+Use the supported focused reference route for genuine downstream observation; setup itself earns
+no behavioral proof. Preserve actual source identity and permissions, not another entry's name as
+an admission shortcut.
+
+For interactive play, bootstrap describes the minimum current input boundary, not every control
+that might be used later. The maintained reference route requires `world.wait`; movement and other
+controls are discovered from the current surface. Do not invent a generic `world.move` action or
+copy a long readiness list from an unrelated test. Validate the declaration and its actual registry
+selection/evidence class before launching; a valid JSON file alone does not establish a useful run.
+Do not alter a live selected manifest beneath its session.
+
+### Carry forward useful learning and remove residue
+
+After a useful playtest, update the existing recipe with the preparation that actually worked,
+relevant controls and log queries, meaningful outcome and limits. Include only facts that change
+the next player's decisions. Parameterize live IDs and explain how to retrieve them. Replace wrong
+instructions; do not append a contradictory success note or preserve a transcript as a procedure.
+A successful setup can remain useful when the test exposes a gameplay bug. A prior pass is scoped
+evidence, not assurance that another build or condition passes.
+
+Keep reusable starting saves, recipes and current necessary working state. Once a run is settled,
+close its game/helpers, verify exit and delete generated saves/logs/captures and obsolete declarations
+through the existing cleanup/registry routes. Preserve owner originals, current continuations and
+concise commit/run/findings in task context. Do not create archives or a second historical backlog.
+Delete superseded failed setup variants after incorporating their useful correction into the
+maintained route. Failure alone does not make a still-useful reproducer obsolete. If a temporary
+declaration is genuinely needed, keep its purpose and removal condition in the current task;
+remove it through the supported registry cleanup route once that need ends. A saved checkpoint
+or successful run does not automatically deserve another permanent entry. After adapting a recipe,
+check its public catalogue description still matches its save, controls, question and evidence
+limits. Leave live selected declarations unchanged until their run settles.
 
 The [skill entry point](SKILL.md) routes launch, live controls, evidence, setup and closeout.
 Only Luna operates live sessions. Sol can analyze source, logs and saved data or repair code.
+
+## Adapt the surrounding overmap
+
+For a missing camp, the native Overmap Editor can place a special in the disposable world.
+Use `world.debug_menu`, discover its current menu choices, then the advertised overmap placement
+controls (`overmap.place_special`, cursor/level controls and close when offered). Resolve actual
+special and position parameters from `controls`; menu IDs and availability are live facts. This
+is preparation, not evidence that normal staffing, perception or dispatch occurred.
+
+Use the existing fixture setup transforms in
+[startup_harness.py](../../../tools/openclaw_harness/startup_harness.py), applied to a disposable
+working save before native play through `apply_fixture_save_transforms` / fixture `save_transforms`:
+
+- `seed_overmap_special_near_player` places a special footprint relative to the saved player.
+  Fields are `player_save`, `special_id`, `source_special_id`, `site_index` and `offset_omt`.
+  It translates an existing source placement; it is not a generic creator for an absent special.
+- `overmap_terrain_id_at_abs_omt` edits surrounding OMT terrain. Read its validator/function
+  for exact fields rather than improvising save JSON or confusing OMTs with local squares.
+
+The [reference-camp route test](../../../tools/openclaw_harness/r_caol_reference_camp_route_test.py)
+contains a concrete `test_nearby_footprint_only_and_real_launch_binding` example using the open
+standard save, placing a nearby `bandit_cabin` footprint while preserving the house save.
+The existing [open declaration](../../../tools/openclaw_harness/scenarios/caol.reference_camp_open_focused_mcw.json)
+and [closed declaration](../../../tools/openclaw_harness/scenarios/caol.reference_camp_closed_focused_mcw.json)
+identify the standard sources. Inspect their actual selected scope before adapting them.
+
+Placement is setup, not evidence of a staffed/awake observer or a dispatch. Let the ordinary game
+initialize the site and establish the actual roster/opportunity. Choose placement to answer the
+visibility or interaction question while keeping the prepared house, windows, fire and player
+setup useful. Do not inject received signals, discoveries or outcomes. No offline edits to an
+active game or owner originals; changing a bound manifest requires its owner's settled handoff.
 
 ## Standardized base orientation
 
 ### Josef's two-brazier base save
 
-Prefer a disposable copy of Josef's [prepared templates](#verified-save-templates) for compatible
-playtests. Preserve actual scenario differences; do not replace a useful current continuation or
-replay accepted work merely to standardize its starting save. Resolve the exact template, not a
-similar scenario name. Josef describes the basecamp NPC priorities as 5 across the board; inspect
+Use the skill's [prepared-setup choices](SKILL.md#prepared-setups-choose-by-the-behavior-being-tested)
+for fire, NPC response and shakedown tests. They avoid rebuilding a ready house/brazier scene;
+choose another save when it better answers the question, and preserve useful current continuations.
+Resolve the actual template and adapt its surroundings for the needed camps, rather than treating
+a similarly named remote-field derivative as the standard save. Josef describes the basecamp NPC priorities as 5 across the board; inspect
 the selected save's actual roster/settings when they matter to the test. Several wood stacks can
 exist while only one is covered by a firewood zone.
 
@@ -322,8 +408,9 @@ interruptions; use the wait mode that matches the fact being observed.
 Use existing run-bound descriptors, exact event handles and fresh saves first. If an actor
 action or attacker is missing, request one harness-enabled trace scoped to the IDs and turns
 that decide the question. Avoid normal-game verbose logs and per-turn full-state dumps. At
-closeout, retain raw evidence for open claims and prune only verified redundant temporary
-exports, as described in [Logging scope](#logging-scope).
+closeout, keep only the raw evidence or continuation data needed for a concrete unresolved question;
+record that need in current task context. Once settled, retain concise source/run/findings and
+reproduction notes and delete generated residue, as described in [Logging scope](#logging-scope).
 
 ## Smoke and light visibility
 
@@ -427,11 +514,8 @@ indoors or in darkness does not by itself prove lack of exposure.
 | --- | --- | --- |
 | `.userdata/reference-saves/archives/josef-basecamp-closed-windows-20260924-122642.zip` (SHA-256 `4b11469931507c49f0b373934730fed6b729b7a29b87c6f78eca0f728e8320c3`) | 45 save files; TestCamp01 at OMT `[131,143,0]`, closed windows, unlit indoor brazier `[3159,3449,0]` and roof brazier `[3156,3447,1]`; saved NPC2 Tilda has `ACT_MOVE_LOOT`, NPC3 Casey has `ACT_NULL`. No cannibal camp site is present. | Copy the archive into a disposable profile. The indoor z=0 brazier is smoke-only for outside discovery with windows closed; use verified roof or separate open-window geometry for exterior light. The archive is a baseline, not proof of hostile site eligibility or stocked player inventory. Inspect native fuel, lighter, roster and window state before action. |
 | `.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/` | Owner-created corrected open-window reference. Its README says all building windows are open and the source save is unchanged; Josef also describes this comparison setup as having the building doors open. | For the later open-versus-closed signal runs, copy this save separately and verify actual windows, doors, signal source, camp setup and file identity before play. The README's window claim is owner-confirmed, not a native replay or proof that every door is open. |
-| Historical R008 controlled smoke geometry (raw stage record consumed) | A 45-file disposable copy of that archive; only `overmaps/o.0.0.zzip` changes, adding cannibal camp footprint/terrain at `[135,137,0]`. Player save, NPC activities, eight existing camp objects and map data remain unchanged. The archived player save SHA is `037c9bf694be280cb19fe607ef691429593120245c2741d6b0906dfa8833d247`. | Historical setup only, not a selectable current checkpoint. Use an available registry-bound pre-signal fixture and its declared bytes; do not reconstruct the old disposable profile. |
-| Historical R009 raid checkpoint (raw handoff consumed) | Minute8734/turn5276059, gen2 raid and reserved NPCs5/7. | Downstream comparison only, not a current start or fresh ignition/admission proof. Select an available complete save through the registry. |
-| Historical R010 minute-8734 checkpoint | Scene/57-file manifest/copy receipt were consumed after use. | Unavailable as a current input. Do not recreate it, copy a guessed profile or require its deleted manifest before playing an available selected save. |
 
-These are evidence-bound examples, not the current state of any open game. Read the run's latest
+These standard references are starting scenes, not the current state of any open game. Read the run's latest
 save and native World before using a template; a stale instruction such as “fire not yet lit”
 does not override a burning brazier in the selected session.
 

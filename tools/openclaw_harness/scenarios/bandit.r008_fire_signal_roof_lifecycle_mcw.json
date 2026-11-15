@@ -1,9 +1,19 @@
 {
   "manifest_version": 1,
   "name": "bandit.r008_fire_signal_roof_lifecycle_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "human-signal-journeys", "family_title": "Human signal and scout journeys", "family_purpose": "Trace real signal discovery, scouting, report and response.", "variant": "Roof fire, 20-OMT nearest home"},
-  "setup_classification": {"kind": "representative_candidate", "native_source_qualified": false, "native_prepared_save_adopted": false},
-  "description": "Representative R008 bandit roof journey with unchanged source140,31 and nearest full home edge20 verified after all inherited transforms; native source reach and adoption must still qualify.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "human-signal-journeys",
+    "family_title": "Signal-to-return journeys",
+    "family_purpose": "Follow real perception, decisions, travel and return.",
+    "variant": "Bandit smoke-to-return journey"
+  },
+  "setup_classification": {
+    "kind": "representative_candidate",
+    "native_source_qualified": false,
+    "native_prepared_save_adopted": false
+  },
+  "description": "Does a real source lead to a coherent bandit investigation, encounter and return? Use the roof journey footing for a full expedition, or the prepared house when the assigned question is narrower. Keep a real emitting source and follow actual observers and party IDs.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "r008_fire_signal_roof_remote_v1",
@@ -11,42 +21,327 @@
   "replace_existing_worlds": true,
   "capabilities": {
     "capabilities.r008.fire_signal_family": "exposed_roof_bandit_camp_lifecycle",
-    "world.signal": ["player_lit_fire", "light", "smoke"],
+    "world.signal": [
+      "player_lit_fire",
+      "light",
+      "smoke"
+    ],
     "world.hostile_policy": "bandit_camp",
-    "world.camp_zones": ["CAMP_LOCKER", "CAMP_PATROL"],
+    "world.camp_zones": [
+      "CAMP_LOCKER",
+      "CAMP_PATROL"
+    ],
     "runtime.entry_mode": "cockpit_live_session"
   },
   "runtime_contract": {
-    "permitted_input": ["ordinary-player-ui:deploy-brazier", "ordinary-player-ui:ignite-with-charged-lighter", "cockpit:game.player_fire_setup", "cockpit:game.guarded_move_relative", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
-    "forbidden_input": ["hostile-teleport", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "raw-save-rewrite-after-install", "fixture-fire-as-proof"],
+    "permitted_input": [
+      "ordinary-player-ui:deploy-brazier",
+      "ordinary-player-ui:ignite-with-charged-lighter",
+      "cockpit:game.player_fire_setup",
+      "cockpit:game.guarded_move_relative",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:game.keep_watch",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "hostile-teleport",
+      "debug:inject_signal",
+      "debug:inject_target_knowledge",
+      "debug:inject_dispatch",
+      "debug:inject_local_contact",
+      "raw-save-rewrite-after-install",
+      "fixture-fire-as-proof"
+    ],
     "setup_only_debug": true,
     "disposable_copy": true,
-    "helpers": ["Peekaboo"],
-    "permissions": ["accessibility", "screen-recording"],
-    "platform": ["macos"],
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
     "profile": "dev-harness",
     "fixture": "r008_fire_signal_roof_remote_v1",
-    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r008_fire_signal_roof_remote_v1", "helper": "Peekaboo", "peekaboo": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "ocr": true, "cleanup": true},
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r008_fire_signal_roof_remote_v1",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": [
+        "ordinary fire setup and worker-owned live cockpit"
+      ],
+      "ocr": true,
+      "cleanup": true
+    },
     "grants_gameplay_proof": false
   },
   "steps": [
-    {"kind": "wait", "label": "load_roof_laboratory", "seconds": 2.0, "capture_after": true, "expected_visible_fact": "the generated basecamp roof laboratory reaches ordinary gameplay"},
-    {"kind": "audit_saved_player_items", "label": "audit_roof_fire_tools", "required_items": ["brazier", "lighter"], "abort_on_metadata_failure": true, "abort_reason": "normal player-action brazier or charged lighter setup is missing"},
-    {"kind": "audit_saved_map_tile_near_player", "label": "audit_roof_surface_and_distributed_fuel", "offsets": [[0, 0, 0], [1, -1, 0], [1, 0, 0], [1, 1, 0]], "required_terrain": ["t_tile_flat_roof"], "required_items": ["log"], "abort_on_metadata_failure": true, "abort_reason": "generated flat roof or distributed log footing is missing"},
-    {"kind": "audit_saved_zones_near_player", "label": "audit_roof_source_zone", "offsets": [[1, -1, 0], [1, 0, 0], [1, 1, 0]], "required_zone_type": "SOURCE_FIREWOOD", "required_faction": "your_followers", "required_name_contains": "R-008 exposed roof firewood", "abort_on_metadata_failure": true, "abort_reason": "roof SOURCE_FIREWOOD does not cover the distributed fuel"},
-    {"kind": "audit_saved_zones_near_player", "label": "audit_roof_camp_locker", "offsets": [[-10, -2, -1]], "required_zone_type": "CAMP_LOCKER", "required_faction": "your_followers", "abort_on_metadata_failure": true, "abort_reason": "the inherited production CAMP_LOCKER footing is missing"},
-    {"kind": "audit_saved_zones_near_player", "label": "audit_roof_camp_patrol", "offsets": [[-15, -2, -1]], "required_zone_type": "CAMP_PATROL", "required_faction": "your_followers", "abort_on_metadata_failure": true, "abort_reason": "the inherited production CAMP_PATROL footing is missing"},
-    {"kind": "audit_saved_map_tile_near_player", "label": "audit_roof_has_no_fixture_fire", "offsets": [[1, -1, 0], [1, 0, 0], [1, 1, 0]], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true, "abort_reason": "fixture fire or smoke would contaminate the player-created signal"},
-    {"kind": "native_semantic_bootstrap", "label": "bind_roof_native_world", "expected_visible_fact": "a current run-bound native world frame precedes worker-owned setup and observation", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
-    {"kind": "cockpit_live_session", "label": "observe_roof_fire_signal_lifecycle", "objective": "Create a genuine burning brazier through ordinary player UI, move exactly two ordinary map tiles away using a native receipt, then settle as many connected fire-signal, bandit, camp-locker, patrol, shakedown/combat, bubble, return, and persistence claims as this bound production run supports. An initial structural dispatch may be credited to fire only when a production event says so; otherwise distinguish the earlier dispatch cause from later smoke/light detection and approach.", "proof_targets": ["ordinary brazier deployment and charged-lighter ignition with saved or native result evidence", "exact two-tile retreat before observation waiting", "signal channel and causal observer", "stable hostile origin and actor identity through dispatch or approach, local behavior, departure, abstract return, and persistence when observed", "CAMP_LOCKER and CAMP_PATROL behavior plus shakedown watch versus combat escalation when reached", "claim-scoped witness bundle and routed defects without erasing unaffected evidence"], "authority": ["ordinary player UI through Peekaboo", "game.player_fire_setup", "game.guarded_move_relative", "advertised native actions", "game.wait, game.raw_wait, or game.keep_watch with an evidence-derived horizon", "run.continue", "run.witness", "run.finish"], "invariants": ["all fixture transforms and player-only roof relocation are zero-credit setup", "never teleport or fabricate a hostile actor, signal, target, dispatch, or behavior", "a short quiet interval is not a negative result", "continue after a feature divergence while remaining claims retain clean causal meaning", "capability gaps contain only missing reusable interfaces; gameplay defects return in the witness bundle"], "live_operations": ["game.act", "game.player_fire_setup", "game.guarded_move_relative", "game.keep_watch", "game.raw_wait", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+    {
+      "kind": "wait",
+      "label": "load_roof_laboratory",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "the generated basecamp roof laboratory reaches ordinary gameplay"
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_roof_fire_tools",
+      "required_items": [
+        "brazier",
+        "lighter"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_reason": "normal player-action brazier or charged lighter setup is missing"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_roof_surface_and_distributed_fuel",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_items": [
+        "log"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_reason": "generated flat roof or distributed log footing is missing"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_roof_source_zone",
+      "offsets": [
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "required_zone_type": "SOURCE_FIREWOOD",
+      "required_faction": "your_followers",
+      "required_name_contains": "R-008 exposed roof firewood",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "roof SOURCE_FIREWOOD does not cover the distributed fuel"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_roof_camp_locker",
+      "offsets": [
+        [
+          -10,
+          -2,
+          -1
+        ]
+      ],
+      "required_zone_type": "CAMP_LOCKER",
+      "required_faction": "your_followers",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "the inherited production CAMP_LOCKER footing is missing"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_roof_camp_patrol",
+      "offsets": [
+        [
+          -15,
+          -2,
+          -1
+        ]
+      ],
+      "required_zone_type": "CAMP_PATROL",
+      "required_faction": "your_followers",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "the inherited production CAMP_PATROL footing is missing"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_roof_has_no_fixture_fire",
+      "offsets": [
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "forbidden_fields": [
+        "fd_fire",
+        "fd_smoke"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_reason": "fixture fire or smoke would contaminate the player-created signal"
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_roof_native_world",
+      "expected_visible_fact": "a current run-bound native world frame precedes worker-owned setup and observation",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "observe_roof_fire_signal_lifecycle",
+      "objective": "Does a real source lead to a coherent bandit investigation, encounter and return? Use the roof journey footing for a full expedition, or the prepared house when the assigned question is narrower. Keep a real emitting source and follow actual observers and party IDs. Success boundary: The selected chain is observed in order with genuine perception, decision and travel; goods, survivors and home settlement persist. Ignition alone is not the endpoint.",
+      "proof_targets": [
+        "ordinary brazier deployment and charged-lighter ignition with saved or native result evidence",
+        "exact two-tile retreat before observation waiting",
+        "signal channel and causal observer",
+        "stable hostile origin and actor identity through dispatch or approach, local behavior, departure, abstract return, and persistence when observed",
+        "CAMP_LOCKER and CAMP_PATROL behavior plus shakedown watch versus combat escalation when reached",
+        "claim-scoped witness bundle and routed defects without erasing unaffected evidence"
+      ],
+      "authority": [
+        "ordinary player UI through Peekaboo",
+        "game.player_fire_setup",
+        "game.guarded_move_relative",
+        "advertised native actions",
+        "game.wait, game.raw_wait, or game.keep_watch with an evidence-derived horizon",
+        "run.continue",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "all fixture transforms and player-only roof relocation are zero-credit setup",
+        "never teleport or fabricate a hostile actor, signal, target, dispatch, or behavior",
+        "a short quiet interval is not a negative result",
+        "continue after a feature divergence while remaining claims retain clean causal meaning",
+        "capability gaps contain only missing reusable interfaces; gameplay defects return in the witness bundle"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.player_fire_setup",
+        "game.guarded_move_relative",
+        "game.keep_watch",
+        "game.raw_wait",
+        "game.wait"
+      ],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1
+    }
   ],
   "proof_route": {
-    "precondition": ["audit_roof_fire_tools", "audit_roof_surface_and_distributed_fuel", "audit_roof_source_zone", "audit_roof_camp_locker", "audit_roof_camp_patrol"],
-    "production_behavior": ["observe_roof_fire_signal_lifecycle"],
-    "terminal_persistence": ["observe_roof_fire_signal_lifecycle"],
-    "artifact_verdict": ["observe_roof_fire_signal_lifecycle"],
-    "disallowed_shortcuts": ["audit_roof_has_no_fixture_fire"],
-    "capability_gates": {"capabilities.r008.fire_signal_family": {"startup": ["audit_roof_surface_and_distributed_fuel"], "terminal": ["observe_roof_fire_signal_lifecycle"], "persistence": ["observe_roof_fire_signal_lifecycle"]}}
+    "precondition": [
+      "audit_roof_fire_tools",
+      "audit_roof_surface_and_distributed_fuel",
+      "audit_roof_source_zone",
+      "audit_roof_camp_locker",
+      "audit_roof_camp_patrol"
+    ],
+    "production_behavior": [
+      "observe_roof_fire_signal_lifecycle"
+    ],
+    "terminal_persistence": [
+      "observe_roof_fire_signal_lifecycle"
+    ],
+    "artifact_verdict": [
+      "observe_roof_fire_signal_lifecycle"
+    ],
+    "disallowed_shortcuts": [
+      "audit_roof_has_no_fixture_fire"
+    ],
+    "capability_gates": {
+      "capabilities.r008.fire_signal_family": {
+        "startup": [
+          "audit_roof_surface_and_distributed_fuel"
+        ],
+        "terminal": [
+          "observe_roof_fire_signal_lifecycle"
+        ],
+        "persistence": [
+          "observe_roof_fire_signal_lifecycle"
+        ]
+      }
+    }
   },
-  "evidence_contract": {"claim": "claim-scoped exposed-roof fire-signal and camp lifecycle evidence from production-owned responders", "failure_rule": "Setup, a short absence, an unexplained arrival, lost actor identity, unisolated channel, or one feature verdict applied to the whole run cannot settle the family charter."}
+  "evidence_contract": {
+    "claim": "claim-scoped exposed-roof fire-signal and camp lifecycle evidence from production-owned responders",
+    "failure_rule": "Setup, a short absence, an unexplained arrival, lost actor identity, unisolated channel, or one feature verdict applied to the whole run cannot settle the family charter."
+  },
+  "playtest_recipe": {
+    "title": "Bandit smoke-to-return journey",
+    "question": "Does a real source lead to a coherent bandit investigation, encounter and return?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r008_fire_signal_roof_remote_v1",
+      "profile": "dev-harness",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the roof journey footing for a full expedition, or the prepared house when the assigned question is narrower. Keep a real emitting source and follow actual observers and party IDs.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The selected chain is observed in order with genuine perception, decision and travel; goods, survivors and home settlement persist. Ignition alone is not the endpoint.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
+  }
 }

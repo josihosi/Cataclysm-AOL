@@ -1,8 +1,14 @@
 {
   "manifest_version": 2,
   "name": "r037.npc_llm_command_api_control_v001_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "companion-commands", "family_title": "Companion commands", "family_purpose": "Observe model responses and their native action consequences.", "variant": "API command control"},
-  "description": "R-037 same-case API control route. It uses the same disposable safe fixture and native semantic session as the local E4B route, but requests only OpenAI gpt-4.1-mini through the harness child-only secure credential provisioner. API results remain independent from E4B verdicts.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "companion-commands",
+    "family_title": "Companion commands",
+    "family_purpose": "Judge actual command execution and truthful responses.",
+    "variant": "Companion API comparison"
+  },
+  "description": "Does the selected API route preserve the same command semantics and native effects? Use the same coherent case as the companion control with the owner-selected model/settings. Keep protected prompts unchanged and record first attempts.",
   "profile": "harness-npc-llm-coverage",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -19,13 +25,32 @@
     "capabilities.r037.command_coverage": "api_same_case_control"
   },
   "runtime_contract": {
-    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
-    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "synthetic-response", "direct-state-mutation"],
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.move_relative",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "synthetic-response",
+      "direct-state-mutation"
+    ],
     "setup_only_debug": false,
     "disposable_copy": true,
     "helpers": [],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "harness-npc-llm-coverage",
     "config_profile": "dev-harness",
     "fixture": "r037_npc_llm_command_sandbox_v001",
@@ -37,7 +62,9 @@
       "fixture": "r037_npc_llm_command_sandbox_v001",
       "helper": "none",
       "peekaboo": false,
-      "input": ["frame-bound semantic requests"],
+      "input": [
+        "frame-bound semantic requests"
+      ],
       "ocr": false,
       "cleanup": true
     },
@@ -51,17 +78,45 @@
     {
       "kind": "native_semantic_bootstrap",
       "label": "bind_r037_api_control_world",
-      "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
     },
     {
       "kind": "cockpit_live_session",
       "label": "operate_r037_api_same_case_controls",
       "cleanup_on_finish": true,
-      "objective": "For each independently retained failed E4B semantic premise, obtain a gpt-4.1-mini reply and an attributable native consequence through the same recipient and fixture controls. Do not use API output to replace the E4B verdict.",
-      "proof_targets": ["API provider/model readiness without secret disclosure", "same recipient and semantic premise", "actual API response, parse and native consequence", "separate local/API verdicts", "exact cleanup"],
-      "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "game.move_relative", "run.witness", "run.finish"],
-      "invariants": ["credential values never enter prompts, command arguments, output, saved scenario data or worker logs", "fixture setup earns zero command credit", "API success does not change an E4B failure", "no direct response or state mutation"],
-      "live_operations": ["game.act", "game.wait", "game.move_relative"],
+      "objective": "Does the selected API route preserve the same command semantics and native effects? Use the same coherent case as the companion control with the owner-selected model/settings. Keep protected prompts unchanged and record first attempts. Success boundary: Separate model choice, request transport and native execution. Compare matched outcomes and truthful refusals without coaching or silently retrying failures.",
+      "proof_targets": [
+        "API provider/model readiness without secret disclosure",
+        "same recipient and semantic premise",
+        "actual API response, parse and native consequence",
+        "separate local/API verdicts",
+        "exact cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.move_relative",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "credential values never enter prompts, command arguments, output, saved scenario data or worker logs",
+        "fixture setup earns zero command credit",
+        "API success does not change an E4B failure",
+        "no direct response or state mutation"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
       "transition_timeout_seconds": 20.0,
       "observe_interval_seconds": 0.1
     }
@@ -72,11 +127,30 @@
       "label": "Bound R-037 API control session",
       "boundary_step": "operate_r037_api_same_case_controls",
       "predecessors": [],
-      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}],
-      "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
     }
   ],
-  "proof_route": {"gates": ["r037_api_control_session"], "terminal": ["r037_api_control_session"]},
+  "proof_route": {
+    "gates": [
+      "r037_api_control_session"
+    ],
+    "terminal": [
+      "r037_api_control_session"
+    ]
+  },
   "semantic_only_startup": true,
   "profile_option_overrides": {
     "LLM_INTENT_ENABLE": "true",
@@ -89,5 +163,36 @@
     "DEBUG_LLM_INTENT": "true",
     "DEBUG_LLM_INTENT_UI": "true",
     "DEBUG_LLM_INTENT_LOG": "true"
+  },
+  "playtest_recipe": {
+    "title": "Companion API comparison",
+    "question": "Does the selected API route preserve the same command semantics and native effects?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r037_npc_llm_command_sandbox_v001",
+      "profile": "harness-npc-llm-coverage",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the same coherent case as the companion control with the owner-selected model/settings. Keep protected prompts unchanged and record first attempts.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the currently advertised conversation and item controls; allow meaningful native time/movement after commands. Do not repeat an unsuccessful request silently.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Separate model choice, request transport and native execution. Compare matched outcomes and truthful refusals without coaching or silently retrying failures.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

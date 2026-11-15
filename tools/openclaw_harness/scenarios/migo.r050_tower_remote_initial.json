@@ -1,7 +1,13 @@
 {
   "manifest_version": 1,
   "name": "migo.r050_tower_remote_initial",
-  "catalogue": {"kind": "maintained", "family_id": "migo-tower-journey", "family_title": "Mi-go tower signal and response", "family_purpose": "Observe a real source, tower response and physical journey.", "variant": "Pre-signal tower"},
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "migo-tower-journey",
+    "family_title": "Mi-go tower journey",
+    "family_purpose": "Follow real tower perception, dispatch, population and return.",
+    "variant": "Mi-go signal and dispatch journey"
+  },
   "setup_classification": {
     "kind": "representative_native_prepared_initial",
     "pre_signal_scope": "mi-go-tower:(145,134,0); no tower director site/operation/lead before source activation",
@@ -21,7 +27,7 @@
     "minimum_home_footprint_edge_omt": 15,
     "native_observer_distance_and_emission_cap": "must be measured from actual future packet; layout15 is not a cap or native distance claim"
   },
-  "description": "Pre-signal Mi-go tower start in TestSetup00 at turn 5216251. Player is near an unlit charged motorcycle headlight on a 25-cell roof at 145,149,1; the tower and two human homes are 15, 15 and 42 OMT away. The tower has four floors, a brood pod and eight committed residents, with two reserved. Setup and reload are recorded; emission, response and journey remain to be observed. See the fixture manifest for preparation and custody references.",
+  "description": "Does a real signal cause a tower's actual party to travel, act and return? Use the pre-signal tower footing or adapt the standard house surroundings. Identify tower population and genuine receiver opportunity; emit a real source and follow the actual dispatch.",
   "profile": "r050-migo-tower-remote-initial",
   "world": "TestSetup00",
   "observer_character": true,
@@ -101,7 +107,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "native_r050_tower_remote_journey",
-      "objective": "Begin from the actual source-OFF native-prepared tower base, not f9 or any evolved Mixed continuation. Revalidate current World/roster/source/finite roof and use advertised ordinary native controls to activate the existing charged cone. Keep player near the actively simulated SOURCE145,149,1 and HOME remote; do not relocate homes/participants, force a signal, clear knowledge or rearm claims. Measure actual source/observer XYZ, packet, cap, exposure, weather, LOS and identity; layout15 alone grants no range. Follow a genuinely admitted same-ID Mi-go response through physical departure/travel/threat/encounter/withdrawal/home or concrete native refusal, preserving real injuries/deaths and individual authority. Existing human camp/cabin may respond normally and remain separate site identities. Save useful native progress, close normally and verify same-result reload without reinstalling base or replenishing work.",
+      "objective": "Does a real signal cause a tower's actual party to travel, act and return? Use the pre-signal tower footing or adapt the standard house surroundings. Identify tower population and genuine receiver opportunity; emit a real source and follow the actual dispatch. Success boundary: Signal receipt precedes a coherent decision; same-ID travelers move with elapsed game time and survivors/deaths reconcile with tower population. No guaranteed raid is presumed.",
       "proof_targets": [
         "exact canonical initial fixture and same-run source-bound World before activating the source",
         "actual emitting powered cone/source packet and truthful site-associated reception or exact refusal",
@@ -174,6 +180,38 @@
         "transition_timeout_seconds": 45.0,
         "observe_interval_seconds": 0.1
       }
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Mi-go signal and dispatch journey",
+    "question": "Does a real signal cause a tower's actual party to travel, act and return?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r050_migo_tower_remote_initial_v1",
+      "profile": "r050-migo-tower-remote-initial",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the pre-signal tower footing or adapt the standard house surroundings. Identify tower population and genuine receiver opportunity; emit a real source and follow the actual dispatch.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Signal receipt precedes a coherent decision; same-ID travelers move with elapsed game time and survivors/deaths reconcile with tower population. No guaranteed raid is presumed.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

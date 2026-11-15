@@ -1,8 +1,14 @@
 {
   "manifest_version": 1,
   "name": "r032.camp_defense_zombie_v003_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "camp-payment-defense", "family_title": "Camp payment and defense", "family_purpose": "Observe camp-stock payment, patrol and defense through native play.", "variant": "Zombie patrol defense"},
-  "description": "Camp defense against zombies from the saved R032 Locker world: the Assignment Camp and character 25 are retained. No patrol order, zombie, bandit or inventory change is supplied; set up patrol and observe defense through native play.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "human-encounters",
+    "family_title": "Demands, defense and settlement",
+    "family_purpose": "Follow genuine human encounters and their physical consequences.",
+    "variant": "Defenders meet zombies"
+  },
+  "description": "Do assigned guards protect the camp against visible hostile creatures? Use the declared camp and a genuine reachable zombie threat. Keep reciprocal visibility and native combat intact; observe approach, attacks and aftermath.",
   "profile": "r032-camp-defense-zombie-exp003-20260924",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -85,7 +91,7 @@
       "kind": "cockpit_live_session",
       "label": "operate_r032_patrol_zombie_alarm",
       "cleanup_on_finish": true,
-      "objective": "First use the advertised native camp roster surface to confirm R032 Assignment Camp at OMT [162,36,0], the same assigned character:25/CAMP_RESIDENT and accepted Locker loadout. Inspect all stationed/assigned NPCs and determine who is actually roster-eligible. Through native Zone Manager UI create and observe a camp-local CAMP_PATROL route; through native camp job assignment set an eligible worker to active patrol duty and advance ordinary world time until native records show order ownership and visible position/route movement. Record every eligible and excluded roster actor. Disclose and journal debug spawning a visible hostile zombie near the live patrol. Let the game advance normally and observe the camp alarm, each eligible guard mobilizing/engaging, their attacks and a real kill. Do not spawn scripted death or directly mutate actor state. Before end, natively save, quit the game process, and reenter the same isolated world; verify character:25 assignment and Locker gear plus patrol assignment/order/route remain and observe continued ordinary guard service. Keep the native journal open while gathering all behavior and reload evidence. Do not call journal as an intermediate checkpoint; invoke it once only after the zombie response, native save, process exit and post-reload continued-service evidence are complete. If the branch diverges, preserve exact receipts and use native quit without sealing an incomplete feature journal. Before the debug spawn, reposition the player observer at least six clear tiles north of the camp while remaining able to observe it; then spawn the zombie on the same nearby passable tile as the prior attempt. Do not expose the player to adjacent melee range.",
+      "objective": "Do assigned guards protect the camp against visible hostile creatures? Use the declared camp and a genuine reachable zombie threat. Keep reciprocal visibility and native combat intact; observe approach, attacks and aftermath. Success boundary: Guards engage or retreat for actual danger, preserve friendly targets and resume useful behavior if they survive.",
       "proof_targets": [
         "same native R032 Assignment Camp [162,36,0], character:25 identity, CAMP_RESIDENT and saved Locker loadout before setup",
         "native roster and guard-eligibility evidence for every stationed/assigned follower",
@@ -184,6 +190,38 @@
     ],
     "disallowed_shortcuts": [
       "bind_r032_equipped_camp_world"
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Defenders meet zombies",
+    "question": "Do assigned guards protect the camp against visible hostile creatures?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r032_camp_defense_from_locker_v1",
+      "profile": "r032-camp-defense-zombie-exp003-20260924",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the declared camp and a genuine reachable zombie threat. Keep reciprocal visibility and native combat intact; observe approach, attacks and aftermath.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Guards engage or retreat for actual danger, preserve friendly targets and resume useful behavior if they survive.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

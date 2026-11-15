@@ -38,9 +38,9 @@ the question from its reusable recipe.
 
 Use a coherent initial save for a full journey and a compatible checkpoint for a focused question;
 a checkpoint does not prove skipped stages. Continue the same journey through ordinary save/reload.
-Prefer [Josef's prepared two-brazier templates](GAME-MANUAL.md#verified-save-templates) where
-compatible, preserving the chosen scenario's actors, camp, windows and route. A similarly named
-fixture is not necessarily that template. Rough distances are setup targets: 31 OMT is fine for a
+For fire, NPC response and shakedown tests, start with the prepared-save choices below.
+Use another save when it answers the question better, not merely because its catalogue entry
+is easier to select. A similarly named derivative is not the same starting setup. Rough distances are setup targets: 31 OMT is fine for a
 roughly 30-OMT journey. Use the actual distance to explain a range result, not to demand a restart.
 Reuse a compatible, qualified mixed-load continuation when its source, build, population and setup
 fit the question; additional load is not a replay and inactive actors do not prove active work.
@@ -52,6 +52,46 @@ custody. Native behavior after a setup bypass can prove its downstream question,
 natural stage. See [setup and interactions](references/setup-and-interactions.md) and
 [representative signal placement](references/smoke-light-visibility.md#representative-source-placement)
 for the applicable setup and distance rules.
+
+When creating or adapting a test, use [scenario authoring and carry-forward](GAME-MANUAL.md#write-reusable-instructions-not-a-transcript).
+Keep the curated 50-scenario library compact. A different build, weather, distance, actor count,
+retry or small bug fix normally belongs in the existing recipe/current brief, not a new catalogue
+entry. Add a lasting scenario only for a distinct reusable question the library cannot sensibly
+cover; consolidate overlap and delete superseded entries. Carry successful setup/control lessons
+back into the owning recipe and remove settled temporary variants as part of finishing the work.
+The current question selects the observations, not an inherited historical suite.
+
+## Prepared setups: choose by the behavior being tested
+
+[Josef's standard saves](GAME-MANUAL.md#verified-save-templates) already provide the house,
+ground-floor and roof braziers, and practical camp setup. Reuse that preparation when useful:
+
+- **Ground-floor firelight at night:** windows-open standard save; keep a real fire burning
+  into night and check an eligible observer's reception through the actual open sight route.
+- **Ground-floor smoke without escaping firelight:** windows-closed standard save; check the
+  actual smoke escape/plume and reception in daylight. At night, fresh distant smoke detection
+  should stop; “smoke-only” describes the channel isolation, not nighttime smoke visibility.
+- **Weather or concealment:** use the relevant standard layout and compare the conditions
+  being tested while keeping the source and observer interpretable.
+- **NPC discovery, investigation and scout return:** adapt the surrounding overmap with an
+  appropriate staffed camp and usable route; keep the prepared player/fire setup. Observe
+  actual detection and behavior rather than injecting knowledge, dispatch or return results.
+- **Shakedown, payment/refusal and departure:** use that prepared base with the relevant
+  hostile camp and encounter opportunity. Follow the real interaction to the requested endpoint;
+  a started fire or spawned camp is not a completed shakedown test.
+
+These are useful starting choices, not mandatory fixtures or a test matrix. A focused continuation
+or another scene may be better. Preserve the owner's requested comparison and explain a material
+setup substitution in the current brief. Adapt surroundings before play using the existing [overmap setup transforms](GAME-MANUAL.md#adapt-the-surrounding-overmap);
+leave owner originals untouched. Missing camps are a setup problem to solve, not an automatic
+reason to abandon a prepared house for a distant empty field. Do not rebuild braziers, fuel and
+shelter unnecessarily when the chosen standard save already supplies them.
+
+Keep the test's question and meaningful endpoint visible in the current brief and catalogue entry.
+For a night-visibility test, ignition, tending and reaching night are preparation; completion is
+the actual smoke/light observation under night conditions. No time-edit control is needed to let
+ordinary game time advance. A deadline changes how economically we test, not what counts as proof.
+See [copying an entry](GAME-MANUAL.md#compose-a-useful-scenario) before adapting a catalogue recipe.
 
 ## Find a playtest
 
@@ -74,7 +114,9 @@ For exact-ID lookup, diagnostics, fixtures and focused searches, use the
 [catalogue search guide](references/searching.md#search-the-playtest-catalogue). Select the exact
 variant with typed requirements and follow the returned `next_action` through
 [selection and launch](references/selection-and-launch.md); a browse or query is not a launch.
-The cockpit also offers `scenario.browse` and exact-identity `scenario.select`.
+The cockpit also offers `scenario.browse` and exact-identity `scenario.select`. When creating a
+variant from an existing entry, follow [scenario authoring](GAME-MANUAL.md#compose-a-useful-scenario):
+replace obsolete inherited setup, objectives and proof requirements, not just the title.
 
 ## Live playtesting belongs to Luna
 

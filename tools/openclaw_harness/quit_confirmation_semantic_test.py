@@ -50,63 +50,7 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
         timeout_guard = source.index('( res.evt.type == input_event_t::timeout && !semantic_option_selected )')
         self.assertLess(semantic_selection, timeout_guard)
 
-    def test_m095_uses_semantic_quit_gate_and_keeps_normal_relaunch_route(self) -> None:
-        scenario_path = Path(__file__).resolve().parent / "scenarios" / (
-            "bandit.r009_m095_current_route_safe_watch_mcw.json"
-        )
-        scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        steps = {str(step["label"]): step for step in scenario["steps"]}
-        quit_step = steps["open_native_main_menu_quit_confirmation"]
-        self.assertNotIn("expected_screen_text_after_contains", quit_step)
-        self.assertTrue(quit_step["abort_on_semantic_ui_failure"])
-        self.assertEqual(
-            quit_step["semantic_ui_expectation"],
-            {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]},
-        )
-        self.assertEqual(
-            scenario["post_relaunch"]["terminal_save_step_label"],
-            "confirm_native_process_exit_after_route_arrival",
-        )
 
-    def test_r005_moves_persistence_audit_behind_bound_main_menu_exit(self) -> None:
-        scenario_path = Path(__file__).resolve().parent / "scenarios" / (
-            "bandit.r005_continuous_hostile_ecology_certification.json"
-        )
-        scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        self.assertEqual(
-            scenario["runtime_contract"]["permitted_input"][-3:],
-            ["press:q", "press:left", "press:enter"],
-        )
-        initial_steps = {str(step["label"]): step for step in scenario["steps"]}
-        self.assertEqual(
-            initial_steps["open_native_main_menu_quit_confirmation"]["keys"],
-            ["q"],
-        )
-        self.assertEqual(
-            initial_steps["open_native_main_menu_quit_confirmation"]["semantic_ui_expectation"],
-            {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]},
-        )
-        self.assertEqual(
-            initial_steps["open_native_main_menu_quit_confirmation"]["checkpoint_evidence"],
-            {"classification": "incidental_lifecycle_observation", "authoritative_owner": "bound_semantic_ui"},
-        )
-        self.assertTrue(initial_steps["open_native_main_menu_quit_confirmation"]["abort_on_semantic_ui_failure"])
-        self.assertEqual(
-            initial_steps["confirm_native_process_exit_after_stationary_lifecycle"]["keys"],
-            ["left", "enter"],
-        )
-        self.assertEqual(
-            initial_steps["confirm_native_process_exit_after_stationary_lifecycle"]["checkpoint_evidence"],
-            {"classification": "incidental_lifecycle_observation", "authoritative_owner": "post_relaunch_lifecycle"},
-        )
-        self.assertEqual(
-            scenario["post_relaunch"]["terminal_save_step_label"],
-            "confirm_native_process_exit_after_stationary_lifecycle",
-        )
-        post_labels = [str(step["label"]) for step in scenario["post_relaunch"]["steps"]]
-        self.assertEqual(post_labels[0], "post_relaunch_gameplay_hud")
-        self.assertIn("audit_normalized_persistence_after_relaunch", post_labels)
-        self.assertNotIn("audit_normalized_persistence_after_relaunch", initial_steps)
 
     def write_trace(self, root: Path, body: str) -> Path:
         path = root / "feature.debug.log"

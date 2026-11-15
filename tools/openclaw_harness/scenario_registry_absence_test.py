@@ -9,13 +9,63 @@ import unittest
 
 HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
-from scenario_registry_store import open_registry
+from scenario_registry_store import open_registry, quarantine_scenario, build_registry_query_candidate_snapshot
 
 
 class ScenarioRegistryAbsenceTest(unittest.TestCase):
     def run_cli(self, *arguments):
         return subprocess.run([sys.executable, str(HARNESS_DIR / "scenario_registry_cli.py"),
                                "--json", *arguments], capture_output=True, text=True, check=False)
+
+    def test_valid_source_retry_preserves_old_quarantine_without_current_route(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            source = root / "retry.json"
+            registry = root / "registry.sqlite3"
+            source.write_text((HARNESS_DIR / "scenarios" / "caol.reference_camp_open_focused_mcw.json").read_text())
+            self.assertEqual(self.run_cli("--registry", str(registry), "rebuild", "--source", str(source)).returncode, 0)
+            connection = open_registry(str(registry))
+            try:
+                mid = connection.execute("SELECT manifest_id FROM manifest_current").fetchone()[0]
+                quarantine_scenario(connection, manifest_id=mid, route_key="old-route",
+                                    reason="contradicted", details={"prior_startup_failure": True})
+                candidates = build_registry_query_candidate_snapshot(
+                    connection, include_lifecycle_states=("quarantined",), allow_current_manifest_retry=True)
+                self.assertEqual(candidates[0].lifecycle_state, "active")
+                self.assertEqual(connection.execute("SELECT count(*) FROM quarantine_history").fetchone()[0], 1)
+                quarantine_scenario(connection, manifest_id=mid, route_key="explicit-stop",
+                                    reason="retirement_pending", details={})
+                candidates = build_registry_query_candidate_snapshot(
+                    connection, include_lifecycle_states=("quarantined",), allow_current_manifest_retry=True)
+                self.assertEqual(candidates[0].lifecycle_state, "quarantined")
+            finally:
+                connection.close()
+
+    def test_same_bytes_restore_then_remove_again(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw).resolve()
+            source = root / "repeat.json"
+            registry = root / "registry.sqlite3"
+            payload = (HARNESS_DIR / "scenarios" / "caol.reference_camp_open_focused_mcw.json").read_text()
+            for cycle in range(2):
+                source.write_text(payload)
+                result = self.run_cli("--registry", str(registry), "rebuild", "--source", str(source))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                connection = open_registry(str(registry))
+                try:
+                    row = connection.execute(
+                        "SELECT manifest_id,last_content_sha256 FROM manifest_current WHERE source_path=?",
+                        (str(source),)).fetchone()
+                    self.assertGreater(connection.execute(
+                        "SELECT count(*) FROM manifest_relation_current WHERE manifest_id=?", (row[0],)
+                    ).fetchone()[0], 0)
+                finally:
+                    connection.close()
+                source.unlink()
+                result = self.run_cli("--registry", str(registry), "reconcile-absent-source",
+                                      "--source", str(source), "--manifest-id", row[0],
+                                      "--source-sha256", row[1])
+                self.assertEqual(result.returncode, 0, f"cycle {cycle}: {result.stderr}")
 
     def test_reconcile_one_absent_source_requires_exact_identity_and_never_removes_files(self):
         with tempfile.TemporaryDirectory() as raw:

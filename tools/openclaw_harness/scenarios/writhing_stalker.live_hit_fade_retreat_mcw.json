@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "writhing_stalker.live_hit_fade_retreat_mcw",
-  "description": "Hit/fade control at midnight: a vulnerable player and one hostile stalker begin on a passable east lane, with the stalker four tiles away. Observe a bounded strike burst and withdrawal or cooling, including its retreat intent.",
+  "description": "Does a stalker disengage purposefully after a real strike? Use the night contact footing and allow a genuine attack. Observe damage, separation, retreat route and later opportunity without scripting the creature's mission.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -31,9 +31,13 @@
     ],
     "setup_only_debug": true,
     "disposable_copy": true,
-    "helpers": ["native file bridge"],
+    "helpers": [
+      "native file bridge"
+    ],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "dev-harness",
     "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
     "requirements": {
@@ -45,7 +49,9 @@
       "helper": "native file bridge",
       "peekaboo": false,
       "ocr": false,
-      "input": ["advertised native cockpit actions"],
+      "input": [
+        "advertised native cockpit actions"
+      ],
       "cleanup": true
     },
     "grants_gameplay_proof": true
@@ -120,7 +126,7 @@
       "label": "operate_native_stalker_attack_retreat_window",
       "cleanup_on_finish": true,
       "stop_after_live_session": true,
-      "objective": "Use only the current native World owner and advertised wait/movement actions. Preserve the actual stalker attack-resolution attempt, its changing position and game time, and the retained retreat phase/waypoint; keep planner text separate from the causal attack evidence.",
+      "objective": "Does a stalker disengage purposefully after a real strike? Use the night contact footing and allow a genuine attack. Observe damage, separation, retreat route and later opportunity without scripting the creature's mission. Success boundary: A real strike and subsequent native disengagement or attributable refusal are distinguishable; survival or death is recorded honestly.",
       "proof_targets": [
         "native attack-resolution receipt or exact native attack-attempt evidence",
         "before/after stalker and player positions with game-time delta",
@@ -140,7 +146,13 @@
         "no direct state mutation, target injection, or hidden-coordinate use",
         "preserve the first native divergence and unaffected observations"
       ],
-      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative", "game.raw_move_relative"],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "game.move_relative",
+        "game.raw_move_relative"
+      ],
       "transition_timeout_seconds": 15.0,
       "observe_interval_seconds": 0.1
     },
@@ -216,7 +228,12 @@
       "objective": "Use the advertised native save-and-quit path, then the native Main-menu Quit action and its confirmation, to make the saved stalker state the replacement-process boundary.",
       "observation_timeout_seconds": 30.0,
       "observation_interval_seconds": 0.1,
-      "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"],
+      "required_action_chain": [
+        "world.save_quit",
+        "prompt.yes",
+        "main_menu.quit",
+        "prompt.yes"
+      ],
       "expected_visible_fact": "the native saved world reaches Main menu and the native Quit confirmation terminates the original process before replacement"
     }
   ],
@@ -228,7 +245,9 @@
         "kind": "native_semantic_bootstrap",
         "label": "bind_relaunched_stalker_world",
         "native_semantic_checkpoint": {
-          "required_actions": ["world.wait"],
+          "required_actions": [
+            "world.wait"
+          ],
           "required_state": "world",
           "require_initial_hud_world_ready_frame": false
         }
@@ -244,11 +263,23 @@
               "evidence_target": 1,
               "evidence_turn": 5270458,
               "has_last_observed_position": true,
-              "last_observed_position": [3369, 994, 0],
+              "last_observed_position": [
+                3369,
+                994,
+                0
+              ],
               "has_committed_waypoint": true,
-              "committed_waypoint": [3369, 994, 0],
+              "committed_waypoint": [
+                3369,
+                994,
+                0
+              ],
               "has_retreat_waypoint": false,
-              "retreat_waypoint": [0, 0, 0],
+              "retreat_waypoint": [
+                0,
+                0,
+                0
+              ],
               "attempts_spent": 0,
               "attempt_sequence": 0,
               "phase_entered_turn": 5270406,
@@ -271,9 +302,21 @@
         "cleanup_on_finish": true,
         "stop_after_live_session": true,
         "objective": "Observe the replacement native world after the typed saved-state audit, without advancing gameplay or recreating the fixture.",
-        "proof_targets": ["replacement process generation", "typed saved active-monster audit", "exact cleanup"],
-        "authority": ["advertised native observations", "run.witness", "run.finish"],
-        "invariants": ["fixture is not reinstalled", "no gameplay input", "saved metadata is not replaced by planner text"],
+        "proof_targets": [
+          "replacement process generation",
+          "typed saved active-monster audit",
+          "exact cleanup"
+        ],
+        "authority": [
+          "advertised native observations",
+          "run.witness",
+          "run.finish"
+        ],
+        "invariants": [
+          "fixture is not reinstalled",
+          "no gameplay input",
+          "saved metadata is not replaced by planner text"
+        ],
         "live_operations": [],
         "transition_timeout_seconds": 15.0,
         "observe_interval_seconds": 0.1
@@ -292,9 +335,58 @@
       "audit_saved_midnight_before_hit_fade_retreat",
       "audit_saved_writhing_stalker_before_hit_fade_retreat"
     ],
-    "production_behavior": ["advance_hit_fade_retreat_window"],
-    "terminal_persistence": ["confirm_native_process_replacement_after_stalker_save", "audit_relaunched_persisted_writhing_stalker_state"],
-    "artifact_verdict": ["audit_writhing_stalker_hit_fade_retreat_live_plan", "audit_relaunched_persisted_writhing_stalker_state"],
-    "disallowed_shortcuts": ["toggle_safe_mode_off_before_hit_fade_retreat"]
+    "production_behavior": [
+      "advance_hit_fade_retreat_window"
+    ],
+    "terminal_persistence": [
+      "confirm_native_process_replacement_after_stalker_save",
+      "audit_relaunched_persisted_writhing_stalker_state"
+    ],
+    "artifact_verdict": [
+      "audit_writhing_stalker_hit_fade_retreat_live_plan",
+      "audit_relaunched_persisted_writhing_stalker_state"
+    ],
+    "disallowed_shortcuts": [
+      "toggle_safe_mode_off_before_hit_fade_retreat"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "stalker-pursuit",
+    "family_title": "Stalker behavior",
+    "family_purpose": "Exercise stalker perception, attack, survival and continuity.",
+    "variant": "Stalker hits and fades"
+  },
+  "playtest_recipe": {
+    "title": "Stalker hits and fades",
+    "question": "Does a stalker disengage purposefully after a real strike?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
+      "profile": "dev-harness",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the night contact footing and allow a genuine attack. Observe damage, separation, retreat route and later opportunity without scripting the creature's mission.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "A real strike and subsequent native disengagement or attributable refusal are distinguishable; survival or death is recorded honestly.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

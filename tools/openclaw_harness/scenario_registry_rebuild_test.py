@@ -29,25 +29,6 @@ import scenario_registry  # noqa: E402
 
 
 class ScenarioRegistryRebuildTest(unittest.TestCase):
-    def test_rider_band_sight_pressure_is_a_promoted_semantic_route(self) -> None:
-        root = HARNESS_DIR / "scenarios"
-        continuity_path = root / "zombie_rider.live_native_band_continuity_mcw.json"
-        sight_path = root / "zombie_rider.live_native_band_sight_pressure_mcw.json"
-        continuity = json.loads(continuity_path.read_text(encoding="utf-8"))
-        sight = json.loads(sight_path.read_text(encoding="utf-8"))
-        scenario_registry.validate_manifest(continuity, path=continuity_path)
-        self.assertTrue(continuity["runtime_contract"]["grants_gameplay_proof"])
-        self.assertFalse(continuity["runtime_contract"]["require_screen_observability"])
-        self.assertTrue(sight["runtime_contract"]["grants_gameplay_proof"])
-        self.assertTrue(sight["semantic_only_startup"])
-        self.assertFalse(sight["runtime_contract"]["require_screen_observability"])
-        self.assertEqual(
-            sight["runtime_contract"]["requirements"]["executable"],
-            "build/rider-band-native/cataclysm-tiles",
-        )
-        sight["name"] = "unapproved.rider_band_sight_pressure"
-        with self.assertRaises(scenario_registry.ManifestValidationError):
-            scenario_registry.validate_manifest(sight, path=sight_path)
 
     def test_explicit_sources_and_directory_absence_preserve_unrelated_authority(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

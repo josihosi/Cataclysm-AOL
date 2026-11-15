@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "bandit.signal_persistence_reentry_001",
-  "description": "Focused same-world persistence verification from the exact native signal save. All inherited actors, signal observations and leads are zero-credit setup; this run proves only its own native source transition and the exact lead state across a fresh save, process exit and reload.",
+  "description": "Do current source, received knowledge and memory retain their separate identities? Continue the exact prepared signal world. Record source/observer state, save and reload, then obtain a fresh observation or source change.",
   "profile": "signal-persistence-reentry-001",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -110,7 +110,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "verify_inherited_signal_state_and_change_source",
-      "objective": "Use the exact saved-world snapshot as zero-credit inherited footing. Before input, read the same world/player and capture the original camp smoke clue ID, source key, source sample, last_seen and last_checked plus the distinct returned smoke/light report IDs, keys, origins and clocks. Do not re-run discovery, scout dispatch, observation, return or source qualification. If the inherited lighter and brazier fuel are present and native controls allow, natively relight the existing brazier, capture its before/after source fields at the actual game minute, then natively extinguish it and capture the second before/after source fields and actual minute. Add no source, item, time, signal or actor by debug/setup. If native source change is unavailable, record the concrete missing current control or item and continue the persistence check, leaving source-change proof unclaimed. Preserve the inherited clue/report state, perform the required native save/quit and exit through the main-menu quit path.",
+      "objective": "Do current source, received knowledge and memory retain their separate identities? Continue the exact prepared signal world. Record source/observer state, save and reload, then obtain a fresh observation or source change. Success boundary: Existing memory persists without being relabeled as new perception; fresh observations have current source/time provenance and do not duplicate delivery.",
       "proof_targets": [
         "current source-bound product and fresh isolated profile",
         "exact saved-world source path and installed-world identity with no fixture reinstall",
@@ -243,6 +243,45 @@
           "prompt.yes"
         ]
       }
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "signal-continuity",
+    "family_title": "Signal continuity",
+    "family_purpose": "Separate fresh reception, retained memory and simulation ownership.",
+    "variant": "Signal survives save and reload"
+  },
+  "playtest_recipe": {
+    "title": "Signal survives save and reload",
+    "question": "Do current source, received knowledge and memory retain their separate identities?",
+    "starting_state": {
+      "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-edge-001/save/TestSetup00",
+      "fixture": "",
+      "profile": "signal-persistence-reentry-001",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Continue the exact prepared signal world. Record source/observer state, save and reload, then obtain a fresh observation or source change.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Existing memory persists without being relabeled as new perception; fresh observations have current source/time provenance and do not duplicate delivery.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

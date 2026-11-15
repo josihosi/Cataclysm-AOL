@@ -5,6 +5,27 @@ product's actual source and receiver observations; historical calibration is not
 The standard indoor brazier is [3159,3449,0], roof brazier [3156,3447,1]. Verify the selected
 save's actual furniture, fuel, fire, windows and source positions.
 
+## Prepared-save day/night comparison
+
+For a focused fire-visibility comparison, the owner open/closed-window
+[standard saves](../GAME-MANUAL.md#verified-save-templates) provide ready ground-floor fire setups.
+Use them when they fit the question; a different save should offer a concrete testing advantage.
+Adapt surrounding camps/routes as needed while retaining the intended window/fire geometry.
+An R050 remote-field derivative is a different starting scene, even if copied into an entry
+named day or night. The remote journey distances and scout/report sequence below belong to
+end-to-end journey tests, not this focused comparison.
+
+The endpoint is actual daytime/nighttime smoke and firelight visibility under the chosen
+windows, weather and observer geometry. Ignition and tending are setup. For Josef's selected
+natural-night route, keep the fire fueled, let ordinary game time reach night, quicksave and
+inspect fresh smoke and light evidence from that state. Missing time-edit controls do not
+prevent ordinary waiting. Closed windows should be tested as physical concealment; positive
+night light needs an exposed path and eligible observer. Separate emitted samples, physical
+escape and actual reception; never substitute one for another or infer suppression from an
+absent receiver. Use existing saved site/roster facts to establish the candidate observer,
+then check its actual opportunity in the running scene. Carry established facts forward in
+the current brief with their save/run identity instead of repeatedly rediscovering them.
+
 ## Representative source placement
 
 Owner clarification, 2026-10-26: representative end-to-end camp/tower stories require at least

@@ -34,30 +34,6 @@ class R033AutonomousSoundReturnFixtureTest(unittest.TestCase):
         self.assertEqual(supply["supply_accounted_living_total"], 5)
         self.assertEqual(supply["supply_member_minute_remainder"], 0)
 
-    def test_delayed_acoustic_charge_starts_inside_the_declared_loaded_map_cap(self) -> None:
-        resolved = resolve_fixture_payload(FIXTURE, "live-debug")
-        transforms = resolved["save_transforms"]
-        source_index = next(
-            index for index, transform in enumerate(transforms)
-            if transform["kind"] == "map_items_near_player"
-            and transform["items"][0]["typeid"] == "r033_acoustic_charge_act"
-        )
-        relocation = transforms[source_index - 1]
-        source = transforms[source_index]["items"][0]
-        scenarios = [json.loads(path.read_text(encoding="utf-8")) for path in (SCENARIO, DRIVE500_SCENARIO)]
-        audits = [next(step for step in scenario["steps"] if step["label"] == "audit_delayed_zero_credit_explosion_source")
-                  for scenario in scenarios]
-
-        self.assertEqual(relocation["kind"], "player_location_offset_ms")
-        self.assertEqual(relocation["offset_ms"], [24, 48, 0])
-        self.assertEqual(source["offset_ms"], [0, 48, 0])
-        for audit in audits:
-            self.assertEqual(audit["offsets"], [[0, 48, 0]])
-            self.assertEqual(audit["maximum_abs_offset_ms"], 48)
-            self.assertLessEqual(max(abs(value) for value in source["offset_ms"]), audit["maximum_abs_offset_ms"])
-
-        # The witnessed failing configuration was outside this preflight cap.
-        self.assertGreater(max(abs(value) for value in [24, 72, 0]), audits[0]["maximum_abs_offset_ms"])
 
     def test_source_is_at_the_witnessed_local_watch(self) -> None:
         resolved = resolve_fixture_payload(FIXTURE, "live-debug")

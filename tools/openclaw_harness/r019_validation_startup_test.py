@@ -254,16 +254,8 @@ class R019ValidationStartupTest(unittest.TestCase):
                 {"id": "world.inspect_npc", "enabled": True},
             ],
         }
-        scenario_name = (
-            "cannibal.r_caol_first_smoke_011_r026_min8597_selected_actor_trace_20260928.json"
-        )
-        scenario_path = HARNESS_DIR / "scenarios" / scenario_name
-        r026_scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        checkpoint = r026_scenario["steps"][1]["native_semantic_checkpoint"]
-        required_actions = checkpoint["required_actions"]
-        self.assertEqual(required_actions, [
-            "world.wait", "world.quicksave", "world.look", "world.inspect_npc",
-        ])
+        # Exercise the frame/surface merge directly, independent of a historical recipe.
+        required_actions = ["world.wait", "world.quicksave", "world.look", "world.inspect_npc"]
         with tempfile.TemporaryDirectory() as directory:
             run_dir = Path(directory)
             trace = run_dir / "semantic.native.events.jsonl"

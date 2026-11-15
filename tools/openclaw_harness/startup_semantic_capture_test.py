@@ -218,39 +218,8 @@ class NativeOnlyStartupCaptureTest(unittest.TestCase):
             if "screen_text_diagnostic" in result["final_classification"] else None
         self.assertIsNone(diagnostic)
 
-    def test_r029_curses_manifest_uses_terminal_move_text_not_tiles_wield_text(self):
-        manifest_path = Path(__file__).parent / "scenarios" / \
-            "bandit.extortion_committed_paid_departure_continuation_mcw.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        startup_step = manifest["steps"][0]
-        self.assertEqual(manifest["runtime_contract"]["terminal_transport"], "pty")
-        self.assertNotIn("expected_screen_text_after_contains", startup_step)
-        self.assertIn("semantic descriptor", startup_step["expected_visible_fact"])
 
-    def test_r029_payment_manifest_preflights_zero_credit_candidate_not_authored_operation(self):
-        manifest_path = Path(__file__).parent / "scenarios" / \
-            "bandit.extortion_committed_paid_departure_continuation_mcw.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        preflight = next(step for step in manifest["steps"]
-                         if step["label"] == "preflight_scheduler_response_candidate")
-        self.assertTrue(preflight["required_scout_report_present"])
-        self.assertEqual(preflight["required_camp_decision_state"], "report_awaiting_assessment")
-        self.assertTrue(preflight["required_report_decision_identity_match"])
-        self.assertNotIn("required_active_hostile_operation_phase", preflight)
 
-    def test_r029_payment_manifest_uses_bounded_native_duration_and_stops_at_pay(self):
-        manifest_path = Path(__file__).parent / "scenarios" / \
-            "bandit.extortion_committed_paid_departure_continuation_mcw.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        wait = next(step for step in manifest["steps"]
-                    if step["label"] == "advance_to_reopened_pay_gate")
-        self.assertEqual(wait["kind"], "semantic_terminal_wait_until")
-        self.assertEqual(wait["required_action_chain"],
-                         ["world.wait", "wait.duration_menu", "wait.30m"])
-        self.assertEqual(wait["stop_when_advertised_action"], "shakedown.pay")
-        self.assertEqual(wait["max_windows"], 16)
-        self.assertTrue(wait["ordinary_applying_turn_after_duration"])
-        self.assertEqual(wait["max_unchanged_operation_windows"], 1)
 
     def test_live_operation_progress_key_ignores_clock_but_tracks_route_and_member_state(self):
         base = {

@@ -24,25 +24,7 @@ class HumanJourneyFixtureTest(unittest.TestCase):
                          'items': [{'typeid': 'brazier', 'count': 1}]})
         self.assertEqual(transforms[-1]['minimum_distance_omt'], 10)
 
-    def test_scenario_uses_its_own_profile_and_the_qualified_fixture(self):
-        path = HARNESS / 'scenarios/bandit.r050_human_journey_field_isolated_mcw.json'
-        manifest = json.loads(path.read_text())
-        self.assertEqual(validate_manifest(manifest, path=path)['validation']['status'], 'valid')
-        self.assertEqual(manifest['fixture'], 'r050_human_journey_field_v1')
-        self.assertEqual(manifest['profile'], 'r050-human-journey-isolated')
-        self.assertEqual(manifest['runtime_contract']['profile'], manifest['profile'])
-        self.assertEqual(manifest['runtime_contract']['requirements']['profile'], manifest['profile'])
-        self.assertFalse(manifest['runtime_contract']['grants_gameplay_proof'])
 
-    def test_deploy_comparison_uses_same_footing_and_targeted_diagnostics(self):
-        path = HARNESS / 'scenarios/bandit.r050_brazier_deploy_diagnostic_mcw.json'
-        manifest = json.loads(path.read_text())
-        self.assertEqual(validate_manifest(manifest, path=path)['validation']['status'], 'valid')
-        self.assertEqual(manifest['fixture'], 'r050_human_journey_field_v1')
-        self.assertEqual(manifest['profile_option_overrides'], {'RAID_PERFORMANCE_DIAGNOSTIC': 'normal'})
-        self.assertEqual(manifest['runtime_contract']['profile'], manifest['profile'])
-        self.assertNotIn('post_relaunch', manifest)
-        self.assertFalse(manifest['runtime_contract']['grants_gameplay_proof'])
 
 
 if __name__ == '__main__':

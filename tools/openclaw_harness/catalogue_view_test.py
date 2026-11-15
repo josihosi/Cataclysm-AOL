@@ -24,6 +24,25 @@ class CatalogueViewTest(unittest.TestCase):
         result = subprocess.run([sys.executable, '-B', str(HERE / 'startup_harness.py'), *args], text=True, capture_output=True, check=True)
         return json.loads(result.stdout)
 
+    def test_curated_library_has_complete_distinct_recipes(self):
+        rows = startup_harness.list_scenarios()
+        self.assertEqual(len(rows), 50)
+        questions = set()
+        for row in rows:
+            recipe = row['playtest_recipe']
+            with self.subTest(scenario=row['name']):
+                for field in ('title', 'question', 'starting_state', 'exercise', 'controls',
+                              'batching', 'success', 'failure', 'inconclusive', 'evidence',
+                              'finish', 'reuse', 'references'):
+                    self.assertTrue(recipe.get(field), field)
+                self.assertNotIn(recipe['question'], questions)
+                questions.add(recipe['question'])
+                for reference in recipe['references']:
+                    self.assertTrue((HERE.parents[1] / reference).is_file(), reference)
+                declaration = json.loads(Path(row['path']).read_text())
+                bootstrap = declaration.get('native_semantic_bootstrap', {})
+                self.assertNotIn('world.move', bootstrap.get('required_actions', []))
+
     def test_default_expansion_and_real_fixture_links(self):
         families = {family['id']: family for family in self.cli('list-scenarios')['families']}
         for name in ('migo-tower-journey', 'human-signal-journeys', 'stalker-pursuit'):
@@ -47,19 +66,19 @@ class CatalogueViewTest(unittest.TestCase):
         fixtures = self.cli('list-fixtures', '--profile', 'live-debug')['fixtures']
         linked = next(x for x in fixtures if x['fixture'] == variant['fixture']['name'])
         self.assertIn(variant['scenario_id'], [x['scenario_id'] for x in linked['declared_variants']])
-        self.assertEqual({x['id'] for x in self.cli('list-scenarios', '--diagnostic')['families']}, {'mixed-load-controls'})
+        self.assertIn('mixed-load-controls', {x['id'] for x in self.cli('list-scenarios', '--diagnostic')['families']})
 
-    def test_search_invalid_identity_and_missing_manifest(self):
-        full = self.cli('list-scenarios', '--all')['scenarios']
-        self.assertTrue(any(x['name'].startswith('manual.') for x in full))
-        name = 'cannibal.r_caol_r051_r067_post_report_8341_service_continuation_20261004'
-        row = next(x for x in self.cli('list-scenarios', '--search', name)['other_scenarios'] if x['name'] == name)
-        self.assertEqual(row['membership'], 'unknown')
-        self.assertEqual(row['scenario_manifest']['validation']['status'], 'invalid')
-        self.assertEqual(self.cli('list-scenarios', '--scenario-id', row['scenario_id'])['scenarios'][0]['name'], name)
-        missing = self.cli('list-scenarios', '--scenario-id', 'cannibal.r_caol_first_smoke_048_rural_a_preharm_safety_continue_20260930')['scenarios'][0]
-        self.assertFalse(missing['fixture']['manifest_present'])
-        self.assertEqual(missing['fixture']['qualification'], 'unknown')
+    def test_invalid_declaration_is_reported_without_rewriting_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'invalid.json'
+            raw = json.dumps({'name': 'invalid', 'manifest_version': 1, 'steps': []})
+            path.write_text(raw)
+            with mock.patch.object(startup_harness, 'scenarios_root', return_value=Path(tmp)):
+                row = startup_harness.list_scenarios()[0]
+                self.assertEqual(row['scenario_manifest']['validation']['status'], 'invalid')
+                self.assertEqual(path.read_text(), raw)
+                with self.assertRaises(SystemExit):
+                    startup_harness.load_scenario('invalid', source_path=path)
 
     def test_family_conflict_and_malformed_membership(self):
         m = dict(kind='maintained', family_id='f', family_title='One', family_purpose='Purpose', variant='A')
@@ -123,16 +142,16 @@ class CatalogueViewTest(unittest.TestCase):
             with mock.patch('catalogue_view.os.fstat', side_effect=changed):
                 self.assertEqual(saved_camp_opportunity(path)['reason'], 'saved dimension changed during inspection')
 
-    def test_real_saved_fixture_projection_and_exact_scenario(self):
-        name = 'bandit.r009_m092_persisted_opportunity_dispatch_mcw'
-        scenario = self.cli('list-scenarios', '--scenario-id', name)['scenarios'][0]
-        self.assertEqual(scenario['opportunity']['status'], 'known')
-        self.assertTrue(scenario['opportunity']['source']['sha256'])
-        fixtures = self.cli('list-fixtures', '--profile', 'r009-m091', '--all')['fixtures']
-        fixture = next(row for row in fixtures if row['fixture'] == 'r009_m092_m091_fullsave_current_schema')
-        self.assertEqual(fixture['opportunity'], scenario['opportunity'])
-        self.assertEqual(fixture['opportunity']['sites'][0]['decision'], 'idle')
-        self.assertEqual(fixture['qualification'], 'unknown')
+    def test_prepared_sources_and_recipe_are_visible_in_real_discovery(self):
+        family = self.cli('list-scenarios', '--family', 'prepared-camp-fire-visibility')['families'][0]
+        self.assertEqual(len(family['variants']), 2)
+        for variant in family['variants']:
+            recipe = variant['playtest_recipe']
+            self.assertTrue(recipe['starting_state']['saved_world_snapshot'])
+            self.assertIn('play controls', ' '.join(recipe['controls']))
+            self.assertTrue(recipe['success'])
+            exact = self.cli('list-scenarios', '--scenario-id', variant['scenario_id'])['scenarios'][0]
+            self.assertEqual(exact['playtest_recipe'], recipe)
 
     def test_changed_fixture_chain_is_unknown(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,12 +170,9 @@ class CatalogueViewTest(unittest.TestCase):
             self.assertEqual(result['status'], 'unknown')
             self.assertEqual(result['reason'], 'fixture source chain changed during inspection')
 
-    def test_transform_and_missing_fixture_are_unknown(self):
-        human = self.cli('list-scenarios', '--family', 'human-signal-journeys')['families'][0]['variants'][0]
-        self.assertEqual(human['opportunity']['status'], 'unknown')
-        self.assertIn('transforms', human['opportunity']['reason'])
-        missing = self.cli('list-scenarios', '--scenario-id', 'cannibal.r_caol_first_smoke_048_rural_a_preharm_safety_continue_20260930')['scenarios'][0]
-        self.assertEqual(missing['opportunity']['status'], 'unknown')
+    def test_missing_fixture_is_unknown_without_retaining_a_broken_scenario(self):
+        result = startup_harness.catalogue_fixture_opportunity('nonexistent-fixture', 'nonexistent-profile', {})
+        self.assertEqual(result['status'], 'unknown')
 
     def test_metadata_change_does_not_authorize_old_token(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -245,10 +261,11 @@ class CatalogueViewTest(unittest.TestCase):
             self.assertTrue(variant['scenario_id'])
             self.assertEqual(variant['fixture']['qualification'], 'unknown')
             diagnostic = service.call({'action': 'scenario.browse', 'view': 'diagnostic'})
-            self.assertEqual(diagnostic['result']['families'][0]['id'], 'mixed-load-controls')
-            search = service.call({'action': 'scenario.browse', 'view': 'all', 'search': 'r051_r067_post_report_8341_service'})
-            self.assertTrue(any(row['scenario_manifest']['validation']['status'] == 'invalid'
-                                for row in search['result']['other_scenarios']))
+            self.assertIn('mixed-load-controls', {row['id'] for row in diagnostic['result']['families']})
+            search = service.call({'action': 'scenario.browse', 'view': 'all', 'search': 'Firelight through open windows'})
+            self.assertTrue(search['ok'])
+            self.assertEqual(search['result']['families'][0]['variants'][0]['playtest_recipe']['title'],
+                             'Firelight through open windows')
 
     def test_real_discovery_shows_quarantine_stale_and_missing_index(self):
         class Annotated(cli_fixtures.ScenarioRegistryCliTest):

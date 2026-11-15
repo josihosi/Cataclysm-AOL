@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_closed_focused_mcw",
-  "description": "Prospective isolated owner closed-window reference camp journey. Original TestSetup00 archive save is installed unchanged as zero-credit footing; native observations answer only the exercised parts of the selected reference outcome.",
+  "description": "Does daylight smoke escape without exposing the screened ground-floor firelight? Use the closed-window house, real fuel and ordinary ignition. Compare daylight smoke with night samples; inspect doors, windows and roof escape before judging concealment.",
   "profile": "reference-camp-closed-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -75,7 +75,7 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Observe actual owner-reference camp gear collection and conservation, day/night patrol service, physical closed-window and roof source behavior, and where eligible the same-site natural signal, knowledge, dispatch and physical arrival. Distinguish independent prerequisites, current source conditions and later outcomes; preserve actual failures and run continuity.",
+      "objective": "Does daylight smoke escape without exposing the screened ground-floor firelight? Use the closed-window house, real fuel and ordinary ignition. Compare daylight smoke with night samples; inspect doors, windows and roof escape before judging concealment. Success boundary: An eligible daylight observer receives escaping smoke. The opaque light route conceals the fire; fresh distant smoke disappears at night.",
       "proof_targets": [
         "source archive and installed save identity, same native World and current camp/actor/site identities",
         "actual item tile-to-NPC collection, usable equipment and conservation through reload",
@@ -122,6 +122,45 @@
     ],
     "disallowed_shortcuts": [
       "bind_reference_world"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "prepared-camp-fire-visibility",
+    "family_title": "Prepared camp fire visibility",
+    "family_purpose": "Compare real smoke and firelight using the prepared open and closed houses.",
+    "variant": "Smoke outside a closed house"
+  },
+  "playtest_recipe": {
+    "title": "Smoke outside a closed house",
+    "question": "Does daylight smoke escape without exposing the screened ground-floor firelight?",
+    "starting_state": {
+      "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-closed-windows-20260924-122642/save/TestSetup00",
+      "fixture": "",
+      "profile": "reference-camp-closed-001-luna",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the closed-window house, real fuel and ordinary ignition. Compare daylight smoke with night samples; inspect doors, windows and roof escape before judging concealment.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "An eligible daylight observer receives escaping smoke. The opaque light route conceals the fire; fresh distant smoke disappears at night.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

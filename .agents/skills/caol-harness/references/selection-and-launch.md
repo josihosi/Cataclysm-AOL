@@ -125,12 +125,30 @@ Use `play performance` and its `diagnostic_readiness` observation to distinguish
 assessment from observed native CPU/stages. Inspect the indicated run/turn and relevant stage
 coverage for the actual question; old retained maxima do not prove fresh readiness.
 
+### Keep readiness separate from the test
+
+A launch declaration describes source, runtime and input handoff; it is not a compulsory gameplay
+script. For an interactive reference run, reuse the maintained minimal bootstrap and discover
+controls after handoff. `required_actions` checks available action IDs; it does not execute them.
+Do not put the planned journey's controls in this list. The game's directional movement IDs are
+`world.move.north` and peers, not `world.move`. A missing declared action can currently block startup
+even when the game is ready: inspect the actual mismatch and repair the released declaration,
+rather than changing the save, rebuilding or repeating the same launch.
+
+`setup_only_debug: true` currently assigns the entire disposable run “setup support” evidence.
+That is appropriate for a setup-only run, not a focused gameplay run that happens to need camp
+placement. Keep setup observations separate from genuine downstream behavior in the latter's
+proof targets. Scenario-name admission remains a registry limitation: don't rename an unrelated
+scenario or disable gameplay proof merely to pass lint. Use a supported route matching the actual
+source and outcome; report a genuine admission gap for repair.
+
 ### Fresh HUD or saved input owner
 
 Choose from the actual starting state, not the fact that a fixture originally came from a save.
 An ordinary clean fixture still uses fresh native startup. Reuse a compatible working declaration
-and change only the task's host/save/outcome fields; do not copy a saved-owner override from an
-unrelated continuation.
+and adapt its actual setup and purpose together, following [scenario authoring](../GAME-MANUAL.md#write-reusable-instructions-not-a-transcript).
+Keep source claims, description, objectives, controls and evidence limits consistent; do not copy
+a saved-owner override from an unrelated continuation or create a permanent entry for each run.
 
 | Starting state | Bootstrap settings and usable result |
 | --- | --- |

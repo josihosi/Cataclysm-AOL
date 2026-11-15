@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "bandit.r008_natural_safe_watch_validation_mcw",
-  "description": "Independent focused R-008 local-return bootstrap from the production-generated safe-watch footing.  The fixture's invisible observer prevents hostile interference while one registry-owned worker uses only frame-bound semantic waits from abstract structural dispatch through the first persisted production local contact; no ecology, lead, actor, geography, lifecycle, or save state is injected.",
+  "description": "Does an ordinary scout use a safe opportunity to continue its native purpose? Use the production-generated safe-watch scene and establish real route/target/danger conditions before waiting.",
   "profile": "r008-closure-059-validation",
   "world": "r008-natural-bandit-039",
   "fixture": "bandit_r008_natural_safe_watch_footing_v0",
@@ -48,7 +48,11 @@
     "kind": "r008_source_bound_fixture",
     "world": "r008-natural-bandit-039",
     "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
-    "required_player_abs_omt": [174, 13, 0],
+    "required_player_abs_omt": [
+      174,
+      13,
+      0
+    ],
     "stabilizer_traits": [
       "DEBUG_LS",
       "DEBUG_NOTEMP",
@@ -64,8 +68,16 @@
       "world_name": "r008-natural-bandit-039",
       "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
       "native_camp": "overmap_special:bandit_camp@177,13,0",
-      "hostile_origin_omt": [177, 9, 0],
-      "watch_omt": [174, 13, 0],
+      "hostile_origin_omt": [
+        177,
+        9,
+        0
+      ],
+      "watch_omt": [
+        174,
+        13,
+        0
+      ],
       "watch_route_cost": 10
     }
   },
@@ -140,12 +152,12 @@
             "domain": "bandit_live_world",
             "transition": "active_sortie_dispatch",
             "outcome": "committed",
-          "continuity_fields": [
-            "site_id",
-            "operation_id",
-            "generation",
-            "actor_ids"
-          ]
+            "continuity_fields": [
+              "site_id",
+              "operation_id",
+              "generation",
+              "actor_ids"
+            ]
           }
         }
       ],
@@ -155,46 +167,46 @@
           "Wield:"
         ]
       }
-  },
-  {
-    "id": "natural_structural_scout_local_handoff",
-    "label": "Natural structural scout commits its local ownership handoff",
+    },
+    {
+      "id": "natural_structural_scout_local_handoff",
+      "label": "Natural structural scout commits its local ownership handoff",
       "boundary_step": "worker_owned_local_contact_and_cohesion",
-    "predecessors": [
-      "natural_structural_scout_dispatched"
-    ],
-    "expectations": [
-      {
-        "kind": "structured_event",
-        "predicate": {
-          "domain": "bandit_live_world",
-          "transition": "local_pair_handoff",
-          "outcome": "committed",
-          "simulation_owner": "local",
-          "continuity_fields": [
-            "site_id",
-            "operation_id",
-            "generation",
-            "actor_ids",
-            "simulation_owner",
-            "handoff_epoch"
-          ]
+      "predecessors": [
+        "natural_structural_scout_dispatched"
+      ],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {
+            "domain": "bandit_live_world",
+            "transition": "local_pair_handoff",
+            "outcome": "committed",
+            "simulation_owner": "local",
+            "continuity_fields": [
+              "site_id",
+              "operation_id",
+              "generation",
+              "actor_ids",
+              "simulation_owner",
+              "handoff_epoch"
+            ]
+          }
         }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
       }
-    ],
-    "checkpoint_safe_ui": {
-      "screen_text_contains": [
-        "Move:",
-        "Wield:"
-      ]
-    }
-  },
-  {
+    },
+    {
       "id": "persisted_local_contact_eligibility",
       "label": "Natural structural scout reaches persisted local contact with its eligibility receipt",
       "boundary_step": "audit_persisted_local_contact_eligibility",
-    "predecessors": [
-      "natural_structural_scout_local_handoff"
+      "predecessors": [
+        "natural_structural_scout_local_handoff"
       ],
       "expectations": [
         {
@@ -228,7 +240,7 @@
       "persisted_local_contact_eligibility"
     ],
     "terminal": [
-    "persisted_local_contact_eligibility"
+      "persisted_local_contact_eligibility"
     ],
     "capability_gates": {
       "capabilities.bandit.natural_structural_scout_dispatch": {
@@ -250,33 +262,59 @@
       {
         "label": "advance_first_semantic_scheduler_window",
         "objective": "Observe the current native frame and choose only its advertised six-hour wait actions.  Advance the first ordinary scheduler window from the production-generated safe-watch footing.  Do not move the player, create a camp or lead, or inject ecology state.",
-        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
-        "adaptive_interrupt_actions": ["activity.ignore"]
+        "required_action_chain": [
+          "world.wait",
+          "wait.duration_menu",
+          "wait.6h"
+        ],
+        "adaptive_interrupt_actions": [
+          "activity.ignore"
+        ]
       },
       {
         "label": "advance_second_semantic_scheduler_window",
         "objective": "Continue the same native worker session through the second ordinary six-hour scheduler window.  Preserve the production-owned world and treat only advertised interruptions as the next observation.",
-        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
-        "adaptive_interrupt_actions": ["activity.ignore"]
+        "required_action_chain": [
+          "world.wait",
+          "wait.duration_menu",
+          "wait.6h"
+        ],
+        "adaptive_interrupt_actions": [
+          "activity.ignore"
+        ]
       },
       {
         "label": "advance_force_due_scheduler_window_first_hour",
         "objective": "Continue the same native worker session through the first advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
-        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"],
-        "adaptive_interrupt_actions": ["activity.ignore"]
+        "required_action_chain": [
+          "world.wait",
+          "wait.duration_menu",
+          "wait.1h"
+        ],
+        "adaptive_interrupt_actions": [
+          "activity.ignore"
+        ]
       },
       {
         "label": "advance_force_due_scheduler_window_second_hour",
         "objective": "Continue the same native worker session through the second advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
-        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"],
-        "adaptive_interrupt_actions": ["activity.ignore"]
+        "required_action_chain": [
+          "world.wait",
+          "wait.duration_menu",
+          "wait.1h"
+        ],
+        "adaptive_interrupt_actions": [
+          "activity.ignore"
+        ]
       }
     ],
     "interstitial_setup_steps": [
       {
         "kind": "press",
         "label": "resolve_force_due_dispatch_at_minute_boundary",
-        "keys": ["."]
+        "keys": [
+          "."
+        ]
       }
     ]
   },
@@ -302,7 +340,11 @@
       "kind": "audit_saved_game_turn",
       "label": "audit_installed_safe_watch_position",
       "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
-      "required_player_abs_omt": [174, 13, 0],
+      "required_player_abs_omt": [
+        174,
+        13,
+        0
+      ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_r008_safe_watch_position_not_installed",
       "abort_reason": "the fixture declared a safe watch OMT but did not install the avatar at that production-owned position"
@@ -359,7 +401,6 @@
         "action": "space",
         "postcondition": "eoc_popup_returned"
       },
-      "required_interrupt_action_chain": [],
       "expected_visible_fact": "the same worker reaches the site-specific force-due window without injecting ecology state"
     },
     {
@@ -425,7 +466,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "worker_owned_local_contact_and_cohesion",
-      "objective": "Continue this same registry-owned native session from abstract dispatch until the exact structural scout pair has transferred to local ownership and completed authoritative cohesion.  Observe after every transaction, choose further advertised semantic waits only while production evidence is advancing, then explicitly finish so the scenario can perform its terminal native save.",
+      "objective": "Does an ordinary scout use a safe opportunity to continue its native purpose? Use the production-generated safe-watch scene and establish real route/target/danger conditions before waiting. Success boundary: The actor's actual action and game-time progress support the selected behavior, or identify a concrete obstruction; a clean launch alone is insufficient.",
       "proof_targets": [
         "the run-bound structural pair transfers from abstract to local ownership",
         "the same actors and generation retain one owner and complete local cohesion",
@@ -463,14 +504,14 @@
       "abort_reason": "the local-contact route could not reach the native Save-and-Quit confirmation"
     },
     {
-        "kind": "press",
-        "label": "confirm_native_full_save_after_local_contact",
-        "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
-        "keys": [
-          "Y"
-        ],
-        "settle_seconds": 4.0,
-        "proof_deferred_to_label": "audit_saved_turn_after_local_contact_save"
+      "kind": "press",
+      "label": "confirm_native_full_save_after_local_contact",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 4.0,
+      "proof_deferred_to_label": "audit_saved_turn_after_local_contact_save"
     },
     {
       "kind": "press",
@@ -545,8 +586,8 @@
       "abort_reason": "the fresh production handoff did not persist the exact structural local pair, sole local owner, odd epoch, and pre-cohesion eligibility receipt"
     }
   ],
-    "post_relaunch": {
-      "terminal_save_step_label": "confirm_native_process_exit_after_local_contact_save",
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_exit_after_local_contact_save",
     "terminal_exit_timeout_seconds": 30.0,
     "steps": [
       {
@@ -570,5 +611,44 @@
   "evidence_contract": {
     "claim": "one fresh production route naturally dispatches a structural scout and continues in the same worker session until the first persisted local-contact handoff",
     "failure_rule": "the first missing or rejected native dispatch, local handoff, or eligibility receipt is the product divergence.  Preserve its run-bound semantic receipts, transition stream, and cleanup; do not create, repair, resume, roll back, splice, or reinterpret later lifecycle state."
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "scout-travel",
+    "family_title": "Scout travel and retreat",
+    "family_purpose": "Exercise purposeful navigation, safety and simulation boundaries.",
+    "variant": "Observe safe-watch behavior"
+  },
+  "playtest_recipe": {
+    "title": "Observe safe-watch behavior",
+    "question": "Does an ordinary scout use a safe opportunity to continue its native purpose?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "profile": "r008-closure-059-validation",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the production-generated safe-watch scene and establish real route/target/danger conditions before waiting.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The actor's actual action and game-time progress support the selected behavior, or identify a concrete obstruction; a clean launch alone is insufficient.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

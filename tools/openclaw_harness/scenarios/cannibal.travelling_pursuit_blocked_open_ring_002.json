@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "cannibal.travelling_pursuit_blocked_open_ring_002",
-  "description": "Native pursuit continuation from a disclosed initially open single-entry ring: qualify actor and target, observe ordinary closure and recurring opportunities, then actual response to a relevant route change.",
+  "description": "Does a scout react to a genuinely blocked route and use it when reopened? Qualify the actual ring geometry and target. Close the only route, observe native response, then reopen it without moving the scout to an endpoint.",
   "profile": "travelling-pursuit-blocked-open-ring-004",
   "world": "McWilliams",
   "fixture": "pursuit_avatar_ring_open_003",
@@ -135,7 +135,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "operate_travelling_pursuit_boundary",
-      "objective": "First qualify actual actor, operation, target and gate; then observe ordinary closure and recurring opportunities or honest native opening, bash, target loss or goal change, followed by actual response to a relevant change.",
+      "objective": "Does a scout react to a genuinely blocked route and use it when reopened? Qualify the actual ring geometry and target. Close the only route, observe native response, then reopen it without moving the scout to an endpoint. Success boundary: The blocked condition cannot be bypassed through walls; reopening permits purposeful native progress when the target and safety conditions still justify it.",
       "proof_targets": [
         "exact run, source tree, fixture transformation, player and actor/group/outing identity",
         "native avatar target, sight/attack eligibility, gate state and actor position after setup",
@@ -191,5 +191,44 @@
     "incomplete_turn_seconds": 10.0,
     "stalled_observation_seconds": 30.0,
     "expected_progress": true
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "scout-travel",
+    "family_title": "Scout travel and retreat",
+    "family_purpose": "Exercise purposeful navigation, safety and simulation boundaries.",
+    "variant": "Pursuit with a fully blocked route"
+  },
+  "playtest_recipe": {
+    "title": "Pursuit with a fully blocked route",
+    "question": "Does a scout react to a genuinely blocked route and use it when reopened?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "pursuit_avatar_ring_open_003",
+      "profile": "travelling-pursuit-blocked-open-ring-004",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Qualify the actual ring geometry and target. Close the only route, observe native response, then reopen it without moving the scout to an endpoint.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The blocked condition cannot be bypassed through walls; reopening permits purposeful native progress when the target and safety conditions still justify it.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

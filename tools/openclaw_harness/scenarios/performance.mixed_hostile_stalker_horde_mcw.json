@@ -1,8 +1,14 @@
 {
   "manifest_version": 1,
   "name": "performance.mixed_hostile_stalker_horde_mcw",
-  "catalogue": {"kind": "diagnostic", "family_id": "mixed-load-controls", "family_title": "Mixed-world workload controls", "family_purpose": "Measure staged active workloads and native behavior separately from natural journeys.", "variant": "Mixed hostile, stalker and horde workload"},
-  "description": "Manufactured close mixed performance test from McWilliams: four bandits and two cannibals are prepared alongside Mi-go encampment terrain, a stalker and a horde. Eight other home members and two unrelated NPCs remain distinct. Mi-go actors must be generated after load. A prior 1,800-turn interval reported six humans travelling with local Mi-go work and reload; watch, horde activity and scaling remain unproved. See root-four-site-return-checkpoint.prepared.json.",
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "stalker-pursuit",
+    "family_title": "Stalker behavior",
+    "family_purpose": "Exercise stalker perception, attack, survival and continuity.",
+    "variant": "Mixed active actors remain playable"
+  },
+  "description": "Do genuinely active human and creature systems compose without stalls or state corruption? Use the disclosed mixed-load footing only when this performance work is selected. Confirm actual participating actors and gameplay, then run a meaningful bounded interval.",
   "profile": "mixed-hostile-metrics",
   "world": "McWilliams",
   "fixture": "performance_mixed_hostile_stalker_horde_v0_2026-04-30",
@@ -129,7 +135,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "mixed_actual_active_load_and_controls",
-      "objective": "Use this single maintained entrypoint for a fresh disposable CLOSE metrics fixture. It is manufactured workload setup, not representative remote survival, natural dispatch, attraction or performance-gain proof. Initial time and all sixteen inherited human bodies are conserved; four bandits and two cannibals have current hostile operations, while eight other home members and two independent NPCs remain distinct. The seed transform places complete native Mi-go encampment terrain, not actors, population tokens, signal, intent or active-work credit. The stalker and horde are additional distinct loads.\n\nAfter actual World binding, both aborting body/report/claim preflights must pass before live input. Verify effective AUTOSAVE=false and RAID_PERFORMANCE_DIAGNOSTIC=normal and record other settings, including LLM intent state. Initial human bodies remain at home with zero-credit native clock adoption. Their native owner solves body-to-rally paths. structural_route_valid is a STRUCTURAL-SORTIE-only diagnostic and is false for these hostile reservations; last_advanced_minutes may remain unchanged during real travel. Neither field, empty local_handoff, ownership labels nor body counts establish movement or refusal. Observe actual poses, goals, paths, activation and current ownership. On a refusal retain the first actual native guard rather than waiting repeatedly or rewriting the world.\n\nQualify Mi-go work through the ordinary map-update/spawn consumer after load: take practical avatar steps that shift the map near the placed encampment at144,39/144,40. A pending new-content population with zero members is not a committed roster; initial map generation alone may leave it pending until this native consumer runs. Census genuine generated member identities, leases, body positions, health and owners before counting work. An ordinary physical brazier/fuel/fire near the player may establish a useful source; its actual packet, cap, exposure and reception must be measured, never supplied. Native local movement, targeting, observation, combat or authenticated operation progress is work; marker-only terrain, population count or an emitted signal is not. If native generation or eligibility refuses, preserve the exact guard, with no actor/token/clock injection or forced admission.\n\nEstablish simultaneous useful human and Mi-go work and ordinary stalker/horde activity, then a meaningful adjacent or inactive/load control preserving the same identities and current outcomes. Use practical avatar survival, care and setup with advertised native controls; do not replay completed paid or death stories. Keep physical source and player actively simulated. This close fixture does not meet the representative home-edge10/default15 requirement; any separate representative leg must. Do not broaden this metrics footing into another source-reception campaign.\n\nRecord actual active parties/members separately from sites, frozen/refused/dead bodies, stalkers and horde entities. Current active_sites/job_mix counters omit hostile reservations. Measure useful contiguous100/300-turn or guard-sized intervals and practical density as actual admission/capacity allow, not speculative10/20/50/100 labels. Frozen budgets remain mean100ms for100/300 turns,300-turnp95 250ms, uninterrupted5-game-minute native WALL45s, ordinary-actionp95 3s including transport and individual-spike review2s. Separate input, transport, save/load, actual simulation wall, process CPU, memory and logical IO; no retrospective allocation, threshold waiver or gain without a matched workload. Announce timed IO holds and retain decisive original packets and native boundaries before rotation; missing pairs remain missing, not reconstructed. No new profiler, continuous tracker or raw-growth campaign.\n\nAt useful progress save and close normally. Reenter the SAME saved result through the supported snapshot continuation and prove human/Mi-go identity, owner, body and clock continuity without reinstalling this fixture or replenishing activity. Do not use known-broken automatic post_relaunch. Finish finite current work or retain a concrete native guard/needed continuation honestly. Original Luna remains sole input under the assigned chaperone, one native game. No manual live-save/actor/history/lease/claim edits, guard weakening, source-cap tuning, native build or code change from this charter. Keep current product/save/packet dependencies and settle consumed temporary inputs through their owners. Whole mixed scaling/performance and RAID acceptance remain separate from this setup and any one interval.",
+      "objective": "Do genuinely active human and creature systems compose without stalls or state corruption? Use the disclosed mixed-load footing only when this performance work is selected. Confirm actual participating actors and gameplay, then run a meaningful bounded interval. Success boundary: Useful native progress and measured turn behavior are reported together; inactive actors, scripted setup or a short fast callback do not establish load capacity.",
       "proof_targets": [
         "same-run source-bound World/config and both current physical body/report/claim audits",
         "actual six-member human travel and native-generated authenticated Mi-go work concurrently",
@@ -180,6 +186,38 @@
     ],
     "disallowed_shortcuts": [
       "mixed_actual_active_load_and_controls"
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Mixed active actors remain playable",
+    "question": "Do genuinely active human and creature systems compose without stalls or state corruption?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "performance_mixed_hostile_stalker_horde_v0_2026-04-30",
+      "profile": "mixed-hostile-metrics",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the disclosed mixed-load footing only when this performance work is selected. Confirm actual participating actors and gameplay, then run a meaningful bounded interval.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Useful native progress and measured turn behavior are reported together; inactive actors, scripted setup or a short fast callback do not establish load capacity.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

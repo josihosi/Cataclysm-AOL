@@ -1,8 +1,14 @@
 {
   "manifest_version": 1,
   "name": "performance.four_site_prestaged_active_wait_30m",
-  "catalogue": {"kind": "diagnostic", "family_id": "mixed-load-controls", "family_title": "Mixed-world workload controls", "family_purpose": "Measure staged active workloads and native behavior separately from natural journeys.", "variant": "Four-site prestaged workload"},
-  "description": "Manufactured four-site performance test from the McWilliams extortion save at turn 5241593. Player 140,39; bandit camp 140,51; cannibal camps 150,39, 130,39 and 140,29. Four bandits and three cannibal pairs are prepared at their homes; all 16 inherited human bodies are preserved. An earlier native run measured 1,799 turns and reloaded the saved result; a later saved-start comparison found all ten selected bodies displaced. This does not qualify the current build or prove scaling or gain. The 05c67 ownership rejection was from the old fixture.",
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "mixed-load-controls",
+    "family_title": "Selected load diagnostics",
+    "family_purpose": "Measure actual active work without claiming natural dispatch.",
+    "variant": "Four active sites remain coherent"
+  },
+  "description": "Can four disclosed active sites progress with correct identity and bounded observed cost? Use the manufactured four-site control only for a selected load question. Verify actual site/party activity and compare meaningful game-time endpoints.",
   "profile": "four-site-metrics",
   "world": "McWilliams",
   "fixture": "performance_four_site_prestaged_active_v0_2026-04-29",
@@ -176,7 +182,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "four_site_physical_work_and_reload",
-      "objective": "Preparation: fresh manufactured CLOSE metrics control, not a representative remote story. Origin is the maintained McWilliams extortion save (turn5241593, calendar4752000), preserving all sixteen native NPC bodies, player kit and saved zones. Player starts at OMT140,39. Home footprints are bandit140..141,51..52 and cannibal150..151,39..40 /130..131,39..40 /140..141,29..30. Four bandits IDs4-7 and cannibal pairs8-9,10-11,12-13 are selected; remaining bodies are conserved. Camps hold current abstract outbound shakedown/toll or raid/raid reservations, with distinct report/claim tuples and zero-credit clock adoption. All bodies initially stand at their own home tiles, with no projection leases. Prepared camp supplies are seven units per member; no fire, signal, zones, new NPCs or completed journey is supplied.\n\nAfter World, all four aborting physical-body/owner/claim audits must pass. Confirm AUTOSAVE=false and RAID_PERFORMANCE_DIAGNOSTIC=normal. Use only the selected compatible source-bound product and advertised native controls. Observe actual body poses/goals/routes and eligibility before counting simultaneous work; labels and transition timestamps alone prove neither travel nor rejection. Native active_sites/job_mix omit hostile reservations, so those legacy counters cannot certify this workload.\n\nFollow a useful guard-sized window, targeting30game-minutes when survival and ownership permit, and retain original performance interval plus actual ten-body/four-owner progress. Handle genuine danger normally; preserve the first concrete refusal instead of repeating an unchanged wait or repairing saved state. No post-load NPC/lease/clock/report edits. Save and close normally, then supported SAME-result reentry without fixture reinstall, proving identity/body/owner/clock continuity. Initial guards and component tests do not prove gameplay, measured load or gain. Existing canonical mixed1800 proof and historical05c67 failure remain separate."
+      "objective": "Can four disclosed active sites progress with correct identity and bounded observed cost? Use the manufactured four-site control only for a selected load question. Verify actual site/party activity and compare meaningful game-time endpoints. Success boundary: Each active cohort remains coherent and useful work completes with measured limits; this does not prove natural dispatch or an unlimited performance guarantee."
     }
   ],
   "proof_route": {
@@ -198,6 +204,38 @@
     ],
     "disallowed_shortcuts": [
       "four_site_physical_work_and_reload"
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Four active sites remain coherent",
+    "question": "Can four disclosed active sites progress with correct identity and bounded observed cost?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "performance_four_site_prestaged_active_v0_2026-04-29",
+      "profile": "four-site-metrics",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the manufactured four-site control only for a selected load question. Verify actual site/party activity and compare meaningful game-time endpoints.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Each active cohort remains coherent and useful work completes with measured limits; this does not prove natural dispatch or an unlimited performance guarantee.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

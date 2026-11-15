@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "zombie_rider.live_light_memory_continuity_isolated_mcw",
-  "description": "Rider light-memory test: one hostile rider and an exposed powered utility lamp start on the same open level, with no staged fire fields or human NPC targets. Observe source-keyed memory, investigation and expiry after native source removal.",
+  "description": "Does a rider react to a visible light and update its memory when the source changes? Use the isolated rider and lamp. Compare exposed-on with physically obscured or extinguished source and save/reload after a meaningful state change. Use the powered exposed utility light, not a disconnected appliance. Observe the actual native source-off transition; use the supported bash interaction when that is the declared control.",
   "profile": "rider-light-continuity-isolated",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -134,7 +134,7 @@
       "kind": "cockpit_live_session",
       "label": "operate_native_rider_light_memory",
       "cleanup_on_finish": false,
-      "objective": "Use only advertised native World actions. Confirm the powered exposed utility light is emitting, advance native turns until the loaded rider receives the current physical lamp sample, bash the source through the production-native switch-off path, and stop while the finite source-keyed memory and investigation intent are still active so native save/reload can test their persistence.",
+      "objective": "Does a rider react to a visible light and update its memory when the source changes? Use the isolated rider and lamp. Compare exposed-on with physically obscured or extinguished source and save/reload after a meaningful state change. Success boundary: Fresh light reception follows actual exposure, and old memory is distinguished from renewed detection; actor identity and memory age remain coherent. Use the powered exposed utility light, not a disconnected appliance. Observe the actual native source-off transition; use the supported bash interaction when that is the declared control.",
       "proof_targets": [
         "current physical light sample",
         "source-keyed finite rider memory",
@@ -306,6 +306,45 @@
     "disallowed_shortcuts": [
       "operate_native_rider_light_memory",
       "audit_relaunched_active_rider_light_memory"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "rider-behavior",
+    "family_title": "Rider behavior",
+    "family_purpose": "Exercise rider pursuit, attacks, memory and lifecycle.",
+    "variant": "Rider remembers a real light"
+  },
+  "playtest_recipe": {
+    "title": "Rider remembers a real light",
+    "question": "Does a rider react to a visible light and update its memory when the source changes?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "mcwilliams_live_debug_zombie_rider_light_memory_2026-09-13",
+      "profile": "rider-light-continuity-isolated",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the isolated rider and lamp. Compare exposed-on with physically obscured or extinguished source and save/reload after a meaningful state change. Use the powered exposed utility light, not a disconnected appliance. Observe the actual native source-off transition; use the supported bash interaction when that is the declared control.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Fresh light reception follows actual exposure, and old memory is distinguished from renewed detection; actor identity and memory age remain coherent.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

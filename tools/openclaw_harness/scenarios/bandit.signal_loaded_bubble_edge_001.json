@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "bandit.signal_loaded_bubble_edge_001",
-  "description": "Focused native loaded-map edge continuation from the retained signal world. Inherited lead records and existing items are zero-credit setup; only a newly sustained ordinary source, ordinary travel across the qualified centered-map edge, and actual sampler rediscovery are considered.",
+  "description": "Does perception stay coherent as source and observer cross simulation ownership boundaries? Use the retained source/receiver scene. Move the player's loading boundary while preserving the actual source and same observer, then compare fresh samples.",
   "profile": "signal-loaded-bubble-edge-001",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -101,7 +101,7 @@
     {
       "kind": "cockpit_live_session",
       "label": "operate_loaded_source_edge",
-      "objective": "First qualify this actual saved World: exact absolute avatar/source positions and z, brazier fire/fuel, other sources of the same signal class, survival and current actors/lead clocks. If one sustainable identifiable source and safe ordinary movement are unavailable, stop inconclusive without source or time injection. If viable, sustain only that source using available ordinary fuel and the advertised native lighter/action. Record its loaded source receipt/physical state, time and initial turn. Apply the code-grounded normal-centering invariant: for source (3492,3588,0), starting avatar (3493,3588,0), predicted source-inbounds boundary is avatar x3563 inside and x3564 outside. State this as a qualified geometric inference, not direct runtime origin evidence. Move east by ordinary native steps with actual positions and turns; capture at x3563, x3564 and reverse to x3563. Keep source burning and inspect the actual R008 channel only at its real five-minute cadence. Reverse to avatar x3563 and stop there. Do not return to the source tile yet: at x3563 the source is within the qualified loaded geometry, while the avatar is still too far away to select that tile unconditionally. Wait only until the source absolute-coordinate discovery phase, recording the actual sampler trace turn/phase/source position and the real R008 recipient record if its separate five-minute cadence falls during this interval. Then return physically to the brazier and inspect actual fire/smoke/fuel/age and lead last_seen/last_checked. Compare source/lead state before crossing, immediately outside, at the inside boundary/re-discovery, and on physical return. Separate the 900-turn source sampler from the five-minute recipient cadence; do not claim that the source stayed lit while out of bounds unless reentry evidence shows it. Preserve inherited clue and report identities/clocks as setup; no new scouting or lead creation is claimed.",
+      "objective": "Does perception stay coherent as source and observer cross simulation ownership boundaries? Use the retained source/receiver scene. Move the player's loading boundary while preserving the actual source and same observer, then compare fresh samples. Success boundary: Loading changes neither the physical visibility rule nor once-only ownership; source absence, old memory and actual new detection remain distinct.",
       "proof_targets": [
         "fresh isolated profile, exact source-bound product and same saved world",
         "initial actual source absolute position/class/fire/fuel and sole-source qualification",
@@ -182,5 +182,44 @@
         ]
       }
     }
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "signal-continuity",
+    "family_title": "Signal continuity",
+    "family_purpose": "Separate fresh reception, retained memory and simulation ownership.",
+    "variant": "Signal at the loaded-map edge"
+  },
+  "playtest_recipe": {
+    "title": "Signal at the loaded-map edge",
+    "question": "Does perception stay coherent as source and observer cross simulation ownership boundaries?",
+    "starting_state": {
+      "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/signal-persistence-source-change-001/save/TestSetup00",
+      "fixture": "exact retained native source-change save; inherited state is zero-credit",
+      "profile": "signal-loaded-bubble-edge-001",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the retained source/receiver scene. Move the player's loading boundary while preserving the actual source and same observer, then compare fresh samples.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Loading changes neither the physical visibility rule nor once-only ownership; source absence, old memory and actual new detection remain distinct.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

@@ -111,21 +111,17 @@ Instead assume:
 - screenshots where UI state matters more than logs
 - for live in-game probes, `peekaboo see` is currently more useful than plain `peekaboo image`; the raw `see` command may time out on element detection, but it still leaves behind a readable screenshot path in its debug logs
 
-## Bandit extortion audit probes
+## Bandit playtest selection
 
-Current named tiered probes for `Bandit extortion playthrough audit + harness-skill packet v0`:
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw` — controlled-site stand-off setup / local-gate proof, not the shakedown menu.
-- `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw` — leaves the live stand-off session running for manual review.
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_fight_mcw` — first Basecamp demand, `pay` / `fight`, then fight-forward message.
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_mcw` — first Basecamp demand, pay branch, saved-world writeback inspection.
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw` — controlled defender-loss reopen tier; proves the raised second demand still has `pay` / `fight`.
+Use the maintained registry recipes and the standard OPEN/CLOSED saves described in
+[GAME-MANUAL.md](../../.agents/skills/caol-harness/GAME-MANUAL.md).
+The former one-off extortion and preaged scout declarations were removed during
+catalogue consolidation; their historical results are not current launch commands.
 
-Keep the evidence classes split: screen/OCR for the visible menu, `probe.artifacts.log` for `shakedown_surface` fields, saved-world inspection for branch writeback, and deterministic `./tests/cata_test "[bandit][live_world][shakedown]"` for contract law.
-
-## Bandit local sight-avoid / scout-return probes
-
-Current named probe for `Bandit local sight-avoid + scout return cadence packet v0`:
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.local_scout_return_preaged_mcw` — real nearby-owned-site local-contact footing plus the narrow `bandit_active_sortie_clock` fixture transform; proves the current runtime return-home decision and local-gate/shakedown skip while returning. Evidence class: return-home decision proof, not full walked-home/writeback proof and not live sight-avoid reposition proof.
+Keep evidence classes distinct: the native surface shows the demand options,
+saved-world inspection shows branch writeback, and deterministic shakedown tests
+check the underlying contract. A return-home decision alone does not demonstrate
+physical travel, completed writeback or live avoidance.
 
 ## Practical live-probe recipe (current best cheap method)
 1. focus the game window

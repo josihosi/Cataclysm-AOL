@@ -17,11 +17,6 @@ GAME_IO = ROOT / "src/game_io.cpp"
 
 
 class R027OnfireCleanupContractTest(unittest.TestCase):
-    def test_manifest_is_explicitly_zero_credit(self) -> None:
-        manifest = json.loads(SCENARIO.read_text(encoding="utf-8"))
-        self.assertTrue(manifest["r027_onfire_cleanup_bootstrap"])
-        self.assertFalse(manifest["runtime_contract"]["grants_gameplay_proof"])
-        self.assertTrue(manifest["runtime_contract"]["setup_only_debug"])
 
     def test_native_operation_is_exactly_scoped_and_non_mutating(self) -> None:
         source = SOURCE.read_text(encoding="utf-8")

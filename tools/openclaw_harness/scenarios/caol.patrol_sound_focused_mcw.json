@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.patrol_sound_focused_mcw",
-  "description": "Focused patrol sound preference proof on a disposable prepared camp. The fixture and incidental setup have zero credit; native duty, UI, qualified sound response, release and reload carry the observation.",
+  "description": "Do assigned camp defenders investigate actual audible events without inventing threats? Use an assigned, equipped patrol and a real reachable sound source. Compare quiet routine with the selected audible event and follow the same defender through response and return.",
   "profile": "patrol-sound-exploration-001-luna",
   "config_profile": "r032-patrol-semantic-load",
   "world": "McWilliams",
@@ -84,7 +84,7 @@
       "kind": "cockpit_live_session",
       "label": "observe_patrol_sound_duty",
       "cleanup_on_finish": true,
-      "objective": "Using advertised native actions, establish each personal Investigate sounds starting value, enter actual patrol duty, observe effective rule and a qualified unseen audible event, and compare release. Exercise loop and hold and native save/reload where the scene permits; distinguish setup from observed NPC behavior.",
+      "objective": "Do assigned camp defenders investigate actual audible events without inventing threats? Use an assigned, equipped patrol and a real reachable sound source. Compare quiet routine with the selected audible event and follow the same defender through response and return. Success boundary: The actual sound produces an appropriate bounded investigation; quiet routine is preserved and the defender resumes useful service.",
       "proof_targets": [
         "same actor and personal rule before duty for OFF and ON starts",
         "native priority assignment and actual loop and hold runtime ownership",
@@ -179,6 +179,45 @@
     ],
     "disallowed_shortcuts": [
       "bind_patrol_sound_world"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "camp-services",
+    "family_title": "Camp work and defense",
+    "family_purpose": "Observe real assignments, patrols and persistent camp service.",
+    "variant": "Patrol reacts to sound"
+  },
+  "playtest_recipe": {
+    "title": "Patrol reacts to sound",
+    "question": "Do assigned camp defenders investigate actual audible events without inventing threats?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r032_prepared_camp_patrol_v1",
+      "profile": "patrol-sound-exploration-001-luna",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use an assigned, equipped patrol and a real reachable sound source. Compare quiet routine with the selected audible event and follow the same defender through response and return.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The actual sound produces an appropriate bounded investigation; quiet routine is preserved and the defender resumes useful service.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

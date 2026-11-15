@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "bandit.r008_natural_safe_watch_footing_mcw",
-  "description": "Zero-credit R-008 prerequisite.  This is an ordinary production-generated world whose native bandit camp, terrain opportunity, and read-only watch-route survey establish a lawful bounded safe-watch footing.  It stops at load and must not dispatch, wait for cadence, create a lead, or claim lifecycle behavior.",
+  "description": "Can a production-generated scout scene be prepared without inventing a successful return? Use the declared generated world and normal setup controls. Preserve actual actors, routes, home and threat conditions; record the useful starting state.",
   "profile": "r008-closure-039-natural-run",
   "world": "r008-natural-bandit-039",
   "fixture": "bandit_r008_natural_safe_watch_footing_v0",
@@ -125,5 +125,43 @@
     "claim": "only the geography prerequisite: seed 830205385 generated native camp (177,13,0), native origin (177,9,0), and selected watch (174,13,0) with route cost 10",
     "preconditions_and_interventions": "production harness world generation followed by a read-only analysis copy; persistent ecology matched before and after; fixture installation applies only the mandatory observer-character player stabilizers",
     "terminal": "stop after load.  This declaration is setup support and grants zero camp-lead, dispatch, outing, lifecycle, or route-authority credit."
+  },
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "harness-setup",
+    "family_title": "Setup tool controls",
+    "family_purpose": "Qualify preparation without claiming downstream gameplay.",
+    "variant": "Prepare an ordinary safe-watch footing"
+  },
+  "playtest_recipe": {
+    "title": "Prepare an ordinary safe-watch footing",
+    "question": "Can a production-generated scout scene be prepared without inventing a successful return?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "profile": "r008-closure-039-natural-run",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the declared generated world and normal setup controls. Preserve actual actors, routes, home and threat conditions; record the useful starting state.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the controlled declaration only for its stated diagnostic boundary. Inspect native controls and the pending request; do not replace the operation under test with a convenient different macro.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Only setup is qualified: a coherent reloadable footing exists. No return, perception or gameplay acceptance is inferred from preparing it.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

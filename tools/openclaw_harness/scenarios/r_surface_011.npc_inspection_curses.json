@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "r_surface_011.npc_inspection_curses",
-  "description": "Disposable source-bound curses parity route for the focused actor-bound NPC inspection parent and item-detail child owners.",
+  "description": "Does the curses interface expose the correct NPC and item details without changing gameplay? Use the actor-bound inspection footing. Open the actual inspection parent and relevant item details, then return to the same native owner.",
   "profile": "harness-camp-freeplay",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -17,17 +17,46 @@
     "capabilities.r_surface_011.npc_inspection_curses": "source_bound_curses_actor_inspector_parent_child_return"
   },
   "runtime_contract": {
-    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
-    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "direct-state-mutation"
+    ],
     "setup_only_debug": false,
     "disposable_copy": true,
     "helpers": [],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "harness-camp-freeplay",
     "config_profile": "dev-harness",
     "fixture": "harness_basecamp_no_giuseppe_2026-09-05",
-    "requirements": {"os": "macos", "source": "current-worktree", "executable": "r_surface_011_curses/cataclysm", "profile": "harness-camp-freeplay", "fixture": "harness_basecamp_no_giuseppe_2026-09-05", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "r_surface_011_curses/cataclysm",
+      "profile": "harness-camp-freeplay",
+      "fixture": "harness_basecamp_no_giuseppe_2026-09-05",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
     "grants_gameplay_proof": false
   },
   "source_binding": {
@@ -36,13 +65,120 @@
     "build_receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-916959de7eb83888.json"
   },
   "steps": [
-    {"kind": "native_semantic_bootstrap", "label": "bind_r_surface_011_curses", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
-    {"kind": "cockpit_live_session", "label": "r_surface_011_curses_inspection", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Exercise only the actor-bound NPC inspector parent/child return route from current advertised actions.", "proof_targets": ["advertised actor identity", "stale item rejection", "child open and close", "parent World return", "accepted cleanup"], "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"], "invariants": ["fixture and diagnostic facts earn zero gameplay credit", "native input ownership remains authoritative", "do not alter unsupported MESSAGE_LOG"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r_surface_011_curses",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r_surface_011_curses_inspection",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Does the curses interface expose the correct NPC and item details without changing gameplay? Use the actor-bound inspection footing. Open the actual inspection parent and relevant item details, then return to the same native owner. Success boundary: Displayed fields belong to the selected actor/item; navigation is readable and a no-op inspection changes no gameplay state.",
+      "proof_targets": [
+        "advertised actor identity",
+        "stale item rejection",
+        "child open and close",
+        "parent World return",
+        "accepted cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture and diagnostic facts earn zero gameplay credit",
+        "native input ownership remains authoritative",
+        "do not alter unsupported MESSAGE_LOG"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
   ],
-  "proof_gates": [{"id": "r_surface_011_curses_inspection", "label": "source-bound curses NPC inspector route", "boundary_step": "r_surface_011_curses_inspection", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
-  "proof_route": {"gates": ["r_surface_011_curses_inspection"], "terminal": ["r_surface_011_curses_inspection"]},
+  "proof_gates": [
+    {
+      "id": "r_surface_011_curses_inspection",
+      "label": "source-bound curses NPC inspector route",
+      "boundary_step": "r_surface_011_curses_inspection",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": false,
+            "same_run": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "r_surface_011_curses_inspection"
+    ],
+    "terminal": [
+      "r_surface_011_curses_inspection"
+    ]
+  },
   "semantic_only_startup": true,
   "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
   "profile_snapshot_profile": "live-debug",
-  "profile_option_overrides": {"LLM_INTENT_ENABLE": "false"}
+  "profile_option_overrides": {
+    "LLM_INTENT_ENABLE": "false"
+  },
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "harness-input",
+    "family_title": "Native control diagnostics",
+    "family_purpose": "Verify native target identity, controls and read-only inspection.",
+    "variant": "Inspect an NPC in the terminal"
+  },
+  "playtest_recipe": {
+    "title": "Inspect an NPC in the terminal",
+    "question": "Does the curses interface expose the correct NPC and item details without changing gameplay?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "harness_basecamp_no_giuseppe_2026-09-05",
+      "profile": "harness-camp-freeplay",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the actor-bound inspection footing. Open the actual inspection parent and relevant item details, then return to the same native owner.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the controlled declaration only for its stated diagnostic boundary. Inspect native controls and the pending request; do not replace the operation under test with a convenient different macro.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Displayed fields belong to the selected actor/item; navigation is readable and a no-op inspection changes no gameplay state.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
+  }
 }

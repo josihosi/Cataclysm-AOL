@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "r032.fresh_camp_establishment_v001_mcw",
-  "description": "R-032 fresh establishment and assignment route: a disposable current-source pre-camp world has one setup-only nearby unassigned follower, then the player follows only advertised native semantic dialogue and menu owners to establish a camp on the eligible site, assign that same follower through the native camp-assignment UI at the camp OMT, and preserve the assignment through native save, quit, process replacement, and ordinary camp-work continuation.  Fixture setup and selector opening have no outcome credit.",
+  "description": "Can an ordinary fresh camp gain a real assigned worker and persistent roster? Use the declared pre-camp footing. Establish through native dialogue, assign a willing nearby ally, then save and reload the resulting camp.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "r032_fresh_camp_establishment_follower_v1",
@@ -84,7 +84,7 @@
       "kind": "cockpit_live_session",
       "label": "establish_r032_camp",
       "cleanup_on_finish": true,
-      "objective": "Use only currently advertised native semantic actions to select the setup-only nearby follower, establish a camp, position that follower at the resulting camp's actual lookup OMT, and use the native assignment UI.  Verify the identical character ID changes from unassigned to CAMP_RESIDENT with assigned_camp exactly matching the new camp; make at least one ordinary camp job priority usable before native save and quit.",
+      "objective": "Can an ordinary fresh camp gain a real assigned worker and persistent roster? Use the declared pre-camp footing. Establish through native dialogue, assign a willing nearby ally, then save and reload the resulting camp. Success boundary: The same camp and actor retain assignment after reload, with no duplicate actor, roster entry or manufactured work completion.",
       "proof_targets": [
         "fixture-derived follower identity and no assigned camp, recorded as setup only",
         "accepted native World, dialogue, and menu receipts for the chosen establishment route",
@@ -123,7 +123,9 @@
         "kind": "native_semantic_bootstrap",
         "label": "bind_r032_reloaded_camp_world",
         "native_semantic_checkpoint": {
-          "required_actions": ["world.wait"],
+          "required_actions": [
+            "world.wait"
+          ],
           "required_state": "world",
           "require_initial_hud_world_ready_frame": false
         }
@@ -152,7 +154,9 @@
           "do not mutate NPC, camp, or save state directly",
           "missing identity, camp match, resident mission, priority usability, or native save/quit receipt leaves continuity unproved"
         ],
-        "live_operations": ["game.act"],
+        "live_operations": [
+          "game.act"
+        ],
         "transition_timeout_seconds": 15.0,
         "observe_interval_seconds": 0.1
       }
@@ -165,12 +169,56 @@
     "production_behavior": [
       "establish_r032_camp"
     ],
-    "terminal_persistence": ["establish_r032_camp", "bind_r032_reloaded_camp_world", "verify_r032_assigned_camp_continuity"],
+    "terminal_persistence": [
+      "establish_r032_camp",
+      "bind_r032_reloaded_camp_world",
+      "verify_r032_assigned_camp_continuity"
+    ],
     "artifact_verdict": [
-      "establish_r032_camp", "verify_r032_assigned_camp_continuity"
+      "establish_r032_camp",
+      "verify_r032_assigned_camp_continuity"
     ],
     "disallowed_shortcuts": [
       "bind_r032_pre_camp_world"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "camp-services",
+    "family_title": "Camp work and defense",
+    "family_purpose": "Observe real assignments, patrols and persistent camp service.",
+    "variant": "Establish and staff a camp"
+  },
+  "playtest_recipe": {
+    "title": "Establish and staff a camp",
+    "question": "Can an ordinary fresh camp gain a real assigned worker and persistent roster?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r032_fresh_camp_establishment_follower_v1",
+      "profile": "dev-harness",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the declared pre-camp footing. Establish through native dialogue, assign a willing nearby ally, then save and reload the resulting camp.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The same camp and actor retain assignment after reload, with no duplicate actor, roster entry or manufactured work completion.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

@@ -33865,6 +33865,7 @@ def list_scenarios() -> List[Dict[str, Any]]:
             "path": str(path),
             "scenario_id": manifest_identity(path),
             "catalogue": copy.deepcopy(loaded.get("catalogue")),
+            "playtest_recipe": copy.deepcopy(loaded.get("playtest_recipe")),
             "membership": membership,
             "fixture": {
                 "name": fixture_name,

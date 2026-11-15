@@ -104,3 +104,12 @@ Use existing measurements first and targeted measurement when needed to decide a
 optimization campaign, continuous profiler or extra per-turn logging follows automatically. Preserve
 source/input custody, useful saves, accepted behavior and honest unresolved findings. This applies
 to ordinary playtests and final soaks alike.
+
+## Leave the catalogue ready for the next player
+
+Finish by folding useful new setup, controls and diagnostic lessons into the existing recipe,
+replacing wrong advice rather than appending a run diary. Delete settled temporary declarations and
+superseded variants through the supported registry route; keep a reproducer only while its concrete
+repair need remains. Small variations belong in the recipe or current brief, not another permanent
+entry. Follow [authoring and carry-forward](../GAME-MANUAL.md#write-reusable-instructions-not-a-transcript)
+for the shared policy; no extra playtest or approval is needed merely to tidy instructions.

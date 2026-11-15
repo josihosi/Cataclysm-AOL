@@ -1,8 +1,14 @@
 {
   "manifest_version": 2,
   "name": "r037.npc_llm_command_coverage_v001_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "companion-commands", "family_title": "Companion commands", "family_purpose": "Observe model responses and their native action consequences.", "variant": "Local command coverage"},
-  "description": "Companion command coverage from a prepared living camp: allied actor 2 is near the player with wearable, melee, firearm and bow equipment, ammunition and activation/drop candidates. One unowned pickup and one foreign-owned pickup are staged. Each command needs its own model response, native application and consequence.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "companion-commands",
+    "family_title": "Companion commands",
+    "family_purpose": "Judge actual command execution and truthful responses.",
+    "variant": "Companion command journey"
+  },
+  "description": "Can an allied companion carry out varied supported requests during useful camp activity? Use the prepared companion and real equipment. Give connected commands with reasons, allow native movement/work, then test a revision or interruption.",
   "profile": "harness-npc-llm-coverage",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -19,13 +25,32 @@
     "capabilities.r037.command_coverage": "e4b_safe_commands_inventory_pickup"
   },
   "runtime_contract": {
-    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
-    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "synthetic-response", "direct-state-mutation"],
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.move_relative",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "synthetic-response",
+      "direct-state-mutation"
+    ],
     "setup_only_debug": false,
     "disposable_copy": true,
     "helpers": [],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "harness-npc-llm-coverage",
     "config_profile": "dev-harness",
     "fixture": "r037_npc_llm_command_sandbox_v001",
@@ -37,7 +62,9 @@
       "fixture": "r037_npc_llm_command_sandbox_v001",
       "helper": "none",
       "peekaboo": false,
-      "input": ["frame-bound semantic requests"],
+      "input": [
+        "frame-bound semantic requests"
+      ],
       "ocr": false,
       "cleanup": true
     },
@@ -51,17 +78,46 @@
     {
       "kind": "native_semantic_bootstrap",
       "label": "bind_r037_safe_world",
-      "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
     },
     {
       "kind": "cockpit_live_session",
       "label": "operate_r037_safe_commands",
       "cleanup_on_finish": true,
-      "objective": "Use natural direct requests to the inspected allied recipient through local E4B. First calm the explicitly pre-existing run-away state, then independently observe follow/wait/hold, movement arrival, equipment, panic, safe pickup and inventory outcomes while retaining each request/response/consumer consequence.",
-      "proof_targets": ["E4B model and request identity", "pre-existing panic footing and native panic-off consequence", "actor/item/foreign-ownership/NO_NPC_PICKUP controls", "actual parse and native consequence", "case-scoped failure/API comparison records", "exact cleanup"],
-      "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "game.move_relative", "run.witness", "run.finish"],
-      "invariants": ["fixture setup earns zero command credit", "do not inject a response or directly mutate state", "do not credit a command without an applying native turn and consequence", "keep every local/API verdict independent"],
-      "live_operations": ["game.act", "game.wait", "game.move_relative"],
+      "objective": "Can an allied companion carry out varied supported requests during useful camp activity? Use the prepared companion and real equipment. Give connected commands with reasons, allow native movement/work, then test a revision or interruption. Success boundary: Judge the requested native effect separately from the spoken reply; preserve item identity, actor state and honest refusal. A reply alone is not success.",
+      "proof_targets": [
+        "E4B model and request identity",
+        "pre-existing panic footing and native panic-off consequence",
+        "actor/item/foreign-ownership/NO_NPC_PICKUP controls",
+        "actual parse and native consequence",
+        "case-scoped failure/API comparison records",
+        "exact cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.move_relative",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture setup earns zero command credit",
+        "do not inject a response or directly mutate state",
+        "do not credit a command without an applying native turn and consequence",
+        "keep every local/API verdict independent"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
       "transition_timeout_seconds": 20.0,
       "observe_interval_seconds": 0.1
     }
@@ -72,11 +128,30 @@
       "label": "Bound R-037 safe E4B session",
       "boundary_step": "operate_r037_safe_commands",
       "predecessors": [],
-      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}],
-      "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": true
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
     }
   ],
-  "proof_route": {"gates": ["r037_safe_session"], "terminal": ["r037_safe_session"]},
+  "proof_route": {
+    "gates": [
+      "r037_safe_session"
+    ],
+    "terminal": [
+      "r037_safe_session"
+    ]
+  },
   "semantic_only_startup": true,
   "profile_option_overrides": {
     "LLM_INTENT_ENABLE": "true",
@@ -88,5 +163,36 @@
     "DEBUG_LLM_INTENT": "true",
     "DEBUG_LLM_INTENT_UI": "true",
     "DEBUG_LLM_INTENT_LOG": "true"
+  },
+  "playtest_recipe": {
+    "title": "Companion command journey",
+    "question": "Can an allied companion carry out varied supported requests during useful camp activity?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r037_npc_llm_command_sandbox_v001",
+      "profile": "harness-npc-llm-coverage",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the prepared companion and real equipment. Give connected commands with reasons, allow native movement/work, then test a revision or interruption.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the currently advertised conversation and item controls; allow meaningful native time/movement after commands. Do not repeat an unsuccessful request silently.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Judge the requested native effect separately from the spoken reply; preserve item identity, actor state and honest refusal. A reply alone is not success.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

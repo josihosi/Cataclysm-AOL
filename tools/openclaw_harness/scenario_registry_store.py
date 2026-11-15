@@ -1111,12 +1111,24 @@ def _current_manifest_certification_retry(
 ) -> bool:
     """Prior failed or stale runs are evidence, not a ban on another playtest."""
     validation = _json_object(str(manifest["validation_json"]), "manifest validation")
+    rows = (query_context.quarantine_rows_by_manifest.get(str(manifest["manifest_id"]), ())
+            if query_context is not None else connection.execute(
+                "SELECT route_key, quarantine_kind FROM quarantine_history WHERE manifest_id=? "
+                "ORDER BY quarantine_event_id", (str(manifest["manifest_id"]),)).fetchall())
+    latest = {str(row["route_key"]): str(row["quarantine_kind"]) for row in rows}
+    unresolved = {kind for kind in latest.values() if not kind.startswith("released_")}
+    # A source correction can remove the old route from current evidence while
+    # its historical quarantine remains. Permit a new observation, not proof
+    # promotion; explicit non-evidence quarantines still block selection.
+    retryable = {"quarantined_contradicted", "quarantined_stale"}
+    if unresolved - retryable:
+        return False
     return (
         bool(manifest["present"])
         and validation.get("status") == "valid"
         and not bool(validation.get("review_required"))
-        and any(route.get("evidence_state") in {"stale", "contradicted"}
-                for route in route_evidence)
+        and (bool(unresolved) or any(route.get("evidence_state") in {"stale", "contradicted"}
+                                   for route in route_evidence))
     )
 
 
@@ -6982,7 +6994,9 @@ def _mark_manifest_absent(connection: sqlite3.Connection, source_path: str, prev
     connection.executemany(
         "INSERT INTO manifest_relation_history( "
         "manifest_id, relation_kind, target_kind, target_key, route_role, event_kind, revision, details_json "
-        ") VALUES( ?, ?, ?, ?, ?, 'absence', ?, ? )",
+        ") VALUES( ?, ?, ?, ?, ?, 'absence', ?, ? ) "
+        "ON CONFLICT(manifest_id, relation_kind, target_kind, target_key, route_role, event_kind, revision) "
+        "DO NOTHING",
         [
             (
                 manifest_id,

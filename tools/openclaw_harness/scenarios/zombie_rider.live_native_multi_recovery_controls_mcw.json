@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "zombie_rider.live_native_multi_recovery_controls_mcw",
-  "description": "Two-rider recovery control: a full-health standing player faces identified hostile riders on clear east and south lanes. The east rider has an empty bow; the south rider has 18 arrows. Downing, recovery and later actions remain native outcomes.",
+  "description": "Can independent riders resume appropriate behavior after an actual interruption? Use the independent two-rider footing. Observe each before and after the selected interruption, allowing enough time and reachable space for recovery.",
   "profile": "rider-impact-multirider-closure-001",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -14,28 +14,303 @@
     "capabilities.r_zl_rider.native_multi_recovery_controls": "identified_empty_and_stocked_bow_riders_native_downing_recovery_action"
   },
   "runtime_contract": {
-    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
-    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_player_effect", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.move_relative",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_attack",
+      "debug:inject_target_knowledge",
+      "debug:inject_player_effect",
+      "direct-state-mutation",
+      "raw-save-rewrite-after-install",
+      "guessed-key"
+    ],
     "setup_only_debug": true,
     "disposable_copy": true,
-    "helpers": ["native file bridge"],
+    "helpers": [
+      "native file bridge"
+    ],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "rider-impact-multirider-closure-001",
     "fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
-    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"rider-impact-multirider-closure-001","fixture":"mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "rider-impact-multirider-closure-001",
+      "fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "advertised native cockpit actions"
+      ],
+      "cleanup": true
+    },
     "grants_gameplay_proof": false
   },
   "artifact_source": "debug.log",
-  "artifact_patterns": ["zombie_rider impact_", "zombie rider"],
-  "steps": [
-    {"kind":"wait","label":"native_multi_recovery_fixture_settle","seconds":1.0,"capture_after":true,"expected_visible_fact":"two identified hostile riders and a standing full-health player load to the native World"},
-    {"kind":"audit_saved_game_turn","label":"audit_saved_multi_recovery_time","required_time_of_day_seconds":43200,"required_time_tolerance_seconds":60,"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_time_setup_missing","abort_reason":"installed save did not prove expected noon footing"},
-    {"kind":"audit_saved_map_tile_near_player","label":"audit_saved_multi_recovery_escape_lanes","offsets":[[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[0,1,0],[0,2,0],[0,3,0],[0,4,0],[0,5,0],[-1,0,0],[-2,0,0],[0,-1,0],[0,-2,0]],"required_terrain":["t_floor"],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_escape_lanes_missing","abort_reason":"the native fixture lacks the terrain required for a real recovery/separation action"},
-    {"kind":"audit_saved_active_monsters","label":"audit_saved_identified_empty_and_stocked_rider_footing","required_monsters":[{"typeid":"mon_zombie_rider","offset_ms":[3,0,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-empty-east"}},"ammo_exact":{"zombie_rider_tainted_bone_arrow":0}},{"typeid":"mon_zombie_rider","offset_ms":[0,3,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-stocked-south"}},"ammo_exact":{"zombie_rider_tainted_bone_arrow":18}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_rider_footing_missing","abort_reason":"saved active_monsters did not prove the identified empty-bow and stocked-bow hostile riders"},
-    {"kind":"cockpit_live_session","label":"operate_native_multi_rider_recovery_controls","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only advertised World actions. Establish each rider's native position/identity and arrow premise, then allow actual contact/closing. When a named impact downs the initially standing susceptible player, use the first advertised legal action opportunity to recover or separate along the audited open terrain. Preserve contact/path/HP/effect/timestamp evidence for the empty-bow rider and stocked-bow rider, and check the named impact's same-invocation messages for no ordinary bite or second strike. A setup label, injected effect, stationary adjacency or mere elapsed time earns no gameplay credit.","proof_targets":["identified exact empty/stocked bow setup audit","native physical close/contact","named impact plus HP/effect result","downed player native advertised action and accepted recovery/separation","bounded multi-rider recovery with subsequent legal actions","no same-invocation ordinary bite or second strike","source/executable/process/run binding"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["fixture setup is zero-credit","no debug attack or player-effect injection","no stationary adjacency credited as closing","no bite-only contact credited as impact","an empty-bow actor must remain empty in native observation","the post-downing player action must be advertised and accepted","no same-turn extra strike after a named impact"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  "artifact_patterns": [
+    "zombie_rider impact_",
+    "zombie rider"
   ],
-  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_multi_recovery_controls_mcw",
-  "evidence_contract":{"claim":"identified empty-bow and stocked-bow riders independently pressure a player through native contact impact without multi-rider lock; after native downing, an advertised player action is accepted on real terrain","load_only_verdict":"load proof only / inconclusive","writeback_note":"fixture setup earns no behavior credit; native contact, message, HP/effect and player-action receipts are required"},
-  "proof_route":{"precondition":["native_multi_recovery_fixture_settle","audit_saved_multi_recovery_time","audit_saved_identified_empty_and_stocked_rider_footing"],"production_behavior":["operate_native_multi_rider_recovery_controls"],"terminal_persistence":["operate_native_multi_rider_recovery_controls"],"artifact_verdict":["operate_native_multi_rider_recovery_controls"],"disallowed_shortcuts":["operate_native_multi_rider_recovery_controls"]}
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "native_multi_recovery_fixture_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "two identified hostile riders and a standing full-health player load to the native World"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_multi_recovery_time",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_native_multi_recovery_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon footing"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_multi_recovery_escape_lanes",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          5,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          2,
+          0
+        ],
+        [
+          0,
+          3,
+          0
+        ],
+        [
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          5,
+          0
+        ],
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          -2,
+          0,
+          0
+        ],
+        [
+          0,
+          -1,
+          0
+        ],
+        [
+          0,
+          -2,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_floor"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_native_multi_recovery_escape_lanes_missing",
+      "abort_reason": "the native fixture lacks the terrain required for a real recovery/separation action"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_identified_empty_and_stocked_rider_footing",
+      "required_monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            3,
+            0,
+            0
+          ],
+          "friendly": 0,
+          "hallucination": false,
+          "dead": false,
+          "faction": "zombie",
+          "aggro_character": true,
+          "values": {
+            "caol_fixture_actor_id": {
+              "str": "rider-empty-east"
+            }
+          },
+          "ammo_exact": {
+            "zombie_rider_tainted_bone_arrow": 0
+          }
+        },
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            0,
+            3,
+            0
+          ],
+          "friendly": 0,
+          "hallucination": false,
+          "dead": false,
+          "faction": "zombie",
+          "aggro_character": true,
+          "values": {
+            "caol_fixture_actor_id": {
+              "str": "rider-stocked-south"
+            }
+          },
+          "ammo_exact": {
+            "zombie_rider_tainted_bone_arrow": 18
+          }
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_native_multi_recovery_rider_footing_missing",
+      "abort_reason": "saved active_monsters did not prove the identified empty-bow and stocked-bow hostile riders"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_native_multi_rider_recovery_controls",
+      "cleanup_on_finish": false,
+      "stop_after_live_session": true,
+      "objective": "Can independent riders resume appropriate behavior after an actual interruption? Use the independent two-rider footing. Observe each before and after the selected interruption, allowing enough time and reachable space for recovery. Success boundary: Each surviving rider resumes or refuses for its actual state, with no shared-target, ammunition or identity contamination.",
+      "proof_targets": [
+        "identified exact empty/stocked bow setup audit",
+        "native physical close/contact",
+        "named impact plus HP/effect result",
+        "downed player native advertised action and accepted recovery/separation",
+        "bounded multi-rider recovery with subsequent legal actions",
+        "no same-invocation ordinary bite or second strike",
+        "source/executable/process/run binding"
+      ],
+      "authority": [
+        "advertised native actions",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture setup is zero-credit",
+        "no debug attack or player-effect injection",
+        "no stationary adjacency credited as closing",
+        "no bite-only contact credited as impact",
+        "an empty-bow actor must remain empty in native observation",
+        "the post-downing player action must be advertised and accepted",
+        "no same-turn extra strike after a named impact"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_multi_recovery_controls_mcw",
+  "evidence_contract": {
+    "claim": "identified empty-bow and stocked-bow riders independently pressure a player through native contact impact without multi-rider lock; after native downing, an advertised player action is accepted on real terrain",
+    "load_only_verdict": "load proof only / inconclusive",
+    "writeback_note": "fixture setup earns no behavior credit; native contact, message, HP/effect and player-action receipts are required"
+  },
+  "proof_route": {
+    "precondition": [
+      "native_multi_recovery_fixture_settle",
+      "audit_saved_multi_recovery_time",
+      "audit_saved_identified_empty_and_stocked_rider_footing"
+    ],
+    "production_behavior": [
+      "operate_native_multi_rider_recovery_controls"
+    ],
+    "terminal_persistence": [
+      "operate_native_multi_rider_recovery_controls"
+    ],
+    "artifact_verdict": [
+      "operate_native_multi_rider_recovery_controls"
+    ],
+    "disallowed_shortcuts": [
+      "operate_native_multi_rider_recovery_controls"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "rider-behavior",
+    "family_title": "Rider behavior",
+    "family_purpose": "Exercise rider pursuit, attacks, memory and lifecycle.",
+    "variant": "Two riders recover from interruption"
+  },
+  "playtest_recipe": {
+    "title": "Two riders recover from interruption",
+    "question": "Can independent riders resume appropriate behavior after an actual interruption?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+      "profile": "rider-impact-multirider-closure-001",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the independent two-rider footing. Observe each before and after the selected interruption, allowing enough time and reachable space for recovery.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Each surviving rider resumes or refuses for its actual state, with no shared-target, ammunition or identity contamination.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
+  }
 }

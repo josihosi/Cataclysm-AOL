@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "r013.cockpit_transaction_bootstrap_mcw",
-  "description": "R013 wait-transaction setup: the fixture clears inherited monsters and stages one hostile zombie dog six map squares east. Reach World and stop when the public wait exposes an activity interruption; do not dispatch recovery.",
+  "description": "Can a pending native wait be interrupted without duplicate input or lost ownership? Use the controlled wait fixture and its real interrupting actor. Submit a supported wait, collect the same request and inspect partial progress.",
   "profile": "r009-m095",
   "world": "McWilliams",
   "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
@@ -10,20 +10,48 @@
   "replace_existing_worlds": true,
   "run_class": "non_combat",
   "observer_character": true,
-  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
   "wait_input_trace": true,
   "capabilities": {
     "capabilities.r013.cockpit_transaction_bootstrap": "public_native_wait_and_advertised_activity_ignore_recovery",
     "runtime.r013.source_binding": "r013_wait_activity_interrupt_bootstrap_v1:r009-m095"
   },
   "runtime_contract": {
-    "permitted_input": ["native:in_game_main_menu.dismiss:escape", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m", "semantic:activity.ignore"],
-    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation"],
+    "permitted_input": [
+      "native:in_game_main_menu.dismiss:escape",
+      "semantic:world.wait",
+      "semantic:wait.duration_menu",
+      "semantic:wait.1m",
+      "semantic:activity.ignore"
+    ],
+    "forbidden_input": [
+      "debug:teleport",
+      "debug:spawn",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "fixture-save-transform-after-install",
+      "guessed-key",
+      "direct-state-mutation"
+    ],
     "setup_only_debug": true,
     "disposable_copy": true,
-    "helpers": ["Peekaboo"],
-    "permissions": ["accessibility", "screen-recording"],
-    "platform": ["macos"],
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
     "profile": "r009-m095",
     "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
     "requirements": {
@@ -35,7 +63,9 @@
       "helper": "Peekaboo",
       "peekaboo": true,
       "ocr": true,
-      "input": ["declared native in-game main-menu dismissal"],
+      "input": [
+        "declared native in-game main-menu dismissal"
+      ],
       "cleanup": true
     },
     "grants_gameplay_proof": false
@@ -51,22 +81,116 @@
       "label": "R-013 source-bound route reaches ordinary gameplay and exposes its native activity interruption",
       "boundary_step": "observe_r013_native_activity_interruption",
       "predecessors": [],
-      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false}}],
-      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "native_cockpit_transaction",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      }
     }
   ],
   "proof_route": {
-    "gates": ["r013_cockpit_route_bound"],
-    "terminal": ["r013_cockpit_route_bound"],
-    "capability_gates": {"capabilities.r013.cockpit_transaction_bootstrap": {"startup": ["r013_cockpit_route_bound"]}}
+    "gates": [
+      "r013_cockpit_route_bound"
+    ],
+    "terminal": [
+      "r013_cockpit_route_bound"
+    ],
+    "capability_gates": {
+      "capabilities.r013.cockpit_transaction_bootstrap": {
+        "startup": [
+          "r013_cockpit_route_bound"
+        ]
+      }
+    }
   },
   "steps": [
-    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"], "expected_visible_fact": "the declared native in-game main menu is dismissed before the startup frame is observed"},
-    {"kind": "wait", "label": "post_load_r013_bootstrap_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r013_bootstrap_hud_missing", "abort_reason": "the source-bound fixture did not reach ordinary gameplay"},
-    {"kind": "cockpit_act", "label": "observe_r013_native_activity_interruption", "action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "expected_final_action": "activity.ignore", "gameplay_credit": false, "transition_timeout_seconds": 420.0, "observe_interval_seconds": 1.0, "expected_visible_fact": "each public action is issued from its current authorized observation; the resulting native frame must expose the activity interruption and advertise activity.ignore, but this setup route does not dispatch it"}
+    {
+      "kind": "press",
+      "label": "dismiss_declared_in_game_main_menu",
+      "keys": [
+        "escape"
+      ],
+      "expected_visible_fact": "the declared native in-game main menu is dismissed before the startup frame is observed"
+    },
+    {
+      "kind": "wait",
+      "label": "post_load_r013_bootstrap_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": [
+        "Move:",
+        "Wield:"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r013_bootstrap_hud_missing",
+      "abort_reason": "the source-bound fixture did not reach ordinary gameplay"
+    },
+    {
+      "kind": "cockpit_act",
+      "label": "observe_r013_native_activity_interruption",
+      "action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.1m"
+      ],
+      "expected_final_action": "activity.ignore",
+      "gameplay_credit": false,
+      "transition_timeout_seconds": 420.0,
+      "observe_interval_seconds": 1.0,
+      "expected_visible_fact": "each public action is issued from its current authorized observation; the resulting native frame must expose the activity interruption and advertise activity.ignore, but this setup route does not dispatch it"
+    }
   ],
   "evidence_contract": {
     "claim": "the source-bound route reaches clean ordinary gameplay, issues the authorized public wait chain, and exposes a current native activity interruption that advertises activity.ignore; it grants zero gameplay credit and does not test recovery",
     "failure_rule": "an active main-menu overlay, unavailable or reused observation identity, unadvertised action, rejected native receipt, absent native activity interruption, missing advertised activity.ignore, or failed cleanup leaves the later R-013 validation unproved and receives no credit"
+  },
+  "catalogue": {
+    "kind": "diagnostic",
+    "family_id": "harness-waiting",
+    "family_title": "Waiting and interruption controls",
+    "family_purpose": "Verify time progression, batching and native input ownership.",
+    "variant": "Wait transaction interruption"
+  },
+  "playtest_recipe": {
+    "title": "Wait transaction interruption",
+    "question": "Can a pending native wait be interrupted without duplicate input or lost ownership?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+      "profile": "r009-m095",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the controlled wait fixture and its real interrupting actor. Submit a supported wait, collect the same request and inspect partial progress.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "Use the controlled declaration only for its stated diagnostic boundary. Inspect native controls and the pending request; do not replace the operation under test with a convenient different macro.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "The same request records completed game time and interruption; later collection does not replay input and the current native owner remains actionable.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }

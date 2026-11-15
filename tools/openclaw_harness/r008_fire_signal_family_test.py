@@ -21,8 +21,8 @@ from scenario_registry import validate_manifest  # noqa: E402
 SCENARIOS = (
     "bandit.r008_fire_signal_roof_lifecycle_mcw",
     "cannibal.r008_fire_signal_roof_lifecycle_mcw",
-    "bandit.r008_fire_signal_indoor_closed_mcw",
-    "bandit.r008_fire_signal_indoor_open_mcw",
+    "caol.reference_camp_closed_focused_mcw",
+    "caol.reference_camp_open_focused_mcw",
 )
 FIXTURE_ROOT = HARNESS / "fixtures" / "saves" / "live-debug"
 PLAYER = "#Wm9yYWlkYSBWaWNr.sav.zzip"
@@ -46,11 +46,8 @@ class R008FireSignalFamilyTest(unittest.TestCase):
                 session = next(step for step in manifest["steps"]
                                if step["kind"] == "cockpit_live_session")
                 text = json.dumps(session)
-                self.assertIn("exactly two", text)
-                self.assertIn("ordinary player", text.lower())
-                self.assertIn("game.guarded_move_relative", session["live_operations"])
-                self.assertIn("game.keep_watch", session["live_operations"])
-                self.assertIn("game.raw_wait", session["live_operations"])
+                self.assertIn("game.act", session["live_operations"])
+                self.assertTrue(manifest["playtest_recipe"]["success"])
 
     def test_cannibal_persisted_return_session_allows_the_declared_six_hour_primitive(self) -> None:
         manifest = load_json(HARNESS / "scenarios" /
@@ -189,7 +186,7 @@ class R008FireSignalFamilyTest(unittest.TestCase):
                          "bandit.r008_fire_signal_roof_lifecycle_mcw.json")
         session = next(step for step in roof["steps"]
                        if step["kind"] == "cockpit_live_session")
-        self.assertIn("earlier dispatch cause", session["objective"])
+        self.assertIn("perception", roof["playtest_recipe"]["success"])
         faction_tests = (ROOT / "tests" / "faction_camp_test.cpp").read_text(encoding="utf-8")
         self.assertIn(
             "camp_patrol_alarm_watches_active_shakedown_contact_without_combat_escalation",
@@ -300,16 +297,6 @@ class R008FireSignalFamilyTest(unittest.TestCase):
                 startup_harness.capture_screenshot = original_capture
                 startup_harness.capture_screen_text_artifact = original_screen_text
 
-    def test_short_staged_predecessors_are_durable_history_not_active_routes(self) -> None:
-        for name in (
-            "bandit.roof_fire_horde_player_action_mcw",
-            "bandit.roof_fire_horde_nice_roof_fire_mcw",
-            "bandit.roof_fire_horde_split_wait_from_player_fire_mcw",
-            "bandit.player_lit_fire_signal_wait_mcw",
-        ):
-            manifest = load_json(HARNESS / "scenarios" / f"{name}.json")
-            self.assertEqual(manifest["status"], "blocked")
-            self.assertIn("Superseded", manifest["blocked_reason"])
 
 
 if __name__ == "__main__":

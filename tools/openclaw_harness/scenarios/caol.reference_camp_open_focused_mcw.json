@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "caol.reference_camp_open_focused_mcw",
-  "description": "Prospective isolated owner open-window reference camp journey. Original TestSetup00 archive save is installed unchanged as zero-credit footing; native observations answer only the exercised parts of the selected reference outcome.",
+  "description": "Does a real ground-floor fire become visible at night while fresh distant smoke detection stops? Keep the prepared open house and add a normal staffed camp with a credible sight route. Observe daytime smoke, sustain the same fire into natural night and quicksave.",
   "profile": "reference-camp-open-001-luna",
   "config_profile": "dev-harness",
   "world": "TestSetup00",
@@ -14,14 +14,28 @@
     "runtime.reference_archive_sha256": "6f99f9eb93626bc4f1dd3a1ea5680269b6b314d013227beef75c73de7045a83f",
     "runtime.reference_save_tree_sha256": "6fea3569c798fb27375e24398fde64470b71b68255c8dc8c3cc3cae2474ee73c",
     "capabilities.caol.reference_camp": "native_reference_camp_equipment_patrol_physical_signal_journey",
-    "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/save/TestSetup00"
+    "runtime.reference_save_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/save/TestSetup00",
+    "world.signal": [
+      "physical_fire",
+      "smoke",
+      "light"
+    ]
   },
   "runtime_contract": {
     "permitted_input": [
       "frame-bound semantic requests",
       "cockpit:game.act",
       "cockpit:run.witness",
-      "cockpit:run.finish"
+      "cockpit:run.finish",
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:menu.cancel",
+      "semantic:overmap.move_cursor",
+      "semantic:overmap.change_level",
+      "semantic:overmap.place_special",
+      "semantic:overmap.close",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait"
     ],
     "forbidden_input": [
       "direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
@@ -52,7 +66,7 @@
       "helper": "native-semantic-broker",
       "peekaboo": false,
       "input": [
-        "frame-bound semantic requests"
+        "frame-bound semantic requests; native overmap special placement is setup only; ordinary ignition, waiting and saving"
       ],
       "ocr": false,
       "cleanup": true
@@ -75,25 +89,24 @@
       "kind": "cockpit_live_session",
       "label": "observe_reference_camp",
       "cleanup_on_finish": true,
-      "objective": "Observe actual owner-reference camp gear collection and conservation, day/night patrol service, physical open-window and roof source behavior, and where eligible the same-site natural signal, knowledge, dispatch and physical arrival. Distinguish independent prerequisites, current source conditions and later outcomes; preserve actual failures and run continuity.",
+      "objective": "Does a real ground-floor fire become visible at night while fresh distant smoke detection stops? Keep the prepared open house and add a normal staffed camp with a credible sight route. Observe daytime smoke, sustain the same fire into natural night and quicksave. Success boundary: Fresh night firelight reaches the eligible observer; fresh night smoke does not. Prior remembered smoke is not fresh detection.",
       "proof_targets": [
-        "source archive and installed save identity, same native World and current camp/actor/site identities",
-        "actual item tile-to-NPC collection, usable equipment and conservation through reload",
-        "actual day/night patrol roster and service through reload",
-        "physical source fuel and intensity, window/door/roof geometry, weather and observed light escape versus smoke positions",
-        "eligible native observer opportunity and source-off or occluded comparison as needed",
-        "same-site natural signal to knowledge/stalking to dispatch to physical arrival with timestamps and actors",
-        "actual outcomes and any eligible departure and return, with material gaps explicit",
-        "native exit and accepted cleanup"
+        "exact standard-open source and working-save identity; current World and source-bound executable",
+        "actual ground-floor fire, window geometry, weather and source/receiver positions",
+        "setup-only camp placement distinct from normal generated staffing and genuine perception",
+        "daytime smoke reception and actual natural-night quicksave with sustained fire",
+        "fresh nighttime smoke non-detection and positive firelight reception at an eligible observer, with physical escape/sight evidence",
+        "same-run saved continuity, honest failures/limits, game exit and owned helper cleanup"
       ],
       "authority": [
         "currently advertised native semantic actions",
         "game.act",
+        "game.wait",
         "run.witness",
         "run.finish"
       ],
       "invariants": [
-        "archive installation, equipment or fuel placement, and avatar setup are zero-credit preparation",
+        "reference installation and native camp placement are zero-credit preparation; never modify the owner original",
         "no direct NPC action, perception, lead, dispatch, encounter, clock, payment or return injection",
         "a physical source or precommitted fixture does not prove knowledge, dispatch or arrival",
         "do not infer observation from absence without an eligible observer and actual source opportunity",
@@ -101,7 +114,9 @@
         "disclose source, geometry, date, weather and continuity; distinguish signal emission, receipt and physical travel"
       ],
       "live_operations": [
-        "game.act"
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
       ],
       "transition_timeout_seconds": 20.0,
       "observe_interval_seconds": 0.1
@@ -122,6 +137,45 @@
     ],
     "disallowed_shortcuts": [
       "bind_reference_world"
+    ]
+  },
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "prepared-camp-fire-visibility",
+    "family_title": "Prepared camp fire visibility",
+    "family_purpose": "Compare real smoke and firelight using the prepared open and closed houses.",
+    "variant": "Firelight through open windows"
+  },
+  "playtest_recipe": {
+    "title": "Firelight through open windows",
+    "question": "Does a real ground-floor fire become visible at night while fresh distant smoke detection stops?",
+    "starting_state": {
+      "saved_world_snapshot": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL/.userdata/reference-saves/josef-basecamp-open-windows-20260924-122356/save/TestSetup00",
+      "fixture": "",
+      "profile": "reference-camp-open-001-luna",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Keep the prepared open house and add a normal staffed camp with a credible sight route. Observe daytime smoke, sustain the same fire into natural night and quicksave.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Fresh night firelight reaches the eligible observer; fresh night smoke does not. Prior remembered smoke is not fresh detection.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
     ]
   }
 }

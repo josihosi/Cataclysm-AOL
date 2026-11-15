@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent
-SCENARIO = ROOT / "scenarios/zombie_rider.live_light_memory_continuity_mcw.json"
+SCENARIO = ROOT / "scenarios/zombie_rider.live_light_memory_continuity_isolated_mcw.json"
 PREDATOR_SCENARIO = ROOT / "scenarios/horde.predator_lifecycle_abstract_to_physical_mcw.json"
 
 sys.path.insert(0, str(ROOT))

@@ -1,8 +1,14 @@
 {
   "manifest_version": 1,
   "name": "r032.camp_payment_return_v001_mcw",
-  "catalogue": {"kind": "maintained", "family_id": "camp-payment-defense", "family_title": "Camp payment and defense", "family_purpose": "Observe camp-stock payment, patrol and defense through native play.", "variant": "Camp-stock payment and return"},
-  "description": "Bandit payment and return from the saved R032 Locker camp at 162,36. Character 25 and nearby storage remain; ten RobofacCoin are placed in follower storage 31 map squares east. The setup creates no bandit lead or encounter; payment, departure and renewed contact require native play.",
+  "catalogue": {
+    "kind": "maintained",
+    "family_id": "human-encounters",
+    "family_title": "Demands, defense and settlement",
+    "family_purpose": "Follow genuine human encounters and their physical consequences.",
+    "variant": "Payment returns to the bandit home"
+  },
+  "description": "Does an actual payment travel with the same party and settle once? Use the prepared demand opportunity. Pay through the native trade flow, follow the surviving collectors across loading and inspect their home return.",
   "profile": "r032-camp-payment-return-exp001-20260924",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -57,9 +63,13 @@
     ],
     "setup_only_debug": true,
     "disposable_copy": true,
-    "helpers": ["native-semantic-broker"],
+    "helpers": [
+      "native-semantic-broker"
+    ],
     "permissions": [],
-    "platform": ["macos"],
+    "platform": [
+      "macos"
+    ],
     "profile": "r032-camp-payment-return-exp001-20260924",
     "fixture": "r032_camp_pay_stock_v001_mcw",
     "requirements": {
@@ -70,7 +80,9 @@
       "fixture": "r032_camp_pay_stock_v001_mcw",
       "helper": "native-semantic-broker",
       "peekaboo": false,
-      "input": ["frame-bound semantic requests"],
+      "input": [
+        "frame-bound semantic requests"
+      ],
       "ocr": false,
       "cleanup": true
     },
@@ -81,7 +93,9 @@
       "kind": "native_semantic_bootstrap",
       "label": "bind_r032_camp_payment_world",
       "native_semantic_checkpoint": {
-        "required_actions": ["world.basecamp_missions"],
+        "required_actions": [
+          "world.basecamp_missions"
+        ],
         "required_state": "world",
         "require_initial_hud_world_ready_frame": false
       }
@@ -90,7 +104,7 @@
       "kind": "cockpit_live_session",
       "label": "operate_natural_camp_payment_and_return_ecology",
       "cleanup_on_finish": true,
-      "objective": "Start from the exact saved R032 Locker world. Natively confirm camp [162,36,0], assigned CAMP_RESIDENT character:25, original CAMP_STORAGE zone and the setup-only ten RobofacCoin items at the additional follower-owned CAMP_STORAGE tile. Record their actual native inventory/trade identities and current game time. Do not alter actor, camp, lead, outing, operation, or cooldown state. Advance only ordinary native time with alarms until an actually scheduler-created bandit outing produces a peaceful local Pay/Fight demand. Bind the exact site, activity, members, demand and game time. Choose Pay from that live demand; in the native trade UI offer only enough of the zone-tile coins at the displayed trade value, confirm only a complete trade, and prove the same-run item delta, paid result, returning_home commit and physical departure. After departure, disclose and replenish distinct useful stock in CAMP_STORAGE, record its identities/value/time, then continue ordinary native time and alarms through actual scheduler opportunity, map exit/return and renewed contact. Capture useful native save/reload continuity. If contact or return does not occur, retain elapsed time and exact lead, supply, cooldown, risk, route, roster or decision eligibility cause; absence without a genuine opportunity remains unproved.",
+      "objective": "Does an actual payment travel with the same party and settle once? Use the prepared demand opportunity. Pay through the native trade flow, follow the surviving collectors across loading and inspect their home return. Success boundary: Only the paid goods leave the payer; the same cargo reaches home once, with no loss or duplication across reload.",
       "proof_targets": [
         "same native saved R032 Assignment Camp [162,36,0], character:25/CAMP_RESIDENT and accepted Locker source footing",
         "native observation of both the existing CAMP_STORAGE tile and added spillover zone/RobofacCoin stock at the exact map tile",
@@ -117,7 +131,10 @@
         "use the peaceful-branch save only after coordinator identifies its exact saved state; do not touch a defense-owned process or scenario",
         "preserve first missing scheduler premise and elapsed time; no invented return deadline"
       ],
-      "live_operations": ["game.act", "game.wait"],
+      "live_operations": [
+        "game.act",
+        "game.wait"
+      ],
       "transition_timeout_seconds": 25.0,
       "observe_interval_seconds": 0.1
     }
@@ -130,7 +147,9 @@
         "kind": "native_semantic_bootstrap",
         "label": "bind_r032_paid_camp_after_reload",
         "native_semantic_checkpoint": {
-          "required_actions": ["world.basecamp_missions"],
+          "required_actions": [
+            "world.basecamp_missions"
+          ],
           "required_state": "world",
           "require_initial_hud_world_ready_frame": false
         }
@@ -146,21 +165,34 @@
           "ordinary-time scheduler and lead evidence through renewed contact or causally explained non-return after opportunity",
           "native cleanup of the owned run and bridge"
         ],
-        "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "run.witness", "run.finish"],
+        "authority": [
+          "currently advertised native semantic actions",
+          "game.act",
+          "game.wait",
+          "run.witness",
+          "run.finish"
+        ],
         "invariants": [
           "no fixture reinstallation or state rewrite during continuation",
           "no injected dispatch or shortened cooldown",
           "process replacement and fresh native observations are required"
         ],
-        "live_operations": ["game.act", "game.wait"],
+        "live_operations": [
+          "game.act",
+          "game.wait"
+        ],
         "transition_timeout_seconds": 25.0,
         "observe_interval_seconds": 0.1
       }
     ]
   },
   "proof_route": {
-    "precondition": ["bind_r032_camp_payment_world"],
-    "production_behavior": ["operate_natural_camp_payment_and_return_ecology"],
+    "precondition": [
+      "bind_r032_camp_payment_world"
+    ],
+    "production_behavior": [
+      "operate_natural_camp_payment_and_return_ecology"
+    ],
     "terminal_persistence": [
       "operate_natural_camp_payment_and_return_ecology",
       "bind_r032_paid_camp_after_reload",
@@ -170,6 +202,40 @@
       "operate_natural_camp_payment_and_return_ecology",
       "verify_camp_payment_and_ecology_after_reload"
     ],
-    "disallowed_shortcuts": ["bind_r032_camp_payment_world"]
+    "disallowed_shortcuts": [
+      "bind_r032_camp_payment_world"
+    ]
+  },
+  "playtest_recipe": {
+    "title": "Payment returns to the bandit home",
+    "question": "Does an actual payment travel with the same party and settle once?",
+    "starting_state": {
+      "saved_world_snapshot": "",
+      "fixture": "r032_camp_pay_stock_v001_mcw",
+      "profile": "r032-camp-payment-return-exp001-20260924",
+      "guidance": "Use the declared coherent footing for this executable route. The standard house is the default adaptation for fire, camp and human interaction questions; it is not a substitute for a specific retained state or controlled diagnostic. Preserve owner originals."
+    },
+    "exercise": "Use the prepared demand opportunity. Pay through the native trade flow, follow the surviving collectors across loading and inspect their home return.",
+    "controls": [
+      "play look \u2014 identify the current input owner and relevant scene.",
+      "play controls \u2014 obtain current native actions and copyable movement/wait requests.",
+      "play act ACTION [--target STABLE_ID] \u2014 select an advertised action; use live IDs, not historical examples.",
+      "play wait 5m safe \u2014 example of a batched native wait, not a required interval. Choose duration and safe/stop/ignore for the actual question; ignore can allow injury or death.",
+      "For movement, use the advertised game.move_relative request through play call --request REQUEST.json, or native overmap travel for a usable route. Stop at a decision, obstruction or danger.",
+      "play collect \u2014 collect an outstanding request instead of submitting it again.",
+      "play inspect SELECTOR \u2014 retrieve the relevant field from the returned evidence handle."
+    ],
+    "batching": "Batch to the next useful observation or decision, not to a prescribed command count. Read menu replies before choosing targets. Preserve pending request IDs; inspect partial progress and continue the same request when appropriate. Read-only observations do not advance game time.",
+    "success": "Only the paid goods leave the payer; the same cargo reaches home once, with no loss or duplication across reload.",
+    "failure": "A reproducible contradiction under the stated opportunity is a finding. Preserve the first divergence and distinguish product behavior from setup, transport or stale-input faults. Do not force the expected outcome.",
+    "inconclusive": "Missing source, observer, reachability, elapsed time or current input ownership leaves that part unproved. Repair incidental setup in the current run where possible; do not substitute an easier endpoint.",
+    "evidence": "Use play controls evidence_logs and the actual returned selectors. Record selected source/build, run and actor/site IDs, game-time endpoints and the decisive native events. Correlate emission, receipt, decision and physical action when relevant; a log label or spoken success alone is insufficient.",
+    "finish": "Save useful unfinished state through the native save action. When the run is settled, close its game/helpers, verify exit and delete generated saves/logs/captures and temporary declarations. Keep owner originals and concise current findings; no archive.",
+    "reuse": "Update this recipe with proven setup, controls and diagnostic queries that change future decisions. Replace obsolete advice. Keep live IDs and one-run chronology out; prior success is scoped evidence, not a current-build guarantee.",
+    "references": [
+      ".agents/skills/caol-harness/GAME-MANUAL.md",
+      ".agents/skills/caol-harness/references/live-operation.md",
+      ".agents/skills/caol-harness/references/searching.md"
+    ]
   }
 }
