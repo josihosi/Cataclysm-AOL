@@ -2357,16 +2357,25 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
         REQUIRE( overmap_buffer.ter_existing( missing ) == oter_id() );
         op.source.source_omt = missing;
         op.sweep.candidates = { { project_to<coords::ms>( missing ) + point( 12, 12 ) } };
-        monster missing_goal( *actor() );
-        missing_goal.set_pos_abs_only( tripoint_abs_ms( start.xy(), 1 ) );
         submap_load_counts loads;
         overmap_party_travel::route_search_counts searches;
         scoped_submap_load_counter counted( loads );
         overmap_party_travel::scoped_route_search_counter counted_searches( searches );
-        CHECK( migo_tower::prepare_coarse_step( missing_goal, 1, 100 ).step.reason ==
-               "coarse_route_unavailable" );
-        CHECK( migo_tower::prepare_coarse_step( missing_goal, 1, 100 ).step.reason ==
-               "coarse_route_retry_pending" );
+        const bool saved_trigdist = trigdist;
+        on_out_of_scope restore_distance( [&]() { trigdist = saved_trigdist; } );
+        for( bool circular : { false, true } ) {
+            trigdist = circular;
+            CAPTURE( circular );
+            // Adjacent diagonal OMTs remain local in both distance modes.
+            CHECK( rl_dist( point( 0, 0 ), point( 1, 1 ) ) == 1 );
+            monster missing_goal( *actor() );
+            missing_goal.set_pos_abs_only( tripoint_abs_ms( start.xy(), 1 ) );
+            const auto unavailable = migo_tower::prepare_coarse_step( missing_goal, 1, 100 );
+            CHECK_FALSE( unavailable.local_handoff );
+            CHECK( unavailable.step.reason == "coarse_route_unavailable" );
+            CHECK( migo_tower::prepare_coarse_step( missing_goal, 1, 100 ).step.reason ==
+                   "coarse_route_retry_pending" );
+        }
         CHECK( searches.searches == 0 );
         CHECK( loads.lookup_calls == 0 );
         CHECK( overmap_buffer.ter_existing( missing ) == oter_id() );
@@ -2441,6 +2450,7 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
     // next edge, then hands that bounded edge to the physical exit motor.
     monster departing( *actor() );
     departing.set_pos_abs_only( member.home );
+    std::optional<tripoint_abs_ms> departure_waypoint;
     submap_load_counts departure_loads;
     overmap_party_travel::route_search_counts departure_searches;
     {
@@ -2449,6 +2459,7 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
         const auto departure = migo_tower::prepare_coarse_step( departing, 1, 100 );
         REQUIRE( departure.local_handoff );
         REQUIRE( departure.local_waypoint );
+        departure_waypoint = departure.local_waypoint;
         REQUIRE_FALSE( departing.migo_intent()->coarse_route.path.empty() );
         CHECK( project_to<coords::omt>( *departure.local_waypoint ) ==
                departing.migo_intent()->coarse_route.path.back() );
@@ -2458,6 +2469,32 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
     }
     CHECK( departure_searches.searches == 1 );
     CHECK( departure_loads.lookup_calls == 0 );
+    {
+        // Exercise the waypoint authentication with a distant goal in both
+        // modes, retaining the actual shared-selected first edge above.
+        auto &op = *towers.find( site_id )->operation;
+        const auto old_sweep = op.sweep;
+        const auto old_target = departing.migo_intent()->coarse_route.target;
+        const bool old_distance = trigdist;
+        on_out_of_scope restore_waypoint_test( [&]() {
+            op.sweep = old_sweep;
+            departing.migo_intent()->coarse_route.target = old_target;
+            trigdist = old_distance;
+        } );
+        const tripoint_abs_omt far( project_to<coords::omt>( owner_pos + point( 1000, 1000 ) ), 0 );
+        op.sweep.candidates = { { project_to<coords::ms>( far ) + point( 12, 12 ) } };
+        departing.migo_intent()->coarse_route.target = far;
+        migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+        for( bool circular : { false, true } ) {
+            trigdist = circular;
+            CAPTURE( circular );
+            const auto physical = migo_tower::prepare_step(
+                          departing, migo_population::representation::abstract,
+                          departure_waypoint );
+            CHECK( physical.reason != "inactive_operation_interval" );
+            CHECK( physical.reason != "invalid_transit_waypoint" );
+        }
+    }
     // An unavailable distant route does not fall back to detailed tower
     // navigation, and changed overmap terrain permits reconsideration.
     overmap_buffer.ter_set( target, oter_str_id( "solid_earth" ) );

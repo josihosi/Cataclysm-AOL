@@ -1644,7 +1644,7 @@ static bool uses_local_approach( const monster &body, const tripoint_abs_ms &goa
     const tripoint_abs_omt origin = project_to<coords::omt>( body.pos_abs() );
     const tripoint_abs_omt destination = project_to<coords::omt>( goal );
     return get_map().inbounds( body.pos_abs() ) ||
-           rl_dist( origin.xy(), destination.xy() ) <= 1 ||
+           square_dist( origin.xy(), destination.xy() ) <= 1 ||
            near_tower_footprint( body, site_anchor );
 }
 
@@ -1714,7 +1714,7 @@ coarse_step_read prepare_coarse_step( monster &body, int active_turns, int curre
     }
     const bool tower_departure = !get_map().inbounds( body.pos_abs() ) &&
                                  origin.z() == goal->z() &&
-                                 rl_dist( origin.xy(), destination.xy() ) > 1 &&
+                                 square_dist( origin.xy(), destination.xy() ) > 1 &&
                                  near_tower_footprint( body, site->anchor );
     if( uses_local_approach( body, *goal, site->anchor ) && !tower_departure ) {
         // Departure, local interactions and final/vertical approach remain
@@ -1919,7 +1919,7 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
     const bool tower_departure = waypoint_site && waypoint_goal &&
                                  !get_map().inbounds( body.pos_abs() ) &&
                                  body.pos_abs().z() == waypoint_goal->z() &&
-                                 rl_dist( origin_omt.xy(), project_to<coords::omt>( *waypoint_goal ).xy() ) > 1 &&
+                                 square_dist( origin_omt.xy(), project_to<coords::omt>( *waypoint_goal ).xy() ) > 1 &&
                                  near_tower_footprint( body, waypoint_site->anchor ) &&
                                  intent.coarse_route.target == std::optional<tripoint_abs_omt>(
                                      tripoint_abs_omt( project_to<coords::omt>( *waypoint_goal ).xy(),
