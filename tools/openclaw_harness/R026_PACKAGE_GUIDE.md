@@ -10,6 +10,8 @@ installation, save transforms, debug placement, startup, screenshots, OCR, termi
 accepted input, and combined prose receive no gameplay credit. Keep writhing stalkers and zombie
 riders out of every R-026 witness.
 
+For party movement, signal reception and the handoff to local bodies, see the [overmap AI field guide](../../doc/overmap-ai-field-guide.md#human-scout-and-mi-go-investigator).
+
 ## Current source-bound route
 
 - Scenario: `r026.living_npc_package_v001_mcw`.
