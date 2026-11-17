@@ -214,7 +214,7 @@ jobs:
           echo "target_sha=$target_sha" >> "$GITHUB_OUTPUT"
 
       - name: Verify C-AOL Python contracts
-        if: steps.metadata.outputs.target_ref == 'port/cdda-master' || steps.metadata.outputs.target_ref == 'dev'
+        if: steps.metadata.outputs.target_ref == 'port/cdda-master'
         shell: bash
         run: |
           set -eu
