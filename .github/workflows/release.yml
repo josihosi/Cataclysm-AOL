@@ -50,6 +50,12 @@ on:
           - port/cdda-0.H
           - port/cdda-0.I
           - port/ctlg-master
+          - dev
+      rehearsal_sha:
+        description: Full immutable commit SHA for artifact-only dev rehearsal (leave empty for port releases)
+        required: false
+        default: ""
+        type: string
 
 env:
   REPOSITORY_NAME: ${{ github.event.repository.name }}
@@ -87,10 +93,31 @@ jobs:
         id: metadata
         env:
           BUILD_TIME: ${{ steps.get-timestamp.outputs.time }}
+          REHEARSAL_SHA: ${{ github.event.inputs.rehearsal_sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -eu
           branch="${TARGET_REF}"
+          if [ "$branch" = dev ]; then
+            if [ "$EVENT_NAME" != workflow_dispatch ] || ! [[ "$REHEARSAL_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo 'dev rehearsal requires a full lowercase commit SHA on manual dispatch' >&2
+              exit 1
+            fi
+          elif [ -n "$REHEARSAL_SHA" ]; then
+            echo 'rehearsal_sha is only valid for dev; refusing port release' >&2
+            exit 1
+          fi
           case "$branch" in
+            dev)
+              branch_display="dev artifact rehearsal"
+              branch_key="dev-rehearsal"
+              source_tar="cataclysmdda-0.J.tar.gz"
+              source_zip="cataclysmdda-0.J.zip"
+              use_sdl3="true"
+              handoff="true"
+              vcpkg_commit="f6672d8e480ccdecddfad3fd1b838ba369ffe6cd"
+              msbuild_targets="Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip"
+              ;;
             port/cdda-master)
               branch_display="CDDA master port"
               branch_key="cdda-master"
@@ -160,17 +187,34 @@ jobs:
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          ref: ${{ github.event_name == 'push' && github.sha || steps.metadata.outputs.target_ref }}
+          ref: ${{ github.event_name == 'push' && github.sha || (steps.metadata.outputs.target_ref == 'dev' && github.event.inputs.rehearsal_sha) || steps.metadata.outputs.target_ref }}
           fetch-tags: true
           persist-credentials: false
 
       - name: Resolve target commit
         id: resolve-target
         shell: bash
-        run: echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          REHEARSAL_SHA: ${{ github.event.inputs.rehearsal_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          target_sha="$(git rev-parse HEAD)"
+          if [ "$TARGET_REF" = dev ]; then
+            if [ "$target_sha" != "$REHEARSAL_SHA" ]; then
+              echo "Resolved checkout does not match requested rehearsal SHA" >&2
+              exit 1
+            fi
+            comparison="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${REHEARSAL_SHA}...dev" --jq .status)"
+            case "$comparison" in
+              ahead|identical) ;;
+              *) echo "Requested SHA is not on the dev history: $comparison" >&2; exit 1 ;;
+            esac
+          fi
+          echo "target_sha=$target_sha" >> "$GITHUB_OUTPUT"
 
       - name: Verify C-AOL Python contracts
-        if: steps.metadata.outputs.target_ref == 'port/cdda-master'
+        if: steps.metadata.outputs.target_ref == 'port/cdda-master' || steps.metadata.outputs.target_ref == 'dev'
         shell: bash
         run: |
           set -eu
@@ -660,6 +704,8 @@ jobs:
 
   publish:
     name: Publish verified prerelease
+    # A dev rehearsal is artifacts-only even if any other input is changed.
+    if: ${{ contains(fromJSON('["port/cdda-master", "port/cdda-0.H", "port/cdda-0.I", "port/ctlg-master"]'), needs.release.outputs.target_ref) && !github.event.inputs.rehearsal_sha }}
     needs:
       - release
       - builds
