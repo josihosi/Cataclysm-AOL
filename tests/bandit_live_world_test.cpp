@@ -238,6 +238,7 @@ static JsonValue native_trace_value( const std::string &line )
 }
 
 std::string live_bandit_homeward_boundary_discriminator_for_test();
+void reconcile_live_bandit_local_homeward_route_cursors_for_test();
 std::vector<tripoint_abs_omt> live_bandit_clock_outbound_path_for_test(
     const bandit_live_world::site_record &site, const std::vector<tripoint_abs_omt> &preflight );
 std::vector<tripoint_abs_omt> live_bandit_clock_homeward_path_for_test(
@@ -64892,6 +64893,151 @@ TEST_CASE( "recovered frontier world reconciles unchanged native NPC leases once
     }
 }
 
+
+TEST_CASE( "homeward boundary does not reverse a newly admitted pair",
+           "[bandit_live_world][return_admission_reversal]" )
+{
+    using namespace bandit_live_world;
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r067_pair_cohesion_5556981.json" );
+    map &here = get_map();
+    // Place the north map edge halfway through an OMT, as in the saved
+    // Housatonic reversal: the next homeward OMT lies inside the bubble.
+    here.load( tripoint_abs_sm( 258, 283, 0 ), false );
+    get_avatar().setpos( here, tripoint_bub_ms( 80, 90, 0 ), false );
+    g->reload_npcs();
+    npc &first = scene.actor( 5 );
+    npc &second = scene.actor( 6 );
+    REQUIRE( first.is_active() );
+    REQUIRE( second.is_active() );
+    for( const auto &p : here.points_on_zlevel( 0 ) ) {
+        here.ter_set( p, ter_id( "t_floor" ) );
+        here.furn_set( p, furn_id( "f_null" ) );
+        here.remove_trap( p );
+    }
+    first.setpos( here, tripoint_bub_ms( 47, 0, 0 ) );
+    second.setpos( here, tripoint_bub_ms( 46, 0, 0 ) );
+    const auto current = first.pos_abs_omt();
+    REQUIRE( second.pos_abs_omt() == current );
+    const auto home = scene.site().anchor;
+    REQUIRE( home.y() > current.y() + 5 );
+    const auto assign_south_route = [&]( npc &member ) {
+        member.goal = home;
+        member.omt_path.clear();
+        member.omt_path.push_back( home );
+        for( int y = home.y(); y >= current.y(); --y ) {
+            member.omt_path.emplace_back( current.x(), y, current.z() );
+        }
+    };
+    assign_south_route( first );
+    assign_south_route( second );
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0, true );
+    const auto forward = live_bandit_homeward_boundary_steps_for_test();
+    REQUIRE( forward.size() == 2 );
+    for( const auto &step : forward ) {
+        CHECK( step.second.second.y() > here.get_abs( tripoint_bub_ms( 0,
+               here.getmapsize() * SEEX - 1, 0 ) ).y() );
+        CHECK( project_to<coords::omt>( step.second.second ) != current );
+    }
+    // The real saved pair briefly stepped sideways into an OMT absent from
+    // its route. Its admitted OMT must not become a new forward waypoint.
+    REQUIRE( scene.site().active_outing.local_handoff.route_position == current );
+    first.setpos( here, tripoint_bub_ms( 48, 1, 0 ) );
+    second.setpos( here, tripoint_bub_ms( 49, 1, 0 ) );
+    REQUIRE( first.pos_abs_omt() != current );
+    REQUIRE( second.pos_abs_omt() == first.pos_abs_omt() );
+    const auto after_detour = live_bandit_homeward_boundary_steps_for_test();
+    INFO( live_bandit_homeward_boundary_discriminator_for_test() );
+    CAPTURE( scene.site().active_outing.local_handoff.is_active(),
+             scene.site().active_outing.local_handoff.route_position );
+    REQUIRE( after_detour.size() == 2 );
+    for( const auto &step : after_detour ) {
+        CHECK( step.second.second.y() > here.get_abs( tripoint_bub_ms( 0,
+               here.getmapsize() * SEEX - 1, 0 ) ).y() );
+        CHECK( project_to<coords::omt>( step.second.second ) != current );
+    }
+    // A later OMT physically reached by each member becomes its own durable
+    // cursor; a subsequent off-route detour must not resurrect that OMT as
+    // a forward boundary after the outing is serialized and read back.
+    const tripoint_abs_omt reached( current.x() + 1, current.y(), current.z() );
+    for( npc *member : { &first, &second } ) {
+        member->omt_path = { home, tripoint_abs_omt( current.x(), home.y(), current.z() ) };
+        for( int y = home.y(); y > current.y(); --y ) {
+            member->omt_path.emplace_back( reached.x(), y, current.z() );
+        }
+        member->omt_path.push_back( reached );
+        member->omt_path.push_back( current );
+    }
+    const auto old_lease = second.get_bandit_live_world_projection_lease();
+    auto stale_lease = old_lease;
+    ++stale_lease.handoff_epoch;
+    second.set_bandit_live_world_projection_lease( stale_lease );
+    on_out_of_scope restore_lease( [&]() {
+        second.set_bandit_live_world_projection_lease( old_lease );
+    } );
+    const auto active_turns_before = scene.site().active_outing.activation.active_turns;
+    const auto work_before = r067_return_record_bytes( scene.site().active_outing.coarse_work );
+    reconcile_live_bandit_local_homeward_route_cursors_for_test();
+    for( const auto &member : scene.site().active_outing.local_handoff.members ) {
+        CHECK_FALSE( member.local_route_cursor );
+    }
+    second.set_bandit_live_world_projection_lease( old_lease );
+    reconcile_live_bandit_local_homeward_route_cursors_for_test();
+    CHECK( scene.site().active_outing.activation.active_turns == active_turns_before );
+    CHECK( r067_return_record_bytes( scene.site().active_outing.coarse_work ) == work_before );
+    for( const auto &member : scene.site().active_outing.local_handoff.members ) {
+        REQUIRE( member.local_route_cursor == reached );
+        REQUIRE( member.local_route_goal == home );
+    }
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world = round_trip_world( world );
+    for( const auto &member : scene.site().active_outing.local_handoff.members ) {
+        CHECK( member.local_route_cursor == reached );
+        CHECK( member.local_route_goal == home );
+    }
+    first.setpos( here, tripoint_bub_ms( 72, 1, 0 ) );
+    second.setpos( here, tripoint_bub_ms( 73, 1, 0 ) );
+    REQUIRE( first.pos_abs_omt() != reached );
+    const auto after_later_detour = live_bandit_homeward_boundary_steps_for_test();
+    REQUIRE( after_later_detour.size() == 2 );
+    for( const auto &step : after_later_detour ) {
+        CHECK( step.second.second.y() > here.get_abs( tripoint_bub_ms( 0,
+               here.getmapsize() * SEEX - 1, 0 ) ).y() );
+        CHECK( project_to<coords::omt>( step.second.second ) != reached );
+    }
+    // Restore the earlier cursor and route for the independent blocked and
+    // outward-fallback controls below.
+    for( auto &member : scene.site().active_outing.local_handoff.members ) {
+        member.local_route_cursor.reset();
+        member.local_route_goal.reset();
+    }
+    first.setpos( here, tripoint_bub_ms( 48, 1, 0 ) );
+    second.setpos( here, tripoint_bub_ms( 49, 1, 0 ) );
+    assign_south_route( first );
+    assign_south_route( second );
+    // A real closed southern perimeter must hold the pair locally rather
+    // than immediately send it back over its north admission edge.
+    for( int x = 0; x < here.getmapsize() * SEEX; ++x ) {
+        here.ter_set( tripoint_bub_ms( x, here.getmapsize() * SEEX - 1, 0 ), ter_id( "t_rock" ) );
+    }
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0, true );
+    CHECK( live_bandit_homeward_boundary_steps_for_test().empty() );
+    // A route whose first distinct OMT is genuinely outside the north edge
+    // may still use a same-OMT exit that advances toward that route.
+    const tripoint_abs_omt north( current.x(), current.y() - 1, current.z() );
+    for( npc *member : { &first, &second } ) {
+        member->omt_path = { home, north, current };
+    }
+    const auto detour = live_bandit_homeward_boundary_steps_for_test();
+    REQUIRE( detour.size() == 2 );
+    for( const auto &step : detour ) {
+        CHECK( step.second.second.y() < here.get_abs( tripoint_bub_ms( 0, 0, 0 ) ).y() );
+        CHECK( project_to<coords::omt>( step.second.second ) == current );
+    }
+}
 
 // Copied native5556981 bodies and terrain, reconstructed caches/seed, LLM off.
 // Regrouping is selected only by the production motor: no test path assignment.

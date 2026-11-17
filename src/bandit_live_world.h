@@ -578,6 +578,10 @@ struct local_handoff_member_snapshot {
     tripoint_abs_ms exit_position;
     int hp_percent = 0;
     bool dead = false;
+    // Last route OMT physically reached by this member during a local
+    // homeward handoff; absent in older saves until real movement proves it.
+    std::optional<tripoint_abs_omt> local_route_cursor = std::nullopt;
+    std::optional<tripoint_abs_omt> local_route_goal = std::nullopt;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );

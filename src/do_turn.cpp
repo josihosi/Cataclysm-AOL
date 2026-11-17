@@ -2159,6 +2159,7 @@ std::vector<tripoint_abs_omt> live_bandit_clock_downstream_path_for_test(
 void prepare_live_bandit_abstract_scout_travel_moved_for_test(
     const std::set<character_id> &moved );
 std::string live_bandit_homeward_boundary_discriminator_for_test();
+void reconcile_live_bandit_local_homeward_route_cursors_for_test();
 std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
 std::string live_bandit_homeward_partner_route_read_for_test(
     character_id member_id, character_id partner_id );
@@ -20422,6 +20423,66 @@ std::vector<std::size_t> live_bandit_neighbor_indices(
     return neighbors;
 }
 
+// Record only route OMTs actually reached by authenticated loaded bodies.
+// This is independent of the party's paid travel clock and survives a save
+// made while a member is temporarily off its overmap route.
+void reconcile_live_bandit_local_homeward_route_cursor( bandit_live_world::site_record &site,
+        npc &body )
+{
+    using namespace bandit_live_world;
+    const auto &outing = site.active_outing;
+    if( !outing.is_active() || outing.owner != simulation_owner::local ||
+        !scout_phase_requires_homeward_only( outing.phase ) || !outing.local_handoff.is_active() ||
+        !body.is_active() || body.is_dead() || body.omt_path.empty() ||
+        !body.has_omt_destination() || body.omt_path.front() != body.goal ||
+        overmap_buffer.find_npc( body.getID() ).get() != &body ||
+        !live_bandit_projection_lease_matches( body.get_bandit_live_world_projection_lease(),
+                live_bandit_projection_lease( site.site_id, outing ) ) ||
+        !live_bandit_projection_copies_match( body, body.get_bandit_live_world_projection_lease() ) ) {
+        return;
+    }
+    const auto snapshot = std::find_if( outing.local_handoff.members.begin(),
+    outing.local_handoff.members.end(), [&]( const auto &entry ) {
+        return entry.npc_id == body.getID();
+    } );
+    if( snapshot == outing.local_handoff.members.end() || snapshot->dead ||
+        outing.member_is_resolved( body.getID() ) ) {
+        return;
+    }
+    const auto prior_cursor = snapshot->local_route_cursor && snapshot->local_route_goal == body.goal ?
+                              *snapshot->local_route_cursor : outing.local_handoff.route_position;
+    if( body.pos_abs_omt() == prior_cursor ) {
+        return;
+    }
+    const auto actual = std::find( body.omt_path.rbegin(), body.omt_path.rend(), body.pos_abs_omt() );
+    if( actual == body.omt_path.rend() ) {
+        return;
+    }
+    const auto previous = std::find( body.omt_path.rbegin(), body.omt_path.rend(), prior_cursor );
+    if( previous != body.omt_path.rend() && actual <= previous ) {
+        return;
+    }
+    const auto reached = *actual;
+    const auto goal = body.goal;
+    const auto id = body.getID();
+    commit_live_bandit_local_progress( site, [&]( site_record &candidate ) {
+        auto &current = candidate.active_outing;
+        if( current.activity_id != outing.activity_id || current.generation != outing.generation ||
+            current.handoff_epoch != outing.handoff_epoch || current.owner != simulation_owner::local ||
+            !current.local_handoff.is_active() ) {
+            return false;
+        }
+        const auto member = std::find_if( current.local_handoff.members.begin(),
+        current.local_handoff.members.end(), [id]( const auto &entry ) { return entry.npc_id == id; } );
+        if( member == current.local_handoff.members.end() || member->dead || current.member_is_resolved( id ) ) {
+            return false;
+        }
+        member->local_route_cursor = reached;
+        member->local_route_goal = goal;
+        return true;
+    } );
+}
+
 std::map<character_id, live_bandit_pair_boundary_step>
 live_bandit_pair_boundary_steps(
     const std::map<character_id, tripoint_abs_omt> &destinations,
@@ -20474,13 +20535,64 @@ live_bandit_pair_boundary_steps(
             tripoint_abs_ms departure;
             tripoint_abs_ms exit;
         };
-        const auto route_rank = []( const npc & member,
+        const bool homeward = bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
+        const auto route_cursor = [&]( const npc &member ) {
+            const tripoint_abs_omt current = member.pos_abs_omt();
+            if( !homeward || !outing.local_handoff.is_active() ) {
+                return current;
+            }
+            const auto saved_member = std::find_if( outing.local_handoff.members.begin(),
+            outing.local_handoff.members.end(), [&]( const auto &snapshot ) {
+                return snapshot.npc_id == member.getID();
+            } );
+            const tripoint_abs_omt saved_cursor = saved_member != outing.local_handoff.members.end() &&
+                                                  saved_member->local_route_cursor &&
+                                                  saved_member->local_route_goal == member.goal ?
+                                                  *saved_member->local_route_cursor :
+                                                  outing.local_handoff.route_position;
+            const auto anchor = std::find( member.omt_path.rbegin(), member.omt_path.rend(),
+                                           saved_cursor );
+            if( anchor == member.omt_path.rend() ) {
+                return current;
+            }
+            const auto actual = std::find( member.omt_path.rbegin(), member.omt_path.rend(), current );
+            // An off-route local detour must not turn the already visited
+            // admission OMT into a new forward edge. Advance the cursor only
+            // when the body actually reaches a later OMT in its route.
+            return actual != member.omt_path.rend() && actual >= anchor ? current : *anchor;
+        };
+        const auto first_cursor = route_cursor( *first );
+        const auto second_cursor = route_cursor( *second );
+        const auto route_rank = [&]( const npc & member,
         const tripoint_abs_omt & route_omt ) -> std::optional<std::size_t> {
             const tripoint_abs_omt current = member.pos_abs_omt();
+            if( !homeward ) {
+                std::size_t rank = 0;
+                for( auto route = member.omt_path.rbegin(); route != member.omt_path.rend(); ++route ) {
+                    if( *route == current ) {
+                        continue;
+                    }
+                    ++rank;
+                    if( *route == route_omt ) {
+                        return rank;
+                    }
+                }
+                return route_omt == current ? std::optional<std::size_t>( 0 ) : std::nullopt;
+            }
+            const tripoint_abs_omt cursor = &member == first ? first_cursor : second_cursor;
+            if( route_omt == current || route_omt == cursor ) {
+                return 0;
+            }
+            auto route = std::find( member.omt_path.rbegin(), member.omt_path.rend(), cursor );
+            if( route == member.omt_path.rend() ) {
+                route = member.omt_path.rbegin();
+            } else {
+                ++route;
+            }
             std::size_t rank = 0;
-            for( auto route = member.omt_path.rbegin(); route != member.omt_path.rend(); ++route )
+            for( ; route != member.omt_path.rend(); ++route )
             {
-                if( *route == current ) {
+                if( *route == cursor ) {
                     continue;
                 }
                 ++rank;
@@ -20488,7 +20600,55 @@ live_bandit_pair_boundary_steps(
                     return rank;
                 }
             }
-            return route_omt == current ? std::optional<std::size_t>( 0 ) : std::nullopt;
+            return std::nullopt;
+        };
+        const auto next_route_omt = []( const npc &member,
+        const tripoint_abs_omt &cursor ) -> std::optional<tripoint_abs_omt> {
+            auto it = std::find( member.omt_path.rbegin(), member.omt_path.rend(), cursor );
+            if( it == member.omt_path.rend() ) {
+                it = member.omt_path.rbegin();
+            } else {
+                ++it;
+            }
+            for( ; it != member.omt_path.rend(); ++it ) {
+                if( *it != cursor ) {
+                    return *it;
+                }
+            }
+            return std::nullopt;
+        };
+        const auto first_next = next_route_omt( *first, first_cursor );
+        const auto second_next = next_route_omt( *second, second_cursor );
+        const bool first_next_loaded = first_next &&
+                                       overmap_party_travel::omt_intersects_loaded_map( *first_next );
+        const bool second_next_loaded = second_next &&
+                                        overmap_party_travel::omt_intersects_loaded_map( *second_next );
+        const auto admissible_exit = [&]( const npc &member, const candidate &choice,
+                                          const std::optional<tripoint_abs_omt> &next,
+                                          const tripoint_abs_omt &cursor, const bool next_loaded ) {
+            const auto exit_omt = project_to<coords::omt>( choice.exit );
+            if( !homeward || ( exit_omt != member.pos_abs_omt() && exit_omt != cursor ) ) {
+                return true;
+            }
+            // Do not release an actor straight back across the admission edge
+            // when its next route OMT still requires the loaded local map.
+            if( !next || next_loaded ) {
+                return false;
+            }
+            const auto target = project_to<coords::ms>( *next ) + point( SEEX, SEEY );
+            const auto direction = choice.exit - choice.departure;
+            const auto remaining = target - choice.departure;
+            return static_cast<std::int64_t>( direction.x() ) * remaining.x() +
+                   static_cast<std::int64_t>( direction.y() ) * remaining.y() > 0;
+        };
+        const auto pair_score = [first, second, homeward]( const candidate &a, const candidate &b,
+        const std::size_t first_rank, const std::size_t second_rank ) {
+            const int first_distance = rl_dist( first->pos_abs(), a.departure );
+            const int second_distance = rl_dist( second->pos_abs(), b.departure );
+            return std::make_tuple( homeward && ( first_rank == 0 || second_rank == 0 ) ? 1 : 0,
+                                    std::max( first_rank, second_rank ), first_rank + second_rank,
+                                    std::max( first_distance, second_distance ),
+                                    first_distance + second_distance, a.departure, b.departure );
         };
         std::vector<candidate> candidates;
         std::size_t visited_boundary_cells = 0;
@@ -20526,7 +20686,7 @@ live_bandit_pair_boundary_steps(
         } );
 
         std::optional<std::pair<candidate, candidate>> selected;
-        std::tuple<std::size_t, std::size_t, int, int,
+        std::tuple<int, std::size_t, std::size_t, int, int,
             tripoint_abs_ms, tripoint_abs_ms> selected_score;
         std::vector<std::pair<candidate, candidate>> complete_pairs;
         std::map<tripoint_abs_ms, std::vector<std::size_t>> candidates_by_exit;
@@ -20566,17 +20726,15 @@ live_bandit_pair_boundary_steps(
                 if( !first_route_rank || !second_route_rank ) {
                     continue;
                 }
+                if( !admissible_exit( *first, first_candidate, first_next, first_cursor, first_next_loaded ) ||
+                    !admissible_exit( *second, second_candidate, second_next, second_cursor, second_next_loaded ) ) {
+                    continue;
+                }
                 if( require_safe_routes || route_discriminators != nullptr ) {
                     complete_pairs.emplace_back( first_candidate, second_candidate );
                 }
-                const int first_distance = rl_dist( first->pos_abs(), first_candidate.departure );
-                const int second_distance = rl_dist( second->pos_abs(), second_candidate.departure );
-                const auto score = std::make_tuple(
-                                       std::max( *first_route_rank, *second_route_rank ),
-                                       *first_route_rank + *second_route_rank,
-                                       std::max( first_distance, second_distance ),
-                                       first_distance + second_distance,
-                                       first_candidate.departure, second_candidate.departure );
+                const auto score = pair_score( first_candidate, second_candidate,
+                                               *first_route_rank, *second_route_rank );
                 if( !selected || score < selected_score ) {
                     selected = std::make_pair( first_candidate, second_candidate );
                     selected_score = score;
@@ -20589,15 +20747,11 @@ live_bandit_pair_boundary_steps(
             // Rank safe pairs by the same route/proximity score as the ordinary
             // selector, so two actors already at legal slots do not swap forever.
             std::stable_sort( complete_pairs.begin(), complete_pairs.end(),
-            [&route_rank, first, second]( const auto & lhs, const auto & rhs ) {
-                const auto score = [&route_rank, first, second]( const auto & pair ) {
+            [&route_rank, &pair_score, first, second]( const auto & lhs, const auto & rhs ) {
+                const auto score = [&route_rank, &pair_score, first, second]( const auto & pair ) {
                     const auto first_rank = *route_rank( *first, project_to<coords::omt>( pair.first.exit ) );
                     const auto second_rank = *route_rank( *second, project_to<coords::omt>( pair.second.exit ) );
-                    const int first_distance = rl_dist( first->pos_abs(), pair.first.departure );
-                    const int second_distance = rl_dist( second->pos_abs(), pair.second.departure );
-                    return std::make_tuple( std::max( first_rank, second_rank ), first_rank + second_rank,
-                                            std::max( first_distance, second_distance ), first_distance + second_distance,
-                                            pair.first.departure, pair.second.departure );
+                    return pair_score( pair.first, pair.second, first_rank, second_rank );
                 };
                 return score( lhs ) < score( rhs );
             } );
@@ -22085,6 +22239,7 @@ void monmove()
     std::set<character_id> pair_homeward_travel_ids;
     std::map<character_id, character_id> pair_homeward_partner_ids;
     std::map<character_id, std::string> pair_homeward_site_ids;
+    std::map<character_id, std::string> homeward_cursor_site_ids;
     std::map<character_id, tripoint_abs_omt> pair_ingress_travel_destinations;
     std::map<character_id, live_bandit_pair_boundary_step> pair_ingress_boundary_steps;
     std::map<character_id, live_bandit_pair_boundary_step> pair_standard_boundary_steps;
@@ -22182,6 +22337,17 @@ void monmove()
                 const auto destination = live_bandit_homeward_destination( site );
                 if( pair_homeward_travel_ids.count( member_id ) > 0 && destination ) {
                     pair_homeward_destinations.emplace( member_id, *destination );
+                    homeward_cursor_site_ids.emplace( member_id, site.site_id );
+                }
+            }
+        }
+        // Reconcile only selected homeward bodies before choosing a boundary,
+        // including a body loaded from a save immediately after crossing.
+        for( const auto &[id, site_id] : homeward_cursor_site_ids ) {
+            auto *site = overmap_buffer.global_state.bandit_live_world.find_site( site_id );
+            if( site ) {
+                if( npc *body = g->find_npc( id ) ) {
+                    reconcile_live_bandit_local_homeward_route_cursor( *site, *body );
                 }
             }
         }
@@ -22280,9 +22446,22 @@ void monmove()
         guy.reconcile_alarm_response();
         bool entered_action_loop = false;
         bool crossed_hostile_boundary = false;
+        const auto cursor_site = homeward_cursor_site_ids.find( guy.getID() );
+        tripoint_abs_omt cursor_observed_omt = guy.pos_abs_omt();
+        const auto reconcile_crossed_homeward_omt = [&]() {
+            if( cursor_site == homeward_cursor_site_ids.end() ||
+                guy.pos_abs_omt() == cursor_observed_omt ) {
+                return;
+            }
+            cursor_observed_omt = guy.pos_abs_omt();
+            if( auto *site = overmap_buffer.global_state.bandit_live_world.find_site( cursor_site->second ) ) {
+                reconcile_live_bandit_local_homeward_route_cursor( *site, guy );
+            }
+        };
         while( !guy.is_dead() && ( !guy.in_sleep_state() ||
                                    guy.activity.id() == ACT_OPERATION || guy.activity.id() == ACT_MIGRATION_CANCEL ) &&
                guy.get_moves() > 0 && turns < 10 ) {
+            reconcile_crossed_homeward_omt();
             entered_action_loop = true;
             live_bandit_homeward_motor_trace homeward_trace(
                 guy, pair_homeward_travel_ids.count( guy.getID() ) > 0 );
@@ -23040,6 +23219,7 @@ void monmove()
                           guy.get_name(), guy.activity.id().str() );
             }
         }
+        reconcile_crossed_homeward_omt();
         if( !entered_action_loop ) {
             if( pair_ingress_travel_destinations.count( guy.getID() ) ||
                 pair_assembly_orders.count( guy.getID() ) ) {
@@ -26270,6 +26450,18 @@ std::string live_bandit_homeward_boundary_discriminator_for_test()
         DebugLog( D_INFO, DC_ALL ) << "exit_cost_test " << result;
     }
     return result;
+}
+
+void reconcile_live_bandit_local_homeward_route_cursors_for_test()
+{
+    for( auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        const auto ids = site.active_outing.member_ids;
+        for( const character_id id : ids ) {
+            if( npc *body = g->find_npc( id ) ) {
+                reconcile_live_bandit_local_homeward_route_cursor( site, *body );
+            }
+        }
+    }
 }
 
 std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>

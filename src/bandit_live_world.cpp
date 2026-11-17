@@ -5650,6 +5650,8 @@ local_dematerialization_plan plan_local_pair_dematerialization( const site_recor
     std::vector<tripoint_abs_ms> surviving_exit_positions;
     bool all_survivors_confirmed_homeward_exit = true;
     for( local_handoff_member_snapshot &member_snapshot : snapshot.members ) {
+        member_snapshot.local_route_cursor.reset();
+        member_snapshot.local_route_goal.reset();
         const auto read_iter = std::find_if( member_reads.begin(), member_reads.end(),
         [&member_snapshot]( const local_dematerialization_member_read & read ) {
             return read.npc_id == member_snapshot.npc_id;
@@ -10063,6 +10065,12 @@ void local_handoff_member_snapshot::serialize( JsonOut &json ) const
     json.member( "exit_position", exit_position );
     json.member( "hp_percent", std::clamp( hp_percent, 0, 100 ) );
     json.member( "dead", dead );
+    if( local_route_cursor ) {
+        json.member( "local_route_cursor", *local_route_cursor );
+    }
+    if( local_route_goal ) {
+        json.member( "local_route_goal", *local_route_goal );
+    }
     json.end_object();
 }
 
@@ -10084,6 +10092,8 @@ void local_handoff_member_snapshot::deserialize( const JsonObject &jo )
     } else {
         candidate.exit_position = candidate.entry_position;
     }
+    jo.read( "local_route_cursor", candidate.local_route_cursor );
+    jo.read( "local_route_goal", candidate.local_route_goal );
     jo.read( "hp_percent", candidate.hp_percent );
     jo.read( "dead", candidate.dead );
     if( candidate.hp_percent < 0 || candidate.hp_percent > 100 ||
