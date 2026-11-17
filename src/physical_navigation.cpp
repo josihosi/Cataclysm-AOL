@@ -31,6 +31,7 @@ namespace physical_navigation
 {
 namespace
 {
+thread_local query_work_counts *current_query_work_counts = nullptr;
 bool same_settings( const pathfinding_settings &a, const pathfinding_settings &b )
 {
     return std::tie( a.bash_strength, a.max_dist, a.max_length, a.climb_cost,
@@ -152,6 +153,17 @@ class navigation_view : public map
 };
 
 } // namespace
+
+scoped_query_work_counter::scoped_query_work_counter( query_work_counts &counts ) :
+    previous( current_query_work_counts )
+{
+    current_query_work_counts = &counts;
+}
+
+scoped_query_work_counter::~scoped_query_work_counter()
+{
+    current_query_work_counts = previous;
+}
 
 boundary_action step_npc_boundary( npc &body, const tripoint_abs_ms &destination )
 {
@@ -360,7 +372,7 @@ npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
 }
 
 std::optional<step_read> failure_cache::find( const monster &body, const tripoint_abs_ms &goal,
-        const bool movement, const int now )
+        const bool movement, const int now, const bool fresh_on_recorded_turn )
 {
     const auto origin = body.pos_abs();
     // Effects can change movement, fields or other actor capabilities beyond
@@ -387,7 +399,8 @@ std::optional<step_read> failure_cache::find( const monster &body, const tripoin
             it = entries.erase( it );
             continue;
         }
-        if( it->goal == goal && it->movement == movement && it->type == body.type->id &&
+        if( ( !fresh_on_recorded_turn || now != it->recorded_turn ) &&
+            it->goal == goal && it->movement == movement && it->type == body.type->id &&
             it->hp == body.get_hp() && it->speed == body.get_speed() &&
             it->flies == body.flies() && it->submerges == body.can_submerge() &&
             it->climbs == body.can_climb() &&
@@ -410,6 +423,9 @@ void failure_cache::remember( const monster &body, const tripoint_abs_ms &goal,
     if( !body.get_effects().empty() || result.next != action::none || !result.known ||
         result.missing_geometry || result.hazard_revision ||
         result.reason != "no_existing_safe_native_route" ) {
+        entries.erase( std::remove_if( entries.begin(), entries.end(), [&]( const entry &old ) {
+            return old.goal == goal && old.movement == movement;
+        } ), entries.end() );
         return;
     }
     const auto origin = body.pos_abs();
@@ -440,8 +456,12 @@ preparation::~preparation() = default;
 
 step_read read_step( const monster &body, const tripoint_abs_ms &goal,
                      const std::function<bool( const tripoint_abs_ms & )> &occupied, preparation *prepared,
-                     segment *retained, bool approach_unknown_goal, failure_cache *failures )
+                     segment *retained, bool allow_partial_approach, failure_cache *failures,
+                     bool fresh_on_recorded_turn )
 {
+    if( current_query_work_counts ) {
+        ++current_query_work_counts->reads;
+    }
     // Includes every refusal and locally owned view destruction. A retained
     // service workspace tears down under its inclusive operation parent.
     raid_perf_scope read_scope( raid_perf_stage::physical_navigation_read );
@@ -455,14 +475,18 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
     out.position = origin;
     const int now = to_turn<int>( calendar::turn );
     if( failures ) {
-        if( const auto cached = failures->find( body, goal, approach_unknown_goal, now ) ) {
+        if( const auto cached = failures->find( body, goal, allow_partial_approach, now,
+                                               fresh_on_recorded_turn ) ) {
+            if( current_query_work_counts ) {
+                ++current_query_work_counts->cached_refusals;
+            }
             raid_perf_note_query( raid_perf_query_event::no_route );
             return *cached;
         }
     }
     const auto finish = [&]() {
         if( failures ) {
-            failures->remember( body, goal, approach_unknown_goal, now, out );
+            failures->remember( body, goal, allow_partial_approach, now, out );
         }
         return out;
     };
@@ -584,6 +608,9 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
     settings.avoid_dangerous_fields = false;
     settings.bash_strength.clear(); // An unseen wall is not an invented doorway.
     const auto native_route = [&]( const tripoint_bub_ms &to, const auto &exclude ) {
+        if( current_query_work_counts ) {
+            ++current_query_work_counts->native_routes;
+        }
         raid_perf_scope route_scope( raid_perf_stage::physical_navigation_native_route );
         return here->route( from, pathfinding_target::point( to ), settings, exclude );
     };
@@ -664,13 +691,13 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
         // physical destination. Choose the farthest native-reachable point
         // on this bounded segment. In particular, a projection inside a
         // building wall must not prevent approaching its real entrance.
-        // An unshortened goal still requires its actual square; neither an
-        // unknown tile nor a nearby substitute can count as arrival.
+        // An unshortened goal is tried exactly first; neither an unknown tile
+        // nor a nearby substitute can count as arrival.
         const int reach = std::min( length, segment );
         // A movement proposal may approach an unknown goal through a real
         // known prefix. The original goal remains authoritative for arrival;
         // ordinary read-only callers keep their exact-endpoint semantics.
-        const int last = length > segment || ( approach_unknown_goal &&
+        const int last = length > segment || ( allow_partial_approach &&
                          !known( here->get_bub( goal ) ) ) ? 1 : reach;
         for( int distance = reach; distance >= last; --distance ) {
             const auto approach = origin + tripoint_rel_ms( delta.x() * distance / length,
@@ -686,6 +713,33 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
             route = native_route( to, avoid );
             if( !route.empty() ) {
                 break;
+            }
+        }
+        if( route.empty() && allow_partial_approach && length <= segment &&
+            origin.z() == goal.z() && known( here->get_bub( goal ) ) ) {
+            // The exact square may be blocked by a building or outside the
+            // native route budget even while a real approach is available.
+            // Movement owners may advance toward it, but retain the original
+            // goal for arrival and revalidate the positive segment. Bound
+            // retries rather than searching every nearer square each turn.
+            std::optional<tripoint_abs_ms> previous_approach;
+            for( int distance : { reach / 2, reach / 4 } ) {
+                if( distance <= 0 ) {
+                    continue;
+                }
+                const auto approach = origin + tripoint_rel_ms( delta.x() * distance / length,
+                                      delta.y() * distance / length, 0 );
+                if( approach == origin || previous_approach == approach ) {
+                    continue;
+                }
+                previous_approach = approach;
+                const auto to = here->get_bub( approach );
+                if( known( to ) && !avoid( to ) ) {
+                    route = native_route( to, avoid );
+                    if( !route.empty() ) {
+                        break;
+                    }
+                }
             }
         }
         if( !out.known ) {
@@ -708,6 +762,9 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
             // lifetime. Loaded/action reads always get a fresh certificate.
             pathfinding_region &region = remote && prepared ? prepared->impl->region : local_region;
             const auto approach = [&]() {
+                if( current_query_work_counts ) {
+                    ++current_query_work_counts->native_routes;
+                }
                 raid_perf_scope route_scope( raid_perf_stage::physical_navigation_native_route );
                 return here->route( from, pathfinding_target::point( here->get_bub( aim ) ),
                                     settings, geometry_only, &region );

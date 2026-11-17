@@ -68,12 +68,31 @@ class failure_cache
         std::vector<entry> entries;
     public:
         void clear() { entries.clear(); }
+        // A local caller may recheck during the recording turn so an immediate
+        // opening is visible. Later openings can wait for the bounded retry.
         std::optional<step_read> find( const monster &body, const tripoint_abs_ms &goal,
-                                       bool movement, int now );
+                                       bool movement, int now, bool fresh_on_recorded_turn = false );
         void remember( const monster &body, const tripoint_abs_ms &goal, bool movement,
                        int now, const step_read &result );
 };
 class preparation;
+// Optional scoped work counter for bounded caller tests; counts attempts, not
+// disk reads, and owns no navigation state.
+struct query_work_counts {
+    std::size_t reads = 0;
+    std::size_t native_routes = 0;
+    std::size_t cached_refusals = 0;
+};
+class scoped_query_work_counter
+{
+    public:
+        explicit scoped_query_work_counter( query_work_counts &counts );
+        ~scoped_query_work_counter();
+        scoped_query_work_counter( const scoped_query_work_counter & ) = delete;
+        scoped_query_work_counter &operator=( const scoped_query_work_counter & ) = delete;
+    private:
+        query_work_counts *previous;
+};
 // Disposable positive path value. No map/actor pointers, failures or history.
 // The caller owns identity/lifetime; reads consume only actual position changes.
 class segment
@@ -85,10 +104,13 @@ class segment
         std::vector<tripoint_abs_ms> points;
         std::vector<int> costs;
         friend step_read read_step( const monster &, const tripoint_abs_ms &,
-                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache * );
+                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache *, bool );
     public:
         void clear() { *this = segment(); }
         std::size_t size() const { return points.size(); }
+        std::optional<tripoint_abs_ms> target() const {
+            return points.empty() ? std::nullopt : std::optional<tripoint_abs_ms>( goal );
+        }
 };
 // One operation's synchronous, read-only service span. No native action,
 // terrain/field edit, world/file mutation, save, unload or transport may occur.
@@ -98,7 +120,7 @@ class preparation
         struct implementation;
         std::unique_ptr<implementation> impl;
         friend step_read read_step( const monster &, const tripoint_abs_ms &,
-                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache * );
+                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache *, bool );
     public:
         preparation();
         ~preparation();
@@ -110,7 +132,8 @@ class preparation
 step_read read_step( const monster &body, const tripoint_abs_ms &goal,
                      const std::function<bool( const tripoint_abs_ms & )> &occupied = {},
                      preparation *prepared = nullptr, segment *retained = nullptr,
-                     bool approach_unknown_goal = false, failure_cache *failures = nullptr );
+                     bool allow_partial_approach = false, failure_cache *failures = nullptr,
+                     bool fresh_on_recorded_turn = false );
 // Actual movement owners only, after authenticating the canonical source and
 // active opportunity. Loads at most one current/adjacent OMT through the normal
 // native loader. All read/preparation views must have ended before this call.

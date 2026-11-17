@@ -269,9 +269,12 @@ physical_navigation::step_read read_owned_step( monster &body,
     if( context_changed ) {
         intent.navigation_failures.clear();
     }
-    if( owner != migo_population::representation::abstract || get_map().inbounds( body.pos_abs() ) ) {
-        // A locally serviced body can see changed geometry or occupancy while
-        // bypassing this offscreen cache. Do not reuse its old refusal later.
+    const bool local_retry = owner == migo_population::representation::local;
+    const bool remote_retry = owner == migo_population::representation::abstract &&
+                              !get_map().inbounds( body.pos_abs() );
+    if( !local_retry && !remote_retry ) {
+        // A transferred body in the loaded map does not have a stable
+        // offscreen occupancy owner. Never carry a refusal across that seam.
         intent.navigation_failures.clear();
     }
     if( context_changed || ( intent.navigation_world != now && intent.navigation_world != now - 1 ) ) {
@@ -309,8 +312,7 @@ physical_navigation::step_read read_owned_step( monster &body,
         }
         return false;
     }, prepared, &intent.navigation, movement,
-       owner == migo_population::representation::abstract && !get_map().inbounds( body.pos_abs() ) ?
-       &intent.navigation_failures : nullptr );
+       local_retry || remote_retry ? &intent.navigation_failures : nullptr, local_retry );
 }
 
 physical_navigation::step_read read_service_step( monster &body,
@@ -1646,6 +1648,27 @@ static bool uses_local_approach( const monster &body, const tripoint_abs_ms &goa
            near_tower_footprint( body, site_anchor );
 }
 
+static std::optional<tripoint_abs_ms> retained_handoff_goal( const monster &body,
+        const tripoint_abs_omt &next, int now )
+{
+    if( !body.migo_intent() ) {
+        return std::nullopt;
+    }
+    const auto &intent = *body.migo_intent();
+    const auto &identity = body.population_identity();
+    if( intent.navigation_identity.site_id != identity.site_id ||
+        intent.navigation_identity.member_id != identity.member_id ||
+        intent.navigation_identity.epoch != identity.epoch ||
+        intent.navigation_identity.site_anchor != identity.site_anchor ||
+        intent.navigation_generation != intent.generation || intent.navigation_phase != intent.phase ||
+        intent.navigation_owner != static_cast<int>( migo_population::representation::abstract ) ||
+        ( intent.navigation_world != now && intent.navigation_world != now - 1 ) ) {
+        return std::nullopt;
+    }
+    const auto target = intent.navigation.target();
+    return target && project_to<coords::omt>( *target ) == next ? target : std::nullopt;
+}
+
 coarse_step_read prepare_coarse_step( monster &body, int active_turns, int current_moves,
                                       const pending_source_reader &pending_source )
 {
@@ -1838,7 +1861,9 @@ coarse_step_read prepare_coarse_step( monster &body, int active_turns, int curre
         }
         // Keep the shared route during the local crossing; it is reconsidered
         // after the body actually enters the selected OMT.
-        result.local_waypoint = project_to<coords::ms>( intent.coarse_route.path.back() ) + offset.xy();
+        const auto next = intent.coarse_route.path.back();
+        result.local_waypoint = retained_handoff_goal( body, next, now ).value_or(
+                                    project_to<coords::ms>( next ) + offset.xy() );
         result.local_handoff = true;
         return result;
     }
@@ -1905,8 +1930,10 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
           intent.coarse_route.operation_generation != intent.generation ||
           intent.coarse_route.lease_epoch != identity.epoch ||
           project_to<coords::omt>( *transit_waypoint ) != intent.coarse_route.path.back() ||
-          *transit_waypoint != project_to<coords::ms>( intent.coarse_route.path.back() ) +
-          ( body.pos_abs() - project_to<coords::ms>( origin_omt ) ).xy() ||
+          ( *transit_waypoint != project_to<coords::ms>( intent.coarse_route.path.back() ) +
+            ( body.pos_abs() - project_to<coords::ms>( origin_omt ) ).xy() &&
+            retained_handoff_goal( body, intent.coarse_route.path.back(),
+                                   to_turn<int>( calendar::turn ) ) != transit_waypoint ) ||
           ( !overmap_party_travel::omt_intersects_loaded_map( intent.coarse_route.path.back() ) &&
             !tower_departure ) ) ) {
         result.reason = "invalid_transit_waypoint";

@@ -2644,6 +2644,9 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
                 set_abs_sub( origin );
             }
         };
+        on_out_of_scope clear_crossing_fixture( []() {
+            MAPBUFFER.clear_outside_reality_bubble();
+        } );
         partial_loaded_map local_window( project_to<coords::sm>( actor_omt ) + point( 3, -1 ) );
         swap_map use_window( local_window );
         REQUIRE( actor() );
@@ -2713,9 +2716,63 @@ TEST_CASE( "migo abstract scheduler pays an overmap edge without loading its sub
             const auto prepared = migo_tower::prepare_step(
                                       approaching, migo_population::representation::abstract,
                                       crossing.local_waypoint );
+            std::cout << "MIGO_CROSSING_CONTROL action=" << static_cast<int>( prepared.next )
+                      << " reason=" << prepared.reason << " origin=" << approaching.pos_abs()
+                      << " goal=" << *crossing.local_waypoint << " next=" << prepared.position << '\n';
             CHECK( prepared.reason != "invalid_transit_waypoint" );
         }
         CHECK( physical_loads.lookup_calls > 0 );
+        // Prepare actual known floor across this same authenticated boundary.
+        // This is disposable fixture geometry, not generated owner knowledge.
+        const auto origin_sm = project_to<coords::sm>( approaching.pos_abs() );
+        const auto goal_sm = project_to<coords::sm>( *crossing.local_waypoint );
+        for( int x = origin_sm.x() - 2; x <= goal_sm.x() + 2; ++x ) {
+            for( int y = origin_sm.y() - 2; y <= origin_sm.y() + 2; ++y ) {
+                const tripoint_abs_sm cell( x, y, 0 );
+                REQUIRE_FALSE( MAPBUFFER.lookup_submap_cached( cell ) );
+                auto floor = std::make_unique<submap>();
+                floor->set_all_ter( ter_str_id( "t_floor" ) );
+                REQUIRE( MAPBUFFER.add_submap( cell, floor ) );
+            }
+        }
+        local_window.load( local_window.get_abs_sub(), false, false );
+        approaching.migo_intent()->navigation.clear();
+        const auto first_crossing = migo_tower::prepare_step(
+                                        approaching, migo_population::representation::abstract,
+                                        crossing.local_waypoint );
+        REQUIRE( first_crossing.next == physical_navigation::action::walk );
+        REQUIRE( approaching.migo_intent()->navigation.size() > 0 );
+        approaching.set_pos_abs_only( first_crossing.position );
+        REQUIRE( project_to<coords::omt>( approaching.pos_abs() ) == actor_omt );
+        const auto second_crossing = migo_tower::prepare_coarse_step( approaching, 1, 100 );
+        REQUIRE( second_crossing.local_handoff );
+        REQUIRE( second_crossing.local_waypoint );
+        std::cout << "MIGO_CROSSING_REUSE first=" << *crossing.local_waypoint
+                  << " second=" << *second_crossing.local_waypoint << '\n';
+        CHECK( second_crossing.local_waypoint == crossing.local_waypoint );
+        const auto second_step = migo_tower::prepare_step(
+                                     approaching, migo_population::representation::abstract,
+                                     second_crossing.local_waypoint );
+        CHECK( second_step.next == physical_navigation::action::walk );
+        CHECK( second_step.reason != "invalid_transit_waypoint" );
+        monster stale_segment( approaching );
+        ++stale_segment.migo_intent()->navigation_identity.epoch;
+        const auto stale_waypoint = migo_tower::prepare_step(
+                                        stale_segment, migo_population::representation::abstract,
+                                        crossing.local_waypoint );
+        CHECK( stale_waypoint.reason == "invalid_transit_waypoint" );
+        const auto blocked_split = project_remain<coords::sm>( second_step.position );
+        submap *changed = MAPBUFFER.lookup_submap_cached( tripoint_abs_sm( blocked_split.quotient,
+                           second_step.position.z() ) );
+        REQUIRE( changed );
+        changed->set_ter( blocked_split.remainder, ter_str_id( "t_wall" ) );
+        const auto after_change = migo_tower::prepare_step(
+                                      approaching, migo_population::representation::abstract,
+                                      second_crossing.local_waypoint );
+        CHECK( ( after_change.next != physical_navigation::action::walk ||
+                 after_change.position != second_step.position ) );
+        CHECK( approaching.pos_abs() == first_crossing.position );
+        changed->set_ter( blocked_split.remainder, ter_str_id( "t_floor" ) );
     }
 }
 
@@ -5261,6 +5318,61 @@ TEST_CASE( "remote physical refusal backoff rechecks real reopened geometry",
     const auto goal = origin + point::east * 4;
     monster body( mtype_id( "mon_mi_go" ) );
     body.set_pos_abs_only( origin );
+    physical_navigation::failure_cache local_retry;
+    const auto local_read = [&]() {
+        return physical_navigation::read_step( body, goal, {}, nullptr, nullptr, true, &local_retry, true );
+    };
+    REQUIRE( local_read().next == physical_navigation::action::none );
+    for( int x = 3; x <= 5; ++x ) {
+        resident->set_ter( point_sm_ms( x, 6 ), ter_str_id( "t_floor" ) );
+    }
+    // The original refusal cannot hide a same-turn reopening, and a positive
+    // read retires it rather than reviving it on the following turn.
+    REQUIRE( local_read().next == physical_navigation::action::walk );
+    calendar::turn += 1_turns;
+    CHECK( local_read().next == physical_navigation::action::walk );
+    for( int x = 3; x <= 5; ++x ) {
+        resident->set_ter( point_sm_ms( x, 6 ), ter_str_id( "t_wall" ) );
+    }
+    REQUIRE( local_read().next == physical_navigation::action::none );
+    calendar::turn += 1_turns;
+    for( int x = 3; x <= 5; ++x ) {
+        resident->set_ter( point_sm_ms( x, 6 ), ter_str_id( "t_floor" ) );
+    }
+    CHECK( local_read().next == physical_navigation::action::none );
+    calendar::turn += 9_turns;
+    CHECK( local_read().next == physical_navigation::action::walk );
+    for( int x = 3; x <= 5; ++x ) {
+        resident->set_ter( point_sm_ms( x, 6 ), ter_str_id( "t_wall" ) );
+    }
+    local_retry.clear();
+    REQUIRE( local_read().next == physical_navigation::action::none );
+    calendar::turn += 1_turns;
+    physical_navigation::query_work_counts cached_read;
+    {
+        physical_navigation::scoped_query_work_counter counted( cached_read );
+        CHECK( local_read().next == physical_navigation::action::none );
+    }
+    CHECK( cached_read.cached_refusals == 1 );
+    monster changed_type( mtype_id( "mon_mi_go_scout" ) );
+    changed_type.set_pos_abs_only( origin );
+    physical_navigation::query_work_counts capability_changed;
+    {
+        physical_navigation::scoped_query_work_counter counted( capability_changed );
+        CHECK( physical_navigation::read_step( changed_type, goal, {}, nullptr, nullptr, true,
+                                              &local_retry, true ).next == physical_navigation::action::none );
+    }
+    CHECK( capability_changed.cached_refusals == 0 );
+    CHECK( capability_changed.native_routes > 0 );
+    calendar::turn -= 2_turns;
+    physical_navigation::query_work_counts clock_reset;
+    {
+        physical_navigation::scoped_query_work_counter counted( clock_reset );
+        CHECK( physical_navigation::read_step( changed_type, goal, {}, nullptr, nullptr, true,
+                                              &local_retry, true ).next == physical_navigation::action::none );
+    }
+    CHECK( clock_reset.cached_refusals == 0 );
+    CHECK( clock_reset.native_routes > 0 );
     // Comparable control: the same actor, goal and blocked geometry without
     // retained refusals. Count attempts, not physical disk reads or time.
     submap_load_counts baseline;
@@ -5272,6 +5384,27 @@ TEST_CASE( "remote physical refusal backoff rechecks real reopened geometry",
             REQUIRE_FALSE( blocked.missing_geometry );
             REQUIRE( blocked.reason == "no_existing_safe_native_route" );
         }
+    }
+    // Movement-only partial approaches must still stop at a genuine enclosure,
+    // and repeated failed work must remain bounded by the existing retry owner.
+    physical_navigation::failure_cache movement_failures;
+    submap_load_counts movement_counts;
+    {
+        scoped_submap_load_counter counted( movement_counts );
+        const auto blocked = physical_navigation::read_step( body, goal, {}, nullptr, nullptr,
+                             true, &movement_failures );
+        REQUIRE( blocked.reason == "no_existing_safe_native_route" );
+        REQUIRE( blocked.next == physical_navigation::action::none );
+        const auto first_lookups = movement_counts.lookup_calls;
+        REQUIRE( first_lookups > 0 );
+        for( int turn = 0; turn < 9; ++turn ) {
+            calendar::turn += 1_turns;
+            const auto held = physical_navigation::read_step( body, goal, {}, nullptr, nullptr,
+                              true, &movement_failures );
+            CHECK( held.next == physical_navigation::action::none );
+            CHECK( held.position == origin );
+        }
+        CHECK( movement_counts.lookup_calls == first_lookups );
     }
     physical_navigation::failure_cache failures;
     submap_load_counts counts;
@@ -5304,9 +5437,449 @@ TEST_CASE( "remote physical refusal backoff rechecks real reopened geometry",
         const auto reopened = physical_navigation::read_step( body, goal, {}, nullptr, nullptr,
                               false, &failures );
         CHECK( reopened.next == physical_navigation::action::walk );
+        const auto movement_reopened = physical_navigation::read_step( body, goal, {}, nullptr,
+                                       nullptr, true, &movement_failures );
+        CHECK( movement_reopened.next == physical_navigation::action::walk );
         CHECK( counts.lookup_calls > first_lookups );
         CHECK( body.pos_abs() == origin );
     }
+}
+
+TEST_CASE( "local stuck migo parties bound retries and recover",
+           "[migo_tower][physical_navigation][local_retry]" )
+{
+    clear_map();
+    clear_creatures();
+    const auto old_turn = calendar::turn;
+    const auto old_avatar = get_avatar().pos_abs();
+    const auto old_populations = overmap_buffer.global_state.migo_populations;
+    const auto old_towers = overmap_buffer.global_state.migo_towers;
+    on_out_of_scope restore( [&]() {
+        clear_creatures();
+        overmap_buffer.global_state.migo_populations = old_populations;
+        overmap_buffer.global_state.migo_towers = old_towers;
+        calendar::turn = old_turn;
+        get_avatar().setpos( old_avatar, false );
+        clear_map();
+    } );
+    overmap_buffer.global_state.migo_populations = {};
+    overmap_buffer.global_state.migo_towers = {};
+    map &here = get_map();
+    std::vector<monster *> bodies;
+    std::vector<tripoint_bub_ms> starts;
+    for( int i = 0; i < 3; ++i ) {
+        const tripoint_bub_ms start( 25 + i * 30, 40, 0 );
+        starts.push_back( start );
+        for( int x = -1; x <= 1; ++x ) {
+            for( int y = -1; y <= 1; ++y ) {
+                here.ter_set( start + point( x, y ), ter_str_id( x == 0 && y == 0 ?
+                              "t_floor" : "t_wall" ) );
+            }
+        }
+        const auto goal = here.get_abs( start + point( 4, 0 ) );
+        monster *body = g->place_critter_at( mtype_id( "mon_mi_go" ), start );
+        REQUIRE( body );
+        const auto anchor = project_to<coords::omt>( body->pos_abs() );
+        migo_population::member_record member;
+        member.token = { "local-retry-" + std::to_string( i ), "member", 1, anchor };
+        member.type = body->type->id;
+        member.home = body->pos_abs();
+        member.current_position = body->pos_abs();
+        member.owner = migo_population::representation::local;
+        member.assignment = migo_population::duty::dispatched;
+        member.hp = body->get_hp();
+        migo_population::site_record population;
+        population.id = member.token.site_id;
+        population.anchor = anchor;
+        REQUIRE( population.commit_seed( { member }, std::nullopt, "", 0, true, false ) );
+        overmap_buffer.global_state.migo_populations.sites.push_back( population );
+        migo_tower::site_state site;
+        site.site_id = population.id;
+        site.anchor = anchor;
+        migo_tower::operation_record operation;
+        operation.generation = 1;
+        operation.source.source_omt = project_to<coords::omt>( goal );
+        operation.members = { { member.token.member_id, false, false, member.home } };
+        operation.sweep.source = operation.source.source_omt;
+        operation.sweep.generation = 1;
+        operation.sweep.candidates = { { goal } };
+        operation.overdue_after_active = 100000;
+        operation.advance( to_turn<int>( calendar::turn ), 0 );
+        site.operation = operation;
+        overmap_buffer.global_state.migo_towers.sites.push_back( site );
+        body->population_identity() = member.token;
+        migo_tower::member_intent intent;
+        intent.generation = 1;
+        intent.home = member.home;
+        body->set_migo_intent( intent );
+        bodies.push_back( body );
+    }
+    physical_navigation::query_work_counts work;
+    {
+        physical_navigation::scoped_query_work_counter counted( work );
+        for( int turn = 0; turn < 20; ++turn ) {
+            calendar::turn += 1_turns;
+            migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            for( std::size_t i = 0; i < bodies.size(); ++i ) {
+                REQUIRE( migo_tower::plan_local( *bodies[i], false, nullptr ) );
+                CHECK( bodies[i]->pos_abs() == here.get_abs( starts[i] ) );
+            }
+        }
+    }
+    std::cout << "MIGO_LOCAL_RETRY reads=" << work.reads << " routes=" << work.native_routes
+              << " cached=" << work.cached_refusals << '\n';
+    CHECK( work.cached_refusals >= 30 );
+    CHECK( work.native_routes < 100 );
+    physical_navigation::query_work_counts uncached;
+    {
+        physical_navigation::scoped_query_work_counter counted( uncached );
+        for( int turn = 0; turn < 20; ++turn ) {
+            calendar::turn += 1_turns;
+            migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+            for( monster *body : bodies ) {
+                body->migo_intent()->navigation_failures.clear();
+            }
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            for( monster *body : bodies ) {
+                body->migo_intent()->navigation_failures.clear();
+                REQUIRE( migo_tower::plan_local( *body, false, nullptr ) );
+            }
+        }
+    }
+    std::cout << "MIGO_LOCAL_UNCACHED reads=" << uncached.reads << " routes="
+              << uncached.native_routes << '\n';
+    CHECK( uncached.native_routes > work.native_routes * 3 );
+    physical_navigation::query_work_counts identity_reset;
+    {
+        physical_navigation::scoped_query_work_counter counted( identity_reset );
+        ++bodies.front()->migo_intent()->navigation_identity.epoch;
+        REQUIRE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+    }
+    CHECK( identity_reset.native_routes > 0 );
+    auto *first_site = overmap_buffer.global_state.migo_towers.find( "local-retry-0" );
+    REQUIRE( first_site );
+    REQUIRE( first_site->operation );
+    auto &pending_candidate = first_site->operation->sweep.candidates.front();
+    const auto original_goal = pending_candidate.position;
+    pending_candidate.position += point::east;
+    physical_navigation::query_work_counts changed_goal;
+    {
+        physical_navigation::scoped_query_work_counter counted( changed_goal );
+        REQUIRE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+    }
+    CHECK( changed_goal.native_routes > 0 );
+    pending_candidate.position = original_goal;
+    const int original_hp = bodies.front()->get_hp();
+    bodies.front()->set_hp( original_hp - 1 );
+    physical_navigation::query_work_counts changed_body;
+    {
+        physical_navigation::scoped_query_work_counter counted( changed_body );
+        REQUIRE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+    }
+    CHECK( changed_body.native_routes > 0 );
+    bodies.front()->set_hp( original_hp );
+    // Inactive world time cannot move a body or mint work; resumption may
+    // immediately reconsider an expired refusal.
+    get_avatar().setpos( old_avatar + point( 2000, 0 ), false );
+    calendar::turn += 1_turns;
+    migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+    const auto suspended_at = bodies.front()->pos_abs();
+    physical_navigation::query_work_counts suspended;
+    {
+        physical_navigation::scoped_query_work_counter counted( suspended );
+        CHECK_FALSE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+    }
+    CHECK( suspended.reads == 0 );
+    calendar::turn += 20_turns;
+    CHECK( bodies.front()->pos_abs() == suspended_at );
+    get_avatar().setpos( old_avatar, false );
+    migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+    physical_navigation::query_work_counts resumed;
+    {
+        physical_navigation::scoped_query_work_counter counted( resumed );
+        REQUIRE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+    }
+    CHECK( resumed.native_routes > 0 );
+    // A real later opening must be found on a bounded retry, then paid native
+    // movement crosses it; no suspended time or cached failure moves a body.
+    here.ter_set( starts.front() + point::east, ter_str_id( "t_floor" ) );
+    bool moved = false;
+    for( int turn = 0; turn < 10 && !moved; ++turn ) {
+        calendar::turn += 1_turns;
+        migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+        bodies.front()->set_moves( 1000 );
+        REQUIRE( migo_tower::plan_local( *bodies.front(), false, nullptr ) );
+        if( bodies.front()->migo_intent()->waypoint != bodies.front()->pos_abs() ) {
+            REQUIRE( migo_tower::move_local( *bodies.front() ) );
+            moved = bodies.front()->pos_abs() != here.get_abs( starts.front() );
+        }
+    }
+    CHECK( moved );
+}
+
+static void install_continued_migo_maps( const std::filesystem::path &source )
+{
+    REQUIRE( world_generator->active_world );
+    REQUIRE( world_generator->active_world->world_name.rfind( "Test World", 0 ) == 0 );
+    const auto destination = PATH_INFO::world_base_save_path().get_unrelative_path();
+    REQUIRE_FALSE( std::filesystem::equivalent( source, destination ) );
+    std::filesystem::create_directories( destination / "maps" );
+    for( const auto &entry : std::filesystem::directory_iterator( source / "maps" ) ) {
+        const std::string name = entry.path().filename().string();
+        if( name.rfind( "3.6.", 0 ) == 0 || name.rfind( "3.7.", 0 ) == 0 ) {
+            REQUIRE_FALSE( std::filesystem::exists( destination / "maps" / name ) );
+            std::filesystem::copy_file( entry.path(), destination / "maps" / name );
+        }
+    }
+    std::filesystem::copy_file( source / "maps.dict", destination / "maps.dict",
+                                std::filesystem::copy_options::overwrite_existing );
+}
+
+static std::vector<monster> continued_migo_bodies( const std::filesystem::path &source )
+{
+    const std::string player = "#U2FtbWllIFdvbWFjaw==.sav";
+    auto archive = zzip::checked_reader::open( source / ( player + ".zzip" ) );
+    REQUIRE( archive );
+    const auto payload = archive->get_file( player );
+    REQUIRE( payload );
+    const std::string text( reinterpret_cast<const char *>( payload->data() ), payload->size() );
+    const auto start = text.find( '{' );
+    REQUIRE( start != std::string::npos );
+    auto root = json_loader::from_string( text.substr( start ) ).get_object();
+    root.allow_omitted_members();
+    std::vector<monster> bodies;
+    for( JsonObject saved : root.get_array( "active_monsters" ) ) {
+        monster body;
+        body.deserialize( saved );
+        if( body.population_identity().site_id == "mi-go-tower:(127,225,0)" ) {
+            bodies.push_back( std::move( body ) );
+        }
+    }
+    return bodies;
+}
+
+TEST_CASE( "continued saved migo repeated refusal diagnostic",
+           "[.][migo_tower][continued_saved_refusal_diagnostic]" )
+{
+    const char *input = std::getenv( "CAOL_CONTINUED_HOUSATONIC" );
+    REQUIRE( input );
+    const std::filesystem::path source( input );
+    install_continued_migo_maps( source );
+    const auto saved_bodies = continued_migo_bodies( source );
+    const auto scout = std::find_if( saved_bodies.begin(), saved_bodies.end(), []( const monster &m ) {
+        return m.population_identity().member_id == "kRltYmUoiRXrTlHhlDahihkyfucCPHLK";
+    } );
+    REQUIRE( scout != saved_bodies.end() );
+    monster body( *scout );
+    REQUIRE( body.type->id == mtype_id( "mon_mi_go_scout" ) );
+    REQUIRE( body.pos_abs() == tripoint_abs_ms( 2958, 5004, 0 ) );
+    map &here = get_map();
+    const auto old_origin = here.get_abs_sub();
+    const auto old_avatar = get_avatar().pos_abs();
+    const auto old_turn = calendar::turn;
+    on_out_of_scope restore( [&]() {
+        here.load( old_origin, false, false );
+        get_avatar().setpos( old_avatar, false );
+        calendar::turn = old_turn;
+    } );
+    MAPBUFFER.clear_outside_reality_bubble();
+    here.load( tripoint_abs_sm( 242, 411, 6 ), false, false );
+    get_avatar().setpos( tripoint_abs_ms( 2966, 4998, 6 ), false );
+    calendar::turn = time_point::from_turn( 5564394 );
+    const tripoint_abs_ms goal( 2970, 5004, 0 );
+    REQUIRE( here.inbounds( body.pos_abs() ) );
+    REQUIRE( here.inbounds( goal ) );
+    const auto start = std::chrono::steady_clock::now();
+    for( int i = 0; i < 100; ++i ) {
+        const auto read = physical_navigation::read_step( body, goal, {}, nullptr, nullptr, true );
+        REQUIRE( read.known );
+        REQUIRE( read.next == physical_navigation::action::none );
+        REQUIRE( read.reason == "no_existing_safe_native_route" );
+    }
+    const double seconds = std::chrono::duration<double>( std::chrono::steady_clock::now() - start ).count();
+    std::cout << "CONTINUED_MIGO_REFUSAL reads=100 seconds=" << seconds << '\n';
+    std::ifstream dimension_file( source / "dimension_data.gsav" );
+    REQUIRE( dimension_file );
+    const std::string dimension_text( ( std::istreambuf_iterator<char>( dimension_file ) ),
+                                      std::istreambuf_iterator<char>() );
+    const auto json_start = dimension_text.find( '{' );
+    REQUIRE( json_start != std::string::npos );
+    auto dimension = json_loader::from_string( dimension_text.substr( json_start ) ).get_object();
+    dimension.allow_omitted_members();
+    auto world = dimension.get_object( "overmapbuffer" );
+    world.allow_omitted_members();
+    auto old_populations = overmap_buffer.global_state.migo_populations;
+    auto old_towers = overmap_buffer.global_state.migo_towers;
+    on_out_of_scope restore_population( [&]() {
+        clear_creatures();
+        overmap_buffer.global_state.migo_populations = std::move( old_populations );
+        overmap_buffer.global_state.migo_towers = std::move( old_towers );
+    } );
+    clear_creatures();
+    overmap_buffer.global_state.migo_populations.deserialize( world.get_object( "migo_populations" ) );
+    overmap_buffer.global_state.migo_towers.deserialize( world.get_object( "migo_towers" ) );
+    std::vector<monster *> members;
+    REQUIRE( saved_bodies.size() == 3 );
+    for( const monster &saved : saved_bodies ) {
+        monster *member = g->place_critter_at( saved.type->id, here.get_bub( saved.pos_abs() ) );
+        REQUIRE( member );
+        *member = saved;
+        members.push_back( member );
+    }
+    physical_navigation::query_work_counts production;
+    {
+        physical_navigation::scoped_query_work_counter counted( production );
+        for( int turn = 0; turn < 30; ++turn ) {
+            calendar::turn += 1_turns;
+            migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            for( monster *member : members ) {
+                REQUIRE( migo_tower::plan_local( *member, false, nullptr ) );
+            }
+        }
+    }
+    std::cout << "CONTINUED_MIGO_PRODUCTION_RETRY reads=" << production.reads
+              << " routes=" << production.native_routes << " cached=" << production.cached_refusals << '\n';
+    CHECK( production.cached_refusals > 0 );
+    physical_navigation::query_work_counts uncached_production;
+    {
+        physical_navigation::scoped_query_work_counter counted( uncached_production );
+        for( int turn = 0; turn < 30; ++turn ) {
+            calendar::turn += 1_turns;
+            migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+            for( monster *member : members ) {
+                member->migo_intent()->navigation_failures.clear();
+            }
+            migo_tower::service_operations( to_turn<int>( calendar::turn ), 1 );
+            for( monster *member : members ) {
+                member->migo_intent()->navigation_failures.clear();
+                REQUIRE( migo_tower::plan_local( *member, false, nullptr ) );
+            }
+        }
+    }
+    std::cout << "CONTINUED_MIGO_PRODUCTION_UNCACHED reads=" << uncached_production.reads
+              << " routes=" << uncached_production.native_routes << '\n';
+    CHECK( uncached_production.native_routes > production.native_routes * 3 );
+}
+
+TEST_CASE( "continued saved migo local route diagnostic",
+           "[.][migo_tower][continued_saved_route_diagnostic]" )
+{
+    const char *input = std::getenv( "CAOL_CONTINUED_HOUSATONIC" );
+    REQUIRE( input );
+    const std::filesystem::path source( input );
+    install_continued_migo_maps( source );
+    const auto saved_bodies = continued_migo_bodies( source );
+    const auto scout = std::find_if( saved_bodies.begin(), saved_bodies.end(), []( const monster &m ) {
+        return m.population_identity().member_id == "kRltYmUoiRXrTlHhlDahihkyfucCPHLK";
+    } );
+    REQUIRE( scout != saved_bodies.end() );
+    monster body( *scout );
+    REQUIRE( body.type->id == mtype_id( "mon_mi_go_scout" ) );
+    REQUIRE( body.pos_abs() == tripoint_abs_ms( 3003, 5032, 0 ) );
+    map &here = get_map();
+    const auto old_origin = here.get_abs_sub();
+    const auto old_avatar = get_avatar().pos_abs();
+    const auto old_turn = calendar::turn;
+    on_out_of_scope restore( [&]() {
+        here.load( old_origin, false, false );
+        get_avatar().setpos( old_avatar, false );
+        calendar::turn = old_turn;
+    } );
+    MAPBUFFER.clear_outside_reality_bubble();
+    here.load( tripoint_abs_sm( 242, 411, 6 ), false, false );
+    get_avatar().setpos( tripoint_abs_ms( 2966, 4998, 6 ), false );
+    calendar::turn = time_point::from_turn( 5562594 );
+    const tripoint_abs_ms goal( 2970, 5004, 0 );
+    REQUIRE( here.inbounds( body.pos_abs() ) );
+    REQUIRE( here.inbounds( goal ) );
+    const auto target = here.get_bub( goal );
+    CHECK( here.ter( target ) == ter_str_id( "t_floor" ) );
+    CHECK( here.furn( target ) == furn_str_id( "f_counter" ) );
+    CHECK( body.will_move_to( &here, target ) );
+    const auto exact = physical_navigation::read_step( body, goal );
+    CHECK( exact.known );
+    CHECK( exact.next == physical_navigation::action::none );
+    const auto step = physical_navigation::read_step( body, goal, {}, nullptr, nullptr, true );
+    std::cout << "CONTINUED_MIGO_ROUTE known=" << step.known
+              << " action=" << static_cast<int>( step.next ) << " reason=" << step.reason
+              << " next=" << step.position << " missing="
+              << ( step.missing_geometry ? step.missing_geometry->to_string() : "none" ) << '\n';
+    CHECK( step.known );
+    CHECK( step.next == physical_navigation::action::walk );
+    CHECK( step.position != goal );
+    std::ifstream dimension_file( source / "dimension_data.gsav" );
+    REQUIRE( dimension_file );
+    const std::string dimension_text( ( std::istreambuf_iterator<char>( dimension_file ) ),
+                                      std::istreambuf_iterator<char>() );
+    const auto json_start = dimension_text.find( '{' );
+    REQUIRE( json_start != std::string::npos );
+    auto dimension = json_loader::from_string( dimension_text.substr( json_start ) ).get_object();
+    dimension.allow_omitted_members();
+    auto world = dimension.get_object( "overmapbuffer" );
+    world.allow_omitted_members();
+    auto old_populations = overmap_buffer.global_state.migo_populations;
+    auto old_towers = overmap_buffer.global_state.migo_towers;
+    on_out_of_scope restore_population( [&]() {
+        clear_creatures();
+        overmap_buffer.global_state.migo_populations = std::move( old_populations );
+        overmap_buffer.global_state.migo_towers = std::move( old_towers );
+    } );
+    clear_creatures();
+    overmap_buffer.global_state.migo_populations.deserialize( world.get_object( "migo_populations" ) );
+    overmap_buffer.global_state.migo_towers.deserialize( world.get_object( "migo_towers" ) );
+    monster *local = g->place_critter_at( body.type->id, here.get_bub( body.pos_abs() ) );
+    REQUIRE( local );
+    *local = body;
+    migo_tower::refresh_activation( to_turn<int>( calendar::turn ) );
+    local->set_moves( 1000 );
+    const auto before_local = local->pos_abs();
+    REQUIRE( migo_tower::plan_local( *local, false, nullptr ) );
+    REQUIRE( migo_tower::move_local( *local ) );
+    std::cout << "CONTINUED_MIGO_PRODUCTION before=" << before_local
+              << " after=" << local->pos_abs() << " moves=" << local->get_moves() << '\n';
+    CHECK( local->pos_abs() != before_local );
+    CHECK( local->pos_abs() != goal );
+    CHECK( local->get_moves() < 1000 );
+    clear_creatures();
+    physical_navigation::segment retained;
+    const auto first = physical_navigation::read_step( body, goal, {}, nullptr, &retained, true );
+    REQUIRE( first.next == physical_navigation::action::walk );
+    REQUIRE( retained.size() > 0 );
+    CHECK( body.pos_abs() == tripoint_abs_ms( 3003, 5032, 0 ) );
+    const auto again = physical_navigation::read_step( body, goal, {}, nullptr, &retained, true );
+    CHECK( again.position == first.position );
+    body.set_pos_abs_only( first.position );
+    const auto next = physical_navigation::read_step( body, goal, {}, nullptr, &retained, true );
+    CHECK( next.next == physical_navigation::action::walk );
+    body.set_pos_abs_only( tripoint_abs_ms( 3003, 5032, 0 ) );
+    monster traveller( body );
+    physical_navigation::segment journey;
+    std::set<tripoint_abs_ms> visited;
+    visited.insert( traveller.pos_abs() );
+    bool finished = false;
+    for( int i = 0; i < 100; ++i ) {
+        if( traveller.pos_abs() == goal ) {
+            finished = true;
+            break;
+        }
+        const auto move = physical_navigation::read_step( traveller, goal, {}, nullptr, &journey, true );
+        if( move.next == physical_navigation::action::none ) {
+            finished = true;
+            break;
+        }
+        if( move.next == physical_navigation::action::open_door ) {
+            REQUIRE( physical_navigation::commit_door( traveller, move.position ) );
+            continue;
+        }
+        REQUIRE( move.next == physical_navigation::action::walk );
+        REQUIRE( visited.insert( move.position ).second );
+        traveller.set_pos_abs_only( move.position );
+    }
+    std::cout << "CONTINUED_MIGO_FINISH position=" << traveller.pos_abs()
+              << " reached=" << ( traveller.pos_abs() == goal ) << " finished=" << finished << '\n';
+    CHECK( finished );
 }
 
 TEST_CASE( "exact saved migo physical boundary diagnostic",
