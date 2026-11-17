@@ -122,6 +122,8 @@ struct query_request {
     const migo_population::world_state *migo_population = nullptr;
     const migo_tower::world_state *migo_towers = nullptr;
     std::function<bool( character_id )> member_is_loaded;
+    // Side-effect-free position of an already resident NPC, active or not.
+    std::function<std::optional<tripoint_abs_ms>( character_id )> member_position;
     std::function<std::optional<runtime_member_read>( character_id )> read_selected_member;
     std::function<entity_provenance( const std::string & )> provenance_for_entity;
     std::function<std::vector<mobile_entity_read>( const query_region &, std::string_view,
@@ -142,6 +144,12 @@ struct entity_marker {
     int generation = 0;
     // Process-local owner token. Never serialized or persisted.
     std::optional<size_t> authority_index;
+    // Human dispatch markers represent one current member, or a historical
+    // route checkpoint/destination when no current member is available.
+    std::string position_basis = "";
+    std::optional<int> representative_npc_id = std::nullopt;
+    bool members_split = false;
+    int unknown_member_positions = 0;
 };
 
 struct member_detail {

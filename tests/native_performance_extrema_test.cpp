@@ -1,5 +1,51 @@
 #include "cata_catch.h"
 #include "native_performance_extrema.h"
+#include "native_performance_interval.h"
+
+#include <limits>
+
+TEST_CASE( "native interval summary bounds its distribution and excludes invalid durations",
+           "[performance][interval_summary]" )
+{
+    native_performance_interval interval;
+    CHECK_FALSE( interval.percentile_upper_ms( 0.5 ) );
+    for( int i = 0; i < 18; ++i ) {
+        interval.add( 0.0101 );
+    }
+    interval.add( 0.1 );
+    interval.add( 2.1 );
+    interval.add( -1 );
+    interval.add( std::numeric_limits<double>::quiet_NaN() );
+    interval.add( std::numeric_limits<double>::infinity() );
+    CHECK( interval.count == 23 );
+    CHECK( interval.valid == 20 );
+    CHECK( interval.invalid == 3 );
+    CHECK( interval.total_seconds == Approx( 18 * 0.0101 + 0.1 + 2.1 ) );
+    CHECK( interval.over_100ms == 1 );
+    CHECK( interval.overflow == 1 );
+    REQUIRE( interval.percentile_upper_ms( 0.5 ) );
+    CHECK( *interval.percentile_upper_ms( 0.5 ) == 11 );
+    REQUIRE( interval.percentile_upper_ms( 0.95 ) );
+    CHECK( *interval.percentile_upper_ms( 0.95 ) == 100 );
+    CHECK_FALSE( interval.percentile_upper_ms( 1.0 ) );
+    CHECK_FALSE( interval.percentile_upper_ms( 0 ) );
+    CHECK_FALSE( interval.percentile_upper_ms( 1.1 ) );
+    native_performance_interval boundary;
+    boundary.add( 0.1 );
+    boundary.add( 0.100001 );
+    boundary.add( 2.0 );
+    CHECK( boundary.over_100ms == 2 );
+    CHECK( boundary.overflow == 0 );
+    CHECK( *boundary.percentile_upper_ms( 0.5 ) == 101 );
+    CHECK( *boundary.percentile_upper_ms( 1.0 ) == 2000 );
+    native_performance_interval enormous;
+    enormous.add( std::numeric_limits<double>::max() );
+    enormous.add( std::numeric_limits<double>::max() );
+    CHECK( enormous.valid == 2 );
+    CHECK( enormous.overflow == 2 );
+    CHECK( enormous.total_overflow );
+    CHECK_FALSE( enormous.percentile_upper_ms( 0.5 ) );
+}
 
 TEST_CASE( "native_performance_extrema_windows_are_bounded_and_nonoverlapping", "[performance][extrema]" )
 {

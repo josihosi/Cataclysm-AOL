@@ -12,13 +12,30 @@
 #include "pathfinding.h"
 #include "type_id.h"
 
+class map;
 class monster;
+class npc;
 
-// Native short paths over existing physical geometry. No map generation,
-// actor discovery, movement or terrain mutation occurs during a route read.
+// Native short paths over existing physical geometry. Route reads do not
+// generate maps, discover actors, move bodies or mutate terrain.
 namespace physical_navigation
 {
 enum class action : int { none, walk, open_door };
+enum class boundary_action { refused, spent, moved };
+// One already-authorized local step, using existing physical geometry. This
+// does not acquire missing geometry or select a destination.
+boundary_action step_npc_boundary( npc &body, const tripoint_abs_ms &destination );
+struct npc_entry_result {
+    bool interrupted = false;
+    bool acted = false;
+    bool moved = false;
+    bool entered = false;
+};
+// Consume only the supplied local move budget along an existing native route.
+// Unknown geometry, hazards and occupied tiles remain unavailable.
+npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
+        const tripoint_abs_omt &next_omt, int funded_moves,
+        const std::function<bool()> &still_owned );
 struct step_read {
     action next = action::none;
     tripoint_abs_ms position;
@@ -29,6 +46,32 @@ struct step_read {
     // A request for facts at the actor's immediate frontier, never a route
     // certificate. Only an authenticated movement owner may acquire it.
     std::optional<tripoint_abs_ms> missing_geometry;
+};
+// Bounded, value-only short refusal backoff. The owner authenticates actor,
+// generation and representation, and clears this on a binding change.
+class failure_cache
+{
+        struct entry {
+            tripoint_abs_ms origin;
+            tripoint_abs_ms goal;
+            mtype_id type;
+            pathfinding_settings settings;
+            int recorded_turn = 0;
+            int hp = 0;
+            int speed = 0;
+            bool movement = false;
+            bool flies = false;
+            bool submerges = false;
+            bool climbs = false;
+            bool opens_doors = false;
+        };
+        std::vector<entry> entries;
+    public:
+        void clear() { entries.clear(); }
+        std::optional<step_read> find( const monster &body, const tripoint_abs_ms &goal,
+                                       bool movement, int now );
+        void remember( const monster &body, const tripoint_abs_ms &goal, bool movement,
+                       int now, const step_read &result );
 };
 class preparation;
 // Disposable positive path value. No map/actor pointers, failures or history.
@@ -42,7 +85,7 @@ class segment
         std::vector<tripoint_abs_ms> points;
         std::vector<int> costs;
         friend step_read read_step( const monster &, const tripoint_abs_ms &,
-                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool );
+                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache * );
     public:
         void clear() { *this = segment(); }
         std::size_t size() const { return points.size(); }
@@ -55,7 +98,7 @@ class preparation
         struct implementation;
         std::unique_ptr<implementation> impl;
         friend step_read read_step( const monster &, const tripoint_abs_ms &,
-                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool );
+                                    const std::function<bool( const tripoint_abs_ms & )> &, preparation *, segment *, bool, failure_cache * );
     public:
         preparation();
         ~preparation();
@@ -67,7 +110,7 @@ class preparation
 step_read read_step( const monster &body, const tripoint_abs_ms &goal,
                      const std::function<bool( const tripoint_abs_ms & )> &occupied = {},
                      preparation *prepared = nullptr, segment *retained = nullptr,
-                     bool approach_unknown_goal = false );
+                     bool approach_unknown_goal = false, failure_cache *failures = nullptr );
 // Actual movement owners only, after authenticating the canonical source and
 // active opportunity. Loads at most one current/adjacent OMT through the normal
 // native loader. All read/preparation views must have ended before this call.

@@ -1863,7 +1863,29 @@ void overmap::move_hordes( bool migo_operations_only, bool predators_only )
             if( body.attitude() == MATT_FLEE ) {
                 intent.retreat();
             }
-            migo_step = migo_tower::prepare_step( body, migo_population::representation::abstract );
+            const auto pending_source = [&]( const migo_population::identity &token,
+                                             const tripoint_abs_ms &position ) -> const monster * {
+                for( const pending_horde_migration &pending : migrating_hordes ) {
+                    const monster *source = pending.source_state.monster_data.get();
+                    if( source && pending.source_position == position &&
+                        source->population_identity().site_id == token.site_id &&
+                        source->population_identity().member_id == token.member_id &&
+                        source->population_identity().epoch == token.epoch &&
+                        source->population_identity().site_anchor == token.site_anchor ) {
+                        return source;
+                    }
+                }
+                return nullptr;
+            };
+            const auto coarse = migo_tower::prepare_coarse_step( body, native_elapsed, acting->moves,
+                                pending_source );
+            migo_step = coarse.local_handoff ? migo_tower::prepare_step(
+                            body, migo_population::representation::abstract, coarse.local_waypoint ) : coarse.step;
+            if( coarse.funded && migo_step.next == physical_navigation::action::none ) {
+                // Paid waiting consumed this native interval as surely as a
+                // completed edge; a same-turn local handoff cannot spend it.
+                intent.last_energy_world = now;
+            }
             if( native_elapsed > 0 && migo_step.missing_geometry ) {
                 const auto origin = mon->first;
                 monster *const canonical = mon->second.monster_data.get();
@@ -1906,7 +1928,8 @@ void overmap::move_hordes( bool migo_operations_only, bool predators_only )
                         ++mon;
                         continue;
                     }
-                    migo_step = migo_tower::prepare_step( body, migo_population::representation::abstract );
+                    migo_step = migo_tower::prepare_step( body, migo_population::representation::abstract,
+                                                         coarse.local_waypoint );
                 }
             }
             // A route refusal consumed no physical action. Credit only an
@@ -1964,9 +1987,9 @@ void overmap::move_hordes( bool migo_operations_only, bool predators_only )
             }
             std::vector<tripoint_abs_ms> viable_candidates;
             if( migo_work ) {
-                // The native physical reader already checked actual geometry,
-                // stairs and the entire safe short route. Never replace that
-                // step with a same-level greedy or nearby transport guess.
+                // Physical steps carry their native geometry proof; a coarse
+                // step is an already-paid horizontal overmap edge away from
+                // local, departure and arrival boundaries.
                 if( overmap_buffer.get_existing( project_to<coords::om>( migo_step.position ).xy() ) ) {
                     viable_candidates.push_back( migo_step.position );
                 }

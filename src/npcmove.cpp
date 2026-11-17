@@ -1042,6 +1042,28 @@ bool has_hostile_home_return_order( const npc &who )
            !who.omt_path.empty() && who.omt_path.front() == site->anchor;
 }
 
+// A loaded participant follows its authenticated approach on physical tiles;
+// the distant travel owner must not relocate it through the local area.
+bool has_hostile_approach_order( const npc &who )
+{
+    const auto &world = overmap_buffer.global_state.bandit_live_world;
+    const auto *site = bandit_live_world::active_operation_duty_site_for( world, who.getID() );
+    if( who.is_dead() || !site || !site->active_hostile_operation.is_active() ||
+        site->active_hostile_operation.phase !=
+        bandit_live_world::hostile_operation_phase::approaching ) {
+        return false;
+    }
+    const auto &reservation = site->active_hostile_operation.reservation;
+    const auto *member = site->find_member( who.getID() );
+    return reservation.owner == bandit_live_world::simulation_owner::abstract &&
+           bandit_live_world::current_external_simulation_cursor( *site ).has_value() &&
+           member && member->state == bandit_live_world::member_state::outbound &&
+           !reservation.member_is_resolved( who.getID() ) && !reservation.shared_route.empty() &&
+           who.is_travelling() && who.has_omt_destination() &&
+           who.goal == reservation.shared_route.back() && !who.omt_path.empty() &&
+           who.omt_path.front() == who.goal;
+}
+
 // An alert remains credible while a scout disengages. Validate only the loaded
 // homeward route and its next physical step; this grants no future safety credit.
 bool prepare_scout_alarm_homeward_step( npc &who,
@@ -3303,6 +3325,7 @@ void npc::move( const std::optional<tripoint_abs_ms> &homeward_departure )
     // incidental camp pickup and guarding, independently of the signal target's
     // altitude. The shared predicate validates the current reserved survivor.
     const bool hostile_home_return = has_hostile_home_return_order( *this );
+    const bool hostile_approach = has_hostile_approach_order( *this );
     if( assault_site != nullptr ) {
         const auto &reservation = assault_site->active_hostile_operation.reservation;
         reconcile_active_assault_routine( assault_site->site_id + ":" +
@@ -3707,10 +3730,11 @@ void npc::move( const std::optional<tripoint_abs_ms> &homeward_departure )
             action = has_flag( json_flag_CANNOT_MOVE ) ? npc_pause :
                      goto_to_this_pos ? npc_goto_to_this_pos : npc_goto_destination;
         }
-    } else if( hostile_home_return && attitude != NPCATT_FLEE && attitude != NPCATT_FLEE_TEMP &&
+    } else if( ( hostile_home_return || hostile_approach ) &&
+               attitude != NPCATT_FLEE && attitude != NPCATT_FLEE_TEMP &&
                !has_effect( effect_npc_run_away ) && !has_effect( effect_npc_flee_player ) ) {
         // Fire, explosives, visible combat and flight above retain priority. Urgent
-        // needs remain effective; routine pickup/sleep cannot consume the owned exit.
+        // needs remain effective; routine pickup/sleep cannot consume the owned route.
         action = address_needs( NPC_DANGER_VERY_LOW + 1.0f );
         if( action == npc_undecided ) {
             action = has_flag( json_flag_CANNOT_MOVE ) ? npc_pause : npc_goto_destination;
@@ -4760,7 +4784,9 @@ void npc::execute_action( npc_action action )
         }
 
         case npc_goto_destination:
-            go_to_omt_destination();
+            if( !live_bandit_hostile_boundary_step( *this, get_map() ) ) {
+                go_to_omt_destination();
+            }
             break;
 
         case npc_avoid_friendly_fire:
@@ -8608,10 +8634,15 @@ bool npc::prepare_omt_destination_path( const std::function<bool(
     }
     tripoint_bub_ms centre =
         here.get_bub( project_to<coords::ms>( omt_path.back() ) ) + point( SEEX, SEEY );
+    const bool outside = !here.inbounds( centre );
     // map::route clips out-of-bounds targets. Apply its same boundary when
     // checking whether a validated cached route belongs to this waypoint.
     here.clip_to_bounds( centre );
-    const auto destination = pathfinding_target::radius( centre, 2 );
+    const bool hostile_boundary = outside && ( has_hostile_approach_order( *this ) ||
+                                  has_hostile_home_return_order( *this ) ||
+                                  bandit_live_world::active_hostile_withdrawal_site_for(
+                                      overmap_buffer.global_state.bandit_live_world, getID() ) );
+    const auto destination = pathfinding_target::radius( centre, hostile_boundary ? 0 : 2 );
     if( path_validator && !path.empty() && !destination.contains( path.back() ) ) {
         path.clear();
     }
@@ -10083,9 +10114,13 @@ bool npc::has_active_operation_duty() const
         return true;
     }
     const auto &outing = *site->active_external_outing();
+    const bool admission = lease.owner == "admission" &&
+                           bandit_live_world::structural_admission_lease_matches(
+                               *site, getID(), lease.activity_id, lease.generation,
+                               lease.handoff_epoch, lease.last_advanced_minutes );
     return lease.site_id == site->site_id && lease.activity_id == outing.activity_id &&
            lease.generation == outing.generation && lease.handoff_epoch == outing.handoff_epoch &&
-           lease.owner == bandit_live_world::to_string( outing.owner );
+           ( lease.owner == bandit_live_world::to_string( outing.owner ) || admission );
 }
 
 void npc::reconcile_active_operation_sleep()

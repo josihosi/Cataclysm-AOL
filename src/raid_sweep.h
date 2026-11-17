@@ -120,7 +120,7 @@ struct progress {
     bool exclude( disposition reason, std::uint64_t geometry_revision,
                   std::vector<std::string> available_members = {} );
     bool reconsider( const tripoint_abs_ms &position, std::uint64_t geometry_revision,
-                     const std::string &member = {} );
+                     const std::string &member = {}, bool physically_reopened = false );
     std::string outcome() const;
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &json );

@@ -6,10 +6,15 @@
 #include "avatar.h"
 #include "bandit_live_world.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
+#include "creature_tracker.h"
 #include "game.h"
 #include "json_loader.h"
+#include "map_helpers.h"
 #include "migo_population.h"
 #include "migo_tower_ai.h"
+#include "npc.h"
+#include "overmapbuffer.h"
 #include "player_helpers.h"
 #include "type_id.h"
 
@@ -46,6 +51,14 @@ TEST_CASE( "ecology_observer_marker_legend_is_stable_and_distinct",
     CHECK( cannibal_dispatch.second == c_pink );
     CHECK( zombie_horde.second == c_light_green );
     CHECK( writhing_stalker.second == c_dark_gray );
+    ecology_debug::entity_marker marker;
+    marker.kind = ecology_debug::entity_kind::bandit_dispatch;
+    marker.position_basis = "checkpoint";
+    CHECK( overmap_ui::ecology_marker_display( marker ).first == "?" );
+    marker.position_basis = "destination";
+    CHECK( overmap_ui::ecology_marker_display( marker ).first == "?" );
+    marker.position_basis = "current_member";
+    CHECK( overmap_ui::ecology_marker_display( marker ).first == "b" );
 }
 
 TEST_CASE( "ecology_observer_viewport_counts_match_tiles_renderer_formula",
@@ -266,6 +279,84 @@ TEST_CASE( "ecology_observer_export_uses_the_process_local_overmap_filter",
 
     overmap_ui::remember_ecology_observer_controls( saved_controls );
     player_character.unset_mutation( trait_DEBUG_CLAIRVOYANCE );
+}
+
+TEST_CASE( "ecology observer exports current resident dispatch position",
+           "[ecology_debug][observer_ui][dispatch_position]" )
+{
+    clear_avatar();
+    clear_map();
+    clear_npcs();
+    avatar &player = get_avatar();
+    player.set_mutation( trait_DEBUG_CLAIRVOYANCE );
+    overmap_ui::overmap_draw_data_t old_controls;
+    overmap_ui::restore_ecology_observer_controls( old_controls );
+    auto old_world = overmap_buffer.global_state.bandit_live_world;
+    on_out_of_scope restore( [&] {
+        overmap_buffer.global_state.bandit_live_world = std::move( old_world );
+        overmap_ui::remember_ecology_observer_controls( old_controls );
+        clear_npcs();
+    } );
+    npc &member = spawn_npc( player.pos_bub().xy() + point::east, "test_talker" );
+    const auto actual_ms = player.pos_abs() + tripoint_rel_ms( 3 * SEEX * 2, 0, 0 );
+    member.set_pos_abs_only( actual_ms );
+    get_creature_tracker().clear_npcs();
+    REQUIRE_FALSE( member.is_active() );
+    const auto player_omt = player.pos_abs_omt();
+    bandit_live_world::site_record site;
+    site.site_id = "observer-resident-integration";
+    site.source_kind = bandit_live_world::anchor_source_kind::overmap_special;
+    site.site_kind = bandit_live_world::owned_site_kind::bandit_camp;
+    site.profile = bandit_live_world::hostile_site_profile::camp_style;
+    site.source_id = "bandit_camp";
+    site.anchor = player_omt + point::south;
+    site.footprint.push_back( site.anchor );
+    site.living_total = 1;
+    site.members.push_back( { member.getID(), "test_talker", project_to<coords::ms>( site.anchor ),
+                              bandit_live_world::member_state::outbound, false, "" } );
+    site.spawn_tiles.push_back( { project_to<coords::ms>( site.anchor ), 1 } );
+    auto &outing = site.active_outing;
+    outing.kind = bandit_live_world::outing_kind::scout_sortie;
+    outing.activity_id = "observer-resident-outing";
+    outing.camp_id = site.site_id;
+    outing.generation = 1;
+    outing.member_ids.push_back( member.getID() );
+    outing.leader_id = member.getID();
+    outing.shared_route = { site.anchor, player_omt + point::west };
+    outing.waypoint_index = 1;
+    outing.target_omt = outing.shared_route.back();
+    outing.phase = bandit_live_world::scout_phase::outbound;
+    overmap_buffer.global_state.bandit_live_world = {};
+    overmap_buffer.global_state.bandit_live_world.sites.push_back( site );
+    const std::string id = "dispatch/" + site.site_id + "/" + outing.activity_id + "/1";
+    overmap_ui::overmap_draw_data_t controls;
+    controls.ecology_filter = overmap_ui::ecology_filter_mode::dispatches;
+    controls.ecology_selected_id = id;
+    overmap_ui::remember_ecology_observer_controls( controls );
+    JsonObject root = json_loader::from_string( overmap_ui::ecology_observer_snapshot_json() ).get_object();
+    root.allow_omitted_members();
+    const JsonArray entities = root.get_array( "entities" );
+    bool found = false;
+    for( const JsonValue value : entities ) {
+        JsonObject entity = value.get_object();
+        entity.allow_omitted_members();
+        if( entity.get_string( "id" ) != id ) {
+            continue;
+        }
+        found = true;
+        CHECK( entity.get_string( "position_basis" ) == "current_member" );
+        CHECK( entity.get_int( "representative_npc_id" ) == member.getID().get_value() );
+        const auto omt = project_to<coords::omt>( actual_ms );
+        CHECK( entity.get_array( "omt" ).get_int( 0 ) == omt.x() );
+        CHECK( entity.get_array( "omt" ).get_int( 1 ) == omt.y() );
+    }
+    CHECK( found );
+    JsonObject selected = root.get_object( "selected" );
+    selected.allow_omitted_members();
+    JsonObject selected_member = selected.get_array( "members" ).get_object( 0 );
+    selected_member.allow_omitted_members();
+    CHECK( selected_member.get_array( "position_ms" ).get_int( 0 ) == actual_ms.x() );
+    CHECK( selected_member.get_array( "position_ms" ).get_int( 1 ) == actual_ms.y() );
 }
 
 TEST_CASE( "ecology overmap facts follow gated canonical migo projection",

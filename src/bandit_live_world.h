@@ -3,6 +3,7 @@
 #include "raid_sweep.h"
 #include "bandit_dry_run.h"
 #include "bandit_pursuit_handoff.h"
+#include "overmap_party_travel.h"
 
 #include <array>
 #include <cstdint>
@@ -611,6 +612,8 @@ struct local_handoff_snapshot {
     void clear();
     bool is_active() const;
     bool is_abstract_resume() const;
+    // The saved route position is a real point between mission waypoints.
+    bool has_intermediate_route_position() const { return schema_version == 6; }
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
 };
@@ -942,20 +945,7 @@ struct camp_decision_record {
 
 // Unloaded work belongs to the party, not the deadline or an individual NPC.
 // A bound edge holds unfinished work; an unbound value is post-step surplus.
-struct coarse_party_travel_work {
-    std::int64_t work_millis = 0;
-    std::int64_t edge_cost_millis = 0;
-    // The existing party activation clock is the sole active-time source.
-    // -1 denotes an old save whose previous service cannot be reconstructed.
-    std::int64_t serviced_active_turns = -1;
-    bool edge_bound = false;
-    std::vector<tripoint_abs_omt> from;
-    std::vector<tripoint_abs_omt> to;
-
-    void clear();
-    void serialize( JsonOut &json ) const;
-    void deserialize( const JsonObject &jo );
-};
+using coarse_party_travel_work = overmap_party_travel::work;
 
 // The forecast's selected OMT prices, not a second progress cursor.  Entries
 // behind all remaining legs are ignored when comparing current terrain.
@@ -973,12 +963,44 @@ std::optional<int> claim_coarse_party_active_millis( coarse_party_travel_work &w
 
 // Returns false for unavailable terrain, invalid speed or invalid service.
 // The caller commits the proposed work together with its actual party action.
-bool service_coarse_party_travel_work( coarse_party_travel_work &work,
+inline bool service_coarse_party_travel_work( coarse_party_travel_work &work,
         const tripoint_abs_omt &from, const tripoint_abs_omt &to,
-        int terrain_weight, int slowest_speed, int active_millis, bool &move );
-bool service_coarse_party_travel_work_set( coarse_party_travel_work &work,
+        int terrain_weight, int slowest_speed, int active_millis, bool &move ) {
+    return overmap_party_travel::service( work, from, to, terrain_weight, slowest_speed,
+                                         active_millis, move );
+}
+inline bool service_coarse_party_travel_work_set( coarse_party_travel_work &work,
         const std::vector<tripoint_abs_omt> &from, const std::vector<tripoint_abs_omt> &to,
-        int terrain_weight, int slowest_speed, int active_millis, bool &move );
+        int terrain_weight, int slowest_speed, int active_millis, bool &move ) {
+    return overmap_party_travel::service_set( work, from, to, terrain_weight, slowest_speed,
+            active_millis, move );
+}
+
+// A structural pair retains one mission owner while individual bodies cross
+// the loaded boundary. These values bind staged actors to that exact outing;
+// positions and movement remain owned by the canonical NPCs.
+struct structural_admission_member {
+    character_id npc_id;
+    tripoint_abs_ms holding_position;
+    int lease_minutes = -1;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct structural_admission_state {
+    std::string activity_id;
+    int generation = 0;
+    int handoff_epoch = -1;
+    std::vector<structural_admission_member> staged;
+
+    bool is_active() const {
+        return !activity_id.empty();
+    }
+    void clear();
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
 
 struct active_outing_state {
     activation_clock activation;
@@ -1079,6 +1101,16 @@ struct active_outing_state {
     std::vector<tripoint_abs_omt> route_clock_downstream_path;
     std::vector<tripoint_abs_omt> route_clock_homeward_path;
     coarse_party_travel_work coarse_work;
+    // Hostile party work belongs to these exact surviving identities, not
+    // merely whichever bodies later occupy the same edge coordinates.
+    std::vector<character_id> coarse_hostile_member_ids;
+    // Each hostile body owns its own eligible interval and paid edge. Legacy
+    // party work is adopted only through its saved identity binding.
+    std::map<character_id, coarse_party_travel_work> coarse_member_work;
+    // Disposable per-identity route decisions. The authenticated outing and
+    // canonical NPC own membership and positions; this carries no work.
+    std::map<character_id, overmap_party_travel::route_state> travel_routes;
+    structural_admission_state structural_admission;
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = 0;
     int last_advanced_minutes = -1;
@@ -2461,8 +2493,20 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
 // A cursor alone, a historical reservation or an arbitrary destination is not duty.
 const site_record *active_operation_duty_site_for( const world_state &state,
         character_id npc_id );
+bool structural_admission_lease_matches( const site_record &site, character_id npc_id,
+                                         const std::string &activity_id, int generation,
+                                         int handoff_epoch, int lease_minutes );
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
     const site_record &site );
+// Begin an identity-bound per-body physical admission without transferring
+// the pair's mission lease. The caller must authenticate actual native bodies.
+bool begin_structural_admission( site_record &site,
+                                 const simulation_advance_cursor &expected_cursor );
+local_handoff_commit_result stage_structural_admission_member(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    character_id id, const tripoint_abs_ms &holding_position,
+    const std::function<bool( const structural_admission_member & )> &bind,
+    const std::function<void( const structural_admission_member & )> &rollback );
 local_projection_reconciliation_result reconcile_loaded_local_projections(
     world_state &state, const std::vector<local_projection_claim> &claims,
     std::vector<character_id> *retired_stale_leases = nullptr,

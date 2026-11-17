@@ -369,11 +369,12 @@ bool progress::exclude( disposition reason, std::uint64_t geometry_revision,
 }
 
 bool progress::reconsider( const tripoint_abs_ms &position, std::uint64_t revision,
-                           const std::string &member )
+                           const std::string &member, bool physically_reopened )
 {
     for( size_t i = 0; i < candidates.size(); ++i ) {
         auto &candidate = candidates[i];
         const bool changed = candidate.state == disposition::unreachable && !member.empty() ?
+                             physically_reopened ||
                              std::find( candidate.available_members_at_exclusion.begin(),
                                         candidate.available_members_at_exclusion.end(), member ) ==
                              candidate.available_members_at_exclusion.end() :

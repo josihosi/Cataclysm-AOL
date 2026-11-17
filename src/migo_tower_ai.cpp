@@ -671,6 +671,12 @@ void member_intent::retreat()
         // A previous approach/search segment cannot own a later withdrawal.
         waypoint.reset();
         navigation.clear();
+        navigation_failures.clear();
+        coarse_work.clear();
+        coarse_work_position.reset();
+        coarse_route.clear();
+        coarse_can_cross_water.reset();
+        coarse_all_fly.reset();
     }
 }
 
@@ -691,6 +697,14 @@ void member_intent::serialize( JsonOut &json ) const
     json.member( "activity_bound", activity_bound );
     json.member( "activity_generation", activity_generation );
     json.member( "activity_suspension", activity_suspension );
+    if( coarse_work.edge_bound || coarse_work.work_millis != 0 ) {
+        json.member( "coarse_work", coarse_work );
+        json.member( "coarse_work_position", coarse_work_position );
+        if( coarse_can_cross_water && coarse_all_fly ) {
+            json.member( "coarse_can_cross_water", *coarse_can_cross_water );
+            json.member( "coarse_all_fly", *coarse_all_fly );
+        }
+    }
     json.end_object();
 }
 
@@ -711,6 +725,25 @@ void member_intent::deserialize( const JsonObject &json )
     json.read( "activity_bound", activity_bound );
     json.read( "activity_generation", activity_generation );
     json.read( "activity_suspension", activity_suspension );
+    if( json.has_member( "coarse_work" ) ) {
+        json.read( "coarse_work", coarse_work );
+        json.read( "coarse_work_position", coarse_work_position );
+        if( json.has_member( "coarse_can_cross_water" ) != json.has_member( "coarse_all_fly" ) ) {
+            json.throw_error( "incomplete Mi-go coarse travel capability" );
+        }
+        if( json.has_member( "coarse_can_cross_water" ) ) {
+            coarse_can_cross_water = json.get_bool( "coarse_can_cross_water" );
+            coarse_all_fly = json.get_bool( "coarse_all_fly" );
+        }
+        if( coarse_work.edge_bound && coarse_work.from.size() != 1 ) {
+            json.throw_error( "invalid Mi-go member coarse work" );
+        }
+        if( !coarse_work_position ) {
+            // An unbound historical or malformed work balance cannot be lent
+            // to a body at a position that was never authenticated.
+            coarse_work.clear();
+        }
+    }
 }
 
 void operation_member::serialize( JsonOut &json ) const

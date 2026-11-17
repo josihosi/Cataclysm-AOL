@@ -4,6 +4,8 @@
 
 #include <vector>
 #include <memory>
+#include <functional>
+#include <optional>
 #include <string>
 
 #include "migo_population.h"
@@ -59,8 +61,29 @@ enum class activity_boundary { process, load, unload };
 bool activity_for( monster &body, migo_population::representation owner, int now_turn,
                    activity_boundary boundary = activity_boundary::process,
                    int *active_turns = nullptr );
+struct coarse_step_read {
+    // Only an authenticated local phase may invoke physical navigation.
+    // Missing state or a rejected distant route remains a held distant result.
+    bool local_handoff = false;
+    bool funded = false;
+    // A distant transit handoff stops at the shared-selected next OMT.
+    std::optional<tripoint_abs_ms> local_waypoint;
+    physical_navigation::step_read step;
+};
+// A horde batch may temporarily hold an authenticated peer in its rollback
+// source while that peer's destination is undecided. The resolver is used
+// synchronously and never transfers or retains ownership of the body.
+using pending_source_reader = std::function<const monster *( const migo_population::identity &,
+                              const tripoint_abs_ms & )>;
+coarse_step_read prepare_coarse_step( monster &body, int active_turns, int current_moves,
+                                      const pending_source_reader &pending_source = {} );
 physical_navigation::step_read prepare_step( monster &body,
-        migo_population::representation owner );
+        migo_population::representation owner,
+        const std::optional<tripoint_abs_ms> &transit_waypoint = std::nullopt );
+// Diagnostic-only bounded value samples, published after a measured interval.
+// These never retain actor/map pointers or influence movement.
+void serialize_prepare_step_samples( JsonOut &json );
+void clear_prepare_step_samples();
 bool plan_local( monster &body, bool fleeing, Creature *target );
 void record_combat_action( monster &body );
 // Called after native movement effects and immediate special/escape handling.

@@ -551,6 +551,82 @@ TEST_CASE( "ecology_debug_view_uses_authoritative_camp_and_active_dispatch_membe
     }
 }
 
+TEST_CASE( "dispatch marker uses resident members and labels unavailable positions",
+           "[ecology_debug][observer][dispatch_position]" )
+{
+    bandit_live_world::world_state world;
+    world.sites.push_back( make_site( 8, false ) );
+    auto &site = world.sites.front();
+    add_active_outing( site, 3 );
+    const character_id leader = site.members.front().npc_id;
+    const character_id other( 600008 );
+    site.members.push_back( { other, "bandit", project_to<coords::ms>( site.anchor ),
+                              bandit_live_world::member_state::outbound, false, "" } );
+    site.living_total = 2;
+    site.spawn_tiles.front().assigned_living_total = 2;
+    site.active_outing.member_ids.push_back( other );
+    const auto checkpoint = site.active_outing.shared_route[1];
+    const auto leader_ms = project_to<coords::ms>( tripoint_abs_omt( 40, 41, 0 ) );
+    const auto other_ms = project_to<coords::ms>( tripoint_abs_omt( 42, 41, 0 ) );
+    bool leader_available = true;
+    bool other_available = true;
+    ecology_debug::query_request request;
+    request.enabled = true;
+    request.filters.camps = false;
+    request.selected_id = dispatch_id( site );
+    request.member_position = [&]( character_id id ) -> std::optional<tripoint_abs_ms> {
+        if( id == leader && leader_available ) {
+            return leader_ms;
+        }
+        if( id == other && other_available ) {
+            return other_ms;
+        }
+        return std::nullopt;
+    };
+    request.read_selected_member = [&]( character_id id ) -> std::optional<ecology_debug::runtime_member_read> {
+        const auto position = request.member_position( id );
+        if( !position ) {
+            return std::nullopt;
+        }
+        ecology_debug::runtime_member_read read;
+        read.position_ms = position;
+        read.loaded = false; // resident outside the local bubble is still current
+        return read;
+    };
+    auto view = ecology_debug::query_bandit_ecology( world, request );
+    REQUIRE( view.entities.size() == 1 );
+    CHECK( view.entities.front().omt == project_to<coords::omt>( leader_ms ) );
+    CHECK( view.entities.front().omt != checkpoint );
+    CHECK( view.entities.front().position_basis == "current_member" );
+    CHECK( view.entities.front().representative_npc_id == leader.get_value() );
+    CHECK( view.entities.front().members_split );
+    CHECK( view.entities.front().unknown_member_positions == 0 );
+    REQUIRE( view.selected );
+    REQUIRE( view.selected->members.size() == 2 );
+    CHECK( view.selected->members[0].position_ms == leader_ms );
+    CHECK( view.selected->members[1].position_ms == other_ms );
+    const auto selected = ecology_debug::query_selected_bandit_ecology( world, request, 0 );
+    REQUIRE( selected.entities.size() == 1 );
+    CHECK( selected.entities.front().omt == view.entities.front().omt );
+    leader_available = false;
+    view = ecology_debug::query_bandit_ecology( world, request );
+    CHECK( view.entities.front().omt == project_to<coords::omt>( other_ms ) );
+    CHECK( view.entities.front().representative_npc_id == other.get_value() );
+    CHECK( view.entities.front().unknown_member_positions == 1 );
+    other_available = false;
+    view = ecology_debug::query_bandit_ecology( world, request );
+    CHECK( view.entities.front().omt == checkpoint );
+    CHECK( view.entities.front().position_basis == "checkpoint" );
+    CHECK_FALSE( view.entities.front().representative_npc_id );
+    CHECK( view.entities.front().unknown_member_positions == 2 );
+    const auto loaded = round_trip( world );
+    leader_available = true;
+    view = ecology_debug::query_bandit_ecology( loaded, request );
+    REQUIRE( view.entities.size() == 1 );
+    CHECK( view.entities.front().omt == project_to<coords::omt>( leader_ms ) );
+    CHECK( view.entities.front().position_basis == "current_member" );
+}
+
 TEST_CASE( "ecology_debug_view_removes_terminal_entities_and_survives_owner_save_load",
            "[ecology_debug][observer][phase4][save]" )
 {

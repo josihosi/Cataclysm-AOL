@@ -31,6 +31,10 @@ struct candidate_read {
     bool has_loaded_read = false;
     bool loaded = false;
     size_t authority_index = 0;
+    std::string position_basis;
+    std::optional<int> representative_npc_id;
+    bool members_split = false;
+    int unknown_member_positions = 0;
 };
 
 entity_faction faction_for( const bandit_live_world::site_record &site )
@@ -83,18 +87,51 @@ bool outing_is_terminal( const bandit_live_world::site_record &site,
              bandit_live_world::hostile_operation_phase::lost );
 }
 
-tripoint_abs_omt outing_position( const bandit_live_world::active_outing_state &outing )
+void set_outing_position( candidate_read &candidate, const query_request &request )
 {
+    const auto &outing = *candidate.outing;
+    std::vector<std::pair<character_id, tripoint_abs_ms>> positions;
+    for( const character_id &id : outing.member_ids ) {
+        if( !is_unresolved_outing_survivor( *candidate.site, outing, id ) ) {
+            continue;
+        }
+        const auto position = request.member_position ? request.member_position( id ) : std::nullopt;
+        if( position ) {
+            positions.emplace_back( id, *position );
+        } else {
+            ++candidate.unknown_member_positions;
+        }
+    }
+    if( !positions.empty() ) {
+        std::sort( positions.begin(), positions.end(), []( const auto &a, const auto &b ) {
+            return a.first.get_value() < b.first.get_value();
+        } );
+        const auto leader = std::find_if( positions.begin(), positions.end(), [&outing]( const auto &entry ) {
+            return entry.first == outing.leader_id;
+        } );
+        const auto &representative = leader == positions.end() ? positions.front() : *leader;
+        candidate.omt = project_to<coords::omt>( representative.second );
+        candidate.position_basis = "current_member";
+        candidate.representative_npc_id = representative.first.get_value();
+        candidate.members_split = std::any_of( positions.begin(), positions.end(),
+        [&representative]( const auto &entry ) { return entry.second != representative.second; } );
+        return;
+    }
     if( outing.owner == bandit_live_world::simulation_owner::local &&
         outing.local_handoff.is_active() ) {
-        return outing.local_handoff.route_position;
+        candidate.omt = outing.local_handoff.route_position;
+        candidate.position_basis = "checkpoint";
+        return;
     }
     if( !outing.shared_route.empty() ) {
         const int index = std::clamp( outing.waypoint_index, 0,
                                       static_cast<int>( outing.shared_route.size() ) - 1 );
-        return outing.shared_route[index];
+        candidate.omt = outing.shared_route[index];
+        candidate.position_basis = "checkpoint";
+        return;
     }
-    return outing.target_omt;
+    candidate.omt = outing.target_omt;
+    candidate.position_basis = "destination";
 }
 
 bool point_in_region( const tripoint_abs_omt &point, const query_region &region )
@@ -215,10 +252,10 @@ void apply_runtime_member_read( member_detail &row, const runtime_member_read &r
     row.name = runtime.name;
     row.hp_percent = runtime.hp_percent;
     row.loaded = runtime.loaded;
+    row.position_ms = runtime.position_ms;
     if( !runtime.loaded ) {
         return;
     }
-    row.position_ms = runtime.position_ms;
     row.moves = runtime.moves;
     row.goal_omt = runtime.goal_omt;
     row.local_path_size = runtime.local_path_size;
@@ -254,6 +291,10 @@ entity_marker make_marker( const candidate_read &candidate, const query_request 
     marker.kind = candidate.kind;
     marker.faction = candidate.faction;
     marker.omt = candidate.omt;
+    marker.position_basis = candidate.position_basis;
+    marker.representative_npc_id = candidate.representative_npc_id;
+    marker.members_split = candidate.members_split;
+    marker.unknown_member_positions = candidate.unknown_member_positions;
     marker.loaded = candidate.has_loaded_read ? candidate.loaded :
                     candidate_is_loaded( candidate, request );
     marker.provenance = request.provenance_for_entity ?
@@ -524,17 +565,16 @@ view_snapshot query_bandit_ecology( const bandit_live_world::world_state &world,
         if( request.filters.dispatches && outing != nullptr && outing->is_active() &&
             !outing_is_terminal( site, *outing ) &&
             outing_has_unresolved_survivor( site, *outing ) ) {
-            const tripoint_abs_omt omt = outing_position( *outing );
             candidate_read dispatch;
             dispatch.site = &site;
             dispatch.outing = outing;
             dispatch.kind = faction == entity_faction::bandit ?
                             entity_kind::bandit_dispatch : entity_kind::cannibal_dispatch;
             dispatch.faction = faction;
-            dispatch.omt = omt;
+            set_outing_position( dispatch, request );
             dispatch.id = dispatch_id( site, *outing );
             dispatch.authority_index = authority_index;
-            if( point_in_region( omt, request.region ) || dispatch.id == request.selected_id ) {
+            if( point_in_region( dispatch.omt, request.region ) || dispatch.id == request.selected_id ) {
                 retain_candidate( std::move( dispatch ) );
             }
         }
@@ -782,7 +822,7 @@ view_snapshot query_selected_bandit_ecology( const bandit_live_world::world_stat
             candidate->kind = faction == entity_faction::bandit ?
                               entity_kind::bandit_dispatch : entity_kind::cannibal_dispatch;
             candidate->faction = faction;
-            candidate->omt = outing_position( *outing );
+            set_outing_position( *candidate, request );
             candidate->id = dispatch_id( site, *outing );
         }
     }

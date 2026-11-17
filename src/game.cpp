@@ -1181,16 +1181,26 @@ vehicle *game::place_vehicle_nearby(
 //Make any nearby overmap npcs active, and put them in the right location.
 namespace
 {
-bool abstract_scout_owns_npc( const character_id id )
+bool abstract_scout_owns_npc( const npc &member )
 {
+    const character_id id = member.getID();
     const auto &sites = overmap_buffer.global_state.bandit_live_world.sites;
-    return std::any_of( sites.begin(), sites.end(), [&id]( const auto & site ) {
+    return std::any_of( sites.begin(), sites.end(), [&]( const auto & site ) {
         const auto &outing = site.active_outing;
-        return outing.is_active() &&
+        const bool abstract_owner = outing.is_active() &&
                outing.kind == bandit_live_world::outing_kind::structural_sortie &&
                outing.owner == bandit_live_world::simulation_owner::abstract &&
                outing.actor_route_waypoint >= 0 && !outing.member_is_resolved( id ) &&
                std::find( outing.member_ids.begin(), outing.member_ids.end(), id ) != outing.member_ids.end();
+        const auto &lease = member.get_bandit_live_world_projection_lease();
+        const bool admitted = abstract_owner && lease.present && lease.owner == "admission" &&
+                              lease.site_id == site.site_id &&
+                              bandit_live_world::active_operation_duty_site_for(
+                                  overmap_buffer.global_state.bandit_live_world, id ) == &site &&
+                              bandit_live_world::structural_admission_lease_matches(
+                                  site, id, lease.activity_id, lease.generation, lease.handoff_epoch,
+                                  lease.last_advanced_minutes );
+        return abstract_owner && !admitted;
     } );
 }
 } // namespace
@@ -1227,7 +1237,7 @@ void game::load_npcs( map *here )
         if( temp->has_companion_mission() ) {
             continue;
         }
-        if( abstract_scout_owns_npc( id ) ) {
+        if( abstract_scout_owns_npc( *temp ) ) {
             // Paired handoff admits these identities; generic loading must not
             // create a second local movement owner.
             continue;
@@ -4501,6 +4511,23 @@ void game::cleanup_dead()
         bandit_live_world::world_state &bandit_state =
             overmap_buffer.global_state.bandit_live_world;
         for( bandit_live_world::site_record &site : bandit_state.sites ) {
+            if( site.active_outing.is_active() &&
+                site.active_outing.structural_admission.is_active() ) {
+                const auto staged = site.active_outing.structural_admission.staged;
+                for( const auto &entry : staged ) {
+                    npc *member = find_npc( entry.npc_id );
+                    if( member == nullptr || !member->is_dead() ) {
+                        continue;
+                    }
+                    const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+                    if( !cursor || !bandit_live_world::record_live_local_pair_member_death(
+                            site, *cursor, entry.npc_id, member->pos_abs(),
+                            to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) ) ) {
+                        site.active_outing.local_projection_reconciliation_rejected = true;
+                    }
+                }
+                continue;
+            }
             if( !site.active_outing.is_active() ||
                 site.active_outing.kind != bandit_live_world::outing_kind::structural_sortie ||
                 site.active_outing.schema_version < 7 ||

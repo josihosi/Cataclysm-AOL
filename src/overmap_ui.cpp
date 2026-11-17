@@ -314,6 +314,15 @@ std::pair<std::string, nc_color> overmap_ui::ecology_marker_display(
     return { "?", c_white };
 }
 
+std::pair<std::string, nc_color> overmap_ui::ecology_marker_display(
+    const ecology_debug::entity_marker &marker )
+{
+    if( marker.position_basis == "checkpoint" || marker.position_basis == "destination" ) {
+        return { "?", c_yellow };
+    }
+    return ecology_marker_display( marker.kind );
+}
+
 const ecology_debug::entity_marker *overmap_ui::ecology_marker_at(
     const overmap_draw_data_t &data, const tripoint_abs_omt &omt )
 {
@@ -627,6 +636,11 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
     const auto query_started = std::chrono::steady_clock::now();
     request.migo_population = &overmap_buffer.global_state.migo_populations;
     request.migo_towers = &overmap_buffer.global_state.migo_towers;
+    request.member_position = []( character_id npc_id ) -> std::optional<tripoint_abs_ms> {
+        const npc *guy = g->find_npc( npc_id );
+        return guy && !guy->is_dead_state() ? std::optional<tripoint_abs_ms>( guy->pos_abs() ) :
+               std::nullopt;
+    };
     if( !request.provenance_for_entity ) {
         const std::string world_identity = current_ecology_world_id();
         const int current_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
@@ -645,15 +659,15 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
         request.member_is_loaded = [&find_loaded_npc]( character_id npc_id ) {
             return find_loaded_npc( npc_id ) != nullptr;
         };
-        request.read_selected_member = [&find_loaded_npc]( character_id npc_id ) {
-            const npc *guy = find_loaded_npc( npc_id );
+        request.read_selected_member = []( character_id npc_id ) {
+            const npc *guy = g->find_npc( npc_id );
             if( guy == nullptr ) {
                 return std::optional<ecology_debug::runtime_member_read>();
             }
             ecology_debug::runtime_member_read result;
             result.name = guy->get_name();
             result.hp_percent = guy->hp_percentage();
-            result.loaded = true;
+            result.loaded = guy->is_active();
             result.position_ms = guy->pos_abs();
             result.moves = guy->get_moves();
             result.goal_omt = guy->goal;
@@ -677,6 +691,19 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
         return result;
     }
 
+    // Snapshot resident positions once for the overview. Looking up every
+    // dispatch member separately would rescan all resident overmaps on redraw.
+    std::map<character_id, tripoint_abs_ms> resident_positions;
+    overmap_buffer.foreach_npc( [&resident_positions]( const npc &guy ) {
+        if( !guy.is_dead_state() ) {
+            resident_positions.emplace( guy.getID(), guy.pos_abs() );
+        }
+    } );
+    request.member_position = [&resident_positions]( character_id id ) -> std::optional<tripoint_abs_ms> {
+        const auto found = resident_positions.find( id );
+        return found == resident_positions.end() ? std::nullopt :
+               std::optional<tripoint_abs_ms>( found->second );
+    };
     std::map<character_id, npc *> active_npcs;
     for( npc &guy : g->all_npcs() ) {
         active_npcs.emplace( guy.getID(), &guy );
@@ -688,15 +715,15 @@ static ecology_debug::view_snapshot query_live_ecology( ecology_debug::query_req
     request.member_is_loaded = [&find_loaded_npc]( character_id npc_id ) {
         return find_loaded_npc( npc_id ) != nullptr;
     };
-    request.read_selected_member = [&find_loaded_npc]( character_id npc_id ) {
-        const npc *guy = find_loaded_npc( npc_id );
+    request.read_selected_member = []( character_id npc_id ) {
+        const npc *guy = g->find_npc( npc_id );
         if( guy == nullptr ) {
             return std::optional<ecology_debug::runtime_member_read>();
         }
         ecology_debug::runtime_member_read result;
         result.name = guy->get_name();
         result.hp_percent = guy->hp_percentage();
-        result.loaded = true;
+        result.loaded = guy->is_active();
         result.position_ms = guy->pos_abs();
         result.moves = guy->get_moves();
         result.goal_omt = guy->goal;
@@ -1247,6 +1274,7 @@ void overmap_sidebar::draw_ecology()
         draw_sidebar_text( _( "C cannibal camp" ), c_red );
         draw_sidebar_text( _( "b bandit dispatch" ), c_yellow );
         draw_sidebar_text( _( "c cannibal dispatch" ), c_pink );
+        draw_sidebar_text( _( "? dispatch checkpoint/destination; current position unknown" ), c_yellow );
         draw_sidebar_text( _( "M Mi-go tower" ), c_magenta );
         draw_sidebar_text( _( "m Mi-go dispatch member" ), c_pink );
         print_hint( "ECOLOGY_FILTER", c_light_blue );
@@ -1290,6 +1318,20 @@ void overmap_sidebar::draw_ecology()
     draw_sidebar_text( string_format( _( "State: %s; provenance: %s" ), selected_marker->state,
                                       ecology_debug::to_string( selected_marker->provenance ) ),
                        c_light_gray );
+    if( selected_marker->representative_npc_id ) {
+        draw_sidebar_text( string_format( _( "Position: current npc #%d%s" ),
+                                          *selected_marker->representative_npc_id,
+                                          selected_marker->members_split ? _( "; members at different positions" ) : "" ),
+                           c_light_gray );
+    } else if( selected_marker->position_basis == "checkpoint" ) {
+        draw_sidebar_text( _( "Position: historical route checkpoint" ), c_yellow );
+    } else if( selected_marker->position_basis == "destination" ) {
+        draw_sidebar_text( _( "Position: destination; current position unavailable" ), c_yellow );
+    }
+    if( selected_marker->unknown_member_positions > 0 ) {
+        draw_sidebar_text( string_format( _( "Member positions unavailable: %d" ),
+                                          selected_marker->unknown_member_positions ), c_yellow );
+    }
     if( !draw_data.ecology_view.selected ) {
         draw_help();
         return;
@@ -1342,6 +1384,11 @@ void overmap_sidebar::draw_ecology()
         draw_sidebar_text( string_format( _( "- %s [%d] HP %s; %s%s" ), name,
                                           member.npc_id.get_value(), hp, member.status,
                                           member.loaded ? _( "; loaded" ) : "" ), c_light_gray );
+        if( member.position_ms ) {
+            draw_sidebar_text( string_format( _( "  Current OMT: %s" ),
+                                              project_to<coords::omt>( *member.position_ms ).to_string() ),
+                               c_light_gray );
+        }
     }
     draw_help();
 }
@@ -2061,7 +2108,7 @@ static void draw_ascii( const catacurses::window &w, overmap_draw_data_t &data )
                     overmap_ui::ecology_marker_at( data, omp );
                 if( ecology_marker != nullptr ) {
                     std::tie( ter_sym, ter_color ) =
-                        overmap_ui::ecology_marker_display( ecology_marker->kind );
+                        overmap_ui::ecology_marker_display( *ecology_marker );
                 }
             }
 

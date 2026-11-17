@@ -7,17 +7,25 @@
 #include <tuple>
 #include <vector>
 
+#include "calendar.h"
+#include "creature_tracker.h"
+#include "current_map.h"
 #include "do_turn.h"
 #include "field_type.h"
+#include "horde_map.h"
 #include "line.h"
 #include "map.h"
 #include "mapbuffer.h"
 #include "mapdata.h"
 #include "monster.h"
 #include "mtype.h"
+#include "npc.h"
+#include "overmap.h"
+#include "overmapbuffer.h"
 #include "pathfinding.h"
 #include "raid_sweep.h"
 #include "submap.h"
+#include "trap.h"
 
 namespace physical_navigation
 {
@@ -42,8 +50,16 @@ struct view_bounds {
         first( project_to<coords::sm>( tripoint_abs_ms(
                    std::min( from.x(), to.x() ) - SEEX,
                    std::min( from.y(), to.y() ) - SEEY, from.z() ) ) ),
-        size( std::min( MAPSIZE, std::max( std::abs( from.x() - to.x() ),
-                                         std::abs( from.y() - to.y() ) ) / SEEX + 3 ) ),
+        size( [&]() {
+            // Include a whole submap around both endpoints. Dividing only the
+            // distance loses a boundary submap when either endpoint is not
+            // aligned, hiding valid local detours behind the origin.
+            const tripoint_abs_sm last = project_to<coords::sm>( tripoint_abs_ms(
+                    std::max( from.x(), to.x() ) + SEEX,
+                    std::max( from.y(), to.y() ) + SEEY, from.z() ) );
+            return std::min( MAPSIZE, std::max( last.x() - first.x() + 1,
+                                                last.y() - first.y() + 1 ) );
+        }() ),
         low( std::max( -OVERMAP_DEPTH, std::min( from.z(), to.z() ) - 1 ) ),
         high( std::min( OVERMAP_HEIGHT, std::max( from.z(), to.z() ) + 1 ) ) {}
     bool operator==( const view_bounds &other ) const {
@@ -137,6 +153,283 @@ class navigation_view : public map
 
 } // namespace
 
+boundary_action step_npc_boundary( npc &body, const tripoint_abs_ms &destination )
+{
+    const auto origin = body.pos_abs();
+    if( origin.z() != destination.z() || rl_dist( origin, destination ) != 1 ||
+        body.get_moves() <= 0 ) {
+        return boundary_action::refused;
+    }
+    navigation_view view( origin, destination );
+    if( !view.known( origin ) || !view.known( destination ) ) {
+        return boundary_action::refused;
+    }
+    const auto from = view.get_bub( origin );
+    const auto to = view.get_bub( destination );
+    if( !view.passable( to ) || !view.valid_move( from, to ) ) {
+        return boundary_action::refused;
+    }
+    const int before = body.get_moves();
+    {
+        swap_map use_view( view );
+        const trap &hazard = view.tr_at( to );
+        if( !body.can_move_to( to, true ) || body.sees_dangerous_field( to ) ||
+            ( !hazard.is_null() && hazard.can_see( to, body ) && !hazard.is_benign() ) ||
+            get_creature_tracker().creature_at( to ) != nullptr ) {
+            return boundary_action::refused;
+        }
+        body.move_to( to, true );
+    }
+    if( body.get_moves() >= before ) {
+        return boundary_action::refused;
+    }
+    return body.pos_abs() == destination ? boundary_action::moved : boundary_action::spent;
+}
+
+npc_entry_result move_npc_into_loaded_area( npc &body, map &loaded,
+        const tripoint_abs_omt &next_omt, const int funded_moves,
+        const std::function<bool()> &still_owned )
+{
+    npc_entry_result result;
+    const tripoint_abs_ms origin = body.pos_abs();
+    const tripoint_abs_omt origin_omt = project_to<coords::omt>( origin );
+    if( !still_owned || !still_owned() || body.is_active() || body.is_dead() ||
+        body.in_sleep_state() || body.duty_incapacitated() || body.is_mounted() || body.in_vehicle ||
+        ( body.current_target() && body.get_ai_danger() > 0 ) ||
+        body.has_effect( efftype_id( "stunned" ) ) || body.has_effect( efftype_id( "psi_stunned" ) ) ) {
+        result.interrupted = true;
+        return result;
+    }
+    if( loaded.inbounds( origin ) || funded_moves <= 0 || next_omt.z() != origin_omt.z() ||
+        rl_dist( origin_omt, next_omt ) > 1 ) {
+        return result;
+    }
+    const int last = loaded.getmapsize() * SEEX - 1;
+    const tripoint_bub_ms relative = loaded.get_bub( origin );
+    const tripoint_bub_ms nearest( std::clamp( relative.x(), 0, last ),
+                                  std::clamp( relative.y(), 0, last ), relative.z() );
+    view_bounds window( origin, loaded.get_abs( nearest ) );
+    // A bounded local window permits a real detour around a nearby obstacle.
+    // All unknown geometry inside it remains a wall.
+    const int grow = std::min( 4, MAPSIZE - window.size );
+    window.first = tripoint_abs_sm( window.first.x() - grow / 2,
+                                    window.first.y() - grow / 2, window.first.z() );
+    window.size += grow;
+    navigation_view view( window );
+    if( !view.known( origin ) ) {
+        return result;
+    }
+    std::set<tripoint_abs_ms> occupied;
+    std::set<tripoint_abs_omt> local_omts;
+    for( const tripoint_bub_ms &p : view.points_on_zlevel( origin.z() ) ) {
+        if( view.known( view.get_abs( p ) ) ) {
+            local_omts.insert( project_to<coords::omt>( view.get_abs( p ) ) );
+        }
+    }
+    std::set<point_abs_om> inspected_overmaps;
+    std::set<point_abs_om> unknown_overmaps;
+    for( const auto &omt : local_omts ) {
+        point_abs_om om_position;
+        tripoint_om_omt local_omt;
+        std::tie( om_position, local_omt ) = project_remain<coords::om>( omt );
+        overmap *container = overmap_buffer.find_loaded_overmap( om_position );
+        if( !container ) {
+            unknown_overmaps.insert( om_position );
+            continue; // Its tiles cannot certify occupancy and remain unavailable.
+        }
+        if( inspected_overmaps.insert( om_position ).second ) {
+            for( const auto &other : container->get_npcs() ) {
+                if( other && other.get() != &body && !other->is_dead() ) {
+                    occupied.insert( other->pos_abs() );
+                }
+            }
+        }
+        for( const auto *bucket : container->hordes_at(
+                 local_omt, horde_map_flavors::active | horde_map_flavors::idle |
+                 horde_map_flavors::dormant | horde_map_flavors::immobile ) ) {
+            for( const auto &entity : *bucket ) {
+                occupied.insert( entity.first );
+            }
+        }
+    }
+    swap_map use_view( view );
+    std::vector<tripoint_bub_ms> frontier;
+    for( const tripoint_bub_ms &p : view.points_on_zlevel( origin.z() ) ) {
+        const tripoint_abs_ms absolute = view.get_abs( p );
+        const auto tile_omt = project_to<coords::omt>( absolute );
+        if( !loaded.inbounds( absolute ) || !view.known( absolute ) ||
+            ( tile_omt != origin_omt && tile_omt != next_omt ) ||
+            unknown_overmaps.count( project_to<coords::om>( absolute.xy() ) ) != 0 ||
+            ( !view.passable( p ) &&
+              !view.open_door( body, p, !view.is_outside( body.pos_bub( view ) ), true ) ) ||
+            ( occupied.count( absolute ) != 0 && rl_dist( origin, absolute ) <= 1 ) ||
+            get_creature_tracker().creature_at( absolute ) ) {
+            continue;
+        }
+        bool borders_remote = false;
+        for( int y = -1; y <= 1 && !borders_remote; ++y ) {
+            for( int x = -1; x <= 1; ++x ) {
+                if( ( x != 0 || y != 0 ) && !loaded.inbounds( absolute + point( x, y ) ) ) {
+                    borders_remote = true;
+                    break;
+                }
+            }
+        }
+        if( borders_remote ) {
+            frontier.push_back( p );
+        }
+    }
+    std::sort( frontier.begin(), frontier.end(), [&]( const auto &lhs, const auto &rhs ) {
+        return std::make_tuple( rl_dist( origin, view.get_abs( lhs ) ), lhs ) <
+               std::make_tuple( rl_dist( origin, view.get_abs( rhs ) ), rhs );
+    } );
+    const auto native_avoid = body.get_path_avoid();
+    const auto avoid = [&]( const tripoint_bub_ms &p ) {
+        if( !view.inbounds( p ) || p.z() != origin.z() || !view.known( view.get_abs( p ) ) ) {
+            return true;
+        }
+        const auto absolute = view.get_abs( p );
+        const auto tile_omt = project_to<coords::omt>( absolute );
+        const trap &hazard = view.tr_at( p );
+        return ( tile_omt != origin_omt && tile_omt != next_omt ) ||
+               unknown_overmaps.count( project_to<coords::om>( absolute.xy() ) ) != 0 ||
+               ( occupied.count( absolute ) != 0 && rl_dist( origin, absolute ) <= 1 ) ||
+               get_creature_tracker().creature_at( absolute ) != nullptr || native_avoid( p ) ||
+               view.dangerous_field_at( p ) ||
+               ( !hazard.is_null() && hazard.can_see( p, body ) && !hazard.is_benign() );
+    };
+    std::vector<tripoint_bub_ms> path;
+    for( const auto &entry : frontier ) {
+        auto candidate = view.route( body.pos_bub( view ), pathfinding_target::point( entry ),
+                                     body.get_pathfinding_settings( true ), avoid );
+        while( !candidate.empty() && candidate.front() == body.pos_bub( view ) ) {
+            candidate.erase( candidate.begin() );
+        }
+        if( !candidate.empty() && candidate.back() == entry ) {
+            path = std::move( candidate );
+            break;
+        }
+    }
+    const int old_moves = body.get_moves();
+    bool lost_ownership = false;
+    body.set_moves( funded_moves );
+    while( body.get_moves() > 0 && !path.empty() && !loaded.inbounds( body.pos_abs() ) ) {
+        if( !still_owned() || body.is_dead() || body.in_sleep_state() || body.duty_incapacitated() ||
+            body.is_mounted() || body.in_vehicle || body.has_effect( efftype_id( "stunned" ) ) ||
+            body.has_effect( efftype_id( "psi_stunned" ) ) ||
+            ( body.current_target() && body.get_ai_danger() > 0 ) ) {
+            lost_ownership = true;
+            break;
+        }
+        const auto next = path.front();
+        if( !view.inbounds( next ) || avoid( next ) ||
+            occupied.count( view.get_abs( next ) ) != 0 ||
+            rl_dist( body.pos_bub( view ), next ) != 1 || !body.can_move_to( next, true ) ) {
+            break;
+        }
+        const int before = body.get_moves();
+        const auto prior = body.pos_abs();
+        body.move_to( next, true );
+        result.acted |= body.get_moves() < before;
+        if( body.pos_abs() != prior ) {
+            result.moved = true;
+        }
+        // Native movement can change the operation on the final tile too.
+        // Preserve the physical entry fact, but do not report continued
+        // authority merely because the loop is about to end.
+        if( !still_owned() ) {
+            lost_ownership = true;
+            break;
+        }
+        if( body.get_moves() >= before || body.is_dead() ) {
+            break;
+        }
+        if( body.pos_bub( view ) != next ) {
+            if( view.passable( next ) ) {
+                continue; // A native door action opened this same next tile.
+            }
+            break;
+        }
+        path.erase( path.begin() );
+    }
+    body.set_moves( lost_ownership && !result.acted ? old_moves :
+                    std::min( std::max( old_moves, 0 ), body.get_moves() ) );
+    result.interrupted = lost_ownership;
+    result.entered = loaded.inbounds( body.pos_abs() );
+    return result;
+}
+
+std::optional<step_read> failure_cache::find( const monster &body, const tripoint_abs_ms &goal,
+        const bool movement, const int now )
+{
+    const auto origin = body.pos_abs();
+    // Effects can change movement, fields or other actor capabilities beyond
+    // the static path settings. Refuse the shortcut while any are present.
+    if( !body.get_effects().empty() ) {
+        entries.clear();
+        return std::nullopt;
+    }
+    const auto &settings = body.get_pathfinding_settings();
+    if( !entries.empty() ) {
+        const auto &old = entries.front();
+        if( old.origin != origin || old.type != body.type->id ||
+            old.hp != body.get_hp() || old.speed != body.get_speed() ||
+            old.flies != body.flies() || old.submerges != body.can_submerge() ||
+            old.climbs != body.can_climb() ||
+            old.opens_doors != body.has_flag( mon_flag_CAN_OPEN_DOORS ) ||
+            !same_settings( old.settings, settings ) ) {
+            entries.clear();
+        }
+    }
+    for( auto it = entries.begin(); it != entries.end(); ) {
+        if( now < it->recorded_turn ||
+            static_cast<std::int64_t>( now ) - it->recorded_turn >= 10 ) {
+            it = entries.erase( it );
+            continue;
+        }
+        if( it->goal == goal && it->movement == movement && it->type == body.type->id &&
+            it->hp == body.get_hp() && it->speed == body.get_speed() &&
+            it->flies == body.flies() && it->submerges == body.can_submerge() &&
+            it->climbs == body.can_climb() &&
+            it->opens_doors == body.has_flag( mon_flag_CAN_OPEN_DOORS ) &&
+            same_settings( it->settings, settings ) ) {
+            step_read result;
+            result.position = origin;
+            result.known = true;
+            result.reason = "no_existing_safe_native_route";
+            return result;
+        }
+        ++it;
+    }
+    return std::nullopt;
+}
+
+void failure_cache::remember( const monster &body, const tripoint_abs_ms &goal,
+                              const bool movement, const int now, const step_read &result )
+{
+    if( !body.get_effects().empty() || result.next != action::none || !result.known ||
+        result.missing_geometry || result.hazard_revision ||
+        result.reason != "no_existing_safe_native_route" ) {
+        return;
+    }
+    const auto origin = body.pos_abs();
+    if( !entries.empty() && entries.front().origin != origin ) {
+        entries.clear();
+    }
+    entries.erase( std::remove_if( entries.begin(), entries.end(), [&]( const entry &old ) {
+        return old.goal == goal && old.movement == movement;
+    } ), entries.end() );
+    // One sweep has at most 91 initial cells; retain bounded value-only
+    // refusals, evicting oldest when later observed floors add more.
+    if( entries.size() >= 128 ) {
+        entries.erase( entries.begin() );
+    }
+    entries.push_back( { origin, goal, body.type->id, body.get_pathfinding_settings(), now,
+                         body.get_hp(), body.get_speed(), movement, body.flies(),
+                         body.can_submerge(), body.can_climb(),
+                         body.has_flag( mon_flag_CAN_OPEN_DOORS ) } );
+}
+
 struct preparation::implementation {
     tripoint_abs_ms goal;
     std::unique_ptr<navigation_view> view;
@@ -147,7 +440,7 @@ preparation::~preparation() = default;
 
 step_read read_step( const monster &body, const tripoint_abs_ms &goal,
                      const std::function<bool( const tripoint_abs_ms & )> &occupied, preparation *prepared,
-                     segment *retained, bool approach_unknown_goal )
+                     segment *retained, bool approach_unknown_goal, failure_cache *failures )
 {
     // Includes every refusal and locally owned view destruction. A retained
     // service workspace tears down under its inclusive operation parent.
@@ -160,6 +453,19 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
     }
     step_read out;
     out.position = origin;
+    const int now = to_turn<int>( calendar::turn );
+    if( failures ) {
+        if( const auto cached = failures->find( body, goal, approach_unknown_goal, now ) ) {
+            raid_perf_note_query( raid_perf_query_event::no_route );
+            return *cached;
+        }
+    }
+    const auto finish = [&]() {
+        if( failures ) {
+            failures->remember( body, goal, approach_unknown_goal, now, out );
+        }
+        return out;
+    };
     const auto &native = body.get_pathfinding_settings();
     if( native.max_dist <= 0 ) {
         if( retained ) {
@@ -167,7 +473,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
         }
         out.reason = "no_native_pathfinding";
         raid_perf_note_query( raid_perf_query_event::other_refusal );
-        return out;
+        return finish();
     }
     const auto delta = goal - origin;
     // Match the native route's distance bound. A diagonal can exceed it even
@@ -242,7 +548,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
         out.reason = "origin_geometry_unknown";
         request_frontier();
         raid_perf_note_query( raid_perf_query_event::unknown_geometry );
-        return out;
+        return finish();
     }
     if( goal == origin && raid_sweep::fire_approach( *here, from ) ) {
         if( retained ) {
@@ -252,7 +558,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
         out.reason = "approach_fire_hazard";
         out.hazard_revision = raid_sweep::fire_revision( *here, {from} );
         raid_perf_note_query( raid_perf_query_event::fire_refused );
-        return out;
+        return finish();
     }
     const bool can_open = body.has_flag( mon_flag_CAN_OPEN_DOORS );
     const auto door = [&]( const tripoint_bub_ms & p ) {
@@ -352,7 +658,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
             out.reason = origin == goal ? "goal_reached" : "no_existing_safe_native_route";
             raid_perf_note_query( origin == goal ? raid_perf_query_event::goal_reached :
                                   raid_perf_query_event::no_route );
-            return out;
+            return finish();
         }
         // A shortened endpoint is an approach preference, not a required
         // physical destination. Choose the farthest native-reachable point
@@ -386,7 +692,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
             out.reason = "segment_geometry_unknown";
             request_frontier();
             raid_perf_note_query( raid_perf_query_event::unknown_geometry );
-            return out;
+            return finish();
         }
     }
     if( route.empty() ) {
@@ -418,13 +724,13 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
         }
         raid_perf_note_query( out.reason == "approach_fire_hazard" ? raid_perf_query_event::fire_refused :
                               raid_perf_query_event::no_route );
-        return out;
+        return finish();
     }
     const auto next = route.front();
     if( !known( next ) || avoid( next ) ) {
         out.reason = "next_step_refused";
         raid_perf_note_query( raid_perf_query_event::other_refusal );
-        return out;
+        return finish();
     }
     out.position = here->get_abs( next );
     out.known = true;
@@ -467,7 +773,7 @@ step_read read_step( const monster &body, const tripoint_abs_ms &goal,
     raid_perf_note_query( out.next == action::walk ? raid_perf_query_event::walk :
                           out.next == action::open_door ? raid_perf_query_event::open_door :
                           raid_perf_query_event::other_refusal );
-    return out;
+    return finish();
 }
 
 bool acquire_movement_geometry( const tripoint_abs_ms &origin, const step_read &request )

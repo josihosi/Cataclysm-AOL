@@ -13,6 +13,7 @@
 #include <utility>
 #include <tuple>
 
+#include "active_time.h"
 #include "calendar.h"
 #include "do_turn.h"
 #include "avatar.h"
@@ -42,6 +43,58 @@ namespace migo_tower
 {
 namespace
 {
+struct prepare_step_sample {
+    std::string site;
+    std::string member;
+    std::uint64_t epoch = 0;
+    std::uint64_t generation = 0;
+    int owner = 0;
+    int phase = 0;
+    int turn = 0;
+    tripoint_abs_ms origin;
+    tripoint_abs_ms goal;
+    physical_navigation::step_read result;
+};
+constexpr std::size_t prepare_sample_limit = 8;
+std::array<prepare_step_sample, prepare_sample_limit> prepare_samples;
+std::size_t prepare_sample_count = 0;
+bool prepare_samples_truncated = false;
+
+void remember_prepare_step( const monster &body, migo_population::representation owner,
+                            const tripoint_abs_ms &goal, const physical_navigation::step_read &result )
+{
+    if( !raid_perf_query_active() || !body.migo_intent() ) {
+        return;
+    }
+    const auto &identity = body.population_identity();
+    const auto &intent = *body.migo_intent();
+    for( std::size_t i = 0; i < prepare_sample_count; ++i ) {
+        const auto &old = prepare_samples[i];
+        if( old.site == identity.site_id && old.member == identity.member_id &&
+            old.epoch == identity.epoch && old.generation == intent.generation &&
+            old.owner == static_cast<int>( owner ) && old.phase == static_cast<int>( intent.phase ) &&
+            old.goal == goal && old.result.next == result.next && old.result.reason == result.reason ) {
+            return;
+        }
+    }
+    if( prepare_sample_count == prepare_sample_limit || identity.site_id.size() > 256 ||
+        identity.member_id.size() > 256 ) {
+        prepare_samples_truncated = true;
+        return;
+    }
+    auto &sample = prepare_samples[prepare_sample_count++];
+    sample.site = identity.site_id;
+    sample.member = identity.member_id;
+    sample.epoch = identity.epoch;
+    sample.generation = intent.generation;
+    sample.owner = static_cast<int>( owner );
+    sample.phase = static_cast<int>( intent.phase );
+    sample.turn = to_turn<int>( calendar::turn );
+    sample.origin = body.pos_abs();
+    sample.goal = goal;
+    sample.result = result;
+}
+
 // Receiver-only bounded value storage. Strings are admitted before copying;
 // the same conservative budget covers worst-case JSON escaping and framing.
 // No formatting, filesystem output or diagnostic native reads occur here.
@@ -207,13 +260,21 @@ physical_navigation::step_read read_owned_step( monster &body,
     auto &intent = *body.migo_intent();
     const auto &identity = body.population_identity();
     const int now = to_turn<int>( calendar::turn );
-    if( intent.navigation_identity.site_id != identity.site_id ||
+    const bool context_changed = intent.navigation_identity.site_id != identity.site_id ||
         intent.navigation_identity.member_id != identity.member_id ||
         intent.navigation_identity.epoch != identity.epoch ||
         intent.navigation_identity.site_anchor != identity.site_anchor ||
         intent.navigation_generation != intent.generation || intent.navigation_phase != intent.phase ||
-        intent.navigation_owner != static_cast<int>( owner ) ||
-        ( intent.navigation_world != now && intent.navigation_world != now - 1 ) ) {
+        intent.navigation_owner != static_cast<int>( owner );
+    if( context_changed ) {
+        intent.navigation_failures.clear();
+    }
+    if( owner != migo_population::representation::abstract || get_map().inbounds( body.pos_abs() ) ) {
+        // A locally serviced body can see changed geometry or occupancy while
+        // bypassing this offscreen cache. Do not reuse its old refusal later.
+        intent.navigation_failures.clear();
+    }
+    if( context_changed || ( intent.navigation_world != now && intent.navigation_world != now - 1 ) ) {
         raid_perf_note_query( intent.navigation.size() ? raid_perf_query_event::context_positive_reset :
                               raid_perf_query_event::context_empty_reset );
         intent.navigation.clear();
@@ -247,7 +308,9 @@ physical_navigation::step_read read_owned_step( monster &body,
             }
         }
         return false;
-    }, prepared, &intent.navigation, movement );
+    }, prepared, &intent.navigation, movement,
+       owner == migo_population::representation::abstract && !get_map().inbounds( body.pos_abs() ) ?
+       &intent.navigation_failures : nullptr );
 }
 
 physical_navigation::step_read read_service_step( monster &body,
@@ -1518,7 +1581,296 @@ bool operation_has_native_engagement( const monster &body )
 }
 } // namespace
 
-physical_navigation::step_read prepare_step( monster &body, migo_population::representation owner )
+void serialize_prepare_step_samples( JsonOut &json )
+{
+    json.member( "migo_prepare_samples" );
+    json.start_object();
+    json.member( "scope", "first authenticated prepare_step per member, phase, goal, action and reason since the previous flush; a sample may belong to the currently open turn" );
+    json.member( "limit", prepare_sample_limit );
+    json.member( "truncated", prepare_samples_truncated );
+    json.member( "records" );
+    json.start_array();
+    for( std::size_t i = 0; i < prepare_sample_count; ++i ) {
+        const auto &sample = prepare_samples[i];
+        json.start_object();
+        json.member( "site", sample.site );
+        json.member( "member", sample.member );
+        json.member( "epoch", sample.epoch );
+        json.member( "generation", sample.generation );
+        json.member( "owner", sample.owner );
+        json.member( "phase", sample.phase );
+        json.member( "turn", sample.turn );
+        json.member( "origin", sample.origin.raw() );
+        json.member( "goal", sample.goal.raw() );
+        json.member( "action", static_cast<int>( sample.result.next ) );
+        json.member( "next_position", sample.result.position.raw() );
+        json.member( "known", sample.result.known );
+        json.member( "reason", sample.result.reason );
+        json.member( "missing_geometry" );
+        if( sample.result.missing_geometry ) {
+            json.write( sample.result.missing_geometry->raw() );
+        } else {
+            json.write_null();
+        }
+        json.end_object();
+    }
+    json.end_array();
+    json.end_object();
+}
+
+void clear_prepare_step_samples()
+{
+    for( std::size_t i = 0; i < prepare_sample_count; ++i ) {
+        prepare_samples[i] = prepare_step_sample();
+    }
+    prepare_sample_count = 0;
+    prepare_samples_truncated = false;
+}
+
+static bool near_tower_footprint( const monster &body, const tripoint_abs_omt &site_anchor )
+{
+    const tripoint_abs_omt origin = project_to<coords::omt>( body.pos_abs() );
+    const auto geometry = migo_population::geometry_at( site_anchor );
+    return geometry && std::any_of( geometry->parts.begin(), geometry->parts.end(), [&]( const auto &part ) {
+        return rl_dist( origin.xy(), part.xy() ) <= 1;
+    } );
+}
+
+static bool uses_local_approach( const monster &body, const tripoint_abs_ms &goal,
+                                 const tripoint_abs_omt &site_anchor )
+{
+    const tripoint_abs_omt origin = project_to<coords::omt>( body.pos_abs() );
+    const tripoint_abs_omt destination = project_to<coords::omt>( goal );
+    return get_map().inbounds( body.pos_abs() ) ||
+           rl_dist( origin.xy(), destination.xy() ) <= 1 ||
+           near_tower_footprint( body, site_anchor );
+}
+
+coarse_step_read prepare_coarse_step( monster &body, int active_turns, int current_moves,
+                                      const pending_source_reader &pending_source )
+{
+    coarse_step_read result;
+    result.step.position = body.pos_abs();
+    result.step.reason = "coarse_owner_unavailable";
+    if( !owns_intent( body, migo_population::representation::abstract ) || !body.migo_intent() ) {
+        return result;
+    }
+    const auto *recalled = recall_participant( body, migo_population::representation::abstract );
+    auto &intent = *body.migo_intent();
+    const auto *site = overmap_buffer.global_state.migo_towers.find( body.population_identity().site_id );
+    const auto *home = overmap_buffer.global_state.migo_populations.find( body.population_identity().site_id );
+    if( !site || !home || ( !recalled && ( !site->operation || site->operation->resolved ||
+                                          site->operation->generation != intent.generation ) ) ) {
+        return result;
+    }
+    if( !recalled && intent.phase != member_phase::returning &&
+        !site->operation->sweep.pending() ) {
+        if( operation_has_native_engagement( body ) ) {
+            intent.waypoint = body.pos_abs();
+            result.step.known = true;
+            result.step.reason = "operation_native_combat";
+            return result;
+        }
+        // This decision used to live in physical preparation. A finished
+        // distant sweep must enter the same homeward mission without calling
+        // the detailed-terrain planner.
+        intent.retreat();
+    }
+    const auto goal = recalled || intent.phase == member_phase::returning ?
+                      std::optional<tripoint_abs_ms>( intent.home ) : site->operation->sweep.pending();
+    if( !goal ) {
+        return result;
+    }
+    const auto geometry = migo_population::geometry_at( site->anchor );
+    const tripoint_abs_omt origin = project_to<coords::omt>( body.pos_abs() );
+    const tripoint_abs_omt destination( project_to<coords::omt>( *goal ).xy(), origin.z() );
+    if( !recalled && intent.phase == member_phase::outbound &&
+        std::abs( origin.x() - site->operation->source.source_omt.x() ) <= 1 &&
+        std::abs( origin.y() - site->operation->source.source_omt.y() ) <= 1 ) {
+        intent.phase = member_phase::searching;
+    }
+    const bool tower_departure = !get_map().inbounds( body.pos_abs() ) &&
+                                 origin.z() == goal->z() &&
+                                 rl_dist( origin.xy(), destination.xy() ) > 1 &&
+                                 near_tower_footprint( body, site->anchor );
+    if( uses_local_approach( body, *goal, site->anchor ) && !tower_departure ) {
+        // Departure, local interactions and final/vertical approach remain
+        // physical; their elapsed time never funds a later coarse edge.
+        intent.coarse_work.clear();
+        intent.coarse_work_position.reset();
+        intent.coarse_route.clear();
+        result.local_handoff = true;
+        return result;
+    }
+    if( !geometry ) {
+        return result;
+    }
+    if( recalled && recalled->exhausted() ) {
+        result.step.reason = "home_rally_allowance_exhausted";
+        return result;
+    }
+    Creature *target = body.attack_target();
+    if( body.friendly != 0 || body.attitude() == MATT_FLEE ||
+        body.has_effect( efftype_id( "narcosis" ) ) || body.has_effect( efftype_id( "stunned" ) ) ||
+        body.has_effect( efftype_id( "downed" ) ) || body.has_effect( efftype_id( "onfire" ) ) ||
+        ( target && !target->is_dead_state() && body.attitude_to( *target ) == Creature::Attitude::HOSTILE ) ) {
+        return result;
+    }
+    result.step.reason = "coarse_waiting";
+    const int now = to_turn<int>( calendar::turn );
+    if( active_turns <= 0 || intent.last_energy_world == now ||
+        active_time::funded_moves( current_moves, body.get_speed(), 1 ) <= 0 ) {
+        return result;
+    }
+    int slowest = recalled ? body.get_speed() : std::numeric_limits<int>::max();
+    bool can_cross_water = body.can_submerge() || body.flies();
+    bool all_fly = body.flies();
+    if( !recalled ) {
+        for( const auto &participant : site->operation->members ) {
+            const auto *record = home->find( participant.member_id );
+            if( !working_participant( participant, record ) ) {
+                continue;
+            }
+            const monster *peer = confirmed_body( *home, *record );
+            if( !peer && pending_source && record->owner == migo_population::representation::abstract &&
+                record->current_position ) {
+                const monster *candidate = pending_source( record->token, *record->current_position );
+                if( candidate && !candidate->is_dead() &&
+                    candidate->pos_abs() == *record->current_position &&
+                    candidate->population_identity().site_id == record->token.site_id &&
+                    candidate->population_identity().member_id == record->token.member_id &&
+                    candidate->population_identity().epoch == record->token.epoch &&
+                    candidate->population_identity().site_anchor == record->token.site_anchor &&
+                    home->owns( candidate->population_identity(), record->owner ) ) {
+                    peer = candidate;
+                }
+            }
+            if( !peer || peer->get_speed() <= 0 ) {
+                result.step.reason = "coarse_member_unavailable";
+                return result;
+            }
+            slowest = std::min( slowest, peer->get_speed() );
+            can_cross_water &= peer->can_submerge() || peer->flies();
+            all_fly &= peer->flies();
+        }
+    }
+    if( slowest <= 0 || slowest == std::numeric_limits<int>::max() ) {
+        result.step.reason = "coarse_no_members";
+        return result;
+    }
+    // A route and paid edge from a different capability cannot be carried
+    // onto this actor/party. Native deep-water admission permits flying or
+    // submerging bodies; every participant must qualify.
+    if( ( intent.coarse_can_cross_water && *intent.coarse_can_cross_water != can_cross_water ) ||
+        ( intent.coarse_all_fly && *intent.coarse_all_fly != all_fly ) ) {
+        intent.coarse_route.clear();
+        intent.coarse_work.clear();
+        intent.coarse_work_position.reset();
+    }
+    // Old saves did not record capability; adopt the authenticated body's
+    // current policy without discarding its already-bound historical work.
+    intent.coarse_can_cross_water = can_cross_water;
+    intent.coarse_all_fly = all_fly;
+    auto params = overmap_path_params::for_npc();
+    const int field_cost = params.get_cost( oter_travel_cost_type::field );
+    if( can_cross_water ) {
+        // Native deep water has four times ordinary floor's movement cost;
+        // flight uses the field rate. Both remain explicit party policy.
+        params.set_cost( oter_travel_cost_type::water, all_fly ? field_cost : field_cost * 4 );
+    }
+    if( all_fly ) {
+        params.set_cost( oter_travel_cost_type::air, field_cost );
+    }
+    const auto offset = body.pos_abs() - project_to<coords::ms>( origin );
+    if( intent.coarse_work_position != std::optional<tripoint_abs_ms>( body.pos_abs() ) ) {
+        intent.coarse_work.clear();
+        intent.coarse_work_position = body.pos_abs();
+    }
+    const auto &identity = body.population_identity();
+    overmap_party_travel::actor_input actor;
+    actor.actor_id = identity.site_id + ":" + identity.member_id;
+    actor.operation_generation = intent.generation;
+    actor.lease_epoch = identity.epoch;
+    actor.origin = origin;
+    actor.destination = destination;
+    actor.route = &intent.coarse_route;
+    actor.find = [&]( const tripoint_abs_omt &from, const tripoint_abs_omt &to ) {
+        return overmap_buffer.get_travel_path( from, to, params, {},
+        [&]( const tripoint_abs_omt &p ) { return p.z() != from.z(); } ).points;
+    };
+    actor.valid = [&]( const tripoint_abs_omt &from, const tripoint_abs_omt &to ) {
+        return from.z() == to.z() && overmap_travel_step_valid( from, to, params );
+    };
+    actor.terrain_weight = [&]( const tripoint_abs_omt &next ) {
+        const oter_id &terrain = overmap_buffer.ter_existing( next );
+        return terrain != oter_id() && terrain.is_valid() ?
+               params.get_cost( terrain->get_travel_cost_type() ) : -1;
+    };
+    actor.gate = []( const tripoint_abs_omt &next ) {
+        return overmap_party_travel::omt_intersects_loaded_map( next ) ?
+               overmap_party_travel::edge_gate::local_handoff :
+               overmap_party_travel::edge_gate::distant;
+    };
+    const oter_id &destination_terrain = overmap_buffer.ter_existing( destination );
+    actor.destination_cost = destination_terrain != oter_id() && destination_terrain.is_valid() ?
+                             params.get_cost( destination_terrain->get_travel_cost_type() ) : -1;
+    overmap_party_travel::transit_policy policy;
+    policy.now = now;
+    policy.retry_delay = 60;
+    policy.retained_edges = 128;
+    policy.slowest_speed = slowest;
+    policy.active_millis = 60000 / to_turns<int>( 1_minutes );
+    if( tower_departure ) {
+        // Select the next overmap edge without spending distant travel time.
+        // The actual tower exit remains a native physical segment.
+        intent.coarse_work.clear();
+        intent.coarse_work_position.reset();
+        policy.active_millis.reset();
+    }
+    const auto transit = overmap_party_travel::prepare_transit( intent.coarse_work, { actor }, policy );
+    if( transit.status == overmap_party_travel::transit_status::local_handoff ||
+        ( tower_departure && transit.status == overmap_party_travel::transit_status::route_ready ) ) {
+        intent.coarse_work.clear();
+        intent.coarse_work_position.reset();
+        if( intent.coarse_route.path.empty() ) {
+            result.step.reason = "coarse_local_waypoint_unavailable";
+            return result;
+        }
+        // Keep the shared route during the local crossing; it is reconsidered
+        // after the body actually enters the selected OMT.
+        result.local_waypoint = project_to<coords::ms>( intent.coarse_route.path.back() ) + offset.xy();
+        result.local_handoff = true;
+        return result;
+    }
+    if( transit.status == overmap_party_travel::transit_status::retry_pending ) {
+        result.step.reason = "coarse_route_retry_pending";
+        return result;
+    }
+    if( transit.status != overmap_party_travel::transit_status::waiting &&
+        transit.status != overmap_party_travel::transit_status::step ) {
+        result.step.reason = "coarse_route_unavailable";
+        return result;
+    }
+    result.funded = true;
+    const bool move = transit.status == overmap_party_travel::transit_status::step;
+    const tripoint_abs_ms position = move ?
+                                    project_to<coords::ms>( *transit.next.front() ) + offset.xy() :
+                                    body.pos_abs();
+    if( move ) {
+        // The private payload carries any surplus to the committed endpoint.
+        // A rejected node transfer restores the old work and old position.
+        intent.coarse_work_position = position;
+        result.step.next = physical_navigation::action::walk;
+        result.step.position = position;
+        result.step.move_cost = 100;
+        result.step.known = true;
+        result.step.reason = "coarse_paid_edge";
+    }
+    return result;
+}
+
+physical_navigation::step_read prepare_step( monster &body, migo_population::representation owner,
+        const std::optional<tripoint_abs_ms> &transit_waypoint )
 {
     physical_navigation::step_read result;
     result.position = body.pos_abs();
@@ -1531,6 +1883,35 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
         return result;
     }
     auto &intent = *body.migo_intent();
+    const auto &identity = body.population_identity();
+    const auto *waypoint_site = overmap_buffer.global_state.migo_towers.find( identity.site_id );
+    const auto *waypoint_recall = recall_participant( body, owner );
+    const auto waypoint_goal = waypoint_recall || intent.phase == member_phase::returning ?
+                               std::optional<tripoint_abs_ms>( intent.home ) :
+                               waypoint_site && waypoint_site->operation ?
+                               waypoint_site->operation->sweep.pending() : std::nullopt;
+    const auto origin_omt = project_to<coords::omt>( body.pos_abs() );
+    const bool tower_departure = waypoint_site && waypoint_goal &&
+                                 !get_map().inbounds( body.pos_abs() ) &&
+                                 body.pos_abs().z() == waypoint_goal->z() &&
+                                 rl_dist( origin_omt.xy(), project_to<coords::omt>( *waypoint_goal ).xy() ) > 1 &&
+                                 near_tower_footprint( body, waypoint_site->anchor ) &&
+                                 intent.coarse_route.target == std::optional<tripoint_abs_omt>(
+                                     tripoint_abs_omt( project_to<coords::omt>( *waypoint_goal ).xy(),
+                                                       origin_omt.z() ) );
+    if( transit_waypoint &&
+        ( owner != migo_population::representation::abstract || intent.coarse_route.path.empty() ||
+          intent.coarse_route.actor_id != identity.site_id + ":" + identity.member_id ||
+          intent.coarse_route.operation_generation != intent.generation ||
+          intent.coarse_route.lease_epoch != identity.epoch ||
+          project_to<coords::omt>( *transit_waypoint ) != intent.coarse_route.path.back() ||
+          *transit_waypoint != project_to<coords::ms>( intent.coarse_route.path.back() ) +
+          ( body.pos_abs() - project_to<coords::ms>( origin_omt ) ).xy() ||
+          ( !overmap_party_travel::omt_intersects_loaded_map( intent.coarse_route.path.back() ) &&
+            !tower_departure ) ) ) {
+        result.reason = "invalid_transit_waypoint";
+        return result;
+    }
     retire_route( body );
     if( auto *recalled = recall_participant( body, owner ) ) {
         Creature *target = body.attack_target();
@@ -1562,7 +1943,7 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
             raid_perf_scope scope( owner == migo_population::representation::local ?
                                    raid_perf_stage::migo_local_prepare_navigation :
                                    raid_perf_stage::migo_abstract_prepare_navigation );
-            result = read_owned_step( body, intent.home, owner, nullptr, true );
+            result = read_owned_step( body, transit_waypoint.value_or( intent.home ), owner, nullptr, true );
         }
         intent.waypoint = result.next == physical_navigation::action::none ?
                           body.pos_abs() : result.position;
@@ -1608,8 +1989,9 @@ physical_navigation::step_read prepare_step( monster &body, migo_population::rep
         raid_perf_scope scope( owner == migo_population::representation::local ?
                                raid_perf_stage::migo_local_prepare_navigation :
                                raid_perf_stage::migo_abstract_prepare_navigation );
-        result = read_owned_step( body, *goal, owner, nullptr, true );
+        result = read_owned_step( body, transit_waypoint.value_or( *goal ), owner, nullptr, true );
     }
+    remember_prepare_step( body, owner, transit_waypoint.value_or( *goal ), result );
     intent.waypoint = result.next == physical_navigation::action::none ?
                       body.pos_abs() : result.position;
     return result;
@@ -1895,6 +2277,7 @@ void service_operations( int now_turn, int active_elapsed )
         const auto candidate_at_start = operation.sweep.pending();
         bool safe_approach = false;
         bool fire_refusal = false;
+        bool distant_approach_pending = false;
         std::uint64_t fire_revision = 0;
         std::vector<std::string> available_members;
         std::vector<std::pair<std::string, tripoint_abs_ms>> searching_positions;
@@ -1947,7 +2330,10 @@ void service_operations( int now_turn, int active_elapsed )
                     if( ( candidate.state != raid_sweep::disposition::hazardous &&
                           candidate.state != raid_sweep::disposition::unreachable ) || candidate.reconsidered ||
                         candidate.position.z() != body.pos_abs().z() ||
-                        rl_dist( candidate.position, body.pos_abs() ) > local_bound ) {
+                        rl_dist( candidate.position, body.pos_abs() ) > local_bound ||
+                        ( owner == migo_population::representation::abstract &&
+                          rl_dist( project_to<coords::omt>( body.pos_abs() ).xy(),
+                                   project_to<coords::omt>( candidate.position ).xy() ) > 1 ) ) {
                         continue;
                     }
                     if( raid_perf_query_active() ) {
@@ -1962,22 +2348,33 @@ void service_operations( int now_turn, int active_elapsed )
                     const auto reopened = read_service_step( body, candidate.position, owner );
                     if( reopened.known && reopened.next != physical_navigation::action::none &&
                         approach_available( body, reopened ) ) {
-                        operation.sweep.reconsider( candidate.position, 0, token.member_id );
+                        // This read proved a currently executable approach;
+                        // even the same formerly excluded member can reopen it.
+                        operation.sweep.reconsider( candidate.position, 0, token.member_id, true );
                         break; // one actually reopened approach; no timer reset from probing
                     }
                 }
                 if( const auto pending = operation.sweep.pending() ) {
-                    const auto approach = read_service_step( body, *pending, owner, &pending_preparation );
-                    if( operation.sweep.pending() == candidate_at_start ) {
-                        const bool available = approach_available( body, approach );
-                        if( available ) {
-                            available_members.push_back( token.member_id );
-                        }
-                        if( approach.reason == "approach_fire_hazard" ) {
-                            fire_refusal = true;
-                            fire_revision = approach.hazard_revision;
-                        } else if( available ) {
-                            safe_approach = true;
+                    if( owner == migo_population::representation::abstract &&
+                        rl_dist( project_to<coords::omt>( body.pos_abs() ).xy(),
+                                 project_to<coords::omt>( *pending ).xy() ) > 1 ) {
+                        // The shared distant motor owns route selection and
+                        // retry. Physical qualification belongs to arrival;
+                        // this is not evidence that the destination is safe.
+                        distant_approach_pending = true;
+                    } else {
+                        const auto approach = read_service_step( body, *pending, owner, &pending_preparation );
+                        if( operation.sweep.pending() == candidate_at_start ) {
+                            const bool available = approach_available( body, approach );
+                            if( available ) {
+                                available_members.push_back( token.member_id );
+                            }
+                            if( approach.reason == "approach_fire_hazard" ) {
+                                fire_refusal = true;
+                                fire_revision = approach.hazard_revision;
+                            } else if( available ) {
+                                safe_approach = true;
+                            }
                         }
                     }
                 }
@@ -2032,7 +2429,8 @@ void service_operations( int now_turn, int active_elapsed )
             for( const auto &entry : searching_positions ) {
                 operation.sweep.approach( entry.second, entry.first );
             }
-            if( operation.sweep.pending() == candidate_at_start && !safe_approach && fire_refusal ) {
+            if( operation.sweep.pending() == candidate_at_start && !safe_approach &&
+                !distant_approach_pending && fire_refusal ) {
                 operation.sweep.exclude( raid_sweep::disposition::hazardous, fire_revision );
             }
             if( operation.sweep.obstructed() ) {

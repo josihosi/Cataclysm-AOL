@@ -135,6 +135,11 @@ bool crossing_actor_copies_match( const bandit_live_world::site_record &site )
                 overmap_buffer.global_state.bandit_live_world, id ) != &site ) {
             return false;
         }
+        const auto &admitted = outing->structural_admission.staged;
+        const bool staged = std::any_of( admitted.begin(), admitted.end(),
+        [id]( const auto &member ) {
+            return member.npc_id == id;
+        } );
         for( const npc *copy : bandit_live_world_projection_lease_copies( *actor ) ) {
             const auto &lease = copy->get_bandit_live_world_projection_lease();
             if( copy->getID() != id || copy->is_dead() || copy->pos_abs() != actor->pos_abs() ||
@@ -148,12 +153,19 @@ bool crossing_actor_copies_match( const bandit_live_world::site_record &site )
                     lease.last_advanced_minutes != outing->last_advanced_minutes ) {
                     return false;
                 }
+            } else if( staged ) {
+                if( !lease.present || lease.site_id != site.site_id || lease.owner != "admission" ||
+                    !bandit_live_world::structural_admission_lease_matches(
+                        site, id, lease.activity_id, lease.generation, lease.handoff_epoch,
+                        lease.last_advanced_minutes ) ) {
+                    return false;
+                }
             } else if( lease.present ) {
                 return false;
             }
         }
         if( outing->owner == bandit_live_world::simulation_owner::abstract &&
-            outing->local_handoff.is_abstract_resume() ) {
+            outing->local_handoff.is_abstract_resume() && !staged ) {
             const auto &members = outing->local_handoff.members;
             const auto snapshot = std::find_if( members.begin(), members.end(),
             [id]( const auto & member ) {
@@ -169,6 +181,52 @@ bool crossing_actor_copies_match( const bandit_live_world::site_record &site )
     return true;
 }
 
+// The admission record locates the persistent body on reload.  Capture the
+// actual position after native movement; the NPC remains its position owner.
+void refresh_structural_admission_save_locations()
+{
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    if( std::none_of( world.sites.begin(), world.sites.end(), []( const auto &site ) {
+        const auto *outing = site.active_external_outing();
+        return outing && !outing->structural_admission.staged.empty();
+    } ) ) {
+        return;
+    }
+    const auto persistent = overmap_buffer.get_overmap_npcs();
+    std::vector<std::pair<bandit_live_world::structural_admission_member *, tripoint_abs_ms>> updates;
+    for( auto &site : world.sites ) {
+        auto *outing = site.active_external_outing();
+        if( outing == nullptr || !outing->structural_admission.is_active() ) {
+            continue;
+        }
+        for( auto &staged : outing->structural_admission.staged ) {
+            const auto actor = overmap_buffer.find_npc( staged.npc_id );
+            if( !actor || actor->is_dead() || actor->pos_abs().is_invalid() ||
+                bandit_live_world::active_operation_duty_site_for( world, staged.npc_id ) != &site ||
+                std::count_if( persistent.begin(), persistent.end(), [&]( const auto &copy ) {
+                    return copy && copy->getID() == staged.npc_id;
+                } ) != 1 ) {
+                throw std::runtime_error( "structural admission save has no unique living body" );
+            }
+            for( const npc *copy : bandit_live_world_projection_lease_copies( *actor ) ) {
+                const auto &lease = copy->get_bandit_live_world_projection_lease();
+                if( copy->is_dead() || copy->pos_abs() != actor->pos_abs() ||
+                    copy->hp_percentage() != actor->hp_percentage() || !lease.present ||
+                    lease.owner != "admission" || lease.site_id != site.site_id ||
+                    !bandit_live_world::structural_admission_lease_matches(
+                        site, staged.npc_id, lease.activity_id, lease.generation,
+                        lease.handoff_epoch, lease.last_advanced_minutes ) ) {
+                    throw std::runtime_error( "structural admission save has incompatible body copies" );
+                }
+            }
+            updates.emplace_back( &staged, actor->pos_abs() );
+        }
+    }
+    for( const auto &update : updates ) {
+        update.first->holding_position = update.second;
+    }
+}
+
 bandit_live_world::local_projection_reconciliation_result
 reconcile_loaded_bandit_live_world_projections()
 {
@@ -178,6 +236,14 @@ reconcile_loaded_bandit_live_world_projections()
     std::set<point_abs_om> handoff_overmaps;
     for( const auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
         const auto *outing = site.active_external_outing();
+        if( outing != nullptr && outing->structural_admission.is_active() &&
+            bandit_live_world::current_external_simulation_cursor( site ) ) {
+            for( const auto &member : outing->structural_admission.staged ) {
+                if( !member.holding_position.is_invalid() ) {
+                    handoff_overmaps.insert( project_to<coords::om>( member.holding_position.xy() ) );
+                }
+            }
+        }
         if( outing == nullptr || outing->kind != bandit_live_world::outing_kind::structural_sortie ||
             outing->owner != bandit_live_world::simulation_owner::local ||
             !outing->local_handoff.is_active() || outing->member_ids.size() != 2 ||
@@ -1083,6 +1149,7 @@ bool game::save()
         }
         save_continuity::require_ordinary_save( PATH_INFO::world_base_save_path().get_unrelative_path() );
         save_continuity::begin_write( PATH_INFO::world_base_save_path().get_unrelative_path() );
+        refresh_structural_admission_save_locations();
         validate_bandit_crossing_save();
         const auto acknowledged_crossings =
             overmap_buffer.global_state.bandit_live_world.acknowledge_persisted_crossings();

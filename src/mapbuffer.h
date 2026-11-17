@@ -2,6 +2,7 @@
 #ifndef CATA_SRC_MAPBUFFER_H
 #define CATA_SRC_MAPBUFFER_H
 
+#include <cstddef>
 #include <list>
 #include <map>
 #include <memory>
@@ -16,6 +17,24 @@ class cata_path;
 class submap;
 class vehicle;
 struct submap_sunlight_input;
+
+// Optional synchronous diagnostic counter for tests and focused performance
+// investigations. Resident-only lookups are excluded; no data is retained.
+struct submap_load_counts {
+    std::size_t lookup_calls = 0;
+    std::size_t unserialize_calls = 0;
+    std::size_t deserialize_calls = 0;
+};
+class scoped_submap_load_counter
+{
+    public:
+        explicit scoped_submap_load_counter( submap_load_counts &counts );
+        ~scoped_submap_load_counter();
+        scoped_submap_load_counter( const scoped_submap_load_counter & ) = delete;
+        scoped_submap_load_counter &operator=( const scoped_submap_load_counter & ) = delete;
+    private:
+        submap_load_counts *previous;
+};
 
 /**
  * Store, buffer, save and load the entire world map.

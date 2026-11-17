@@ -101,6 +101,10 @@ void write_selected( JsonOut &json, const selected_projection &projection )
     json.member( "phase", projection.marker.state );
     json.member( "provenance", to_string( projection.marker.provenance ) );
     json.member( "generation", projection.marker.generation );
+    json.member( "position_basis", projection.marker.position_basis );
+    write_optional_int( json, "representative_npc_id", projection.marker.representative_npc_id );
+    json.member( "members_split", projection.marker.members_split );
+    json.member( "unknown_member_positions", projection.marker.unknown_member_positions );
     json.member( "details" );
     if( !projection.detail ) {
         json.write_null();
@@ -147,7 +151,7 @@ void write_selected( JsonOut &json, const selected_projection &projection )
         json.member( "status", member.status );
         json.member( "loaded", member.loaded );
         json.member( "position_ms" );
-        if( member.loaded && member.position_ms ) {
+        if( member.position_ms ) {
             write_ms( json, *member.position_ms );
         } else {
             json.write_null();

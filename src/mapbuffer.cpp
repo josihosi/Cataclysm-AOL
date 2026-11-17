@@ -50,6 +50,22 @@
 
 #define dbg(x) DebugLog((x),D_MAP) << __FILE__ << ":" << __LINE__ << ": "
 
+namespace
+{
+thread_local submap_load_counts *current_submap_load_counts = nullptr;
+}
+
+scoped_submap_load_counter::scoped_submap_load_counter( submap_load_counts &counts ) :
+    previous( current_submap_load_counts )
+{
+    current_submap_load_counts = &counts;
+}
+
+scoped_submap_load_counter::~scoped_submap_load_counter()
+{
+    current_submap_load_counts = previous;
+}
+
 static std::string quad_file_name( const tripoint_abs_omt &om_addr )
 {
     return string_format( "%d.%d.%d.map", om_addr.x(), om_addr.y(), om_addr.z() );
@@ -91,6 +107,9 @@ submap *mapbuffer::existing_submap_reader::lookup( const tripoint_abs_sm &p )
 std::unique_ptr<submap> mapbuffer::existing_submap_reader::read_omitted_uniform(
     const tripoint_abs_sm &p, bool *read_error )
 {
+    if( current_submap_load_counts ) {
+        ++current_submap_load_counts->lookup_calls;
+    }
     if( read_error ) {
         *read_error = false;
     }
@@ -408,6 +427,9 @@ void mapbuffer::remove_submap( const tripoint_abs_sm &addr )
 
 submap *mapbuffer::lookup_submap( const tripoint_abs_sm &p )
 {
+    if( current_submap_load_counts ) {
+        ++current_submap_load_counts->lookup_calls;
+    }
     dbg( D_INFO ) << "mapbuffer::lookup_submap( x[" << p.x() << "], y[" << p.y() << "], z["
                   << p.z() << "])";
 
@@ -432,6 +454,9 @@ submap *mapbuffer::lookup_submap_existing( const tripoint_abs_sm &p )
 submap *mapbuffer::lookup_submap_existing( const tripoint_abs_sm &p,
         existing_read_context *context )
 {
+    if( current_submap_load_counts ) {
+        ++current_submap_load_counts->lookup_calls;
+    }
     raid_perf_scope lookup_scope( raid_perf_stage::nav_view_lookup, raid_perf_nav_build_active() );
     const auto iter = submaps.find( p );
     if( iter != submaps.end() ) {
@@ -470,6 +495,9 @@ bool mapbuffer::submap_exists_approx( const tripoint_abs_sm &p )
 {
     const auto iter = submaps.find( p );
     if( iter == submaps.end() ) {
+        if( current_submap_load_counts ) {
+            ++current_submap_load_counts->lookup_calls;
+        }
         try {
             const tripoint_abs_omt om_addr = project_to<coords::omt>( p );
             const cata_path dirname = find_dirname( om_addr );
@@ -697,6 +725,9 @@ void mapbuffer::save_quad(
 submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p, const bool generate_uniform,
                                       existing_read_context *context )
 {
+    if( current_submap_load_counts ) {
+        ++current_submap_load_counts->unserialize_calls;
+    }
     // Map the tripoint to the submap quad that stores it.
     const tripoint_abs_omt om_addr = project_to<coords::omt>( p );
     const cata_path dirname = find_dirname( om_addr );
@@ -818,6 +849,9 @@ submap *mapbuffer::unserialize_submaps( const tripoint_abs_sm &p, const bool gen
 
 void mapbuffer::deserialize( const JsonArray &ja, const bool skip_existing )
 {
+    if( current_submap_load_counts ) {
+        ++current_submap_load_counts->deserialize_calls;
+    }
     for( JsonObject submap_json : ja ) {
         if( skip_existing && submap_json.has_array( "coordinates" ) ) {
             JsonArray coordinates = submap_json.get_array( "coordinates" );

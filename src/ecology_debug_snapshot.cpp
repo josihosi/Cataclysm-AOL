@@ -296,6 +296,10 @@ void write_entity( JsonOut &json, const entity_marker &entity )
     json.member( "state", entity.state );
     json.member( "provenance", to_string( entity.provenance ) );
     json.member( "generation", entity.generation );
+    json.member( "position_basis", entity.position_basis );
+    write_optional_int( json, "representative_npc_id", entity.representative_npc_id );
+    json.member( "members_split", entity.members_split );
+    json.member( "unknown_member_positions", entity.unknown_member_positions );
     json.end_object();
 }
 
@@ -340,6 +344,16 @@ void write_selected( JsonOut &json, const std::optional<selected_detail> &select
         write_optional_int( json, "hp_percent", member.hp_percent );
         json.member( "status", member.status );
         json.member( "loaded", member.loaded );
+        json.member( "position_ms" );
+        if( member.position_ms ) {
+            json.start_array();
+            json.write( member.position_ms->x() );
+            json.write( member.position_ms->y() );
+            json.write( member.position_ms->z() );
+            json.end_array();
+        } else {
+            json.write_null();
+        }
         json.end_object();
     }
     json.end_array();

@@ -410,6 +410,20 @@ static int moves_to_destination( const std::string &monster_type,
     return 100000;
 }
 
+TEST_CASE( "mi-go crosses deep water using its native movement", "[monster][migo][water]" )
+{
+    clear_map_and_put_player_underground();
+    map &here = get_map();
+    const tripoint_bub_ms from = tripoint_bub_ms::zero;
+    const tripoint_bub_ms to = { 1, 0, 0 };
+    REQUIRE( here.ter_set( to, ter_t_water_dp ) );
+    const mtype_id type( "mon_mi_go" );
+    REQUIRE( type->has_flag( mon_flag_NO_BREATHE ) );
+    REQUIRE_FALSE( type->has_flag( mon_flag_SWIMS ) );
+    const int expected = ( here.ter( from )->movecost + here.ter( to )->movecost ) * 25;
+    CHECK( moves_to_destination( "mon_mi_go", from, to ) == expected );
+}
+
 namespace
 {
 

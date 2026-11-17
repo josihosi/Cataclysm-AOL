@@ -5608,6 +5608,14 @@ TEST_CASE( "performance interval output preserves the real World successor",
         CHECK( object.get_string( "mode" ) == mode );
         CHECK( object.get_string( "run_id" ) == run );
         const auto names = object.get_string_array( "stage_names" );
+        REQUIRE( object.has_object( "whole_interval" ) );
+        const auto whole = object.get_object( "whole_interval" );
+        whole.allow_omitted_members();
+        CHECK( whole.get_int( "row_count" ) >= static_cast<int>( object.get_array( "rows" ).size() ) );
+        CHECK( whole.get_int( "valid_simulation_rows" ) + whole.get_int( "invalid_simulation_rows" ) ==
+               whole.get_int( "row_count" ) );
+        CHECK( whole.get_array( "stage_totals_seconds" ).size() == names.size() );
+        CHECK( whole.get_array( "stage_call_totals" ).size() == names.size() );
         for( const std::string name : {
                  "npc_site_bootstrap", "npc_signal_copy", "npc_channel_audit",
                  "camp_locker_downtime", "camp_locker_collection", "camp_locker_service",

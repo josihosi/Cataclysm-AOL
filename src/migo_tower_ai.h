@@ -15,6 +15,7 @@
 #include "physical_navigation.h"
 #include "migo_population_identity.h"
 #include "migo_population.h"
+#include "overmap_party_travel.h"
 
 class JsonObject;
 class JsonOut;
@@ -161,9 +162,18 @@ struct member_intent {
     bool activity_bound = false;
     std::uint64_t activity_generation = 0;
     std::int64_t activity_suspension = 0;
+    // Paid coarse work follows this exact body through native ownership and
+    // save/load. Route values are disposable and never confer movement.
+    overmap_party_travel::work coarse_work;
+    std::optional<tripoint_abs_ms> coarse_work_position;
+    overmap_party_travel::route_state coarse_route;
+    // Capability binding accompanies paid work; route contents stay transient.
+    std::optional<bool> coarse_can_cross_water;
+    std::optional<bool> coarse_all_fly;
     // Disposable routing knowledge follows the actual prepared payload copy.
     // Never serialized; no movement/clock credit or second body owner.
     physical_navigation::segment navigation;
+    physical_navigation::failure_cache navigation_failures;
     migo_population::identity navigation_identity;
     std::uint64_t navigation_generation = 0;
     member_phase navigation_phase = member_phase::outbound;

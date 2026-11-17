@@ -24,6 +24,10 @@ class monster;
 class npc;
 class openclaw_harness_turn_trace;
 
+// Attempt one physical step out of the loaded map for an authenticated
+// hostile travel order. Call only after the NPC chooses its travel action.
+bool live_bandit_hostile_boundary_step( npc &member, map &main_map );
+
 // Publish only already-selected, pending diagnostic receipts at a safe
 // lifecycle boundary. It is inert without an active monitored run.
 void flush_native_slow_turn_receipts();

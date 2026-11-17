@@ -21,6 +21,10 @@ ecology_debug::view_snapshot make_snapshot()
                                ecology_debug::entity_faction::cannibal,
                                tripoint_abs_omt( 4, 5, -1 ), "local", true, "returning",
                                ecology_debug::entity_provenance::debug_intervention, 7, std::nullopt } );
+    view.entities.back().position_basis = "current_member";
+    view.entities.back().representative_npc_id = 42;
+    view.entities.back().members_split = true;
+    view.entities.back().unknown_member_positions = 1;
     ecology_debug::selected_detail selected;
     selected.entity_id = "dispatch/cannibal-b";
     selected.source_camp_id = "camp/cannibal-b";
@@ -38,6 +42,7 @@ ecology_debug::view_snapshot make_snapshot()
     selected.destination = tripoint_abs_omt( 2, 3, -1 );
     selected.route = { tripoint_abs_omt( 4, 5, -1 ), tripoint_abs_omt( 2, 3, -1 ) };
     selected.members.push_back( { character_id( 42 ), "Alpha", 55, "returning", true } );
+    selected.members.back().position_ms = tripoint_abs_ms( 100, 120, -1 );
     selected.members.push_back( { character_id( 43 ), "Bravo", std::nullopt, "dead", false } );
     view.selected = selected;
     view.metadata.candidate_count = 300;
@@ -86,6 +91,11 @@ TEST_CASE( "ecology_debug_snapshot_is_byte_deterministic_and_preserves_order",
     CHECK( first == second );
     CHECK( first.find( "\"provenance\":\"natural\"" ) != std::string::npos );
     CHECK( first.find( "\"provenance\":\"debug_intervention\"" ) != std::string::npos );
+    CHECK( first.find( "\"position_basis\":\"current_member\"" ) != std::string::npos );
+    CHECK( first.find( "\"representative_npc_id\":42" ) != std::string::npos );
+    CHECK( first.find( "\"members_split\":true" ) != std::string::npos );
+    CHECK( first.find( "\"unknown_member_positions\":1" ) != std::string::npos );
+    CHECK( first.find( "\"position_ms\":[100,120,-1]" ) != std::string::npos );
     CHECK( first.find( "\"omt\":[4,5,-1]" ) != std::string::npos );
     CHECK( first.find( "\"hp_percent\":null" ) != std::string::npos );
     CHECK( first.find( "\"candidate_cap\":256" ) != std::string::npos );

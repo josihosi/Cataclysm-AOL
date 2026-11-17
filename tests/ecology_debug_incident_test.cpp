@@ -234,7 +234,9 @@ TEST_CASE( "ecology_debug_incident_selected_member_progress_is_exposed",
     unloaded_member.allow_omitted_members();
     CHECK( unloaded_member.get_int( "npc_id" ) == 43 );
     CHECK_FALSE( unloaded_member.get_bool( "loaded" ) );
-    CHECK( unloaded_member.get_member( "position_ms" ).test_null() );
+    CHECK( unloaded_member.get_array( "position_ms" ).get_int( 0 ) == 1 );
+    CHECK( unloaded_member.get_array( "position_ms" ).get_int( 1 ) == 2 );
+    CHECK( unloaded_member.get_array( "position_ms" ).get_int( 2 ) == 0 );
     CHECK( unloaded_member.get_member( "moves" ).test_null() );
     CHECK( unloaded_member.get_member( "goal_omt" ).test_null() );
     CHECK( unloaded_member.get_member( "local_path_size" ).test_null() );
