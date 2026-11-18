@@ -271,6 +271,7 @@ class MaintainedCatalogueHandoffTest(unittest.TestCase):
 
         def fake_run(command, **kwargs):
             calls.append(command)
+            self.assertEqual(kwargs["env"].get("PYTHONDONTWRITEBYTECODE"), "1")
             if command[2] == "list-scenarios":
                 return completed(command, stdout=json.dumps({"scenarios": rows}))
             if command[3] == failing:
@@ -316,6 +317,7 @@ class LegacyManualHandoffTest(unittest.TestCase):
 
         def fake_run(command, **kwargs):
             calls.append(command)
+            self.assertEqual(kwargs["env"].get("PYTHONDONTWRITEBYTECODE"), "1")
             if command[2] == "list-scenarios":
                 return completed(command, stdout=json.dumps({
                     "scenarios": [{"name": name} for name in release_asset.EXPECTED_MANUAL_SCENARIOS]

@@ -450,9 +450,10 @@ def require_macos_bundle(app: Path, game_root: Path) -> dict[str, object]:
 
 
 def require_manual_handoffs(harness: Path, game_root: Path) -> None:
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     proc = subprocess.run(
         [sys.executable, str(harness), "list-scenarios", "--all"],
-        cwd=str(game_root), capture_output=True, text=True, check=False,
+        cwd=str(game_root), capture_output=True, text=True, check=False, env=env,
     )
     require(proc.returncode == 0, f"list-scenarios failed:\n{proc.stdout}\n{proc.stderr}")
     payload = json.loads(proc.stdout)
@@ -466,15 +467,16 @@ def require_manual_handoffs(harness: Path, game_root: Path) -> None:
     for scenario in sorted(EXPECTED_MANUAL_SCENARIOS):
         proc = subprocess.run(
             [sys.executable, str(harness), "handoff", scenario, "--launch-only", "--dry-run", "--compact-stdout"],
-            cwd=str(game_root), capture_output=True, text=True, check=False,
+            cwd=str(game_root), capture_output=True, text=True, check=False, env=env,
         )
         require(proc.returncode == 0, f"launch-only dry-run failed for {scenario}:\n{proc.stdout}\n{proc.stderr}")
 
 
 def require_catalogue_handoffs(harness: Path, game_root: Path) -> list[dict]:
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     proc = subprocess.run(
         [sys.executable, str(harness), "list-scenarios", "--all"],
-        cwd=str(game_root), capture_output=True, text=True, check=False,
+        cwd=str(game_root), capture_output=True, text=True, check=False, env=env,
     )
     require(proc.returncode == 0, f"list-scenarios failed:\n{proc.stdout}\n{proc.stderr}")
     payload = json.loads(proc.stdout)
@@ -497,7 +499,7 @@ def require_catalogue_handoffs(harness: Path, game_root: Path) -> list[dict]:
         selected.append(row)
         proc = subprocess.run(
             [sys.executable, str(harness), "handoff", name, "--launch-only", "--dry-run", "--compact-stdout"],
-            cwd=str(game_root), capture_output=True, text=True, check=False,
+            cwd=str(game_root), capture_output=True, text=True, check=False, env=env,
         )
         require(proc.returncode == 0, f"launch-only dry-run failed for {name}:\n{proc.stdout}\n{proc.stderr}")
         plan = json.loads(proc.stdout)
