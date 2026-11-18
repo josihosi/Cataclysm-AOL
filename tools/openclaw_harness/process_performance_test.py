@@ -914,6 +914,58 @@ class PerformanceTest(unittest.TestCase):
         self.assertEqual(repeat["metric"]["sample_count"], 1)
         self.assertEqual(repeat["alarms"], [])
 
+    def test_rotation_lost_end_does_not_leave_old_turn_active(self):
+        self.recorder([sample(1, 0)])
+        self.turn_config()
+        header = {"event": "trace_generation", "run_id": "run-a", "generation": "first"}
+        self.append_trace(header, self.turn_event(1, "start", sequence=1, wall=10))
+        with patch("process_performance.sample_child_resources", return_value=sample(11, 0)):
+            old = perf.collect_turn_assessment(self.directory, "binding-a", pending={"request_id": "p1"},
+                                               now_unix_seconds=11)
+        self.assertTrue(any(a["kind"] == "incomplete_turn" for a in old["alarms"]))
+
+        # Rotation discarded turn 1's end. A later real completion proves it
+        # is no longer current, while a newer input phase remains current.
+        path = self.directory / "semantic.native.events.jsonl"
+        temporary = path.with_suffix(".next")
+        events = [
+            {**header, "generation": "second"},
+            self.turn_event(2, "start", sequence=3, wall=19),
+            self.turn_event(2, "end", sequence=4, duration=.1, wall=19.1),
+            self.turn_event(3, "start", sequence=5, wall=19.2),
+            {**self.turn_event(3, "begin", sequence=6, phase="input", wall=19.3), "event": "turn_phase"},
+        ]
+        temporary.write_text("".join(perf.TURN_TRACE_PREFIX + json.dumps(e) + "\n" for e in events))
+        temporary.replace(path)
+        result = perf.collect_turn_assessment(self.directory, "binding-a", pending={"request_id": "p2"},
+                                              now_unix_seconds=20)
+        self.assertEqual(result["metric"]["sample_count"], 1)
+        self.assertEqual(result["current_incomplete_turn"]["event"]["turn_id"], "3")
+        self.assertEqual(result["current_incomplete_turn"]["phase"], "input")
+        self.assertFalse(any(a["kind"] == "incomplete_turn" for a in result["alarms"]))
+        self.assertTrue(result["recoveries"])
+        state = perf.read_json(self.directory / perf.TURN_STATE_NAME)
+        self.assertFalse(any(v["start"]["turn_id"] == "1" for v in state["active"].values()))
+
+        # A genuinely current simulation turn still raises the usual alarm.
+        self.append_trace({**self.turn_event(3, "end", sequence=7, phase="simulation", wall=20),
+                           "event": "turn_phase"})
+        with patch("process_performance.sample_child_resources", return_value=sample(21, 0)):
+            current = perf.collect_turn_assessment(self.directory, "binding-a", pending={"request_id": "p2"},
+                                                   now_unix_seconds=21)
+        self.assertTrue(any(a["kind"] == "incomplete_turn" for a in current["alarms"]))
+
+    def test_older_sequence_cannot_retire_a_newer_start(self):
+        self.recorder([sample(1, 0)])
+        self.turn_config()
+        self.append_trace(self.turn_event(1, "start", sequence=10, wall=10))
+        perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=10)
+        # A replayed earlier event with a greater game-turn value is not proof
+        # that this later start has completed.
+        self.append_trace(self.turn_event(2, "end", sequence=9, duration=.1, wall=9))
+        result = perf.collect_turn_assessment(self.directory, "binding-a", now_unix_seconds=10.1)
+        self.assertEqual(result["current_incomplete_turn"]["event"]["turn_id"], "1")
+
     def test_native_turn_producer_emits_parseable_precise_json(self):
         from startup_harness import repo_root
         source = (repo_root() / "src" / "do_turn.cpp").read_text(encoding="utf-8")

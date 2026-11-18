@@ -1206,6 +1206,24 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
             active_turn = active.pop(active_identity, None)
             start = active_turn.get("start") if isinstance(active_turn, Mapping) else None
             duration = event.get("simulation_seconds")
+            # A completed later game turn proves that an older turn in this
+            # same native process is no longer running.  Its end may have
+            # been lost when the bounded trace rotated; discard only that
+            # stale start, without inventing a measurement for it.
+            ended_game_turn = event.get("game_turn")
+            end_sequence = event.get("sequence")
+            if isinstance(ended_game_turn, int) and not isinstance(ended_game_turn, bool) and \
+                    isinstance(end_sequence, int) and not isinstance(end_sequence, bool) and \
+                    _finite_number(duration) and duration >= 0:
+                for stale_id, stale_turn in list(active.items()):
+                    stale_start = stale_turn.get("start") if isinstance(stale_turn, Mapping) else None
+                    stale_game_turn = stale_start.get("game_turn") if isinstance(stale_start, Mapping) else None
+                    stale_sequence = stale_start.get("sequence") if isinstance(stale_start, Mapping) else None
+                    if isinstance(stale_game_turn, int) and not isinstance(stale_game_turn, bool) and \
+                            isinstance(stale_sequence, int) and not isinstance(stale_sequence, bool) and \
+                            stale_start.get("process_instance") == event_process_instance and \
+                            stale_game_turn < ended_game_turn and stale_sequence < end_sequence:
+                        active.pop(stale_id, None)
             if start is not None and _finite_number(duration) and duration >= 0:
                 if completed and isinstance(event.get("game_turn"), int) and \
                         isinstance(completed[-1].get("game_turn"), int) and \
