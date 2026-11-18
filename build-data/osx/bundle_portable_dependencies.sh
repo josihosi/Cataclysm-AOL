@@ -77,12 +77,10 @@ if [[ "$mode" == "bundle" ]]; then
             search_args+=( -s "$search_path" )
         fi
     done
+    root_args=()
     while IFS= read -r -d '' binary; do
         if is_macho "$binary"; then
-            # A missing library can prompt for a path. Never let that prompt
-            # consume the NUL-delimited file list from this loop's stdin.
-            dylibbundler -of -b -x "$binary" -d "$resources_dir/" -p "$bundle_prefix" \
-                "${search_args[@]+"${search_args[@]}"}" <<< 'quit'
+            root_args+=( -x "$binary" )
         fi
     done < <(
         {
@@ -91,6 +89,14 @@ if [[ "$mode" == "bundle" ]]; then
             find "$resources_dir" -maxdepth 1 -type f ! -name '*.dylib' -print 2>/dev/null || true
         } | sort -u | tr '\n' '\0'
     )
+    if [[ ${#root_args[@]} -eq 0 ]]; then
+        echo "No Mach-O binaries found in macOS app bundle" >&2
+        exit 1
+    fi
+    # Resolve all roots together so shared dependencies are copied and
+    # rewritten once. Never let a missing-library prompt consume the file list.
+    dylibbundler -of -b "${root_args[@]}" -d "$resources_dir/" -p "$bundle_prefix" \
+        "${search_args[@]+"${search_args[@]}"}" <<< 'quit'
 fi
 
 check_binary() {
