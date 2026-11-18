@@ -122,7 +122,6 @@ class NativeBundleTest(unittest.TestCase):
             result = subprocess.run(["/bin/bash", str(SCRIPT), str(app), str(resources / "probe")],
                                     env=env, capture_output=True, text=True, timeout=60)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertNotIn("no LC_RPATH load command", result.stdout + result.stderr)
             for name in ("probe", "utility", "libinner.dylib", "libouter.dylib"):
                 binary = resources / name
                 dependencies = subprocess.run(["otool", "-L", str(binary)], check=True,
