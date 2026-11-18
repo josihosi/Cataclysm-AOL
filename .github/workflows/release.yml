@@ -675,7 +675,7 @@ jobs:
         if: runner.os == 'macOS' && needs.release.outputs.use_sdl3 == 'true'
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/../sdl3_prefix/lib/pkgconfig:/opt/local/lib/pkgconfig
-          DYLIBBUNDLER_SEARCH_PATHS: ${{ github.workspace }}/../sdl3_prefix/lib /opt/local/lib
+          DYLIBBUNDLER_SEARCH_PATHS: ${{ github.workspace }}/../sdl3_prefix/lib:/opt/local/lib
         run: |
           make -j3 TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} SDL3=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=0 PCH=0 USE_HOME_DIR=1 UNIVERSAL_BINARY=1 WARN_STALE_DATA=1 dmgdist
           if ! ls Cataclysm.app/Contents/Resources/libmpg123*.dylib >/dev/null 2>&1; then
@@ -688,12 +688,16 @@ jobs:
         if: needs.release.outputs.handoff == 'true'
         shell: bash
         run: |
+          catalogue_args=()
+          if [ '${{ needs.release.outputs.target_ref }}' = dev ]; then
+            catalogue_args=(--catalogue maintained)
+          fi
           python tools/openclaw_harness/verify_release_asset.py \
             '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}' \
             --platform '${{ matrix.release_os }}' \
             --expected-branch '${{ needs.release.outputs.target_ref }}' \
             --expected-build-number '${{ needs.release.outputs.timestamp }}' \
-            --expected-commit '${{ needs.release.outputs.target_sha }}'
+            --expected-commit '${{ needs.release.outputs.target_sha }}' "${catalogue_args[@]}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

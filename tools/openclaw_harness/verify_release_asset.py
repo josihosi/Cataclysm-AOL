@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -22,6 +23,14 @@ EXPECTED_MANUAL_SCENARIOS = {
     "manual.mixed_hostile_siege_mcw",
     "manual.writhing_stalker_hit_fade_mcw",
     "manual.zombie_rider_open_field_mcw",
+}
+
+EXPECTED_HANDOFF_SCENARIOS = {
+    "bandit.r008_fire_signal_roof_lifecycle_mcw": "human-signal-journeys",
+    "cannibal.travelling_pursuit_blocked_open_ring_002": "scout-travel",
+    "r037.npc_llm_command_api_control_v001_mcw": "companion-commands",
+    "writhing_stalker.live_light_continuity_mcw": "stalker-pursuit",
+    "zombie_rider.live_native_impact_two_mcw": "rider-behavior",
 }
 
 MACOS_SYSTEM_DEPENDENCY_PREFIXES = (
@@ -440,12 +449,126 @@ def require_macos_bundle(app: Path, game_root: Path) -> dict[str, object]:
     return diagnostics
 
 
+def require_manual_handoffs(harness: Path, game_root: Path) -> None:
+    proc = subprocess.run(
+        [sys.executable, str(harness), "list-scenarios", "--all"],
+        cwd=str(game_root), capture_output=True, text=True, check=False,
+    )
+    require(proc.returncode == 0, f"list-scenarios failed:\n{proc.stdout}\n{proc.stderr}")
+    payload = json.loads(proc.stdout)
+    names = {
+        str(item.get("name", ""))
+        for item in payload.get("scenarios", [])
+        if str(item.get("name", "")).startswith("manual.")
+    }
+    require(names == EXPECTED_MANUAL_SCENARIOS,
+            f"manual scenario set mismatch: expected {sorted(EXPECTED_MANUAL_SCENARIOS)}, got {sorted(names)}")
+    for scenario in sorted(EXPECTED_MANUAL_SCENARIOS):
+        proc = subprocess.run(
+            [sys.executable, str(harness), "handoff", scenario, "--launch-only", "--dry-run", "--compact-stdout"],
+            cwd=str(game_root), capture_output=True, text=True, check=False,
+        )
+        require(proc.returncode == 0, f"launch-only dry-run failed for {scenario}:\n{proc.stdout}\n{proc.stderr}")
+
+
+def require_catalogue_handoffs(harness: Path, game_root: Path) -> list[dict]:
+    proc = subprocess.run(
+        [sys.executable, str(harness), "list-scenarios", "--all"],
+        cwd=str(game_root), capture_output=True, text=True, check=False,
+    )
+    require(proc.returncode == 0, f"list-scenarios failed:\n{proc.stdout}\n{proc.stderr}")
+    payload = json.loads(proc.stdout)
+    scenarios = payload.get("scenarios", [])
+    require(isinstance(scenarios, list), "catalogue scenarios is not a list")
+    selected = []
+    for name, family in sorted(EXPECTED_HANDOFF_SCENARIOS.items()):
+        matches = [row for row in scenarios if isinstance(row, dict) and row.get("name") == name]
+        require(len(matches) == 1, f"maintained handoff scenario {name} is missing or ambiguous")
+        row = matches[0]
+        require(row.get("membership") == "maintained" and row.get("status") == "active",
+                f"handoff scenario {name} is not maintained and active")
+        catalogue = row.get("catalogue") or {}
+        require(isinstance(catalogue, dict) and catalogue.get("family_id") == family,
+                f"handoff scenario {name} is not in expected family {family}")
+        validation = (row.get("scenario_manifest") or {}).get("validation") or {}
+        require(validation.get("status") == "valid", f"handoff scenario {name} manifest is invalid")
+        fixture = row.get("fixture") or {}
+        require(fixture.get("manifest_present") is True, f"handoff scenario {name} fixture manifest is missing")
+        selected.append(row)
+        proc = subprocess.run(
+            [sys.executable, str(harness), "handoff", name, "--launch-only", "--dry-run", "--compact-stdout"],
+            cwd=str(game_root), capture_output=True, text=True, check=False,
+        )
+        require(proc.returncode == 0, f"launch-only dry-run failed for {name}:\n{proc.stdout}\n{proc.stderr}")
+        plan = json.loads(proc.stdout)
+        require(plan.get("ok") is True and plan.get("launch_only") is True and plan.get("dry_run") is True and
+                (plan.get("dry_run_contract") or {}).get("evidence_class") == "plan-only",
+                f"launch-only dry-run did not return a valid plan for {name}")
+    return selected
+
+
+def require_fixture_bytes(source_harness: Path, packaged_harness: Path, rows: list[dict]) -> None:
+    """Compare the selected fixture chains to this verifier's source checkout."""
+    checked: set[tuple[str, str]] = set()
+
+    def component(value: object) -> str:
+        text = str(value or "")
+        require(bool(text) and text not in {".", ".."} and "/" not in text and "\\" not in text,
+                f"invalid fixture identity: {text!r}")
+        return text
+
+    def digest(path: Path) -> bytes:
+        result = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                result.update(chunk)
+        return result.digest()
+
+    for row in rows:
+        name = component(row.get("name"))
+        source_scenario = source_harness / "scenarios" / f"{name}.json"
+        packaged_scenario = packaged_harness / "scenarios" / f"{name}.json"
+        require(source_scenario.is_file() and packaged_scenario.is_file() and
+                digest(source_scenario) == digest(packaged_scenario), f"scenario bytes differ: {name}")
+        scenario = json.loads(source_scenario.read_text(encoding="utf-8"))
+        fixture = component(scenario.get("fixture"))
+        profile = component(scenario.get("fixture_profile") or scenario.get("profile"))
+        chain: set[tuple[str, str]] = set()
+        while True:
+            key = (profile, fixture)
+            require(key not in chain, f"fixture source cycle: {profile}/{fixture}")
+            chain.add(key)
+            source = source_harness / "fixtures" / "saves" / profile / fixture
+            packaged = packaged_harness / "fixtures" / "saves" / profile / fixture
+            manifest = source / "manifest.json"
+            require(manifest.is_file(), f"source fixture manifest missing: {profile}/{fixture}")
+            if key not in checked:
+                for path in source.rglob("*"):
+                    require(not path.is_symlink(), f"linked fixture entry: {path}")
+                    if path.is_file():
+                        dest = packaged / path.relative_to(source)
+                        require(dest.is_file() and not dest.is_symlink() and digest(path) == digest(dest),
+                                f"packaged fixture bytes differ: {profile}/{fixture}/{path.relative_to(source)}")
+                checked.add(key)
+            source_manifest = json.loads(manifest.read_text(encoding="utf-8"))
+            save = source / "save"
+            if save.is_dir():
+                players = [path for path in save.rglob("*") if path.is_file() and
+                           (path.name.endswith(".sav") or path.name.endswith(".sav.zzip"))]
+                require(any(path.stat().st_size > 0 for path in players),
+                        f"fixture has no player save bytes: {profile}/{fixture}")
+                break
+            fixture = component(source_manifest.get("source_fixture"))
+            profile = component(source_manifest.get("source_profile") or profile)
+
+
 def require_payload(
     root: Path,
     platform: str,
     expected_branch: str,
     expected_build_number: str,
     expected_commit: str,
+    catalogue: str = "manual",
 ) -> tuple[Path, dict[str, str]]:
     harness = find_harness_script(root)
     game_root = harness.parents[2]
@@ -467,31 +590,13 @@ def require_payload(
     require((game_root / "gfx").is_dir(), f"missing gfx directory under {game_root}")
     require((harness.parent / "requirements.txt").is_file(), "missing tools/openclaw_harness/requirements.txt")
 
-    proc = subprocess.run(
-        [sys.executable, str(harness), "list-scenarios", "--all"],
-        cwd=str(game_root),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    require(proc.returncode == 0, f"list-scenarios failed:\n{proc.stdout}\n{proc.stderr}")
-    payload = json.loads(proc.stdout)
-    names = {
-        str(item.get("name", ""))
-        for item in payload.get("scenarios", [])
-        if str(item.get("name", "")).startswith("manual.")
-    }
-    require(names == EXPECTED_MANUAL_SCENARIOS, f"manual scenario set mismatch: expected {sorted(EXPECTED_MANUAL_SCENARIOS)}, got {sorted(names)}")
-
-    for scenario in sorted(EXPECTED_MANUAL_SCENARIOS):
-        proc = subprocess.run(
-            [sys.executable, str(harness), "handoff", scenario, "--launch-only", "--dry-run", "--compact-stdout"],
-            cwd=str(game_root),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        require(proc.returncode == 0, f"launch-only dry-run failed for {scenario}:\n{proc.stdout}\n{proc.stderr}")
+    if catalogue == "manual":
+        require_manual_handoffs(harness, game_root)
+    elif catalogue == "maintained":
+        rows = require_catalogue_handoffs(harness, game_root)
+        require_fixture_bytes(Path(__file__).resolve().parent, harness.parent, rows)
+    else:
+        raise ValueError(f"unsupported catalogue: {catalogue}")
 
     version_metadata = require_version_metadata(
         game_root,
@@ -510,6 +615,7 @@ def main() -> int:
     parser.add_argument("--expected-branch", default="")
     parser.add_argument("--expected-build-number", default="")
     parser.add_argument("--expected-commit", default="")
+    parser.add_argument("--catalogue", choices=["manual", "maintained"], default="manual")
     args = parser.parse_args()
 
     asset = args.asset.resolve()
@@ -539,6 +645,7 @@ def main() -> int:
                 args.expected_branch,
                 args.expected_build_number,
                 args.expected_commit,
+                args.catalogue,
             )
             if args.platform == "macos":
                 macos_trust = require_macos_bundle(root, game_root)
@@ -554,15 +661,19 @@ def main() -> int:
             if mount_point:
                 detach_dmg(mount_point)
 
-    print(json.dumps({
+    result = {
         "ok": True,
         "asset": str(asset),
         "binary_launch": binary_launch,
         "macos_trust": macos_trust,
         "platform": args.platform,
-        "manual_scenarios": sorted(EXPECTED_MANUAL_SCENARIOS),
         "version": version_metadata,
-    }, indent=2))
+    }
+    if args.catalogue == "manual":
+        result["manual_scenarios"] = sorted(EXPECTED_MANUAL_SCENARIOS)
+    else:
+        result["handoff_scenarios"] = sorted(EXPECTED_HANDOFF_SCENARIOS)
+    print(json.dumps(result, indent=2))
     return 0
 
 

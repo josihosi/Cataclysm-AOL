@@ -68,9 +68,21 @@ if [[ "$mode" == "bundle" ]]; then
         echo "dylibbundler is required to bundle macOS app dependencies" >&2
         exit 2
     fi
+    # The release workflow provides colon-separated search roots.  Keep each
+    # path as one argument, including roots containing spaces.
+    search_args=()
+    IFS=: read -r -a search_paths <<< "${DYLIBBUNDLER_SEARCH_PATHS:-}"
+    for search_path in "${search_paths[@]+"${search_paths[@]}"}"; do
+        if [[ -n "$search_path" ]]; then
+            search_args+=( -s "$search_path" )
+        fi
+    done
     while IFS= read -r -d '' binary; do
         if is_macho "$binary"; then
-            dylibbundler -of -b -x "$binary" -d "$resources_dir/" -p "$bundle_prefix"
+            # A missing library can prompt for a path. Never let that prompt
+            # consume the NUL-delimited file list from this loop's stdin.
+            dylibbundler -of -b -x "$binary" -d "$resources_dir/" -p "$bundle_prefix" \
+                "${search_args[@]+"${search_args[@]}"}" <<< 'quit'
         fi
     done < <(
         {

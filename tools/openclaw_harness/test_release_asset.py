@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import json
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -46,6 +48,9 @@ class ReleaseWorkflowContractTest(unittest.TestCase):
         self.assertIn("Unexpected HTTP $status", workflow)
         self.assertIn('release_version="${commit_sha:0:11}"', workflow)
         self.assertIn('echo "CAOL_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"', workflow)
+        self.assertIn("if [ '${{ needs.release.outputs.target_ref }}' = dev ]; then", workflow)
+        self.assertIn("catalogue_args=(--catalogue maintained)", workflow)
+        self.assertIn('"${catalogue_args[@]}"', workflow)
 
     def test_release_note_generator_fails_hard(self) -> None:
         script = (REPO_ROOT / "build-scripts" / "generate-release-notes.js").read_text(encoding="utf-8")
@@ -249,6 +254,154 @@ class NativeGameLaunchTest(unittest.TestCase):
         with mock.patch.object(release_asset, "native_release_platform", return_value="linux"):
             with self.assertRaisesRegex(SystemExit, "windows release asset must be executed"):
                 release_asset.require_native_release_platform("windows")
+
+
+class MaintainedCatalogueHandoffTest(unittest.TestCase):
+    def rows(self) -> list[dict]:
+        return [
+            {"name": name, "membership": "maintained", "status": "active",
+             "catalogue": {"family_id": family},
+             "scenario_manifest": {"validation": {"status": "valid"}},
+             "fixture": {"manifest_present": True}}
+            for name, family in release_asset.EXPECTED_HANDOFF_SCENARIOS.items()
+        ]
+
+    def run_check(self, rows: list[dict], *, failing: str = "", bad_plan: bool = False):
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[2] == "list-scenarios":
+                return completed(command, stdout=json.dumps({"scenarios": rows}))
+            if command[3] == failing:
+                return completed(command, returncode=1, stderr="handoff failed")
+            return completed(command, stdout=json.dumps({
+                "ok": True, "launch_only": True, "dry_run": True,
+                "dry_run_contract": {"evidence_class": "wrong" if bad_plan else "plan-only"},
+            }))
+
+        with mock.patch.object(release_asset.subprocess, "run", side_effect=fake_run):
+            release_asset.require_catalogue_handoffs(Path("startup_harness.py"), Path("package"))
+        return calls
+
+    def test_retained_families_each_get_a_launch_plan(self) -> None:
+        calls = self.run_check(self.rows())
+        self.assertEqual(calls[0][2:], ["list-scenarios", "--all"])
+        self.assertEqual({call[3] for call in calls[1:]}, set(release_asset.EXPECTED_HANDOFF_SCENARIOS))
+        self.assertTrue(all(call[4:] == ["--launch-only", "--dry-run", "--compact-stdout"]
+                            for call in calls[1:]))
+
+    def test_missing_duplicate_or_invalid_catalogue_entries_fail(self) -> None:
+        rows = self.rows()
+        variants = [rows[1:], rows + [rows[0]],
+                    [dict(rows[0], membership="historical"), *rows[1:]],
+                    [dict(rows[0], catalogue={"family_id": "wrong"}), *rows[1:]],
+                    [dict(rows[0], scenario_manifest={"validation": {"status": "invalid"}}), *rows[1:]],
+                    [dict(rows[0], fixture={"manifest_present": False}), *rows[1:]]]
+        for variant in variants:
+            with self.subTest(variant=variant), self.assertRaises(SystemExit):
+                self.run_check(variant)
+
+    def test_failed_or_non_plan_handoff_is_rejected(self) -> None:
+        name = next(iter(release_asset.EXPECTED_HANDOFF_SCENARIOS))
+        with self.assertRaisesRegex(SystemExit, "launch-only dry-run failed"):
+            self.run_check(self.rows(), failing=name)
+        with self.assertRaisesRegex(SystemExit, "did not return a valid plan"):
+            self.run_check(self.rows(), bad_plan=True)
+
+
+class LegacyManualHandoffTest(unittest.TestCase):
+    def test_original_manual_set_and_dry_runs_remain_required(self) -> None:
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[2] == "list-scenarios":
+                return completed(command, stdout=json.dumps({
+                    "scenarios": [{"name": name} for name in release_asset.EXPECTED_MANUAL_SCENARIOS]
+                }))
+            return completed(command)
+
+        with mock.patch.object(release_asset.subprocess, "run", side_effect=fake_run):
+            release_asset.require_manual_handoffs(Path("startup_harness.py"), Path("package"))
+        self.assertEqual({call[3] for call in calls[1:]}, release_asset.EXPECTED_MANUAL_SCENARIOS)
+        self.assertTrue(all(call[4:] == ["--launch-only", "--dry-run", "--compact-stdout"]
+                            for call in calls[1:]))
+
+    def test_missing_manual_scenario_remains_an_error(self) -> None:
+        with mock.patch.object(release_asset.subprocess, "run", return_value=completed(
+                [], stdout=json.dumps({"scenarios": []}))):
+            with self.assertRaisesRegex(SystemExit, "manual scenario set mismatch"):
+                release_asset.require_manual_handoffs(Path("startup_harness.py"), Path("package"))
+
+    def test_default_output_retains_manual_scenarios_key(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            asset = Path(directory) / "package.tar.gz"
+            asset.write_bytes(b"fixture")
+            output = StringIO()
+            with mock.patch.object(sys, "argv", ["verify_release_asset.py", str(asset), "--platform", "linux"]), \
+                    mock.patch.object(release_asset, "require_native_release_platform"), \
+                    mock.patch.object(release_asset, "safe_extract_tar"), \
+                    mock.patch.object(release_asset, "require_payload", return_value=(Path(directory), {
+                        "commit sha": "a" * 40,
+                    })) as payload, \
+                    mock.patch.object(release_asset, "require_game_binary_version", return_value={"ok": True}), \
+                    redirect_stdout(output):
+                self.assertEqual(release_asset.main(), 0)
+            self.assertEqual(payload.call_args.args[-1], "manual")
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["manual_scenarios"], sorted(release_asset.EXPECTED_MANUAL_SCENARIOS))
+            self.assertNotIn("handoff_scenarios", result)
+
+
+class PackagedFixtureBytesTest(unittest.TestCase):
+    def prepare(self, root: Path) -> tuple[Path, Path, list[dict]]:
+        source = root / "source"
+        packaged = root / "package"
+        (source / "scenarios").mkdir(parents=True)
+        (source / "scenarios" / "chosen.json").write_text(json.dumps({
+            "fixture": "child", "fixture_profile": "profile",
+        }))
+        child = source / "fixtures" / "saves" / "profile" / "child"
+        leaf = source / "fixtures" / "saves" / "profile" / "base"
+        child.mkdir(parents=True)
+        (leaf / "save" / "world").mkdir(parents=True)
+        (child / "manifest.json").write_text(json.dumps({"source_fixture": "base"}))
+        (leaf / "manifest.json").write_text("{}")
+        (leaf / "save" / "world" / "player.sav.zzip").write_bytes(b"player save")
+        (leaf / "save" / "world" / "map.zzip").write_bytes(b"world map")
+        shutil.copytree(source, packaged)
+        return source, packaged, [{"name": "chosen"}]
+
+    def test_inherited_fixture_bytes_must_match(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source, packaged, rows = self.prepare(Path(directory))
+            release_asset.require_fixture_bytes(source, packaged, rows)
+            saved = packaged / "fixtures/saves/profile/base/save/world/map.zzip"
+            saved.write_bytes(b"altered")
+            with self.assertRaisesRegex(SystemExit, "packaged fixture bytes differ"):
+                release_asset.require_fixture_bytes(source, packaged, rows)
+            saved.unlink()
+            with self.assertRaisesRegex(SystemExit, "packaged fixture bytes differ"):
+                release_asset.require_fixture_bytes(source, packaged, rows)
+
+    def test_missing_source_player_save_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source, packaged, rows = self.prepare(Path(directory))
+            for root in (source, packaged):
+                (root / "fixtures/saves/profile/base/save/world/player.sav.zzip").unlink()
+            with self.assertRaisesRegex(SystemExit, "no player save bytes"):
+                release_asset.require_fixture_bytes(source, packaged, rows)
+
+    def test_fixture_source_cycle_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source, packaged, rows = self.prepare(Path(directory))
+            for root in (source, packaged):
+                shutil.rmtree(root / "fixtures/saves/profile/base/save")
+                (root / "fixtures/saves/profile/base/manifest.json").write_text(
+                    json.dumps({"source_fixture": "child"}))
+            with self.assertRaisesRegex(SystemExit, "fixture source cycle"):
+                release_asset.require_fixture_bytes(source, packaged, rows)
 
 
 class MacReleaseAssetTest(unittest.TestCase):
