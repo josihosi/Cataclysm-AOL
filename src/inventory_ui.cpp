@@ -2588,16 +2588,35 @@ bool inventory_selector::highlight( const item_location &loc, bool hidden, bool 
         bool found = false;
         if( hidden ) {
             if( inventory_entry *ent = elem->find_by_location( loc, true ) ) {
-                item_location const &parent = ent->is_collation_entry() ? ent->collation_meta->tip :
-                                              ent->topmost_parent;
+                // In category mode a wielded container can live in the gear
+                // column while its contents live in the inventory column.
+                // Copy the location before layout changes invalidate entries.
+                const item_location parent = ent->is_collation_entry() ? ent->collation_meta->tip :
+                                             ent->topmost_parent;
                 if( !parent ) {
                     continue;
                 }
-                inventory_entry *pent = elem->find_by_location( parent );
-                if( elem != nullptr ) {
-                    elem->set_collapsed( *pent, false );
+                inventory_column *parent_column = nullptr;
+                inventory_entry *parent_entry = nullptr;
+                for( inventory_column *column : columns ) {
+                    if( inventory_entry *entry = column->find_by_location( parent ) ) {
+                        parent_column = column;
+                        parent_entry = entry;
+                        break;
+                    }
+                }
+                if( parent_entry != nullptr ) {
+                    parent_column->set_collapsed( *parent_entry, false );
                     prepare_layout();
-                    found = elem->highlight( loc, true );
+                    // Layout can move entries between columns; locate the
+                    // requested item again rather than retaining row pointers.
+                    for( size_t j = 0; j < columns.size(); ++j ) {
+                        if( columns[j]->visible() && columns[j]->activatable() &&
+                            columns[j]->highlight( loc, true ) ) {
+                            set_active_column( j );
+                            return true;
+                        }
+                    }
                 }
             }
         } else {

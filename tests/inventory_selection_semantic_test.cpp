@@ -21,6 +21,7 @@
 #include "player_helpers.h"
 #include "semantic_surface.h"
 #include "type_id.h"
+#include "ui_manager.h"
 
 TEST_CASE( "drop and generic multiselect publish selected UID quantities before receipts",
            "[semantic_surface][inventory_selection]" )
@@ -199,6 +200,10 @@ class collated_water_preset : public inventory_selector_preset
 class uid_pick_control : public inventory_pick_selector
 {
     public:
+        using inventory_selector::get_all_columns;
+        using inventory_selector::handle_semantic_request;
+        using inventory_selector::semantic_actions;
+        using inventory_selector::create_or_get_ui_adaptor;
         uid_pick_control( Character &who, const inventory_selector_preset &preset ) :
             inventory_pick_selector( who, preset ) {}
         void prepare_native_columns() {
@@ -289,6 +294,79 @@ void check_unique_uid_actions( const semantic_surface_descriptor &descriptor )
     }
 }
 } // namespace
+
+// The ordinary Inventory view separates a wielded container from its
+// nested contents in category mode. Selecting a hidden child must reveal it
+// through the real semantic owner without assuming the parent shares a column.
+TEST_CASE( "semantic selection reveals water in a wielded collapsed container",
+           "[semantic_surface][inventory_wielded_nested_water]" )
+{
+    clear_avatar();
+    clear_map();
+    avatar &you = get_avatar();
+    REQUIRE( you.wear_item( item( itype_id( "backpack" ) ), false ) );
+    REQUIRE( you.i_add( item( itype_id( "lighter" ) ), false ) );
+    item bottle( itype_id( "jug_plastic" ) );
+    REQUIRE( bottle.put_in( item( itype_id( "water_clean" ), calendar::turn, 2 ),
+                            pocket_type::CONTAINER ).success() );
+    you.wield( bottle );
+    item_location container = you.get_wielded_item();
+    REQUIRE( container );
+    for( item_pocket *pocket : container->get_standard_pockets() ) {
+        pocket->settings.set_collapse( true );
+    }
+    const item_location water( container, &container->only_item() );
+    REQUIRE( water );
+    inventory_selector_preset preset;
+    inventory_selector_save_state state{ inventory_selector::uimode::categories };
+    preset.save_state = &state;
+    uid_pick_control selector( you, preset );
+    selector.set_title( "Inventory" );
+    selector.add_character_items( you );
+    selector.prepare_native_columns();
+    const auto ui = selector.create_or_get_ui_adaptor();
+    static_cast<void>( ui );
+    ui_manager::redraw();
+    bool split_parent = false;
+    for( inventory_column *column : selector.get_all_columns() ) {
+        inventory_entry *hidden = column->find_by_location( water, true );
+        if( hidden && hidden->topmost_parent &&
+            !column->find_by_location( hidden->topmost_parent ) ) {
+            split_parent = true;
+        }
+    }
+    REQUIRE( split_parent );
+    semantic_surface_manager manager( "wielded-water-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    std::optional<inventory_input> input;
+    const std::vector<semantic_action_descriptor> modes = {
+        { "inventory.select", "", "Select", true }
+    };
+    semantic_surface_scope owner( manager, "inventory", "Inventory", {}, selector.semantic_actions( modes ),
+    [&]( const semantic_action_request &request ) {
+        auto result = selector.handle_semantic_request( request, input );
+        result.defer_receipt_to_successor = false;
+        return result;
+    } );
+    const auto frame = *manager.top();
+    const std::string uid = std::to_string( water->uid().get_value() );
+    REQUIRE( std::any_of( frame.valid_actions.begin(), frame.valid_actions.end(),
+    [&]( const semantic_action_descriptor &action ) {
+        return action.id == "inventory.select" && action.enabled && action.stable_id == uid;
+    } ) );
+    REQUIRE( manager.submit_request( { frame.run_id, frame.surface_id, frame.frame_id,
+                                       "select-water-once", "inventory.select", uid, {} } ) );
+    const bool accepted = owner.consume_request();
+    INFO( ( receipts.empty() ? "no receipt" : receipts.back().rejection_reason ) );
+    REQUIRE( accepted );
+    REQUIRE( input );
+    CHECK( input->semantic_target == water );
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().accepted );
+}
 
 TEST_CASE( "collated inventory publishes each physical UID and selects a nonfront member once",
            "[semantic_surface][inventory_uid_unique_067]" )
