@@ -12292,7 +12292,7 @@ class MaintainedRepresentativeMigrationTest(unittest.TestCase):
         "r050_rural_bandit_remote_v1": ("TestSetup00", (145, 149, 0), 15, [42, 15]),
         "r050_rural_bandit_remote_reach_v1": ("TestSetup00", (140, 138, 0), 10, [37, 11]),
         "r042_rural_dual_faction_remote_v1": ("TestSetup00", (145, 153, 0), 15, [42, 15, 15]),
-        "r008_fire_signal_roof_remote_v1": ("McWilliams", (140, 31, 1), 15, [84, 20, 138]),
+        "r008_fire_signal_roof_remote_v1": ("McWilliams", (138, 31, 1), 15, [84, 20, 138]),
     }
 
     def test_actual_saved_terrain_and_all_inherited_home_edges(self) -> None:
@@ -12316,6 +12316,86 @@ class MaintainedRepresentativeMigrationTest(unittest.TestCase):
                 self.assertIn("actual source and emission", result["native_qualification_required"])
                 self.assertEqual({p: p.read_bytes() for p in before}, before)
                 self.assertFalse((resolved["fixture_dir"] / "save").exists())
+
+    def test_r008_remote_actual_install_and_declared_saved_state_audits(self) -> None:
+        import startup_harness as startup
+        fixture = "r008_fire_signal_roof_remote_v1"
+        player = "#Wm9yYWlkYSBWaWNr.sav.zzip"
+        scenario = load_scenario("bandit.r008_fire_signal_roof_lifecycle_mcw")
+        source = startup.resolve_fixture_payload(fixture, "live-debug")
+        self.assertEqual(source["manifest"]["source_fixture"], "r008_fire_signal_common_v1")
+        original_world = source["save_src"] / "McWilliams"
+        original_home_state = (original_world / "dimension_data.gsav").read_bytes()
+        with tempfile.TemporaryDirectory(prefix="r008-remote-install-") as temporary:
+            save_root = Path(temporary) / "save"
+            with mock.patch.object(startup, "save_dir_for_profile", return_value=save_root):
+                result = startup.install_fixture("test", fixture, False, fixture_profile="live-debug")
+            world = save_root / "McWilliams"
+            self.assertEqual(result["installed_worlds"], ["McWilliams"])
+            self.assertEqual((world / "dimension_data.gsav").read_bytes(), original_home_state)
+            self.assertEqual(startup.load_player_abs_omt(world, player),
+                             ((138, 31, 1), [3315, 759, 1]))
+            guard = result["applied_save_transforms"][-1]
+            self.assertEqual(guard["minimum_distance_omt"], 15)
+            self.assertEqual([home["nearest_footprint_distance_omt"] for home in guard["homes"]],
+                             [84, 20, 138])
+            for step in scenario["steps"]:
+                kind = step["kind"]
+                offsets = [tuple(point) for point in step.get("offsets", [])]
+                if kind == "audit_saved_player_items":
+                    audit = startup.audit_saved_player_items(world, player_save=player,
+                                                             required_items=step.get("required_items"))
+                elif kind == "audit_saved_map_tile_near_player":
+                    audit = startup.audit_map_tiles_near_player(
+                        world, player_save=player, offsets=offsets,
+                        required_terrain=step.get("required_terrain"),
+                        required_items=step.get("required_items"),
+                        forbidden_fields=step.get("forbidden_fields"))
+                elif kind == "audit_saved_zones_near_player":
+                    audit = startup.audit_saved_zones_near_player(
+                        world, player_save=player, required_offsets=offsets,
+                        required_zone_type=step.get("required_zone_type", ""),
+                        required_name_contains=step.get("required_name_contains", ""),
+                        required_faction=step.get("required_faction", ""))
+                else:
+                    continue
+                self.assertEqual(audit["status"], "required_state_present", step["label"])
+                if step["label"] == "audit_roof_surface_and_distributed_fuel":
+                    self.assertEqual([tile["terrain"] for tile in audit["tiles"]],
+                                     ["t_flat_roof"] * 4)
+                    self.assertEqual([tile["items"].count("log") for tile in audit["tiles"][1:]],
+                                     [12, 12, 12])
+                if step["label"] == "audit_roof_source_zone":
+                    # The same single intended zone is written to the normal
+                    # and temporary zone files, at the new roof only.
+                    self.assertEqual(len(audit["matching_zones"]), 2)
+                    self.assertEqual({(tuple(zone["start"]), tuple(zone["end"]))
+                                      for zone in audit["matching_zones"]},
+                                     {((3316, 758, 1), (3316, 760, 1))})
+            old_roof = startup.audit_map_tiles_near_player(
+                world, player_save=player,
+                offsets=[(58, 236, 0), (58, 237, 0), (58, 238, 0)])
+            self.assertEqual(len(old_roof["tiles"]), 3)
+            self.assertTrue(all("log" not in tile["items"] for tile in old_roof["tiles"]))
+            # The recipe's two-tile retreat has a clear saved roof route south;
+            # actual movement and emission still require native observation.
+            retreat = startup.audit_map_tiles_near_player(
+                world, player_save=player, offsets=[(0, 1, 0), (0, 2, 0)])
+            self.assertEqual([tile["terrain"] for tile in retreat["tiles"]],
+                             ["t_flat_roof", "t_flat_roof"])
+            self.assertTrue(all(not tile["furniture"] and not tile["traps"]
+                                for tile in retreat["tiles"]))
+
+    def test_r008_real_install_rejects_inherited_position_mismatch(self) -> None:
+        import startup_harness as startup
+        fixture = "r008_fire_signal_roof_remote_v1"
+        resolved = copy.deepcopy(startup.resolve_fixture_payload(fixture, "live-debug"))
+        resolved["save_transforms"][-1]["source_area_omt"] = [[140, 31, 1]]
+        with tempfile.TemporaryDirectory(prefix="r008-remote-negative-") as temporary, \
+                mock.patch.object(startup, "resolve_fixture_payload", return_value=resolved), \
+                mock.patch.object(startup, "save_dir_for_profile", return_value=Path(temporary) / "save"):
+            with self.assertRaisesRegex(SystemExit, "player must remain in the declared source area"):
+                startup.install_fixture("test", fixture, False, fixture_profile="live-debug")
 
     def test_new_player_only_recipes_preserve_actual_home_state(self) -> None:
         import startup_harness as startup

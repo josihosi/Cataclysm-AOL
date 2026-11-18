@@ -1,8 +1,8 @@
 {
   "name": "r008_fire_signal_roof_remote_v1",
-  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_fixture": "r008_fire_signal_common_v1",
   "source_profile": "live-debug",
-  "description": "Checked representative derivative of the existing R008 bandit roof recipe. Preserve source/player140,31,1 and all three actual inherited home footprints; nearest edge20, so no camp relocation or new close seed is needed. Reuse original generated roof/fuel/tools and real production-owned camp state, with no reset of earned history. Overmap open_air does not itself certify a usable roof tile. Ordinary ignition/emission/actual native reach and physical save/reload adoption still required; no assumption that fire reaches20. Close cannibal/R029/R033 variants remain separate focused controls. Emitter stays active with player near SOURCE and HOME remote.",
+  "description": "Representative candidate using the existing bus-station roof at 138,31,1 and all three inherited home footprints; nearest edge20, with no camp relocation or reset of earned history. Player relocation, distributed fuel and its zone are setup only. Saved-map audits verify the roof footing, not native ignition, emission, reach or physical save/reload adoption; those remain to be observed. Close cannibal/R029/R033 variants remain separate focused controls. Emitter stays active with player near SOURCE and HOME remote.",
   "setup_classification": {
     "kind": "representative_candidate",
     "minimum_footprint_edge_omt": 15,
@@ -13,16 +13,40 @@
   "gameplay_credit": false,
   "save_transforms": [
     {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [-57, -237, 1]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        { "typeid": "log", "count": 12, "offset_ms": [1, -1, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 0, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 1, 0] }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "R-008 exposed roof firewood",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [1, -1, 0],
+      "end_offset_ms": [1, 1, 0],
+      "write_temp": true
+    },
+    {
       "kind": "representative_human_source_geometry",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "source_area_omt": [
         [
-          140,
+          138,
           31,
           1
         ]
       ],
-      "expected_source_terrain_id": "open_air",
+      "expected_source_terrain_id": "bus_stat_0_roof_west",
       "expected_home_site_ids": [
         "overmap_special:bandit_camp@140,51,0",
         "overmap_special:bandit_camp@34,169,0",

@@ -92,7 +92,7 @@
       "label": "load_roof_laboratory",
       "seconds": 2.0,
       "capture_after": true,
-      "expected_visible_fact": "the generated basecamp roof laboratory reaches ordinary gameplay"
+      "expected_visible_fact": "the existing bus-station roof reaches ordinary gameplay"
     },
     {
       "kind": "audit_saved_player_items",
@@ -130,7 +130,7 @@
         ]
       ],
       "required_terrain": [
-        "t_tile_flat_roof"
+        "t_flat_roof"
       ],
       "required_items": [
         "log"
@@ -169,8 +169,8 @@
       "label": "audit_roof_camp_locker",
       "offsets": [
         [
-          -10,
-          -2,
+          47,
+          235,
           -1
         ]
       ],
@@ -184,8 +184,8 @@
       "label": "audit_roof_camp_patrol",
       "offsets": [
         [
-          -15,
-          -2,
+          42,
+          235,
           -1
         ]
       ],
