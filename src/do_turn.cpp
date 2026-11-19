@@ -24103,9 +24103,16 @@ void overmap_npc_move()
                        !member->has_flag( json_flag_CANNOT_MOVE ) &&
                        member->get_attitude() != NPCATT_FLEE &&
                        member->get_attitude() != NPCATT_FLEE_TEMP &&
-                       member->pos_abs_omt() == outing.shared_route[1];
+                       member->pos_abs_omt() ==
+                       ( frontier_forward && outing.local_handoff.has_intermediate_route_position() ?
+                         outing.local_handoff.route_position : outing.shared_route[1] );
+            };
+            const auto needs_route_binding = [&first_destination]( const npc &member ) {
+                return !member.is_travelling() || member.goal != first_destination->second ||
+                       member.omt_path.empty();
             };
             if( ready( first ) && ready( second ) &&
+                ( !frontier_forward || needs_route_binding( *first ) || needs_route_binding( *second ) ) &&
                 ( !frontier_forward || persist_live_bandit_local_projection_leases( site, &site, false ) ) ) {
                 const std::vector<tripoint_abs_omt> first_route =
                     live_bandit_member_route_to( *first, site, first_destination->second );

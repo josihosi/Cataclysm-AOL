@@ -56700,6 +56700,55 @@ TEST_CASE( "retained12120 frontier pair traverses its actual loaded map boundary
 }
 
 
+TEST_CASE( "intermediate frontier guard pair resumes its authenticated route",
+           "[bandit_live_world][frontier_guard_resume]" )
+{
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r064_frontier_boundary.json" );
+    auto &outing = scene.site().active_outing;
+    REQUIRE( bandit_live_world::structural_outing_uses_frontier_route( outing ) );
+    const auto first_position = scene.actor( 4 ).pos_abs();
+    const auto second_position = first_position + point( 1, 0 );
+    get_map().ter_set( get_map().get_bub( second_position ), ter_id( "t_dirt" ) );
+    scene.actor( 5 ).setpos( get_map(), get_map().get_bub( second_position ) );
+    const auto position = scene.actor( 4 ).pos_abs_omt();
+    REQUIRE( scene.actor( 5 ).pos_abs_omt() == position );
+    REQUIRE( position != outing.shared_route[1] );
+    outing.local_handoff.schema_version = 6;
+    outing.local_handoff.route_position = position;
+    outing.local_handoff.approach_from = position;
+    for( auto &member : outing.local_handoff.members ) {
+        const auto actual = scene.actor( member.npc_id.get_value() ).pos_abs();
+        member.entry_position = actual;
+        member.staging_position = actual;
+        member.exit_position = actual;
+    }
+    for( int id : { 4, 5 } ) {
+        auto &actor = scene.actor( id );
+        actor.guard_pos = actor.pos_abs();
+        actor.set_mission( NPC_MISSION_GUARD );
+    }
+    const std::string condition = GENERATE( std::string( "ready" ),
+                                           std::string( "incapacitated" ),
+                                           std::string( "foreign_lease" ) );
+    if( condition == "incapacitated" ) {
+        scene.actor( 5 ).add_effect( efftype_id( "narcosis" ), 1_days );
+        scene.actor( 5 ).add_effect( efftype_id( "sleep" ), 1_days );
+    } else if( condition == "foreign_lease" ) {
+        auto lease = scene.actor( 5 ).get_bandit_live_world_projection_lease();
+        lease.activity_id += "-foreign";
+        scene.actor( 5 ).set_bandit_live_world_projection_lease( lease );
+    }
+    REQUIRE( bandit_live_world::local_pair_ingress_travel_destinations(
+                 overmap_buffer.global_state.bandit_live_world ).size() == 2 );
+    process_overmap_npc_move_for_test();
+    CHECK( scene.actor( 4 ).is_travelling() == ( condition == "ready" ) );
+    CHECK( scene.actor( 5 ).is_travelling() == ( condition == "ready" ) );
+    CHECK( outing.generation == 2 );
+    CHECK( outing.handoff_epoch == 1 );
+    CHECK( outing.owner == bandit_live_world::simulation_owner::local );
+}
+
 TEST_CASE( "retained frontier boundary refuses incomplete or incapacitated party",
            "[bandit_live_world][retained_boundary_guards_064]" )
 {
