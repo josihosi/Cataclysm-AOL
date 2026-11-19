@@ -7048,8 +7048,10 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
         ( outing.waypoint_index < 0 ||
           ( outing.waypoint_index + 1 != destination_waypoint && !initial_departure ) ||
           ( local && ( outing.local_handoff.waypoint_index != outing.waypoint_index ||
-                       outing.local_handoff.route_position !=
-                       outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] ||
+                       ( outing.local_handoff.route_position !=
+                         outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
+                         !( outing.local_handoff.has_intermediate_route_position() &&
+                            outing.local_handoff.route_position == outing.selected_watch_omt ) ) ||
                        outing.local_handoff.egress_omt != ( initial_departure ? outing.shared_route[1] :
                                outing.selected_watch_omt ) ) ) ) ) {
         return local_handoff_commit_result::rejected;

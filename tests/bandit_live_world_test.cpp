@@ -53993,6 +53993,34 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
                            origin + tripoint_rel_ms( 10 + static_cast<int>( i ), 10, 0 ) } );
     }
     auto cursor = require_current_simulation_cursor( site );
+    SECTION( "local pair admitted directly at the selected watch" ) {
+        if( !local ) {
+            return;
+        }
+        auto &handoff = site.active_outing.local_handoff;
+        handoff.schema_version = 6;
+        handoff.route_position = site.active_outing.selected_watch_omt;
+        handoff.approach_from = handoff.route_position;
+        handoff.egress_omt = handoff.route_position;
+        handoff.cohesion_best_staging_distances.assign( reads.size(), 0 );
+        for( std::size_t index = 0; index < reads.size(); ++index ) {
+            handoff.members[index].entry_position = reads[index].current_position;
+            handoff.members[index].staging_position = reads[index].current_position;
+            handoff.members[index].exit_position = reads[index].current_position;
+        }
+        const auto direct_cursor = bandit_live_world::current_external_simulation_cursor( site );
+        REQUIRE( direct_cursor );
+        auto missing = reads;
+        missing.pop_back();
+        CHECK( bandit_live_world::commit_scout_pair_watch_arrival(
+                   site, *direct_cursor, direct_cursor->last_advanced_minutes + 1, missing ) ==
+               bandit_live_world::local_handoff_commit_result::rejected );
+        REQUIRE( bandit_live_world::commit_scout_pair_watch_arrival(
+                     site, *direct_cursor, direct_cursor->last_advanced_minutes + 1, reads ) ==
+                 bandit_live_world::local_handoff_commit_result::applied );
+        CHECK( site.active_outing.waypoint_index == 2 );
+        CHECK( site.active_outing.assessment.observation_started_minutes >= 0 );
+    }
     SECTION( "complete arrival starts once and survives reload and owner transfer" ) {
         const int arrived = cursor.last_advanced_minutes + 1;
         const int contact = site.active_outing.local_contact_minutes;
