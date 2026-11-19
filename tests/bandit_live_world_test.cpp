@@ -73641,6 +73641,53 @@ TEST_CASE( "retained structural pair returns and reports through shared travel",
     r067_same_owner_abstract_body_case( true, "captured" );
 }
 
+TEST_CASE( "retained pair resumes distant homeward travel without an admission",
+           "[bandit_live_world][retained_distant_resume][production]" )
+{
+    using namespace bandit_live_world;
+    const bool foreign_credit = GENERATE( false, true );
+    CAPTURE( foreign_credit );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    r055_scene scene;
+    scene.load( true, true, false, "tests/data/r067_abstract_resume_indoor_8169.json" );
+    auto &outing = scene.site().active_outing;
+    REQUIRE( outing.local_handoff.is_abstract_resume() );
+    REQUIRE_FALSE( outing.structural_admission.is_active() );
+    REQUIRE( outing.member_ids.size() == 2 );
+    const auto ids = outing.member_ids;
+    const auto start = outing.local_handoff.route_position;
+    // The saved C8 party entered an abstract-to-abstract resume at epoch 2
+    // while its unbound surplus still names the same pair at epoch 0.
+    // This models that persisted boundary, not a replacement actor.
+    outing.coarse_work.work_millis = 299000;
+    outing.coarse_work.actor_ids = { outing.activity_id + ":" + std::to_string( ids[0].get_value() ),
+                                    outing.activity_id + ":" + std::to_string( ids[1].get_value() ) };
+    if( foreign_credit ) {
+        outing.coarse_work.actor_ids.back() = outing.activity_id + ":replacement";
+    }
+    outing.coarse_work.actor_epochs = { 0, 0 };
+    outing.coarse_work.operation_generation = outing.generation;
+    // Keep the party eligible but outside the loaded local map, as in the
+    // saved homeward stall. No actor or outing state is synthesized.
+    g->place_player_overmap( start + tripoint( 12, 12, 0 ) );
+    for( const character_id id : ids ) {
+        const auto body = overmap_buffer.find_npc( id );
+        REQUIRE( body );
+        REQUIRE_FALSE( body->is_active() );
+        REQUIRE_FALSE( get_map().inbounds( body->pos_abs() ) );
+        REQUIRE( body->pos_abs_omt() == start );
+    }
+    for( int elapsed = 0; elapsed < ( foreign_credit ? 15 : 120 ) &&
+         scene.actor( ids.front().get_value() ).pos_abs_omt() == start; elapsed += 5 ) {
+        calendar::turn += 5_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( scene.site().active_outing.local_handoff.is_abstract_resume() );
+    }
+    for( const character_id id : ids ) {
+        CHECK( ( scene.actor( id.get_value() ).pos_abs_omt() != start ) == !foreign_credit );
+    }
+}
+
 TEST_CASE( "retained resident homeward edge has an admitted physical pair continuation",
            "[bandit_live_world][resident_route_067]" )
 {

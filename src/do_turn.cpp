@@ -11918,20 +11918,45 @@ std::optional<std::vector<shared_ptr_fast<npc>>> read_live_bandit_abstract_bodie
            std::nullopt;
 }
 
-// Historical structural party work predates explicit actor IDs. Its owning
-// outing and (for retained pairs) handoff snapshot are the saved identity
-// authority. Authenticate the real bodies and current route before assigning
-// that work to those same participants; a changed edge gets no old credit.
+// Authenticate historical work against the real bodies and current route.
+// An abstract-to-abstract homeward resume advances the handoff epoch by two
+// without changing body ownership; older saves can retain the preceding epoch.
+// A changed edge or different participants must not inherit that work.
 static bool bind_legacy_structural_party_work( bandit_live_world::site_record &site )
 {
     using namespace bandit_live_world;
     auto &outing = site.active_outing;
     auto work = outing.coarse_work;
-    if( !work.actor_ids.empty() || ( !work.edge_bound && work.work_millis == 0 ) ) {
+    bool rebind_previous_epoch = false;
+    if( !work.actor_ids.empty() ) {
+        std::vector<std::string> expected_ids;
+        for( const character_id id : outing.member_ids ) {
+            expected_ids.push_back( outing.activity_id + ":" + std::to_string( id.get_value() ) );
+        }
+        const bool preceding_abstract_epoch = outing.local_handoff.is_abstract_resume() &&
+                outing.handoff_epoch >= 2 && outing.generation > 0 &&
+                work.operation_generation == static_cast<std::uint64_t>( outing.generation ) &&
+                work.actor_ids.size() == expected_ids.size() &&
+                work.actor_epochs.size() == expected_ids.size() &&
+                std::is_permutation( work.actor_ids.begin(), work.actor_ids.end(), expected_ids.begin() ) &&
+                std::all_of( work.actor_epochs.begin(), work.actor_epochs.end(), [&]( const auto epoch ) {
+            return epoch == static_cast<std::uint64_t>( outing.handoff_epoch - 2 );
+        } );
+        if( !preceding_abstract_epoch ) {
+            return true; // Admission independently rejects mismatched current identities.
+        }
+        // Rebind only after the same body, lease and route checks used for
+        // pre-identity saves below. Keep the original untouched on failure.
+        work.actor_ids.clear();
+        work.actor_epochs.clear();
+        rebind_previous_epoch = true;
+    } else if( !work.edge_bound && work.work_millis == 0 ) {
         return true;
     }
     const auto bodies = read_live_bandit_abstract_bodies( site );
-    if( !bodies || bodies->empty() || !outing.activation.initialized() ||
+    if( !bodies || bodies->empty() ||
+        ( rebind_previous_epoch && bodies->size() != outing.member_ids.size() ) ||
+        !outing.activation.initialized() ||
         outing.generation <= 0 || outing.handoff_epoch < 0 ) {
         return false;
     }
