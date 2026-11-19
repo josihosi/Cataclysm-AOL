@@ -64608,6 +64608,63 @@ void r067_dematerialize_return( bandit_live_world::world_state &world,
 }
 } // namespace
 
+TEST_CASE( "abstract frontier arrival settles its intermediate snapshot",
+           "[bandit_live_world][frontier_abstract_arrival]" )
+{
+    using namespace bandit_live_world;
+    r055_scene scene;
+    scene.load( false, true, false, "tests/data/r064_frontier_boundary.json" );
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    auto &site = scene.site();
+    REQUIRE( structural_outing_uses_frontier_route( site.active_outing ) );
+    const int now = site.active_outing.last_advanced_minutes + 1;
+    r067_dematerialize_return( world, site, now );
+    auto cursor = require_current_simulation_cursor( site );
+    REQUIRE( begin_structural_admission( site, cursor ) );
+    auto &outing = site.active_outing;
+    auto &snapshot = outing.local_handoff;
+    snapshot.schema_version = 6;
+    snapshot.route_position = outing.shared_route[1] + point( 1, 0 );
+    snapshot.approach_from = snapshot.route_position;
+    snapshot.egress_omt = outing.target_omt;
+    const auto target = project_to<coords::ms>( outing.target_omt );
+    std::vector<local_route_arrival_member_read> reads;
+    for( std::size_t i = 0; i < snapshot.members.size(); ++i ) {
+        auto &member = snapshot.members[i];
+        member.exit_position = target + point( static_cast<int>( i ), 0 );
+        reads.push_back( { member.npc_id, true, false, true, member.hp_percent,
+                           member.exit_position } );
+    }
+    cursor = require_current_simulation_cursor( site );
+    for( const std::string defect : { "stale", "foreign", "unconfirmed" } ) {
+        auto copy = site;
+        auto bad_cursor = cursor;
+        auto bad_reads = reads;
+        if( defect == "stale" ) {
+            ++bad_cursor.handoff_epoch;
+        } else if( defect == "foreign" ) {
+            bad_reads.back().npc_id = character_id( 999999 );
+        } else {
+            bad_reads.back().route_confirmed = false;
+        }
+        CHECK( complete_structural_frontier_arrival( copy, bad_cursor, now + 1, bad_reads ) ==
+               local_handoff_commit_result::rejected );
+        CHECK( copy.active_outing.phase == scout_phase::observing );
+    }
+    REQUIRE( complete_structural_frontier_arrival( site, cursor, now + 1, reads ) ==
+             local_handoff_commit_result::applied );
+    CHECK( site.active_outing.phase == scout_phase::returning_home );
+    CHECK( site.active_outing.assessment.observation_started_minutes < 0 );
+    CHECK( site.active_outing.local_handoff.route_position == site.active_outing.target_omt );
+    CHECK( site.active_outing.local_handoff.approach_from == site.active_outing.target_omt );
+    const auto restored = round_trip_world( world );
+    const auto *restored_site = restored.find_site( site.site_id );
+    REQUIRE( restored_site );
+    CHECK( restored_site->active_outing.phase == scout_phase::returning_home );
+    CHECK( restored_site->active_outing.local_handoff.members.front().exit_position ==
+           reads.front().current_position );
+}
+
 TEST_CASE( "assessment return transfers preserve the deadline clock and real physical progress",
            "[bandit_live_world][assessment_return_clock_067]" )
 {

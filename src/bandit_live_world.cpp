@@ -6975,14 +6975,25 @@ local_handoff_commit_result complete_structural_frontier_arrival(
     rebase_structural_route_clock_homeward( next, current_minutes );
     next.expected_return_minutes = structural_expected_return_for_state( next, candidate );
     next.missing_deadline_minutes = structural_missing_deadline_for_state( next );
-    if( local ) {
+    const bool retained_intermediate = !local && next.local_handoff.is_abstract_resume() &&
+                                       next.local_handoff.has_intermediate_route_position();
+    if( !local ) {
+        next.actor_route_waypoint = next.waypoint_index;
+    }
+    if( local || retained_intermediate ) {
         auto &snapshot = next.local_handoff;
         snapshot.waypoint_index = next.waypoint_index;
         snapshot.phase = next.phase;
         snapshot.route_position = next.target_omt;
-        snapshot.approach_from = next.shared_route[next.waypoint_index - 1];
+        snapshot.approach_from = retained_intermediate ? next.target_omt :
+                                 next.shared_route[next.waypoint_index - 1];
         snapshot.egress_omt = candidate.anchor;
         snapshot.committed_minutes = current_minutes;
+        if( retained_intermediate ) {
+            // Schema 6 denotes the physical intermediate position. At the
+            // frontier the same authenticated pair becomes the return owner.
+            snapshot.cohesion_best_staging_distances.clear();
+        }
         for( auto &member : snapshot.members ) {
             const auto read = std::find_if( member_reads.begin(), member_reads.end(),
             [&member]( const auto & value ) {
@@ -6992,13 +7003,21 @@ local_handoff_commit_result complete_structural_frontier_arrival(
             [&member]( const auto & value ) {
                 return value.npc_id != member.npc_id;
             } );
+            if( read == member_reads.end() || partner == member_reads.end() ) {
+                return local_handoff_commit_result::rejected;
+            }
+            if( retained_intermediate ) {
+                member.prior_position = member.exit_position;
+            }
             member.entry_position = read->current_position;
             member.staging_position = partner->current_position;
             member.exit_position = read->current_position;
             member.hp_percent = read->hp_percent;
+            if( retained_intermediate ) {
+                snapshot.cohesion_best_staging_distances.push_back(
+                    rl_dist( member.entry_position, member.staging_position ) );
+            }
         }
-    } else {
-        next.actor_route_waypoint = next.waypoint_index;
     }
     if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
         return local_handoff_commit_result::rejected;
