@@ -16070,6 +16070,35 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
                bandit_live_world::member_state::at_home );
         CHECK( live_site.returned_cargo_stock.supply_units == 0 );
 
+        // Both retained members can reach distinct squares in the home OMT,
+        // including its northwest corner. Recording one return must preserve
+        // the other's distinct exit so the pair can commit atomically.
+        bandit_live_world::world_state corner_world = reloaded;
+        bandit_live_world::site_record &corner_site = corner_world.sites.front();
+        bandit_live_world::advance_structural_bounty_outings( corner_world, 102, {} );
+        const auto corner_cursor = bandit_live_world::current_external_simulation_cursor( corner_site );
+        REQUIRE( corner_cursor );
+        const tripoint_abs_ms corner = project_to<coords::ms>( corner_site.anchor );
+        REQUIRE( bandit_live_world::record_local_pair_abstract_resume_progress(
+                     corner_site, *corner_cursor, 104, {
+            { live_ids.front(), true, false, 80, corner + point( 1, 0 ) },
+            { live_ids.back(), true, false, 80, corner }
+        } ) );
+        auto corner_return = bandit_live_world::current_external_simulation_cursor( corner_site );
+        REQUIRE( corner_return );
+        CHECK_FALSE( bandit_live_world::record_structural_member_physical_return(
+                         corner_site, *corner_return, live_ids.front(),
+                         corner_site.anchor + point( -1, -1 ), 105 ) );
+        REQUIRE( bandit_live_world::record_structural_member_physical_return(
+                     corner_site, *corner_return, live_ids.front(), corner_site.anchor, 105 ) );
+        CHECK( corner_site.active_outing.local_handoff.members.front().exit_position ==
+               corner + point( 1, 0 ) );
+        corner_return = bandit_live_world::current_external_simulation_cursor( corner_site );
+        REQUIRE( corner_return );
+        REQUIRE( bandit_live_world::record_structural_member_physical_return(
+                     corner_site, *corner_return, live_ids.back(), corner_site.anchor, 105 ) );
+        CHECK( corner_site.active_outing.member_return_receipts.size() == 2 );
+
         bandit_live_world::world_state survivor_world = reloaded;
         bandit_live_world::site_record &survivor_site = survivor_world.sites.front();
         bandit_live_world::advance_structural_bounty_outings( survivor_world, 102, {} );

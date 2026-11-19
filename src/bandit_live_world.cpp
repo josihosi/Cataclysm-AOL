@@ -7211,7 +7211,8 @@ bool record_structural_member_physical_return( site_record &site,
     next.local_handoff.members.end(), [member_id]( const local_handoff_member_snapshot & entry ) {
         return entry.npc_id == member_id;
     } );
-    if( snapshot != next.local_handoff.members.end() ) {
+    if( snapshot != next.local_handoff.members.end() &&
+        project_to<coords::omt>( snapshot->exit_position ) != returned_omt ) {
         snapshot->exit_position = project_to<coords::ms>( returned_omt );
     }
     next.last_advanced_minutes = current_minutes;
