@@ -43,6 +43,46 @@ static const itype_id itype_tshirt( "tshirt" );
 static const itype_id itype_under_armor( "under_armor" );
 static const itype_id itype_vest( "vest" );
 
+TEST_CASE( "debug HVAC clears temperature effects without healing unrelated injury",
+           "[character][temperature][debug_hvac]" )
+{
+    const bool hvac = GENERATE( false, true );
+    CAPTURE( hvac );
+    avatar &person = get_avatar();
+    clear_character( person );
+    person.set_body();
+    const bodypart_id head( "head" );
+    const bodypart_id arm( "arm_l" );
+    const efftype_id cold( "cold" );
+    const efftype_id hot( "hot" );
+    const efftype_id hot_speed( "hot_speed" );
+    const efftype_id bleed( "bleed" );
+    person.set_part_hp_cur( head, 9 );
+    person.set_all_parts_temp_cur( BODYTEMP_NORM );
+    person.set_all_parts_temp_conv( BODYTEMP_NORM );
+    person.add_effect( cold, 1_turns, head, true, 2 );
+    person.add_effect( hot, 1_turns, arm, true, 2 );
+    person.add_effect( hot_speed, 1_turns, arm, true, 2 );
+    person.add_effect( bleed, 1_hours, arm );
+    REQUIRE( person.has_effect( cold, head ) );
+    REQUIRE( person.has_effect( hot, arm ) );
+    REQUIRE( person.has_effect( hot_speed, arm ) );
+    REQUIRE( person.has_effect( bleed, arm ) );
+    if( hvac ) {
+        person.set_mutation( trait_id( "DEBUG_NOTEMP" ) );
+    }
+    person.update_bodytemp();
+    CHECK_FALSE( person.has_effect( cold ) );
+    CHECK_FALSE( person.has_effect( hot ) );
+    CHECK_FALSE( person.has_effect( hot_speed ) );
+    CHECK( person.has_effect( bleed, arm ) );
+    CHECK( person.get_part_hp_cur( head ) == 9 );
+    if( hvac ) {
+        CHECK( person.get_part_temp_cur( head ) == BODYTEMP_NORM );
+    }
+    clear_character( person );
+}
+
 // Set the stage for a particular ambient and target temperature and run update_bodytemp() until
 // core body temperature settles.
 static void temperature_check( Character *p, const int ambient_temp,

@@ -424,6 +424,11 @@ void Character::update_bodytemp()
     if( has_trait( trait_DEBUG_NOTEMP ) ) {
         set_all_parts_temp_conv( BODYTEMP_NORM );
         set_all_parts_temp_cur( BODYTEMP_NORM );
+        // Normal temperatures ordinarily remove these effects below.  The
+        // early return must not leave permanent cold or heat damage active.
+        remove_effect( effect_cold );
+        remove_effect( effect_hot );
+        remove_effect( effect_hot_speed );
         return;
     }
     if( has_flag( json_flag_CANNOT_CHANGE_TEMPERATURE ) ) {
