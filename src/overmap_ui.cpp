@@ -403,6 +403,13 @@ std::map<std::string, std::string> overmap_ui::ecology_semantic_facts(
         payload.emplace( "ecology_cursor_kind", ecology_debug::to_string( marker->kind ) );
         payload.emplace( "ecology_cursor_state", marker->state );
         payload.emplace( "ecology_cursor_owner", marker->owner );
+        if( !marker->position_basis.empty() ) {
+            payload.emplace( "ecology_cursor_position_basis", marker->position_basis );
+        }
+        if( marker->representative_npc_id ) {
+            payload.emplace( "ecology_cursor_representative_npc_id",
+                             std::to_string( *marker->representative_npc_id ) );
+        }
     }
     if( data.ecology_view.selected &&
         data.ecology_view.selected->entity_id == data.ecology_selected_id ) {

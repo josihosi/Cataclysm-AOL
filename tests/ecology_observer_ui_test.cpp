@@ -410,6 +410,29 @@ TEST_CASE( "ecology overmap facts follow gated canonical migo projection",
     const auto facts = overmap_ui::ecology_semantic_facts( data, data.cursor_pos );
     CHECK( facts.at( "ecology_cursor_id" ) == request.selected_id );
     CHECK( facts.at( "ecology_cursor_kind" ) == "migo_dispatch_member" );
+    CHECK( facts.count( "ecology_cursor_position_basis" ) == 0 );
+    CHECK( facts.count( "ecology_cursor_representative_npc_id" ) == 0 );
+    const auto cursor_marker_it = std::find_if( data.ecology_view.entities.begin(),
+    data.ecology_view.entities.end(), [&data]( const auto &row ) {
+        return row.omt == data.cursor_pos && row.id == data.ecology_selected_id;
+    } );
+    REQUIRE( cursor_marker_it != data.ecology_view.entities.end() );
+    auto &cursor_marker = *cursor_marker_it;
+    cursor_marker.position_basis = "current_member";
+    cursor_marker.representative_npc_id = 42;
+    const auto current = overmap_ui::ecology_semantic_facts( data, data.cursor_pos );
+    CHECK( current.at( "ecology_cursor_position_basis" ) == "current_member" );
+    CHECK( current.at( "ecology_cursor_representative_npc_id" ) == "42" );
+    data.ecology_enabled = false;
+    const auto private_facts = overmap_ui::ecology_semantic_facts( data, data.cursor_pos );
+    CHECK( private_facts.count( "ecology_cursor_position_basis" ) == 0 );
+    CHECK( private_facts.count( "ecology_cursor_representative_npc_id" ) == 0 );
+    data.ecology_enabled = true;
+    cursor_marker.position_basis = "checkpoint";
+    cursor_marker.representative_npc_id.reset();
+    const auto fallback = overmap_ui::ecology_semantic_facts( data, data.cursor_pos );
+    CHECK( fallback.at( "ecology_cursor_position_basis" ) == "checkpoint" );
+    CHECK( fallback.count( "ecology_cursor_representative_npc_id" ) == 0 );
     CHECK( facts.at( "ecology_selected_id" ) == request.selected_id );
     CHECK( facts.at( "ecology_population" ) == "1" );
     CHECK( facts.at( "ecology_signal_source" ) == tower.operation->source.source_omt.to_string() );
