@@ -238,6 +238,9 @@ static JsonValue native_trace_value( const std::string &line )
 }
 
 std::string live_bandit_homeward_boundary_discriminator_for_test();
+std::vector<tripoint_bub_ms> live_bandit_home_footprint_route_for_test(
+    npc &member, map &here, const tripoint_abs_omt &home,
+    const std::function<bool( const tripoint_bub_ms & )> &avoid );
 void reconcile_live_bandit_local_homeward_route_cursors_for_test();
 std::vector<tripoint_abs_omt> live_bandit_clock_outbound_path_for_test(
     const bandit_live_world::site_record &site, const std::vector<tripoint_abs_omt> &preflight );
@@ -87279,6 +87282,36 @@ TEST_CASE( "legacy four-site producer requests local owners without body leases"
     // empty claim set the startup collector supplies, not a gameplay path test.
     CHECK( reconcile_loaded_local_projections( world, {} ) ==
            local_projection_reconciliation_result::rejected );
+}
+
+TEST_CASE( "homeward route can enter a camp when its center is enclosed",
+           "[bandit_live_world][home_footprint_route]" )
+{
+    clear_map();
+    map &here = get_map();
+    const tripoint_abs_omt home = project_to<coords::omt>(
+                                      here.get_abs( tripoint_bub_ms( 60, 60, 0 ) ) );
+    const tripoint_abs_ms origin = project_to<coords::ms>( home );
+    const tripoint_abs_ms center = origin + point( SEEX, SEEY );
+    standard_npc actor( "returning scout" );
+    actor.spawn_at_precise( origin + point( -2, SEEY ) );
+    REQUIRE( here.inbounds( actor.pos_bub() ) );
+    const tripoint_bub_ms local_center = here.get_bub( center );
+    for( const auto &tile : here.points_in_radius( local_center, 3 ) ) {
+        if( square_dist( tile.xy(), local_center.xy() ) == 3 ) {
+            here.ter_set( tile, ter_id( "t_wall" ) );
+        }
+    }
+    here.invalidate_map_cache( 0 );
+    here.build_map_cache( 0, true );
+    const auto no_avoid = []( const tripoint_bub_ms & ) { return false; };
+    CHECK( here.route( actor.pos_bub(), pathfinding_target::radius( local_center, 2 ),
+                       actor.get_pathfinding_settings( false ), no_avoid ).empty() );
+    const auto route = live_bandit_home_footprint_route_for_test( actor, here, home, no_avoid );
+    REQUIRE_FALSE( route.empty() );
+    CHECK( project_to<coords::omt>( here.get_abs( route.back() ) ) == home );
+    const auto avoid_all = []( const tripoint_bub_ms & ) { return true; };
+    CHECK( live_bandit_home_footprint_route_for_test( actor, here, home, avoid_all ).empty() );
 }
 
 TEST_CASE( "repeat robbery compares verified ratios without rounding or danger floors",

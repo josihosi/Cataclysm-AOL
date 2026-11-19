@@ -2159,6 +2159,9 @@ std::vector<tripoint_abs_omt> live_bandit_clock_downstream_path_for_test(
 void prepare_live_bandit_abstract_scout_travel_moved_for_test(
     const std::set<character_id> &moved );
 std::string live_bandit_homeward_boundary_discriminator_for_test();
+std::vector<tripoint_bub_ms> live_bandit_home_footprint_route_for_test(
+    npc &member, map &here, const tripoint_abs_omt &home,
+    const std::function<bool( const tripoint_bub_ms & )> &avoid );
 void reconcile_live_bandit_local_homeward_route_cursors_for_test();
 std::string live_bandit_homeward_unsafe_current_route_read_for_test( character_id member_id );
 std::string live_bandit_homeward_partner_route_read_for_test(
@@ -20367,6 +20370,31 @@ struct live_bandit_safe_local_route_read {
     std::size_t path_size = 0;
 };
 
+// A camp occupies an OMT, not necessarily its center: a wall or locked room
+// may make the center unreachable even though the body can enter the camp.
+// One bounded native search covers the interior without crossing into another
+// OMT. Native radius targets skip avoidance inside the target, so validate the
+// returned route, including its endpoint, before allowing movement.
+static std::vector<tripoint_bub_ms> live_bandit_home_footprint_route(
+    npc &member, map &here, const tripoint_abs_omt &home,
+    const std::function<bool( const tripoint_bub_ms & )> &avoid )
+{
+    const tripoint_abs_ms center = project_to<coords::ms>( home ) + point( SEEX, SEEY );
+    const tripoint_bub_ms local_center = here.get_bub( center );
+    if( !here.inbounds( local_center ) ) {
+        return {};
+    }
+    auto route = here.route( member.pos_bub(), pathfinding_target::radius( local_center, SEEX - 1 ),
+                             member.get_pathfinding_settings( false ), avoid );
+    if( route.empty() || project_to<coords::omt>( here.get_abs( route.back() ) ) != home ||
+        std::any_of( route.begin(), route.end(), [&]( const tripoint_bub_ms &step ) {
+        return step != member.pos_bub( here ) && avoid( step );
+    } ) ) {
+        return {};
+    }
+    return route;
+}
+
 live_bandit_safe_local_route_read live_bandit_safe_local_route_to(
     npc &member,
     const bandit_live_world::covert_scout_relationship_read &relationship,
@@ -23080,6 +23108,11 @@ void monmove()
                     std::vector<tripoint_bub_ms> preflight_path = m.route(
                                 guy.pos_bub(), next_target, guy.get_pathfinding_settings( false ),
                                 local_homeward_avoid );
+                    if( preflight_path.empty() && allow_ordinary_homeward_local_reentry &&
+                        homeward_site != nullptr && site_contains_omt( *homeward_site, *next_omt ) ) {
+                        preflight_path = live_bandit_home_footprint_route(
+                                             guy, m, *next_omt, npc_avoid );
+                    }
                     // The retained-edge materialization has just assigned this member a
                     // homeward OMT route.  Normalize that route in the active local-map
                     // frame before checking cohesion or consuming it: map::route includes
@@ -26252,6 +26285,13 @@ std::map<character_id, tripoint_abs_omt> live_bandit_elevated_recovery_orders_fo
         result.emplace( order.first, order.second.approach );
     }
     return result;
+}
+
+std::vector<tripoint_bub_ms> live_bandit_home_footprint_route_for_test(
+    npc &member, map &here, const tripoint_abs_omt &home,
+    const std::function<bool( const tripoint_bub_ms & )> &avoid )
+{
+    return live_bandit_home_footprint_route( member, here, home, avoid );
 }
 
 std::map<character_id, std::pair<tripoint_abs_ms, tripoint_abs_ms>>
