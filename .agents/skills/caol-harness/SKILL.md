@@ -17,6 +17,14 @@ that contradicts this vision; a mismatch calls for diagnosis, not an unauthorize
 
 ## Own a scenario through its outcome
 
+For open-ended bug hunting, give Luna a world, a reason to act, and room to play it.
+For example, a hungry survivor might search a house for food and a pot, gather fuel,
+then try to cook. Luna chooses what to do when a door is locked, supplies are missing,
+or the weather changes. A targeted measurement can resume when its conditions recur.
+Keep a healthy session going under its current player while there is useful play.
+The chaperone can follow the simulation and investigate anomalies without making Luna
+stop at each observation. See the [single-world month soak](references/long-running-soak.md#final-single-world-month-crash-soak).
+
 Read testing recipes and setup instructions for the question they intend to answer, even when
 worded as exact contracts. The chaperone designs a simple, believable test from that question:
 what behavior matters, what would expose a failure, and what evidence would settle it? Distinguish
@@ -52,6 +60,19 @@ custody. Native behavior after a setup bypass can prove its downstream question,
 natural stage. See [setup and interactions](references/setup-and-interactions.md) and
 [representative signal placement](references/smoke-light-visibility.md#representative-source-placement)
 for the applicable setup and distance rules.
+
+Use debug options and avatar mutations to work around incidental hazards and finish the assigned
+playtest. Choose what fits the situation and preserves the behavior you want to observe.
+
+For example, debug-kill an identified unrelated alien, teleport the avatar out of a portal storm,
+use the free-dodge mutation to avoid hits, or use clairvoyance to see what is happening. Some game
+code reads the avatar’s sight. Use ordinary sight when checking what the player can see or when
+the behavior being measured depends on it.
+
+If a portal storm is incidental, wait it out indoors when the shelter is safe. Use the
+explicit `ignore` wait mode for the understood storm warning. If the shelter is unsafe,
+use supported avatar teleportation to reach a suitable location and resume the test.
+See [storm interruption handling](references/long-running-soak.md#interruptions-and-lightweight-observations).
 
 When creating or adapting a test, use [scenario authoring and carry-forward](GAME-MANUAL.md#write-reusable-instructions-not-a-transcript).
 Keep the curated 50-scenario library compact. A different build, weather, distance, actor count,

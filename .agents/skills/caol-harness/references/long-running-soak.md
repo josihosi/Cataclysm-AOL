@@ -34,10 +34,17 @@ minimum of10 OMT (about15 is a useful default). A3–8 OMT source/home pairing i
 control, not representative remote proof. Record actual geometry and active-party state for the
 selected workload; site placement or elapsed world-days alone does not establish active load.
 
-Enable and verify avatar invisibility and Debug Life Support (`DEBUG_LS`) individually using
-[setup controls](setup-and-interactions.md#mutation-setup-for-suite-runs). Life support removes
-needs noise, not incoming damage. Choose practical shelter/routes and supported avatar protection
-when necessary; keep debug light off. This is not survival, balance or avatar-detection proof.
+Use debug options and avatar mutations to work around incidental hazards. Choose the tool for
+the situation, preserve the actors and conditions being measured, and continue the same world.
+
+- An unrelated alien keeps interrupting waits: use [debug kill](setup-and-interactions.md#incidental-danger) on that creature.
+- A portal storm makes the shelter unusable: [teleport the avatar](setup-and-interactions.md#typed-avatar-omt-teleport) somewhere suitable and resume the wait.
+- Incidental attacks threaten to end the run: use the free-dodge mutation to help the avatar avoid damage.
+- You need a better view: use clairvoyance for inspection. Some game code checks the avatar’s sight, so use ordinary sight to verify player visibility or behavior that depends on it.
+
+Keep debug light off. If an intervention changes local load, exposure or visibility, note the change
+when interpreting that interval. Count the game time that actually elapsed and compare waits under
+comparable conditions.
 
 ## Repeatable journey: at least seven actual game days per seed
 
@@ -68,6 +75,13 @@ travel; lack of a particular mission phase is not permission to fabricate one. D
 actors, reload an earlier save to undo consequences, or erase a crash with a fresh world.
 
 ## Interruptions and lightweight observations
+
+For an incidental portal storm, confirm the avatar is safely indoors and wait for the storm
+to pass. Use `play wait 5m ignore` for the understood warning, or choose the current
+`activity.ignore` action if the native interruption advertises it. Recheck conditions and
+health before extending the wait. If shelter is unsafe, teleport the avatar to a suitable
+location using the supported setup control and resume. For signal tests, check the actual
+weather again at the observation point.
 
 Keep safe mode off, checking after entry/reload or a blocked move. The explicit CLI `ignore`
 wait policy continues through supported danger and damage interruptions; invisibility and
@@ -160,13 +174,27 @@ accumulation can be more useful than the busiest one. Do not select a known cras
 continuation and simply wait on it—diagnose that failure first. Keep the selected same-world
 save as current working input; clean up the other completed worlds normally.
 
-One direct Luna continues a loose loop of travel to another region, a long native wait,
-return by another route, then periodic full save/exit/reload and resumed play. Include quiet
-multi-day absences and revisits. Keep invisibility/life support and supported ignore handling;
-leave NPC simulation real. The main question is whether prolonged ordinary simulation and
-reentry crash, hang, stop making progress or develop pronounced performance degradation.
-Apply the shared performance observations above, including sparse-versus-dense comparisons. Do not turn this into another detailed faction
-assertion campaign or require daily reports.
+One direct Luna plays the survivor across connected activities. Let the situation suggest
+the next move: loot a tool, craft something the available materials support, cook a meal,
+try a vehicle, or take another route home. In fog, a survivor can search a building or
+rest under cover. If a smoke test becomes relevant again, check the weather and the
+receiver’s range at the time it scanned. Where World observation omits weather, use the
+existing receiver trace if available. A failed visibility opportunity can settle that
+observation while the same play session continues.
+
+Use the controls offered for the current interaction. After trying a tool, check what
+changed in the world or inventory before trying it again. Use avatar debug options to
+get past incidental trouble when useful; record an intervention if it changes what the
+test can prove. Keep NPC decisions, weather and elapsed time genuine for those observations.
+Keep meaningful quiet absences, revisits and save/exit/reload coverage alongside active play.
+
+Terra can watch existing timing and actor evidence while Luna plays. At a natural break,
+connect a player action to a consequence: what changed when the survivor left camp,
+which cannibals, bandits or Mi-go travelled or reacted, and what persisted on return?
+Use comparable active windows for performance claims. If something appears wrong,
+capture the first divergence and the relevant turn, action and conditions while the
+evidence is available. Follow up a real crash, hang, lost input or repeatable failure;
+keep healthy play moving where it can answer a different question.
 
 **Keep output small:** use existing supported quiet/default logging and compact observations;
 no per-turn actor dumps, repeated full snapshots, videos or copied save archives. Keep one
