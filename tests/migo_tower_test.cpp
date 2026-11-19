@@ -4239,14 +4239,14 @@ TEST_CASE( "migo_native_loop_boundary_handoff_yields_released_handle_and_preserv
 TEST_CASE( "migo_native_return_resolves_distant_floors_and_occupied_approaches",
            "[migo_tower][native][ownership]" )
 {
-    const int scenario = GENERATE( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 );
+    const int scenario = GENERATE( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 );
     const bool remote = scenario == 1 || scenario == 2 || scenario == 3 ||
-                        scenario == 5 || scenario == 7;
-    const bool occupied_approach = scenario == 2;
+                        scenario == 5 || scenario == 7 || scenario == 10;
+    const bool occupied_approach = scenario == 2 || scenario == 10;
     const bool missing_stairs = scenario == 3;
     const bool walled_approach = scenario == 4 || scenario == 5;
-    const bool native_floorplan = scenario >= 6;
-    const bool native_atmosphere = scenario >= 8;
+    const bool native_floorplan = scenario >= 6 && scenario <= 9;
+    const bool native_atmosphere = scenario == 8 || scenario == 9;
     const bool real_fire = scenario == 9;
     CAPTURE( remote, occupied_approach, missing_stairs, walled_approach, native_floorplan,
              native_atmosphere, real_fire );
@@ -4513,7 +4513,25 @@ TEST_CASE( "migo_native_return_resolves_distant_floors_and_occupied_approaches",
         monster blocker( member.type );
         blocker.population_identity() = residents[1].token;
         blocker.set_pos_abs_only( residents[1].home );
+        if( scenario == 10 ) {
+            migo_tower::member_intent settled;
+            settled.generation = 1;
+            settled.phase = migo_tower::member_phase::settled;
+            settled.home = blocker.pos_abs();
+            blocker.set_migo_intent( settled );
+            blocker.wander_to( start + point( 5, 0 ), 75 );
+        }
         REQUIRE( owner.retain_monster_payload( blocker.pos_abs(), blocker ) );
+        if( scenario == 10 ) {
+            bool active_blocker = false;
+            for( const auto &entry : owner.horde_entities() ) {
+                if( entry.second->monster_data &&
+                    entry.second->monster_data->population_identity().member_id == "home-defender" ) {
+                    active_blocker = entry.second->is_active() && entry.second->tracking_intensity > 0;
+                }
+            }
+            REQUIRE( active_blocker );
+        }
     }
     const auto first_step = physical_navigation::read_step( original, home );
     INFO( first_step.reason );

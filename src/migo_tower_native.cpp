@@ -308,6 +308,26 @@ physical_navigation::step_read read_owned_step( monster &body,
                 if( !resident->is_active() ) {
                     return true;
                 }
+                const monster *other = resident->monster_data.get();
+                const auto *other_intent = other ? other->migo_intent() : nullptr;
+                if( !other_intent || other_intent->phase != member_phase::settled ) {
+                    continue;
+                }
+                const auto *other_site = other ? overmap_buffer.global_state.migo_populations.find(
+                                             other->population_identity().site_id ) : nullptr;
+                const auto *other_member = other_site ? other_site->find(
+                                               other->population_identity().member_id ) : nullptr;
+                // A returned expedition member may retain stale sound
+                // tracking, which keeps its horde bucket active even though
+                // the remote operation-only pass no longer services it.
+                const bool settled_resident = other_member &&
+                        other_member->assignment == migo_population::duty::available &&
+                        other_site->owns( other->population_identity(),
+                                          migo_population::representation::abstract ) &&
+                        !owns_intent( *other, migo_population::representation::abstract );
+                if( settled_resident ) {
+                    return true;
+                }
             }
         }
         return false;
