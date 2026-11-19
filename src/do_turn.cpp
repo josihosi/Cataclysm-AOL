@@ -13392,7 +13392,8 @@ bool record_live_bandit_structural_member_returns()
             const auto member_cursor = bandit_live_world::current_external_simulation_cursor( candidate );
             if( !member || member->is_dead() || !member_cursor ||
                 !bandit_live_world::record_structural_member_physical_return(
-                    candidate, *member_cursor, member_id, member->pos_abs_omt(), current_minutes ) ) {
+                    candidate, *member_cursor, member_id, member->pos_abs_omt(), current_minutes,
+                    member->pos_abs() ) ) {
                 committed = false;
                 break;
             }
@@ -21727,6 +21728,11 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
             continue;
         }
         if( site_contains_omt( site, boundary_omt ) ) {
+            if( std::any_of( crossings.begin(), crossings.end(), [&]( const auto &crossing ) {
+                return project_to<coords::omt>( crossing.second.exit ) != boundary_omt;
+            } ) ) {
+                continue;
+            }
             record_live_bandit_homeward_transfer( homeward_event, site, "not_invoked",
                                                   "physical camp-return recorder selected", false );
             for( const std::pair<npc *, live_bandit_pair_boundary_step> &crossing : crossings ) {
@@ -21737,7 +21743,7 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 if( !cursor ||
                 !commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
                 if( !bandit_live_world::record_structural_member_physical_return( next, *cursor, member->getID(),
-                            boundary_omt, current_minutes ) ) {
+                            boundary_omt, current_minutes, member->pos_abs() ) ) {
                         return false;
                     }
                     next.find_member( member->getID() )->wounded_or_unready = member->hp_percentage() <= 50;

@@ -2587,7 +2587,8 @@ bool record_local_pair_abstract_resume_progress( site_record &site,
         const std::function<void()> &commit_members = {} );
 bool record_structural_member_physical_return( site_record &site,
         const simulation_advance_cursor &expected_cursor, character_id member_id,
-        const tripoint_abs_omt &returned_omt, int current_minutes );
+        const tripoint_abs_omt &returned_omt, int current_minutes,
+        const std::optional<tripoint_abs_ms> &returned_position = std::nullopt );
 local_handoff_commit_result start_local_pair_alternate_watch_reposition(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     int current_minutes );

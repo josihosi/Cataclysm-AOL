@@ -16089,10 +16089,14 @@ TEST_CASE( "hostile_camp_local_handoff_binds_the_complete_pair_transactionally",
         CHECK_FALSE( bandit_live_world::record_structural_member_physical_return(
                          corner_site, *corner_return, live_ids.front(),
                          corner_site.anchor + point( -1, -1 ), 105 ) );
+        CHECK_FALSE( bandit_live_world::record_structural_member_physical_return(
+                         corner_site, *corner_return, live_ids.front(), corner_site.anchor, 105,
+                         corner - point( 1, 1 ) ) );
         REQUIRE( bandit_live_world::record_structural_member_physical_return(
-                     corner_site, *corner_return, live_ids.front(), corner_site.anchor, 105 ) );
+                     corner_site, *corner_return, live_ids.front(), corner_site.anchor, 105,
+                     corner + point( 2, 0 ) ) );
         CHECK( corner_site.active_outing.local_handoff.members.front().exit_position ==
-               corner + point( 1, 0 ) );
+               corner + point( 2, 0 ) );
         corner_return = bandit_live_world::current_external_simulation_cursor( corner_site );
         REQUIRE( corner_return );
         REQUIRE( bandit_live_world::record_structural_member_physical_return(
@@ -31266,6 +31270,21 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     bandit_live_world::world_state loaded_arrival_world = world;
     bandit_live_world::site_record &loaded_arrival_site =
         loaded_arrival_world.sites.front();
+    auto &loaded_outing = loaded_arrival_site.active_outing;
+    loaded_outing.coarse_work.clear();
+    loaded_outing.coarse_hostile_member_ids.clear();
+    auto &member_work = loaded_outing.coarse_member_work[loaded_outing.member_ids.front()];
+    member_work.edge_bound = true;
+    member_work.from = { loaded_outing.shared_route[1] };
+    member_work.to = { loaded_outing.selected_watch_omt };
+    member_work.edge_cost_millis = 1000;
+    member_work.work_millis = 300;
+    member_work.serviced_active_turns = 0;
+    member_work.actor_ids = { loaded_outing.activity_id + ":" +
+                              std::to_string( loaded_outing.member_ids.front().get_value() ) };
+    member_work.actor_epochs = { static_cast<std::uint64_t>( loaded_outing.handoff_epoch ) };
+    member_work.operation_generation = static_cast<std::uint64_t>( loaded_outing.generation );
+    REQUIRE( bandit_live_world::current_external_simulation_cursor( loaded_arrival_site ) );
     REQUIRE( bandit_live_world::commit_loaded_local_pair_alternate_watch_reposition(
                  loaded_arrival_site, completion ) ==
              bandit_live_world::local_handoff_commit_result::applied );
@@ -31277,6 +31296,8 @@ TEST_CASE( "bandit_live_world_local_pair_repositions_to_alternate_watch_atomical
     CHECK( loaded_arrival_site.active_outing.selected_watch_omt == alternate );
     CHECK( loaded_arrival_site.active_outing.local_handoff.is_active() );
     CHECK( loaded_arrival_site.active_outing.local_handoff.route_position == alternate );
+    CHECK( loaded_outing.coarse_member_work.at( loaded_outing.member_ids.front() ).work_millis == 300 );
+    CHECK( loaded_outing.coarse_member_work.at( loaded_outing.member_ids.front() ).actor_ids.empty() );
     CHECK( serialize_world( round_trip_world( loaded_arrival_world ) ) ==
            serialize_world( loaded_arrival_world ) );
 
@@ -54008,6 +54029,24 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
             handoff.members[index].staging_position = reads[index].current_position;
             handoff.members[index].exit_position = reads[index].current_position;
         }
+        auto &paid = site.active_outing.coarse_member_work[reads.front().npc_id];
+        paid.edge_bound = true;
+        paid.from = { site.active_outing.shared_route[1] };
+        paid.to = { site.active_outing.selected_watch_omt };
+        paid.edge_cost_millis = 1000;
+        paid.work_millis = 300;
+        paid.serviced_active_turns = 0;
+        paid.actor_ids = { site.active_outing.activity_id + ":" +
+                           std::to_string( reads.front().npc_id.get_value() ) };
+        paid.actor_epochs = { static_cast<std::uint64_t>( site.active_outing.handoff_epoch ) };
+        paid.operation_generation = static_cast<std::uint64_t>( site.active_outing.generation );
+        site.active_outing.coarse_member_work[reads.back().npc_id].serviced_active_turns = 0;
+        auto invalid_transition = site;
+        invalid_transition.active_outing.coarse_member_work[reads.front().npc_id].actor_ids.front() = "foreign";
+        CHECK_FALSE( bandit_live_world::current_external_simulation_cursor( invalid_transition ) );
+        auto competing_owner = site;
+        competing_owner.active_outing.coarse_work.serviced_active_turns = 0;
+        CHECK_FALSE( bandit_live_world::current_external_simulation_cursor( competing_owner ) );
         const auto direct_cursor = bandit_live_world::current_external_simulation_cursor( site );
         REQUIRE( direct_cursor );
         auto missing = reads;
@@ -54020,6 +54059,21 @@ TEST_CASE( "watch arrival transaction preserves ownership and rejects incomplete
                  bandit_live_world::local_handoff_commit_result::applied );
         CHECK( site.active_outing.waypoint_index == 2 );
         CHECK( site.active_outing.assessment.observation_started_minutes >= 0 );
+        const auto saved = serialize_world( world );
+        auto restored = round_trip_world( world );
+        CHECK( serialize_world( restored ) == saved );
+        const auto *restored_site = restored.find_site( site.site_id );
+        REQUIRE( restored_site );
+        const auto &restored_work = restored_site->active_outing.coarse_member_work.at(
+                                        reads.front().npc_id );
+        CHECK( restored_work.edge_bound );
+        CHECK( restored_work.work_millis == 300 );
+        CHECK( restored_work.serviced_active_turns == 0 );
+        auto foreign = world;
+        auto *foreign_site = foreign.find_site( site.site_id );
+        REQUIRE( foreign_site );
+        foreign_site->active_outing.coarse_member_work[reads.front().npc_id].actor_ids.front() = "foreign";
+        CHECK_THROWS( round_trip_world( foreign ) );
     }
     SECTION( "complete arrival starts once and survives reload and owner transfer" ) {
         const int arrived = cursor.last_advanced_minutes + 1;

@@ -3830,6 +3830,38 @@ bool structural_admission_is_consistent( const bandit_live_world::active_outing_
            } );
 }
 
+bool member_travel_work_owner_is_consistent( const bandit_live_world::active_outing_state &outing )
+{
+    using namespace bandit_live_world;
+    if( outing.coarse_member_work.empty() ) {
+        return true;
+    }
+    const bool structural_owner = outing.kind == outing_kind::structural_sortie &&
+                                  ( outing.structural_admission.is_active() ||
+                                    outing.local_handoff.schema_version == 6 ||
+                                    ( outing.owner == simulation_owner::local &&
+                                      outing.local_handoff.schema_version == 4 ) );
+    if( ( outing.kind != outing_kind::hostile_operation && outing.kind != outing_kind::scout_sortie &&
+          !structural_owner ) || !outing.coarse_hostile_member_ids.empty() ||
+        outing.coarse_work.edge_bound || outing.coarse_work.work_millis != 0 ||
+        outing.coarse_work.serviced_active_turns >= 0 ) {
+        return false;
+    }
+    for( const auto &[id, work] : outing.coarse_member_work ) {
+        if( std::find( outing.member_ids.begin(), outing.member_ids.end(), id ) == outing.member_ids.end() ||
+            work.from.size() > 1 ||
+            ( outing.activation.initialized() && work.serviced_active_turns > outing.activation.active_turns ) ||
+            ( !work.actor_ids.empty() &&
+              ( work.actor_ids.size() != 1 || work.actor_epochs.size() != 1 ||
+                work.actor_ids.front() != outing.activity_id + ":" + std::to_string( id.get_value() ) ||
+                work.operation_generation != static_cast<std::uint64_t>( outing.generation ) ||
+                work.actor_epochs.front() != static_cast<std::uint64_t>( outing.handoff_epoch ) ) ) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool simulation_owner_state_is_consistent(
     const bandit_live_world::active_outing_state &outing,
     const char **refusal = nullptr )
@@ -3853,6 +3885,9 @@ bool simulation_owner_state_is_consistent(
     }
     if( outing.local_projection_reconciliation_rejected ) {
         return refuse( "owner_projection_rejected" );
+    }
+    if( !member_travel_work_owner_is_consistent( outing ) ) {
+        return refuse( "member_travel_work_owner" );
     }
     if( !structural_admission_is_consistent( outing ) ) {
         return refuse( "structural_admission_binding" );
@@ -4756,6 +4791,19 @@ bool is_valid_scout_phase_transition( const scout_phase previous_phase,
 
 namespace
 {
+void settle_intermediate_member_work_for_handoff( active_outing_state &outing )
+{
+    for( auto &[id, work] : outing.coarse_member_work ) {
+        ( void )id;
+        work.actor_ids.clear();
+        work.actor_epochs.clear();
+        work.operation_generation = 0;
+        if( outing.activation.initialized() ) {
+            work.serviced_active_turns = outing.activation.active_turns;
+        }
+    }
+}
+
 void record_committed_owner_crossing( active_outing_state &outing,
                                       const simulation_owner prior_owner )
 {
@@ -4766,15 +4814,7 @@ void record_committed_owner_crossing( active_outing_state &outing,
         outing.coarse_hostile_member_ids.clear();
         if( outing.kind == outing_kind::structural_sortie &&
             outing.local_handoff.has_intermediate_route_position() ) {
-            for( auto &[id, work] : outing.coarse_member_work ) {
-                ( void )id;
-                work.actor_ids.clear();
-                work.actor_epochs.clear();
-                work.operation_generation = 0;
-                if( outing.activation.initialized() ) {
-                    work.serviced_active_turns = outing.activation.active_turns;
-                }
-            }
+            settle_intermediate_member_work_for_handoff( outing );
         } else {
             outing.coarse_member_work.clear();
         }
@@ -6813,6 +6853,7 @@ local_handoff_commit_result commit_loaded_local_pair_alternate_watch_reposition(
     }
     next.local_handoff = plan.resume_snapshot;
     next.local_handoff.handoff_epoch = next.handoff_epoch;
+    settle_intermediate_member_work_for_handoff( next );
     for( const local_handoff_member_snapshot &member_snapshot :
          next.local_handoff.members ) {
         member_record *member = candidate.find_member( member_snapshot.npc_id );
@@ -7157,7 +7198,8 @@ bool record_local_pair_member_death( site_record &site,
 
 bool record_structural_member_physical_return( site_record &site,
         const simulation_advance_cursor &expected_cursor, const character_id member_id,
-        const tripoint_abs_omt &returned_omt, const int current_minutes )
+        const tripoint_abs_omt &returned_omt, const int current_minutes,
+        const std::optional<tripoint_abs_ms> &returned_position )
 {
     const active_outing_state &outing = site.active_outing;
     const auto record_result = [&site, &outing, member_id, current_minutes](
@@ -7178,6 +7220,7 @@ bool record_structural_member_physical_return( site_record &site,
         !simulation_cursor_matches( outing, expected_cursor ) || current_minutes < 0 ||
         current_minutes < outing.last_advanced_minutes ||
         !hostile_site_contains_omt( site, returned_omt ) ||
+        ( returned_position && project_to<coords::omt>( *returned_position ) != returned_omt ) ||
         std::find( outing.member_ids.begin(), outing.member_ids.end(), member_id ) ==
         outing.member_ids.end() || outing.member_is_resolved( member_id ) ||
         std::find( outing.casualty_ids.begin(), outing.casualty_ids.end(), member_id ) !=
@@ -7213,9 +7256,12 @@ bool record_structural_member_physical_return( site_record &site,
     next.local_handoff.members.end(), [member_id]( const local_handoff_member_snapshot & entry ) {
         return entry.npc_id == member_id;
     } );
-    if( snapshot != next.local_handoff.members.end() &&
-        project_to<coords::omt>( snapshot->exit_position ) != returned_omt ) {
-        snapshot->exit_position = project_to<coords::ms>( returned_omt );
+    if( snapshot != next.local_handoff.members.end() ) {
+        if( returned_position ) {
+            snapshot->exit_position = *returned_position;
+        } else if( project_to<coords::omt>( snapshot->exit_position ) != returned_omt ) {
+            snapshot->exit_position = project_to<coords::ms>( returned_omt );
+        }
     }
     next.last_advanced_minutes = current_minutes;
     if( next.resolved_member_ids.size() == next.member_ids.size() ) {
@@ -7238,6 +7284,7 @@ bool record_structural_member_physical_return( site_record &site,
         // outing, but release the local cursor instead of advertising a resume
         // snapshot with no remaining local member.
         next.local_handoff.clear();
+        next.coarse_member_work.clear();
     }
     if( !candidate.roster().valid ) {
         record_result( "rejected", to_string( previous_member_state ),
@@ -11555,24 +11602,14 @@ void active_outing_state::deserialize( const JsonObject &jo )
     }
     const bool has_member_work = jo.has_member( "coarse_member_work" );
     const bool has_old_member_work = jo.has_member( "coarse_hostile_member_work" );
-    int saved_handoff_schema = 0;
-    if( jo.has_member( "local_handoff" ) ) {
-        JsonObject saved_handoff = jo.get_object( "local_handoff" );
-        saved_handoff.allow_omitted_members();
-        saved_handoff.read( "schema_version", saved_handoff_schema );
-    }
+    std::string owner_string = "abstract";
+    jo.read( "simulation_owner", owner_string );
+    candidate.owner = simulation_owner_from_string( owner_string ).value_or(
+                          simulation_owner::abstract );
     if( has_member_work && has_old_member_work ) {
         jo.throw_error( "duplicate member travel work owners" );
     }
     if( has_member_work || has_old_member_work ) {
-        if( ( candidate.kind != outing_kind::hostile_operation &&
-              candidate.kind != outing_kind::scout_sortie &&
-              !( candidate.kind == outing_kind::structural_sortie &&
-                 ( candidate.structural_admission.is_active() || saved_handoff_schema == 6 ) ) ) ||
-            !candidate.coarse_hostile_member_ids.empty() || candidate.coarse_work.edge_bound ||
-            candidate.coarse_work.work_millis != 0 || candidate.coarse_work.serviced_active_turns >= 0 ) {
-            jo.throw_error( "incompatible member travel work owners" );
-        }
         for( const JsonObject entry : jo.get_array( has_member_work ? "coarse_member_work" :
                                       "coarse_hostile_member_work" ) ) {
             character_id id;
@@ -11653,20 +11690,7 @@ void active_outing_state::deserialize( const JsonObject &jo )
         candidate.missing_deadline_minutes = minutes_after_saturated( candidate.expected_return_minutes,
                                              scout_missing_grace_minutes );
     }
-    std::string owner_string = "abstract";
-    jo.read( "simulation_owner", owner_string );
-    candidate.owner = simulation_owner_from_string( owner_string ).value_or(
-                          simulation_owner::abstract );
     jo.read( "handoff_epoch", candidate.handoff_epoch );
-    for( const auto &[id, work] : candidate.coarse_member_work ) {
-        if( !work.actor_ids.empty() &&
-            ( work.actor_ids.size() != 1 || work.actor_epochs.size() != 1 ||
-              work.actor_ids.front() != candidate.activity_id + ":" + std::to_string( id.get_value() ) ||
-              work.operation_generation != static_cast<std::uint64_t>( candidate.generation ) ||
-              work.actor_epochs.front() != static_cast<std::uint64_t>( candidate.handoff_epoch ) ) ) {
-            jo.throw_error( "member work identity does not match its owner" );
-        }
-    }
     jo.read( "last_advanced_minutes", candidate.last_advanced_minutes );
     jo.read( "local_projection_reconciliation_rejected",
              candidate.local_projection_reconciliation_rejected );
@@ -11921,6 +11945,9 @@ void active_outing_state::deserialize( const JsonObject &jo )
         if( !local_return_eligibility_receipt_matches_outing( candidate ) ) {
             jo.throw_error( "active outing has mismatched local return eligibility" );
         }
+    }
+    if( !member_travel_work_owner_is_consistent( candidate ) ) {
+        jo.throw_error( "incompatible member travel work owners" );
     }
     if( !structural_admission_is_consistent( candidate ) ) {
         jo.throw_error( "active outing has mismatched structural admission" );
