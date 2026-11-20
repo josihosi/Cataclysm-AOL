@@ -1,6 +1,7 @@
 #include "ecology_debug_view.h"
 
 #include <algorithm>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -12,6 +13,7 @@
 #include "json_loader.h"
 #include "migo_population.h"
 #include "migo_tower_ai.h"
+#include "overmap_ui.h"
 
 namespace
 {
@@ -595,11 +597,34 @@ TEST_CASE( "dispatch marker uses resident members and labels unavailable positio
     };
     auto view = ecology_debug::query_bandit_ecology( world, request );
     REQUIRE( view.entities.size() == 1 );
+    const auto check_display = [&]( const ecology_debug::view_snapshot &projection,
+    const tripoint_abs_omt &position, const std::string &basis,
+    const std::optional<int> representative ) {
+        overmap_ui::overmap_draw_data_t data;
+        data.ecology_enabled = true;
+        data.ecology_selected_id = request.selected_id;
+        data.ecology_view = projection;
+        const auto facts = overmap_ui::ecology_semantic_facts( data, position );
+        CHECK( facts.at( "ecology_cursor_id" ) == request.selected_id );
+        CHECK( facts.at( "ecology_cursor_position_basis" ) == basis );
+        if( representative ) {
+            CHECK( facts.at( "ecology_cursor_representative_npc_id" ) ==
+                   std::to_string( *representative ) );
+        } else {
+            CHECK( facts.count( "ecology_cursor_representative_npc_id" ) == 0 );
+        }
+        data.ecology_enabled = false;
+        const auto private_facts = overmap_ui::ecology_semantic_facts( data, position );
+        CHECK( private_facts.count( "ecology_cursor_id" ) == 0 );
+        CHECK( private_facts.count( "ecology_cursor_position_basis" ) == 0 );
+        CHECK( private_facts.count( "ecology_cursor_representative_npc_id" ) == 0 );
+    };
     CHECK( view.entities.front().omt == project_to<coords::omt>( leader_ms ) );
     CHECK( view.entities.front().omt != checkpoint );
     CHECK( view.entities.front().position_basis == "current_member" );
     CHECK( view.entities.front().representative_npc_id == leader.get_value() );
     CHECK( view.entities.front().members_split );
+    check_display( view, project_to<coords::omt>( leader_ms ), "current_member", leader.get_value() );
     CHECK( view.entities.front().unknown_member_positions == 0 );
     REQUIRE( view.selected );
     REQUIRE( view.selected->members.size() == 2 );
@@ -613,18 +638,21 @@ TEST_CASE( "dispatch marker uses resident members and labels unavailable positio
     CHECK( view.entities.front().omt == project_to<coords::omt>( other_ms ) );
     CHECK( view.entities.front().representative_npc_id == other.get_value() );
     CHECK( view.entities.front().unknown_member_positions == 1 );
+    check_display( view, project_to<coords::omt>( other_ms ), "current_member", other.get_value() );
     other_available = false;
     view = ecology_debug::query_bandit_ecology( world, request );
     CHECK( view.entities.front().omt == checkpoint );
     CHECK( view.entities.front().position_basis == "checkpoint" );
     CHECK_FALSE( view.entities.front().representative_npc_id );
     CHECK( view.entities.front().unknown_member_positions == 2 );
+    check_display( view, checkpoint, "checkpoint", std::nullopt );
     const auto loaded = round_trip( world );
     leader_available = true;
     view = ecology_debug::query_bandit_ecology( loaded, request );
     REQUIRE( view.entities.size() == 1 );
     CHECK( view.entities.front().omt == project_to<coords::omt>( leader_ms ) );
     CHECK( view.entities.front().position_basis == "current_member" );
+    check_display( view, project_to<coords::omt>( leader_ms ), "current_member", leader.get_value() );
 }
 
 TEST_CASE( "ecology_debug_view_removes_terminal_entities_and_survives_owner_save_load",
