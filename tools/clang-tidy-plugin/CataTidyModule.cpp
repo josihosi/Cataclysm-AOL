@@ -16,6 +16,7 @@
 #include "LargeStackObjectCheck.h"
 #include "NoLongCheck.h"
 #include "NoStaticTranslationCheck.h"
+#include "ObservationCostCheck.h"
 #include "OtMatchCheck.h"
 #include "PointInitializationCheck.h"
 #include "RedundantParenthesesCheck.h"
@@ -75,6 +76,7 @@ class CataModule : public ClangTidyModule
                 "cata-combine-locals-into-point" );
             CheckFactories.registerCheck<DeterminismCheck>( "cata-determinism" );
             CheckFactories.registerCheck<CataHeaderGuardCheck>( "cata-header-guard" );
+            CheckFactories.registerCheck<HordeLightSampleOrderCheck>( "cata-horde-light-sample-order" );
             CheckFactories.registerCheck<JsonTranslationInputCheck>( "cata-json-translation-input" );
             CheckFactories.registerCheck<LargeInlineFunctionCheck>( "cata-large-inline-function" );
             CheckFactories.registerCheck<LargeStackObjectCheck>( "cata-large-stack-object" );
@@ -86,6 +88,7 @@ class CataModule : public ClangTidyModule
             CheckFactories.registerCheck<SerializeCheck>( "cata-serialize" );
             CheckFactories.registerCheck<SimplifyPointConstructorsCheck>(
                 "cata-simplify-point-constructors" );
+            CheckFactories.registerCheck<StalkerLoopReaderCheck>( "cata-stalker-loop-reader" );
             CheckFactories.registerCheck<StaticInitializationOrderCheck>(
                 "cata-static-initialization-order" );
             CheckFactories.registerCheck<StaticDeclarationsCheck>( "cata-static-declarations" );

@@ -138,7 +138,8 @@ Checks: [
     -readability-container-size-empty,                  # auto-fix !empty() differs from size()==N inside Catch2 macros
 ]
 
-WarningsAsErrors: '*'
+# These two observations suggest performance work that needs gameplay context.
+WarningsAsErrors: '*,-cata-stalker-loop-reader,-cata-horde-light-sample-order'
 HeaderFilterRegex: '(src|test|tools).*'
 FormatStyle:     none
 CheckOptions:

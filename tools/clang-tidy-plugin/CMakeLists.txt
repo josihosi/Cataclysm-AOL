@@ -20,6 +20,7 @@ set(CataAnalyzerSrc
         LargeStackObjectCheck.cpp
         NoLongCheck.cpp
         NoStaticTranslationCheck.cpp
+        ObservationCostCheck.cpp
         OtMatchCheck.cpp
         PointInitializationCheck.cpp
         RedundantParenthesesCheck.cpp
