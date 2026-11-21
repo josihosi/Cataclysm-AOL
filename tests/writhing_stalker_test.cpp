@@ -1739,6 +1739,58 @@ TEST_CASE( "writhing_stalker_actor_observation_tracks_current_geometry",
     clear_map_without_vision();
 }
 
+TEST_CASE( "writhing_stalker_retains_only_visible_targets_and_shares_lighting_between_witnesses",
+           "[writhing_stalker][ai][resolution]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    clear_npcs();
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    on_out_of_scope cleanup( []() {
+        clear_npcs();
+        clear_map_without_vision();
+    } );
+    set_time( calendar::turn_zero + 12_hours );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center );
+    monster &east = spawn_new_stalker_fixture( center + point::east * 6 );
+    monster &west = spawn_new_stalker_fixture( center + point::west * 6 );
+    east.anger = 100;
+    east.aggro_character = true;
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( writhing_stalker::observe_current_target( east ) == &you );
+
+    // Force a non-refresh turn to exercise the retained-target path.
+    do {
+        set_time( calendar::turn + 1_turns );
+    } while( ( to_turn<int>( calendar::turn ) + east.get_identity() ) % 5 == 0 );
+    you.setpos( here, center + point::east );
+    refresh_writhing_stalker_arena( here );
+    east.plan();
+    CHECK( east.writhing_stalker_state().last_observed_position == you.pos_abs() );
+    const int last_seen = east.writhing_stalker_state().evidence_turn;
+
+    here.ter_set( center + point::east * 5, ter_id( "t_wall" ) );
+    set_time( calendar::turn + 1_turns );
+    refresh_writhing_stalker_arena( here );
+    east.plan();
+    CHECK( east.writhing_stalker_state().evidence_turn == last_seen );
+    {
+        scout_observation::site_reader shared_lighting;
+        CHECK( writhing_stalker::can_observe_actor( west, you, shared_lighting ) );
+        CHECK_FALSE( writhing_stalker::can_observe_actor( east, you, shared_lighting ) );
+    }
+
+    here.ter_set( center + point::east * 5, ter_id( "t_floor" ) );
+    refresh_writhing_stalker_arena( here );
+    east.plan();
+    CHECK( east.writhing_stalker_state().evidence_turn == to_turn<int>( calendar::turn ) );
+}
+
 TEST_CASE( "writhing_stalker_counterattack_requires_fresh_visible_reachable_human",
            "[writhing_stalker][counterattack][resolution][monster]" )
 {

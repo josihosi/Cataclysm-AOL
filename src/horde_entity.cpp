@@ -292,7 +292,9 @@ bool horde_entity::advance_predator_intent( const tripoint_abs_ms &position, con
             tracking_intensity = 0;
         }
         monster_data->set_pos_abs_only( position );
-        const bool saw_target = writhing_stalker::observe_current_target( *monster_data ) != nullptr;
+        const bool saw_target = ( has_live_sound( *monster_data ) ||
+                                  writhing_stalker::target_observation_due( *monster_data, true ) ) &&
+                                writhing_stalker::observe_current_target( *monster_data ) != nullptr;
         if( !has_live_sound( *monster_data ) && destination == light_source &&
             !light_sample_id.empty() && to_turn<int>( light_observed ) <= now_turn &&
             to_turn<int>( light_expires ) > now_turn ) {

@@ -75,6 +75,7 @@
 #include "vehicle.h"
 #include "vpart_position.h"
 #include "writhing_stalker_ai.h"
+#include "scout_observation.h"
 
 static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 
@@ -232,12 +233,22 @@ void writhing_stalker::observe_attack_resolution( const Creature *attacker,
         return;
     }
     map &here = get_map();
+    // All witnesses read the same attack-time lighting. No action runs between
+    // witnesses, and the reader evaluates each observer's own ray.
+    std::optional<scout_observation::site_reader> witness_reader;
     for( monster &observer : g->all_monsters() ) {
         if( observer.type->id != mon_writhing_stalker || observer.is_dead() ||
-            observer.is_hallucination() ||
-            !( ( observer.sees( here, *attacker ) && observer.sees( here, *target ) ) ||
-               ( can_observe_actor( observer, *attacker ) && can_observe_actor( observer, *target ) ) ) ) {
+            observer.is_hallucination() ) {
             continue;
+        }
+        if( !observer.sees( here, *attacker ) || !observer.sees( here, *target ) ) {
+            if( !witness_reader ) {
+                witness_reader.emplace();
+            }
+            if( !can_observe_actor( observer, *attacker, *witness_reader ) ||
+                !can_observe_actor( observer, *target, *witness_reader ) ) {
+                continue;
+            }
         }
         record_observed_attack( &observer, attacker, target, turn, resolution );
     }

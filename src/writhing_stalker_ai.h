@@ -14,6 +14,10 @@ class Creature;
 class map;
 class JsonObject;
 class JsonOut;
+namespace scout_observation
+{
+class site_reader;
+}
 
 namespace writhing_stalker
 {
@@ -126,7 +130,10 @@ struct persistent_state {
 // eligibility/body-pause queries do not spend it or advance intent.
 void advance_active_work( monster &stalker, int now_turn );
 Creature *observe_current_target( monster &stalker );
+bool target_observation_due( monster &stalker, bool abstract_owner );
 bool can_observe_actor( const monster &stalker, const Creature &actor );
+bool can_observe_actor( const monster &stalker, const Creature &actor,
+                        scout_observation::site_reader &reader );
 std::optional<tripoint_abs_ms> pursuit_destination( monster &stalker, bool abstract_owner );
 // Settle a reached native sound carrier without changing route/combat state.
 bool retire_arrived_sound( monster &stalker, const tripoint_abs_ms &destination,

@@ -133,6 +133,7 @@ class existing_view : public map
         std::set<int> lighting_dirty;
         std::map<tripoint_abs_ms, std::optional<float>> light_results;
         std::map<tripoint_abs_ms, float> source_results;
+        std::map<tripoint_abs_ms, std::pair<float, float>> light_bounds;
         std::map<tripoint_abs_sm, std::optional<submap_sunlight_input>> lighting_prefix_inputs;
 
         std::optional<size_t> submap_index( const tripoint_abs_sm &pos ) const {
@@ -563,15 +564,32 @@ class existing_view : public map
                 }
                 return found->second;
             }
+            // A previous observer may have settled on physical light bounds.
+            // Let this observer test those bounds with its own sight predicate.
+            const auto bounds = light_bounds.find( point );
+            if( predicate_bounds && source_light && source != source_results.end() &&
+                bounds != light_bounds.end() ) {
+                *source_light = source->second;
+                if( ( *predicate_bounds )( bounds->second.first, bounds->second.second ) ) {
+                    return std::nullopt;
+                }
+                source_light->reset();
+            }
             const sunlight_prefix_input prefix = [&]( const tripoint_rel_sm &sm ) {
                 return sunlight_summary( sm );
             };
             const std::function<void( int, int )> prepare = [&]( const int first, const int last ) {
                 prepare_light_cache( first, last );
             };
+            const std::function<bool( float, float )> remember_bounds = [&]( float lower, float upper ) {
+                if( source_light && *source_light ) {
+                    light_bounds.insert_or_assign( point, std::make_pair( lower, upper ) );
+                }
+                return ( *predicate_bounds )( lower, upper );
+            };
             const auto light = generate_observed_lightmap( get_bub( point ),
             [&]( const tripoint_bub_ms &p ) { return require_light_cell( p ); }, &prefix, sufficient,
-            source_light, &prepare, predicate_bounds );
+            source_light, &prepare, predicate_bounds ? &remember_bounds : nullptr );
             if( source_light && *source_light ) {
                 source_results.insert_or_assign( point, **source_light );
             }
@@ -993,21 +1011,8 @@ visibility_read site_reader::read_actor( const Creature &observer, const Creatur
     }
     std::optional<bool> proven;
     std::optional<float> target_source;
-    std::unique_ptr<existing_view> probe;
     const auto settle_actor = [&]( const float lower, const float upper, const int upper_range ) {
         if( !target_source ) {
-            return false;
-        }
-        if( !probe ) {
-            {
-                raid_perf_scope build( raid_perf_stage::scout_view_build );
-                probe = std::make_unique<existing_view>( impl->vehicles, origin, endpoint, true,
-                                                   false, false, &footprint );
-            }
-            probe->prepare_visibility();
-        }
-        if( !probe->has_ray( origin, endpoint ) ||
-            ( target.as_character() && !probe->has_ledge_geometry( origin, endpoint, footprint ) ) ) {
             return false;
         }
         // Monster native day/night interpolation and Character native log
@@ -1016,14 +1021,14 @@ visibility_read site_reader::read_actor( const Creature &observer, const Creatur
                                              std::min( observer.sight_range( lower ),
                                                        observer.sight_range( upper ) ) *
                                              capability.native_range_scale ) ) );
-        set_view_ambient( *probe, endpoint, lower );
-        set_view_source( *probe, endpoint, *target_source );
+        set_view_ambient( *view, endpoint, lower );
+        set_view_source( *view, endpoint, *target_source );
         raid_perf_scope predicate( raid_perf_stage::scout_actor_predicate );
-        if( observer.sees_site_with_range( *probe, target, lower_range, footprint ) ) {
+        if( observer.sees_site_with_range( *view, target, lower_range, footprint ) ) {
             proven = true;
         } else {
-            set_view_ambient( *probe, endpoint, upper );
-            if( !observer.sees_site_with_range( *probe, target, upper_range, footprint ) ) {
+            set_view_ambient( *view, endpoint, upper );
+            if( !observer.sees_site_with_range( *view, target, upper_range, footprint ) ) {
                 proven = false;
             }
         }
