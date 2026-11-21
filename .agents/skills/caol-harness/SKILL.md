@@ -34,6 +34,12 @@ prepared scene with that premise and revise incidental parameters within setup a
 stop answering the question; the first plan is not a commitment. Exact boundaries remain essential
 when the boundary itself is being tested.
 
+For overmap travel, keep the party and the leg being measured outside the reality bubble.
+Never move the avatar or load a stalled party to make it advance. Preserve the stalled scene
+and investigate the offscreen mover. A party reaching the player under its own travel can enter
+the bubble normally. To test handoffs, use a separate run that deliberately loads and unloads
+a moving party repeatedly. Track the same actors and route across the transitions.
+
 The coordinator judges whether the evidence answers the intended question, rather than compliance
 with a recipe. Explain material coverage limits; a justified setup variation needs no separate
 approval or replay. Preserve genuine behavior, consequences, evidence, owner stops and input/custody
