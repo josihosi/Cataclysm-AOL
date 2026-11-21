@@ -2331,6 +2331,9 @@ bool request_origin_recall( site_record &site,
                             const simulation_advance_cursor &expected_cursor,
                             bool physical_signal, int current_minutes,
                             const std::string &summary );
+bool is_unconfirmed_legacy_player_sortie( const site_record &site );
+bool return_unconfirmed_legacy_player_sortie( site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes );
 origin_loss_resolution_effect resolve_origin_loss_return( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         const std::vector<active_member_observation> &observations,

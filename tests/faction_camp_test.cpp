@@ -4920,6 +4920,43 @@ TEST_CASE(
     zone_manager::get_manager().clear();
 }
 
+TEST_CASE( "completed locker visit releases reservation for replacement stock", "[camp][locker]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms locker{ 6, 5, 0 };
+    const tripoint_abs_ms locker_abs = here.get_abs( locker );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
+    overmap_buffer.remove_camp( camp_omt.xy() );
+    here.add_camp( camp_omt, "faction_camp" );
+    on_out_of_scope cleanup( [&]() {
+        zone_manager::get_manager().clear();
+        overmap_buffer.remove_camp( camp_omt.xy() );
+    } );
+    auto camp = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( camp );
+    REQUIRE( *camp != nullptr );
+    ( *camp )->set_owner( your_fac );
+    create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
+    npc &first = spawn_npc( point_bub_ms( 5, 5 ), "thug" );
+    npc &second = spawn_npc( point_bub_ms( 5, 6 ), "thug" );
+    clear_character( first, true );
+    clear_character( second, true );
+    REQUIRE( first.wear_item( item( itype_pants_cargo ), false ).has_value() );
+    REQUIRE( second.wear_item( item( itype_pants_cargo ), false ).has_value() );
+
+    here.i_clear( locker );
+    here.add_item_or_charges( locker, item( itype_survivor_suit ) );
+    REQUIRE( ( *camp )->service_camp_locker( first ) );
+    REQUIRE( first.is_wearing( itype_survivor_suit ) );
+    here.add_item_or_charges( locker, item( itype_survivor_suit ) );
+    CHECK( ( *camp )->service_camp_locker( second ) );
+    CHECK( second.is_wearing( itype_survivor_suit ) );
+    CHECK( first.is_wearing( itype_survivor_suit ) );
+}
+
 TEST_CASE(
     "camp_locker_service_rejects_damaged_full_body_candidate",
     "[camp][locker]" )
@@ -7730,6 +7767,8 @@ TEST_CASE( "camp_locker_service_readies_ranged_loadouts_from_locker_supply",
 
     npc &worker = spawn_npc( npc_local.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, npc_local );
+    worker.set_fac( your_fac );
     REQUIRE( worker.wear_item( item( itype_backpack ), false ).has_value() );
     item initial_melee( itype_id( "sharp_rebar" ) );
     REQUIRE( worker.wield( initial_melee ) );
@@ -8008,125 +8047,109 @@ TEST_CASE( "camp_locker_ranged_readiness_ignores_magazines_installed_in_carried_
     zone_manager::get_manager().clear();
 }
 
-TEST_CASE( "camp_locker_downtime_queue_processes_one_worker_at_a_time",
-           "[camp][locker]" )
+TEST_CASE( "camp_locker_backpack_with_blade_sheath_uses_bag_slot", "[camp][locker]" )
 {
-    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
-    clear_avatar();
-    clear_map_without_vision();
-    zone_manager::get_manager().clear();
-
-    map &here = get_map();
-    const tripoint_abs_ms locker_abs = here.get_abs( tripoint_bub_ms{6, 5, 0} );
-    const tripoint_bub_ms locker_local = here.get_bub( locker_abs );
-
-    create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
-    here.i_clear( locker_local );
-    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
-
-    const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
-    here.add_camp( camp_omt, "faction_camp" );
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
-    REQUIRE( !!bcp );
-    basecamp *test_camp = *bcp;
-    test_camp->set_owner( your_fac );
-
-    npc &first_worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
-    clear_character( first_worker, true );
-    REQUIRE( first_worker.wear_item( item( itype_daypack ), false ).has_value() );
-
-    npc &second_worker = spawn_npc( tripoint_bub_ms{5, 6, 0}.xy(), "thug" );
-    clear_character( second_worker, true );
-    REQUIRE( second_worker.wear_item( item( itype_daypack ), false ).has_value() );
-
-    test_camp->add_assignee( first_worker.getID() );
-    test_camp->add_assignee( second_worker.getID() );
-
-    CHECK( test_camp->process_camp_locker_downtime( second_worker ) );
-    CHECK( second_worker.is_wearing( itype_duffelbag ) );
-    CHECK_FALSE( second_worker.is_wearing( itype_daypack ) );
-
-    CHECK_FALSE( test_camp->process_camp_locker_downtime( first_worker ) );
-    CHECK( first_worker.is_wearing( itype_daypack ) );
-
-    calendar::turn += 10_minutes;
-    CHECK_FALSE( test_camp->process_camp_locker_downtime( first_worker ) );
-    CHECK( first_worker.is_wearing( itype_daypack ) );
-    CHECK_FALSE( first_worker.is_wearing( itype_duffelbag ) );
-
-    zone_manager::get_manager().clear();
+    CHECK( classify_camp_locker_item( item( itype_id( "duffelbag_gym_l" ) ) ) ==
+           camp_locker_slot::bag );
+    CHECK( classify_camp_locker_item( item( itype_id( "backpack_hiking" ) ) ) ==
+           camp_locker_slot::bag );
+    CHECK( classify_camp_locker_item( item( itype_id( "backpack_hunting" ) ) ) ==
+           camp_locker_slot::bag );
+    CHECK( classify_camp_locker_item( item( itype_tool_belt ) ) == camp_locker_slot::belt );
+    CHECK( classify_camp_locker_item( item( itype_bholster ) ) == camp_locker_slot::holster );
 }
 
-TEST_CASE( "camp_locker_not_due_collection_is_separate_from_service", "[camp][locker]" )
+TEST_CASE( "camp_locker_hunting_backpack_replaces_hiking_backpack", "[camp][locker]" )
 {
-    const bool reference = GENERATE( false, true );
-    CAPTURE( reference );
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = sunrise( calendar::turn ) + 1_hours;
     clear_avatar();
     clear_map_without_vision();
     zone_manager::get_manager().clear();
     map &here = get_map();
-    const tripoint_abs_ms locker_abs = here.get_abs( tripoint_bub_ms{6, 5, 0} );
-    const tripoint_bub_ms locker_local = here.get_bub( locker_abs );
+    const tripoint_bub_ms locker_local{6, 5, 0};
+    const tripoint_abs_ms locker_abs = here.get_abs( locker_local );
     create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
     here.i_clear( locker_local );
+    here.add_item_or_charges( locker_local, item( itype_id( "backpack_hunting" ) ) );
     const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
     here.add_camp( camp_omt, "faction_camp" );
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
-    REQUIRE( !!bcp );
-    basecamp *camp = *bcp;
+    std::optional<basecamp *> found = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( !!found );
+    basecamp *camp = *found;
     camp->set_owner( your_fac );
     npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
-    REQUIRE( worker.wear_item( item( itype_daypack ), false ).has_value() );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
+    REQUIRE( worker.wear_item( item( itype_id( "backpack_hiking" ) ), false ).has_value() );
     camp->add_assignee( worker.getID() );
-    camp_locker_downtime_probe probe;
-    probe.reference_service_recollection = reference;
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    REQUIRE( probe.services == 1 );
-    CHECK( probe.service_initial_collections == ( reference ? 1 : 0 ) );
-    CHECK( probe.service_initial_reuses == ( reference ? 0 : 1 ) );
-    REQUIRE( probe.post_service_collections == 1 );
-    camp->mark_camp_locker_dirty( worker );
-    for( int i = 0; i < 3; ++i ) {
-        CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-        CHECK( worker.get_value( "camp_locker_probe_skip_reason" ).str() == "cooldown-until=120" );
-        CHECK( worker.is_wearing( itype_daypack ) );
-        CHECK( here.i_at( locker_local ).empty() );
-    }
-    CHECK( probe.collections == 4 );
-    CHECK( probe.signatures == 4 );
-    CHECK( probe.cooldown_skips == 3 );
-    CHECK( probe.services == 1 );
-    CHECK( probe.post_service_collections == 1 );
-    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    CHECK( worker.is_wearing( itype_daypack ) );
-    CHECK( probe.cooldown_skips == 4 );
-    std::list<item> removed = worker.remove_worn_items_with( []( item & it ) {
-        return it.typeId() == itype_daypack;
-    } );
-    REQUIRE( removed.size() == 1 );
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    CHECK_FALSE( worker.is_wearing( itype_duffelbag ) );
-    calendar::turn += 2_minutes;
-    CHECK( camp->process_camp_locker_downtime( worker, &probe ) );
-    CHECK( worker.is_wearing( itype_duffelbag ) );
-    CHECK( probe.services == 2 );
-    CHECK( probe.service_initial_collections == ( reference ? 2 : 0 ) );
-    CHECK( probe.service_initial_reuses == ( reference ? 0 : 2 ) );
-    CHECK( probe.post_service_collections == 2 );
+    CHECK( camp->process_camp_locker_downtime( worker ) );
+    CHECK( worker.is_wearing( itype_id( "backpack_hunting" ) ) );
+    CHECK_FALSE( worker.is_wearing( itype_id( "backpack_hiking" ) ) );
+    CHECK( std::count_if( here.i_at( locker_local ).begin(), here.i_at( locker_local ).end(),
+    []( const item &it ) { return it.typeId() == itype_id( "backpack_hiking" ); } ) == 1 );
+    // A save made by the older classifier may already contain both packs.
+    // The next appointment should retain the better one and return the other.
+    here.i_clear( locker_local );
+    REQUIRE( worker.wear_item( item( itype_id( "backpack_hiking" ) ), false ).has_value() );
+    calendar::turn = sunrise( calendar::turn + 1_days ) + 1_turns;
+    CHECK( camp->process_camp_locker_downtime( worker ) );
+    CHECK( worker.is_wearing( itype_id( "backpack_hunting" ) ) );
+    CHECK_FALSE( worker.is_wearing( itype_id( "backpack_hiking" ) ) );
+    CHECK( std::count_if( here.i_at( locker_local ).begin(), here.i_at( locker_local ).end(),
+    []( const item &it ) { return it.typeId() == itype_id( "backpack_hiking" ); } ) == 1 );
     zone_manager::get_manager().clear();
 }
 
-TEST_CASE( "camp_locker_queued_cooldown_preserves_priority_and_first_due_service",
-           "[camp][locker]" )
+TEST_CASE( "camp_locker_does_not_add_a_second_bag_for_a_blade_sheath", "[camp][locker]" )
 {
-    const bool reference = GENERATE( false, true );
-    const bool reload = GENERATE( false, true );
-    const bool reassign = GENERATE( false, true );
-    CAPTURE( reference, reload, reassign );
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = sunrise( calendar::turn ) + 1_hours;
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+    map &here = get_map();
+    const tripoint_bub_ms locker_local{6, 5, 0};
+    const tripoint_abs_ms locker_abs = here.get_abs( locker_local );
+    create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
+    here.i_clear( locker_local );
+    here.add_item_or_charges( locker_local, item( itype_id( "backpack_hiking" ) ) );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
+    here.add_camp( camp_omt, "faction_camp" );
+    std::optional<basecamp *> found = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( !!found );
+    basecamp *camp = *found;
+    camp->set_owner( your_fac );
+    npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
+    clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
+    REQUIRE( worker.wear_item( item( itype_id( "duffelbag_gym_l" ) ), false ).has_value() );
+    camp->add_assignee( worker.getID() );
+    camp_locker_downtime_probe probe;
+    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
+    CHECK( worker.is_wearing( itype_id( "duffelbag_gym_l" ) ) );
+    CHECK_FALSE( worker.is_wearing( itype_id( "backpack_hiking" ) ) );
+    CHECK( std::any_of( here.i_at( locker_local ).begin(), here.i_at( locker_local ).end(),
+    []( const item &it ) { return it.typeId() == itype_id( "backpack_hiking" ); } ) );
+    // A save from the old classifier may already have both bags worn. The
+    // next appointment should keep the better gym bag and return the duplicate.
+    here.i_clear( locker_local );
+    REQUIRE( worker.wear_item( item( itype_id( "backpack_hiking" ) ), false ).has_value() );
+    calendar::turn = sunrise( calendar::turn + 1_days ) + 1_turns;
+    CHECK( camp->process_camp_locker_downtime( worker, &probe ) );
+    CHECK( worker.is_wearing( itype_id( "duffelbag_gym_l" ) ) );
+    CHECK_FALSE( worker.is_wearing( itype_id( "backpack_hiking" ) ) );
+    CHECK( std::count_if( here.i_at( locker_local ).begin(), here.i_at( locker_local ).end(),
+    []( const item &it ) { return it.typeId() == itype_id( "backpack_hiking" ); } ) == 1 );
+    zone_manager::get_manager().clear();
+}
+
+TEST_CASE( "camp_locker_downtime_queue_processes_one_worker_at_a_time", "[camp][locker]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = sunrise( calendar::turn ) + 1_turns;
     clear_avatar();
     clear_map_without_vision();
     zone_manager::get_manager().clear();
@@ -8141,14 +8164,18 @@ TEST_CASE( "camp_locker_queued_cooldown_preserves_priority_and_first_due_service
         camp_omt = tripoint_abs_omt( 1, 0, 0 );
     }
     here.add_camp( camp_omt, "faction_camp" );
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
-    REQUIRE( !!bcp );
-    basecamp *camp = *bcp;
+    std::optional<basecamp *> found = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( !!found );
+    basecamp *camp = *found;
     camp->set_owner( your_fac );
     npc &first = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     npc &second = spawn_npc( tripoint_bub_ms{5, 6, 0}.xy(), "thug" );
     clear_character( first, true );
     clear_character( second, true );
+    first.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    second.setpos( here, tripoint_bub_ms{5, 6, 0} );
+    first.set_fac( your_fac );
+    second.set_fac( your_fac );
     REQUIRE( first.wear_item( item( itype_daypack ), false ).has_value() );
     REQUIRE( second.wear_item( item( itype_daypack ), false ).has_value() );
     g->add_npc_follower( first.getID() );
@@ -8156,52 +8183,60 @@ TEST_CASE( "camp_locker_queued_cooldown_preserves_priority_and_first_due_service
     camp->add_assignee( first.getID() );
     camp->add_assignee( second.getID() );
     camp_locker_downtime_probe probe;
-    probe.reference_service_recollection = reference;
-    REQUIRE( camp->process_camp_locker_downtime( second, &probe ) );
-    REQUIRE( second.is_wearing( itype_duffelbag ) );
+    CHECK( first.is_player_ally() );
+    CHECK_FALSE( first.is_dead() );
+    CHECK( camp->has_locker_zone() );
+    CHECK( rl_dist( first.pos_bub(), locker_local ) <= 1 );
+    CHECK_FALSE( camp->process_camp_locker_downtime( second, &probe ) );
+    CHECK( probe.collections == 0 );
+    const bool first_applied = camp->process_camp_locker_downtime( first, &probe );
+    CAPTURE( probe.collections, probe.services, probe.cooldown_skips );
+    CHECK( first_applied );
+    CHECK( first.is_wearing( itype_duffelbag ) );
+    const int after_first = probe.collections;
+    for( int i = 0; i < 5; ++i ) {
+        CHECK_FALSE( camp->process_camp_locker_downtime( first, &probe ) );
+        CHECK_FALSE( camp->process_camp_locker_downtime( second, &probe ) );
+    }
+    CHECK( probe.collections == after_first );
+    calendar::turn += 10_minutes;
+    CHECK_FALSE( camp->process_camp_locker_downtime( second, &probe ) );
+    CHECK( second.is_wearing( itype_daypack ) );
+    const int after_round = probe.collections;
     here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
     camp->mark_camp_locker_dirty( second, true );
-    first.set_value( "camp_locker_wake_dirty", "true" );
-    CHECK_FALSE( camp->process_camp_locker_downtime( first, &probe ) );
-    CHECK( first.get_value( "camp_locker_wake_dirty" ).str() == "false" );
-    CHECK( first.is_wearing( itype_daypack ) );
-    if( reassign ) {
-        camp->remove_assignee( first.getID() );
-        camp->add_assignee( first.getID() );
-        CHECK_FALSE( camp->process_camp_locker_downtime( first, &probe ) );
+    second.set_value( "camp_locker_wake_dirty", "true" );
+    CHECK_FALSE( camp->process_camp_locker_downtime( second, &probe ) );
+    CHECK( probe.collections == after_round );
+    CHECK( second.is_wearing( itype_daypack ) );
+    std::ostringstream os;
+    {
+        JsonOut out( os );
+        camp->serialize( out );
     }
     basecamp restored;
-    if( reload ) {
-        std::ostringstream os;
-        {
-            JsonOut jsout( os );
-            camp->serialize( jsout );
-        }
-        restored.deserialize( json_loader::from_string( os.str() ).get_object() );
-        camp = &restored;
-    }
-    calendar::turn += 10_minutes;
-    CHECK( camp->process_camp_locker_downtime( first, &probe ) );
-    CHECK( first.is_wearing( itype_duffelbag ) );
-    CHECK_FALSE( first.is_wearing( itype_daypack ) );
-    int remaining_daypacks = 0;
-    int remaining_duffelbags = 0;
+    restored.deserialize( json_loader::from_string( os.str() ).get_object() );
+    CHECK_FALSE( restored.process_camp_locker_downtime( second, &probe ) );
+    CHECK( probe.collections == after_round );
+    calendar::turn = sunrise( calendar::turn + 1_days ) + 1_turns;
+    CHECK_FALSE( restored.process_camp_locker_downtime( first, &probe ) );
+    calendar::turn += 2_minutes;
+    CHECK( restored.process_camp_locker_downtime( second, &probe ) );
+    CHECK( second.is_wearing( itype_duffelbag ) );
+    int returned_daypacks = 0;
     for( const item &it : here.i_at( locker_local ) ) {
-        remaining_daypacks += it.typeId() == itype_daypack;
-        remaining_duffelbags += it.typeId() == itype_duffelbag;
+        returned_daypacks += it.typeId() == itype_daypack;
     }
-    CHECK( remaining_daypacks == 2 );
-    CHECK( remaining_duffelbags == 0 );
-    CHECK( probe.service_initial_collections == ( reference ? 2 : 0 ) );
-    CHECK( probe.service_initial_reuses == ( reference ? 0 : 2 ) );
+    CHECK( returned_daypacks == 2 );
     g->remove_npc_follower( first.getID() );
     g->remove_npc_follower( second.getID() );
     zone_manager::get_manager().clear();
 }
 
-TEST_CASE( "camp_locker_queued_signature_survives_rehydrated_reassignment", "[camp][locker]" )
+TEST_CASE( "camp_locker_appointment_walks_before_collecting", "[camp][locker]" )
 {
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = sunrise( calendar::turn ) + 1_hours;
     clear_avatar();
     clear_map_without_vision();
     zone_manager::get_manager().clear();
@@ -8210,77 +8245,31 @@ TEST_CASE( "camp_locker_queued_signature_survives_rehydrated_reassignment", "[ca
     const tripoint_bub_ms locker_local = here.get_bub( locker_abs );
     create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
     here.i_clear( locker_local );
+    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
     const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
     here.add_camp( camp_omt, "faction_camp" );
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
-    REQUIRE( !!bcp );
-    basecamp *camp = *bcp;
+    std::optional<basecamp *> found = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( !!found );
+    basecamp *camp = *found;
     camp->set_owner( your_fac );
-    npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
+    npc &worker = spawn_npc( tripoint_bub_ms{2, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{2, 5, 0} );
+    worker.set_fac( your_fac );
     REQUIRE( worker.wear_item( item( itype_daypack ), false ).has_value() );
-    g->add_npc_follower( worker.getID() );
     camp->add_assignee( worker.getID() );
     camp_locker_downtime_probe probe;
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    CHECK( worker.get_value( "camp_locker_probe_skip_reason" ).str() == "cooldown-until=120" );
-    here.i_clear( locker_local );
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    camp->remove_assignee( worker.getID() );
-    worker.assigned_camp = camp_omt;
-    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
-    CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe ) );
-    calendar::turn += 2_minutes;
+    for( int step = 0; step < 10 && rl_dist( worker.pos_bub(), locker_local ) > 1; ++step ) {
+        worker.set_moves( 1000 );
+        bool handled = false;
+        CHECK_FALSE( camp->process_camp_locker_downtime( worker, &probe, &handled ) );
+        CHECK( handled );
+        CHECK( probe.collections == 0 );
+        CHECK( worker.is_wearing( itype_daypack ) );
+    }
+    REQUIRE( rl_dist( worker.pos_bub(), locker_local ) <= 1 );
     CHECK( camp->process_camp_locker_downtime( worker, &probe ) );
     CHECK( worker.is_wearing( itype_duffelbag ) );
-    g->remove_npc_follower( worker.getID() );
-    zone_manager::get_manager().clear();
-}
-
-TEST_CASE( "camp_locker_new_zone_gear_requeues_worker_after_baseline_noop",
-           "[camp][locker]" )
-{
-    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
-    clear_avatar();
-    clear_map_without_vision();
-    zone_manager::get_manager().clear();
-
-    map &here = get_map();
-    const tripoint_abs_ms locker_abs = here.get_abs( tripoint_bub_ms{6, 5, 0} );
-    const tripoint_bub_ms locker_local = here.get_bub( locker_abs );
-
-    create_tile_zone( "Locker", zone_type_CAMP_LOCKER, locker_abs );
-    here.i_clear( locker_local );
-
-    const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
-    here.add_camp( camp_omt, "faction_camp" );
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
-    REQUIRE( !!bcp );
-    basecamp *test_camp = *bcp;
-    test_camp->set_owner( your_fac );
-
-    npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
-    clear_character( worker, true );
-    REQUIRE( worker.wear_item( item( itype_daypack ), false ).has_value() );
-    test_camp->add_assignee( worker.getID() );
-
-    CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
-    CHECK( worker.is_wearing( itype_daypack ) );
-    CHECK_FALSE( worker.is_wearing( itype_duffelbag ) );
-
-    here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
-
-    CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
-    CHECK( worker.is_wearing( itype_daypack ) );
-    CHECK_FALSE( worker.is_wearing( itype_duffelbag ) );
-
-    calendar::turn += 2_minutes;
-    CHECK( test_camp->process_camp_locker_downtime( worker ) );
-    CHECK( worker.is_wearing( itype_duffelbag ) );
-    CHECK_FALSE( worker.is_wearing( itype_daypack ) );
-
     zone_manager::get_manager().clear();
 }
 
@@ -8288,6 +8277,7 @@ TEST_CASE( "camp_locker_missing_zone_reports_typed_exception_once",
            "[camp][locker][messages]" )
 {
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = sunrise( calendar::turn ) + 1_hours;
     clear_avatar();
     clear_map_without_vision();
     zone_manager::get_manager().clear();
@@ -8296,7 +8286,11 @@ TEST_CASE( "camp_locker_missing_zone_reports_typed_exception_once",
 
     map &here = get_map();
     const tripoint_abs_omt camp_omt = project_to<coords::omt>( here.get_abs( tripoint_bub_ms{6, 5, 0} ) );
+    overmap_buffer.remove_camp( camp_omt.xy() );
     here.add_camp( camp_omt, "faction_camp" );
+    on_out_of_scope remove_test_camp( [&]() {
+        overmap_buffer.remove_camp( camp_omt.xy() );
+    } );
     std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
     REQUIRE( !!bcp );
     basecamp *test_camp = *bcp;
@@ -8304,6 +8298,8 @@ TEST_CASE( "camp_locker_missing_zone_reports_typed_exception_once",
 
     npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
     test_camp->add_assignee( worker.getID() );
 
     CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
@@ -8317,9 +8313,7 @@ TEST_CASE( "camp_locker_missing_zone_reports_typed_exception_once",
 
     calendar::turn += 31_minutes;
     CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
-    messages = Messages::recent_messages( 0 );
-    REQUIRE_FALSE( messages.empty() );
-    CHECK( messages.back().second.find( "[camp][locker]" ) != std::string::npos );
+    CHECK( Messages::recent_messages( 0 ).size() == messages.size() );
 
     Messages::clear_messages();
     basecamp_ai::reset_camp_job_report_debounce();
@@ -8350,6 +8344,8 @@ TEST_CASE( "camp_locker_skip_probe_handles_numeric_last_service_turn",
 
     npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
     test_camp->add_assignee( worker.getID() );
 
     CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
@@ -8361,7 +8357,7 @@ TEST_CASE( "camp_locker_skip_probe_handles_numeric_last_service_turn",
     zone_manager::get_manager().clear();
 }
 
-TEST_CASE( "camp_locker_losing_managed_gear_requeues_worker",
+TEST_CASE( "camp_locker_losing_managed_gear_waits_for_next_morning",
            "[camp][locker]" )
 {
     restore_on_out_of_scope restore_calendar_turn( calendar::turn );
@@ -8378,7 +8374,11 @@ TEST_CASE( "camp_locker_losing_managed_gear_requeues_worker",
     here.add_item_or_charges( locker_local, item( itype_duffelbag ) );
 
     const tripoint_abs_omt camp_omt = project_to<coords::omt>( locker_abs );
+    overmap_buffer.remove_camp( camp_omt.xy() );
     here.add_camp( camp_omt, "faction_camp" );
+    on_out_of_scope remove_test_camp( [&]() {
+        overmap_buffer.remove_camp( camp_omt.xy() );
+    } );
     std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_omt.xy() );
     REQUIRE( !!bcp );
     basecamp *test_camp = *bcp;
@@ -8386,6 +8386,8 @@ TEST_CASE( "camp_locker_losing_managed_gear_requeues_worker",
 
     npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
     REQUIRE( worker.wear_item( item( itype_daypack ), false ).has_value() );
     test_camp->add_assignee( worker.getID() );
 
@@ -8402,7 +8404,7 @@ TEST_CASE( "camp_locker_losing_managed_gear_requeues_worker",
     CHECK_FALSE( test_camp->process_camp_locker_downtime( worker ) );
     CHECK_FALSE( worker.is_wearing( itype_daypack ) );
 
-    calendar::turn += 10_minutes;
+    calendar::turn = sunrise( calendar::turn + 1_days ) + 1_turns;
     CHECK( test_camp->process_camp_locker_downtime( worker ) );
     CHECK( worker.is_wearing( itype_daypack ) );
     CHECK_FALSE( worker.is_wearing( itype_duffelbag ) );
@@ -8431,6 +8433,8 @@ TEST_CASE( "camp_locker_downtime_rehydrates_transient_assignees",
 
     npc &worker = spawn_npc( tripoint_bub_ms{5, 5, 0}.xy(), "thug" );
     clear_character( worker, true );
+    worker.setpos( here, tripoint_bub_ms{5, 5, 0} );
+    worker.set_fac( your_fac );
     REQUIRE( worker.wear_item( item( itype_daypack ), false ).has_value() );
     worker.assigned_camp = camp_omt;
     g->add_npc_follower( worker.getID() );

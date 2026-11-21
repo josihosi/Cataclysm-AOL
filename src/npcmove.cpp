@@ -6450,8 +6450,6 @@ void npc::worker_downtime()
         if( std::optional<basecamp *> camp =
                 overmap_buffer.find_camp( assigned_camp->xy() );
             camp && *camp ) {
-            ( *camp )->process_camp_locker_downtime( *this );
-
             const bool patrol_enabled =
                 job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
                 ( *camp )->has_patrol_zone();
@@ -6507,6 +6505,11 @@ void npc::worker_downtime()
                         set_value( "camp_patrol_probe_last", "inactive" );
                     }
                 }
+            }
+            bool locker_handled = false;
+            ( *camp )->process_camp_locker_downtime( *this, nullptr, &locker_handled );
+            if( locker_handled ) {
+                return;
             }
         }
     }

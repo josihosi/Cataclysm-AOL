@@ -2722,110 +2722,6 @@ int live_bandit_character_goods_value( const Character &who )
     return value;
 }
 
-int live_bandit_nearby_ground_goods_value( const avatar &u )
-{
-    map &here = get_map();
-    int value = 0;
-    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(),
-            live_bandit_basecamp_reach_radius ) ) {
-        if( !here.accessible_items( pt ) ) {
-            continue;
-        }
-        for( const item &it : here.i_at( pt ) ) {
-            value += live_bandit_item_value( it );
-        }
-    }
-    return value;
-}
-
-int live_bandit_basecamp_storage_goods_value( const avatar &u, const basecamp &camp,
-        const int nearby_radius_to_skip )
-{
-    map &here = get_map();
-    int value = 0;
-    for( const tripoint_abs_ms &storage_tile : camp.get_storage_tiles() ) {
-        if( nearby_radius_to_skip >= 0 &&
-            rl_dist( storage_tile, u.pos_abs() ) <= nearby_radius_to_skip ) {
-            continue;
-        }
-
-        const tripoint_bub_ms local_tile = here.get_bub( storage_tile );
-        if( !here.inbounds( local_tile ) ) {
-            continue;
-        }
-        if( here.accessible_items( local_tile ) ) {
-            for( const item &it : here.i_at( local_tile ) ) {
-                value += live_bandit_item_value( it );
-            }
-        }
-        const std::optional<vpart_reference> cargo_part = here.veh_at( local_tile ).cargo();
-        if( cargo_part ) {
-            for( const item &it : cargo_part->items() ) {
-                value += live_bandit_item_value( it );
-            }
-        }
-    }
-    return value;
-}
-
-int live_bandit_basecamp_assigned_npc_goods_value( const avatar &u, basecamp &camp,
-        const int nearby_radius_to_skip )
-{
-    int value = 0;
-    std::set<character_id> counted;
-    const auto count_assigned = [&]( const npc & assigned, const bool assigned_to_this_camp ) {
-        if( assigned.is_dead() || !assigned.is_player_ally() ) {
-            return;
-        }
-        if( !assigned_to_this_camp && nearby_radius_to_skip >= 0 &&
-            rl_dist( assigned.pos_abs(), u.pos_abs() ) <= nearby_radius_to_skip ) {
-            return;
-        }
-        if( counted.insert( assigned.getID() ).second ) {
-            value += live_bandit_character_goods_value( assigned );
-        }
-    };
-    for( const npc_ptr &assigned : camp.get_npcs_assigned() ) {
-        if( assigned == nullptr ) {
-            continue;
-        }
-        count_assigned( *assigned, true );
-    }
-    for( const npc &assigned : g->all_npcs() ) {
-        const bool assigned_to_this_camp = assigned.assigned_camp &&
-                                           *assigned.assigned_camp == camp.camp_omt_pos();
-        const bool in_basecamp_side_pool = rl_dist( assigned.pos_abs(), u.pos_abs() ) <=
-                                           live_bandit_basecamp_storage_zone_scan_radius;
-        if( !assigned_to_this_camp && !in_basecamp_side_pool ) {
-            continue;
-        }
-        count_assigned( assigned, assigned_to_this_camp );
-    }
-    return value;
-}
-
-int live_bandit_current_vehicle_goods_value( const avatar &u )
-{
-    if( !u.in_vehicle ) {
-        return 0;
-    }
-
-    map &here = get_map();
-    const optional_vpart_position player_vehicle = here.veh_at( u.pos_bub() );
-    if( !player_vehicle ) {
-        return 0;
-    }
-
-    int value = 0;
-    vehicle &veh = player_vehicle->vehicle();
-    for( const vpart_reference &part_ref : veh.get_all_parts() ) {
-        for( const item &it : veh.get_items( part_ref.part() ) ) {
-            value += live_bandit_item_value( it );
-        }
-    }
-    return value;
-}
-
 std::vector<character_id> live_bandit_basecamp_defender_ids(
     const bandit_live_world::site_record &site )
 {
@@ -2922,130 +2818,6 @@ bandit_live_world::shakedown_goods_pool live_bandit_encounter_goods_pool(
         }
     }
     return pool;
-}
-
-bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
-    const bandit_live_world::local_gate_input &input, const avatar &u )
-{
-    bandit_live_world::shakedown_goods_pool pool;
-    pool.basecamp_or_camp_scene = input.basecamp_or_camp_scene;
-    pool.player_carried_value = live_bandit_character_goods_value( u );
-
-    static constexpr int nearby_companion_radius = 12;
-    for( const npc &guy : g->all_npcs() ) {
-        if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
-            continue;
-        }
-        if( input.basecamp_or_camp_scene && guy.assigned_camp ) {
-            continue;
-        }
-        pool.companion_carried_value += live_bandit_character_goods_value( guy );
-    }
-
-    if( input.basecamp_or_camp_scene ) {
-        pool.reachable_basecamp_value = live_bandit_nearby_ground_goods_value( u );
-        if( basecamp *camp = live_bandit_nearest_basecamp( u ) ) {
-            live_bandit_refresh_basecamp_storage_tiles( u, *camp );
-            pool.reachable_basecamp_value += live_bandit_basecamp_storage_goods_value( u, *camp,
-                                             live_bandit_basecamp_reach_radius );
-            pool.companion_carried_value += live_bandit_basecamp_assigned_npc_goods_value( u, *camp,
-                                            nearby_companion_radius );
-        }
-    } else {
-        pool.vehicle_carried_value = live_bandit_current_vehicle_goods_value( u );
-    }
-
-    return pool;
-}
-
-int live_bandit_reachable_goods_value( const bandit_live_world::shakedown_goods_pool &pool )
-{
-    int value = pool.player_carried_value + pool.companion_carried_value;
-    value += pool.basecamp_or_camp_scene ? pool.reachable_basecamp_value :
-             pool.vehicle_carried_value;
-    return std::max( 0, value );
-}
-
-int live_bandit_loaded_player_allied_population()
-{
-    map &here = get_map();
-    int population = 1;
-    for( const npc &guy : g->all_npcs() ) {
-        if( guy.is_player_ally() && !guy.is_dead() && guy.is_active() &&
-            here.inbounds( guy.pos_bub( here ) ) ) {
-            population++;
-        }
-    }
-    return population;
-}
-
-bool live_bandit_active_hostile_receipt_matches(
-    const bandit_live_world::world_state &state,
-    const bandit_live_world::hostile_target_opportunity_record &receipt )
-{
-    if( receipt.consumed_generation <= 0 ) {
-        return false;
-    }
-    return std::any_of( state.sites.begin(), state.sites.end(), [&receipt](
-    const bandit_live_world::site_record & site ) {
-        const bandit_live_world::hostile_operation_state &operation =
-            site.active_hostile_operation;
-        const bandit_live_world::active_outing_state &reservation = operation.reservation;
-        return operation.is_active() && reservation.activity_id == receipt.consumed_operation_id &&
-               operation.source_report_application_key == receipt.consumed_report_key &&
-               reservation.generation == receipt.consumed_generation;
-    } );
-}
-
-void observe_live_bandit_player_target_opportunity()
-{
-    avatar &u = get_avatar();
-    const tripoint_abs_omt target_omt = u.pos_abs_omt();
-    const std::optional<basecamp *> direct_camp = overmap_buffer.find_camp( target_omt.xy() );
-    const std::optional<tripoint_abs_omt> basecamp_omt = direct_camp && *direct_camp != nullptr ?
-            std::optional<tripoint_abs_omt>( ( *direct_camp )->camp_omt_pos() ) : std::nullopt;
-    if( !bandit_live_world::authoritative_player_target_observation_is_local_to_basecamp(
-            target_omt, basecamp_omt ) ) {
-        openclaw_harness_trace_bandit_owner( "observation_rejected", u.pos_abs_omt(), nullptr, -1,
-                                             false, 0 );
-        return;
-    }
-    bandit_live_world::local_gate_input input;
-    input.basecamp_or_camp_scene = true;
-    input.local_opportunity = 2;
-    const std::string target_id = "player@" + live_bandit_omt_token( target_omt );
-    const bandit_live_world::shakedown_goods_pool pool =
-        live_bandit_make_shakedown_goods_pool( input, u );
-    const bandit_live_world::hostile_target_opportunity_evidence evidence = {
-        live_bandit_reachable_goods_value( pool ),
-        live_bandit_loaded_player_allied_population(), input.local_opportunity
-    };
-    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
-    const bandit_live_world::hostile_target_opportunity_record *existing =
-        state.find_hostile_target_opportunity( target_id, target_omt );
-    if( existing != nullptr && live_bandit_active_hostile_receipt_matches( state, *existing ) &&
-        ( existing->goods_value != evidence.reachable_goods_value ||
-          existing->population != evidence.loaded_population ||
-          existing->activity != evidence.activity ) ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation frozen"
-                                   << " target=" << target_id
-                                   << " receipt=" << existing->consumed_operation_id
-                                   << " generation=" << existing->consumed_generation << '\n';
-        return;
-    }
-
-    // Camp-local scout reports read this world receipt; only this loaded player-scene owner writes it.
-    const bool observed = bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
-                          target_id, target_omt, evidence );
-    openclaw_harness_trace_bandit_owner( "observation_result", target_omt, &*basecamp_omt, 0,
-                                         true, observed ? 1 : 0 );
-    if( observed ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation"
-                                   << " target=" << target_id
-                                   << " goods=" << evidence.reachable_goods_value
-                                   << " population=" << evidence.loaded_population
-                                   << " activity=" << evidence.activity << '\n';
-    }
 }
 
 int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &site,
@@ -3673,8 +3445,8 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
 
     avatar &u = get_avatar();
     Character *receiver = live_bandit_shakedown_receiver( site );
-    if( operation.is_active() && ( receiver == nullptr ||
-                                   live_bandit_shakedown_local_speaker( site ) == nullptr ) ) {
+    npc *speaker = live_bandit_shakedown_local_speaker( site );
+    if( receiver == nullptr || speaker == nullptr ) {
         return false;
     }
     // A real player-directed demand interrupts ordinary work. The existing
@@ -3687,9 +3459,8 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
         u.cancel_activity();
         g->wait_popup_reset();
     }
-    const bandit_live_world::shakedown_goods_pool pool = receiver != nullptr ?
-            live_bandit_encounter_goods_pool( input, *receiver, *live_bandit_shakedown_local_speaker( site ) ) :
-            live_bandit_make_shakedown_goods_pool( input, u );
+    const bandit_live_world::shakedown_goods_pool pool =
+        live_bandit_encounter_goods_pool( input, *receiver, *speaker );
     bandit_live_world::shakedown_surface surface =
         bandit_live_world::build_shakedown_surface( site, input, decision, pool );
     if( pending_pay ) {
@@ -12813,6 +12584,15 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
 {
     std::set<character_id> held;
     for( auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
+        const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+        if( cursor ) {
+            bandit_live_world::return_unconfirmed_legacy_player_sortie(
+                site, *cursor, live_bandit_current_minutes() );
+        }
+        if( bandit_live_world::is_unconfirmed_legacy_player_sortie( site ) ) {
+            held.insert( site.active_outing.member_ids.begin(), site.active_outing.member_ids.end() );
+            continue;
+        }
         if( !live_bandit_site_party_active( site ) ) {
             continue;
         }
@@ -16556,16 +16336,6 @@ live_bandit_hostile_operation_route_read( const bandit_live_world::site_record &
     return std::nullopt;
 }
 
-bool live_bandit_player_opportunity_route_available(
-    const bandit_live_world::site_record &site,
-    const bandit_live_world::hostile_target_opportunity_record &opportunity )
-{
-    const auto path = overmap_buffer.get_travel_path( site.anchor, opportunity.target_omt,
-                      overmap_path_params::for_npc() );
-    return path.cost >= 0 && path.points.size() >= 2 &&
-           path.points.front() == opportunity.target_omt && path.points.back() == site.anchor;
-}
-
 std::string live_bandit_structural_route_analyzer_record(
     const bandit_live_world::site_record &site,
     const bandit_live_world::structural_outing_plan &plan,
@@ -17737,7 +17507,6 @@ int advance_live_bandit_local_scout_assessments( const bool inactive_only = fals
 {
     bandit_live_world::world_state &state =
         overmap_buffer.global_state.bandit_live_world;
-    observe_live_bandit_player_target_opportunity();
     const int current_minutes = live_bandit_current_minutes();
     int completed = 0;
     for( bandit_live_world::site_record &site : state.sites ) {
@@ -17880,18 +17649,40 @@ int advance_live_bandit_local_scout_assessments( const bool inactive_only = fals
         avatar &u = get_avatar();
         const tripoint_abs_omt player_omt = u.pos_abs_omt();
         const std::string player_target_id = "player@" + live_bandit_omt_token( player_omt );
-        const bandit_live_world::hostile_target_opportunity_record *opportunity =
-            state.find_hostile_target_opportunity( player_target_id, player_omt );
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
-        if( opportunity != nullptr && opportunity->revision > 0 && opportunity->goods_value > 0 &&
-            opportunity->population > 0 && opportunity->activity > 0 && cursor ) {
+        const std::optional<basecamp *> observed_camp = overmap_buffer.find_camp( player_omt.xy() );
+        const std::optional<tripoint_abs_omt> camp_omt = observed_camp && *observed_camp != nullptr ?
+                std::optional<tripoint_abs_omt>( ( *observed_camp )->camp_omt_pos() ) : std::nullopt;
+        if( cursor && bandit_live_world::authoritative_player_target_observation_is_local_to_basecamp(
+                player_omt, camp_omt ) ) {
             map &here = get_map();
             for( const character_id &member_id : outing.member_ids ) {
                 const shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
                 if( !member || member->is_dead() ||
                     member->pos_abs_omt() != outing.selected_watch_omt || !member->sees( here, u ) ) {
                     continue;
+                }
+                // The cue represents an occupied camp, not an appraisal of its
+                // stock. Translate old price-based records without renewing a
+                // consumed operation merely because their representation changed.
+                auto existing = std::find_if( state.hostile_target_opportunities.begin(),
+                    state.hostile_target_opportunities.end(), [&]( const auto &record ) {
+                    return record.target_id == player_target_id && record.target_omt == player_omt;
+                } );
+                if( existing != state.hostile_target_opportunities.end() ) {
+                    existing->goods_value = 1;
+                    existing->population = 1;
+                    existing->activity = 1;
+                }
+                if( !bandit_live_world::observe_authoritative_hostile_target_opportunity(
+                        state, player_target_id, player_omt, { 1, 1, 1 } ) ) {
+                    break;
+                }
+                const auto *opportunity = state.find_hostile_target_opportunity( player_target_id,
+                                          player_omt );
+                if( opportunity == nullptr ) {
+                    break;
                 }
                 const bandit_live_world::sortie_observation_effect observed =
                 commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
@@ -23615,7 +23406,15 @@ void overmap_npc_move()
     avatar &u = get_avatar();
     bandit_live_world::world_state &bandit_state = overmap_buffer.global_state.bandit_live_world;
     for( auto &site : bandit_state.sites ) {
-        if( live_bandit_site_party_active( site ) ) {
+        const auto cursor = bandit_live_world::current_external_simulation_cursor( site );
+        if( cursor ) {
+            bandit_live_world::return_unconfirmed_legacy_player_sortie(
+                site, *cursor, live_bandit_current_minutes() );
+        }
+    }
+    for( auto &site : bandit_state.sites ) {
+        if( live_bandit_site_party_active( site ) &&
+            !bandit_live_world::is_unconfirmed_legacy_player_sortie( site ) ) {
             materialize_live_bandit_loaded_departure( site );
         }
     }
@@ -23726,30 +23525,6 @@ void overmap_npc_move()
     } else if( !live_sounds.empty() ) {
         // A consumed one-shot sound cannot wait for the next optical cadence.
         record_live_bandit_staffed_camp_signals( bandit_state, {}, live_sounds );
-    }
-    // The loaded player scene owns observation.  The camp may adopt that durable
-    // opportunity on the signal cadence, but structural maintenance remains on
-    // its own cadence so adoption alone cannot dispatch an outing.
-    if( signal_cadence_due ) {
-        observe_live_bandit_player_target_opportunity();
-        const int adopted_opportunities =
-            bandit_live_world::adopt_observed_hostile_player_opportunities(
-                bandit_state, live_bandit_current_minutes(),
-                []( const bandit_live_world::site_record & site,
-        const bandit_live_world::hostile_target_opportunity_record & opportunity ) {
-            return live_bandit_player_opportunity_route_available( site, opportunity );
-        } );
-        const std::optional<basecamp *> direct_camp = overmap_buffer.find_camp( u.pos_abs_omt().xy() );
-        const std::optional<tripoint_abs_omt> camp_omt = direct_camp && *direct_camp != nullptr ?
-                std::optional<tripoint_abs_omt>( ( *direct_camp )->camp_omt_pos() ) : std::nullopt;
-        const tripoint_abs_omt *camp_omt_ptr = camp_omt ? &*camp_omt : nullptr;
-        const int camp_distance = camp_omt ? rl_dist( u.pos_abs_omt(), *camp_omt ) : -1;
-        openclaw_harness_trace_bandit_owner( "adoption_result", u.pos_abs_omt(), camp_omt_ptr,
-                                             camp_distance, camp_omt.has_value(), adopted_opportunities );
-        if( adopted_opportunities > 0 ) {
-            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world player_opportunity_adoption adopted="
-                                       << adopted_opportunities << '\n';
-        }
     }
     // A camp created on this structural cadence has not yet had an ordinary
     // loaded player scene in which to observe a target opportunity.  Defer

@@ -5077,6 +5077,8 @@ void basecamp::serialize( JsonOut &json ) const
         json.member( "patrol_alarm_until", patrol_alarm_until );
         json.member( "locker_service_queue", locker_service_queue );
         json.member( "locker_next_service_turn", locker_next_service_turn );
+        json.member( "locker_round_start", locker_round_start );
+        json.member( "locker_head_progress", locker_head_progress );
         json.member( "next_camp_request_id", next_camp_request_id );
         json.member( "hidden_missions" );
         json.start_array();
@@ -5176,6 +5178,10 @@ void basecamp::deserialize( const JsonObject &data )
     data.read( "patrol_alarm_until", patrol_alarm_until );
     data.read( "locker_service_queue", locker_service_queue );
     data.read( "locker_next_service_turn", locker_next_service_turn );
+    locker_round_start = calendar::before_time_starts;
+    locker_head_progress = calendar::before_time_starts;
+    data.read( "locker_round_start", locker_round_start );
+    data.read( "locker_head_progress", locker_head_progress );
     data.read( "next_camp_request_id", next_camp_request_id );
     for( const camp_llm_request &request : camp_requests ) {
         next_camp_request_id = std::max( next_camp_request_id, request.request_id + 1 );

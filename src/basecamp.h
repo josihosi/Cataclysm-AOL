@@ -985,7 +985,8 @@ class basecamp
         bool is_patrol_alarm_active() const;
         void mark_camp_locker_dirty( npc &worker, bool high_priority = false );
         bool process_camp_locker_downtime( npc &worker );
-        bool process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe );
+        bool process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe,
+                                           bool *handled = nullptr );
         bool service_camp_locker( npc &worker );
         camp_locker_service_probe measure_camp_locker_service( npc &worker );
         bool is_locker_slot_enabled( camp_locker_slot slot ) const;
@@ -1069,6 +1070,8 @@ class basecamp
         time_point patrol_alarm_until = calendar::turn_zero;
         std::vector<character_id> locker_service_queue;
         time_point locker_next_service_turn = calendar::turn_zero;
+        time_point locker_round_start = calendar::before_time_starts;
+        time_point locker_head_progress = calendar::before_time_starts;
         std::vector<camp_locker_reservation> locker_reservations; // NOLINT(cata-serialize)
         int next_camp_request_id = 1;
         std::vector<std::vector<ui_mission_id>>

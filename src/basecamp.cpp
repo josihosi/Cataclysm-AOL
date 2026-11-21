@@ -100,6 +100,7 @@ static const sub_bodypart_str_id sub_body_part_mouth( "mouth" );
 static const sub_bodypart_str_id sub_body_part_torso_lower( "torso_lower" );
 static const sub_bodypart_str_id sub_body_part_torso_upper( "torso_upper" );
 static const sub_bodypart_str_id sub_body_part_torso_waist( "torso_waist" );
+static const sub_bodypart_str_id sub_body_part_torso_hanging_back( "torso_hanging_back" );
 
 namespace
 {
@@ -1138,6 +1139,13 @@ static std::optional<camp_locker_slot> classify_camp_locker_item_impl(
     }
     if( covers_feet && !covers_legs && !covers_torso && !covers_arms ) {
         return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
+    }
+    // Back-carried storage may also have a waist strap or a sheath action.
+    // Classify its primary storage before either secondary accessory; genuine
+    // waist and hip equipment retains the ordinary belt/holster rules below.
+    if( covers_torso && armor_specifically_covers_any( it, {sub_body_part_torso_hanging_back} ) &&
+        ( eager_capacity ? eager_storage : read_storage() ) >= 6_liter ) {
+        return camp_locker_slot::bag;
     }
     if( it.is_holster() && ( covers_hips || !covers_waist ) ) {
         return camp_locker_slot::holster;
@@ -2922,15 +2930,21 @@ collect_sorted_camp_locker_tiles( const tripoint_abs_ms &origin,
 static std::optional<tripoint_abs_ms> find_camp_locker_cleanup_drop_tile(
     const npc &worker, const faction_id &fac,
     const std::vector<tripoint_abs_ms> &locker_tiles,
-    const tripoint_abs_ms &preferred_tile, int range = MAX_VIEW_DISTANCE )
+    const tripoint_abs_ms &preferred_tile, int range = MAX_VIEW_DISTANCE,
+    bool physical_visit = false )
 {
     const std::unordered_set<tripoint_abs_ms> locker_tile_set( locker_tiles.begin(),
             locker_tiles.end() );
     map &here = get_map();
-    const auto usable_drop_tile = [&here, &locker_tile_set](
+    const auto usable_drop_tile = [&here, &locker_tile_set, &worker, physical_visit](
     const tripoint_abs_ms & candidate ) {
-        return locker_tile_set.count( candidate ) == 0 &&
-               here.inbounds( here.get_bub( candidate ) );
+        const tripoint_bub_ms local = here.get_bub( candidate );
+        return locker_tile_set.count( candidate ) == 0 && here.inbounds( local ) &&
+               ( !physical_visit ||
+                 ( local.z() == worker.pos_bub().z() && rl_dist( local, worker.pos_bub() ) <= 1 &&
+                   here.can_put_items( local ) &&
+                   ( local == worker.pos_bub() ||
+                     here.clear_path( worker.pos_bub(), local, 1, 1, 100 ) ) ) );
     };
 
     if( preferred_tile != tripoint_abs_ms::zero && usable_drop_tile( preferred_tile ) ) {
@@ -3180,19 +3194,6 @@ struct camp_locker_preparation {
 namespace
 {
 
-constexpr const char *camp_locker_state_signature_key =
-    "camp_locker_last_state_signature";
-constexpr const char *camp_locker_probe_skip_reason_key =
-    "camp_locker_probe_skip_reason";
-
-bool camp_locker_plan_has_changes( const camp_locker_plan &plan )
-{
-    return std::any_of( plan.begin(), plan.end(),
-    []( const camp_locker_plan::value_type & entry ) {
-        return entry.second.has_changes();
-    } );
-}
-
 camp_locker_live_state collect_camp_locker_live_state(
     npc &worker, const std::vector<tripoint_abs_ms> &locker_tiles,
     const camp_locker_policy &policy,
@@ -3221,15 +3222,6 @@ camp_locker_live_state collect_camp_locker_live_state(
     live_state.medical_readiness = collect_camp_locker_medical_readiness_state(
                                        live_state.worker_items, live_state.locker_items );
     return live_state;
-}
-
-camp_locker_live_state collect_camp_locker_live_state(
-    npc &worker, const faction_id &fac, const camp_locker_policy &policy,
-    const std::vector<camp_locker_reservation> &reservations )
-{
-    return collect_camp_locker_live_state(
-               worker, collect_sorted_camp_locker_tiles( worker.pos_abs(), fac ), policy,
-               reservations );
 }
 
 std::string camp_locker_live_state_signature(
@@ -3849,7 +3841,13 @@ void basecamp::add_assignee( character_id id )
     }
     npc_to_add->assigned_camp = omt_pos;
     assigned_npcs.push_back( npc_to_add );
-    mark_camp_locker_dirty( *npc_to_add, true );
+    const diag_value &last = npc_to_add->get_value( "camp_locker_last_service_turn" );
+    if( locker_round_start != calendar::before_time_starts &&
+        ( last.is_empty() || last.dbl() < to_turn<int>( locker_round_start ) ) &&
+        std::find( locker_service_queue.begin(), locker_service_queue.end(), id ) ==
+        locker_service_queue.end() ) {
+        locker_service_queue.push_back( id );
+    }
 }
 
 void basecamp::remove_assignee( character_id id )
@@ -4452,18 +4450,9 @@ bool basecamp::is_patrol_alarm_active() const
     return patrol_alarm_until > calendar::turn;
 }
 
-void basecamp::mark_camp_locker_dirty( npc &worker, bool high_priority )
+void basecamp::mark_camp_locker_dirty( npc &, bool )
 {
-    const character_id worker_id = worker.getID();
-    locker_service_queue.erase(
-        std::remove( locker_service_queue.begin(), locker_service_queue.end(),
-                     worker_id ),
-        locker_service_queue.end() );
-    if( high_priority ) {
-        locker_service_queue.insert( locker_service_queue.begin(), worker_id );
-    } else {
-        locker_service_queue.push_back( worker_id );
-    }
+    // Routine stock and policy changes are observed at the next appointment.
 }
 
 bool basecamp::process_camp_locker_downtime( npc &worker )
@@ -4471,9 +4460,71 @@ bool basecamp::process_camp_locker_downtime( npc &worker )
     return process_camp_locker_downtime( worker, nullptr );
 }
 
-bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe )
+bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_probe *probe,
+        bool *handled )
 {
     raid_perf_scope diagnostic_scope( raid_perf_stage::camp_locker_downtime );
+    if( handled ) {
+        *handled = false;
+    }
+    if( worker.get_value( "camp_locker_wake_dirty" ).str() == "true" ) {
+        worker.set_value( "camp_locker_wake_dirty", "false" );
+    }
+    // sunrise() uses the nearest solar noon; anchor the query at the same
+    // midday throughout a calendar day so the round does not reset at midnight.
+    const time_point midday = calendar::turn_zero +
+                              to_days<int>( calendar::turn - calendar::turn_zero ) * 1_days + 12_hours;
+    const time_point today = sunrise( midday );
+    const time_point morning = calendar::turn < today ? sunrise( midday - 1_days ) : today;
+    if( locker_round_start != morning ) {
+        validate_assignees();
+        locker_round_start = morning;
+        locker_service_queue.clear();
+        locker_next_service_turn = calendar::turn;
+        locker_head_progress = calendar::turn;
+        for( const npc_ptr &assignee : assigned_npcs ) {
+            if( !assignee || assignee->is_dead() || !assignee->is_player_ally() ||
+                !assignee->assigned_camp || *assignee->assigned_camp != omt_pos ) {
+                continue;
+            }
+            const diag_value &last = assignee->get_value( "camp_locker_last_service_turn" );
+            if( !last.is_empty() && last.dbl() >= to_turn<int>( morning ) ) {
+                continue;
+            }
+            locker_service_queue.push_back( assignee->getID() );
+        }
+        std::sort( locker_service_queue.begin(), locker_service_queue.end() );
+    }
+    if( !worker.assigned_camp || *worker.assigned_camp != omt_pos ||
+        worker.is_dead() || !worker.is_player_ally() || locker_service_queue.empty() ) {
+        return false;
+    }
+    // A worker who is asleep, absent or otherwise not reaching downtime must
+    // not hold the round indefinitely. The deferred appointment is not a visit.
+    if( locker_service_queue.front() != worker.getID() ) {
+        npc *head = g->find_npc( locker_service_queue.front() );
+        if( head == nullptr || head->is_dead() || !head->assigned_camp ||
+            *head->assigned_camp != omt_pos ) {
+            locker_service_queue.erase( locker_service_queue.begin() );
+            locker_head_progress = calendar::turn;
+        } else if( head->in_sleep_state() ||
+                   ( calendar::turn >= locker_next_service_turn &&
+                     calendar::turn - locker_head_progress >= 5_minutes ) ) {
+            std::rotate( locker_service_queue.begin(), locker_service_queue.begin() + 1,
+                         locker_service_queue.end() );
+            locker_head_progress = calendar::turn;
+        }
+        if( locker_service_queue.empty() || locker_service_queue.front() != worker.getID() ) {
+            return false;
+        }
+    }
+    if( calendar::turn < locker_next_service_turn ) {
+        if( probe ) {
+            ++probe->cooldown_skips;
+        }
+        return false;
+    }
+    locker_head_progress = calendar::turn;
     if( !has_locker_zone() ) {
         if( basecamp_ai::should_show_camp_job_report(
                 worker, basecamp_ai::camp_job_report_kind::locker_exception, "no-locker-zone" ) ) {
@@ -4481,184 +4532,114 @@ bool basecamp::process_camp_locker_downtime( npc &worker, camp_locker_downtime_p
                      _( "[camp][locker] %s cannot check camp locker gear: no Basecamp: Locker zone is defined." ),
                      worker.disp_name() );
         }
+        locker_service_queue.erase( locker_service_queue.begin() );
         return false;
-    }
-
-    validate_assignees();
-
-    locker_reservations.erase(
-        std::remove_if(
-            locker_reservations.begin(), locker_reservations.end(),
-    []( const camp_locker_reservation & reservation ) {
-        return reservation.expires <= calendar::turn;
-    } ),
-    locker_reservations.end() );
-
-    const diag_value &wake_dirty_value =
-        worker.get_value( "camp_locker_wake_dirty" );
-    const bool wake_dirty = wake_dirty_value.str() == "true";
-    const diag_value &last_service_turn_value =
-        worker.get_value( "camp_locker_last_service_turn" );
-    const bool already_queued =
-        std::find( locker_service_queue.begin(), locker_service_queue.end(),
-                   worker.getID() ) != locker_service_queue.end();
-    if( ( last_service_turn_value.is_empty() && !already_queued ) || wake_dirty ) {
-        mark_camp_locker_dirty( worker, wake_dirty );
-        worker.set_value( "camp_locker_wake_dirty", "false" );
-        DebugLog( D_INFO, DC_ALL )
-                << string_format(
-                    "camp locker: queued %s wake_dirty=%s queue_size=%d next_turn=%d",
-                    worker.get_name(), wake_dirty ? "true" : "false",
-                    static_cast<int>( locker_service_queue.size() ),
-                    to_turn<int>( locker_next_service_turn ) );
-    }
-
-    std::set<character_id> valid_workers;
-    for( const npc_ptr &assignee : assigned_npcs ) {
-        if( assignee && assignee->assigned_camp && *assignee->assigned_camp == omt_pos ) {
-            valid_workers.insert( assignee->getID() );
-        }
-    }
-    const bool queued_before_cleanup =
-        std::find( locker_service_queue.begin(), locker_service_queue.end(),
-                   worker.getID() ) != locker_service_queue.end();
-    locker_service_queue.erase(
-        std::remove_if( locker_service_queue.begin(), locker_service_queue.end(),
-    [&valid_workers]( const character_id & worker_id ) {
-        return valid_workers.count( worker_id ) == 0;
-    } ),
-    locker_service_queue.end() );
-    const bool queued_after_cleanup =
-        std::find( locker_service_queue.begin(), locker_service_queue.end(),
-                   worker.getID() ) != locker_service_queue.end();
-    const bool worker_assigned_here =
-        worker.assigned_camp && *worker.assigned_camp == omt_pos;
-    if( queued_before_cleanup && !queued_after_cleanup ) {
-        DebugLog( D_INFO, DC_ALL )
-                << string_format(
-                    "camp locker: dropped %s from queue during assignee cleanup assigned_here=%s valid_workers=%d assigned_npcs=%d",
-                    worker.get_name(), worker_assigned_here ? "true" : "false",
-                    static_cast<int>( valid_workers.size() ),
-                    static_cast<int>( assigned_npcs.size() ) );
     }
 
     const faction_id fac_id = camp_effective_owner( owner );
-    const std::vector<tripoint_abs_ms> locker_tiles =
+    const std::vector<tripoint_abs_ms> zone_tiles =
         collect_sorted_camp_locker_tiles( worker.pos_abs(), fac_id );
-    if( probe ) {
-        ++probe->collections;
+    map &here = get_map();
+    std::vector<tripoint_abs_ms> accessible;
+    for( const tripoint_abs_ms &tile : zone_tiles ) {
+        const tripoint_bub_ms local = here.get_bub( tile );
+        if( here.inbounds( local ) && rl_dist( worker.pos_bub(), local ) <= 1 &&
+            here.accessible_items( local ) &&
+            ( local == worker.pos_bub() || here.clear_path( worker.pos_bub(), local, 1, 1, 100 ) ) ) {
+            accessible.push_back( tile );
+        }
     }
-    const camp_locker_live_state live_state = collect_camp_locker_live_state(
-                worker, locker_tiles, locker_policy, locker_reservations );
-    if( probe ) {
-        ++probe->signatures;
-    }
-    const std::string locker_state_signature =
-        camp_locker_live_state_signature( live_state, locker_policy );
-    const std::string previous_signature =
-        worker.get_value( camp_locker_state_signature_key ).str();
-    const bool has_state_changes =
-        camp_locker_plan_has_changes( live_state.plan ) ||
-        live_state.carried_cleanup.has_changes() ||
-        live_state.orphan_supply_cleanup.has_changes() ||
-        live_state.ranged_readiness.has_changes() ||
-        live_state.medical_readiness.has_changes();
-    if( previous_signature != locker_state_signature && has_state_changes &&
-        !queued_after_cleanup ) {
-        mark_camp_locker_dirty( worker );
-        DebugLog( D_INFO, DC_ALL )
-                << string_format(
-                    "camp locker: queued %s state-dirty queue_size=%d next_turn=%d plan=[%s] cleanup=[%s] orphan=[%s] ranged=[%s] medical=[%s]",
-                    worker.get_name(), static_cast<int>( locker_service_queue.size() ),
-                    to_turn<int>( locker_next_service_turn ),
-                    camp_locker_plan_debug_summary( live_state.plan ),
-                    camp_locker_carried_cleanup_debug_summary(
-                        live_state.carried_cleanup ),
-                    camp_locker_orphan_supply_cleanup_debug_summary(
-                        live_state.orphan_supply_cleanup ),
-                    camp_locker_ranged_readiness_debug_summary(
-                        live_state.ranged_readiness ),
-                    camp_locker_medical_readiness_debug_summary(
-                        live_state.medical_readiness ) );
-    }
-    worker.set_value( camp_locker_state_signature_key, locker_state_signature );
-
-    if( locker_service_queue.empty() ||
-        locker_service_queue.front() != worker.getID() ||
-        calendar::turn < locker_next_service_turn ) {
-        std::string skip_reason;
-        if( locker_service_queue.empty() ) {
-            skip_reason = "queue-empty";
-        } else if( locker_service_queue.front() != worker.getID() ) {
-            skip_reason = "waiting-behind-other-worker";
-        } else {
-            if( probe ) {
-                ++probe->cooldown_skips;
+    if( accessible.empty() ) {
+        // Only the current appointment holder chooses a destination. No item
+        // enumeration occurs while walking to the zone.
+        for( const tripoint_abs_ms &tile : zone_tiles ) {
+            const tripoint_bub_ms local = here.get_bub( tile );
+            if( !here.inbounds( local ) ) {
+                continue;
             }
-            skip_reason = string_format( "cooldown-until=%d",
-                                         to_turn<int>( locker_next_service_turn ) );
+            for( const tripoint_bub_ms &destination : here.points_in_radius( local, 1 ) ) {
+                if( destination == worker.pos_bub() || !here.inbounds( destination ) ||
+                    !here.passable( destination ) || !here.accessible_items( local ) ||
+                    !here.clear_path( destination, local, 1, 1, 100 ) ) {
+                    continue;
+                }
+                if( worker.update_path( destination, true, false ) ) {
+                    if( handled ) {
+                        *handled = true;
+                    }
+                    worker.move_to_next();
+                    return false;
+                }
+            }
         }
-        if( worker.get_value( camp_locker_probe_skip_reason_key ).str() != skip_reason ) {
-            const std::string last_service_turn_text = last_service_turn_value.is_empty()
-                    ? "none"
-                    : last_service_turn_value.to_string( false );
-            DebugLog( D_INFO, DC_ALL )
-                    << string_format(
-                        "camp locker: skip %s reason=%s queue_size=%d worker_in_queue=%s assigned_here=%s valid_workers=%d last_service=%s has_changes=%s now=%d next_turn=%d",
-                        worker.get_name(), skip_reason,
-                        static_cast<int>( locker_service_queue.size() ),
-                        queued_after_cleanup ? "true" : "false",
-                        worker_assigned_here ? "true" : "false",
-                        static_cast<int>( valid_workers.size() ),
-                        last_service_turn_text,
-                        has_state_changes ? "true" : "false",
-                        to_turn<int>( calendar::turn ),
-                        to_turn<int>( locker_next_service_turn ) );
-            worker.set_value( camp_locker_probe_skip_reason_key, skip_reason );
-        }
+        // No usable route: defer until the next round, rather than retrying
+        // the same failed path every turn.
+        worker.update_path( worker.pos_bub(), true );
+        locker_service_queue.erase( locker_service_queue.begin() );
         return false;
     }
-    worker.remove_value( camp_locker_probe_skip_reason_key );
 
-    DebugLog( D_INFO, DC_ALL )
-            << string_format( "camp locker: servicing %s queue_size=%d now=%d",
-                              worker.get_name(),
-                              static_cast<int>( locker_service_queue.size() ),
-                              to_turn<int>( calendar::turn ) );
-    if( probe ) {
-        ++probe->services;
-    }
-    // No stock, equipment, policy, position or weather changed since collection.
-    // Service removes this worker's reservations, which never exclude its own items.
-    const bool recollect = probe && probe->reference_service_recollection;
-    const camp_locker_preparation preparation{ locker_tiles, live_state };
-    bool applied_changes;
-    {
-        raid_perf_scope service_scope( raid_perf_stage::camp_locker_service );
-        applied_changes = service_camp_locker_impl(
-                              worker, nullptr, true, recollect ? nullptr : &preparation, probe );
+    bool applied_any = false;
+    bool visit_failed = false;
+    bool weapon_settled = false;
+    const auto wielded_identity = [&worker]() {
+        const item_location wielded = worker.get_wielded_item();
+        return wielded ? std::to_string( wielded->uid().get_value() ) : std::string();
+    };
+    std::set<std::string> seen_states;
+    while( true ) {
+        camp_locker_live_state live_state = collect_camp_locker_live_state(
+                    worker, accessible, locker_policy, locker_reservations );
+        // Melee and ranged plans share one wield slot. Once this visit has
+        // changed that slot, a later pass must not swap the displaced weapon
+        // back in while it continues useful clothing and readiness work.
+        if( weapon_settled ) {
+            live_state.plan.erase( camp_locker_slot::melee_weapon );
+            live_state.plan.erase( camp_locker_slot::ranged_weapon );
+        }
+        if( probe ) {
+            ++probe->collections;
+            ++probe->signatures;
+        }
+        const std::string signature = camp_locker_live_state_signature( live_state, locker_policy );
+        if( !seen_states.insert( signature ).second ) {
+            visit_failed = true;
+            break;
+        }
+        const bool work_needed = std::any_of( live_state.plan.begin(), live_state.plan.end(),
+        []( const camp_locker_plan::value_type & entry ) {
+            return entry.second.has_changes();
+        } ) || live_state.carried_cleanup.has_changes() ||
+        live_state.orphan_supply_cleanup.has_changes() || live_state.ranged_readiness.has_changes() ||
+        live_state.medical_readiness.has_changes();
+        const camp_locker_preparation preparation{ accessible, live_state };
+        if( probe ) {
+            ++probe->services;
+        }
+        bool applied = false;
+        const std::string wielded_before = wielded_identity();
+        {
+            raid_perf_scope service_scope( raid_perf_stage::camp_locker_service );
+            applied = service_camp_locker_impl( worker, nullptr, false, &preparation, probe );
+        }
+        weapon_settled = weapon_settled || wielded_identity() != wielded_before;
+        if( !applied ) {
+            visit_failed = work_needed;
+            break;
+        }
+        applied_any = true;
     }
     locker_service_queue.erase( locker_service_queue.begin() );
-    worker.set_value( "camp_locker_last_service_turn", to_turn<int>( calendar::turn ) );
-    locker_next_service_turn =
-        calendar::turn + ( applied_changes ? 10_minutes : 2_minutes );
-
-    if( probe ) {
-        ++probe->post_service_collections;
+    if( !visit_failed ) {
+        worker.set_value( "camp_locker_last_service_turn", to_turn<int>( calendar::turn ) );
     }
-    const camp_locker_live_state post_service_state = collect_camp_locker_live_state(
-                worker, fac_id, locker_policy, locker_reservations );
-    worker.set_value( camp_locker_state_signature_key,
-                      camp_locker_live_state_signature( post_service_state,
-                              locker_policy ) );
-
-    DebugLog( D_INFO, DC_ALL )
-            << string_format(
-                "camp locker: serviced %s applied=%s queue_remaining=%d next_turn=%d",
-                worker.get_name(), applied_changes ? "true" : "false",
-                static_cast<int>( locker_service_queue.size() ),
-                to_turn<int>( locker_next_service_turn ) );
-    return applied_changes;
+    locker_next_service_turn = calendar::turn + ( applied_any ? 10_minutes : 2_minutes );
+    locker_head_progress = locker_next_service_turn;
+    if( handled ) {
+        *handled = true;
+        worker.move_pause();
+    }
+    return applied_any;
 }
 
 bool basecamp::service_camp_locker_impl( npc &worker,
@@ -4786,7 +4767,8 @@ bool basecamp::service_camp_locker_impl( npc &worker,
     const tripoint_abs_ms locker_drop_tile = locker_tiles.front();
     const std::optional<tripoint_abs_ms> cleanup_drop_tile =
         find_camp_locker_cleanup_drop_tile( worker, fac_id, locker_tiles,
-                                            get_dumping_spot() );
+                                            get_dumping_spot(), preparation ? 1 : MAX_VIEW_DISTANCE,
+                                            preparation != nullptr );
     std::vector<item> displaced_items;
     bool applied_changes = false;
 
@@ -5026,9 +5008,9 @@ bool basecamp::service_camp_locker_impl( npc &worker,
                 locker_drop_tile ) ||
         applied_changes;
 
-    const camp_locker_live_state live_state_after = collect_camp_locker_live_state(
-                worker, locker_tiles, locker_policy, locker_reservations, probe );
     if( verbose_logging ) {
+        const camp_locker_live_state live_state_after = collect_camp_locker_live_state(
+                    worker, locker_tiles, locker_policy, locker_reservations, probe );
         DebugLog( D_INFO, DC_ALL )
                 << string_format(
                     "camp locker: after %s applied=%s worker=[%s] locker=[%s] cleanup=[%s] orphan=[%s] ranged=[%s] medical=[%s]",
@@ -5049,6 +5031,13 @@ bool basecamp::service_camp_locker_impl( npc &worker,
     if( probe != nullptr ) {
         probe->applied_changes = applied_changes;
     }
+    // A visit owns reservations only while its synchronous transfers run.
+    // Keeping a tile/type reservation after return would hide a newly stocked
+    // item of that type from the next worker's appointment.
+    locker_reservations.erase( std::remove_if( locker_reservations.begin(),
+                               locker_reservations.end(), [&worker]( const camp_locker_reservation & reservation ) {
+        return reservation.worker_id == worker.getID();
+    } ), locker_reservations.end() );
     return applied_changes;
 }
 

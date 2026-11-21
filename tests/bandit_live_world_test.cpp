@@ -42347,9 +42347,8 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
     REQUIRE( reloaded.sites[0].intelligence_map.robbery_places.size() == 1 );
     CHECK( reloaded.sites[0].intelligence_map.robbery_places.front().target_omt == target );
     {
-        // An actual fresh opportunity cannot be adopted during the preceding
-        // settlement's decision cooldown. Both that cooldown and place
-        // retention are measured by the same active home clock.
+        // A world opportunity alone cannot disclose its location to a camp,
+        // even after the preceding settlement's decision cooldown.
         auto adoption = reloaded;
         adoption.sites.erase( adoption.sites.begin() + 1 );
         auto &camp = adoption.sites.front();
@@ -42377,7 +42376,7 @@ TEST_CASE( "terminal hostile shakedown joins one global receipt to one camp afte
         CHECK( camp.home_activation.active_turns <
                camp.intelligence_map.robbery_places.front().next_eligible_active_turn );
         CHECK( bandit_live_world::adopt_observed_hostile_player_opportunities( adoption, due + 1,
-                route_ok ) == 1 );
+                route_ok ) == 0 );
     }
     // Exercise the real scheduler against the home clock, not elapsed wall time.
     auto frozen = reloaded;
@@ -45618,7 +45617,79 @@ TEST_CASE( "hostile_camp_generic_route_quality_affects_acquire_floor",
     CHECK( site.active_outing.is_active() == ( route_cost == 14 ) );
 }
 
-TEST_CASE( "authoritative_player_opportunity_is_not_starved_by_route_candidate_cap",
+TEST_CASE( "unconfirmed legacy player sortie returns without losing its party",
+           "[bandit][live_world][scheduler][legacy_player_opportunity]" )
+{
+    using namespace bandit_live_world;
+    world_state world = make_abstract_threat_test_world( false, 986000 );
+    site_record &site = world.sites.front();
+    camp_map_lead *lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+    REQUIRE( lead != nullptr );
+    lead->source_key = "authoritative_player_opportunity:terrain_fit:unknown";
+    const auto original = site.active_outing;
+    const auto cursor = current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    auto stale = *cursor;
+    ++stale.handoff_epoch;
+    CHECK_FALSE( return_unconfirmed_legacy_player_sortie( site, stale, 101 ) );
+    CHECK( is_unconfirmed_legacy_player_sortie( site ) );
+    site_record observed = site;
+    auto sighting = make_typed_visual_observation(
+                original.member_ids.front(), original.target_lead_revision, 100, "seen",
+                sortie_observation_share_state::observer_private );
+    sighting.state_key = "physical-player-opportunity";
+    sighting.fact_key = "physical-player-opportunity:player@confirmed";
+    sighting.source_id = sighting.fact_key;
+    sighting.source_omt = original.target_omt;
+    observed.active_outing.observations.push_back( sighting );
+    CHECK_FALSE( return_unconfirmed_legacy_player_sortie( observed, *cursor, 101 ) );
+    site_record unrelated = site;
+    unrelated.active_outing.observations.push_back( make_typed_visual_observation(
+                original.member_ids.front(), original.target_lead_revision, 100, "other",
+                sortie_observation_share_state::observer_private ) );
+    REQUIRE( return_unconfirmed_legacy_player_sortie( unrelated, *cursor, 101 ) );
+    CHECK( unrelated.active_outing.observations.size() == 1 );
+    REQUIRE( return_unconfirmed_legacy_player_sortie( site, *cursor, 101 ) );
+    CHECK( site.active_outing.phase == scout_phase::returning_home );
+    CHECK( site.active_outing.owner == original.owner );
+    CHECK( site.active_outing.handoff_epoch == original.handoff_epoch );
+    CHECK( site.active_outing.activity_id == original.activity_id );
+    CHECK( site.active_outing.generation == original.generation );
+    CHECK( site.active_outing.member_ids == original.member_ids );
+    CHECK( site.active_outing.casualty_ids == original.casualty_ids );
+    CHECK( site.active_outing.observations.empty() );
+    world_state loaded;
+    loaded.deserialize( json_loader::from_string( serialize_world( world ) ).get_object() );
+    REQUIRE( loaded.sites.size() == 1 );
+    CHECK( loaded.sites.front().active_outing.phase == scout_phase::returning_home );
+    CHECK( loaded.sites.front().active_outing.member_ids == original.member_ids );
+}
+
+TEST_CASE( "unconfirmed legacy local sortie retains physical ownership on return",
+           "[bandit][live_world][scheduler][legacy_player_opportunity]" )
+{
+    using namespace bandit_live_world;
+    world_state world = make_structural_local_zombie_test_world( false, 986100 );
+    site_record &site = world.sites.front();
+    camp_map_lead *lead = site.intelligence_map.find_lead( site.active_outing.target_lead_id );
+    REQUIRE( lead != nullptr );
+    lead->source_key = "authoritative_player_opportunity:terrain_fit:unknown";
+    const auto original = site.active_outing;
+    const auto cursor = current_external_simulation_cursor( site );
+    REQUIRE( cursor );
+    REQUIRE( return_unconfirmed_legacy_player_sortie( site, *cursor, 101 ) );
+    CHECK( site.active_outing.phase == scout_phase::returning_home );
+    CHECK( site.active_outing.owner == simulation_owner::local );
+    CHECK( site.active_outing.handoff_epoch == original.handoff_epoch );
+    CHECK( site.active_outing.member_ids == original.member_ids );
+    CHECK( site.active_outing.local_handoff.members.size() == original.local_handoff.members.size() );
+    for( std::size_t i = 0; i < original.local_handoff.members.size(); ++i ) {
+        CHECK( site.active_outing.local_handoff.members[i].entry_position ==
+               original.local_handoff.members[i].entry_position );
+    }
+}
+
+TEST_CASE( "legacy_unconfirmed_player_opportunity_is_not_routed",
            "[bandit][live_world][scheduler][structural_bounty][authoritative_opportunity]" )
 {
     bandit_live_world::world_state world;
@@ -45665,7 +45736,8 @@ TEST_CASE( "authoritative_player_opportunity_is_not_starved_by_route_candidate_c
 
     REQUIRE( !routed_targets.empty() );
     CHECK( result.full_route_solves <= result.full_route_solve_cap );
-    CHECK( routed_targets.front() == tripoint_abs_omt( 2, 0, 0 ) );
+    CHECK( std::find( routed_targets.begin(), routed_targets.end(), tripoint_abs_omt( 2, 0, 0 ) ) ==
+           routed_targets.end() );
     CHECK( result.dispatches_planned == 1 );
     CHECK( result.dispatches_applied == 1 );
 }
@@ -45723,12 +45795,15 @@ TEST_CASE( "authoritative_opportunity_prefix_preserves_both_candidate_ordering_c
             }
             const auto cheap = plan_structural_bounty_outing_candidates( site, now );
             REQUIRE( !cheap.empty() );
-            CHECK( cheap.front().lead_id == ( authoritative ? "player" : "road-a" ) );
+            CHECK( cheap.front().lead_id == "road-a" );
             const auto position = [&cheap]( const std::string & id ) {
                 return std::find_if( cheap.begin(), cheap.end(), [&id]( const auto & plan ) {
                     return plan.lead_id == id;
                 } );
             };
+            if( authoritative ) {
+                CHECK( position( "player" ) == cheap.end() );
+            }
             CHECK( position( "road-a" ) < position( "road-b" ) );
             CHECK( position( "road-b" ) < position( "road-far" ) );
             std::vector<std::string> routed;
@@ -45743,9 +45818,8 @@ TEST_CASE( "authoritative_opportunity_prefix_preserves_both_candidate_ordering_c
                 return structural_route_read{ true, 4, 0, "controlled bounded route" };
             } );
             REQUIRE( !routed.empty() );
-            CHECK( routed.front() == ( authoritative ? "player" : urgent ? "sound" :
-                                       "frontier_probe:0" ) );
-            if( !authoritative && !urgent ) {
+            CHECK( routed.front() == ( urgent ? "sound" : "frontier_probe:0" ) );
+            if( !urgent ) {
                 CHECK( missing_frontier_lead );
             }
             CHECK( result.dispatches_applied == 1 );
@@ -45886,8 +45960,7 @@ TEST_CASE( "retained_fresh_smoke_survives_cheap_trim_before_urgent_dispatch",
                ( mode == "fresh" || mode == "authoritative" ) );
         if( signal_eligible ) {
             REQUIRE( !routed.empty() );
-            CHECK( routed.front() == ( mode == "authoritative" ?
-                                       "controlled-player-opportunity" : smoke_id ) );
+            CHECK( routed.front() == smoke_id );
         } else if( mode == "earlier_signal" ) {
             REQUIRE( !routed.empty() );
             CHECK( routed.front() == "controlled-earlier-sound" );
@@ -54386,6 +54459,8 @@ TEST_CASE( "retained fresh watch receipts reach camp through actual returning ca
         return record.share_state == bandit_live_world::sortie_observation_share_state::observer_private;
     } ) );
     if( invalid.empty() ) {
+        CHECK( report.target_id == lead->target_id );
+        CHECK( report.target_omt == lead->omt );
         CHECK( report.assessment.threshold_class ==
                bandit_live_world::scout_assessment_threshold_class::site_signal );
         CHECK( report.assessment.site_signal_observed_minutes == 8155 );
@@ -54422,6 +54497,12 @@ TEST_CASE( "retained fresh watch receipts reach camp through actual returning ca
                                    selection, reads );
         INFO( authorization.rejection_reason );
         CHECK( authorization.assessment_ready );
+        if( bandit ) {
+            // This historical report has unknown danger. A valid signal does
+            // not bypass the ordinary tactical knowledge gate.
+            CHECK_FALSE( authorization.authorized );
+            CHECK( authorization.rejection_reason == "response danger is unknown pending relevant observation" );
+        }
         auto wrong = *site;
         wrong.current_scout_report.assessment.site_signal_source_id = "different-source";
         CHECK_FALSE( bandit_live_world::evaluate_response_authorization( wrong, 8280, selection,
@@ -81009,6 +81090,109 @@ TEST_CASE( "fresh peer outings progress while one owner refuses and a real camp 
     REQUIRE( journey.reloads == 3 );
 }
 
+TEST_CASE( "player sighting requires scout sight on the exact camp tile",
+           "[bandit][live_world][occupied_camp_sight][save]" )
+{
+    using namespace bandit_live_world;
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( false );
+    journey.reach_watch();
+    journey.reach_loaded_watch();
+
+    const tripoint_abs_omt target = journey.target;
+    const tripoint_abs_omt adjacent = target + point( 1, 0 );
+    on_out_of_scope remove_camp( [&]() {
+        overmap_buffer.remove_camp( target.xy() );
+        overmap_buffer.remove_camp( adjacent.xy() );
+    } );
+    map &here = get_map();
+    const tripoint_abs_ms origin = project_to<coords::ms>( target );
+    const tripoint_abs_ms near = origin + point( 0, 12 );
+    const tripoint_abs_ms screen = origin + point( 1, 12 );
+    const tripoint_abs_ms far = origin + point( 2, 12 );
+    const tripoint_abs_ms watch = project_to<coords::ms>( journey.site().active_outing.selected_watch_omt ) +
+                                 point( 23, 12 );
+    REQUIRE( here.inbounds( near ) );
+    REQUIRE( here.inbounds( far ) );
+    for( const auto id : journey.members() ) {
+        auto actor = overmap_buffer.find_npc( id );
+        REQUIRE( actor );
+        actor->setpos( watch + point( 0, id == journey.members().front() ? 0 : 1 ), false );
+        REQUIRE( actor->pos_abs_omt() == journey.site().active_outing.selected_watch_omt );
+    }
+    auto observer = overmap_buffer.find_npc( journey.members().front() );
+    REQUIRE( observer );
+    const tripoint_bub_ms wall = here.get_bub( screen );
+    const ter_id previous_terrain = here.ter( wall );
+    const auto rebuild = [&]() {
+        here.set_seen_cache_dirty( 0 );
+        here.invalidate_map_cache( 0 );
+        here.build_map_cache( 0 );
+        here.invalidate_visibility_cache();
+        here.update_visibility_cache( 0 );
+    };
+    on_out_of_scope restore_wall( [&]() {
+        here.ter_set( wall, previous_terrain );
+        rebuild();
+    } );
+    here.ter_set( wall, ter_str_id( "t_wall" ) );
+    get_avatar().setpos( near, false );
+    rebuild();
+    REQUIRE( observer->sees( here, get_avatar() ) );
+    REQUIRE_FALSE( observer->sees( here, here.get_bub( far ) ) );
+    REQUIRE( journey.world().hostile_target_opportunities.empty() );
+    REQUIRE_FALSE( overmap_buffer.find_camp( target.xy() ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    CHECK( journey.world().hostile_target_opportunities.empty() );
+
+    overmap_buffer.add_camp( basecamp( "adjacent sight control", adjacent ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    CHECK( journey.world().hostile_target_opportunities.empty() );
+    overmap_buffer.remove_camp( adjacent.xy() );
+    overmap_buffer.add_camp( basecamp( "occupied sight control", target ) );
+    auto camp = overmap_buffer.find_camp( target.xy() );
+    REQUIRE( camp );
+    REQUIRE( *camp != nullptr );
+
+    get_avatar().setpos( far, false );
+    ( *camp )->set_bb_pos( near );
+    rebuild();
+    REQUIRE( observer->sees( here, here.get_bub( near ) ) );
+    REQUIRE_FALSE( observer->sees( here, get_avatar() ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    CHECK( journey.world().hostile_target_opportunities.empty() );
+
+    get_avatar().setpos( near, false );
+    ( *camp )->set_bb_pos( far );
+    rebuild();
+    REQUIRE( observer->sees( here, get_avatar() ) );
+    REQUIRE_FALSE( observer->sees( here, here.get_bub( far ) ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    REQUIRE( journey.world().hostile_target_opportunities.size() == 1 );
+    const auto &opportunity = journey.world().hostile_target_opportunities.front();
+    CHECK( opportunity.target_omt == target );
+    CHECK( opportunity.goods_value == 1 );
+    CHECK( opportunity.population == 1 );
+    CHECK( opportunity.activity == 1 );
+    REQUIRE_FALSE( journey.site().current_scout_report.is_present() );
+    REQUIRE( std::any_of( journey.site().active_outing.observations.begin(),
+                          journey.site().active_outing.observations.end(), []( const auto & observation ) {
+        return observation.state_key == "physical-player-opportunity" &&
+               observation.share_state == sortie_observation_share_state::observer_private;
+    } ) );
+    get_avatar().i_add( item( itype_id( "bottle_plastic" ) ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    const std::string cheap_stock = serialize_world( journey.world() );
+    get_avatar().i_add( item( itype_id( "m240" ) ) );
+    advance_live_bandit_local_scout_assessments_for_test();
+    CHECK( serialize_world( journey.world() ) == cheap_stock );
+    CHECK( adopt_observed_hostile_player_opportunities( journey.world(), journey.minute(),
+    []( const auto &, const auto & ) { return true; } ) == 0 );
+}
+
 
 TEST_CASE( "allocated scout safety distinguishes present threats from departed native cache",
            "[bandit_live_world][stateful_scout_067][fresh_watch_safety_067]" )
@@ -88500,6 +88684,14 @@ TEST_CASE( "fresh returned bandit signal renews only its settled zero claim",
     REQUIRE( report.assessment.provenance->reducer_known );
     REQUIRE( report.assessment.observation_started_minutes == 23340 );
     REQUIRE( report.source_generation == 7 );
+    REQUIRE( report.assessment.threshold_class == scout_assessment_threshold_class::site_signal );
+    REQUIRE( std::none_of( report.observations.begin(), report.observations.end(), []( const auto & observation ) {
+        return observation.state_key == "physical-player-opportunity";
+    } ) );
+    const auto *signal_lead = site.intelligence_map.find_lead( report.target_lead_id );
+    REQUIRE( signal_lead != nullptr );
+    CHECK( report.target_id == signal_lead->target_id );
+    CHECK( report.target_omt == signal_lead->omt );
     REQUIRE( claim.consumed_generation == 2 );
     const auto reads = []( const site_record & value ) {
         std::vector<response_member_power_read> result;
@@ -88513,6 +88705,7 @@ TEST_CASE( "fresh returned bandit signal renews only its settled zero claim",
     const auto authorization = evaluate_response_authorization( site, 23671, selected, reads( site ) );
     INFO( authorization.rejection_reason );
     REQUIRE( authorization.authorized );
+    CHECK( authorization.opportunity_sufficient );
     if( condition == "no_release" ) {
         site.applied_return_generation = 1;
     } else if( condition == "old_report" ) {
@@ -88584,6 +88777,9 @@ TEST_CASE( "fresh returned bandit signal renews only its settled zero claim",
         return;
     }
     CHECK( site.active_hostile_operation.reservation.generation == 8 );
+    CHECK( site.active_hostile_operation.operation_kind == hostile_operation_kind::shakedown );
+    CHECK( site.active_hostile_operation.reservation.target_id == report.target_id );
+    CHECK( site.active_hostile_operation.reservation.target_omt == report.target_omt );
     CHECK( world.hostile_target_opportunities.front().revision == 1988 );
     CHECK( world.hostile_target_opportunities.front().consumed_generation == 8 );
     CHECK( world.hostile_target_opportunities.front().consumed_report_key == report.application_key );

@@ -14890,156 +14890,12 @@ int adopt_observed_hostile_player_opportunities( world_state &state, const int n
         const std::function<bool( const site_record &,
                                   const hostile_target_opportunity_record & )> &route_available )
 {
-    if( now_minutes < 0 || !route_available ) {
-        return 0;
-    }
-
-    std::vector<std::size_t> opportunity_indices;
-    opportunity_indices.reserve( state.hostile_target_opportunities.size() );
-    for( std::size_t index = 0; index < state.hostile_target_opportunities.size(); ++index ) {
-        opportunity_indices.push_back( index );
-    }
-    std::sort( opportunity_indices.begin(), opportunity_indices.end(), [&state](
-    const std::size_t lhs, const std::size_t rhs ) {
-        const hostile_target_opportunity_record &left = state.hostile_target_opportunities[lhs];
-        const hostile_target_opportunity_record &right = state.hostile_target_opportunities[rhs];
-        return std::make_tuple( left.target_id, left.target_omt.z(), left.target_omt.y(),
-                                left.target_omt.x() ) <
-               std::make_tuple( right.target_id, right.target_omt.z(), right.target_omt.y(),
-                                right.target_omt.x() );
-    } );
-
-    std::vector<std::size_t> site_indices;
-    site_indices.reserve( state.sites.size() );
-    for( std::size_t index = 0; index < state.sites.size(); ++index ) {
-        const auto &home = state.sites[index].home_activation;
-        if( !home.initialized() || home.active ) {
-            site_indices.push_back( index );
-        }
-    }
-    std::sort( site_indices.begin(), site_indices.end(), [&state]( const std::size_t lhs,
-    const std::size_t rhs ) {
-        const site_record &left = state.sites[lhs];
-        const site_record &right = state.sites[rhs];
-        return std::make_tuple( left.site_id, left.anchor.z(), left.anchor.y(), left.anchor.x() ) <
-               std::make_tuple( right.site_id, right.anchor.z(), right.anchor.y(), right.anchor.x() );
-    } );
-
-    int adopted = 0;
-    for( const std::size_t opportunity_index : opportunity_indices ) {
-        const hostile_target_opportunity_record &opportunity =
-            state.hostile_target_opportunities[opportunity_index];
-        const bool owner_trace = [] {
-            const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
-            return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
-        }();
-        if( owner_trace ) {
-            DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_adoption"
-                                       << " event=opportunity"
-                                       << " target=" << opportunity.target_id
-                                       << " omt=" << opportunity.target_omt.x() << ','
-                                       << opportunity.target_omt.y() << ',' << opportunity.target_omt.z()
-                                       << " revision=" << opportunity.revision
-                                       << " consumed_generation=" << opportunity.consumed_generation
-                                       << " sites=" << state.sites.size() << '\n';
-        }
-        if( opportunity.target_id.rfind( "player@", 0 ) != 0 || opportunity.revision <= 0 ||
-            opportunity.consumed_generation != 0 ||
-            !opportunity.consumed_operation_id.empty() ||
-            !opportunity.consumed_report_key.empty() ) {
-            continue;
-        }
-
-        const bool already_adopted = std::any_of( state.sites.begin(), state.sites.end(),
-        [&opportunity]( const site_record & site ) {
-            return std::any_of( site.intelligence_map.leads.begin(),
-            site.intelligence_map.leads.end(), [&opportunity]( const camp_map_lead & lead ) {
-                return lead.target_id == opportunity.target_id && lead.omt == opportunity.target_omt;
-            } );
-        } );
-        if( already_adopted ) {
-            continue;
-        }
-
-        site_record *selected_site = nullptr;
-        for( const std::size_t site_index : site_indices ) {
-            site_record &site = state.sites[site_index];
-            std::string reject_reason;
-            if( effective_profile( site ) != hostile_site_profile::camp_style ) {
-                reject_reason = "profile";
-            } else if( site.retired_empty_site ) {
-                reject_reason = "retired";
-            } else if( site.has_active_outside_pressure() ) {
-                reject_reason = "active_pressure";
-            } else if( site.routine_activated_minutes > now_minutes ) {
-                reject_reason = "routine_not_activated";
-            } else if( site.next_routine_dispatch_eligible_minutes >= 0 &&
-                       site.home_activation.elapsed_turns( activation_timer::routine_next,
-                               site.next_routine_dispatch_eligible_minutes, now_minutes ) < 0 ) {
-                reject_reason = "dispatch_cooldown";
-            } else if( !camp_decision_allows_dispatch( site.camp_decision,
-                       bandit_dry_run::job_template::scout ) ) {
-                reject_reason = "camp_decision";
-            } else if( !routine_scout_policy( site ).eligible ) {
-                reject_reason = "scout_policy";
-            } else if( !route_available( site, opportunity ) ) {
-                reject_reason = "route_unavailable";
-            }
-            if( !reject_reason.empty() ) {
-                if( owner_trace ) {
-                    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_adoption"
-                                               << " event=site_rejected site=" << site.site_id
-                                               << " target=" << opportunity.target_id
-                                               << " reason=" << reject_reason << '\n';
-                }
-                continue;
-            }
-            selected_site = &site;
-            if( owner_trace ) {
-                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_adoption"
-                                           << " event=site_selected site=" << site.site_id
-                                           << " target=" << opportunity.target_id
-                                           << " revision=" << opportunity.revision << '\n';
-            }
-            break;
-        }
-        if( selected_site == nullptr ) {
-            continue;
-        }
-
-        camp_map_lead lead;
-        lead.lead_id = camp_lead_id_for( selected_site->site_id,
-                                         camp_lead_kind::terrain_opportunity,
-                                         opportunity.target_id, opportunity.target_omt );
-        lead.revision = opportunity.revision;
-        lead.kind = camp_lead_kind::terrain_opportunity;
-        lead.origin = camp_lead_origin::structural_routine;
-        lead.status = camp_lead_status::suspected;
-        lead.target_id = opportunity.target_id;
-        lead.omt = opportunity.target_omt;
-        lead.source_key = "authoritative_player_opportunity:terrain_fit:unknown";
-        lead.source_summary = "unconsumed authoritative player opportunity adopted for a paired scout";
-        lead.first_seen_minutes = now_minutes;
-        lead.last_seen_minutes = now_minutes;
-        lead.bounty = 0;
-        lead.threat = 0;
-        lead.confidence = 0;
-        lead.threat_confirmed = false;
-        lead.generated_by_this_camp_routine = true;
-        lead.last_outcome = "authoritative_player_opportunity_adopted";
-        const std::string lead_id = lead.lead_id;
-        if( upsert_camp_map_lead( *selected_site, std::move( lead ) ) ) {
-            adopted++;
-            if( owner_trace ) {
-                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_adoption"
-                                           << " event=accepted site=" << selected_site->site_id
-                                           << " target=" << opportunity.target_id
-                                           << " lead=" << lead_id
-                                           << " revision=" << opportunity.revision << '\n';
-            }
-        }
-    }
-    return adopted;
+    // An authoritative world record is not a hostile camp's observation.
+    // Keep this compatibility entry point inert for callers and old saves.
+    ( void )state;
+    ( void )now_minutes;
+    ( void )route_available;
+    return 0;
 }
 
 hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
@@ -17441,6 +17297,73 @@ bool invalidate_site_origin( site_record &site, const origin_disposition disposi
     return true;
 }
 
+bool is_unconfirmed_legacy_player_sortie( const site_record &site )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !outing.is_active() || outing.kind != outing_kind::structural_sortie ||
+        scout_phase_requires_homeward_only( outing.phase ) ) {
+        return false;
+    }
+    const camp_map_lead *lead = site.intelligence_map.find_lead( outing.target_lead_id );
+    if( lead == nullptr || lead->source_key.rfind( "authoritative_player_opportunity:", 0 ) != 0 ) {
+        return false;
+    }
+    const auto identifies_target = [&outing]( const sortie_observation &observation ) {
+        return observation.state_key == "physical-player-opportunity" &&
+               observation.fact_key.rfind( "physical-player-opportunity:player@", 0 ) == 0 &&
+               observation.sense == sortie_observation_sense::visual &&
+               observation.source_omt == outing.target_omt &&
+               typed_sortie_observation_is_valid( observation );
+    };
+    const bool field_sighting = std::any_of( outing.observations.begin(),
+                                outing.observations.end(), identifies_target );
+    if( field_sighting ) {
+        return false;
+    }
+    const bool delivered_sighting = site.current_scout_report.is_present() &&
+                                    site.current_scout_report.target_lead_id == outing.target_lead_id &&
+                                    std::any_of( site.current_scout_report.observations.begin(),
+                                            site.current_scout_report.observations.end(), identifies_target );
+    return !delivered_sighting;
+}
+
+bool return_unconfirmed_legacy_player_sortie( site_record &site,
+        const simulation_advance_cursor &expected_cursor, const int current_minutes )
+{
+    const active_outing_state &outing = site.active_outing;
+    if( !is_unconfirmed_legacy_player_sortie( site ) ||
+        !simulation_cursor_matches( outing, expected_cursor ) || current_minutes < 0 ||
+        current_minutes < outing.last_advanced_minutes ) {
+        return false;
+    }
+    site_record candidate = site;
+    active_outing_state &next = candidate.active_outing;
+    const scout_phase previous = next.phase;
+    next.alternate_watch_reposition_pending = false;
+    next.phase = scout_phase::returning_home;
+    next.last_progress_minutes = current_minutes;
+    next.last_advanced_minutes = current_minutes;
+    if( next.owner == simulation_owner::local ) {
+        // Keep the physical owner and its existing member snapshots. The
+        // ordinary cohesion return route takes over from their actual poses.
+        next.local_handoff.phase = scout_phase::returning_home;
+        next.local_handoff.cohesion_abort_return = true;
+        next.local_handoff.cohesion_assembled = false;
+        next.local_handoff.committed_minutes = current_minutes;
+    } else if( next.local_handoff.is_abstract_resume() ) {
+        next.local_handoff.phase = scout_phase::returning_home;
+        next.local_handoff.committed_minutes = current_minutes;
+    }
+    if( !simulation_owner_state_is_consistent( next ) || !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    record_scout_phase_transition_event( site.active_outing, previous,
+                                         scout_phase::returning_home,
+                                         "unconfirmed legacy player lead retired", current_minutes );
+    return true;
+}
+
 bool request_origin_recall( site_record &site,
                             const simulation_advance_cursor &expected_cursor,
                             const bool physical_signal, const int current_minutes,
@@ -18919,6 +18842,13 @@ structural_outing_plan plan_structural_bounty_outing_impl( const site_record &si
                                    hostile_camp_routine_route_budget_omt( site, now_minutes ) );
     plan.cheap_score = structural_candidate_score( site, lead, now_minutes,
                        plan.cheap_route_quality, plan.terrain_fit, plan.static_risk );
+
+    // Older saves may contain an automatically adopted player coordinate.  A
+    // route to that coordinate is not evidence that the camp discovered it.
+    if( lead.source_key.rfind( "authoritative_player_opportunity:", 0 ) == 0 ) {
+        plan.notes.push_back( "structural outing blocked: unconfirmed legacy player opportunity" );
+        return plan;
+    }
 
     if( !supports_routine_camp_ecology( effective_profile( site ) ) ) {
         plan.notes.push_back( "structural outing blocked: site profile does not run routine camp ecology" );
