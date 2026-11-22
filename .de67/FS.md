@@ -1,17 +1,20 @@
-# CAOL seeded overmap AI campaign — Functional Specification
+# CAOL seeded overmap AI campaign and native long soaks — Functional Specification
 
 Status: Frozen — 2026-11-22
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL | dev | 876a6c48e226b27db90c9d443f1b6d13fa6c698d | Mac working tree inspected 2026-11-22`
+Source baseline: `Cataclysm-AOL | dev | 563dbc5687321fc8912d32e4007581f9615fc85d | Mac working tree refreeze inspected 2026-11-22`
 
 ## Document authority
 
-The exact incoming WEC is the sole new owner-intent input. Its SHA-256 is
+The seeded-campaign WEC remains unchanged. Its SHA-256 is
 `9e15d3739f7073cd842adcecca3f42f0c25924801411b7e3f9f8d0a5b8820220`.
-This FS specifies the campaign and its correctness oracles from that WEC and the actual Mac callers.
+The owner explicitly directed this Phase-2 refreeze to preserve that entire frozen campaign and
+merge the complementary interactive long-soak intent into this canonical FS. The seeded clauses
+and historical acceptance retain their scope; the three new R-SOAK claims remain open. This FS
+specifies both tracks from those owner decisions and the actual Mac callers.
 It does not assert that the campaign has been implemented or run. A source finding is not a native
 reproduction. Historical acceptance below retains only its original scope and gives no credit to
-the new campaign claims. The user owns economic balance and any material change to intended behavior.
+the new campaign or soak claims. The user owns economic balance and any material change to intended behavior.
 
 The old WEC is an archive, not additional campaign intent. The old FS snapshot remains available at
 `.de67/archive/FS-2026-11-22-97d51dc1257-0f1f8c330e37.md`, SHA-256
@@ -24,8 +27,85 @@ the archived FS from the prior active FS; there was no unexplained archive diffe
 Those committed withdrawals remain withdrawn. Existing durable acceptance and historical claim/slice
 identities are preserved below; superseded execution prose is not a new campaign instruction.
 
-Status markers: `[x]` denotes scoped prior evidence, not a campaign pass. A line beginning
-`- [ ] 🔴 R-CAMPAIGN-...` identifies missing or unproved work under this WEC.
+Status markers: `[x]` denotes scoped prior evidence, not a campaign or soak pass. A line beginning
+`- [ ] 🔴 R-CAMPAIGN-...` or `- [ ] 🔴 R-SOAK-...` identifies missing or unproved work.
+
+## Ordinary native play and the two complementary tracks
+
+A player lights and tends a brazier, waits through a night, hears something approach, opens a
+door, retreats through a town, and later returns to the same camp. These ordinary actions must
+exercise the actual simulation: what each actor perceived, where it moved, what interrupted its
+job, and what survived a save or a reality-bubble crossing. A quiet three days is useful elapsed
+time, but it does not establish a scout journey, a raid, a horde or a return that nobody observed.
+
+The **seeded campaign** below retains its complete contract: independent scenario/setup and game
+RNG seeds, roughly 1,000 pilot runs, expansion toward 10,000 and beyond when measured coverage and
+cost justify it, connected transitions, physical invariants, and fresh-process failure replay.
+The **interactive long-soak track** adds twelve mixed worlds, each targeting three actual game
+days, with varied ordinary player decisions and separately measured opportunities and outcomes.
+Neither track substitutes for the other. Automated invariant checks and experiential observations
+share a finding/replay handoff while keeping their different proof scopes visible.
+
+For live play, use the existing [C-AOL playtest skill](../.agents/skills/caol-harness/SKILL.md).
+The owner's chosen route is a native Luna player with a Terra chaperone. Luna owns launch and
+game input; the chaperone checks starting conditions, current build/data binding, source and
+receiver eligibility, actual time and retained evidence. This names the requested play route,
+not a second coordination policy. The skill owns operating details; this FS owns the observable
+outcomes and evidence limits. The game remains authoritative over actions and simulation state.
+
+The player uses `tools/openclaw_harness/play_cli.py --session SESSION` in the Mac checkout.
+`look` exposes the current native World or menu; `controls` reads retained controls and
+permissions without advancing time. `act ACTION` uses the current advertised action/target,
+while `move` and `wait` express bounded ordinary movement and native waiting with interruption
+handling. An action's successful reply is already the next observation. A pending request is
+continued with `collect`, never submitted again; `resume` recovers an outstanding recorded
+request rather than replaying input. `inspect`, `messages`, `evidence` and `performance`
+read retained facts and timings without granting a stale frame new input authority. Follow the
+advertised controls out of menus before moving or waiting. Native quicksave, save/quit, main-menu
+exit and new-process reload are distinct boundaries, each requiring its own observed result.
+See [live controls](../.agents/skills/caol-harness/references/live-operation.md).
+
+The [World Workshop](../.agents/skills/caol-harness/references/world-workshop.md) is the existing
+setup route, via `tools/openclaw_harness/startup_harness.py world`:
+
+| Operation | Useful result and its limit |
+| --- | --- |
+| `inspect WORLD` / `inspect WORLD --zoom --map` | Reads saved terrain, homes, populations and positions at 40-OMT radius or 20-OMT zoom. It neither generates terrain nor advances play. The displayed nearest footprint distance is not automatically the AI's anchor/member eligibility distance. |
+| `prepare SOURCE [RECIPE] DESTINATION` | Creates a fresh disposable copy with declared terrain, homes, items and requirements; retains parent/recipe/readback identity. A placed home still needs its actual native staffing and relevant knowledge state checked. |
+| `scratch WORLD --dry-run`, then `scratch WORLD` | Checks the selected build/source, then launches a separately owned disposable native world through the registry. Use the returned session and explicit pinned build receipt when required. A successful launch is not gameplay proof. |
+| `history` / `history --kept --family FAMILY` | Finds prior results and retained checkpoint identity without assuming the old conditions fit a new question. |
+| `keep RUN_ID --reason REASON [--checkpoint CLOSED_WORLD]` | Retains a useful searchable example and, when needed, its exact closed checkpoint. Keep the active reproduction or continuation; release redundant successful-run output after its concise result is durable. |
+
+The implementation routes are `world_cli.py::run` to `world_inspect.py::inspect_world`,
+`world_prepare.py::prepare_world/verify_requirements`, `world_scratch.py::launch_scratch`
+and `world_examples.py::history/keep`. Preparation refuses an occupied destination or changing
+source; scratch uses the registry/build binding and an exclusive writable profile. After native
+initialization and save, `world inspect CLOSED_WORLD --check PREPARATION_JSON` rechecks the
+original requirements. Unmet or unknown requirements remain visible setup gaps.
+
+For the next round, the owner selected **current Mac dev plus the verified prevent-death fix**.
+At this refreeze, dev and origin/dev are `563dbc5687321fc8912d32e4007581f9615fc85d`; the fix is
+still a local change to `data/json/effects_on_condition/example_eocs.json` with the untracked
+`tests/debug_prevent_death_test.cpp`. Before execution, pin the actual current source/dirty
+patch, executable, data/config and save identities together and prove that the selected runtime
+contains the fix. Neither a branch name nor the old `caolpd` receipt proves that a new runtime
+has it. Product integration/build publication remains separate work from this FS-only checkpoint.
+
+Declare debug interventions and their time explicitly. `DEBUG_LS` and
+`DEBUG_PREVENT_DEATH` permit sustained observation while retaining ordinary visible contact;
+they are modified survival conditions, not proof of unassisted survival. The verified fix routes
+`EOC_event_character_dies_test` through `PREVENT_DEATH` rather than the already-committed
+`character_dies` event. Existing focused and native lethal-fire/bleeding replay evidence in
+`prevent-death-finding.md` covers that encountered route, not every possible death mechanism.
+`DEBUG_NODMG` is a documented exception when needed for continued observation; record when
+enabled and qualify damage, reflection, combat and retreat conclusions accordingly. Invisibility,
+clairvoyance or altered sight can confound perception and must be declared; scored visibility
+segments require the ordinary relevant sight state. Never relocate, replace, resurrect or rewrite
+tested actors, their orders or clocks to rescue a scored journey. A diagnostic intervention starts
+a separately labelled control and cannot repair the original segment's verdict. Avatar relocation
+to load a stalled offscreen party likewise cannot count as its natural progress.
+
+
 
 ## Functional contract
 
@@ -399,6 +479,143 @@ those through connected local proof. Do not infer the missing Windows test conte
     Historical Windows passes and existing soak coverage do not count as new Mac campaign runs.
 <!-- DE67:DFS-SLICE:END id=R-CAMPAIGN-COVERAGE-LOAD-S001 claim=R-CAMPAIGN-COVERAGE-LOAD -->
 
+## Complementary interactive long-soak requirements
+
+These are new open obligations alongside the eight unchanged seeded-campaign claims. The
+existing task notes in `.de67/task-logs/R-REL-V2-SOAK-SETUP-001/` provide bounded starting
+evidence: `setup-matrix.md`, `three-day-soaks-findings.md` and `prevent-death-finding.md`.
+Their earlier release target and ten-slot proposal are historical setup inputs; the owner now
+requires current dev with the verified fix and the following twelve-world complement.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SOAK-SETUP-S001 claim=R-SOAK-SETUP -->
+### Twelve qualified mixed worlds with real encounter opportunities
+
+- [ ] 🔴 R-SOAK-SETUP — Twelve independently owned mixed worlds expose the declared native opportunities on the pinned current-dev runtime.
+  - Code gap: the Workshop, registry and source-bound launch exist, but the earlier pilots do not
+    establish the twelve required mixed worlds or all their receiving actors. A scenario name,
+    terrain footprint or declared horde does not prove a live populated opportunity.
+  - Required mechanism: reuse existing prepared recipes and closed checkpoints through the
+    Workshop; verify bandit and cannibal homes and a Mi-go tower in every mixed world after any
+    necessary native initialization. Record actual staffing/identities, terrain, starting time,
+    weather, elevation, source geometry and initial actor knowledge. Preparation visits/contact
+    remain visible and cannot masquerade as unseen first contact.
+  - World coverage: three bandit-focused worlds, three cannibal-focused worlds, two Mi-go-focused
+    worlds, two horde/writhing-stalker-focused worlds and two flesh-raptor-focused worlds. Vary
+    city, forest and field contexts across this set. Human and Mi-go remote sensing/travel cases
+    include both 15- and 20-OMT source-to-receiver footprint geometry, plus actual anchor/member
+    distances and vertical/visibility eligibility. Predator and horde contact is local; the remote
+    distances are not invented local-contact requirements.
+  - Fixed opportunities are declared before play; ordinary player choices within them vary.
+    Each world includes meaningful movement, waiting and day/night exposure; the set covers
+    light, smoke, sound and genuinely quiet comparison periods. Random exploration does not
+    replace the required opportunities. Record chosen actions and any setup/action seeds; if a
+    seed is unavailable, say so and retain the resolved setup/actions instead of claiming seeded
+    determinism for a model-driven session.
+  - Proof: bound build/data + prepared readback -> actual populated actors and source opportunity
+    -> native first-contact boundary. A no-eligible-receiver or absent-local-actor control remains
+    unqualified, never a behavior failure. Dry-run/launch alone cannot close this claim.
+
+The coverage allocation is a test question, not a promise that every creature performs on cue:
+
+| Worlds | Principal observed opportunity |
+| --- | --- |
+| Bandit 1–3 | Remote eligible signal, outbound scouting, search/watch, robbery or truthful refusal, physical return and subsequent decision; include terrain detour and bubble crossing. |
+| Cannibal 1–3 | Remote eligible signal, dispatch/raid, native doors/stairs or terrain constraints, local danger/withdrawal, survivor return and subsequent decision. |
+| Mi-go 1–2 | Sustained qualified light/smoke opportunity, exact receiving tower/residents, native approach/search/combat or refusal, individual retreat and return; retain the seeded track's separate long brood-cycle proof. |
+| Horde/stalker 1–2 | Real local horde contact and stalker opportunity, interaction under mixed pressure, after breaking sight and after leaving the load. Simultaneous presence requires its own observation. |
+| Flesh raptor 1–2 | Real skirmishing/approach, attack and retreat opportunities in contrasting open and constrained/crowded terrain, with native behavior and local actor identity observed. |
+
+The retained horde edge checkpoint in `three-day-soaks-findings.md` reached 19 zombies and one
+shrieker after one ordinary north step and a short safe wait on a separate copy. That supports
+the horde contact route; a simultaneous stalker in that bubble remains unverified. The Mi-go pilot
+confirmed sustained brazier fire and tending, but did not qualify the receiving tower's signal
+eligibility or prove that the encountered shooter originated there. Neither observation closes a
+full lifecycle. The projectile out-of-bounds finding and its post-warning reload reproduction stay
+parked at the owner's direction; this complement does not commission that repair.
+<!-- DE67:DFS-SLICE:END id=R-SOAK-SETUP-S001 claim=R-SOAK-SETUP -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SOAK-JOURNEYS-S001 claim=R-SOAK-JOURNEYS -->
+### Three actual game days with observed native transitions
+
+- [ ] 🔴 R-SOAK-JOURNEYS — Twelve interactive native soaks target three game days each and report elapsed time separately from the behavior actually reached.
+  - Code gap: one earlier performance world reached 72h01 without a confirmed horde or active
+    hostile party; the Mi-go world stopped at 21h20. These are bounded prior observations, not
+    twelve completed mixed-world journeys.
+  - Required mechanism: play ordinary native actions through the existing cockpit, using current
+    advertised input authority and preserving each world's owned process/save. Target twelve
+    worlds in waves of three to four as requested, adjusting simultaneous advancement to measured
+    Mac capacity and active work. A smaller active subset or an interrupted continuation preserves
+    the twelve-world outcome; neither skipped worlds nor shorter duration silently counts as done.
+  - Measure actual start/end turn and game time and segment boundaries. Three days means at least
+    72 hours of observed advancement from the declared start, excluding setup time. Prompt/input
+    waits and wall-clock time do not advance that total. An interruption, crash or early stop
+    reports achieved duration and remaining time truthfully.
+  - Follow signal -> observation/admission -> travel -> local interaction -> return/settlement ->
+    next decision when the opportunity occurs. The existing physical-ownership/perception and
+    faction economy rules above remain the oracle. For stalking, hordes and raptors, retain the
+    concrete opportunity, pursuit/attack/loss/return states actually exposed by their native paths;
+    do not fabricate camp-style settlement for a creature that has none.
+  - Track declared opportunities, observed events, misses, expected refusals and unexplained
+    behavior independently per world. A completed duration with no qualifying interaction is
+    elapsed coverage only. Replenish a fire through ordinary tending and observe fuel/weather/
+    source strength during the interval; expired light or smoke cannot support a missed-response
+    defect. Read-only observer evidence may establish internal facts but does not grant actors
+    knowledge or advance their mission.
+  - Before diagnosing a stall, capture the same actor/operation IDs, positions, local/abstract
+    authority, admission state, activity/frozen state, last progress, intended destination, actual
+    elapsed game time and known cadence/cooldown. Follow the relevant production path in
+    `do_turn.cpp`, `bandit_live_world.cpp`, `migo_tower_native.cpp` or the local movement caller.
+    Observe a sufficient eligible decision opportunity; a cooldown, native hazard, pending input
+    or inactive home is not automatically stalled travel. No arbitrary new timeout defines a bug.
+  - Proof: per-world pinned start -> ordinary actions -> actual duration and event sequence ->
+    verified checkpoint/exit or named continuation -> separate elapsed and behavioral verdict.
+    Save/reload retains identity and earned state where exercised; record whether resume/reload
+    preserves, clears or changes a symptom. A reload recovery never erases the original observation
+    and cannot supply missing pre-reload coverage.
+<!-- DE67:DFS-SLICE:END id=R-SOAK-JOURNEYS-S001 claim=R-SOAK-JOURNEYS -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SOAK-FINDINGS-S001 claim=R-SOAK-FINDINGS -->
+### Shared finding handoff and interpretable performance
+
+- [ ] 🔴 R-SOAK-FINDINGS — Interactive results produce reproducible findings and controlled timing evidence without overstating seeded proof or native load.
+  - Code gap: the earlier timing intervals had differing actors/load, overlap and incomplete native
+    stage attribution. A repeated message count did not identify its emitter or actor count.
+    Existing cockpit evidence/performance and Workshop history are the starting readers, not a
+    new parallel reporting or acceptance system.
+  - Required mechanism: keep a concise bug/finding list with run/world, source/build/data/dirty
+    identity, scenario/setup or checkpoint, available seeds, actor/operation IDs, last ordinary
+    action, first symptom with turn/time, expected versus observed behavior, evidence reference,
+    intervention/confounds and current disposition. Distinguish observation, inferred cause,
+    confirmed reproduction, setup defect and known parked finding.
+  - Retain the nearest useful native precontact/pretrigger quicksave and confirm its saved turn;
+    a stale snapshot is labelled stale. Retain a symptom-state save only when it adds evidence.
+    A crash retains the last usable save and crash facts. Replay from an isolated copy in a fresh
+    process using the pinned baseline; record action differences and whether reload clears,
+    preserves or changes the failure. No seed exposed means no seed-based replay claim.
+  - Feed useful reproductions into `R-CAMPAIGN-FAILURES` with the same first-invariant/faction/
+    phase/ownership grouping. An experiential finding becomes an automated regression only after
+    the native trigger and oracle are actually encoded and demonstrated. Automated failure counts
+    and soak observations remain separate, cross-linked evidence in the common result.
+  - Compare a quiet baseline, a verified busier interval, and a matched sparse/after-leaving-load
+    interval with actual turns advanced, wall time, latency distribution and individual spikes,
+    active creature/party counts, player movement and available stage receipts. Preserve native
+    completed work alongside timing. Account for debug traits, loose fuel/item piles, saves,
+    menus, loading, simultaneous advancing games and host contention; repeat suspicious parallel
+    timing in isolation before assigning a simulation cause. Missing measurements stay unknown.
+  - Performance alarms trigger inspection, not a new acceptance threshold. `play_cli.py`
+    performance/evidence readers retain bound receipts; native owners supply actual simulation
+    time. A quiet world with no verified horde cannot be called mixed-horde capacity proof, and a
+    grouped wail count cannot be called an actor count or an established message bug.
+  - Proof: one usable finding handoff links pretrigger state, first symptom and fresh-process
+    outcome (including an honest non-reproduction); per-world results separate duration,
+    opportunities, behavior, bugs and performance limits. Matched timing plus completed native
+    work supports only its observed workload. When no bug is found, report that bounded result;
+    the seeded known-failure control still owns reporting-sensitivity proof.
+  - Finish through native save/quit and verify the owned process/helper exit before disposal.
+    Preserve only active continuations, useful examples and reproductions; remove disposable
+    output when the concise result and necessary evidence are durable.
+<!-- DE67:DFS-SLICE:END id=R-SOAK-FINDINGS-S001 claim=R-SOAK-FINDINGS -->
+
 ## Competing systems and override direction
 
 - **Campaign attempt and world custody.** Readers: campaign results/replay and existing harness
@@ -443,7 +660,7 @@ those through connected local proof. Do not infer the missing Windows test conte
 
 ## Acceptance and proof
 
-The eight new claims remain open. Each proof route above follows:
+The eight seeded-campaign claims and three complementary soak claims remain open. Each proof route above follows:
 `declared initial conditions -> authoritative caller -> observed transition -> invariant result -> bound result/reproduction -> pass, expected refusal, miss or finding`.
 A campaign result may be useful because it finds a real bug. That is not acceptance of the bug's
 repair. Keep report sensitivity, reached coverage, native behavior and subsequent repair verdicts
@@ -453,21 +670,29 @@ synthetic settlement can make a seed pass.
 Existing C++ controls are starting points, not claimed reruns. New runner verification must exercise
 actual native invocation, interruption/resume and fresh-process replay on this Mac, in addition to
 focused reporting/generator tests. Existing platform compatibility is preserved; this campaign's
-selected execution scope is Mac. No game, test suite or campaign was run during Phase 2.
+selected execution scope is Mac. No game, test suite, campaign or soak was run during this Phase-2 refreeze.
 
 ## Source identity and freeze record
 
-- Status: Frozen — 2026-11-22, after caller, ownership, source-hash and internal-consistency recheck.
-- Validation: all 87 slice markers pair uniquely; all 79 historical slice identities, 69 checked
-  claim lines and 24 delivery receipt lines are retained. The eight new claims remain open.
+- Status: Frozen — 2026-11-22, refrozen after the owner-authorized FS merge, current native-route
+  inspection, source-hash and internal-consistency recheck.
+- Validation: all 90 slice markers pair uniquely; all eight seeded-campaign slice blocks and the
+  entire 79-slice historical appendix are unchanged from the pre-merge FS. All 69 checked claim
+  lines and 24 delivery receipt lines are retained. The eight campaign and three soak claims remain open.
   No campaign or native behavioral result is claimed by this freeze.
-- Inspected source HEAD: `876a6c48e226b27db90c9d443f1b6d13fa6c698d`, branch `dev`, upstream `origin/dev`.
+- Inspected source HEAD: `563dbc5687321fc8912d32e4007581f9615fc85d`, branch `dev`, upstream `origin/dev`.
+  The previous seeded freeze was published at `4f39936189f`; its original inspected product
+  baseline was `876a6c48e226b27db90c9d443f1b6d13fa6c698d`. Historical evidence is not relabelled.
 - Relevant pre-existing dirty inputs: `tests/bandit_live_world_test.cpp`,
   `data/json/effects_on_condition/example_eocs.json`, harness build/source-binding, registry,
   writable-owner implementation/tests and harness guidance. All remain owned by their prior work.
 - User-owned choices: exact incoming WEC; Mac-only campaign; existing workspace/live-work
   preservation; independent setup/game seeds; meaningful connected coverage; week-scale allowance;
-  faction-specific correctness; economic balance left open.
+  faction-specific correctness; economic balance left open. The explicit complementary owner
+  intent adds twelve mixed three-day worlds, ordinary Luna play with Terra observation, the
+  World Workshop route, declared debug conditions, separate duration/coverage and a common
+  finding/replay handoff. Current dev plus the verified prevent-death fix is required at execution;
+  this checkpoint contains only FS changes and leaves that product patch with its existing owner.
 - Evidence-implied refinements: current staged admission replaces the old materializer-only fixture
   assumption; native brood caller is a new matched-comparison obligation; missing Windows runner
   is a local availability gap, not a disproved prior result. No new product vocabulary or balance.
@@ -476,7 +701,8 @@ selected execution scope is Mac. No game, test suite or campaign was run during 
   acceptance strength and requires immediate refreeze. Material behavior, balance, vocabulary or
   competing designs return to the user and DE67 Phase 2.
 
-Inspected source hashes (SHA-256; bind the working bytes, not a presumed clean binary):
+Seeded-source hashes below were rechecked at this refreeze (SHA-256; bind the working bytes,
+not a presumed clean binary). Additional inspected soak-route hashes follow the original list:
 
 - `src/do_turn.cpp`: `8778a8da2a396ec4c0e3ce0b1aa543e58996c1985bb9b7d6ba2ae5e141715e24`.
 - `src/bandit_live_world.cpp`: `392251128e07453a79b8394ecf65c99f423bc9821a780252dfffe9461455627e`.
@@ -503,6 +729,15 @@ Inspected source hashes (SHA-256; bind the working bytes, not a presumed clean b
 - `src/npcmove.cpp`: `5a540568b7910463ff028dde2ea2a588e1c1a5cd2308e282d61e037ec025cd7a`.
 - `src/monmove.cpp`: `67044d3d7d796e279a487780fdaea4d4389ad123cbd9ebb80096026e499f9274`.
 - `src/physical_navigation.h`: `aaa10e273d743f70da0d2b8b31df580091d9f5cc1e745a73b2ed6f6c98c5a763`.
+
+- `tools/openclaw_harness/play_cli.py`: `ef8ba3372c66f2e76a1ae402341dc2a201e93810d605c7cb0faa5c04cdf29043`.
+- `tools/openclaw_harness/world_cli.py`: `b1b1344d5bdbf4828fe6be7ee02384642341282432ce4904d812a0453d9be061`.
+- `tools/openclaw_harness/world_inspect.py`: `55c23e6bf22e8fcfcbb547e88255dcc17e598e79fe8d1ce0ad16d61a9c005f4d`.
+- `tools/openclaw_harness/world_prepare.py`: `d1fc2333fef914d69ff4459cbcb055833aca8d56767bf9c01191e07b2274b794`.
+- `tools/openclaw_harness/world_scratch.py`: `543159a64a321c697a2ffed5c6bb5c2fcca15c08c583368f377b5f390773f78c`.
+- `tools/openclaw_harness/world_examples.py`: `798d52d5d301744570ddeb35d2f5738b228d48f61169b851a716872099be29f7`.
+- `data/json/effects_on_condition/example_eocs.json`: `876d4f2c041c3ea157439c80c2ec38f592bf093241665222c4d0f939f4c384bc`.
+- `tests/debug_prevent_death_test.cpp`: `11e79a1ec4ec4d8b9292560ab6aa59ae059a5c282e8174591b665ce91ae6111a`.
 
 ## Historical acceptance and compatibility identities
 
