@@ -193,11 +193,15 @@ active game or owner originals; changing a bound manifest requires its owner's s
 
 ### Josef's two-brazier base save
 
-Use the skill's [prepared-setup choices](SKILL.md#prepared-setups-choose-by-the-behavior-being-tested)
-for fire, NPC response and shakedown tests. They avoid rebuilding a ready house/brazier scene;
-choose another save when it better answers the question, and preserve useful current continuations.
-Resolve the actual template and adapt its surroundings for the needed camps, rather than treating
-a similarly named remote-field derivative as the standard save. Josef describes the basecamp NPC priorities as 5 across the board; inspect
+Choose the start that exposes the behavior:
+
+- For ground-floor firelight, use open windows at night and check reception along the actual sight line.
+- For smoke alone, use closed windows and check the escaping plume in daylight. Distant fresh smoke detection stops at night. To measure concealment or weather, keep the source and observer comparable.
+- For a scout or shakedown, keep the prepared player and fire. Adapt the surroundings with a staffed camp and usable route. Observe real discovery, investigation, return and the requested interaction. Ignition establishes setup. It cannot establish detection, a demand or payment.
+
+A compatible continuation works for a focused observation. For a different range or workload, record the actual distance or active population. The [overmap setup tools](#adapt-the-surrounding-overmap) can adjust the scene before play while preserving the owner’s original save.
+
+Josef describes the basecamp NPC priorities as 5 across the board; inspect
 the selected save's actual roster/settings when they matter to the test. Several wood stacks can
 exist while only one is covered by a firewood zone.
 
