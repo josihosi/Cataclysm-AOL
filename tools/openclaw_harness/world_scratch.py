@@ -54,6 +54,18 @@ def select_staged_player(world: Path, player: str):
         for path in world.glob(pattern):
             if path.name != player and path.is_file():
                 path.unlink()
+    # game::load chooses this format from WORLD::has_compression_enabled,
+    # independently of the extension that was selected on the source.
+    compressed_world = any((world / name).is_file() for name in ("maps.dict", "mmr.dict", "overmaps.dict"))
+    selected = world / player
+    compressed_player = player.endswith(".zzip")
+    if compressed_world != compressed_player:
+        harness.run_zzip(selected)
+        native = selected.with_suffix("") if compressed_player else selected.with_name(player + ".zzip")
+        if not native.is_file():
+            raise ValueError(f"Selected character's archive did not contain {native.name}")
+        selected.unlink()
+        return {"selected_player_save": player, "installed_player_save": native.name}
     return {"selected_player_save": player}
 
 

@@ -125,6 +125,7 @@ class ScratchWorldTest(unittest.TestCase):
     def test_two_players_require_a_choice_and_only_that_file_can_quickload(self):
         import shutil
         (self.world / "#Alpha.sav").write_text("other avatar")
+        (self.world / "maps.dict").write_bytes(b"compressed world")
         (self.world / "#Character.sav.zzip").write_bytes(b"archived avatar")
         companion = self.world / "#Alpha.log"
         companion.write_text("keep this unrelated character data")
@@ -144,6 +145,21 @@ class ScratchWorldTest(unittest.TestCase):
         self.assertTrue((copy / companion.name).is_file())
         self.assertEqual((self.world / "#Alpha.sav").read_text(), "other avatar")
         self.assertTrue((self.world / "#Character.sav").is_file())
+
+    def test_stage_matches_native_world_compression_for_the_selected_character(self):
+        # zzip roundtrip exercises the same bundled native utility used by the checkout.
+        player = self.world / "#Character.sav"
+        original = player.read_bytes()
+        dictionary = self.world / "mmr.dict"
+        dictionary.touch()
+        result = scratch.select_staged_player(self.world, player.name)
+        self.assertEqual(result["installed_player_save"], "#Character.sav.zzip")
+        self.assertFalse(player.exists())
+        dictionary.unlink()
+        result = scratch.select_staged_player(self.world, result["installed_player_save"])
+        self.assertEqual(result["installed_player_save"], player.name)
+        self.assertEqual(player.read_bytes(), original)
+        self.assertFalse(player.with_suffix(".sav.zzip").exists())
 
     def test_history_keeps_recipe_and_both_prepared_and_selected_hashes(self):
         from world_examples import history
