@@ -880,7 +880,7 @@ Only explicit owner re-enablement after replenishment clears the funds latch. No
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EXP-PIT-NOTICES-S001 claim=R-EXP-PIT-NOTICES -->
 ### Pit Crew evidence notices and normal packaging — deferred
-- [ ] 🔴 R-EXP-PIT-NOTICES — A normally packaged optional Pit Crew produces useful, bounded evidence advisories while ordinary coordination remains authoritative and operational.
+- R-EXP-PIT-NOTICES — **Withdrawn from delivery.** A normally packaged optional Pit Crew produces useful, bounded evidence advisories while ordinary coordination remains authoritative and operational.
 **Prerequisite:** G-PRODUCTION; R-EXP-PIT-FUNDS before any paid shadow/on evaluation. **Owner:** proposed `de67-lab/integrations/jev_pit_crew/`, shipped with the normally copied de67 skill, plus a minimal optional call from the existing coordination event boundary. Keep optional imports/dependencies isolated, no background service when disabled, no credentials required for base installation. `README.md`/`RELEASE_PROMOTION.md` package the whole source/phase/scripts/references/assets/integrations tree; a linked standalone service is insufficient.
 
 **Inputs and owners.** `worker_library.py::_audit` writes task-bound incremental event JSONL; its `_notice` uses `agent_mailbox.enqueue(workspace, "coordinator", sender, text)`. Existing durable findings/task changes/evidence references supply compact incremental candidate input. Use per-source cursor + event identity/hash so restart is replay-safe; a replaced/truncated source invalidates that cursor and requires provenance-safe recovery. Do not repeatedly load full transcripts. Mechanical task identity/status, whether independent verification was explicitly intended, and evidence freshness are code facts. Jev judges only relevant-new-evidence, potentially duplicated investigation, or evidence challenging an active assumption.
@@ -894,7 +894,7 @@ Only the existing coordinator inbox receives notices. Pit Crew cannot assign, in
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-EXP-REFLEX-S001 claim=R-EXP-REFLEX -->
 ### Jev Reflex Pilot — deferred C-AOL harness experiment
-- [ ] 🔴 R-EXP-REFLEX — A small optional native-action pilot is compared honestly with the current reasoning player and a meaningful deterministic baseline.
+- R-EXP-REFLEX — **Withdrawn from delivery.** A small optional native-action pilot is compared honestly with the current reasoning player and a meaningful deterministic baseline.
 **Prerequisite:** G-PRODUCTION and bounded Pit Crew evaluation disposition. **Owner:** C-AOL `tools/openclaw_harness/`, on an isolated development branch/worktree after the gate; not the de67 Telescope or NPC intelligence. Proposed `reflex_pilot.py`, focused tests/config and comparison entrypoint. Keep disabled by default; no automatic merge, default-player replacement or inference that a demo merits promotion. Use shared guard concepts only through a small adapter if compatible; never make a product cleanup depend on de67 internals.
 
 **First slice.** Use one already-qualified scenario whose current native action surface supports an observable movement/interruption/recovery objective with ordinary visible targets and independent checks. The `play_cli`/semantic movement route is the starting interface. Select its exact ready scenario/binding after prerequisite changes land; an old registry ID is not a current qualification. This is a bounded scenario-selection fact, not an unchosen product design. Do not add game mechanics to create an objective. Its two small goal-directed priorities profiles are Literalist and Indecisive, provided the chosen route actually exercises straight objective pursuit and legitimate reversal/interruption; collection/Magpie remains deferred.
@@ -1744,7 +1744,7 @@ H-INVENTORY; retain resource sampling, source identity and exact retrieval for t
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-SIGNAL-PROOF-S001 claim=R-CAOL-SIGNAL-PROOF -->
 ### Native proof of staggered signals and camp confirmation
-- [ ] 🔴 R-CAOL-SIGNAL-PROOF — Source-bound native before/after journeys prove the direct signal/camp fixes and affordable populated workloads under the current cadence, beyond helper tests and empty-map collection.
+- R-CAOL-SIGNAL-PROOF — **Withdrawn from delivery.** Source-bound native before/after journeys prove the direct signal/camp fixes and affordable populated workloads under the current cadence, beyond helper tests and empty-map collection.
 
 **Cases, sharing journeys where practical.**
 
@@ -2175,7 +2175,7 @@ allowed to freeze this requirement.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-LAUNCHER-CLEAN-INSTALL-S001 claim=R-LAUNCHER-CLEAN-INSTALL -->
 ### Prove the complete first-time installation on all three OSes
-- [ ] 🔴 R-LAUNCHER-CLEAN-INSTALL — A downloaded Catapult-Dabubu package completes the full clean launcher → game → Ollama/models/API → custom graphics → playable game → quit/relaunch journey separately on macOS, Windows and Linux.
+- R-LAUNCHER-CLEAN-INSTALL — **Withdrawn from delivery.** A downloaded Catapult-Dabubu package completes the full clean launcher → game → Ollama/models/API → custom graphics → playable game → quit/relaunch journey separately on macOS, Windows and Linux.
 
 **Clean precondition.** Preserve unrelated saves, launcher settings, models, secrets and user data.
 During later authorized execution, inventory the exact relevant installations/services/stores and
@@ -2540,7 +2540,7 @@ Use the full owner scenario requirements preserved in `.de67/task-logs/review-ow
 
 Implementation status:
 
-- [ ] 🔴 R-MAINT-SCENARIO-CONSOLIDATION — Fewer meaningful base scenarios and effective fresh-worker guidance.
+- R-MAINT-SCENARIO-CONSOLIDATION — **Withdrawn from delivery.** Fewer meaningful base scenarios and effective fresh-worker guidance.
 Living knowledge route: `.agents/skills/caol-harness/GAME-MANUAL.md` indexes existing control, scenario, save and evidence procedures. Keep owner/current-session state in its existing WEC/assignment/run, not copied into durable recipes. Sol/Luna incorporate verified reusable discoveries and prune duplicates at natural handoffs; fix a confusing CLI view when prose merely compensates. Pilot actual charter and targeted manual/CLI retrieval against a baseline, an already-progressed state and a concrete actor-level divergence, preserving original handles and explicit unknowns. Extend compact existing observation/retrieval only where missing actor action/position or roster change materially prevents assessment; no separate knowledge registry, routine Astra gate or full diagnostic dump. The coordinator gives stage-specific expected outcome, not a rigid script. Broader catalogue consolidation remains incremental after the pilot.
 
 
@@ -2752,7 +2752,7 @@ Closeout boundary for the current selected outcome: whole-claim acceptance of R-
 <!-- DE67:DFS-SLICE:BEGIN id=R-REL-MIXED-PERFORMANCE-S001 claim=R-REL-MIXED-PERFORMANCE -->
 ### Mixed-load capacity campaign — withdrawn from alpha
 
-- [ ] 🔴 R-REL-MIXED-PERFORMANCE — Matched production workloads measure ordinary responsiveness, expanded-range costs and practical overload while preserving active behavior.
+- R-REL-MIXED-PERFORMANCE — **Withdrawn from delivery.** Matched production workloads measure ordinary responsiveness, expanded-range costs and practical overload while preserving active behavior.
 
 Owner-selected alpha disposition (2026-11-14): the remaining dedicated mixed-population capacity sweep, inactive-history scaling benchmarks, matched platform budgets and historical-cause closure are NOT REQUIRED for this alpha and are withdrawn from active delivery. This unchecked historical claim is not accepted; its red marker records the original unfulfilled broader contract, not an alpha blocker. Do not refill the ledger or restart a campaign from this slice. Existing scoped results and unknown causes remain in original durable records. No source feature is removed, actor work suppressed, save discarded or old task/clock completed by this scope withdrawal.
 
