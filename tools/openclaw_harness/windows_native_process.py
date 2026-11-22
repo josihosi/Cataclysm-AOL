@@ -642,6 +642,12 @@ class WindowsDirectoryLease:
                     raise OSError('native directory lease rejects aliases: ' + str(path))
                 h = self.k.CreateFileW(str(path), 2, 1 if path == self.root else 3,
                     None, 3, 0x02000000 | 0x00200000, None)
+                if h == c.c_void_p(-1).value and path != self.root and c.get_last_error() == 5:
+                    # Users can traverse C:\Users without FILE_ADD_FILE permission.
+                    # Its directory handle must still exclude a writable root lease.
+                    # Multiple read-only ancestor handles may coexist.
+                    h = self.k.CreateFileW(str(path), 1, 1, None, 3,
+                                           0x02000000 | 0x00200000, None)
                 if h == c.c_void_p(-1).value:
                     raise c.WinError(c.get_last_error())
                 self.handles.append(h)

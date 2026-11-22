@@ -1338,6 +1338,13 @@ def _selected_saved_world_defaults(selection: Any, *, post_relaunch_continuation
                                    ) -> tuple[bool, str, str]:
     """Reuse setup from the hash-bound selected declaration, not another handoff store."""
     scenario = _load_selected_scenario(selection)
+    if scenario.get("name") == "caol.scratch_world":
+        from world_scratch import selected_scratch
+        source, profile, _ = selected_scratch(selection)
+        if ((saved_world_snapshot and Path(saved_world_snapshot).resolve() != source) or
+                (profile_override and profile_override != profile)):
+            raise ScenarioRegistryStoreError("Scratch source or profile differs from the selected run.")
+        return True, str(source), profile
     declared = str(scenario.get("saved_world_snapshot", "") or "").strip()
     snapshot = str(saved_world_snapshot or declared).strip()
     profile = str(profile_override or scenario.get("profile", "") or "").strip()
@@ -1373,6 +1380,9 @@ def _preflight_selected_save_setup(selection: Any, args: argparse.Namespace) -> 
         profile = startup_harness.resolve_profile_name(profile + "-run-" + uuid.uuid4().hex)
     world = str(scenario.get("world", "") or "").strip()
     replace = bool(scenario.get("replace_existing_worlds", False))
+    if scenario.get("name") == "caol.scratch_world":
+        world = Path(snapshot).name
+        startup_harness.preflight_disposable_fixture_destination(profile, world)
     destination = startup_harness.save_dir_for_profile(profile) / world
     if continuation:
         try:
@@ -1416,6 +1426,10 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
         selection, post_relaunch_continuation=post_relaunch_continuation,
         saved_world_snapshot=saved_world_snapshot, profile_override=profile_override)
     command = ["probe", selection.scenario, "--compact-stdout"]
+    if scenario.get("name") == "caol.scratch_world":
+        from world_scratch import selected_scratch
+        source, _, digest = selected_scratch(selection)
+        command.extend(["--world", source.name, "--disposable-saved-world", "--expected-saved-world-sha256", digest])
     if profile_override:
         command.extend(["--profile", profile_override])
     if post_relaunch_continuation:

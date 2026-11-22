@@ -75,6 +75,7 @@ _RELATION_PROOF_DEPTHS = {
 }
 
 _GAMEPLAY_PROOF_ALLOWED_V1 = frozenset({
+    "caol.scratch_world",
     "caol.reference_camp_open_focused_mcw",
     "caol.reference_camp_closed_focused_mcw",
     "caol.reference_camp_nearby_focused_mcw",
@@ -829,7 +830,7 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
         if not isinstance(catalogue, dict):
             raise _error(path, "catalogue must be an object")
         kind = catalogue.get("kind")
-        if kind not in ("maintained", "diagnostic", "historical", "continuation"):
+        if kind not in ("maintained", "diagnostic", "historical", "continuation", "launcher"):
             raise _error(path, "catalogue.kind is invalid")
         if kind in ("maintained", "diagnostic"):
             for field in ("family_id", "family_title", "family_purpose", "variant"):

@@ -2045,8 +2045,10 @@ def executable_source_readiness(
     version_output = ""
     version_error = ""
     try:
+        from bandit_live_world_audit import zzip_environment
         completed = subprocess.run(
             [str(executable_path), "--version"],
+            env=zzip_environment(repo_root()),
             capture_output=True,
             text=True,
             check=False,
@@ -3502,7 +3504,7 @@ def install_saved_world_snapshot(profile: str, target_world: str,
                                  source_path: str | Path, *, replace: bool = False,
                                  disposable_run_id: str = "",
                                  stage_transform: Optional[Callable[[Path], Any]] = None,
-                                 require_fresh: bool = False) -> Dict[str, Any]:
+                                 require_fresh: bool = False, expected_sha256: str = "") -> Dict[str, Any]:
     """Install a byte-verified snapshot without silently replacing a populated world."""
     source_world = Path(source_path).expanduser().resolve()
     if not source_world.is_dir():
@@ -3515,6 +3517,8 @@ def install_saved_world_snapshot(profile: str, target_world: str,
     source_hash, source_error = sha256_tree(source_world)
     if source_error:
         raise SystemExit(source_error)
+    if expected_sha256 and source_hash != expected_sha256:
+        raise SystemExit("saved-world snapshot changed after selection")
 
     raw_destination = save_dir_for_profile(profile) / target_world
     destination = raw_destination.resolve()
@@ -13510,14 +13514,22 @@ def iter_map_triples(value: Any) -> Iterable[Tuple[int, int, Any]]:
             continue
 
 
-def summarize_map_field(payload: Any) -> Dict[str, Any]:
-    if isinstance(payload, list) and payload:
-        return {
-            "field_id": payload[0],
-            "intensity": payload[1] if len(payload) > 1 else None,
-            "age_turns": payload[2] if len(payload) > 2 else None,
-        }
-    return {"raw": payload}
+def summarize_map_fields(payload: Any) -> List[Dict[str, Any]]:
+    """One tile serializes consecutive field triples; v39 adds a source object to each."""
+    if not isinstance(payload, list):
+        return [{"raw": payload}]
+    fields = []
+    cursor = 0
+    while cursor < len(payload):
+        if cursor + 3 > len(payload) or not isinstance(payload[cursor], str):
+            fields.append({"raw": payload[cursor:]})
+            break
+        fields.append({"field_id": payload[cursor], "intensity": payload[cursor + 1],
+                       "age_turns": payload[cursor + 2]})
+        cursor += 3
+        if cursor < len(payload) and isinstance(payload[cursor], dict):
+            cursor += 1
+    return fields
 
 
 def map_item_typeid(item: Any) -> str:
@@ -13531,9 +13543,6 @@ def map_item_typeid(item: Any) -> str:
 def summarize_map_items(payload: Any) -> List[str]:
     if not isinstance(payload, list):
         return [map_item_typeid(payload)] if payload else []
-    if len(payload) == 2 and isinstance(payload[0], dict):
-        typeid = map_item_typeid(payload)
-        return [typeid] if typeid else []
     return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
 
 
@@ -13553,8 +13562,11 @@ def summarize_map_item_states(payload: Any) -> List[Dict[str, Any]]:
             countdown_point = int(countdown_point) if countdown_point is not None else None
         except (TypeError, ValueError):
             countdown_point = None
-        states.append({"typeid": typeid, "active": bool(item.get("active", False)),
-                       "countdown_point": countdown_point})
+        state = {"typeid": typeid, "active": bool(item.get("active", False)),
+                 "countdown_point": countdown_point}
+        if isinstance(entry, list) and len(entry) == 2 and type(entry[1]) is int:
+            state["count"] = entry[1]
+        states.append(state)
     return states
 
 
@@ -13738,13 +13750,16 @@ def audit_map_tiles_near_player(
                 radiation = int(radiation_raw) if radiation_raw is not None else None
             except (TypeError, ValueError):
                 radiation = None
-            fields = [summarize_map_field(payload) for x, y, payload in iter_map_triples(submap.get("fields")) if x == local[0] and y == local[1]]
+            fields = [entry for x, y, payload in iter_map_triples(submap.get("fields"))
+                      if (x, y) == local[:2] for entry in summarize_map_fields(payload)]
             items: List[str] = []
             item_states: List[Dict[str, Any]] = []
             for x, y, payload in iter_map_triples(submap.get("items")):
                 if x == local[0] and y == local[1]:
-                    items.extend(summarize_map_items(payload))
-                    item_states.extend(summarize_map_item_states(payload))
+                    # Native submap loading replaces the tile's colony for
+                    # each record. Older hand-built saves can repeat a tile.
+                    items = summarize_map_items(payload)
+                    item_states = summarize_map_item_states(payload)
             furniture = [str(payload) for x, y, payload in iter_map_triples(submap.get("furniture")) if x == local[0] and y == local[1]]
             traps = [str(payload) for x, y, payload in iter_map_triples(submap.get("traps")) if x == local[0] and y == local[1]]
             if explicit_offsets or terrain or fields or items or furniture or traps or radiation not in (None, 0):
@@ -27328,8 +27343,11 @@ def zzip_binary() -> Path:
 
 
 def run_zzip(path: Path) -> None:
+    from bandit_live_world_audit import zzip_environment
+
     proc = subprocess.run(
         [str(zzip_binary()), str(path)],
+        env=zzip_environment(repo_root()),
         capture_output=True,
         text=True,
         check=False,
@@ -28300,7 +28318,7 @@ def apply_overmap_terrain_id_at_abs_omt_transform(
         "player_save": str(transform.get("player_save", "") or "").strip(),
         "abs_omt": list(abs_omt),
         "local_omt": list(local_omt),
-        "overmap": str(overmap_path.relative_to(world_dir)),
+        "overmap": overmap_path.relative_to(world_dir).as_posix(),
         "previous_terrain_id": previous_terrain_id,
         "terrain_id": terrain_id,
     }
@@ -29442,7 +29460,21 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
             )
             for _ in range(count)
         ]
-        items.extend([local_ms[0], local_ms[1], item_payloads])
+        # The native reader clears the colony each time it reads a tile.
+        # Keeping one x,y,stack triple preserves its previous contents and
+        # all new types, including multiple placements on the same tile.
+        if len(items) % 3:
+            raise SystemExit(f"Fixture map-item transform found an incomplete items record in {map_path}")
+        matching = [i for i in range(0, len(items), 3) if items[i:i + 2] == list(local_ms[:2])]
+        if matching:
+            stack = items[matching[-1] + 2]
+            if not isinstance(stack, list):
+                raise SystemExit(f"Fixture map-item transform found a malformed tile stack in {map_path}")
+            stack.extend(item_payloads)
+            for i in reversed(matching[:-1]):
+                del items[i:i + 3]
+        else:
+            items.extend([local_ms[0], local_ms[1], item_payloads])
         map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         modified_map_paths[str(map_path)] = map_path
 
@@ -33817,6 +33849,9 @@ def list_scenarios() -> List[Dict[str, Any]]:
     for path in sorted(root.glob("*.json"), key=lambda p: p.name.lower()):
         loaded = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(loaded, dict):
+            continue
+        if isinstance(loaded.get("catalogue"), dict) and loaded["catalogue"].get("kind") == "launcher":
+            # Parameterized launch adapters are selected directly from the registry.
             continue
         try:
             registry = validate_manifest(loaded, path=path)
@@ -41831,6 +41866,8 @@ def _run_startup(args: argparse.Namespace) -> int:
     if saved_world_snapshot:
         saved_world_snapshot_result = install_saved_world_snapshot(
             profile, args.world, saved_world_snapshot, replace=args.replace_existing_worlds,
+            expected_sha256=getattr(args, "expected_saved_world_sha256", ""),
+            require_fresh=bool(getattr(args, "expected_saved_world_sha256", "")),
             disposable_run_id=(str(args.harness_run_id) if getattr(args, "disposable_saved_world", False) else ""),
         )
         profile_snapshot = ""
@@ -44487,6 +44524,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("Registry selected scenario path and hash must travel together")
     scenario = load_scenario(args.scenario, source_path=selected_path or None,
                              expected_sha256=str(getattr(args, "registry_selected_source_sha256", "") or ""))
+    if scenario.get("name") == "caol.scratch_world" and not (
+            selected_path and getattr(args, "expected_saved_world_sha256", "") and
+            getattr(args, "disposable_saved_world", False)):
+        raise SystemExit("Scratch worlds use world scratch WORLD with a selected build and fresh profile.")
     if handoff and getattr(args, "launch_only", False) and str(
             getattr(args, "saved_world_snapshot", "") or scenario.get("saved_world_snapshot", "")).strip():
         raise SystemExit("launch-only handoff does not support saved-world snapshots")
@@ -44626,6 +44667,9 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         profile_snapshot_profile = ""
         profile_option_overrides = continuation_profile_option_overrides(
             scenario, profile_option_overrides)
+        if scenario_name == "caol.scratch_world":
+            from world_scratch import local_runner_options
+            profile_option_overrides.update(local_runner_options(config_profile))
         replace_existing_worlds = False
         post_relaunch = None
     runtime_contract = scenario.get("runtime_contract", {})
@@ -44852,6 +44896,8 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         raise SystemExit("disposable saved-world purpose requires a snapshot or fixture")
     if explicit_saved_world_snapshot:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
+    if getattr(args, "expected_saved_world_sha256", ""):
+        start_cmd.extend(["--expected-saved-world-sha256", args.expected_saved_world_sha256])
     # A selected declaration's initial saved-world bootstrap is represented as
     # a continuation too.  A fresh copy of that exact declared source still
     # needs custody; a genuine reentry or an existing destination must not
@@ -46256,6 +46302,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Phase-0 startup harness for Cataclysm-AOL.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    from world_cli import add_commands as add_world_commands
+    add_world_commands(subparsers)
+
     plan_p = subparsers.add_parser("plan", help="Print the branch-aware startup plan.")
     plan_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     plan_p.add_argument("--world", default="", help="Explicit target world name.")
@@ -46292,6 +46341,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--expected-saved-world-sha256", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
     cleanup_saved_p = subparsers.add_parser("cleanup-disposable-saved-world", help="Remove an explicitly disposable saved-world copy after its exact run closes.")
     cleanup_saved_p.add_argument("--profile", required=True)
@@ -46379,6 +46429,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--executable", default="", help="Use this source-matching executable for the probe.")
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     probe_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--expected-saved-world-sha256", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")
     probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
@@ -46479,6 +46530,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command == "world":
+        from world_cli import run as run_world_command
+        return run_world_command(args)
 
     if args.command == "plan":
         try:

@@ -1590,4 +1590,9 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    # Redirected Windows streams otherwise default to the legacy ANSI code page.
+    if os.name == "nt" and not os.environ.get("PYTHONIOENCODING"):
+        for stream in (sys.stdout, sys.stderr):
+            if not stream.isatty():
+                stream.reconfigure(encoding="utf-8")
     raise SystemExit(main())

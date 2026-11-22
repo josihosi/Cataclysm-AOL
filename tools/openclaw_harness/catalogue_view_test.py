@@ -26,9 +26,18 @@ class CatalogueViewTest(unittest.TestCase):
 
     def test_curated_library_has_complete_distinct_recipes(self):
         rows = startup_harness.list_scenarios()
-        self.assertEqual(len(rows), 50)
+        self.assertNotIn("caol.scratch_world", {row["name"] for row in rows})
+        repo = HERE.parents[1]
+        paths = subprocess.check_output(["git", "ls-files", "tools/openclaw_harness/scenarios/*.json"],
+                                        cwd=repo, text=True).splitlines()
+        tracked = {declaration["name"] for path in paths
+                   for declaration in [json.loads((repo / path).read_bytes())]
+                   if declaration.get("catalogue", {}).get("kind") in {"maintained", "diagnostic"}}
+        self.assertTrue(tracked)
+        curated = [row for row in rows if row["name"] in tracked]
+        self.assertCountEqual([row["name"] for row in curated], tracked)
         questions = set()
-        for row in rows:
+        for row in curated:
             recipe = row['playtest_recipe']
             with self.subTest(scenario=row['name']):
                 for field in ('title', 'question', 'starting_state', 'exercise', 'controls',

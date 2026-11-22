@@ -51,7 +51,7 @@ from scenario_registry_performance import (
 )
 
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 23
 Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 
@@ -5380,6 +5380,27 @@ def _migration_021_windows_feel_handoff(connection: sqlite3.Connection) -> None:
     _create_history_append_only_triggers(connection, "windows_feel_judgment")
 
 
+def _migration_022_world_examples(connection: sqlite3.Connection) -> None:
+    connection.execute("ALTER TABLE report_ingestion_history ADD COLUMN run_context_json TEXT")
+    connection.execute("""
+        CREATE TABLE world_scratch_attempt (
+            run_id TEXT PRIMARY KEY, question TEXT NOT NULL, family TEXT NOT NULL,
+            source TEXT NOT NULL, recipe_json TEXT NOT NULL, build_json TEXT NOT NULL,
+            outcome TEXT NOT NULL, detail TEXT NOT NULL, native_run_id TEXT NOT NULL,
+            selection_token TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )""")
+    connection.execute("""
+        CREATE TABLE kept_world_example (
+            run_id TEXT PRIMARY KEY, reason TEXT NOT NULL, family TEXT NOT NULL, checkpoint_name TEXT,
+            checkpoint_sha256 TEXT, kept_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )""")
+
+
+def _migration_023_scratch_source_binding(connection: sqlite3.Connection) -> None:
+    connection.execute("ALTER TABLE world_scratch_attempt ADD COLUMN source_binding_json TEXT NOT NULL DEFAULT '{}'")
+
+
 SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (1, "initial_registry_surface", _migration_001_initial),
     (2, "inventory_migration_history", _migration_002_inventory_migration_history),
@@ -5402,6 +5423,8 @@ SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (19, "r018_acceptance_matrix", _migration_019_r018_acceptance_matrix),
     (20, "playtest_witness", _migration_020_playtest_witness),
     (21, "windows_feel_handoff", _migration_021_windows_feel_handoff),
+    (22, "world_examples", _migration_022_world_examples),
+    (23, "scratch_source_binding", _migration_023_scratch_source_binding),
 )
 
 
@@ -9709,13 +9732,15 @@ def ingest_report_reference(
                 )
             except RelaunchReceiptError as exc:
                 raise ScenarioRegistryStoreError(str(exc)) from exc
+        from world_examples import report_context
+        run_context = _json_text(report_context(connection, report, facts))
         if _is_diagnostic_replay_report(report, facts):
             classification = "diagnostic replay"
             with immediate_transaction(connection):
                 connection.execute(
-                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
-                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
-                    (report_id, canonical_path, report_sha256, classification),
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status, run_context_json ) "
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative', ? )",
+                    (report_id, canonical_path, report_sha256, classification, run_context),
                 )
             return {
                 "report_id": report_id,
@@ -9745,9 +9770,9 @@ def ingest_report_reference(
                     connection, facts=facts, report=report
                 )
                 connection.execute(
-                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
-                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
-                    (report_id, canonical_path, report_sha256, classification),
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status, run_context_json ) "
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative', ? )",
+                    (report_id, canonical_path, report_sha256, classification, run_context),
                 )
             return {
                 "report_id": report_id,
@@ -9789,9 +9814,9 @@ def ingest_report_reference(
                     if classification == "setup-only" else ()
                 )
                 connection.execute(
-                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
-                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
-                    (report_id, canonical_path, report_sha256, classification),
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status, run_context_json ) "
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative', ? )",
+                    (report_id, canonical_path, report_sha256, classification, run_context),
                 )
             return {
                 "report_id": report_id,
@@ -9891,9 +9916,9 @@ def ingest_report_reference(
 
         connection.execute(
             "INSERT INTO report_ingestion_history( "
-            "report_id, manifest_id, report_path, report_sha256, report_kind, ingestion_status "
-            ") VALUES( ?, ?, ?, ?, ?, 'ingested' )",
-            (report_id, manifest_id, canonical_path, report_sha256, facts["mode"] or "report"),
+            "report_id, manifest_id, report_path, report_sha256, report_kind, ingestion_status, run_context_json "
+            ") VALUES( ?, ?, ?, ?, ?, 'ingested', ? )",
+            (report_id, manifest_id, canonical_path, report_sha256, facts["mode"] or "report", run_context),
         )
         proof = _object(facts["proof"], "proof")
         connection.execute(

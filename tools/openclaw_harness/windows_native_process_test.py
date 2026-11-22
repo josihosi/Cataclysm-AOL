@@ -22,6 +22,21 @@ import windows_native_process as native
 from writable_run_owner import WindowsWritableRunOwner
 
 
+@unittest.skipUnless(os.name == "nt", "native Windows directory sharing")
+class WindowsLeaseIntegrationTest(unittest.TestCase):
+    def test_non_admin_profiles_share_ancestors_but_exclude_overlaps(self):
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            parent = Path(tmp)
+            for name in ("one", "two"):
+                handle = native.WindowsDirectoryLease(parent / name)
+                stack.callback(handle.close)
+            for path in (parent, parent / "one", parent / "one" / "child"):
+                with self.subTest(path=path), self.assertRaises(OSError) as error:
+                    handle = native.WindowsDirectoryLease(path)
+                    handle.close()
+                self.assertEqual(error.exception.winerror, 32)
+
+
 class LeaseKernel:
     """Only the native handle API is replaced; producer and owner are real."""
 

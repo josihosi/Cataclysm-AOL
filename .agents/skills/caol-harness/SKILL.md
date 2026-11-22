@@ -21,6 +21,8 @@ Debug setup can remove an incidental obstacle. Waiting out a portal storm in she
 
 ## Find a playtest
 
+Use the [world workshop](references/world-workshop.md) to inspect a 40-OMT area, zoom to 20, prepare a disposable world, launch a scratch game, or keep a useful run as a searchable example.
+
 From the checkout, browse the registry with a family or search term:
 
 ```sh

@@ -66,7 +66,7 @@ def recipe_families(root: Path) -> list[dict[str, Any]]:
                     raise ValueError('invalid recipe family metadata: ' + str(path))
                 result.append({'id': value['family_id'], 'title': value['title'], 'purpose': value['purpose'],
                                'kind': value['kind'], 'starting_save': value['starting_save'],
-                               'recipe': str(path), 'variants': [], 'variant_count': 0})
+                               'recipe': path.as_posix(), 'variants': [], 'variant_count': 0})
     return result
 
 
@@ -150,11 +150,15 @@ def saved_camp_opportunity(dimension: Path) -> dict[str, Any]:
             raw = stream.read()
             stat_after = os.fstat(before)
         current = dimension.stat()
-        identity = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
-        if identity(stat_before) != identity(stat_after) or identity(stat_after) != identity(current):
+        # Windows can expose different ctime semantics through fstat and stat.
+        # Compare change time on the open handle and compare file identity across paths.
+        def identity(stat):
+            return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
+        if (stat_before.st_ctime_ns != stat_after.st_ctime_ns or
+                identity(stat_before) != identity(stat_after) or identity(stat_after) != identity(current)):
             return {**unknown, 'reason': 'saved dimension changed during inspection'}
         header, sep, body = raw.partition(b'\n')
-        if not sep or header != b'# version 39':
+        if not sep or header.removesuffix(b'\r') != b'# version 39':
             return {**unknown, 'reason': 'unsupported dimension header'}
         payload = json.loads(body)
         world = payload['overmapbuffer']['bandit_live_world']

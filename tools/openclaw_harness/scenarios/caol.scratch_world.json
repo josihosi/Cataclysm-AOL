@@ -1,0 +1,111 @@
+{
+  "manifest_version": 1,
+  "name": "caol.scratch_world",
+  "description": "Open a prepared save in an independent disposable world and play the supplied question through the native cockpit.",
+  "profile": "scratch-world",
+  "config_profile": "dev-harness",
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.caol.scratch_world": "prepared_native_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "direct edits to the installed or original save during play",
+      "synthetic gameplay receipts"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [],
+    "platform": [
+      "macos",
+      "windows"
+    ],
+    "profile": "scratch-world",
+    "fixture": "",
+    "requirements": {
+      "os": "host",
+      "source": "run-selected product",
+      "executable": "verified tiles executable",
+      "profile": "unique scratch profile",
+      "fixture": "run-selected saved world",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "frame-bound native cockpit actions"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "open_prepared_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "allow_saved_native_input_owner": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "play_scratch_world",
+      "cleanup_on_finish": true,
+      "objective": "Play the supplied question in the prepared world and record the observed outcome.",
+      "proof_targets": [
+        "Actual actions, observations and outcomes in this run."
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "Keep preparation distinct from the observed behavior."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait"
+      ],
+      "transition_timeout_seconds": 20,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "open_prepared_world"
+    ],
+    "production_behavior": [
+      "play_scratch_world"
+    ],
+    "terminal_persistence": [
+      "play_scratch_world"
+    ],
+    "artifact_verdict": [
+      "play_scratch_world"
+    ],
+    "disallowed_shortcuts": [
+      "open_prepared_world"
+    ]
+  },
+  "catalogue": {
+    "kind": "launcher"
+  }
+}

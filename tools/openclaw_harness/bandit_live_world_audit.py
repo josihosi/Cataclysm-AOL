@@ -69,6 +69,18 @@ def zzip_binary(repo_root: Path, platform_name: str | None = None) -> Path:
     return helper
 
 
+def zzip_environment(repo_root: Path) -> dict[str, str] | None:
+    """Use the Windows build's adjacent UCRT runtime when running from PowerShell."""
+    if os.name != "nt":
+        return None
+    configured = os.environ.get("MSYS2_ROOT")
+    msys = Path(configured) if configured else repo_root.parent / "msys64"
+    runtime = msys / "ucrt64" / "bin"
+    if not runtime.is_dir():
+        return None
+    return {**os.environ, "PATH": str(runtime) + os.pathsep + os.environ.get("PATH", "")}
+
+
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -210,6 +222,7 @@ def load_text_from_overmap_file(repo_root: Path, path: Path) -> str:
         subprocess.run(
             [str(helper), str(path)],
             cwd=path.parent,
+            env=zzip_environment(repo_root),
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
