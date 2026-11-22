@@ -1340,7 +1340,7 @@ def _selected_saved_world_defaults(selection: Any, *, post_relaunch_continuation
     scenario = _load_selected_scenario(selection)
     if scenario.get("name") == "caol.scratch_world":
         from world_scratch import selected_scratch
-        source, profile, _ = selected_scratch(selection)
+        source, profile, _, _ = selected_scratch(selection)
         if ((saved_world_snapshot and Path(saved_world_snapshot).resolve() != source) or
                 (profile_override and profile_override != profile)):
             raise ScenarioRegistryStoreError("Scratch source or profile differs from the selected run.")
@@ -1428,8 +1428,9 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
     command = ["probe", selection.scenario, "--compact-stdout"]
     if scenario.get("name") == "caol.scratch_world":
         from world_scratch import selected_scratch
-        source, _, digest = selected_scratch(selection)
-        command.extend(["--world", source.name, "--disposable-saved-world", "--expected-saved-world-sha256", digest])
+        source, _, digest, player = selected_scratch(selection)
+        command.extend(["--world", source.name, "--disposable-saved-world", "--expected-saved-world-sha256", digest,
+                        "--scratch-player-save", player])
     if profile_override:
         command.extend(["--profile", profile_override])
     if post_relaunch_continuation:

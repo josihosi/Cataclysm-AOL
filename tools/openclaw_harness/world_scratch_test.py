@@ -122,6 +122,29 @@ class ScratchWorldTest(unittest.TestCase):
         self.assertTrue(result["run_id"])
         self.assertTrue(self.world.exists())
 
+    def test_two_players_require_a_choice_and_only_that_file_can_quickload(self):
+        import shutil
+        (self.world / "#Alpha.sav").write_text("other avatar")
+        (self.world / "#Character.sav.zzip").write_bytes(b"archived avatar")
+        companion = self.world / "#Alpha.log"
+        companion.write_text("keep this unrelated character data")
+        with patch.object(registry_cli, "_current_source_executable_readiness", return_value=self.ready):
+            ambiguous = scratch.launch_scratch(self.world, dry_run=True)
+            self.assertIn("--player-save", ambiguous["reason"])
+            explicit = scratch.launch_scratch(self.world, dry_run=True, player_save="#Character.sav.zzip")
+            self.assertEqual(explicit["player_save"], "#Character.sav.zzip")
+        selected = self.binding()
+        selected.outcome_brief["scratch_world"]["player_save"] = "#Character.sav.zzip"
+        namespace = registry_cli._registry_launch_probe_namespace(selected, cockpit_live_session=True)
+        self.assertEqual(namespace.scratch_player_save, "#Character.sav.zzip")
+        copy = shutil.copytree(self.world, self.root / "stage")
+        self.assertEqual(scratch.select_staged_player(copy, namespace.scratch_player_save),
+                         {"selected_player_save": "#Character.sav.zzip"})
+        self.assertEqual({p.name for p in copy.glob("*.sav*")}, {"#Character.sav.zzip"})
+        self.assertTrue((copy / companion.name).is_file())
+        self.assertEqual((self.world / "#Alpha.sav").read_text(), "other avatar")
+        self.assertTrue((self.world / "#Character.sav").is_file())
+
     def test_history_keeps_recipe_and_both_prepared_and_selected_hashes(self):
         from world_examples import history
         prepared = self.root / "prepared"
@@ -135,11 +158,62 @@ class ScratchWorldTest(unittest.TestCase):
         with patch.object(registry_cli, "_current_source_executable_readiness", return_value=self.ready), \
                 patch.object(scratch, "_registry", side_effect=ValueError("unavailable")):
             result = scratch.launch_scratch(source, registry=self.registry)
+        (source / "#Other.sav").write_text("other character")
+        mismatch = scratch.launch_scratch(source, dry_run=True, player_save="#Other.sav", registry=self.registry)
+        self.assertIn("Prepared world selects #Character.sav", mismatch["reason"])
+        (source / "#Other.sav").unlink()
         record = history(registry=self.registry, search=result["run_id"])["runs"][0]
         self.assertEqual(record["recipe"], recipe)
         self.assertEqual(record["source_binding"], {
             "parent": "parent-fixture", "parent_sha256": "f" * 64, "prepared_sha256": "a" * 64,
             "world_sha256": harness.sha256_tree(source)[0], "player_save": "#Character.sav"})
+
+    def test_two_selected_tokens_ingest_independent_closed_observations(self):
+        import hashlib
+        from contextlib import closing
+        import scenario_registry_store as store
+        from world_examples import history, record_attempt
+        source = str(scratch.DECLARATION.resolve())
+        manifest_hash = hashlib.sha256(scratch.DECLARATION.read_bytes()).hexdigest()
+        products = {"schema": 1, "executable_path": "game", "executable_sha256": "e" * 64,
+                    "runtime_source_sha256": "f" * 64}
+        reports = []
+        with closing(store.open_registry(self.registry)) as conn:
+            store.rebuild_manifest_projection(conn, source_paths=[scratch.DECLARATION])
+            for letter, outcome in (("a", "positive"), ("b", "negative")):
+                attempt = letter * 32
+                bound = {"attempt_id": attempt, "sha256": letter * 64, "source": str(self.world),
+                         "player_save": "#Character.sav"}
+                issued = store.execute_registry_query(
+                    conn, store.parse_registry_query_request(scratch.QUERY), scenario_id=scratch.SCENARIO,
+                    coordinator_brief={"outcome": "Check " + letter, "scratch_world": bound},
+                    runtime_binding=products)
+                token = issued.token_id
+                self.assertTrue(token)
+                record_attempt(attempt_id=attempt, registry=self.registry, question="Check " + letter,
+                               outcome="launched", native_run_id=token, selection_token=token)
+                bridge = hashlib.sha256(f"caol-selected-cockpit-bridge-v1:{token}:{source}".encode()).hexdigest()
+                report = {"run_id": token, "scenario": scratch.SCENARIO, "binding_id": products["executable_sha256"],
+                          "scenario_manifest": {"source": {"path": source, "sha256": manifest_hash}},
+                          "startup": {"profile": "scratch-" + attempt[:16], "saved_world_snapshot": {
+                              "source": str(self.world), "source_sha256": bound["sha256"],
+                              "installed_sha256": "c" * 64, "status": "green_saved_world_snapshot_installed",
+                              "transform_report": {"selected_player_save": "#Character.sav"}}},
+                          "steps": [{"cockpit_live_session": {"final": {
+                              "run_id": token, "state": "finished", "binding_id": bridge,
+                              "schema": "caol-cockpit-live-final-v1", "stop_detail": {
+                                  "gameplay_outcome": {"summary": "Finished " + letter, "verdict": outcome}}}}}]}
+                path = self.root / (letter + ".report.json")
+                path.write_text(json.dumps(report))
+                reports.append((token, path))
+            for token, report in reports:
+                self.assertTrue(store.reload_selection_token_for_launch(conn, token).accepted)
+                result = store.ingest_token_linked_report_reference(conn, token, report, adapters=None)
+                self.assertEqual(result.get("classification"), "scratch playtest", result)
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM verification_history").fetchone()[0], 0)
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM token_history WHERE event_kind='invalidated'").fetchone()[0], 0)
+        self.assertEqual({r["question"]: r["outcome"] for r in history(registry=self.registry)["runs"]},
+                         {"Check a": "positive", "Check b": "negative"})
 
     def test_parallel_scratch_attempts_have_unique_profiles_and_one_declaration(self):
         profiles = []

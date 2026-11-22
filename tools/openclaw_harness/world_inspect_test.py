@@ -63,6 +63,15 @@ class InspectionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Select one world"):
             resolve_world(container)
 
+    def test_preparation_selects_its_character_and_ambiguity_lists_real_filenames(self):
+        other = self.world / "other.sav.zzip"
+        other.touch()
+        with self.assertRaisesRegex(ValueError, "other.sav.zzip"):
+            inspect_world(self.world)
+        write_json(self.world.parents[1] / "preparation.json",
+                   {"schema": "caol-world-preparation-v1", "world": self.world.name, "player_save": "player.sav"})
+        self.assertEqual(inspect_world(self.world)["player_omt"], [-1, 0, 1])
+
     def test_party_qualifies_by_living_member_outside_home_view(self):
         self.region["npcs"] = [{"id": 2, "name": "scout", "location": [-24 * 41, 0, 0], "dead": False}]
         write_json(self.world / "overmaps/o.-1.0", self.region)
@@ -100,14 +109,23 @@ class InspectionTest(unittest.TestCase):
         self.assertIn("open tower operation", render(result))
 
     def test_horde_footing_preserves_level_and_exact_tile_counts(self):
-        self.region["horde_map"] = [[-1, 24, 0], {"location": [-1, 24, 0], "typeid": "mon_zombie"},
-                                    [-2, 25, 0], {"location": [-2, 25, 0], "typeid": "mon_zombie"},
-                                    [-1, 24, 1], {"location": [-1, 24, 1], "typeid": "mon_zombie"}]
+        # Legacy and modern entries can coexist. The overmap key owns the position.
+        self.region["horde_map"] = [
+            [-1, 24, 0], {"location": [888, 777, 6], "typeid": "mon_zombie"}, [0, 0, 0], 0, 0, 2, {},
+            [-2, 25, 0], "mon_zombie", [0, 0, 0], 0, 0, 2,
+            [-1, 24, 1], "mon_zombie", [0, 0, 0], 0, 0, 2, {},
+        ]
         write_json(self.world / "overmaps/o.-1.0", self.region)
         result = inspect_world(self.world, include_map=True)
         self.assertEqual(result["horde_monster_counts"], {"mon_zombie": 3})
         self.assertEqual(result["horde_tiles"][0], {"omt": [-1, 1, 0], "types": {"mon_zombie": 2}})
-        self.assertIn("h horde", render(result))
+        self.assertIn("h overmap monster", render(result))
+
+    def test_invalid_horde_position_is_reported(self):
+        self.region["horde_map"] = [None, "mon_zombie", [0, 0, 0], 0, 0, 2]
+        write_json(self.world / "overmaps/o.-1.0", self.region)
+        with self.assertRaisesRegex(SystemExit, "invalid position"):
+            inspect_world(self.world)
 
     def test_player_choice_and_invalid_archives(self):
         write_json(self.world / "other.sav", {"player": {"location": [0, 0, 0]}})

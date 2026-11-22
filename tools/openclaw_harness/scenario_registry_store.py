@@ -9734,8 +9734,16 @@ def ingest_report_reference(
                 raise ScenarioRegistryStoreError(str(exc)) from exc
         from world_examples import report_context
         run_context = _json_text(report_context(connection, report, facts))
-        if _is_diagnostic_replay_report(report, facts):
-            classification = "diagnostic replay"
+        scratch = facts["scenario"] == "caol.scratch_world"
+        if scratch:
+            # Every scratch question owns its report. None certify or revoke a
+            # claim about the reusable launcher used by other worlds.
+            from world_examples import remember_scratch_terminal
+            terminal = remember_scratch_terminal(connection, str(report.get("run_id", "")), report_path)
+            if not terminal or terminal["report_sha256"] != report_sha256:
+                raise ScenarioRegistryStoreError("Scratch report does not match its closed selected session")
+        if scratch or _is_diagnostic_replay_report(report, facts):
+            classification = "scratch playtest" if scratch else "diagnostic replay"
             with immediate_transaction(connection):
                 connection.execute(
                     "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status, run_context_json ) "
@@ -10310,6 +10318,20 @@ def ingest_token_linked_report_reference(
     witness_charter: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Ingest one durable report and retain its selected-token verification link."""
+    result = _ingest_selected_report(connection, token_id, report_path, adapters=adapters,
+                                     witness_charter=witness_charter)
+    if result.get("status") not in {"ingested", "ingested_setup_only"}:
+        from world_examples import remember_scratch_terminal
+        observation = remember_scratch_terminal(connection, token_id, report_path)
+        if observation:
+            result["scratch_observation"] = observation
+    return result
+
+
+def _ingest_selected_report(
+    connection: sqlite3.Connection, token_id: str, report_path: Path, *,
+    adapters: BindingAdapters, witness_charter: Optional[Mapping[str, Any]],
+) -> Dict[str, Any]:
     canonical_path, report_sha256 = _report_path_and_sha256(report_path)
     report_id = _identity(
         "caol-scenario-report-v1",
@@ -10369,6 +10391,19 @@ def ingest_token_linked_report_reference(
             "token_id": selection.token_id,
             "report_id": str(ingested.get("report_id", "")),
         }
+
+    if ingested.get("classification") == "scratch playtest":
+        from world_examples import remember_scratch_terminal
+        terminal = remember_scratch_terminal(connection, selection.token_id, report_path)
+        if not terminal or terminal["report_sha256"] != report_sha256:
+            return {"status": "rejected_report_identity", "token_id": selection.token_id, "report_id": report_id}
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT OR IGNORE INTO token_history(token_id, manifest_id, route_key, event_kind, reason, details_json) "
+                "SELECT token_id,manifest_id,route_key,'verification_run','report_ingested',? "
+                "FROM token_history WHERE token_id=? AND event_kind='issued'",
+                (_json_text({"report_id": report_id, "report_sha256": report_sha256}), selection.token_id))
+        return {**ingested, "token_id": selection.token_id}
 
     if ingested.get("classification") == "setup-only":
         with immediate_transaction(connection):

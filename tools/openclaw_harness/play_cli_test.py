@@ -450,7 +450,7 @@ class PlayerCliTest(unittest.TestCase):
             "observation_id": "retained-interruption", "run_id": "run-a", "surface": {
                 "kind": "prompt", "facts": current["facts_changed"], "actions": current["actions"]}}})
         shown = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
-                                "--wait-seconds", "0", "collect"], capture_output=True, text=True)
+                                "--wait-seconds", "0", "collect"], capture_output=True, encoding="utf-8")
         self.assertEqual(shown.returncode, 0, shown.stderr)
         self.assertIn("NO → play no — continue this time", shown.stdout)
         self.assertIn("IGNORE → play ignore — continue; ignore this distraction type", shown.stdout)

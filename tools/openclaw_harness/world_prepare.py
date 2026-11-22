@@ -503,13 +503,8 @@ def prepare_world(source: Path, recipe: dict, destination: Path, *, player_save:
         raise ValueError("destination must be outside existing worlds and owned harness profiles")
     if any(p.is_symlink() or (getattr(p, "is_junction", lambda: False)()) for p in original.rglob("*")):
         raise ValueError("world contains a filesystem link; supply a materialized world copy")
-    if player_save is None:
-        players = sorted(p.name for p in original.glob("*.sav.zzip"))
-        if len(players) != 1:
-            raise ValueError(f"select one of {players} with --player-save")
-        player_save = players[0]
-    if not _component(player_save).endswith(".sav.zzip") or not (original / player_save).is_file():
-        raise ValueError("player save must name a compressed character save in this world")
+    from world_inspect import _player_file
+    player_save = _player_file(original, _component(player_save) if player_save is not None else None)
     _check_closed(original)
     before = _hash(original)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -554,9 +549,8 @@ def verify_requirements(source: Path, preparation: dict, *, player_save: str | N
     original, _ = _fixture(Path(source).expanduser().resolve(strict=True))
     if original.name != preparation.get("world"):
         raise ValueError(f"preparation is for {preparation.get('world')}, selected {original.name}")
-    selected = _component(player_save or preparation.get("player_save"))
-    if not selected.endswith(".sav.zzip"):
-        raise ValueError("select a compressed player save")
+    from world_inspect import _player_file
+    selected = _player_file(original, _component(player_save or preparation.get("player_save")))
     anchor = _point(preparation.get("player_location_ms"))
     locations, resolve = _locations(preparation["recipe"].get("locations", {}),
                                    (anchor[0] // 24, anchor[1] // 24, anchor[2]))

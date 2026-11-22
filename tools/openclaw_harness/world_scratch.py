@@ -38,7 +38,23 @@ def selected_scratch(selection):
     source = Path(binding["source"])
     if not source.is_absolute() or not source.name or source.name in {".", ".."} or not source.is_dir():
         raise ScenarioRegistryStoreError(f"Scratch source world is unavailable: {source}")
-    return source, "scratch-" + binding["attempt_id"][:16], binding["sha256"]
+    from world_inspect import _player_file
+    try:
+        player = _player_file(source, binding.get("player_save"))
+    except ValueError as error:
+        raise ScenarioRegistryStoreError(str(error)) from error
+    return source, "scratch-" + binding["attempt_id"][:16], binding["sha256"], player
+
+
+def select_staged_player(world: Path, player: str):
+    """Expose the bound character to native quickload, which opens the first .sav."""
+    from world_inspect import _player_file
+    _player_file(world, player)
+    for pattern in ("*.sav", "*.sav.zzip"):
+        for path in world.glob(pattern):
+            if path.name != player and path.is_file():
+                path.unlink()
+    return {"selected_player_save": player}
 
 
 def local_runner_options(config_profile):
@@ -125,11 +141,11 @@ def _wait_for_bridge(session, binding_id, timeout=120.0):
 
 
 def launch_scratch(world: Path, *, executable: Path | None = None, build_receipt: Path | None = None,
-                   dry_run: bool = False, question: str = "", family: str = "", registry=None) -> dict:
+                   dry_run: bool = False, question: str = "", family: str = "", player_save: str = "", registry=None) -> dict:
     """Check a build, select a single reusable declaration and open its bound disposable world."""
     import scenario_registry_cli as cli
     from scenario_registry_store import ScenarioRegistryStoreError
-    from world_inspect import resolve_world
+    from world_inspect import resolve_world, _player_file
 
     attempt = uuid.uuid4().hex
     question = question.strip() or "Explore the prepared world and record what happens."
@@ -145,13 +161,8 @@ def launch_scratch(world: Path, *, executable: Path | None = None, build_receipt
         if executable and build_receipt:
             raise ValueError("Choose an executable or an immutable build receipt.")
         source = resolve_world(source).resolve(strict=True)
-        player_files = sorted({p.name.removesuffix(".zzip") for pattern in ("*.sav", "*.sav.zzip")
-                               for p in source.glob(pattern) if p.is_file()})
-        if not (source / "worldoptions.json").is_file() or not player_files:
-            raise ValueError(f"Scratch needs a saved player and world options in {source}")
-        if len(player_files) == 1:
-            player = player_files[0]
-            source_binding["player_save"] = player if (source / player).is_file() else player + ".zzip"
+        if not (source / "worldoptions.json").is_file():
+            raise ValueError(f"Scratch needs world options in {source}")
         prep_file = source.parent.parent / "preparation.json" if source.parent.name == "save" else None
         if prep_file and prep_file.is_file():
             preparation = json.loads(prep_file.read_text(encoding="utf-8"))
@@ -162,6 +173,11 @@ def launch_scratch(world: Path, *, executable: Path | None = None, build_receipt
                                       player_save=preparation.get("player_save"))
             if parent_source and isinstance(preparation.get("recipe"), dict):
                 recipe = preparation["recipe"]
+        prepared_player = source_binding.get("player_save")
+        if player_save and prepared_player and player_save != prepared_player:
+            raise ValueError(f"Prepared world selects {prepared_player}; choose that player or prepare a new world")
+        player_save = _player_file(source, player_save or prepared_player)
+        source_binding["player_save"] = player_save
         args = argparse.Namespace(executable=str(executable or ""), run_build_receipt=str(build_receipt or ""))
         if build_receipt:
             binding = cli._resolve_run_build(args)
@@ -199,9 +215,9 @@ def launch_scratch(world: Path, *, executable: Path | None = None, build_receipt
             source_binding.setdefault("parent_sha256", digest)
             source_binding.setdefault("parent", str(source))
             brief = {"outcome": question, "scratch_world": {
-                "attempt_id": attempt, "source": str(source), "sha256": digest}}
+                "attempt_id": attempt, "source": str(source), "sha256": digest, "player_save": player_save}}
             if dry_run:
-                return {"status": "preflight_passed", "source": str(source), "world_sha256": digest,
+                return {"status": "preflight_passed", "source": str(source), "world_sha256": digest, "player_save": player_save,
                         "build": build, "scenario": SCENARIO,
                         "scope": "Build and saved-world checks passed. Registry selection runs at launch."}
             _registry(["rebuild", "--source", str(DECLARATION)], registry)

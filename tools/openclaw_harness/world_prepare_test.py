@@ -142,6 +142,28 @@ class PrepareTest(unittest.TestCase):
         self.assertEqual(clone["world_sha256"], native["world_sha256"])
         self.assertEqual(clone["source"], str(self.out.resolve()))
 
+    def test_plain_character_and_explicit_archive_preserve_both_versions(self):
+        world = self.root / "TestSetup00"
+        shutil.copytree(WORLD, world)
+        archived = world / PLAYER
+        h.run_zzip(archived)
+        plain = archived.with_suffix("")
+        payload = json.loads(plain.read_bytes())
+        payload["player"]["location"][0] += 1
+        plain.write_text("# version 37\n" + json.dumps(payload), encoding="utf-8")
+        with_both = wp.prepare_world(world, {}, self.out, player_save=PLAYER)
+        self.assertEqual(with_both["source_sha256"], with_both["world_sha256"])
+        self.assertNotEqual(with_both["player_location_ms"], payload["player"]["location"])
+        self.assertEqual((Path(with_both["world_dir"]) / plain.name).read_bytes(), plain.read_bytes())
+        archived.unlink()
+        recipe = {"items": [{"id": "lighter", "charges": 9}],
+                  "requires": [{"item": "lighter", "active": False}]}
+        built = wp.prepare_world(world, recipe, self.root / "plain")
+        self.assertEqual(built["player_save"], plain.name)
+        self.assertEqual(built["player_location_ms"], payload["player"]["location"])
+        self.assertTrue(wp.verify_requirements(Path(built["world_dir"]), built)["requirements_met"])
+        self.assertEqual((Path(built["world_dir"]) / plain.name).read_bytes(), plain.read_bytes())
+
     def test_bad_edits_leave_no_artifact_and_preserve_source(self):
         before = wp._hash(WORLD)
         failures = [

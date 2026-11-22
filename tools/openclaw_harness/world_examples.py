@@ -15,6 +15,76 @@ from pathlib import Path
 from scenario_registry_store import immediate_transaction, open_registry, resolve_registry_path
 
 
+def remember_scratch_terminal(connection, token_id, report_path):
+    """Keep a closed scratch observation separately from eligibility for verification."""
+    issued = connection.execute(
+        "SELECT i.manifest_id,i.route_key,i.details_json,m.source_path FROM token_history i "
+        "JOIN manifest_current m ON m.manifest_id=i.manifest_id WHERE i.token_id=? AND i.event_kind='issued'",
+        (token_id,),
+    ).fetchone()
+    if not issued:
+        return None
+    selection = json.loads(issued["details_json"])
+    if Path(issued["source_path"]).name != "caol.scratch_world.json" or selection.get("manifest_id") != issued["manifest_id"]:
+        return None
+    brief = selection.get("coordinator_authorization", {}).get("outcome_brief", {}).get("scratch_world")
+    if not isinstance(brief, dict) or not all(brief.get(k) for k in ("attempt_id", "sha256", "source")):
+        return None
+    from cockpit_archive import is_sequence
+    from cockpit_report_reference import load_report
+    try:
+        _, digest, report = load_report(report_path)
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error):
+        return None
+    def mapping(value):
+        return value if isinstance(value, Mapping) else {}
+
+    source = mapping(mapping(report.get("scenario_manifest")).get("source"))
+    startup = mapping(report.get("startup"))
+    snapshot = mapping(startup.get("saved_world_snapshot"))
+    expected_build = (selection.get("runtime_binding") or {}).get("executable_sha256")
+    profile = "scratch-" + brief["attempt_id"][:16]
+    installed = snapshot.get("installed_sha256")
+    player = brief.get("player_save")
+    if player:
+        transform = snapshot.get("transform_report") or {}
+        if (not isinstance(transform, Mapping) or transform.get("selected_player_save") != player or
+                not isinstance(installed, str) or len(installed) != 64 or any(c not in "0123456789abcdef" for c in installed)):
+            return None
+    elif installed != brief["sha256"]:
+        return None
+    if (report.get("scenario") != "caol.scratch_world" or report.get("run_id") != token_id or
+            not expected_build or report.get("binding_id") != expected_build or
+            source.get("path") != issued["source_path"] or source.get("sha256") != selection.get("manifest_sha256") or
+            startup.get("profile") != profile or snapshot.get("source") != brief["source"] or
+            snapshot.get("source_sha256") != brief["sha256"] or snapshot.get("status") != "green_saved_world_snapshot_installed"):
+        return None
+    expected_bridge = hashlib.sha256(f"caol-selected-cockpit-bridge-v1:{token_id}:{issued['source_path']}".encode()).hexdigest()
+    steps = report.get("steps")
+    if not is_sequence(steps):
+        return None
+    finals = [mapping(mapping(step).get("cockpit_live_session")).get("final") for step in steps]
+    finals = [final for final in finals if isinstance(final, dict) and final.get("schema") == "caol-cockpit-live-final-v1"
+              and final.get("state") == "finished" and final.get("run_id") == token_id and final.get("binding_id") == expected_bridge]
+    if len(finals) != 1:
+        return None
+    final = finals[0]
+    stop = mapping(final.get("stop_detail"))
+    observed = mapping(stop.get("gameplay_outcome"))
+    details = {"attempt_id": brief["attempt_id"], "native_run_id": token_id, "report_sha256": digest,
+               "scenario": "caol.scratch_world", "outcome": observed.get("verdict") or "finished",
+               "detail": str(observed.get("summary") or stop.get("requested_stop_reason") or final.get("stop_reason") or "")[:2000],
+               "ingestion_status": "terminal_observation_only", "proof_status": "unverified"}
+    with nullcontext() if connection.in_transaction else immediate_transaction(connection):
+        connection.execute("INSERT OR IGNORE INTO token_history(token_id,manifest_id,route_key,event_kind,reason,details_json) "
+                           "VALUES(?,?,?,'scratch_observation','native_terminal',?)",
+                           (token_id, issued["manifest_id"], issued["route_key"], json.dumps(details, sort_keys=True)))
+        stored = json.loads(connection.execute(
+            "SELECT details_json FROM token_history WHERE token_id=? AND event_kind='scratch_observation' "
+            "AND reason='native_terminal'", (token_id,)).fetchone()[0])
+    return stored if stored["report_sha256"] == digest else None
+
+
 def report_context(connection, report, facts):
     """Capture the small historical fields that cannot be recovered after cleanup."""
     manifest = facts.get("manifest") or {}
@@ -166,9 +236,17 @@ def _history_rows(connection):
             reports[run_id] = entry
             if row["token_id"]:
                 tokens[row["token_id"]] = run_id
+    terminals = {}
+    if has_attempts:
+        for saved in connection.execute("SELECT token_id,details_json,recorded_at FROM token_history "
+                                        "WHERE event_kind='scratch_observation' AND reason='native_terminal'"):
+            terminal = json.loads(saved["details_json"])
+            terminals[(terminal["attempt_id"], saved["token_id"])] = {**terminal, "recorded_at": saved["recorded_at"]}
     for row in connection.execute("SELECT * FROM world_scratch_attempt") if has_attempts else ():
         native = row["native_run_id"]
         linked = reports.pop(native, None) or reports.pop(tokens.get(row["selection_token"]), {})
+        if not linked:
+            linked = terminals.get((row["run_id"], row["selection_token"]), {})
         yield {
             **linked, "run_id": row["run_id"], "native_run_id": linked.get("native_run_id") or native,
             "scenario": linked.get("scenario", ""),
@@ -375,7 +453,10 @@ def run_command(args):
             print(f"{value['total']} matching playtest{'' if value['total'] == 1 else 's'}")
             for row in value["runs"]:
                 summary = " ".join(str(row["question"] or row["scenario"]).split())
-                print(f"{row['run_id']}  [{row['outcome']}]  {summary[:200]}")
+                status = str(row["outcome"])
+                if row.get("ingestion_status") in {"terminal_observation_only", "ingested_non_authoritative"}:
+                    status += ", unverified"
+                print(f"{row['run_id']}  [{status}]  {summary[:200]}")
                 if row.get("reason") or row.get("detail"):
                     print("  " + " ".join((row.get("reason") or row["detail"]).split())[:220])
             return 0

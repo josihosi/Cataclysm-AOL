@@ -15481,31 +15481,14 @@ def r005_source_bound_visibility_setup_receipts_from_installed_save(
 
 
 def load_saved_player_payload(world_dir: Path, player_save: str = "") -> Tuple[str, Path, Dict[str, Any], os.stat_result]:
-    selected_player_save = player_save.strip()
-    if not selected_player_save:
-        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
-        if len(saves) != 1:
-            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
-        selected_player_save = saves[0]
-
+    from world_inspect import _player_file, _read_save
+    selected_player_save = _player_file(world_dir, player_save.strip())
     player_save_path = world_dir / selected_player_save
-    if not player_save_path.exists():
-        raise FileNotFoundError(f"Player save not found: {player_save_path}")
-    if player_save_path.suffix != ".zzip":
-        raise RuntimeError(f"Player payload audit expects .zzip save path: {player_save_path}")
-
     stat = player_save_path.stat()
-    extracted_save = player_save_path.with_suffix("")
-    run_zzip(player_save_path)
-    if not extracted_save.exists():
-        raise RuntimeError(f"Player payload audit did not extract save: {extracted_save}")
-    try:
-        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
-    finally:
-        if extracted_save.exists():
-            extracted_save.unlink()
-    if not isinstance(payload, dict):
-        raise RuntimeError(f"Extracted player save is not a JSON object: {extracted_save}")
+    with tempfile.TemporaryDirectory(prefix="read-caol-player-") as temp:
+        stage = Path(temp)
+        (stage / "worldoptions.json").write_text("[]", encoding="utf-8")
+        payload = _read_save(world_dir, Path(selected_player_save), stage)
     return selected_player_save, player_save_path, payload, stat
 
 
@@ -28326,28 +28309,13 @@ def apply_overmap_terrain_id_at_abs_omt_transform(
 
 
 def load_player_abs_omt(world_dir: Path, player_save_name: str) -> Tuple[Tuple[int, int, int], List[int]]:
-    player_save = world_dir / player_save_name
-    if not player_save.exists():
-        raise SystemExit(f"Fixture player target not found: {player_save}")
-    if player_save.suffix != ".zzip":
-        raise SystemExit(f"Fixture player target expects .zzip save path: {player_save}")
-
-    extracted_save = player_save.with_suffix("")
-    run_zzip(player_save)
-    if not extracted_save.exists():
-        raise SystemExit(f"Fixture player target did not extract save: {extracted_save}")
-
-    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
-    if extracted_save.exists():
-        extracted_save.unlink()
-    if not isinstance(payload, dict):
-        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    _, player_save, payload, _ = load_saved_player_payload(world_dir, player_save_name)
     player = payload.get("player")
     if not isinstance(player, dict):
-        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+        raise SystemExit(f"Player save is missing player object: {player_save}")
     location = player.get("location", [])
     if not isinstance(location, list) or len(location) < 3:
-        raise SystemExit(f"Extracted player save is missing location array: {extracted_save}")
+        raise SystemExit(f"Player save is missing location array: {player_save}")
     try:
         abs_omt = (int(location[0]) // 24, int(location[1]) // 24, int(location[2]))
         location_copy = [int(location[0]), int(location[1]), int(location[2])]
@@ -29939,7 +29907,7 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
         monster_raw = raw_horde_map[base + 1]
         destination_raw = raw_horde_map[base + 2]
         if not isinstance(location_raw, list) or len(location_raw) < 3:
-            continue
+            raise SystemExit(f"Overmap horde_map has an invalid position at index {base}")
         if not isinstance(destination_raw, list) or len(destination_raw) < 3:
             destination: List[int] = []
         else:
@@ -41864,9 +41832,14 @@ def _run_startup(args: argparse.Namespace) -> int:
     profile_snapshot_result: Dict[str, Any] = {}
     saved_world_snapshot_result: Dict[str, Any] = {}
     if saved_world_snapshot:
+        stage_transform = None
+        scratch_player = getattr(args, "scratch_player_save", "")
+        if scratch_player:
+            from world_scratch import select_staged_player
+            stage_transform = lambda staged: select_staged_player(staged, scratch_player)
         saved_world_snapshot_result = install_saved_world_snapshot(
             profile, args.world, saved_world_snapshot, replace=args.replace_existing_worlds,
-            expected_sha256=getattr(args, "expected_saved_world_sha256", ""),
+            expected_sha256=getattr(args, "expected_saved_world_sha256", ""), stage_transform=stage_transform,
             require_fresh=bool(getattr(args, "expected_saved_world_sha256", "")),
             disposable_run_id=(str(args.harness_run_id) if getattr(args, "disposable_saved_world", False) else ""),
         )
@@ -44898,6 +44871,8 @@ def _run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
     if getattr(args, "expected_saved_world_sha256", ""):
         start_cmd.extend(["--expected-saved-world-sha256", args.expected_saved_world_sha256])
+        if getattr(args, "scratch_player_save", ""):
+            start_cmd.extend(["--scratch-player-save", args.scratch_player_save])
     # A selected declaration's initial saved-world bootstrap is represented as
     # a continuation too.  A fresh copy of that exact declared source still
     # needs custody; a genuine reentry or an existing destination must not
@@ -46342,6 +46317,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--expected-saved-world-sha256", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--scratch-player-save", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
     cleanup_saved_p = subparsers.add_parser("cleanup-disposable-saved-world", help="Remove an explicitly disposable saved-world copy after its exact run closes.")
     cleanup_saved_p.add_argument("--profile", required=True)
@@ -46430,6 +46406,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     probe_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--expected-saved-world-sha256", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--scratch-player-save", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--disposable-saved-world", action="store_true", help="Mark a newly copied saved world as disposable by this exact run.")
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")
     probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")

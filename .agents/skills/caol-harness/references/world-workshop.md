@@ -59,7 +59,7 @@ Luna can open an ordinary native cockpit on a disposable copy. Use `--dry-run` t
 python tools/openclaw_harness/startup_harness.py world scratch .userdata/playtest-east-camp --question "Can the player place and light the brazier using the ordinary controls?" --family fire
 ```
 
-Use the returned session handle for native controls, save, exit and finish. Each scratch launch has its own writable profile. The same prepared parent can supply independent games. A build blocker carries the next action, and a scratch attempt has a searchable run ID.
+Use the returned session handle for native controls, save, exit and finish. Each scratch launch has its own writable profile, so two players can test the same starting conditions at the same time. A prepared world opens on the character named in its recipe readback. For a raw world with multiple characters, pass `--player-save FILENAME`. A build blocker carries the next action, and a scratch attempt has a searchable run ID.
 
 ## Keep an example
 
@@ -69,4 +69,6 @@ python tools/openclaw_harness/startup_harness.py world keep RUN_ID --reason "Pla
 python tools/openclaw_harness/startup_harness.py world history --kept --family fire
 ```
 
-History and retained checkpoints live beside the scenario registry on the machine that ran the test. Use a reason that describes what the run actually showed. A failed approach or unusual encounter can make a good example. Add `--checkpoint CLOSED_WORLD` when the exact state is worth retaining. `world unkeep RUN_ID` releases that retained copy and keeps the searchable run result. New distances, weather, seeds and retry attempts fit under an existing question. Add a catalogue family when a genuinely new gameplay question needs one.
+History and retained checkpoints live beside the scenario registry on the machine that ran the test. Use a reason that describes what the run actually showed. A failed approach or unusual encounter can make a good example. Add `--checkpoint CLOSED_WORLD` when the exact state is worth retaining. To replay it, find the `checkpoint` path with `world history --kept --family FAMILY --json` and pass that path to `world scratch`. `world unkeep RUN_ID` releases the retained copy and keeps the searchable run result.
+
+Use the same family for retries and variations in distance, weather or seed. Each run has its own result and can be kept independently. Add a catalogue family when a genuinely new gameplay question needs one.

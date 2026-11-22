@@ -55,7 +55,7 @@ def _map(report):
         line = "".join(row_prefix(y, x) + symbols.get((x, y), _glyph(tile))
                        for x, tile in enumerate(row, x0))
         lines.append(f"{y:>5}  {line}{row_prefix(y, x1 + 1)}")
-    lines.append("@ avatar · ^ avatar on another level · B bandit · C cannibal · M Mi-go · n NPC · p predator · h horde")
+    lines.append("@ avatar · ^ avatar on another level · B bandit · C cannibal · M Mi-go · n NPC · p predator · h overmap monster")
     lines.append(". open · T woods · ~ water · = road/trail/rail · # building · + other · ? unsaved · [ ] local map")
     return lines
 
@@ -65,6 +65,8 @@ def render(report):
     lines = [f"{report['world']}   |   {report['radius_omt']} OMT radius   |   z={report['z']}",
              f"Player {tuple(avatar)} · view center {tuple(report['center_omt'])} · "
              f"{report['saved_tiles']:,} saved tiles, {report['unknown_tiles']:,} unknown"]
+    if report["center_omt"] != avatar[:2]:
+        lines.append(f"AI range stays centered on the player at {tuple(avatar[:2])}, radius 40 OMT")
     if report["local_map_omt"]:
         x0, y0, x1, y1 = report["local_map_omt"]
         lines.append(f"Local map intersects OMT x {x0}..{x1}, y {y0}..{y1}")
@@ -89,6 +91,8 @@ def render(report):
             operation = row["operation"]
             phase = "resolved" if operation.get("resolved") else "open"
             state += f", {phase} tower operation with {len(operation['members'])} member records"
+        if not row["anchor_in_ai_range"]:
+            state += ", home anchor outside player AI range"
         distance = row["edge_distance_omt"]
         edge = f"{distance} OMT to edge" if distance is not None else "footprint unknown"
         lines.append(f"{row['kind']} {tuple(row['anchor'])} · {edge} · {state}")
@@ -97,7 +101,7 @@ def render(report):
     counts = Counter(a["kind"] for a in report["predators"])
     populations = [f"{len(report['npcs'])} saved NPCs"]
     populations += [f"{n} {k}" for k, n in counts.most_common()]
-    populations += [f"{sum(report['horde_monster_counts'].values())} horde-map bodies"]
+    populations += [f"{sum(report['horde_monster_counts'].values())} horde-map monsters"]
     lines.append("Actors     " + ", ".join(populations))
     for check in report.get("requirements", []):
         lines.append(f"Requirement {check['status']}    {check['detail']}")

@@ -57,6 +57,7 @@ def add_commands(commands):
                          help="Put items at the player's feet. Repeatable.")
     scratch = actions.add_parser("scratch", help="Launch an ordinary disposable playtest with a compatible build.")
     scratch.add_argument("world", type=_source)
+    scratch.add_argument("--player-save", help="Select the character in a raw multi-character world.")
     scratch.add_argument("--question", default="", help="What the player should test.")
     scratch.add_argument("--family", default="", help="Group the result under an existing gameplay question.")
     scratch.add_argument("--registry", type=Path, help="Scenario registry SQLite file.")
@@ -74,12 +75,15 @@ def run(args):
             from world_inspect import inspect_world
             from world_view import render
 
-            result = inspect_world(args.source, player_save=args.player_save, radius=args.radius,
+            preparation = json.loads(args.check.read_text(encoding="utf-8-sig")) if args.check else {}
+            if args.check and (not isinstance(preparation, dict) or preparation.get("schema") != "caol-world-preparation-v1"):
+                raise ValueError("Expected a preparation.json from world prepare")
+            player = args.player_save or preparation.get("player_save")
+            result = inspect_world(args.source, player_save=player, radius=args.radius,
                                    center=args.center, z=args.z, include_map=args.map)
             if args.check:
                 from world_prepare import verify_requirements
-                preparation = json.loads(args.check.read_text(encoding="utf-8-sig"))
-                result.update(verify_requirements(args.source, preparation, player_save=args.player_save))
+                result.update(verify_requirements(args.source, preparation, player_save=player))
             print(json.dumps(result, ensure_ascii=True) if args.json else render(result))
             return 2 if result.get("requirements_met") is False else 0
         if args.world_command == "prepare":
@@ -91,7 +95,8 @@ def run(args):
             from world_scratch import launch_scratch
 
             result = launch_scratch(args.world, executable=args.executable, build_receipt=args.build_receipt,
-                                    dry_run=args.dry_run, question=args.question, family=args.family, registry=args.registry)
+                                    dry_run=args.dry_run, question=args.question, family=args.family, registry=args.registry,
+                                    player_save=args.player_save)
         else:
             import world_examples
             return world_examples.run_command(args)

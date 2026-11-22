@@ -76,18 +76,24 @@ def _read_save(world, relative, stage):
 
 
 def _player_file(world, requested):
+    if not requested and world.parent.name == "save":
+        manifest = world.parent.parent / "preparation.json"
+        if manifest.is_file():
+            prepared = _read_json(manifest)
+            if prepared.get("schema") == "caol-world-preparation-v1" and prepared.get("world") == world.name:
+                requested = prepared.get("player_save")
     if requested:
-        if Path(requested).name != requested or not requested.endswith((".sav", ".sav.zzip")):
+        if not isinstance(requested, str) or Path(requested).name != requested or not requested.endswith((".sav", ".sav.zzip")):
             raise ValueError("Select a local .sav or .sav.zzip player filename")
         if not (world / requested).is_file():
             raise ValueError(f"Player save missing: {requested}")
         return requested
-    choices = {p.name.removesuffix(".zzip") for pattern in ("*.sav", "*.sav.zzip")
-               for p in world.glob(pattern)}
-    if len(choices) != 1:
-        raise ValueError(f"Choose --player-save from {sorted(choices)}")
-    name = choices.pop()
-    return name + ".zzip" if (world / (name + ".zzip")).is_file() else name
+    choices = sorted(p.name for pattern in ("*.sav", "*.sav.zzip") for p in world.glob(pattern) if p.is_file())
+    if not choices:
+        raise ValueError(f"No .sav or .sav.zzip player file in {world}")
+    if len({name.removesuffix(".zzip") for name in choices}) != 1:
+        raise ValueError(f"Choose --player-save from {choices}")
+    return choices[-1]
 
 
 def _local_bounds(player, width):
@@ -161,13 +167,12 @@ def _region_facts(payload, npcs, horde_tiles, center, radius):
         if _point(pos) and isinstance(npc.get("id"), (int, str)):
             npcs[str(npc["id"])] = dict(id=npc["id"], name=npc.get("name"), omt=_omt(pos),
                                     dead=npc.get("dead"), faction=npc.get("my_fac"))
-    # Native horde_map serializes alternating absolute map-square keys and bodies.
-    horde = payload.get("horde_map", [])
-    for body in horde[1::2]:
-        if isinstance(body, dict) and _point(body.get("location")):
-            pos = _omt(body["location"])
-            if _distance(pos, center) <= radius:
-                horde_tiles.setdefault(tuple(pos), Counter())[body.get("typeid", "unknown")] += 1
+    from startup_harness import iter_horde_map_entries
+
+    for entity in iter_horde_map_entries(payload.get("horde_map")):
+        pos = _omt(entity["location_ms"])
+        if _distance(pos, center) <= radius:
+            horde_tiles.setdefault(tuple(pos), Counter())[entity["monster_id"] or "unknown"] += 1
 
 
 def _merge_populations(sites, buffer, npcs, avatar):

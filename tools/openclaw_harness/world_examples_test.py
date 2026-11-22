@@ -1,6 +1,7 @@
 """Run history, native receipt correlation, checkpoint custody and catalogue isolation."""
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import sqlite3
@@ -176,6 +177,51 @@ class WorldExamplesTest(unittest.TestCase):
         self.assertEqual((row["source_binding"],row["recipe"],row["reason"]), (binding,{"radius":40},"rare start"))
         self.record(source_binding=binding)
         self.assertEqual(examples.history(registry=self.db, search="Ana.sav")["total"], 2)
+
+    def test_rejected_proof_keeps_only_the_exact_native_scratch_terminal(self):
+        source = str(self.root / "caol.scratch_world.json")
+        manifest = store.manifest_identity(Path(source))
+        token, attempt = "t"*64, "a"*32
+        brief = {"attempt_id": attempt, "sha256": "a"*64, "source": str(self.source), "player_save": "Jim.sav"}
+        binding = hashlib.sha256(f"caol-selected-cockpit-bridge-v1:{token}:{source}".encode()).hexdigest()
+        receipt = {"manifest_id": manifest, "manifest_sha256": "b"*64, "runtime_binding": {"executable_sha256":"c"*64},
+                   "coordinator_authorization": {"outcome_brief": {"scratch_world": brief}}}
+        snap = {"source": str(self.source), "source_sha256": "a"*64, "installed_sha256": "d"*64,
+                "status": "green_saved_world_snapshot_installed", "transform_report": {"selected_player_save": "Jim.sav"}}
+        final = {"run_id": token, "state": "finished", "schema": "caol-cockpit-live-final-v1", "binding_id": binding,
+                 "stop_detail": {"gameplay_outcome": {"summary": "Scout never found the bridge.", "verdict": "negative"}}}
+        report = {"run_id": token, "scenario": "caol.scratch_world", "binding_id": "c"*64,
+                  "scenario_manifest": {"source":{"path": source, "sha256": "b"*64}},
+                  "startup": {"profile": "scratch-"+attempt[:16], "saved_world_snapshot":snap},
+                  "steps": [{"cockpit_live_session":{"final":final}}]}
+        path = self.root / "probe.report.json"
+        with contextlib.closing(store.open_registry(self.db)) as conn:
+            conn.execute("INSERT INTO manifest_current(manifest_id, source_path, present, revision,"
+                         "declaration_json, normalized_json, validation_json) VALUES(?,?,1,1,'{}','{}','{}')",
+                         (manifest, source))
+            conn.execute("INSERT INTO token_history(token_id,manifest_id,route_key,event_kind,reason,details_json) "
+                         "VALUES(?,?,'test','issued','query_selection',?)",(token,manifest,json.dumps(receipt)))
+            conn.execute("INSERT INTO token_history(token_id,manifest_id,route_key,event_kind,reason,details_json) "
+                         "VALUES(?,?,'test','invalidated','proof_route_unknown','{}')",(token,manifest))
+            for obj, key in ((report, "run_id"), (report, "binding_id"), (report["startup"], "profile"),
+                             (report["scenario_manifest"]["source"], "sha256"), (snap, "source_sha256"),
+                             (snap["transform_report"], "selected_player_save"), (final, "binding_id")):
+                with self.subTest(key=key), mock.patch.dict(obj, {key:"another game"}):
+                    path.write_text(json.dumps(report))
+                    self.assertIsNone(examples.remember_scratch_terminal(conn, token, path))
+            path.write_text(json.dumps(report))
+            result = store.ingest_token_linked_report_reference(conn, token, path, adapters=None)
+            self.assertEqual(result["status"], "rejected_token")
+            self.assertEqual(result["scratch_observation"]["outcome"], "negative")
+            self.assertEqual(conn.execute("SELECT count(*) FROM verification_history").fetchone()[0], 0)
+            self.assertEqual(examples.remember_scratch_terminal(conn, token, path), result["scratch_observation"])
+        path.unlink()
+        self.record(ident=attempt, outcome="starting", selection_token=token)
+        row = examples.history(registry=self.db)["runs"][0]
+        self.assertEqual((row["outcome"],row["detail"],row["proof_status"]),
+                         ("negative","Scout never found the bridge.","unverified"))
+        self.assertEqual(row["report_sha256"], result["scratch_observation"]["report_sha256"])
+        self.assertIn("[negative, unverified]", self.invoke("history"))
 
 
 if __name__ == "__main__":
