@@ -30,6 +30,10 @@ def digest(path):
     return h.hexdigest()
 
 
+def recipe_digest(recipe):
+    return hashlib.sha256(json.dumps(recipe, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
 def data_digest():
     """Hash paths, file content and symlink targets for the data tree."""
     root = ROOT / 'data'
@@ -112,22 +116,42 @@ def coverage(state):
         events = [e for a in done for e in a['result']['events'] if e['transition'] == transition]
         result['transitions'][transition] = {'reached': sum(e['reached'] for e in events),
                                              'missed': sum(not e['reached'] for e in events)}
+    groups = {}
+    for a in done:
+        failure = a['result'].get('first_failure')
+        if failure:
+            key = json.dumps(failure['group'], sort_keys=True, separators=(',', ':'))
+            groups.setdefault(key, {'key': failure['group'], 'attempt_ids': [], 'setup_ids': []})
+            groups[key]['attempt_ids'].append(a['id'])
+            groups[key]['setup_ids'].append(a['recipe']['setup_seed'])
+    result['failure_groups'] = list(groups.values())
     return result
 
 
-def initialize(directory, binary, setup_seeds, game_seeds, scenario=SCENARIO):
+def initialize(directory, binary, setup_seeds, game_seeds, scenario=SCENARIO, failure_control='none'):
     lock = acquire(directory)
     with lock:
         path = directory / 'campaign.json'
         if path.exists():
             raise RuntimeError('campaign already exists')
         binary = binary.resolve(strict=True)
+        controls = failure_control if isinstance(failure_control, list) else [failure_control] * len(setup_seeds)
+        if len(controls) != len(setup_seeds):
+            raise ValueError('supply one failure control per attempt')
+        if any(control != 'none' for control in controls) and scenario != JOURNEY:
+            raise ValueError('failure controls require the scout journey scenario')
         attempts = []
         for i, (setup, game) in enumerate(zip(setup_seeds, game_seeds)):
-            attempts.append({'id': i, 'status': 'pending', 'recipe': resolve(setup, game, scenario)})
+            recipe = resolve(setup, game, scenario)
+            if scenario == JOURNEY:
+                recipe['reporting_control'] = controls[i]
+            attempts.append({'id': i, 'status': 'pending', 'recipe': recipe, 'recipe_sha256': recipe_digest(recipe)})
         if not attempts or len(setup_seeds) != len(game_seeds):
             raise ValueError('supply equally many setup and game seeds')
-        atomic_json(path, {'version': 1, 'binary': str(binary), 'binary_sha256': digest(binary),
+        commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        dirty = subprocess.check_output(['git', 'diff', '--binary', 'HEAD', '--', 'src', 'tests/bandit_live_world_test.cpp'], cwd=ROOT)
+        atomic_json(path, {'version': 1, 'checkout_commit': commit, 'checkout_dirty_sha256': hashlib.sha256(dirty).hexdigest(),
+                           'runner_sha256': digest(Path(__file__)), 'binary': str(binary), 'binary_sha256': digest(binary),
                            'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario == JOURNEY else 'tests/overmap_ai_seed_campaign_test.cpp')),
                            'data_identity': data_digest() if scenario == JOURNEY else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
 
@@ -142,8 +166,59 @@ def replay(source, attempt_id, destination):
         path = destination / 'campaign.json'
         if path.exists():
             raise RuntimeError('campaign already exists')
-        state['attempts'] = [{'id': 0, 'status': 'pending', 'recipe': attempt['recipe']}]
+        if attempt.get('recipe_sha256') and attempt['recipe_sha256'] != recipe_digest(attempt['recipe']):
+            raise RuntimeError('recorded recipe changed')
+        state['attempts'] = [{'id': 0, 'status': 'pending', 'recipe': attempt['recipe'],
+                              'recipe_sha256': recipe_digest(attempt['recipe'])}]
         atomic_json(path, state)
+
+
+def journey_invariant_result(recipe, observation):
+    """Evaluate the native final summary, optionally injecting a labelled reporting control.
+
+    These controls alter a disposable copy, never the native game or its output.
+    Earlier fixture-internal failures remain incomplete, not attributed here.
+    """
+    actual = dict(observation)
+    observed = dict(actual)
+    control = recipe.get('reporting_control', 'none')
+    if control == 'return_before_watch':
+        observed['return_minute'] = observed['watch_minute'] - 1
+    elif control == 'missing_physical_return':
+        observed['physical_returns'] = 0
+    elif control != 'none':
+        raise ValueError('unknown reporting control')
+    checks = [
+        ('watch_reached', observed['watch_minute'] >= 0, 'watch_minute', 'nonnegative'),
+        ('departure_matches_schedule', observed['departure_fired'] == recipe['setup']['acquire'],
+         'departure_fired', recipe['setup']['acquire']),
+        ('return_after_watch', observed['return_minute'] >= observed['watch_minute'],
+         'return_minute', 'at or after watch_minute'),
+        ('return_generation_matches', observed['generation'] > 0 and
+         observed['return_generation'] == observed['generation'], 'return_generation', 'active generation'),
+        ('physical_return_committed', observed['physical_returns'] > 0, 'physical_returns', 'positive'),
+    ]
+    passed = []
+    first = None
+    for invariant, valid, field, expected in checks:
+        if not valid:
+            first = {'invariant': invariant,
+                     'boundary': 'fixture CAMPAIGN_JOURNEY final summary after finish_return',
+                     'last_valid': {'checked_invariants': passed.copy(), 'native_summary': actual},
+                     'first_invalid': {'field': field, 'value': observed[field], 'expected': expected,
+                                       'evaluated_summary': observed},
+                     'group': {'invariant': invariant,
+                               'faction': 'cannibal' if recipe['setup']['cannibal'] else 'bandit',
+                               'phase': 'return_summary', 'owner': 'not observed',
+                               'acquire': recipe['setup']['acquire']},
+                     'classification': 'test_control' if control != 'none' else 'invariant_contradiction'}
+            break
+        passed.append(invariant)
+    return {'native_summary': actual, 'evaluated_summary': observed, 'control': control,
+            'first_failure': first,
+            'executed_actions': ['reach_watch'] + (['depart_during_watch'] if actual['departure_fired'] else []) +
+                                ['complete_watch', 'finish_return'],
+            'observation_boundary': 'fixture CAMPAIGN_JOURNEY final summary after finish_return'}
 
 
 def run(directory, limit=None):
@@ -151,6 +226,11 @@ def run(directory, limit=None):
     with lock:
         path = directory / 'campaign.json'
         state = json.loads(path.read_text())
+        if state.get('runner_sha256') and digest(Path(__file__)) != state['runner_sha256']:
+            raise RuntimeError('campaign runner changed; restore the recorded runner for replay')
+        for attempt in state['attempts']:
+            if attempt.get('recipe_sha256') and attempt['recipe_sha256'] != recipe_digest(attempt['recipe']):
+                raise RuntimeError('recorded recipe changed')
         binary = Path(state['binary'])
         if digest(binary) != state['binary_sha256']:
             raise RuntimeError('native executable changed; create a new campaign')
@@ -201,12 +281,17 @@ def run(directory, limit=None):
                     raise RuntimeError('journey observation missing or duplicated; attempt remains incomplete')
                 obs = json.loads(lines[0])
                 fields = {'watch_minute', 'departure_fired', 'return_minute', 'return_generation', 'generation', 'physical_returns'}
-                if set(obs) != fields or obs['departure_fired'] not in (0, 1) or obs['departure_fired'] != setup['acquire']:
+                if set(obs) != fields or obs['departure_fired'] not in (0, 1):
                     raise RuntimeError('invalid journey observation; attempt remains incomplete')
                 watch = obs['watch_minute'] >= 0
                 returned = obs['generation'] > 0 and obs['return_generation'] == obs['generation'] and obs['physical_returns'] > 0
-                a['result'] = {'exit': proc.returncode, 'outcome': 'pass' if proc.returncode == 0 else 'native_failure',
-                               'observation': obs, 'events': [
+                report = journey_invariant_result(a['recipe'], obs)
+                if proc.returncode:
+                    report['unconfirmed_failure'] = report['first_failure']
+                    report['first_failure'] = None
+                outcome = 'native_failure' if proc.returncode else ('invariant_failure' if report['first_failure'] else 'pass')
+                a['result'] = {'exit': proc.returncode, 'outcome': outcome,
+                               'observation': obs, **report, 'events': [
                                    {'transition': 'watch_arrival', 'reached': watch, 'fired': watch},
                                    {'transition': 'departure', 'reached': bool(obs['departure_fired']), 'fired': bool(obs['departure_fired'])},
                                    {'transition': 'physical_return', 'reached': returned, 'fired': returned}]}
@@ -246,6 +331,10 @@ def main():
     init.add_argument('--binary', type=Path, required=True)
     init.add_argument('--scenario', choices=[SCENARIO, JOURNEY], default=SCENARIO,
                       help='scout-journey-v1 runs a connected native faction journey')
+    init.add_argument('--failure-control', choices=['none', 'return_before_watch', 'missing_physical_return'],
+                      default='none', help='test-only reporting mutation, never changes native behavior')
+    init.add_argument('--failure-controls', nargs='+', choices=['none', 'return_before_watch', 'missing_physical_return'],
+                      help='one test-only control per attempt')
     init.add_argument('--setup-seeds', type=int, nargs='+', required=True)
     init.add_argument('--game-seeds', type=int, nargs='+', required=True)
     clone = sub.add_parser('replay', help='copy an exact resolved recipe into a fresh campaign')
@@ -260,11 +349,16 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == 'init':
-            initialize(args.directory, args.binary, args.setup_seeds, args.game_seeds, args.scenario)
+            initialize(args.directory, args.binary, args.setup_seeds, args.game_seeds, args.scenario, args.failure_controls or args.failure_control)
         elif args.command == 'replay':
             replay(args.source, args.attempt_id, args.destination)
         elif args.command == 'run':
-            print(json.dumps(run(args.directory, args.limit), sort_keys=True))
+            result = run(args.directory, args.limit)
+            print(json.dumps(result, sort_keys=True))
+            state = json.loads((args.directory / 'campaign.json').read_text())
+            if any(a.get('result', {}).get('outcome') in ('invariant_failure', 'native_failure')
+                   for a in state['attempts']):
+                return 1
         else:
             state = json.loads((args.directory / 'campaign.json').read_text())
             print(json.dumps({'coverage': coverage(state), 'attempts': state['attempts']}, sort_keys=True))
