@@ -7,6 +7,8 @@
    - **Generated and offscreen.** Take from the items that remain after earlier visits and resolve combat against the actual stored zombies, including lightweight horde entities. Reuse the [camp patrol combat calculation](../src/mission_companion.cpp) with each target counted once.
    - **Player present.** Let the NPCs fight and collect items in ordinary play. If the player leaves mid-visit or reloads, continue from the surviving zombies and remaining goods. Hordes arriving later can make the tile dangerous again.
 
+   *Side note on robots for faction dispatches.* Core CAOL has the four-legged [Exodii quadruped](../data/json/monsters/cyborgs.json) (`mon_exodii_quad`). The classic two-legged [chicken walker](../data/mods/No_Hope/monsters.json) (`mon_chickenbot`) is still available in No Hope.
+
 3. **Tune how far overmap factions hear loud activity.** Start with existing gunfire and one proposed sustained source, a running diesel engine. Compare a quiet vehicle with the diesel on the same road. Check where a nearby camp investigates, where a distant one hears nothing, and what sustained noise costs in turn time.
 
 [Player suggestions and release discussion](https://www.reddit.com/r/cataclysmdda/comments/1y2l8mw/cataclysm_arsenic_and_old_lace_v200/)
