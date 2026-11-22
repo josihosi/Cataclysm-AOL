@@ -10,6 +10,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -19,6 +20,9 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 SCENARIO = 'first-sight-v1'
 JOURNEY = 'scout-journey-v1'
+CROSSING = 'scout-split-reversal-v1'
+CROSSING_TEST = 'structural staged arrival leaves the distant peer on shared travel'
+CROSSING_SECTION = 'player leaves and the staged scout resumes distant travel'
 TEST = 'seed campaign first sight pilot'
 
 
@@ -50,6 +54,16 @@ def data_digest():
 def resolve(seed, game_seed, scenario=SCENARIO):
     if not (0 <= seed < 2**64 and 0 < game_seed < 2**32):
         raise ValueError('setup seed must be uint64; game seed must be nonzero uint32')
+    if scenario == CROSSING:
+        return {'scenario': CROSSING, 'setup_seed': seed, 'game_seed': game_seed,
+                'setup_rng': 'fixed-fixture-v1',
+                'setup': {'faction': 'bandit', 'initial_split': 'fixture relocates first scout along selected route'},
+                'initial_world': 'fresh native test world', 'mods': ['dda', 'test_data'],
+                'options': {'NO_NPC_FOOD': 'true', 'LLM_INTENT_ENABLE': 'false'},
+                'initial_time': 'start of cataclysm, fixture sets daytime',
+                'events': [{'transition': 'one_member_staged', 'predicate': 'exactly one original member staged', 'action': 'observe'},
+                           {'transition': 'player_departure', 'predicate': 'one member staged', 'action': 'move player away'},
+                           {'transition': 'resumed_travel', 'predicate': 'lease released and production travel commits', 'action': 'observe'}]}
     if scenario == JOURNEY:
         bits = hashlib.sha256(b'scout-journey-v1:' + str(seed).encode('ascii')).digest()[0]
         return {'scenario': JOURNEY, 'setup_seed': seed, 'game_seed': game_seed,
@@ -152,8 +166,8 @@ def initialize(directory, binary, setup_seeds, game_seeds, scenario=SCENARIO, fa
         dirty = subprocess.check_output(['git', 'diff', '--binary', 'HEAD', '--', 'src', 'tests/bandit_live_world_test.cpp'], cwd=ROOT)
         atomic_json(path, {'version': 1, 'checkout_commit': commit, 'checkout_dirty_sha256': hashlib.sha256(dirty).hexdigest(),
                            'runner_sha256': digest(Path(__file__)), 'binary': str(binary), 'binary_sha256': digest(binary),
-                           'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario == JOURNEY else 'tests/overmap_ai_seed_campaign_test.cpp')),
-                           'data_identity': data_digest() if scenario == JOURNEY else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
+                           'native_source_sha256': digest(ROOT / ('tests/bandit_live_world_test.cpp' if scenario in (JOURNEY, CROSSING) else 'tests/overmap_ai_seed_campaign_test.cpp')),
+                           'data_identity': data_digest() if scenario in (JOURNEY, CROSSING) else 'nogame listener skips init_global_game_state; no game data loaded', 'attempts': attempts})
 
 
 def replay(source, attempt_id, destination):
@@ -221,6 +235,53 @@ def journey_invariant_result(recipe, observation):
             'observation_boundary': 'fixture CAMPAIGN_JOURNEY final summary after finish_return'}
 
 
+def crossing_observation(output, events):
+    """Require actual successful Catch assertions and run-bound production events."""
+    def line_containing(fragment):
+        for line in output.splitlines():
+            if 'PASSED:' in line and fragment in line:
+                return line
+        raise ValueError('missing successful assertion: ' + fragment)
+    ids_line = line_containing('outing.member_ids == party_ids')
+    ids_match = re.search(r'for: \{\s*(\d+),\s*(\d+)\s*\}', ids_line)
+    if not ids_match:
+        raise ValueError('original member IDs unavailable')
+    ids = [int(ids_match.group(1)), int(ids_match.group(2))]
+    staged_line = line_containing('structural_admission.staged.size() == 1')
+    id_line = line_containing('structural_admission.staged.front().npc_id == first->getID()')
+    staged = re.search(r'for: (\d+) == (\d+)', id_line)
+    lease = line_containing('lease.owner == "admission"')
+    lease_info = re.search(r'minute=(\d+) phase=(\w+) owner=(\w+) epoch=(\d+).*native id=(\d+) at=(\([^)]*\))', lease)
+    work_line = line_containing('serviced_active_turns == journey.site().active_outing.activation.active_turns')
+    work = re.search(r'for: (\d+) .*? == (\d+)', work_line)
+    line_containing('structural_admission_lease_matches( camp, id')
+    line_containing('!(first->get_bandit_live_world_projection_lease().present)')
+    reversal = line_containing('first->pos_abs() == departure_position')
+    movement = line_containing('first->pos_abs() != departure_position')
+    position = re.search(r'for: (\([^)]*\)) != (\([^)]*\))', movement)
+    if not (staged and lease_info and work and position and int(staged.group(1)) == ids[0] == int(staged.group(2)) == int(lease_info.group(5))):
+        raise ValueError('cannot bind the staged member and its boundary')
+    selected = [e for e in events if e.get('transition') in ('active_sortie_dispatch', 'scout_travel_prepare', 'scout_motor_service')]
+    dispatch = next((e for e in selected if e.get('transition') == 'active_sortie_dispatch' and e.get('actor_ids') == ids), None)
+    initial_prepares = [next((e for e in selected if e.get('transition') == 'scout_travel_prepare' and
+                              e.get('actor_ids') == [member] and e.get('game_minutes', -1) < int(lease_info.group(1))), None)
+                        for member in ids]
+    peer = next((e for e in selected if e.get('transition') == 'scout_motor_service' and e.get('actor_ids') == [ids[1]] and
+                 e.get('outcome') == 'shared_travel_committed' and e.get('game_minutes', -1) >= int(lease_info.group(1))), None)
+    resumed = next((e for e in selected if e.get('transition') == 'scout_motor_service' and e.get('actor_ids') == [ids[0]] and
+                    e.get('outcome') == 'shared_travel_committed' and e.get('game_minutes', -1) >= int(lease_info.group(1))), None)
+    if not (dispatch and all(initial_prepares) and peer and resumed):
+        raise ValueError('run-bound dispatch or actual member movement missing')
+    return {'member_ids': ids, 'staged_id': ids[0], 'stage_minute': int(lease_info.group(1)),
+            'phase': lease_info.group(2), 'owner': lease_info.group(3), 'epoch': int(lease_info.group(4)),
+            'admission_position': lease_info.group(6), 'admission_lease': 'matched admission',
+            'after_departure_lease': 'absent', 'serviced_active_turns': int(work.group(1)),
+            'active_turns': int(work.group(2)), 'resume_from': position.group(2), 'resume_to': position.group(1),
+            'setup_intervention': 'fixture relocates first scout along selected route',
+            'assertion_evidence': [staged_line, id_line, lease, reversal, work_line, movement],
+            'production_events': [dispatch, *initial_prepares, peer, resumed]}
+
+
 def run(directory, limit=None):
     lock = acquire(directory)
     with lock:
@@ -234,7 +295,7 @@ def run(directory, limit=None):
         binary = Path(state['binary'])
         if digest(binary) != state['binary_sha256']:
             raise RuntimeError('native executable changed; create a new campaign')
-        if state['attempts'][0]['recipe']['scenario'] == JOURNEY and data_digest() != state['data_identity']:
+        if state['attempts'][0]['recipe']['scenario'] in (JOURNEY, CROSSING) and data_digest() != state['data_identity']:
             raise RuntimeError('game data changed; create a new campaign')
         count = 0
         for a in state['attempts']:
@@ -256,12 +317,21 @@ def run(directory, limit=None):
             if scenario == JOURNEY:
                 env['CAOL_CAMPAIGN_CANNIBAL'] = str(setup['cannibal'])
                 env['CAOL_CAMPAIGN_ACQUIRE'] = str(setup['acquire'])
+            elif scenario == CROSSING:
+                env['OPENCLAW_HARNESS_RUN_ID'] = 'seed-crossing-' + str(a['id'])
+                env['OPENCLAW_HARNESS_TRANSITION_EVENT_PATH'] = str((userdir / 'transitions.jsonl').resolve())
             else:
                 env['CAOL_CAMPAIGN_ROLLING'] = str(setup['rolling'])
-            command = [str(binary), 'seed campaign connected scout journey' if scenario == JOURNEY else TEST, '--rng-seed', str(a['recipe']['game_seed']),
+            test_name = 'seed campaign connected scout journey' if scenario == JOURNEY else (CROSSING_TEST if scenario == CROSSING else TEST)
+            command = [str(binary), test_name, '--rng-seed', str(a['recipe']['game_seed']),
                        '--user-dir', str(userdir.resolve()), '--drop-world']
+            if scenario == CROSSING:
+                command = ['/usr/bin/nice', '-n', '10'] + command + ['--section', CROSSING_SECTION, '--success', '--reporter', 'compact']
             proc = subprocess.run(command, cwd=ROOT, env=env, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, text=True, pass_fds=(lock.fileno(),))
+            crossing_events = []
+            if scenario == CROSSING and (userdir / 'transitions.jsonl').exists():
+                crossing_events = [json.loads(line) for line in (userdir / 'transitions.jsonl').read_text().splitlines()]
             shutil.rmtree(userdir)
             if digest(binary) != state['binary_sha256']:
                 raise RuntimeError('native executable changed during attempt; attempt remains incomplete')
@@ -269,6 +339,23 @@ def run(directory, limit=None):
                 a['last_error'] = {'exit': proc.returncode, 'reason': 'native process terminated by signal'}
                 atomic_json(path, state)
                 raise RuntimeError('native process terminated by signal; attempt remains incomplete')
+            if scenario == CROSSING:
+                if data_digest() != state['data_identity']:
+                    raise RuntimeError('game data changed during attempt; attempt remains incomplete')
+                try:
+                    observed = crossing_observation(proc.stdout, crossing_events)
+                except ValueError as error:
+                    a['last_error'] = {'exit': proc.returncode, 'reason': str(error), 'output_tail': proc.stdout[-4000:]}
+                    atomic_json(path, state)
+                    raise RuntimeError('crossing observation incomplete: ' + str(error)) from error
+                a['result'] = {'exit': proc.returncode, 'outcome': 'pass' if proc.returncode == 0 else 'native_failure',
+                               'observation': observed, 'events': [
+                                   {'transition': name, 'reached': True, 'fired': True}
+                                   for name in ('one_member_staged', 'player_departure', 'resumed_travel')]}
+                a['status'] = 'completed'
+                atomic_json(path, state)
+                count += 1
+                continue
             if scenario == JOURNEY:
                 if data_digest() != state['data_identity']:
                     raise RuntimeError('game data changed during attempt; attempt remains incomplete')
@@ -329,7 +416,7 @@ def main():
     init = sub.add_parser('init')
     init.add_argument('directory', type=Path)
     init.add_argument('--binary', type=Path, required=True)
-    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY], default=SCENARIO,
+    init.add_argument('--scenario', choices=[SCENARIO, JOURNEY, CROSSING], default=SCENARIO,
                       help='scout-journey-v1 runs a connected native faction journey')
     init.add_argument('--failure-control', choices=['none', 'return_before_watch', 'missing_physical_return'],
                       default='none', help='test-only reporting mutation, never changes native behavior')
