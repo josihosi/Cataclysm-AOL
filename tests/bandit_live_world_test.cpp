@@ -78871,6 +78871,49 @@ TEST_CASE( "fresh allocated scouts watch before departure and settle honest whol
     REQUIRE( journey.reloads == 2 );
 }
 
+// Isolated campaign adapter around the existing real scout journey fixture.
+TEST_CASE( "seed campaign connected scout journey", "[.][seed_campaign][scout_journey]" )
+{
+    const char *const faction_value = std::getenv( "CAOL_CAMPAIGN_CANNIBAL" );
+    const char *const acquire_value = std::getenv( "CAOL_CAMPAIGN_ACQUIRE" );
+    REQUIRE( faction_value );
+    REQUIRE( acquire_value );
+    const std::string faction( faction_value );
+    const std::string acquire_text( acquire_value );
+    REQUIRE( ( faction == "0" || faction == "1" ) );
+    REQUIRE( ( acquire_text == "0" || acquire_text == "1" ) );
+    const bool acquire = acquire_text == "1";
+    override_option food( "NO_NPC_FOOD", "true" );
+    override_option llm( "LLM_INTENT_ENABLE", "false" );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    r067_fresh_scout_journey journey;
+    journey.start( faction == "1", acquire );
+    journey.reach_watch();
+    const int watch_minute = journey.minute();
+    bool fired = false;
+    if( acquire && journey.site().active_outing.phase == bandit_live_world::scout_phase::observing ) {
+        journey.depart_during_watch();
+        fired = true;
+    }
+    journey.complete_watch( acquire );
+    std::vector<bandit_live_world_probe::transition_event> returns;
+    journey.finish_return( false, &returns );
+    const int return_minute = journey.minute();
+    const int generation = journey.scout_generation();
+    int committed = 0;
+    for( const auto &event : returns ) {
+        if( event.transition == "structural_member_physical_return" && event.outcome == "committed" &&
+            event.generation == generation ) {
+            ++committed;
+        }
+    }
+    std::cout << "CAMPAIGN_JOURNEY {\"watch_minute\":" << watch_minute
+              << ",\"departure_fired\":" << fired << ",\"return_minute\":" << return_minute
+              << ",\"return_generation\":" << journey.site().applied_return_generation
+              << ",\"generation\":" << generation << ",\"physical_returns\":" << committed
+              << "}\n";
+}
+
 TEST_CASE( "fresh acquired watch facts survive source unload without fabricated packets",
            "[bandit_live_world][stateful_scout_067][source_unload_067]" )
 {
