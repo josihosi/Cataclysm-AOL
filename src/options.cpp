@@ -3063,8 +3063,8 @@ void options_manager::add_options_llm()
          "gpt-4.1-mini", 128
        );
 
-    add( "LLM_INTENT_PYTHON", "llm", to_translation( "OpenVINO venv path" ),
-         to_translation( "Path to the OpenVINO venv. You may also point directly at the Python executable." ),
+    add( "LLM_INTENT_PYTHON", "llm", to_translation( "Venv path" ),
+         to_translation( "Path to the Python virtual environment or directly to its Python executable." ),
          default_llm_python, 4096
        );
 

@@ -1,9 +1,33 @@
 # Cataclysm: Arsenic and Old Lace
 
-A turn-based survival game set in a world that has already ended. Scavenge what you can, make a shelter, find allies and decide how long you can survive the things hunting outside.
+C-AOL is a fork of Cataclysm: Dark Days Ahead and Cataclysm-TLG. If you already play CDDA, the biggest change is what happens around your shelter. Other groups can pick up signs that someone lives there, send scouts, and act on what those scouts bring home.
+
+**[Download a build](https://github.com/josihosi/Cataclysm-AOL/releases)** · **[Watch the gameplay video](https://www.youtube.com/watch?v=3-3gJbJabyI)** · [Setup and build guide](doc/SETUP.md)
+
+## What’s different from CDDA?
+
+- **Your camp can give itself away.** Smoke by day, exposed light after dark, and loud sounds can give groups on the overmap clues on your location. Weather, terrain, and where you put the fire affect who can pick up the signal.
+- **Hostile camps send people to find out what’s there.** Bandits and cannibals can send a pair to a lookout. Scouts travel on the overmap, can be spotted or driven off, and bring home observations the camp can act on.
+- **A shakedown can turn into a return visit.** Bandits can demand payment, search for reachable supplies, or fight if things go badly. If the visit pays off, they can remember the place and come back later.
+- **Some threats hunt differently.** Mi-go patrols and towers can investigate smoke, and some roaming zombie hordes can be drawn toward visible light.
+- **More to do with companions at camp.** Assign followers to patrol or use shared camp lockers to supply them. You can also connect an LLM for free-text dialogue and a limited set of follower actions, such as asking someone to follow, wait, or hand over an item. No LLM setup is required to play.
+
+## Get started
+
+Pick an archive for your platform from [GitHub Releases](https://github.com/josihosi/Cataclysm-AOL/releases). For source builds and optional LLM setup, see the [setup guide](doc/SETUP.md). Start a fresh world for your first run and press **?** in game to see commands and key bindings.
+
+C-AOL is an **alpha in active development**. Excpect performance issues and bugs. And tell me about them, please.
+
+## Credits and license
+
+Thank you to Whales, the original Cataclysm author, and to Kevin Granade and the developers and contributors of [Cataclysm: Dark Days Ahead](https://github.com/CleverRaven/Cataclysm-DDA). Thanks also to the [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG) contributors. The current release doesnt cover TLG, but theres a legacy LLM release on TLG. C-AOL builds on their work and modifies the game systems described above. See the [in-game credits](data/credits/en.credits) for more names and contributions.
+
+Cataclysm is licensed under [Creative Commons Attribution-ShareAlike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/). See [LICENSE.txt](LICENSE.txt) for the project’s license and bundled component notices.
+
+Bug reports and playtest stories are welcome. If you include an LLM debug log, review it for private content first.
 
 <details>
-<summary>Enter the Cataclysm</summary>
+<summary>ASCII title art</summary>
 
 ```text
  @@@@@          @                  @@                       @                                      .--::.-=-=-*+=.
@@ -51,30 +75,3 @@ A turn-based survival game set in a world that has already ended. Scavenge what 
                                                                                 =###%#                                           *%###%
 ```
 </details>
-
-![A glimpse of C-AOL](doc/AOL-Screenshot.png)
-
-## Survive your way
-
-- Explore a sprawling ruined world, from abandoned towns to dangerous wilderness.
-- Scavenge food, tools and weapons; craft, build and adapt what you find into a place to survive.
-- Manage injuries, hunger, thirst and exhaustion while fighting or avoiding the dead and other threats.
-- Meet survivors, recruit companions and encounter hostile groups, including bandits and cannibals. Camps and roaming threats can make the world dangerous beyond a single encounter.
-- Use vehicles, skills and a huge range of items to make your own plans in a deeply simulated, turn-based sandbox.
-- Optionally connect an LLM for free-text NPC dialogue and a limited set of follower actions. The game remains a survival game without it.
-
-C-AOL is an **alpha in active development**. Features and balance can change, and behavior may vary between builds and branches.
-
-## Get started
-
-See the [setup and build guide](doc/SETUP.md) for source builds, platform documentation and optional LLM configuration. Check [GitHub releases](https://github.com/josihosi/Cataclysm-AOL/releases) for available packaged builds; availability and contents vary by release. Keep a separate backup of saves and configuration before changing versions.
-
-At the main menu, choose **World → Create World** to begin. The **Special** menu includes a tutorial, though it may lag behind the fork. Press `?` in game to see commands and key bindings.
-
-[Watch gameplay](https://youtu.be/HfishtPzvhA)
-
-## Roots and contributions
-
-C-AOL is a fork of [Cataclysm: Dark Days Ahead](https://github.com/CleverRaven/Cataclysm-DDA) and [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG). Thank you to their maintainers and contributors for the game and community this project builds on.
-
-Bug reports and play experiences are welcome. If reporting an LLM issue, the optional LLM debug log can help; review it for private content before sharing.
