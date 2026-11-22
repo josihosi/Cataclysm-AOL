@@ -328,7 +328,8 @@ void horde_map::signal_entities( const tripoint_abs_ms &origin, int volume )
 
 int horde_map::attract_entities_to_light( const tripoint_abs_ms &origin, const int intensity,
         const int observer_radius_sm, const std::string &sample_id, const time_point &observed,
-        const std::function<bool( const tripoint_abs_ms & )> &visible, int *candidate_count )
+        const std::function<bool( const tripoint_abs_ms & )> &visible, int *candidate_count,
+        const bool stagger )
 {
     if( candidate_count != nullptr ) {
         *candidate_count = 0;
@@ -337,10 +338,14 @@ int horde_map::attract_entities_to_light( const tripoint_abs_ms &origin, const i
         return 0;
     }
     int attracted = 0;
+    static int next_light_scan_slot = 0;
+    const int slots = to_turns<int>( 5_minutes );
+    const int due_slot = to_turn<int>( observed ) % slots;
     std::unordered_multimap<tripoint_abs_ms, horde_entity> migrating_hordes;
     const tripoint_abs_sm source_sm = project_to<coords::sm>( origin );
     const auto consider = [this, &origin, &source_sm, intensity, observer_radius_sm, &sample_id,
-          &observed, &visible, &attracted, &migrating_hordes, candidate_count]( auto & outer ) {
+          &observed, &visible, &attracted, &migrating_hordes, candidate_count, stagger,
+          due_slot]( auto & outer ) {
         for( auto outer_it = outer.begin(); outer_it != outer.end(); ) {
             // The outer key is an existing spatial bucket.  Reject it before
             // touching its entities so source delivery is bounded by the
@@ -354,10 +359,26 @@ int horde_map::attract_entities_to_light( const tripoint_abs_ms &origin, const i
             auto &bucket = outer_it->second;
             for( auto entity_it = bucket.begin(); entity_it != bucket.end(); ) {
                 horde_entity &entity = entity_it->second;
+                const auto &type = entity.get_type()->id.str();
+                if( stagger && entity.get_type()->in_species( species_ZOMBIE ) &&
+                    type != "mon_writhing_stalker" && type != "mon_zombie_rider" ) {
+                    if( entity.light_scan_slot < 0 ) {
+                        entity.light_scan_slot = next_light_scan_slot;
+                        next_light_scan_slot = ( next_light_scan_slot + 1 ) % slots;
+                    }
+                    // Already noticed this source. Preserve its ordinary refresh
+                    // and expiry behavior even between acquisition slots.
+                    const bool tracking_source = !entity.light_sample_id.empty() &&
+                                                 entity.destination == origin && entity.light_source == origin &&
+                                                 observed <= entity.light_expires + 1_turns;
+                    if( entity.light_scan_slot != due_slot && !tracking_source ) {
+                        ++entity_it;
+                        continue;
+                    }
+                }
                 if( candidate_count != nullptr ) {
                     ++*candidate_count;
                 }
-                const auto &type = entity.get_type()->id.str();
                 if( type == "mon_zombie_rider" || type == "mon_writhing_stalker" ) {
                     if( !overmap_buffer.predator_activity_at( entity, entity_it->first ) ) {
                         ++entity_it;
@@ -370,19 +391,21 @@ int horde_map::attract_entities_to_light( const tripoint_abs_ms &origin, const i
                         continue;
                     }
                 }
-                if( !entity.can_perceive_light() || ( visible && !visible( entity_it->first ) ) ||
-                    entity.light_sample_id == sample_id ) {
+                if( entity.light_sample_id == sample_id || !entity.can_perceive_light() ) {
                     ++entity_it;
                     continue;
                 }
-                const int distance = rl_dist( project_to<coords::sm>( entity_it->first ),
-                                              project_to<coords::sm>( origin ) );
+                const int distance = rl_dist( project_to<coords::sm>( entity_it->first ), source_sm );
                 if( distance > observer_radius_sm ) {
                     ++entity_it;
                     continue;
                 }
                 const int remaining_interest = intensity - distance;
                 if( remaining_interest <= entity.tracking_intensity ) {
+                    ++entity_it;
+                    continue;
+                }
+                if( visible && !visible( entity_it->first ) ) {
                     ++entity_it;
                     continue;
                 }

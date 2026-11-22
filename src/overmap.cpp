@@ -2430,10 +2430,11 @@ void overmap::signal_hordes( const tripoint_abs_ms &p, const int sig_power )
 int overmap::attract_hordes_to_light( const tripoint_abs_ms &source, const int intensity,
                                       const int observer_radius_sm, const std::string &sample_id,
                                       const time_point &observed, const std::function<bool(
-                                              const tripoint_abs_ms & )> &visible, int *candidate_count )
+                                              const tripoint_abs_ms & )> &visible, int *candidate_count,
+                                      const bool stagger )
 {
     return hordes.attract_entities_to_light( source, intensity, observer_radius_sm, sample_id,
-            observed, visible, candidate_count );
+            observed, visible, candidate_count, stagger );
 }
 
 void overmap::alert_entity( const tripoint_om_ms &location, const tripoint_abs_ms &destination,

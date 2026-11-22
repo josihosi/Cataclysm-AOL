@@ -199,6 +199,22 @@ TEST_CASE( "bandit_mark_generation_smoke_weather_refinement_reports_fuzz_and_red
     CHECK( portal_projection.review_summary.find( "origin_hint=corridorish" ) != std::string::npos );
 }
 
+TEST_CASE( "vented fire matches the smoke range of a brazier with thin smoke", "[bandit][marks]" )
+{
+    using namespace bandit_mark_generation;
+    local_field_signal_reading reading;
+    reading.fire_intensity = 1;
+    CHECK( adapt_local_field_signal_reading( reading ).smoke.projected_range_omt == 14 );
+    reading.vented_fire = true;
+    const auto vented = adapt_local_field_signal_reading( reading ).smoke;
+    CHECK( vented.packet.source_strength == 2 );
+    CHECK( vented.projected_range_omt == 24 );
+    reading.vented_fire = false;
+    reading.smoke_intensity = 1;
+    CHECK( adapt_local_field_signal_reading( reading ).smoke.projected_range_omt ==
+           vented.projected_range_omt );
+}
+
 TEST_CASE( "live field signal envelopes reach their calibrated boundaries", "[bandit][marks]" )
 {
     using namespace bandit_mark_generation;

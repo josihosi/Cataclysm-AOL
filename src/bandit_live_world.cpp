@@ -577,6 +577,18 @@ bool structural_route_is_canonical( const std::vector<tripoint_abs_omt> &route,
            structural_route_cost( route ) < std::numeric_limits<int>::max();
 }
 
+int structural_signal_horizon_minutes( const camp_lead_kind kind )
+{
+    switch( kind ) {
+        case camp_lead_kind::smoke_signal:
+            return 72 * 60;
+        case camp_lead_kind::sound_signal:
+            return 12 * 60;
+        default:
+            return 48 * 60;
+    }
+}
+
 bool returned_structural_signal_lead( const camp_map_lead &lead )
 {
     const bool signal_kind = lead.kind == camp_lead_kind::smoke_signal ||
@@ -4917,6 +4929,9 @@ static bool split_structural_admission_work( active_outing_state &outing )
             const std::size_t edge = party.from.size() == 1 ? 0 : i;
             work.from = { party.from[edge] };
             work.to = { party.to[edge] };
+        } else {
+            work.from.clear();
+            work.to.clear();
         }
         if( work.serviced_active_turns < 0 && outing.activation.initialized() ) {
             work.serviced_active_turns = outing.activation.active_turns;
@@ -7043,6 +7058,13 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
                                        outing.structural_admission.is_active() &&
                                        outing.structural_admission.staged.empty();
     const int destination_waypoint = structural_outing_destination_waypoint( outing );
+    // A split pair can assemble inside the map before reaching the abstract
+    // approach waypoint. The local forward motor then goes to the watch itself.
+    const bool intermediate_outbound = local && outing.phase == scout_phase::outbound &&
+                                       outing.actor_departure_observed &&
+                                       outing.local_handoff.has_intermediate_route_position() &&
+                                       outing.waypoint_index >= 0 &&
+                                       outing.waypoint_index < destination_waypoint;
     const auto capture_arrivals = [&outing, &member_reads](
     std::map<character_id, tripoint_abs_ms> &arrival_positions ) {
         std::set<character_id> matched_ids;
@@ -7074,7 +7096,7 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
         ( local || outing.owner == simulation_owner::abstract ) &&
         simulation_cursor_matches( outing, expected_cursor ) && current_minutes >= 0 &&
         current_minutes >= outing.last_advanced_minutes &&
-        ( outing.phase == scout_phase::observing || initial_departure ) &&
+        ( outing.phase == scout_phase::observing || initial_departure || intermediate_outbound ) &&
         !outing.alternate_watch_reposition_pending &&
         outing.member_ids.size() == 2 && member_reads.size() == 2 &&
         outing.casualty_ids.empty() &&
@@ -7106,14 +7128,17 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
     }
     if( !cursor_arrived &&
         ( outing.waypoint_index < 0 ||
-          ( outing.waypoint_index + 1 != destination_waypoint && !initial_departure ) ||
+          ( outing.waypoint_index + 1 != destination_waypoint && !initial_departure &&
+            !intermediate_outbound ) ||
           ( local && ( outing.local_handoff.waypoint_index != outing.waypoint_index ||
-                       ( outing.local_handoff.route_position !=
+                       ( !intermediate_outbound && outing.local_handoff.route_position !=
                          outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )] &&
                          !( outing.local_handoff.has_intermediate_route_position() &&
                             outing.local_handoff.route_position == outing.selected_watch_omt ) ) ||
-                       outing.local_handoff.egress_omt != ( initial_departure ? outing.shared_route[1] :
-                               outing.selected_watch_omt ) ) ) ) ) {
+                       ( outing.local_handoff.egress_omt != ( initial_departure ? outing.shared_route[1] :
+                                 outing.selected_watch_omt ) &&
+                         !( intermediate_outbound && outing.local_handoff.egress_omt ==
+                            outing.shared_route[static_cast<std::size_t>( outing.waypoint_index + 1 )] ) ) ) ) ) ) {
         return local_handoff_commit_result::rejected;
     }
 
@@ -7199,7 +7224,8 @@ local_handoff_commit_result commit_scout_pair_watch_arrival(
     }
     site = std::move( candidate );
     record_scout_phase_transition_event(
-        site.active_outing, initial_departure ? scout_phase::outbound : scout_phase::observing,
+        site.active_outing, initial_departure || intermediate_outbound ? scout_phase::outbound :
+        scout_phase::observing,
         scout_phase::observing,
         "assigned pair physically reached selected watch", current_minutes );
     return local_handoff_commit_result::applied;
@@ -8706,11 +8732,21 @@ bool is_valid_camp_decision_transition( const camp_decision_state previous_state
     return false;
 }
 
+static bool supply_return_without_scout_evidence( const site_record &site,
+        const scout_report_record &report )
+{
+    // Existing saves can record a structural supply return with the scout job label.
+    return report.target_lead_id.rfind( site.site_id + ":structural_bounty:", 0 ) == 0 &&
+           report.observations.empty() && report.casualty_ids.empty() &&
+           report.assessment.observation_started_minutes < 0;
+}
+
 camp_decision_transition_result accept_current_scout_report_for_assessment( site_record &site )
 {
     const scout_report_record &report = site.current_scout_report;
     const camp_decision_state previous_state = site.camp_decision.state;
     if( site.active_outing.is_active() || !report.is_present() || report.provisional ||
+        supply_return_without_scout_evidence( site, report ) ||
         ( report.source_job_type != "scout" && report.source_job_type != "scavenge" ) ||
         report.target_id.empty() ||
         report.target_id.size() > max_camp_lead_target_id_length ||
@@ -9789,8 +9825,7 @@ camp_intelligence_aging_result advance_camp_intelligence_aging( site_record &sit
             now_minutes < lead.last_seen_minutes ) {
             continue;
         }
-        const int expiry_minutes = lead.kind == camp_lead_kind::sound_signal ?
-                                   3 * 60 : 6 * 60;
+        const int expiry_minutes = structural_signal_horizon_minutes( lead.kind );
         const long long age_minutes = static_cast<long long>( now_minutes ) -
                                       lead.last_seen_minutes;
         const bool ageable_status = lead.status == camp_lead_status::active ||
@@ -16439,12 +16474,14 @@ response_denial_resolution resolve_response_authorization_denial(
     const bool report_identity_valid =
         report.action_policy == report_policy_for_profile( effective_profile( site ) ) &&
         report_matches_camp_decision( report, decision ) && exact_accepted_revision;
-    if( !report_identity_valid ) {
+    const bool supply_only = supply_return_without_scout_evidence( site, report );
+    if( !report_identity_valid || supply_only ) {
         site_record candidate = site;
         const camp_decision_transition_result abandoned = transition_camp_decision_state(
                     candidate, camp_decision_state::report_awaiting_assessment,
                     camp_decision_state::abandoned, decision.source_report_revision,
                     decision.source_report_generation, current_minutes, -1,
+                    supply_only ? "supply return contained no scouting evidence" :
                     "response assessment abandoned after losing its accepted report identity" );
         if( abandoned != camp_decision_transition_result::applied ) {
             return response_denial_resolution::rejected;
@@ -17015,7 +17052,7 @@ int structural_signal_strength( const camp_map_lead &lead, const int now_minutes
         now_minutes < 0 ) {
         return 0;
     }
-    const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ? 3 * 60 : 6 * 60;
+    const int horizon_minutes = structural_signal_horizon_minutes( lead.kind );
     const int age_minutes = std::max( 0, now_minutes - lead.last_seen_minutes );
     if( age_minutes >= horizon_minutes ) {
         return 0;
@@ -17084,7 +17121,7 @@ std::optional<int> qualified_urgent_signal_expiry( const camp_map_lead &lead,
         structural_lead_recently_checked( lead, now_minutes ) ) {
         return std::nullopt;
     }
-    const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ? 3 * 60 : 6 * 60;
+    const int horizon_minutes = structural_signal_horizon_minutes( lead.kind );
     return minutes_after_saturated( lead.last_seen_minutes, horizon_minutes );
 }
 
@@ -23257,10 +23294,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     return lhs_signal;
                 }
                 if( lhs_signal ) {
-                    const int lhs_horizon = lhs_lead->kind == camp_lead_kind::sound_signal ?
-                                            3 * 60 : 6 * 60;
-                    const int rhs_horizon = rhs_lead->kind == camp_lead_kind::sound_signal ?
-                                            3 * 60 : 6 * 60;
+                    const int lhs_horizon = structural_signal_horizon_minutes( lhs_lead->kind );
+                    const int rhs_horizon = structural_signal_horizon_minutes( rhs_lead->kind );
                     const int lhs_expiry = minutes_after_saturated(
                                                lhs_lead->last_seen_minutes, lhs_horizon );
                     const int rhs_expiry = minutes_after_saturated(
@@ -23876,8 +23911,7 @@ std::string render_evidence_debug_report( const world_state &state, const int cu
             }
             out << " age_minutes=" << age( lead.last_seen_minutes );
             if( returned_structural_signal_lead( lead ) && lead.last_seen_minutes >= 0 ) {
-                const int horizon_minutes = lead.kind == camp_lead_kind::sound_signal ?
-                                            3 * 60 : 6 * 60;
+                const int horizon_minutes = structural_signal_horizon_minutes( lead.kind );
                 const int expiry_minutes = minutes_after_saturated( lead.last_seen_minutes,
                                            horizon_minutes );
                 const char *state_name = lead.last_seen_minutes > current_minutes ? "future" :

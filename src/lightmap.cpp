@@ -504,6 +504,13 @@ void map::build_sunlight_cache( int pzlev, const bool observe_only )
     }
 }
 
+// The artificial-light pass starts with an empty solar plane. Keep the
+// targeted aperture rules, but skip seeding that plane with individual zeros.
+static const std::function<std::optional<four_quadrants>( const tripoint_bub_ms & )>
+no_observed_sunlight = []( const tripoint_bub_ms & ) {
+    return std::optional<four_quadrants>( four_quadrants{} );
+};
+
 void map::generate_lightmap( const int zlev, const bool observe_only,
                              const sunlight_projection *projection, const tripoint_bub_ms *target )
 {
@@ -548,8 +555,7 @@ void map::generate_lightmap( const int zlev, const bool observe_only,
 
     const float natural_light = g->natural_light_level( zlev );
 
-    if( projection ) {
-        lm.fill( four_quadrants{} );
+    if( projection && projection != &no_observed_sunlight ) {
         const auto sunlight = ( *projection )( *target );
         if( !sunlight ) {
             return;
@@ -580,7 +586,7 @@ void map::generate_lightmap( const int zlev, const bool observe_only,
                 }
             }
         }
-    } else {
+    } else if( !projection ) {
         build_sunlight_cache( zlev, observe_only );
     }
 
@@ -647,6 +653,9 @@ void map::generate_lightmap( const int zlev, const bool observe_only,
                 debugmsg( "Tried to generate lightmap at (%d,%d,%d) but the submap is not loaded", smx, smy, zlev );
                 continue;
             }
+            const bool uniform_without_emitters = cur_submap->is_uniform() &&
+                    cur_submap->get_ter( point_sm_ms::zero )->light_emitted <= 0 &&
+                    cur_submap->get_furn( point_sm_ms::zero )->light_emitted <= 0;
 
             for( int sx = 0; sx < SEEX; ++sx ) {
                 for( int sy = 0; sy < SEEY; ++sy ) {
@@ -682,6 +691,9 @@ void map::generate_lightmap( const int zlev, const bool observe_only,
                         }
                     }
 
+                    if( uniform_without_emitters ) {
+                        continue;
+                    }
                     if( cur_submap->get_lum( { sx, sy } ) ) {
                         add_light_from_items( p, i_at( p ) );
                     }
@@ -900,9 +912,6 @@ std::optional<float> map::generate_observed_lightmap( const tripoint_bub_ms &tar
             local_override = value;
         }
     }
-    const sunlight_projection no_sun = []( const tripoint_bub_ms & ) {
-        return std::optional<four_quadrants>( four_quadrants{} );
-    };
     const auto prepare = [&]( const int low, const int high ) {
         if( prepare_cache ) {
             ( *prepare_cache )( low, std::min( high, OVERMAP_HEIGHT ) );
@@ -925,7 +934,7 @@ std::optional<float> map::generate_observed_lightmap( const tripoint_bub_ms &tar
         if( source_light ) {
             // A field overrides ambient only. Creature::light_at still gives
             // a genuine bright source priority over that final ambient scalar.
-            native_pass( no_sun );
+            native_pass( no_observed_sunlight );
             publish_source();
         }
         return local_override;
@@ -959,7 +968,7 @@ std::optional<float> map::generate_observed_lightmap( const tripoint_bub_ms &tar
     // cannot change this scalar result and need not be requested.
     std::optional<float> artificial_floor;
     if( plane_complete ) {
-        native_pass( no_sun );
+        native_pass( no_observed_sunlight );
         publish_source();
         const float artificial = ambient_light_at( target );
         artificial_floor = artificial;
@@ -1250,7 +1259,7 @@ std::optional<float> map::generate_observed_lightmap( const tripoint_bub_ms &tar
         if( source_light ) {
             // Set the authenticated source fact before the caller evaluates its
             // native actor predicate, even when incoming ambient stays unknown.
-            native_pass( no_sun );
+            native_pass( no_observed_sunlight );
             publish_source();
         }
         const auto solar = project( target );
@@ -1263,7 +1272,7 @@ std::optional<float> map::generate_observed_lightmap( const tripoint_bub_ms &tar
         // Missing sources/occluders may affect incoming light, so the partial
         // ambient result is deliberately discarded instead of treated as exact.
         if( !source_light ) {
-            native_pass( no_sun );
+            native_pass( no_observed_sunlight );
         }
         const float local_source = get_cache_ref( target.z() ).sm[target.x()][target.y()];
         if( local_source > lower ) {

@@ -467,6 +467,17 @@ escape evaluate_escape( map &here, const tripoint_bub_ms &source, bool fire_ligh
     return result;
 }
 
+bool is_vented_fire_fixture( const map &here, const tripoint_bub_ms &source )
+{
+    static const furn_str_id woodstove( "f_woodstove" );
+    static const furn_str_id clay_oven( "f_clay_oven" );
+    static const furn_str_id fireplace( "f_fireplace" );
+    static const furn_str_id stone_fireplace( "f_fireplace_stone" );
+    const furn_id fixture = here.furn( source );
+    return fixture == woodstove || fixture == clay_oven ||
+           fixture == fireplace || fixture == stone_fireplace;
+}
+
 smoke_support evaluate_smoke_support( map &here, const tripoint_bub_ms &source )
 {
     const auto known = [&here]( const tripoint_bub_ms & p ) {
@@ -480,12 +491,12 @@ smoke_support evaluate_smoke_support( map &here, const tripoint_bub_ms &source )
     if( source.z() >= 0 && here.is_outside( source ) ) {
         return { here.get_abs( source ), "exposed_emitter" };
     }
-    // The native smoke-suppressing appliance is not evidence of an outlet.
-    // Underground and such sources require a real open vertical connection.
-    // SEALED is an item-access flag, not an airtight-building classification.
-    const bool building_plume = source.z() >= 0 &&
-                                !here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, source ) &&
-                                here.ter( source )->roof && here.move_cost( source ) > 0;
+    // Vented fixtures can feed the overmap plume without creating local smoke fields.
+    const bool vented_fixture = is_vented_fire_fixture( here, source );
+    const bool building_plume = source.z() >= 0 && here.ter( source )->roof &&
+                                ( ( vented_fixture && here.ter( source )->movecost > 0 ) ||
+                                  ( !here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, source ) &&
+                                    here.move_cost( source ) > 0 ) );
     tripoint_bub_ms below = source;
     for( int z = source.z() + 1; z <= OVERMAP_HEIGHT; ++z ) {
         const tripoint_bub_ms above( source.x(), source.y(), z );

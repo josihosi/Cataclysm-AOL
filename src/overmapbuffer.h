@@ -609,7 +609,7 @@ class overmapbuffer
                                      int observer_radius_sm, int brightness_range_omt,
                                      bool source_exposed, const std::string &sample_id,
                                      const time_point &observed, int *candidate_count = nullptr,
-                                     int brightness_range_ms = -1 );
+                                     int brightness_range_ms = -1, bool stagger = false );
         /**
          * Directly alert one horde entity at the target location to head toward the destination.
          * Intensity is essentially how many turns to keep going.

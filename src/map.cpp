@@ -10497,6 +10497,15 @@ void map::build_outside_cache( const int zlev )
                 continue;
             }
 
+            if( cur_submap->is_uniform() ) {
+                if( cur_submap->get_ter( point_sm_ms::zero ).obj().has_flag( ter_furn_flag::TFLAG_INDOORS ) ) {
+                    for( int x = smx * SEEX; x < ( smx + 1 ) * SEEX + 2; ++x ) {
+                        std::fill_n( &padded_cache[x][smy * SEEY], SEEY + 2, false );
+                    }
+                }
+                continue;
+            }
+
             for( int sx = 0; sx < SEEX; ++sx ) {
                 for( int sy = 0; sy < SEEY; ++sy ) {
                     point_sm_ms sp( sx, sy );
@@ -10636,7 +10645,13 @@ bool map::build_floor_cache( const int zlev )
     bool &no_floor_gaps = ch.no_floor_gaps;
     no_floor_gaps = true;
 
-    bool lowest_z_lev = zlev <= -OVERMAP_DEPTH;
+    const bool lowest_z_lev = zlev <= -OVERMAP_DEPTH;
+    const auto terrain_has_floor = []( const ter_t &terrain ) {
+        return !terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) &&
+               !terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR_WATER ) &&
+               !terrain.has_flag( ter_furn_flag::TFLAG_GOES_DOWN ) &&
+               !terrain.has_flag( ter_furn_flag::TFLAG_TRANSPARENT_FLOOR );
+    };
 
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
         for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
@@ -10654,14 +10669,24 @@ bool map::build_floor_cache( const int zlev )
                 continue;
             }
 
+            if( cur_submap->is_uniform() ) {
+                if( terrain_has_floor( cur_submap->get_ter( point_sm_ms::zero ).obj() ) ) {
+                    continue;
+                }
+                if( !below_submap || below_submap->is_uniform() ) {
+                    for( int x = smx * SEEX; x < ( smx + 1 ) * SEEX; ++x ) {
+                        std::fill_n( &floor_cache[x][smy * SEEY], SEEY, false );
+                    }
+                    no_floor_gaps = false;
+                    continue;
+                }
+            }
+
             for( int sx = 0; sx < SEEX; ++sx ) {
                 for( int sy = 0; sy < SEEY; ++sy ) {
                     point_sm_ms sp( sx, sy );
                     const ter_t &terrain = cur_submap->get_ter( sp ).obj();
-                    if( terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR_WATER ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_GOES_DOWN ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_TRANSPARENT_FLOOR ) ) {
+                    if( !terrain_has_floor( terrain ) ) {
                         if( below_submap &&
                             below_submap->get_furn( sp ).obj().has_flag( ter_furn_flag::TFLAG_SUN_ROOF_ABOVE ) ) {
                             continue;

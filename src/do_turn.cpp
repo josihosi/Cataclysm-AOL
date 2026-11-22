@@ -4423,6 +4423,20 @@ static std::optional<std::vector<tripoint_abs_omt>> live_bandit_shared_route(
     const tripoint_abs_omt &destination, int now,
     const std::unordered_set<tripoint_abs_omt> &exclusions );
 
+static bool live_bandit_hostile_travelling_to_rally(
+    const bandit_live_world::site_record &site )
+{
+    const auto &operation = site.active_hostile_operation;
+    const auto &route = operation.reservation.shared_route;
+    if( operation.phase != bandit_live_world::hostile_operation_phase::outbound ||
+        !operation.has_rally || route.size() < 3 || route.front() != site.anchor ) {
+        return false;
+    }
+    const int distance = rl_dist( operation.rally_omt, route.back() );
+    return distance >= 2 && distance <= 3 &&
+           std::find( route.begin() + 1, route.end() - 1, operation.rally_omt ) != route.end() - 1;
+}
+
 bool advance_live_bandit_hostile_rallies()
 {
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
@@ -4436,18 +4450,8 @@ bool advance_live_bandit_hostile_rallies()
         bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
         bandit_live_world::active_outing_state &reservation = operation.reservation;
         if( site.retired_empty_site || !operation.is_active() ||
-            operation.phase != bandit_live_world::hostile_operation_phase::outbound ||
             reservation.owner != bandit_live_world::simulation_owner::abstract ||
-            !operation.has_rally || reservation.shared_route.size() < 3 ||
-            reservation.shared_route.front() != site.anchor ||
-            std::find( reservation.shared_route.begin() + 1,
-                       reservation.shared_route.end() - 1, operation.rally_omt ) ==
-            reservation.shared_route.end() - 1 ) {
-            continue;
-        }
-        const tripoint_abs_omt approach = reservation.shared_route.back();
-        const int rally_distance = rl_dist( operation.rally_omt, approach );
-        if( rally_distance < 2 || rally_distance > 3 ) {
+            !live_bandit_hostile_travelling_to_rally( site ) ) {
             continue;
         }
 
@@ -4744,6 +4748,7 @@ bool advance_live_bandit_hostile_approaches()
         changed |= live_bandit_establish_shakedown_communication( site );
         bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
         bandit_live_world::active_outing_state &reservation = operation.reservation;
+        const bool travelling_to_rally = live_bandit_hostile_travelling_to_rally( site );
         const auto discard_unavailable_coarse_interval = [&reservation]() {
             if( reservation.activation.initialized() && reservation.activation.active &&
                 reservation.activation.active_turns >= 0 ) {
@@ -4758,7 +4763,7 @@ bool advance_live_bandit_hostile_approaches()
             }
         };
         if( site.retired_empty_site || !operation.is_active() ||
-            ( operation.phase != bandit_live_world::hostile_operation_phase::rallying &&
+            ( !travelling_to_rally && operation.phase != bandit_live_world::hostile_operation_phase::rallying &&
               operation.phase != bandit_live_world::hostile_operation_phase::waiting_night &&
               operation.phase != bandit_live_world::hostile_operation_phase::approaching ) ||
             reservation.owner != bandit_live_world::simulation_owner::abstract ||
@@ -4768,7 +4773,8 @@ bool advance_live_bandit_hostile_approaches()
         if( !live_bandit_adopt_member_work( reservation ) ) {
             continue;
         }
-        const tripoint_abs_omt approach = reservation.shared_route.back();
+        const tripoint_abs_omt approach = travelling_to_rally ? operation.rally_omt :
+                                         reservation.shared_route.back();
 
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
@@ -4981,13 +4987,16 @@ bool advance_live_bandit_hostile_approaches()
                     approach_progressed = true;
                 }
             }
-            if( approach_progressed ) {
+            if( approach_progressed && !travelling_to_rally ) {
                 changed |= commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
                     return bandit_live_world::record_hostile_operation_approach_progress( next, *cursor,
                             current_minutes );
                 } );
             }
             continue;
+        }
+        if( travelling_to_rally ) {
+            continue; // The rally service owns the transition after both bodies arrive.
         }
         if( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown ) {
             // Reaching an overmap destination is not a locally simulated
@@ -11280,10 +11289,14 @@ bool complete_loaded_live_bandit_route_arrivals()
         // selected watch.  A direct egress to that watch is therefore an admission case.
         const bool frontier = bandit_live_world::structural_outing_uses_frontier_route( outing );
         const bool initial_departure = bandit_live_world::local_pair_initial_departure_is_bound( outing );
+        const bool intermediate_outbound = !frontier &&
+                                           outing.phase == bandit_live_world::scout_phase::outbound &&
+                                           outing.local_handoff.has_intermediate_route_position();
         const tripoint_abs_omt destination = frontier ? outing.target_omt : outing.selected_watch_omt;
         if( ( outing.schema_version < 10 && !frontier ) ||
             outing.owner != bandit_live_world::simulation_owner::local ||
-            ( outing.phase != bandit_live_world::scout_phase::observing && !initial_departure ) ||
+            ( outing.phase != bandit_live_world::scout_phase::observing && !initial_departure &&
+              !intermediate_outbound ) ||
             !outing.local_handoff.is_active() ||
             !outing.local_handoff.cohesion_assembled ||
             outing.waypoint_index + 1 >= static_cast<int>( outing.shared_route.size() ) ) {
@@ -14283,6 +14296,8 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
             adapter_reading.observed_range_omt = 0;
             adapter_reading.fire_intensity = fire_channel ? reading.fire_intensity : 0;
             adapter_reading.smoke_intensity = fire_channel ? reading.smoke_intensity : 0;
+            adapter_reading.vented_fire = adapter_reading.fire_intensity > 0 &&
+                                          physical_light::is_vented_fire_fixture( here, here.get_bub( source_pos ) );
             adapter_reading.light_intensity = fire_channel ? 0 : reading.light_intensity;
             adapter_reading.light_source = fire_channel ?
                                            bandit_mark_generation::light_source_band::ordinary : reading.light_source;
@@ -14780,7 +14795,7 @@ int attract_live_hordes_from_light_observations(
         const int attracted = overmap_buffer.attract_hordes_to_light( source_ms,
                               signal.horde_signal_power, signal.horde_signal_power,
                               signal.range_cap_omt, source_exposed, signal.sample_id,
-                              calendar::turn, &candidates, signal.range_cap_ms );
+                              calendar::turn, &candidates, signal.range_cap_ms, true );
         signaled_sources += attracted > 0 ? 1 : 0;
         ++packets;
         candidate_visits += candidates;
@@ -14795,7 +14810,8 @@ int attract_live_hordes_from_light_observations(
     // Keep the established diagnostic consumer's fields, but format only one
     // delivery summary. Packet provenance belongs to the opt-in channel trace;
     // informational logging must not perform synchronous writes per source.
-    if( noisy_diagnostics && packets > 0 ) {
+    if( noisy_diagnostics && packets > 0 &&
+        ( attracted_visits > 0 || calendar::once_every( 1_minutes ) ) ) {
         if( raid_perf_current ) {
             ++raid_perf_current->horde_diagnostic_records;
         }
@@ -15891,7 +15907,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     // A prospective lookout needs usable footing and a geometric view of
     // the assigned area, not recognizable occupants or an illuminated scene.
     // Actual arrived observers acquire their own light/channel-bound evidence.
-    size_t watch_cached_views = 0;
+    scout_observation::site_reader geometry;
     // Individual ray records are verbose diagnostics, not watch observations.
     // Keep them for probe sessions and explicit investigations; routine live
     // runs retain the route summary and lifecycle events without one stream
@@ -15900,7 +15916,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const bool record_watch_details = bandit_live_world_probe::transition_events_enabled() &&
                                       ( bandit_live_world_probe::active() ||
                                         ( watch_detail && std::string_view( watch_detail ) == "1" ) );
-    const auto terrain_lookup = [&site, &plan, &watch_cached_views, record_watch_details](
+    const auto terrain_lookup = [&site, &plan, &geometry, record_watch_details](
     const tripoint_abs_omt &candidate, const std::vector<tripoint_abs_omt> &footprint ) {
         bandit_live_world::structural_watch_terrain_read terrain;
         const oter_id &candidate_terrain = overmap_buffer.ter_existing( candidate );
@@ -15914,11 +15930,10 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
                    std::make_tuple( rl_dist( candidate, rhs ), rhs.z(), rhs.y(), rhs.x() );
         } );
         // At most two assigned area tiles, three standing samples and five
-        // area samples per tile. Each candidate's views die before the next.
+        // area samples per tile. Reuse matching geometry across candidates.
         if( targets.size() > 2 ) {
             targets.resize( 2 );
         }
-        scout_observation::site_reader geometry;
         tripoint_abs_ms origin;
         const auto record_view = [&]( const char *role, const tripoint_abs_ms & observed,
         const scout_observation::visibility_read & view ) {
@@ -15991,13 +16006,11 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
                     if( view.known && view.visible ) {
                         terrain.intervening_omts_clear = true;
                         terrain.intervening_see_costs = std::move( corridor );
-                        watch_cached_views += geometry.cached_view_count();
                         return terrain;
                     }
                 }
             }
         }
-        watch_cached_views += geometry.cached_view_count();
         return terrain;
     };
     // Four route callbacks is the existing geography owner's bound. Keep only
@@ -16139,7 +16152,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
         bandit_live_world::read_structural_watch_geography(
             target_footprint, site.anchor, terrain_lookup, watch_route_lookup );
     if( raid_perf_current ) {
-        raid_perf_current->watch_cached_views += watch_cached_views;
+        raid_perf_current->watch_cached_views += geometry.cached_view_count();
     }
     watch.selection = member_route_check ?
                       bandit_live_world::select_alternate_watch_ring_candidate(
@@ -17991,6 +18004,7 @@ std::optional<bool> live_light::tended_fire_conspicuous( const tripoint_abs_ms &
     bandit_mark_generation::local_field_signal_reading reading;
     reading.fire_intensity = fire;
     reading.smoke_intensity = here.get_field_intensity( p, fd_smoke );
+    reading.vented_fire = physical_light::is_vented_fire_fixture( here, p );
     reading.outside = escape.exposed_to_sky;
     reading.side_leakage = escape.side_leakage;
     reading.elevated_roof_exposed = escape.elevated_exposed;
@@ -23604,7 +23618,8 @@ void overmap_npc_move()
             site.active_hostile_operation;
         const bandit_live_world::active_outing_state &reservation = operation.reservation;
         if( !site.retired_empty_site && operation.is_active() &&
-            operation.phase == bandit_live_world::hostile_operation_phase::approaching &&
+            ( operation.phase == bandit_live_world::hostile_operation_phase::approaching ||
+              live_bandit_hostile_travelling_to_rally( site ) ) &&
             reservation.owner == bandit_live_world::simulation_owner::abstract ) {
             hostile_approach_member_ids.insert( reservation.member_ids.begin(),
                                                 reservation.member_ids.end() );
@@ -24551,8 +24566,10 @@ void overmap_npc_move()
         const bool returning_hostile = operation.is_active() &&
                                        operation.phase == bandit_live_world::hostile_operation_phase::returning_home &&
                                        operation.reservation.owner == bandit_live_world::simulation_owner::abstract;
+        const bool travelling_to_rally = live_bandit_hostile_travelling_to_rally( site );
         const bool approaching_hostile = operation.is_active() &&
-                                         operation.phase == bandit_live_world::hostile_operation_phase::approaching &&
+                                         ( operation.phase == bandit_live_world::hostile_operation_phase::approaching ||
+                                           travelling_to_rally ) &&
                                          operation.reservation.owner == bandit_live_world::simulation_owner::abstract;
         const bool generic_scout = site.active_outing.is_active() &&
                                    site.active_outing.kind == bandit_live_world::outing_kind::scout_sortie &&
@@ -24564,15 +24581,15 @@ void overmap_npc_move()
         if( structural && !site.active_outing.structural_admission.staged.empty() &&
             ( live_bandit_initial_abstract_body_owner_is_bound( site.active_outing ) ||
               site.active_outing.local_handoff.is_abstract_resume() ) ) {
-            // A guarded staged scout can leave the loaded area when the
-            // player moves away. Return just that body to its existing shared
-            // travel owner, without granting it the intervening local time.
+            // A staged scout can be outside the loaded area after a map shift
+            // with either its guard order or its travelling mission. The
+            // admission lease below still owns the release in both cases.
             const auto staged = site.active_outing.structural_admission.staged;
             const auto persistent = overmap_buffer.get_overmap_npcs();
             for( const auto &entry : staged ) {
                 const auto body = overmap_buffer.find_npc( entry.npc_id );
                 if( !body || body->is_active() || body->is_dead() || get_map().inbounds( body->pos_abs() ) ||
-                    body->mission != NPC_MISSION_GUARD ||
+                    ( body->mission != NPC_MISSION_GUARD && !body->is_travelling() ) ||
                     bandit_live_world::active_operation_duty_site_for( bandit_state, entry.npc_id ) != &site ) {
                     continue;
                 }
@@ -24734,7 +24751,8 @@ void overmap_npc_move()
                                          !live_bandit_member_can_take_homeward_step( *body ) ) ) ||
                     !body->is_travelling() || body->goal == npc::no_goal_point ||
                     ( is_hostile_approach && ( outing.shared_route.empty() ||
-                                               body->goal != outing.shared_route.back() ) ) ||
+                                               body->goal != ( travelling_to_rally ? operation.rally_omt :
+                                                               outing.shared_route.back() ) ) ) ||
                     ( !is_generic_scout && !is_structural && !is_hostile_approach && body->goal != site.anchor ) ||
                     ( !is_hostile_approach &&
                       std::find( travelling_npcs.begin(), travelling_npcs.end(), body.get() ) ==
@@ -24767,7 +24785,10 @@ void overmap_npc_move()
                     npcs_need_reload = true;
                     continue;
                 }
-                if( body->pos_abs_omt() == body->goal ) {
+                const bool at_goal = body->pos_abs_omt() == body->goal;
+                const bool finish_goal_entry = at_goal && is_structural &&
+                                               overmap_party_travel::omt_intersects_loaded_map( body->goal );
+                if( at_goal && !finish_goal_entry ) {
                     // No exact local destination is implied by an OMT goal.
                     saved.serviced_active_turns = outing.activation.active_turns;
                     continue;
@@ -24796,8 +24817,9 @@ void overmap_npc_move()
                 if( !is_structural ) {
                     policy.fixed_edge_cost_millis = 300000;
                 }
-                const auto transit = overmap_party_travel::prepare_transit( work, { actor }, policy );
-                if( transit.status == overmap_party_travel::transit_status::local_handoff ) {
+                const auto transit = finish_goal_entry ? overmap_party_travel::transit_result{} :
+                                     overmap_party_travel::prepare_transit( work, { actor }, policy );
+                if( finish_goal_entry || transit.status == overmap_party_travel::transit_status::local_handoff ) {
                     // The physical owner consumes this interval. It cannot fund a
                     // distant edge before or after the local crossing.
                     if( !is_structural ) {
@@ -24807,12 +24829,14 @@ void overmap_npc_move()
                     auto &route = outing.travel_routes[id];
                     map &loaded = get_map();
                     const auto origin = body->pos_abs();
-                    if( route.path.empty() || route.path.back().z() != origin.z() ) {
+                    if( !finish_goal_entry && ( route.path.empty() || route.path.back().z() != origin.z() ) ) {
                         // A remote vertical edge needs its own physical
                         // transition, not a horizontal move toward this map.
                         continue;
                     }
-                    const auto next_omt = route.path.back();
+                    // Reaching the goal OMT can still leave the body outside the
+                    // loaded map when its boundary cuts through that OMT.
+                    const auto next_omt = finish_goal_entry ? body->goal : route.path.back();
                     const auto relative = loaded.get_bub( origin );
                     const int last = loaded.getmapsize() * SEEX - 1;
                     const auto entry = loaded.get_abs( tripoint_bub_ms(
@@ -24938,7 +24962,11 @@ void overmap_npc_move()
                       live_bandit_abstract_scout_member_can_travel( *body ) );
             return phase_matches && current.is_active() && live_bandit_party_active( current ) &&
                    structural_lease && local_lease &&
-                   ( request.already_inside || ( route != current.travel_routes.end() &&
+                   ( request.already_inside ||
+                     ( request.structural && request.next_omt == request.goal &&
+                       project_to<coords::omt>( request.origin ) == request.goal &&
+                       overmap_party_travel::omt_intersects_loaded_map( request.goal ) ) ||
+                     ( route != current.travel_routes.end() &&
                      !route->second.path.empty() && route->second.path.back() == request.next_omt ) ) &&
                    current.owner == ( request.local_alternate ? bandit_live_world::simulation_owner::local :
                                       bandit_live_world::simulation_owner::abstract ) &&

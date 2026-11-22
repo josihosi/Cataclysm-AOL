@@ -74,6 +74,7 @@ struct smoke_support {
     std::optional<tripoint_abs_ms> position;
     std::string reason;
 };
+bool is_vented_fire_fixture( const map &here, const tripoint_bub_ms &source );
 smoke_support evaluate_smoke_support( map &here, const tripoint_bub_ms &source );
 
 /** A cache-free optical route supplied by the overmap observer. */

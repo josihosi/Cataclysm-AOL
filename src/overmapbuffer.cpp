@@ -1876,7 +1876,7 @@ void overmapbuffer::signal_hordes( const tripoint_abs_sm &center, const int sig_
 int overmapbuffer::attract_hordes_to_light( const tripoint_abs_ms &source, const int intensity,
         const int observer_radius_sm, const int brightness_range_omt, const bool source_exposed,
         const std::string &sample_id, const time_point &observed, int *candidate_count,
-        const int brightness_range_ms )
+        const int brightness_range_ms, const bool stagger )
 {
     int attracted = 0;
     int candidates = 0;
@@ -1911,7 +1911,7 @@ int overmapbuffer::attract_hordes_to_light( const tripoint_abs_ms &source, const
             observer_radius_sm ) ) {
         int om_candidates = 0;
         attracted += om->attract_hordes_to_light( source, intensity, observer_radius_sm, sample_id,
-                     observed, visible, &om_candidates );
+                     observed, visible, &om_candidates, stagger );
         candidates += om_candidates;
     }
     if( candidate_count != nullptr ) {

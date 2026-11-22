@@ -67,7 +67,8 @@ horde_entity::horde_entity( const mtype_id &original )
 horde_entity::horde_entity( const horde_entity &other ) :
     destination( other.destination ), tracking_intensity( other.tracking_intensity ),
     last_processed( other.last_processed ), moves( other.moves ), light_source( other.light_source ),
-    light_sample_id( other.light_sample_id ), light_observed( other.light_observed ),
+    light_scan_slot( other.light_scan_slot ), light_sample_id( other.light_sample_id ),
+    light_observed( other.light_observed ),
     light_expires( other.light_expires ), light_interest_strength( other.light_interest_strength ),
     type_id( other.type_id )
 {
@@ -90,6 +91,7 @@ horde_entity &horde_entity::operator=( const horde_entity &other )
     light_observed = other.light_observed;
     light_expires = other.light_expires;
     light_interest_strength = other.light_interest_strength;
+    light_scan_slot = other.light_scan_slot;
     type_id = other.type_id;
     monster_data = other.monster_data ? std::make_unique<monster>( *other.monster_data ) : nullptr;
     return *this;

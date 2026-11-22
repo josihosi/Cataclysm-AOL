@@ -1083,8 +1083,11 @@ local_field_signal_projection adapt_local_field_signal_reading(
         smoke.envelope_id = reading.envelope_id;
         smoke.region_id = reading.region_id;
         smoke.observed_range_omt = reading.observed_range_omt;
-        smoke.source_strength = std::clamp( reading.fire_intensity + reading.smoke_intensity, 1, 3 );
-        smoke.persistence = reading.smoke_intensity > 0 ? 1 : 0;
+        // A chimney contributes thin smoke to the signal without a local field.
+        const int plume_smoke = std::max( reading.smoke_intensity,
+                                         reading.vented_fire && reading.fire_intensity > 0 ? 1 : 0 );
+        smoke.source_strength = std::clamp( reading.fire_intensity + plume_smoke, 1, 3 );
+        smoke.persistence = plume_smoke > 0 ? 1 : 0;
         smoke.height_bias = reading.fire_intensity >= 2 ? 1 : 0;
         smoke.spread_bias = 0;
         smoke.weather = reading.fire_weather ? smoke_weather_band::clear : reading.smoke_weather;

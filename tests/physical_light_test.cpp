@@ -2623,7 +2623,7 @@ TEST_CASE( "current smoke support follows actual building roof geometry",
                  0 ) ).position );
 }
 
-TEST_CASE( "underground or smoke-suppressing sources need an actual outlet",
+TEST_CASE( "only vented fixtures infer a roof plume while suppressing local smoke",
            "[physical_light][smoke_support_067]" )
 {
     clear_avatar();
@@ -2640,7 +2640,9 @@ TEST_CASE( "underground or smoke-suppressing sources need an actual outlet",
     CHECK( physical_light::evaluate_smoke_support( here, below ).position == here.get_abs( ground ) );
     CHECK( physical_light::evaluate_smoke_support( here, below ).reason == "open_outlet" );
     here.ter_set( ground, ter_str_id( "t_floor" ) );
-    here.furn_set( ground, furn_str_id( "f_woodstove" ) );
+    here.furn_set( below, furn_str_id( "f_woodstove" ) );
+    CHECK_FALSE( physical_light::evaluate_smoke_support( here, below ).position );
+    here.furn_set( ground, furn_str_id( "f_portable_stove" ) );
     here.ter_set( tripoint_bub_ms( 40, 40, 1 ), ter_str_id( "t_flat_roof" ) );
     here.invalidate_map_cache( 0 );
     here.build_map_cache( 0 );
@@ -2648,6 +2650,14 @@ TEST_CASE( "underground or smoke-suppressing sources need an actual outlet",
     here.build_map_cache( 1 );
     REQUIRE( here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, ground ) );
     CHECK_FALSE( physical_light::evaluate_smoke_support( here, ground ).position );
+    for( const char *id : { "f_woodstove", "f_clay_oven", "f_fireplace", "f_fireplace_stone" } ) {
+        CAPTURE( id );
+        here.furn_set( ground, furn_str_id( id ) );
+        REQUIRE( here.has_flag( ter_furn_flag::TFLAG_SUPPRESS_SMOKE, ground ) );
+        const auto support = physical_light::evaluate_smoke_support( here, ground );
+        CHECK( support.position == here.get_abs( tripoint_bub_ms( 40, 40, 2 ) ) );
+        CHECK( support.reason == "above_building_roof" );
+    }
 }
 
 TEST_CASE( "raid_sweep_ignores_removed_field_light_before_field_cleanup",

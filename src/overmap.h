@@ -776,7 +776,7 @@ class overmap
                                      int observer_radius_sm, const std::string &sample_id,
                                      const time_point &observed, const std::function<bool(
                                          const tripoint_abs_ms & )> &visible,
-                                     int *candidate_count = nullptr );
+                                     int *candidate_count = nullptr, bool stagger = false );
         void alert_entity( const tripoint_om_ms &location, const tripoint_abs_ms &destination,
                            int intensity );
         void process_mongroups();

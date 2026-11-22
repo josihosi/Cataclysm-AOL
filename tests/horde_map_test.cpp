@@ -469,6 +469,65 @@ TEST_CASE( "horde_map_light_interest_uses_a_source_envelope_without_sound_signal
     CHECK( count_entities( test_horde, horde_map_flavors::idle ) == 69 );
 }
 
+TEST_CASE( "zombie light detection spreads even a dense group across five minutes",
+           "[hordes][light][light_cadence]" )
+{
+    horde_map test_horde;
+    const point_abs_om om_origin( 42, 42 );
+    test_horde.set_location( om_origin );
+    const auto source = project_combine( om_origin, tripoint_om_ms( 60, 60, 0 ) );
+    const int zombies = 189;
+    for( int i = 0; i < zombies; ++i ) {
+        test_horde.spawn_entity( source + point_rel_ms( i % 14 + 1, i / 14 ),
+                                 mon_zombie );
+    }
+
+    int visibility_calls = 0;
+    const auto blocked = [&]( const tripoint_abs_ms & ) {
+        ++visibility_calls;
+        return false;
+    };
+    CHECK( test_horde.attract_entities_to_light( source, 24, 24, "steady light",
+           calendar::turn_zero, blocked ) == 0 );
+    REQUIRE( visibility_calls == zombies );
+    visibility_calls = 0;
+    for( int offset = 0; offset < to_turns<int>( 5_minutes ); ++offset ) {
+        int candidates = 0;
+        const int before = visibility_calls;
+        CHECK( test_horde.attract_entities_to_light( source, 24, 24, "steady light",
+               calendar::turn_zero + offset * 1_turns, blocked, &candidates, true ) == 0 );
+        CHECK( candidates <= 1 );
+        CHECK( visibility_calls - before == candidates );
+    }
+    CHECK( visibility_calls == zombies );
+    CHECK( count_entities( test_horde, horde_map_flavors::idle ) == zombies );
+}
+
+TEST_CASE( "zombies following a light can refresh it between detection slots",
+           "[hordes][light][light_cadence]" )
+{
+    horde_map test_horde;
+    const point_abs_om om_origin( 42, 42 );
+    test_horde.set_location( om_origin );
+    const auto source = project_combine( om_origin, tripoint_om_ms( 60, 60, 0 ) );
+    const tripoint_abs_ms observer = source + point_rel_ms( 12, 0 );
+    test_horde.spawn_entity( observer, mtype_id( "mon_zombie" ) );
+    auto now = calendar::turn_zero;
+    const auto visible = []( const tripoint_abs_ms & ) { return true; };
+    bool attracted = false;
+    for( int offset = 0; offset < to_turns<int>( 5_minutes ); ++offset, now += 1_turns ) {
+        if( test_horde.attract_entities_to_light( source, 6, 6, "first light",
+                now, visible, nullptr, true ) == 1 ) {
+            attracted = true;
+            break;
+        }
+    }
+    REQUIRE( attracted );
+    REQUIRE( test_horde.attract_entities_to_light( source, 12, 12, "refreshed light",
+             now + 1_turns, visible, nullptr, true ) == 1 );
+    CHECK( count_entities( test_horde, horde_map_flavors::active ) == 1 );
+}
+
 TEST_CASE( "horde_map_light_interest_leaves_no_eligible_observer_idle", "[hordes][light]" )
 {
     horde_map test_horde;

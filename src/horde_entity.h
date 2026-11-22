@@ -2,6 +2,7 @@
 #ifndef CATA_SRC_HORDE_ENTITY_H
 #define CATA_SRC_HORDE_ENTITY_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -71,6 +72,9 @@ struct horde_entity {
     // This belongs to the abstract horde owner, so replaying a packet cannot
     // manufacture a later observation or extend an extinguished source.
     tripoint_abs_ms light_source;
+    // Assigned when an ordinary horde first becomes a candidate for light.
+    // Kept when the entity moves between spatial buckets.
+    std::int16_t light_scan_slot = -1;
     std::string light_sample_id;
     time_point light_observed;
     time_point light_expires;

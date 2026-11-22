@@ -7,6 +7,25 @@
 #include "json.h"
 #include "json_loader.h"
 
+TEST_CASE( "completed pair edge retains credit without retaining endpoints",
+           "[overmap_party_travel][coarse][scout_boundary_regression]" )
+{
+    overmap_party_travel::work work;
+    const std::vector<tripoint_abs_omt> from = { { 10, 10, 0 }, { 10, 10, 0 } };
+    const std::vector<tripoint_abs_omt> to = { { 11, 10, 0 }, { 11, 10, 0 } };
+    work.serviced_active_turns = 300;
+    bool moved = false;
+    REQUIRE( overmap_party_travel::service_set( work, from, to, 24, 100, 200000, moved ) );
+    REQUIRE_FALSE( moved );
+    REQUIRE( overmap_party_travel::service_set( work, from, to, 24, 100, 150000, moved ) );
+    REQUIRE( moved );
+    CHECK_FALSE( work.edge_bound );
+    CHECK( work.from.empty() );
+    CHECK( work.to.empty() );
+    CHECK( work.work_millis == 50000 );
+    CHECK( work.serviced_active_turns == 300 );
+}
+
 TEST_CASE( "shared overmap party work supports six members and preserves paid progress",
            "[overmap_party_travel][coarse]" )
 {

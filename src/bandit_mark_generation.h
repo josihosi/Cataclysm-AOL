@@ -203,6 +203,7 @@ struct local_field_signal_reading {
     light_weather_band light_weather = light_weather_band::clear;
     // Present only for live fire/smoke, not unrelated lamps/searchlights.
     std::optional<fire_signal_visibility::weather_profile> fire_weather;
+    bool vented_fire = false;
 };
 
 struct local_field_signal_projection {

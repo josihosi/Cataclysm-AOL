@@ -24774,7 +24774,9 @@ TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
             bandit_live_world::camp_map_lead *expired_lead =
                 expired_site.intelligence_map.find_lead( signal.lead_id );
             REQUIRE( expired_lead != nullptr );
-            expired_lead->last_seen_minutes = dispatch_minutes - 6 * 60;
+            const int signal_hours = fixture.kind == bandit_live_world::camp_lead_kind::smoke_signal ?
+                                     72 : fixture.kind == bandit_live_world::camp_lead_kind::light_signal ? 48 : 12;
+            expired_lead->last_seen_minutes = dispatch_minutes - signal_hours * 60;
             CHECK_FALSE( bandit_live_world::plan_structural_bounty_outing(
                              expired_site, *expired_lead, dispatch_minutes ).valid );
 
@@ -45884,7 +45886,7 @@ TEST_CASE( "retained_fresh_smoke_survives_cheap_trim_before_urgent_dispatch",
     smoke = site.intelligence_map.find_lead( smoke_id );
     REQUIRE( smoke != nullptr );
     if( mode == "stale" ) {
-        smoke->last_seen_minutes = now - 6 * 60;
+        smoke->last_seen_minutes = now - 72 * 60;
     } else if( mode == "dangerous" ) {
         smoke->status = camp_lead_status::dangerous;
     } else if( mode == "threat" ) {
@@ -46562,22 +46564,25 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
         return site;
     };
 
-    SECTION( "sound expires at three hours and smoke and light expire at six" ) {
+    SECTION( "sound, light, and smoke expire at their respective horizons" ) {
         bandit_live_world::world_state world;
         world.sites.push_back( make_site( "sound", bandit_live_world::camp_lead_kind::sound_signal,
-                                          24 * 60 - 3 * 60 ) );
+                                          60 * 60 ) );
         world.sites.push_back( make_site( "smoke", bandit_live_world::camp_lead_kind::smoke_signal,
-                                          24 * 60 - 6 * 60 ) );
+                                          0 ) );
         world.sites.push_back( make_site( "light", bandit_live_world::camp_lead_kind::light_signal,
-                                          24 * 60 - 6 * 60 ) );
+                                          24 * 60 ) );
+        for( auto &site : world.sites ) {
+            site.intelligence_map.last_daily_cleanup_minutes = 48 * 60;
+        }
         const std::string before = serialize_world( world );
         const bandit_live_world::camp_intelligence_aging_result before_boundary =
-            bandit_live_world::advance_camp_intelligence_aging( world, 24 * 60 - 1 );
+            bandit_live_world::advance_camp_intelligence_aging( world, 72 * 60 - 1 );
         CHECK( before_boundary.sites_cleaned == 0 );
         CHECK( serialize_world( world ) == before );
 
         const bandit_live_world::camp_intelligence_aging_result at_boundary =
-            bandit_live_world::advance_camp_intelligence_aging( world, 24 * 60 );
+            bandit_live_world::advance_camp_intelligence_aging( world, 72 * 60 );
         CHECK( at_boundary.sites_considered == 3 );
         CHECK( at_boundary.sites_cleaned == 3 );
         CHECK( at_boundary.leads_considered == 3 );
@@ -46594,13 +46599,13 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
             CHECK( lead.origin == bandit_live_world::camp_lead_origin::returned_report );
             CHECK( lead.source_key == "returned-physical-observation" );
             CHECK( lead.last_outcome == "returned signal evidence expired without new support" );
+            const std::string aged = serialize_camp_map_lead( lead );
+            CHECK( aged.find( "avatar" ) == std::string::npos );
+            CHECK( aged.find( "player" ) == std::string::npos );
         }
-        const std::string aged = serialize_world( world );
-        CHECK( aged.find( "avatar" ) == std::string::npos );
-        CHECK( aged.find( "player" ) == std::string::npos );
     }
 
-    SECTION( "signal expiry remains exact inside one cleanup day" ) {
+    SECTION( "signal expiry remains exact across cleanup days" ) {
         bandit_live_world::world_state world;
         world.sites.push_back( make_site( "sound-midday",
                                           bandit_live_world::camp_lead_kind::sound_signal, 0 ) );
@@ -46611,23 +46616,34 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
         const std::string initial = serialize_world( world );
 
         const bandit_live_world::camp_intelligence_aging_result sound_before =
-            bandit_live_world::advance_camp_intelligence_aging( world, 3 * 60 - 1 );
+            bandit_live_world::advance_camp_intelligence_aging( world, 12 * 60 - 1 );
         CHECK( sound_before.leads_aged == 0 );
         CHECK( serialize_world( world ) == initial );
         const bandit_live_world::camp_intelligence_aging_result sound_exact =
-            bandit_live_world::advance_camp_intelligence_aging( world, 3 * 60 );
+            bandit_live_world::advance_camp_intelligence_aging( world, 12 * 60 );
         CHECK( sound_exact.leads_aged == 1 );
         CHECK( world.sites[0].intelligence_map.leads.front().status ==
                bandit_live_world::camp_lead_status::stale );
         CHECK( world.sites[1].intelligence_map.leads.front().status ==
                bandit_live_world::camp_lead_status::scout_confirmed );
 
-        const bandit_live_world::camp_intelligence_aging_result visual_before =
-            bandit_live_world::advance_camp_intelligence_aging( world, 6 * 60 - 1 );
-        CHECK( visual_before.leads_aged == 0 );
-        const bandit_live_world::camp_intelligence_aging_result visual_exact =
-            bandit_live_world::advance_camp_intelligence_aging( world, 6 * 60 );
-        CHECK( visual_exact.leads_aged == 2 );
+        const auto light_before =
+            bandit_live_world::advance_camp_intelligence_aging( world, 48 * 60 - 1 );
+        CHECK( light_before.leads_aged == 0 );
+        const auto light_exact =
+            bandit_live_world::advance_camp_intelligence_aging( world, 48 * 60 );
+        CHECK( light_exact.leads_aged == 1 );
+        CHECK( world.sites[2].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::stale );
+        CHECK( world.sites[1].intelligence_map.leads.front().status ==
+               bandit_live_world::camp_lead_status::scout_confirmed );
+
+        const auto smoke_before =
+            bandit_live_world::advance_camp_intelligence_aging( world, 72 * 60 - 1 );
+        CHECK( smoke_before.leads_aged == 0 );
+        const auto smoke_exact =
+            bandit_live_world::advance_camp_intelligence_aging( world, 72 * 60 );
+        CHECK( smoke_exact.leads_aged == 1 );
         CHECK( world.sites[1].intelligence_map.leads.front().status ==
                bandit_live_world::camp_lead_status::stale );
         CHECK( world.sites[2].intelligence_map.leads.front().status ==
@@ -46641,11 +46657,11 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
         bandit_live_world::world_state observed = baseline;
 
         const bandit_live_world::camp_intelligence_aging_result baseline_result =
-            bandit_live_world::advance_camp_intelligence_aging( baseline, 6 * 60 );
+            bandit_live_world::advance_camp_intelligence_aging( baseline, 72 * 60 );
         bandit_live_world_probe::session receipt_session(
             bandit_live_world_probe::collection_mode::transition_events );
         const bandit_live_world::camp_intelligence_aging_result observed_result =
-            bandit_live_world::advance_camp_intelligence_aging( observed, 6 * 60 );
+            bandit_live_world::advance_camp_intelligence_aging( observed, 72 * 60 );
         const bandit_live_world_probe::snapshot &receipts = receipt_session.result();
 
         CHECK( observed_result.leads_aged == baseline_result.leads_aged );
@@ -46657,10 +46673,10 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
         CHECK( receipt.aging_lead_id == "receipt-lead" );
         CHECK( receipt.aging_channel == "smoke_signal" );
         CHECK( receipt.aging_previous_last_seen_minutes == 0 );
-        CHECK( receipt.aging_previous_age_minutes == 6 * 60 );
+        CHECK( receipt.aging_previous_age_minutes == 72 * 60 );
         CHECK( receipt.aging_previous_status == "scout_confirmed" );
         CHECK( receipt.aging_result_last_seen_minutes == 0 );
-        CHECK( receipt.aging_result_age_minutes == 6 * 60 );
+        CHECK( receipt.aging_result_age_minutes == 72 * 60 );
         CHECK( receipt.aging_result_status == "stale" );
         CHECK_FALSE( receipt.aging_expired_removed );
         CHECK( receipt.aging_lead_set_hash_before != receipt.aging_lead_set_hash_after );
@@ -76605,6 +76621,11 @@ TEST_CASE( "structural staged arrival leaves the distant peer on shared travel",
            "[bandit_live_world][structural_admission][production]" )
 {
     using namespace bandit_live_world;
+    // Initialize the native turn driver before setting up any scouts. The
+    // split and the entire recovery below happen without a save/load.
+    const auto world_name = world_generator->active_world->world_name;
+    REQUIRE( g->save() );
+    r067_handover_reload( world_name );
     override_option food( "NO_NPC_FOOD", "true" );
     override_option llm( "LLM_INTENT_ENABLE", "false" );
     scoped_weather_override weather( weather_type_id( "clear" ) );
@@ -76702,6 +76723,60 @@ TEST_CASE( "structural staged arrival leaves the distant peer on shared travel",
             journey.next_minute( false );
         }
         CHECK( first->pos_abs() != departure_position );
+    }
+    SECTION( "walking away and back lets the original pair finish the watch without loading a save" ) {
+        const auto ids = journey.members();
+        const int generation = journey.scout_generation();
+        const auto watch = journey.site().active_outing.selected_watch_omt;
+        avatar &player = get_avatar();
+        const auto player_start = player.pos_abs();
+        const tripoint direction( player_start.x() >= first->pos_abs().x() ? 1 : -1, 0, 0 );
+        const auto advance_turn = [&]() {
+            player.set_moves( 0 );
+            REQUIRE_FALSE( g->do_turn() );
+        };
+        const auto walk = [&]( const tripoint &step ) {
+            player.set_moves( player.get_speed() );
+            const auto next = player.pos_abs() + step;
+            REQUIRE( g->walk_move( get_map().get_bub( next ) ) );
+            REQUIRE( player.pos_abs() == next );
+            advance_turn();
+        };
+
+        for( int tiles = 0; tiles < MAPSIZE * SEEX && first->is_active(); ++tiles ) {
+            walk( direction );
+        }
+        REQUIRE_FALSE( first->is_active() );
+        REQUIRE_FALSE( get_map().inbounds( first->pos_abs() ) );
+        REQUIRE( player.pos_abs() != player_start );
+        const auto release_deadline = calendar::turn + 10_minutes;
+        while( first->get_bandit_live_world_projection_lease().present &&
+               calendar::turn < release_deadline ) {
+            advance_turn();
+        }
+        REQUIRE_FALSE( first->get_bandit_live_world_projection_lease().present );
+        REQUIRE( first->is_travelling() );
+        while( player.pos_abs() != player_start ) {
+            walk( -direction );
+        }
+
+        const auto watch_deadline = calendar::turn + 90_minutes;
+        const auto watch_started = [&]() {
+            return journey.site().active_outing.assessment.observation_started_minutes >= 0;
+        };
+        while( !watch_started() && calendar::turn < watch_deadline ) {
+            advance_turn();
+        }
+        const auto &completed = journey.site().active_outing;
+        INFO( "phase=" << to_string( completed.phase ) << " first=" << first->pos_abs()
+              << " peer=" << peer->pos_abs() << " watch=" << watch );
+        REQUIRE( watch_started() );
+        CHECK( completed.generation == generation );
+        CHECK( completed.member_ids == ids );
+        CHECK( completed.owner == simulation_owner::local );
+        CHECK_FALSE( completed.structural_admission.is_active() );
+        CHECK( first->pos_abs_omt() == watch );
+        CHECK( peer->pos_abs_omt() == watch );
     }
 }
 
@@ -81110,13 +81185,13 @@ TEST_CASE( "player sighting requires scout sight on the exact camp tile",
     } );
     map &here = get_map();
     const tripoint_abs_ms origin = project_to<coords::ms>( target );
-    const tripoint_abs_ms near = origin + point( 0, 12 );
+    const tripoint_abs_ms near_square = origin + point( 0, 12 );
     const tripoint_abs_ms screen = origin + point( 1, 12 );
-    const tripoint_abs_ms far = origin + point( 2, 12 );
+    const tripoint_abs_ms far_square = origin + point( 2, 12 );
     const tripoint_abs_ms watch = project_to<coords::ms>( journey.site().active_outing.selected_watch_omt ) +
                                  point( 23, 12 );
-    REQUIRE( here.inbounds( near ) );
-    REQUIRE( here.inbounds( far ) );
+    REQUIRE( here.inbounds( near_square ) );
+    REQUIRE( here.inbounds( far_square ) );
     for( const auto id : journey.members() ) {
         auto actor = overmap_buffer.find_npc( id );
         REQUIRE( actor );
@@ -81139,10 +81214,10 @@ TEST_CASE( "player sighting requires scout sight on the exact camp tile",
         rebuild();
     } );
     here.ter_set( wall, ter_str_id( "t_wall" ) );
-    get_avatar().setpos( near, false );
+    get_avatar().setpos( near_square, false );
     rebuild();
     REQUIRE( observer->sees( here, get_avatar() ) );
-    REQUIRE_FALSE( observer->sees( here, here.get_bub( far ) ) );
+    REQUIRE_FALSE( observer->sees( here, here.get_bub( far_square ) ) );
     REQUIRE( journey.world().hostile_target_opportunities.empty() );
     REQUIRE_FALSE( overmap_buffer.find_camp( target.xy() ) );
     advance_live_bandit_local_scout_assessments_for_test();
@@ -81157,19 +81232,19 @@ TEST_CASE( "player sighting requires scout sight on the exact camp tile",
     REQUIRE( camp );
     REQUIRE( *camp != nullptr );
 
-    get_avatar().setpos( far, false );
-    ( *camp )->set_bb_pos( near );
+    get_avatar().setpos( far_square, false );
+    ( *camp )->set_bb_pos( near_square );
     rebuild();
-    REQUIRE( observer->sees( here, here.get_bub( near ) ) );
+    REQUIRE( observer->sees( here, here.get_bub( near_square ) ) );
     REQUIRE_FALSE( observer->sees( here, get_avatar() ) );
     advance_live_bandit_local_scout_assessments_for_test();
     CHECK( journey.world().hostile_target_opportunities.empty() );
 
-    get_avatar().setpos( near, false );
-    ( *camp )->set_bb_pos( far );
+    get_avatar().setpos( near_square, false );
+    ( *camp )->set_bb_pos( far_square );
     rebuild();
     REQUIRE( observer->sees( here, get_avatar() ) );
-    REQUIRE_FALSE( observer->sees( here, here.get_bub( far ) ) );
+    REQUIRE_FALSE( observer->sees( here, here.get_bub( far_square ) ) );
     advance_live_bandit_local_scout_assessments_for_test();
     REQUIRE( journey.world().hostile_target_opportunities.size() == 1 );
     const auto &opportunity = journey.world().hostile_target_opportunities.front();

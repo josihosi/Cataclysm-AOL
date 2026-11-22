@@ -84,7 +84,7 @@ class horde_map
                                        int observer_radius_sm, const std::string &sample_id,
                                        const time_point &observed, const std::function<bool(
                                            const tripoint_abs_ms & )> &visible = {},
-                                       int *candidate_count = nullptr );
+                                       int *candidate_count = nullptr, bool stagger = false );
         // Called from the existing ordinary horde tick.  Expired light-only
         // interest must return to the idle spatial bucket rather than remain
         // scheduled as an active entity.

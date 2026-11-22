@@ -366,6 +366,8 @@ bool service_set( work &state, const std::vector<tripoint_abs_omt> &from,
         next.work_millis = std::min<std::int64_t>( next.work_millis - cost, 300000 );
         next.edge_bound = false;
         next.edge_cost_millis = 0;
+        next.from.clear();
+        next.to.clear();
         move = true;
     }
     state = next;

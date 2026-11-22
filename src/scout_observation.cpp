@@ -135,6 +135,7 @@ class existing_view : public map
         std::map<tripoint_abs_ms, float> source_results;
         std::map<tripoint_abs_ms, std::pair<float, float>> light_bounds;
         std::map<tripoint_abs_sm, std::optional<submap_sunlight_input>> lighting_prefix_inputs;
+        bool visibility_prepared = false;
 
         std::optional<size_t> submap_index( const tripoint_abs_sm &pos ) const {
             const int x = pos.x() - get_abs_sub().x();
@@ -394,7 +395,7 @@ class existing_view : public map
                                                    std::abs( origin.y() - target.y() ) ) / SEEX + ( padding ? 3 : 2 ) ), true ),
             size( full_window ? MAPSIZE : std::min( MAPSIZE, std::max( std::abs( origin.x() - target.x() ),
                                                     std::abs( origin.y() - target.y() ) ) / SEEX + ( padding ? 3 : 2 ) ) ) {
-            unknown.set_all_ter( ter_str_id( "t_wall" ) );
+            unknown.set_all_ter( ter_str_id( "t_wall" ), native_lighting );
             ignored.set_all_ter( ter_str_id( "t_open_air" ) );
             lighting_view = native_lighting;
             lighting_center = project_to<coords::sm>( origin );
@@ -496,9 +497,10 @@ class existing_view : public map
             }
         }
         void prepare_visibility() {
-            if( lighting_view ) {
-                return; // Native point projection requests its actual dependencies.
+            if( lighting_view || visibility_prepared ) {
+                return;
             }
+            visibility_prepared = true;
             raid_perf_scope diagnostic( raid_perf_stage::scout_view_cache );
             rebuild_vehicle_level_caches();
             for( int z = low; z <= high; ++z ) {
@@ -931,6 +933,32 @@ std::vector<tripoint_abs_ms> site_sightline( const tripoint_abs_ms &origin,
 struct site_reader::implementation {
     vehicle_footprint_index vehicles;
     std::vector<std::unique_ptr<existing_view>> views;
+    std::map<tripoint_abs_ms, visibility_read> lookout_footing;
+
+    existing_view &lookout_view( const tripoint_abs_ms &origin, const tripoint_abs_ms &target ) {
+        std::vector<tripoint_abs_omt> footprint{ project_to<coords::omt>( origin ) };
+        for( const auto &point : site_sightline( origin, target ) ) {
+            const auto omt = project_to<coords::omt>( point );
+            if( std::find( footprint.begin(), footprint.end(), omt ) == footprint.end() ) {
+                footprint.push_back( omt );
+            }
+        }
+        const auto found = std::find_if( views.begin(), views.end(), [&]( const auto &view ) {
+            return view->covers( origin, target ) && view->scope_matches( &footprint );
+        } );
+        if( found != views.end() ) {
+            // Retain recently used views when the planner moves to the next candidate.
+            std::rotate( found, std::next( found ), views.end() );
+        } else {
+            constexpr size_t max_lookout_views = 16;
+            if( views.size() >= max_lookout_views ) {
+                views.erase( views.begin() );
+            }
+            views.push_back( std::make_unique<existing_view>( vehicles, origin, target, true,
+                             false, false, &footprint ) );
+        }
+        return *views.back();
+    }
 };
 site_reader::site_reader() : impl( std::make_unique<implementation>() ) {}
 site_reader::~site_reader()
@@ -1141,37 +1169,47 @@ visibility_read site_reader::read_lookout( const tripoint_abs_ms &origin,
         std::abs( origin.z() - target.z() ) > fov_3d_z_range ) {
         return { true, false, "lookout_potential_range" };
     }
-    const auto ray = read_ray( origin, target );
-    if( !ray.known || !ray.visible ) {
-        return ray;
+    auto footing = impl->lookout_footing.find( origin );
+    if( footing == impl->lookout_footing.end() ) {
+        const auto read_footing = [&]() -> visibility_read {
+            map &live = get_map();
+            map *here = &live;
+            if( !live.inbounds( origin ) ) {
+                auto &view = impl->lookout_view( origin, origin );
+                if( !view.has_geometry( origin ) ) {
+                    return { false, false, "lookout_geometry_unavailable" };
+                }
+                view.rebuild_vehicle_level_caches();
+                here = &view;
+            }
+            const auto standing = here->get_bub( origin );
+            if( !here->passable( standing ) || !here->has_floor_or_water( standing ) ||
+                here->has_flag( ter_furn_flag::TFLAG_DEEP_WATER, standing ) ) {
+                return { true, false, "lookout_unusable_footing" };
+            }
+            for( const auto &entry : here->field_at( standing ) ) {
+                if( entry.second.is_dangerous() ) {
+                    return { true, false, "lookout_dangerous_field" };
+                }
+            }
+            return { true, true, "lookout_usable_footing" };
+        };
+        footing = impl->lookout_footing.emplace( origin, read_footing() ).first;
+    }
+    if( !footing->second.visible ) {
+        return footing->second;
     }
     const map *here = &get_map();
     if( !here->inbounds( origin ) || !here->inbounds( target ) ) {
-        std::vector<tripoint_abs_omt> footprint{ project_to<coords::omt>( origin ) };
-        for( const auto &point : site_sightline( origin, target ) ) {
-            const auto omt = project_to<coords::omt>( point );
-            if( std::find( footprint.begin(), footprint.end(), omt ) == footprint.end() ) {
-                footprint.push_back( omt );
-            }
+        auto &view = impl->lookout_view( origin, target );
+        if( !view.has_ray( origin, target ) ) {
+            return { false, false, "physical_ray_geometry_unavailable" };
         }
-        const auto found = std::find_if( impl->views.begin(), impl->views.end(),
-        [&]( const auto &view ) {
-            return view->covers( origin, target ) && view->scope_matches( &footprint );
-        } );
-        if( found == impl->views.end() ) {
-            return { false, false, "lookout_geometry_unavailable" };
-        }
-        here = found->get();
+        view.prepare_visibility();
+        here = &view;
     }
-    const auto standing = here->get_bub( origin );
-    if( !here->passable( standing ) || !here->has_floor_or_water( standing ) ||
-        here->has_flag( ter_furn_flag::TFLAG_DEEP_WATER, standing ) ) {
-        return { true, false, "lookout_unusable_footing" };
-    }
-    for( const auto &entry : here->field_at( standing ) ) {
-        if( entry.second.is_dangerous() ) {
-            return { true, false, "lookout_dangerous_field" };
-        }
+    if( !here->sees( here->get_bub( origin ), here->get_bub( target ), MAX_VIEW_DISTANCE * 2 ) ) {
+        return { true, false, "physical_ray" };
     }
     // Transient occupants and their identities do not choose a prospective
     // site. Native movement/arrival still owns occupancy and actual placement.
