@@ -161,8 +161,7 @@
   {
     "type": "effect_on_condition",
     "id": "EOC_event_character_dies_test",
-    "eoc_type": "EVENT",
-    "required_event": "character_dies",
+    "eoc_type": "PREVENT_DEATH",
     "condition": { "u_has_trait": "DEBUG_PREVENT_DEATH" },
     "effect": [ "u_prevent_death" ]
   },
