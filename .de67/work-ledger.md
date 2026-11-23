@@ -1,5 +1,9 @@
 # Current work ledger
 
+## Parked for Josef
+
+- **NPC AI Lab — locked by Josef.** Only Josef’s explicit instruction to open the lab authorizes importing the [secondary FS](npc-ai-lab/FS.md) into the delivery roadmap. Until then, continue the current work. Leave the lab outside task selection, assignment, implementation and playtests. Completing the current work does not open it.
+
 ## Phase 2 preparation — seeded overmap AI campaign, 2026-11-22
 
 The sole incoming WEC was moved exactly to `.de67/WEC.md` (SHA-256
