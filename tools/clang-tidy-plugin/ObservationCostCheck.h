@@ -6,6 +6,14 @@
 namespace clang::tidy::cata
 {
 
+class TinymapLoadCheck : public ClangTidyCheck
+{
+    public:
+        using ClangTidyCheck::ClangTidyCheck;
+        void registerMatchers( ast_matchers::MatchFinder *Finder ) override;
+        void check( const ast_matchers::MatchFinder::MatchResult &Result ) override;
+};
+
 class StalkerLoopReaderCheck : public ClangTidyCheck
 {
     public:

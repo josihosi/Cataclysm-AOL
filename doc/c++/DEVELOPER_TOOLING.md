@@ -104,6 +104,17 @@ project plugin are available, clang-tidy on affected translation units.
 The default Git-diff route passes changed C/C++ line ranges to clang-tidy's
 `--line-filter`; untracked source files are checked across their full contents.
 clang-tidy still analyzes each selected translation unit.
+The advisory `cata-tinymap-load` reports direct calls to `tinymap::load`.
+To list existing sites in a translation unit, run the check without a diff filter:
+
+```sh
+clang-tidy -p build --load=build/tools/clang-tidy-plugin/libCataAnalyzerPlugin.so \
+    --checks='-*,cata-tinymap-load' src/do_turn.cpp
+```
+
+The warning identifies a possible terrain read, generation or update. Measure
+the call in its workload to determine its frequency and cost.
+
 Changed Python files go to Flake8. JSON declarations under
 `tools/openclaw_harness/scenarios/` go to the existing read-only declaration
 linter.

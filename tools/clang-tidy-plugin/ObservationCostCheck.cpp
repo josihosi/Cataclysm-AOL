@@ -8,6 +8,18 @@ using namespace clang::ast_matchers;
 namespace clang::tidy::cata
 {
 
+void TinymapLoadCheck::registerMatchers( MatchFinder *Finder )
+{
+    Finder->addMatcher( cxxMemberCallExpr( callee( cxxMethodDecl(
+            hasName( "::tinymap::load" ) ) ) ).bind( "load" ), this );
+}
+
+void TinymapLoadCheck::check( const MatchFinder::MatchResult &Result )
+{
+    const auto *call = Result.Nodes.getNodeAs<CXXMemberCallExpr>( "load" );
+    diag( call->getExprLoc(), "tinymap load may read, generate, and update terrain" );
+}
+
 void StalkerLoopReaderCheck::registerMatchers( MatchFinder *Finder )
 {
     const auto allMonsters = cxxMemberCallExpr( callee( cxxMethodDecl(
