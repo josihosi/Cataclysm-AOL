@@ -45,6 +45,8 @@ def add_commands(commands):
     inspect.add_argument("--player-save", help="Character filename for a world with more than one player.")
     inspect.add_argument("--check", type=Path, metavar="PREPARATION_JSON", help="Recheck the saved recipe conditions at their original positions.")
     inspect.add_argument("--map", action="store_true", help="Show all tiles and the local map boundary.")
+    inspect.add_argument("--site", nargs="?", const="", action="append", metavar="MATCH",
+                         help="Compact site and member view, optionally filtered by faction, kind or site ID. Repeatable.")
     inspect.add_argument("--json", action="store_true", help="Machine-readable facts; --map adds exact terrain IDs.")
     prepare = actions.add_parser("prepare", help="Make a disposable world from a source and JSON recipe.")
     prepare.add_argument("source", type=_source, help="World directory or profile:fixture.")
@@ -73,18 +75,21 @@ def run(args):
     try:
         if args.world_command == "inspect":
             from world_inspect import inspect_world
-            from world_view import render
+            from world_view import render, render_sites
 
             preparation = json.loads(args.check.read_text(encoding="utf-8-sig")) if args.check else {}
             if args.check and (not isinstance(preparation, dict) or preparation.get("schema") != "caol-world-preparation-v1"):
                 raise ValueError("Expected a preparation.json from world prepare")
             player = args.player_save or preparation.get("player_save")
             result = inspect_world(args.source, player_save=player, radius=args.radius,
-                                   center=args.center, z=args.z, include_map=args.map)
+                                   center=args.center, z=args.z, include_map=args.map, site_filters=args.site)
             if args.check:
                 from world_prepare import verify_requirements
                 result.update(verify_requirements(args.source, preparation, player_save=player))
-            print(json.dumps(result, ensure_ascii=True) if args.json else render(result))
+            if args.json:
+                print(json.dumps(result, ensure_ascii=True))
+            else:
+                print(render(result) if args.site is None else render_sites(result))
             return 2 if result.get("requirements_met") is False else 0
         if args.world_command == "prepare":
             from world_prepare import prepare_world

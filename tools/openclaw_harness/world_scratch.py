@@ -119,6 +119,22 @@ def _installed_tiles_receipts():
             continue
 
 
+def _build_tool_preflight(entrypoint):
+    try:
+        process = subprocess.run([*entrypoint["argv"], "--check-tools"], cwd=entrypoint["cwd"],
+                                 capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as error:
+        return {"status": "unavailable", "reason": str(error)}
+    try:
+        result = json.loads(process.stdout)
+        if result.get("status") in {"ready", "blocked"}:
+            return result
+    except (ValueError, AttributeError):
+        pass
+    return {"status": "unavailable", "reason": (process.stderr or process.stdout).strip()
+            or f"Build tool check exited {process.returncode}."}
+
+
 def _wait_for_bridge(session, binding_id, timeout=120.0):
     """Return only observed status. A slow startup retains its live session handle."""
     deadline = time.monotonic() + timeout
@@ -219,6 +235,18 @@ def launch_scratch(world: Path, *, executable: Path | None = None, build_receipt
         if readiness["status"] != "ready":
             result.update(reason=readiness.get("reason"), readiness=readiness["status"],
                           next_action=readiness.get("next_action"), build_entrypoint=readiness.get("build_entrypoint"))
+            if dry_run and readiness["status"] == "build_required":
+                if not result["build_entrypoint"] and sys.platform == "win32":
+                    root = harness.repo_root()
+                    result["build_entrypoint"] = {
+                        "argv": [sys.executable, str(root / "tools/openclaw_harness/build_source_bound_windows.py"),
+                                 "--renderer", "tiles"],
+                        "cwd": str(root),
+                    }
+                if result["build_entrypoint"]:
+                    result["build_tools"] = _build_tool_preflight(result["build_entrypoint"])
+                    if result["build_tools"]["status"] == "blocked":
+                        result["next_action"] = "Resolve the listed build prerequisites, then run build_entrypoint."
         else:
             digest, error = harness.sha256_tree(source)
             if error:

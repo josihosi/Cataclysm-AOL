@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import argparse
 import hashlib
 import subprocess
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import startup_harness  # noqa: E402
+from build_prerequisites import build_tool_status
 from build_recovery_helpers import build_failure_payload, remove_owned_pch_files
 
 
@@ -61,6 +63,7 @@ def main() -> int:
         "--log-dir", default="",
         help="Directory for complete version/build stdout, stderr, and combined logs.",
     )
+    parser.add_argument("--check-tools", action="store_true", help="Check build prerequisites without starting Make.")
     args = parser.parse_args()
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
@@ -76,6 +79,15 @@ def main() -> int:
         command.extend(["USE_XDG_DIR=0", "USE_HOME_DIR=0"])
     if build_prefix:
         command.append(f"BUILD_PREFIX={build_prefix}")
+    preflight = build_tool_status(ROOT, tiles=tiles, environment=os.environ,
+                                 platform=sys.platform, always_make="-B" in command)
+    if args.check_tools:
+        print(json.dumps(preflight, sort_keys=True))
+        return int(preflight["status"] != "ready")
+    if preflight["status"] != "ready":
+        print(json.dumps({"ok": False, "phase": "build-prerequisites", **preflight},
+                         sort_keys=True), file=sys.stderr)
+        return 1
     invocation = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     log_dir = Path(args.log_dir).expanduser() if str(args.log_dir).strip() else (
         ROOT / "build_logs" / "source_bound_macos" / invocation

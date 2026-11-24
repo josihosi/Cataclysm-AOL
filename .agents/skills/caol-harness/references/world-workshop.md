@@ -14,6 +14,11 @@ The default view covers an 81 × 81 tile square, a 40-OMT radius around the save
 
 Use `--json` for site identities, member positions, the saved terrain counts and NPC records. Combine it with `--map` for the exact terrain ID at each coordinate, ordered north to south and west to east. A footprint, a population record and a physically identifiable member each answer a different setup question. Inspect the selected save again after native initialization when staffing matters.
 
+Use `world inspect WORLD --site` for the compact site view. Add a case-insensitive
+filter such as `--site bandit`, or repeat the flag to include several matches.
+It shows home terrain and coordinates, saved member IDs and positions, and any
+saved lookout assignment. `--json` returns the same compact facts.
+
 ## Prepare a world
 
 For a quick setup, supply just the parent, a fresh destination, and the changes you want.
@@ -54,6 +59,7 @@ After a native save, `world inspect CLOSED_WORLD --check PATH/TO/preparation.jso
 ## Start a scratch session
 
 Luna can open an ordinary native cockpit on a disposable copy. Use `--dry-run` to check the selected build and source. An independently published build can be selected with `--build-receipt PATH`. If the default build is stale, scratch checks for a current installed one and reports available pinned products for an explicitly versioned test.
+When a rebuild is needed, the dry run also reports missing build tools for the suggested configuration. The build helper accepts `--check-tools` to repeat that check without starting Make.
 
 ```sh
 python tools/openclaw_harness/startup_harness.py world scratch .userdata/playtest-east-camp --question "Can the player place and light the brazier using the ordinary controls?" --family fire

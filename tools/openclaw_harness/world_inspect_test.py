@@ -54,6 +54,41 @@ class InspectionTest(unittest.TestCase):
         self.assertFalse(zoom["sites"][0]["anchor_in_ai_range"])
         self.assertEqual(zoom["sites"][0]["outing"]["saved_member_range"], "unknown")
 
+    def test_compact_site_cli_filters_and_reads_terrain_at_the_anchor_level(self):
+        self.region["npcs"] = [{"id": 2, "name": "North Scout", "location": [24 * 41, 24, 0], "dead": False}]
+        self.region["layers"][10] = [["forest", 32400]]
+        write_json(self.world / "overmaps/o.0.0", self.region)
+        self.tower["active_outing"]["selected_watch_omt"] = [43, 1, 0]
+        write_json(self.world / "dimension_data.gsav", {"overmapbuffer": {
+            "bandit_live_world": {"sites": [self.tower]},
+            "migo_populations": {"sites": [{"id": "mi-go:den", "anchor": [39, 1, 0], "members": []}]},
+            "migo_towers": {"sites": [{"site_id": "mi-go:den",
+                                       "operation": {"generation": 3, "party_at_departure": [{"armor": 500}]}}]},
+        }})
+        args = [sys.executable, "-B", str(HARNESS), "world", "inspect", str(self.world),
+                "--center", "40", "1", "--zoom", "--z", "1"]
+
+        def cli(*options):
+            return subprocess.run([*args, *options], capture_output=True, encoding="utf-8",
+                                  env={**os.environ, "PYTHONIOENCODING": "utf-8"}, check=True).stdout
+
+        selected = json.loads(cli("--site", "CANNIBAL", "--json"))
+        site, = selected["sites"]
+        self.assertEqual(site["anchor"], [40, 1, 0])
+        self.assertEqual(site["terrain"], "forest")
+        self.assertEqual(site["outing"]["selected_watch_omt"], [43, 1, 0])
+        self.assertEqual(site["members"][0]["name"], "North Scout")
+        self.assertNotIn("npcs", selected)
+        self.assertNotIn("terrain_rows", selected)
+        self.assertIn("lookout (43, 1, 0)", cli("--site", "cannibal"))
+        self.assertIn("No sites matching absent", cli("--site", "absent"))
+        both = json.loads(cli("--site", "cannibal", "--site", "mi-go", "--map", "--json"))
+        self.assertEqual(len(both["sites"]), 2)
+        self.assertEqual(next(s["operation"] for s in both["sites"] if s["faction"] == "mi-go")["generation"], 3)
+        self.assertNotIn("armor", json.dumps(both))
+        self.assertEqual(len(both["terrain_rows"]), 41)
+        self.assertEqual(len(json.loads(cli("--site", "--json"))["sites"]), 2)
+
     def test_profile_and_save_containers_ignore_custody_sidecars(self):
         container = self.world.parent
         (container / ".save-continuity").mkdir()

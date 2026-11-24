@@ -21,6 +21,7 @@ Tools required (override via env vars when not on PATH):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -32,11 +33,12 @@ def find_tool(env_var: str, default: str) -> str:
     """Resolve a tool path from env or PATH; raise if missing."""
     explicit = os.environ.get(env_var)
     if explicit:
-        if not Path(explicit).exists():
+        path = Path(explicit)
+        if not path.is_file() or not os.access(path, os.X_OK):
             raise FileNotFoundError(
-                "{} points at non-existent path: {}".format(env_var, explicit)
+                "{} does not point to an executable file: {}".format(env_var, explicit)
             )
-        return explicit
+        return str(path.resolve())
     located = shutil.which(default)
     if located is None:
         raise FileNotFoundError(
@@ -45,6 +47,21 @@ def find_tool(env_var: str, default: str) -> str:
                 default, env_var)
         )
     return located
+
+
+def resolve_tools(formats):
+    """Collect every missing tool using the same lookup for preflight and build."""
+    required = [("GLSLANG", "glslangValidator")]
+    if formats & {"dxil", "msl"}:
+        required.append(("SDL_SHADERCROSS", "shadercross"))
+    paths = {}
+    missing = []
+    for override, tool in required:
+        try:
+            paths[tool] = find_tool(override, tool)
+        except FileNotFoundError as error:
+            missing.append({"tool": tool, "override": override, "detail": str(error)})
+    return paths, missing
 
 
 def stage_for_source(src: Path) -> str:
@@ -114,6 +131,11 @@ def main() -> int:
         help=("Comma-separated list of formats to produce "
               "(default: spv,dxil,msl)"),
     )
+    parser.add_argument(
+        "--check-tools",
+        action="store_true",
+        help="Report required shader tools without compiling or writing files.",
+    )
     args = parser.parse_args()
 
     shader_dir: Path = args.shader_dir
@@ -130,14 +152,16 @@ def main() -> int:
     if formats & {"dxil", "msl"}:
         formats.add("spv")
 
-    try:
-        glslang = find_tool("GLSLANG", "glslangValidator")
-        shadercross = None
-        if formats & {"dxil", "msl"}:
-            shadercross = find_tool("SDL_SHADERCROSS", "shadercross")
-    except FileNotFoundError as exc:
-        print("build_shaders: {}".format(exc), file=sys.stderr)
+    paths, missing = resolve_tools(formats)
+    if args.check_tools:
+        print(json.dumps({"missing": missing}))
+        return 3 if missing else 0
+    if missing:
+        for tool in missing:
+            print("build_shaders: {}".format(tool["detail"]), file=sys.stderr)
         return 3
+    glslang = paths["glslangValidator"]
+    shadercross = paths.get("shadercross")
 
     if args.shader:
         sources = [args.shader]

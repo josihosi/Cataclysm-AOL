@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import startup_harness  # noqa: E402
+from build_prerequisites import DEFAULT_MSYS_ROOT, build_tool_status
 from build_recovery_helpers import build_failure_payload, remove_owned_pch_files
 
 
@@ -51,7 +52,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build one native Windows renderer using existing MSYS2 and record its source binding."
     )
-    parser.add_argument("--msys-root", default="C:/Users/josef/dev/msys64")
+    parser.add_argument("--msys-root", default=DEFAULT_MSYS_ROOT)
     parser.add_argument("--renderer", choices=("tiles", "curses"), default="tiles")
     parser.add_argument("--jobs", type=int, default=8, help="Build concurrency for this host.")
     parser.add_argument("--target-name", default="",
@@ -66,6 +67,7 @@ def main() -> int:
         "--log-dir", default="",
         help="Directory for complete version/build stdout, stderr, and combined logs.",
     )
+    parser.add_argument("--check-tools", action="store_true", help="Check build prerequisites without starting Make.")
     args = parser.parse_args()
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
@@ -76,8 +78,6 @@ def main() -> int:
         parser.error("native Windows builder must run on Windows")
     msys_root = Path(args.msys_root).resolve()
     bash = msys_root / "usr/bin/bash.exe"
-    if not bash.is_file() or not (msys_root / "ucrt64/bin/g++.exe").is_file():
-        parser.error("existing UCRT64 compiler and MSYS2 bash are required")
     build_env = dict(os.environ)
     build_env.update(MSYSTEM="UCRT64", CHERE_INVOKING="1",
         PATH=str(msys_root / "ucrt64/bin") + ";" + str(msys_root / "usr/bin") + ";" + os.environ.get("PATH", ""))
@@ -101,6 +101,15 @@ def main() -> int:
         command.append(f"BUILD_PREFIX={build_prefix}")
     if args.target_name:
         command.append(f"{'TILES_TARGET_NAME' if tiles else 'TARGET_NAME'}={target_name}")
+    preflight = build_tool_status(ROOT, tiles=tiles, environment=build_env,
+                                 platform=sys.platform, msys_root=msys_root)
+    if args.check_tools:
+        print(json.dumps(preflight, sort_keys=True))
+        return int(preflight["status"] != "ready")
+    if preflight["status"] != "ready":
+        print(json.dumps({"ok": False, "phase": "build-prerequisites", **preflight},
+                         sort_keys=True), file=sys.stderr)
+        return 1
     invocation = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     log_dir = Path(args.log_dir).expanduser() if str(args.log_dir).strip() else (
         ROOT / "build_logs" / "source_bound_windows" / invocation

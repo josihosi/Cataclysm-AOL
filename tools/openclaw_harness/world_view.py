@@ -30,11 +30,11 @@ def _map(report):
         for x, y, pz in row["footprint"]:
             if pz == z:
                 symbols[x, y] = HOME_SYMBOLS.get(row["faction"], "H")
-    for actor in report["npcs"] + report["predators"]:
+    for actor in report.get("npcs", []) + report.get("predators", []):
         x, y, pz = actor["omt"]
         if pz == z:
             symbols.setdefault((x, y), "n" if "name" in actor else "p")
-    for tile in report["horde_tiles"]:
+    for tile in report.get("horde_tiles", []):
         x, y, pz = tile["omt"]
         if pz == z:
             symbols.setdefault((x, y), "h")
@@ -103,6 +103,43 @@ def render(report):
     populations += [f"{n} {k}" for k, n in counts.most_common()]
     populations += [f"{sum(report['horde_monster_counts'].values())} horde-map monsters"]
     lines.append("Actors     " + ", ".join(populations))
+    for check in report.get("requirements", []):
+        lines.append(f"Requirement {check['status']}    {check['detail']}")
+    if "terrain_rows" in report:
+        lines.extend(_map(report))
+    return "\n".join(lines)
+
+
+def render_sites(report):
+    def fmt_omt(pos):
+        return str(tuple(pos)) if pos else "unknown"
+
+    lines = [f"{report['world']} · player {fmt_omt(report['player_omt'])} · "
+             f"{report['radius_omt']} OMT around {tuple(report['center_omt'])}"]
+    if not report["sites"]:
+        filters = ", ".join(report["site_filters"])
+        lines.append(f"No sites matching {filters} in the inspected area." if filters else
+                     "No sites identified in the inspected area.")
+    for site in report["sites"]:
+        state = ("population unavailable" if site["registered"] is None else
+                 "placed, no population record" if not site["registered"] else
+                 f"{len(site['members'])} saved member records")
+        distance = site["edge_distance_omt"]
+        edge = f"{distance} OMT to edge" if distance is not None else "footprint unknown"
+        lines.append(f"{site['site_id']} · {fmt_omt(site['anchor'])} · "
+                     f"{site['terrain'] or 'terrain unknown'} · {edge} · {state}")
+        if outing := site.get("outing"):
+            watch = (f" · lookout {fmt_omt(outing['selected_watch_omt'])}"
+                     if outing.get("selected_watch_omt") else "")
+            lines.append(f"  Party {', '.join(map(str, outing.get('member_ids') or []))} "
+                         f"· {outing.get('phase') or 'phase unknown'}{watch}")
+        if operation := site.get("operation"):
+            phase = "resolved" if operation["resolved"] else "open"
+            lines.append(f"  Tower operation {operation['generation']} · {phase}")
+        for member in site["members"]:
+            name = f" {member['name']}" if "name" in member else ""
+            state = f" · {member['state']}" if "state" in member else ""
+            lines.append(f"  {member['id']}{name} · {fmt_omt(member['omt'])}{state}")
     for check in report.get("requirements", []):
         lines.append(f"Requirement {check['status']}    {check['detail']}")
     if "terrain_rows" in report:

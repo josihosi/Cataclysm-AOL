@@ -167,6 +167,8 @@ def _region_facts(payload, npcs, horde_tiles, center, radius):
         if _point(pos) and isinstance(npc.get("id"), (int, str)):
             npcs[str(npc["id"])] = dict(id=npc["id"], name=npc.get("name"), omt=_omt(pos),
                                     dead=npc.get("dead"), faction=npc.get("my_fac"))
+    if horde_tiles is None:
+        return
     from startup_harness import iter_horde_map_entries
 
     for entity in iter_horde_map_entries(payload.get("horde_map")):
@@ -175,7 +177,7 @@ def _region_facts(payload, npcs, horde_tiles, center, radius):
             horde_tiles.setdefault(tuple(pos), Counter())[entity["monster_id"] or "unknown"] += 1
 
 
-def _merge_populations(sites, buffer, npcs, avatar):
+def _merge_populations(sites, buffer, npcs, avatar, *, include_watch=False):
     human_records = buffer.get("bandit_live_world", {}).get("sites")
     migo_records = buffer.get("migo_populations", {}).get("sites")
     for row in sites.values():
@@ -198,6 +200,8 @@ def _merge_populations(sites, buffer, npcs, avatar):
         outing = site.get("active_outing") or {}
         if outing.get("activity_id"):
             party = {key: outing.get(key) for key in ("activity_id", "phase", "member_ids")}
+            if include_watch and _point(outing.get("selected_watch_omt")):
+                party["selected_watch_omt"] = outing["selected_watch_omt"]
             ids = party["member_ids"] or []
             bodies = [npcs.get(str(member_id)) for member_id in ids]
             survivors = [body for body in bodies if body and body["dead"] is False]
@@ -245,7 +249,31 @@ def _tower_operations(sites, buffer):
         ]
 
 
-def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=None, z=None, include_map=False):
+def _site_summary(row, npcs, anchor_terrain, include_map):
+    fields = ("site_id", "kind", "faction", "anchor", "registered", "living_total",
+              "defensive_reserve", "edge_distance_omt", "anchor_in_ai_range")
+    site = {key: row[key] for key in fields if key in row}
+    site["terrain"] = anchor_terrain
+    site["members"] = []
+    for member in row.get("members", ()):
+        body = npcs.get(str(member["id"]), {})
+        entry = {"id": member["id"], "omt": member["omt"]}
+        if body.get("name"):
+            entry["name"] = body["name"]
+        if member.get("state"):
+            entry["state"] = member["state"]
+        site["members"].append(entry)
+    if row.get("outing"):
+        site["outing"] = row["outing"]
+    if row.get("operation"):
+        site["operation"] = {key: row["operation"][key] for key in ("generation", "resolved")}
+    if include_map:
+        site["footprint"] = row["footprint"]
+    return site
+
+
+def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=None, z=None, include_map=False,
+                  site_filters=None):
     from startup_harness import OMAPX, OMAPY, OVERMAP_DEPTH
 
     if radius not in (20, 40):
@@ -256,7 +284,8 @@ def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=No
     if type(z) is not int or not -OVERMAP_DEPTH <= z <= 10:
         raise ValueError("Saved z-level must be between -10 and 10")
     sites, npcs, planes = {}, {}, {}
-    horde_tiles = {}
+    horde_tiles = {} if site_filters is None else None
+    site_layers = {}
     # Verify a single saved snapshot across player, regions and population metadata.
     # Include absent paths so a concurrently installed overmap cannot become a silent gap.
     inputs = {}
@@ -300,14 +329,17 @@ def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=No
                 if relative is None:
                     continue
                 payload = _read_save(world, relative, stage)
-                planes[ox, oy] = _plane(payload, z, name)
+                if site_filters is None or include_map:
+                    planes[ox, oy] = _plane(payload, z, name)
+                if site_filters is not None:
+                    site_layers[ox, oy] = payload.get("layers")
                 for row in _placement_sites(payload, ox, oy, OMAPX):
                     sites[row["site_id"]] = row
                 _region_facts(payload, npcs, horde_tiles, center, radius)
     buffer = _read_json(dim).get("overmapbuffer", {}) if has_dimension else {}
     if any(identity(path) != before for path, before in inputs.items()):
         raise ValueError("Saved metadata changed during inspection; inspect a settled save")
-    _merge_populations(sites, buffer, npcs, avatar)
+    _merge_populations(sites, buffer, npcs, avatar, include_watch=site_filters is not None)
     _tower_operations(sites, buffer)
     homes = []
     for row in sites.values():
@@ -321,6 +353,46 @@ def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=No
         near_party = any(p["omt"] and _distance(p["omt"], center) <= radius for p in party_positions)
         if min(distances + [row["anchor_distance_omt"]]) <= radius or near_member or near_party:
             homes.append(row)
+
+    def tile_at(x, y):
+        ox, lx = divmod(x, OMAPX)
+        oy, ly = divmod(y, OMAPY)
+        plane = planes.get((ox, oy))
+        return plane[ly * OMAPX + lx] if plane is not None else None
+
+    homes.sort(key=lambda row: (row["anchor_distance_omt"], row["site_id"]))
+    if site_filters is not None:
+        filters = [value.strip() for value in site_filters if value.strip()]
+        queries = [value.casefold() for value in filters]
+        selected = []
+        anchor_planes = {}
+        for row in homes:
+            selectors = (row["site_id"], row["kind"], row["faction"])
+            if queries and not any(query in str(value).casefold()
+                                   for value in selectors if value is not None for query in queries):
+                continue
+            x, y, anchor_z = row["anchor"]
+            ox, lx = divmod(x, OMAPX)
+            oy, ly = divmod(y, OMAPY)
+            layers = site_layers.get((ox, oy))
+            if anchor_z == z and (ox, oy) in planes:
+                anchor_terrain = tile_at(x, y)
+            elif layers is None:
+                anchor_terrain = None
+            else:
+                key = (ox, oy, anchor_z)
+                if key not in anchor_planes:
+                    anchor_planes[key] = _plane({"layers": layers}, anchor_z, f"o.{ox}.{oy}")
+                anchor_terrain = anchor_planes[key][ly * OMAPX + lx]
+            selected.append(_site_summary(row, npcs, anchor_terrain, include_map))
+        result = dict(world=world.name, player_save=filename, player_omt=avatar,
+                      center_omt=list(center), radius_omt=radius, z=z, sites=selected, site_filters=filters)
+        if not include_map:
+            return result
+        result.update(bounds=[x0, y0, x1, y1], local_map_omt=_local_bounds(saved, OMAPX),
+                      terrain_rows=[[tile_at(x, y) for x in range(x0, x1 + 1)]
+                                    for y in range(y0, y1 + 1)])
+        return result
     terrain = Counter()
     rows = []
     for y in range(y0, y1 + 1):
@@ -345,7 +417,7 @@ def inspect_world(source: Path, *, player_save=None, radius=AI_RADIUS, center=No
     result = dict(world=world.name, player_save=filename, player_omt=avatar, center_omt=list(center),
                   radius_omt=radius, z=z, bounds=[x0, y0, x1, y1], local_map_omt=_local_bounds(saved, OMAPX),
                   saved_tiles=sum(terrain.values()), unknown_tiles=unknown, terrain_counts=dict(terrain.most_common()),
-                  sites=sorted(homes, key=lambda row: (row["anchor_distance_omt"], row["site_id"])),
+                  sites=homes,
                   npcs=[n for n in npcs.values() if _distance(n["omt"], center) <= radius],
                   predators=predators, horde_monster_counts=dict(horde_counts),
                   horde_tiles=[{"omt": list(point), "types": dict(counts)}

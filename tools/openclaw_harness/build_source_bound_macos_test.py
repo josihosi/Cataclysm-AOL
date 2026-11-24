@@ -15,7 +15,8 @@ class BuildSourceBoundMacOSTest(unittest.TestCase):
         argv = ["build_source_bound_macos.py", "--log-dir", str(log_dir), "--renderer", renderer]
         if build_prefix:
             argv += ["--build-prefix", build_prefix]
-        with patch.object(sys, "argv", argv), patch.object(
+        with patch.object(builder, "build_tool_status", return_value={"status": "ready"}), \
+                patch.object(sys, "argv", argv), patch.object(
             builder.subprocess, "run", side_effect=responses
         ), patch.object(builder, "ROOT", log_dir), patch.object(
             builder.startup_harness, "product_source_binding", side_effect=sources if sources else None, return_value={"ok": True, "sha256": "source"}

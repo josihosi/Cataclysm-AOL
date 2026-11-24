@@ -82,6 +82,28 @@ class ScratchWorldTest(unittest.TestCase):
         self.assertEqual(result["next_action"], "rebuild")
         self.assertTrue(result["run_id"])
 
+    def test_dry_run_probes_the_recommended_builder_without_starting_make(self):
+        import sys
+
+        helper = self.root / "mock_builder.py"
+        helper.write_text(
+            "import json, sys\n"
+            "assert sys.argv[1:] == ['--renderer', 'tiles', '--check-tools']\n"
+            "print(json.dumps({'status': 'blocked', 'missing': [{'tool': 'shadercross'}]}))\n"
+            "raise SystemExit(1)\n",
+            encoding="utf-8",
+        )
+        entrypoint = {"argv": [sys.executable, str(helper), "--renderer", "tiles"], "cwd": str(self.root)}
+        blocked = {"status": "build_required", "reason": "stale", "build_entrypoint": entrypoint}
+        with patch.object(registry_cli, "_current_source_executable_readiness", return_value=blocked), \
+                patch.object(scratch, "_registry") as launch:
+            result = scratch.launch_scratch(self.world, dry_run=True, registry=self.registry)
+        launch.assert_not_called()
+        self.assertEqual(result["readiness"], "build_required")
+        self.assertEqual(result["build_tools"]["missing"], [{"tool": "shadercross"}])
+        self.assertIn("Resolve", result["next_action"])
+        self.assertFalse(self.registry.exists())
+
     def test_bridge_receipt_must_identify_an_actual_ready_native_session(self):
         self.assertEqual(scratch._wait_for_bridge(self.root, "b", timeout=0)["status"], "starting")
         status = self.root / "status.json"
