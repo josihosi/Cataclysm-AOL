@@ -624,7 +624,15 @@ parked at the owner's direction; this complement does not commission that repair
     seating and temperature from camp profile, overmap terrain and area weather. Model ordinary
     residents as able to free themselves and seek a bed. Apply the estimated rest only during
     the eligible active interval. Use the individual's wounds, equipment, needs and effects;
-    avoid leaving a new sleep effect on an awake departing scout. Omit cosmetic ground blood.
+    avoid leaving a new sleep effect on an awake departing scout. Apply bleeding and vomiting
+    to the actor, including blood or stomach-content loss as applicable. Skip cosmetic blood
+    and bile on the ground. When an eligible offscreen effect earns a fungal creature or a
+    Tindalos rift, record its selected outcome and original world location once. A failed trigger
+    creates no event. Save the event independently of the actor's subsequent travel. When that
+    location first loads for local play, apply the earned outcome once under its placement rules.
+    Repeated admission, local entry and save/reload cannot reroll or duplicate it. Verify each
+    event across a save before arrival and another after application; a visit elsewhere leaves
+    it pending. Compare the actor's bodily consequences separately from the local world writes.
     Settle each elapsed interval once. Skip current or suspended intervals as appropriate.
     Repeated checks, including after roster materialization, cannot charge that time again.
     The remote body branch makes zero detailed-map load/save calls, including on exceptions.
