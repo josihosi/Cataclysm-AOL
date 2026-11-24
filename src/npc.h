@@ -1959,11 +1959,10 @@ class npc : public Character
          * Consumes last_updated exactly once, with the ordinary load bounds.
          */
         time_duration catch_up_body();
-        bool catch_up_ordinary_home_for_test( const npc_home_body_environment &environment,
-                                              units::temperature area_temperature,
-                                              bool known_rift_footprint );
+        bool catch_up_offscreen_home( const npc_home_body_environment &environment,
+                                      units::temperature area_temperature );
         void restore_home_effect_queue( const npc_home_pending_death &pending );
-        void resume_home_body_after_prevention( const npc_home_pending_death &pending );
+        void resume_pending_home_body( const npc_home_pending_death &pending );
         void resolve_pending_home_death( map *here );
         /**
          * Update body, but throttled.

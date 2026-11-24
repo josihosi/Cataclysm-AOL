@@ -74474,11 +74474,12 @@ class r067_fresh_scout_journey
             const bool vomiting_home_probe = admission_case == 14;
             const bool ordinary_needs_probe = exhausted_home_probe || vomiting_home_probe;
             const bool fungal_home_probe = admission_case == 15;
-            const bool rift_home_probe = admission_case == 16;
+            const bool deferred_home_body = admission_case == 16 || admission_case == 19 ||
+                                            admission_case == 20;
             const bool fungal_chest_probe = admission_case == 18;
             const bool fungal_rupture_probe = admission_case == 17 || fungal_chest_probe;
-            const bool world_event_probe = fungal_home_probe || rift_home_probe;
-            std::optional<tripoint_abs_ms> known_rift_origin;
+            const bool late_home_effect = admission_case == 21;
+            const bool world_event_probe = fungal_home_probe;
             const bool single_step_body_probe = admission_case == 11 || admission_case == 12;
             const bool lethal_body_probe = admission_case == 9 || admission_case == 10 ||
                                            single_step_body_probe;
@@ -74576,7 +74577,7 @@ class r067_fresh_scout_journey
             INFO( "actual planning view=" << planning_basis );
             if( admission_counts ) {
                 if( admission_case == 6 || fatal_home_probe || ordinary_needs_probe ||
-                    world_event_probe || fungal_rupture_probe ) {
+                    world_event_probe || fungal_rupture_probe || deferred_home_body || late_home_effect ) {
                     if( single_step_body_probe ) {
                         // Offset body time by one real body turn after the native signal sample.
                         // The lethal five-minute boundary then falls in the driver's single-turn tail.
@@ -74600,7 +74601,7 @@ class r067_fresh_scout_journey
                     if( world_event_probe || fungal_rupture_probe ) {
                         const auto actor = overmap_buffer.find_npc( site().members.front().npc_id );
                         REQUIRE( actor );
-                        if( !rift_home_probe && actor->is_armed() ) {
+                        if( actor->is_armed() ) {
                             actor->i_add( actor->remove_weapon() );
                         }
                         if( fungal_chest_probe ) {
@@ -74612,26 +74613,31 @@ class r067_fresh_scout_journey
                             token.set_var( "deferred_home_death", "fungal_chest" );
                             actor->i_add( token );
                         }
-                        if( rift_home_probe ) {
-                            // Prepare and verify the one supported rift premise before measuring admission.
-                            tinymap physical;
-                            physical.load( actor->pos_abs_omt(), false );
-                            map &footprint = *physical.cast_to_map();
-                            const auto pos = footprint.get_bub( actor->pos_abs() );
-                            const tripoint_bub_ms corner( std::clamp( pos.x(), 2, SEEX * 2 - 3 ),
-                                                          std::clamp( pos.y(), 2, SEEY * 2 - 3 ), pos.z() );
-                            footprint.ter_set( corner, ter_id( "t_floor" ) );
-                            footprint.ter_set( corner + tripoint( -1, 0, 0 ), ter_id( "t_wall" ) );
-                            footprint.ter_set( corner + tripoint( 0, -1, 0 ), ter_id( "t_wall" ) );
-                            footprint.ter_set( corner + tripoint( -1, -1, 0 ), ter_id( "t_wall" ) );
-                            REQUIRE( footprint.is_cornerfloor( corner ) );
-                            REQUIRE( rl_dist( corner, pos ) <= 6 );
-                            physical.save();
-                            known_rift_origin = actor->pos_abs();
+                        actor->add_effect( effect_source::empty(), efftype_id( "fungus" ),
+                                           18_hours, false, 0, false, true );
+                    }
+                    if( deferred_home_body || late_home_effect ) {
+                        excluded_id = site().members.back().npc_id;
+                        const auto actor = overmap_buffer.find_npc( excluded_id );
+                        REQUIRE( actor );
+                        if( admission_case == 19 ) {
+                            if( actor->is_armed() ) {
+                                actor->i_add( actor->remove_weapon() );
+                            }
+                            actor->set_wielded_item( item( itype_id( "rock" ) ) );
+                            REQUIRE( actor->can_drop( *actor->get_wielded_item() ).success() );
                         }
-                        actor->add_effect( effect_source::empty(),
-                                           efftype_id( rift_home_probe ? "tindrift" : "fungus" ),
-                                           rift_home_probe ? 1_minutes : 18_hours, false, 0, false, true );
+                        const efftype_id effect( admission_case == 16 ? "tindrift" :
+                                                 admission_case == 19 ? "fungus" : "attention" );
+                        if( late_home_effect ) {
+                            set_first_npc_home_effect_turn_for_test( excluded_id, []( const npc &resident ) {
+                                overmap_buffer.find_npc( resident.getID() )->schedule_effect(
+                                    efftype_id( "stunned" ), 15_minutes );
+                            } );
+                        } else {
+                            actor->add_effect( effect_source::empty(), effect, 60_minutes, false, 0, false, true );
+                        }
+                        displaced_updated = actor->get_last_updated();
                     }
                     if( ordinary_needs_probe ) {
                         excluded_id = site().members.back().npc_id;
@@ -74700,12 +74706,7 @@ class r067_fresh_scout_journey
                     calendar::turn += 5_minutes;
                 }
                 refresh_live_bandit_activation();
-                set_ordinary_home_probe_for_test(
-                    admission_case == 6 || fatal_home_probe || ordinary_needs_probe ||
-                    world_event_probe || fungal_rupture_probe,
-                    known_rift_origin );
-                on_out_of_scope reset_probe( []() {
-                    set_ordinary_home_probe_for_test( false );
+                on_out_of_scope reset_effect_hook( []() {
                     set_first_npc_home_effect_turn_for_test( character_id(), nullptr );
                 } );
                 scoped_detailed_map_entry_counter count_admission( *admission_counts );
@@ -74766,7 +74767,26 @@ class r067_fresh_scout_journey
                     rng_set_engine_seed( chosen );
                 }
                 maintain_live_bandit_structural_bounty_for_test( packet );
-                if( fungal_rupture_probe ) {
+                if( late_home_effect ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    const auto resident = overmap_buffer.find_npc( excluded_id );
+                    REQUIRE( resident );
+                    REQUIRE( resident->pending_home_death );
+                    CHECK( resident->pending_home_death->effect_phase == "local_effect_decay" );
+                    CHECK( resident->pending_home_death->queued_additions.size() == 1 );
+                    CHECK_FALSE( resident->has_effect( efftype_id( "stunned" ) ) );
+                } else if( deferred_home_body ) {
+                    CHECK( admission_counts->regions_entered > 0 );
+                    CHECK( admission_counts->region_loads == 0 );
+                    CHECK( admission_counts->region_saves == 0 );
+                    CHECK( world().pending_home_world_events.empty() );
+                    const auto resident = overmap_buffer.find_npc( excluded_id );
+                    REQUIRE( resident );
+                    CHECK( resident->get_last_updated() == displaced_updated );
+                    CHECK( resident->pos_abs() == ordinary_probe_positions.at( excluded_id ) );
+                } else if( fungal_rupture_probe ) {
                     CHECK( admission_counts->regions_entered > 0 );
                     CHECK( admission_counts->region_loads == 0 );
                     CHECK( admission_counts->region_saves == 0 );
@@ -74835,7 +74855,6 @@ class r067_fresh_scout_journey
                         CHECK( actor->get_focus() == 1 );
                     }
                 } else if( admission_case == 6 ) {
-                    CHECK( ordinary_home_probe_successes_for_test() >= 2 );
                     CHECK( admission_counts->regions_entered > 0 );
                     CHECK( admission_counts->region_loads == 0 );
                     CHECK( admission_counts->region_saves == 0 );
@@ -74847,9 +74866,7 @@ class r067_fresh_scout_journey
                         CHECK( actor->get_last_updated() == calendar::turn );
                         CHECK_FALSE( actor->has_effect( efftype_id( "sleep" ) ) );
                     }
-                    const int completed = ordinary_home_probe_successes_for_test();
                     maintain_live_bandit_structural_bounty_for_test( packet );
-                    CHECK( ordinary_home_probe_successes_for_test() == completed );
                     CHECK( admission_counts->region_loads == 0 );
                     CHECK( admission_counts->region_saves == 0 );
                     for( const auto &entry : ordinary_probe_positions ) {
@@ -74865,7 +74882,7 @@ class r067_fresh_scout_journey
             const auto &outing = site().active_outing;
             REQUIRE( outing.kind == outing_kind::structural_sortie );
             REQUIRE( outing.member_ids.size() == 2 );
-            if( exhausted_home_probe ) {
+            if( exhausted_home_probe || deferred_home_body || late_home_effect ) {
                 CHECK( std::find( outing.member_ids.begin(), outing.member_ids.end(), excluded_id ) ==
                        outing.member_ids.end() );
                 const auto *member = site().find_member( excluded_id );
@@ -77378,13 +77395,56 @@ TEST_CASE( "unresolved home death holds only its own admission",
     journey.start( false, false, false, false, false, 5 );
 }
 
-TEST_CASE( "ordinary one-hour home admission uses no detailed map entries in the test probe",
-           "[bandit][live_world][ordinary_home_probe]" )
+TEST_CASE( "ordinary one-hour home admission uses no detailed map entries",
+           "[bandit][live_world][ordinary_home_admission]" )
 {
     override_option no_food( "NO_NPC_FOOD", "true" );
     detailed_map_entry_counts counts;
     r067_fresh_scout_journey journey;
     journey.start( false, false, false, false, false, 6, false, &counts );
+}
+
+TEST_CASE( "home admission defers tile-dependent effects while peers depart",
+           "[bandit][live_world][deferred_home_admission]" )
+{
+    const int admission_case = GENERATE( 16, 19, 20 );
+    CAPTURE( admission_case );
+    override_option food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, admission_case, false, &counts );
+}
+
+TEST_CASE( "offscreen admission resumes a newly queued local effect exactly once",
+           "[bandit][live_world][late_home_effect]" )
+{
+    override_option food( "NO_NPC_FOOD", "true" );
+    detailed_map_entry_counts counts;
+    r067_fresh_scout_journey journey;
+    journey.start( false, false, false, false, false, 21, false, &counts );
+    const auto id = journey.site().members.back().npc_id;
+    const auto snapshot = overmap_buffer.find_npc( id );
+    REQUIRE( snapshot );
+    REQUIRE( snapshot->pending_home_death );
+    const auto pos = snapshot->pos_abs();
+    const auto end = snapshot->pending_home_death->work_end;
+    const auto world_name = world_generator->active_world->world_name;
+    g->save_is_dirty = false;
+    REQUIRE( g->save() );
+    r067_handover_reload( world_name );
+    auto resident = overmap_buffer.find_npc( id );
+    REQUIRE( resident );
+    REQUIRE( resident->pending_home_death );
+    REQUIRE_FALSE( get_map().inbounds( pos ) );
+    journey.move_player( journey.home );
+    CHECK_FALSE( resident->pending_home_death );
+    CHECK_FALSE( resident->is_dead() );
+    CHECK( resident->get_last_updated() == end );
+    const efftype_id stunned( "stunned" );
+    REQUIRE( resident->has_effect( stunned ) );
+    const auto duration = resident->get_effect_dur( stunned );
+    g->load_npcs( &get_map() );
+    CHECK( resident->get_effect_dur( stunned ) == duration );
 }
 
 TEST_CASE( "unloaded home admission preserves ordinary food, sleep and vomiting transitions",
@@ -77478,21 +77538,18 @@ TEST_CASE( "admission world events persist until their real local footprint is s
            "[bandit][live_world][home_world_event_reload]" )
 {
     using namespace bandit_live_world;
-    const bool fungal = GENERATE( true, false );
-    CAPTURE( fungal );
     override_option food( "NO_NPC_FOOD", "true" );
     detailed_map_entry_counts counts;
     r067_fresh_scout_journey journey;
-    journey.start( false, false, false, false, false, fungal ? 15 : 16, false, &counts );
+    journey.start( false, false, false, false, false, 15, false, &counts );
     const auto creator = overmap_buffer.find_npc( journey.site().members.front().npc_id );
     REQUIRE( creator );
     const auto origin = creator->pos_abs();
     const auto pending = journey.world().pending_home_world_events;
     REQUIRE_FALSE( pending.empty() );
     for( const auto &event : pending ) {
-        CHECK( event.kind == ( fungal ? home_world_event_kind::fungal_spore :
-                              home_world_event_kind::tindalos_rift ) );
-        CHECK( rl_dist( origin, event.origin ) <= ( fungal ? 1 : 0 ) );
+        CHECK( event.kind == home_world_event_kind::fungal_spore );
+        CHECK( rl_dist( origin, event.origin ) <= 1 );
         CHECK( event.id.find( std::to_string( creator->getID().get_value() ) + ":" ) == 0 );
     }
     const auto world_name = world_generator->active_world->world_name;
@@ -77515,52 +77572,22 @@ TEST_CASE( "admission world events persist until their real local footprint is s
     save_reload();
     check_pending();
 
-    if( !fungal ) {
-        // Load the origin on the actual bubble edge with part of the corner
-        // search missing, then enter the same place with the full neighborhood.
-        const auto origin_submap = project_to<coords::sm>( origin );
-        const int offset_x = ( origin - project_to<coords::ms>( origin_submap ) ).x();
-        g->load_map( origin_submap - point( offset_x < 7 ? 0 : MAPSIZE - 1, HALF_MAPSIZE ) );
-        map &edge = get_map();
-        const auto edge_origin = edge.get_bub( origin );
-        get_avatar().setpos( edge.get_abs( tripoint_bub_ms( HALF_MAPSIZE * SEEX,
-                                          HALF_MAPSIZE * SEEY, origin.z() + 1 ) ), false );
-        REQUIRE( edge.is_tile_loaded( edge_origin ) );
-        REQUIRE( ( !edge.inbounds( edge_origin - point( 7, 0 ) ) ||
-                   !edge.inbounds( edge_origin + point( 7, 0 ) ) ) );
-        g->load_npcs( &edge );
-        check_pending();
-        for( const auto &tile : edge.points_in_radius( edge_origin, 6 ) ) {
-            CHECK_FALSE( edge.get_field( tile, field_type_id( "fd_tindalos_rift" ) ) );
-        }
-    }
     journey.move_player( journey.home );
     REQUIRE( journey.world().pending_home_world_events.empty() );
     const auto local_state = [&]() {
         std::map<tripoint_abs_ms, int> result;
         map &here = get_map();
-        if( fungal ) {
-            for( const auto &event : pending ) {
-                const auto *spore = get_creature_tracker().creature_at<monster>( here.get_bub( event.origin ) );
-                if( spore && spore->type->id == mtype_id( "mon_spore" ) ) {
-                    result[spore->pos_abs()] = 1;
-                }
-            }
-        } else {
-            for( const auto &tile : here.points_in_radius( here.get_bub( origin ), 6 ) ) {
-                if( const auto *rift = here.get_field( tile, field_type_id( "fd_tindalos_rift" ) ) ) {
-                    CHECK( here.is_cornerfloor( tile ) );
-                    result[here.get_abs( tile )] = rift->get_field_intensity();
-                }
+        for( const auto &event : pending ) {
+            const auto *spore = get_creature_tracker().creature_at<monster>( here.get_bub( event.origin ) );
+            if( spore && spore->type->id == mtype_id( "mon_spore" ) ) {
+                result[spore->pos_abs()] = 1;
             }
         }
         return result;
     };
     const auto applied = local_state();
     REQUIRE_FALSE( applied.empty() );
-    if( fungal ) {
-        CHECK( applied.size() == pending.size() );
-    }
+    CHECK( applied.size() == pending.size() );
     g->load_npcs( &get_map() );
     CHECK( local_state() == applied );
     save_reload();

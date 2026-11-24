@@ -1407,8 +1407,8 @@ void Character::hardcoded_effects( effect &it )
         }
     } else if( id == effect_tindrift ) {
         if( npc_home_effects_active( *this ) ) {
-            if( const auto *home = npc_home_effect_context( *this ); home && !home->known_rift_footprint ) {
-                throw std::runtime_error( "home rift requires a verified qualifying corner" );
+            if( npc_home_effect_context( *this ) ) {
+                return; // Only local terrain can establish whether a corner exists.
             }
             npc_home_queue_tindalos_rift( *this, pos_abs() );
             it.set_duration( 0_turns );

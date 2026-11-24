@@ -30,8 +30,8 @@ enum class npc_physiological_death_cause {
 std::string_view npc_physiological_death_id( npc_physiological_death_cause cause );
 std::optional<npc_physiological_death_cause> npc_physiological_death_from_id( std::string_view id );
 
-// Persist the selected death and its already-applied work; this record does
-// not run death scripts or transfer inventory by itself.
+// Persist home work that needs the real local map. Selected deaths and
+// interrupted effects share the pending_home_death save field.
 struct npc_home_pending_death {
     tripoint_abs_ms position = tripoint_abs_ms::zero;
     time_point applied_until = calendar::turn_zero;
@@ -50,6 +50,10 @@ struct npc_home_pending_death {
     std::vector<terminating_effect> queued_removals;
     effect_source source;
 
+    bool needs_local_effects() const {
+        return effect_phase == "local_effect_turn" || effect_phase == "local_effect_decay" ||
+               effect_phase == "local_effect_queue";
+    }
     bool has_physiological_causes() const;
     bool has_supported_queued_effects() const;
     void serialize( JsonOut &json ) const;
@@ -81,7 +85,7 @@ bool npc_home_effects_active( const Character &actor );
 npc_home_body_context *npc_home_effect_context( const Character &actor );
 bool npc_home_body_effect_supported( const efftype_id &id );
 bool npc_home_capture_fatal_effect( const Character &actor );
-// One-shot fixture input at the first native effect turn of this resident's test probe.
+// One-shot fixture input at the first native effect turn of this resident.
 void set_first_npc_home_effect_turn_for_test( character_id id, void ( *prepare )( const npc & ) );
 void npc_home_queue_fungal_spore( const Character &actor, const tripoint_abs_ms &origin );
 void npc_home_queue_tindalos_rift( const Character &actor, const tripoint_abs_ms &origin );
@@ -107,8 +111,8 @@ struct npc_home_body_context {
     units::temperature area_temperature;
     bool asleep = true;
     std::vector<npc_physiological_death_cause> *physiological_deaths = nullptr;
-    bool known_rift_footprint = false;
     bool lethal_fungal_damage = false;
+    bool deferred_effect_queue = false;
 
     float estimated_light( const Character &actor ) const;
 };

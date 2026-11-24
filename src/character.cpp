@@ -6889,16 +6889,19 @@ void Character::apply_queued_effect_transitions()
 {
     auto *home = npc_home_effect_context( *this );
     const bool was_asleep = home && has_effect( effect_sleep );
-    const auto require_supported = [&]( const efftype_id &id ) {
+    const auto defer_to_local = [&]( const efftype_id &id ) {
         if( home && !npc_home_body_effect_supported( id ) ) {
-            throw std::runtime_error( "unsupported queued home effect " + id.str() +
-                                      " for actor " + std::to_string( getID().get_value() ) );
+            home->deferred_effect_queue = true;
+            return true;
         }
+        return false;
     };
     // Apply new effects from effect->effect chains
     while( !scheduled_effects.empty() ) {
         const scheduled_effect_t &effect = scheduled_effects.front();
-        require_supported( effect.eff_id );
+        if( defer_to_local( effect.eff_id ) ) {
+            return;
+        }
 
         add_effect( effect_source::empty(),
                     effect.eff_id,
@@ -6916,7 +6919,9 @@ void Character::apply_queued_effect_transitions()
     while( !terminating_effects.empty() ) {
 
         const terminating_effect_t &effect = terminating_effects.front();
-        require_supported( effect.eff_id );
+        if( defer_to_local( effect.eff_id ) ) {
+            return;
+        }
 
         remove_effect( effect.eff_id, effect.bp );
 
@@ -6988,6 +6993,9 @@ void Character::process_effects()
     }
 
     apply_queued_effect_transitions();
+    if( const auto *home = npc_home_effect_context( *this ); home && home->deferred_effect_queue ) {
+        return;
+    }
 
     // Being stuck in tight spaces sucks. TODO: could be expanded to apply to non-vehicle conditions.
     if( !npc_home_effect_context( *this ) && will_be_cramped_in_vehicle_tile( here, pos_abs() ) ) {

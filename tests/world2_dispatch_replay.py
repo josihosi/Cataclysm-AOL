@@ -31,9 +31,9 @@ def verify_world(path: Path) -> None:
         raise RuntimeError(f"World 2 byte binding mismatch at {path}")
 
 
-def run_arm(arm: str, mode: str, directory: Path, executable: Path, binary_hash: str,
+def run_replay(mode: str, directory: Path, executable: Path, binary_hash: str,
             evidence: Path) -> dict:
-    profile = directory / f"{mode}-{arm}"
+    profile = directory / mode
     profile.mkdir()
     (profile / ".world2-dispatch-disposable").touch(exist_ok=False)
     world = profile / "save/TestSetup00"
@@ -44,16 +44,15 @@ def run_arm(arm: str, mode: str, directory: Path, executable: Path, binary_hash:
 
     environment = {key: value for key, value in os.environ.items()
                    if not key.startswith("OPENCLAW_HARNESS_") and not key.startswith("CAOL_HOME_")}
-    environment.update(CAOL_WORLD2_DISPATCH_USERDIR=str(profile), CAOL_WORLD2_DISPATCH_MODE=mode,
-                       CAOL_WORLD2_DISPATCH_ARM=arm)
-    stdout_path = evidence / f"world2-{mode}-{arm}.stdout.log"
-    stderr_path = evidence / f"world2-{mode}-{arm}.stderr.log"
+    environment.update(CAOL_WORLD2_DISPATCH_USERDIR=str(profile), CAOL_WORLD2_DISPATCH_MODE=mode)
+    stdout_path = evidence / f"world2-{mode}.stdout.log"
+    stderr_path = evidence / f"world2-{mode}.stderr.log"
     with stdout_path.open("x") as stdout, stderr_path.open("x") as stderr:
         with subprocess.Popen([str(executable), "[world2_dispatch_replay]", "--rng-seed", SEED,
                                "--user-dir", str(profile), "--drop-world",
                                "--set-debug-level-mask", "8"],
                               cwd=ROOT, env=environment, stdout=stdout, stderr=stderr) as process:
-            print(f"{mode} {arm}: native test PID {process.pid}", flush=True)
+            print(f"{mode}: native test PID {process.pid}", flush=True)
             try:
                 subprocess.run(["ps", "-p", str(process.pid), "-o", "pid,ppid,lstart,comm"],
                                check=False)
@@ -68,13 +67,13 @@ def run_arm(arm: str, mode: str, directory: Path, executable: Path, binary_hash:
                         process.wait()
                 raise
     if status != 0:
-        raise RuntimeError(f"{mode} {arm} failed, exit {status}; see {stdout_path} and {stderr_path}")
+        raise RuntimeError(f"{mode} failed, exit {status}; see {stdout_path} and {stderr_path}")
     if sha256_file(executable) != (binary_hash, ""):
         raise RuntimeError("Frozen test executable changed during execution")
     rows = [json.loads(line.removeprefix(RESULT_PREFIX)) for line in stdout_path.read_text().splitlines()
             if line.startswith(RESULT_PREFIX)]
-    if len(rows) != 1 or rows[0].get("arm") != arm or rows[0].get("mode") != mode:
-        raise RuntimeError(f"Missing native result for {mode} {arm}: {stdout_path}")
+    if len(rows) != 1 or rows[0].get("mode") != mode:
+        raise RuntimeError(f"Missing native result for {mode}: {stdout_path}")
     shutil.rmtree(profile)
     return rows[0]
 
@@ -82,7 +81,7 @@ def run_arm(arm: str, mode: str, directory: Path, executable: Path, binary_hash:
 def require_same_work(reference: dict, candidate: dict) -> None:
     for field in IDENTITY:
         if reference[field] != candidate[field]:
-            raise RuntimeError(f"Matched work diverged at {field}: see the native arm records")
+            raise RuntimeError(f"Matched work diverged at {field}: see the native replay records")
 
 
 def main() -> None:
@@ -104,25 +103,15 @@ def main() -> None:
             digest, error = sha256_file(executable)
             if error or sha256_file(args.executable) != (digest, ""):
                 raise RuntimeError(f"Unable to freeze a stable test binary: {error}")
-            arms = ("legacy", "map_free")
-            qualified = [run_arm(arm, "qualify", directory, executable, digest, evidence) for arm in arms]
-            require_same_work(*qualified)
+            qualified = run_replay("qualify", directory, executable, digest, evidence)
             with (evidence / "world2-dispatch-qualification.json").open("x") as out:
                 json.dump(qualified, out, indent=2)
                 out.write("\n")
-            print("Qualification passed; exact dispatch and coarse movement profiles agree", flush=True)
             measured = {}
             for mode in ("turn", "body"):
-                measured[mode] = []
-                for label, order in (("AB", arms), ("BA", tuple(reversed(arms)))):
-                    pair_dir = evidence / f"{mode}-{label}"
-                    pair_dir.mkdir()
-                    pair = []
-                    for arm in order:
-                        row = run_arm(arm, mode, directory, executable, digest, pair_dir)
-                        require_same_work(qualified[0], row)
-                        pair.append(row)
-                    measured[mode].append({"order": label, "samples": pair})
+                row = run_replay(mode, directory, executable, digest, evidence)
+                require_same_work(qualified, row)
+                measured[mode] = row
             if product_source_binding().get("sha256") != source_before["sha256"]:
                 raise RuntimeError("Product source changed during the experiment")
             receipt = {"world_tree_sha256": WORLD_HASH, "character_sha256": CHARACTER_HASH,

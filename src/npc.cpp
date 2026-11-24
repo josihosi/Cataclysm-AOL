@@ -4990,12 +4990,13 @@ bool npc_home_pending_death::has_supported_queued_effects() const
     if( queued_additions.empty() && queued_removals.empty() ) {
         return true;
     }
-    if( !from_body_interval || effect_phase != "body_completed" ) {
+    const bool local = needs_local_effects();
+    if( !from_body_interval || ( !local && effect_phase != "body_completed" ) ) {
         return false;
     }
-    const auto supported = []( const auto &entry ) {
-        return entry.eff_id.is_valid() && npc_home_body_effect_supported( entry.eff_id ) &&
-               entry.eff_id != efftype_id( "test_fatalism" );
+    const auto supported = [local]( const auto &entry ) {
+        return entry.eff_id.is_valid() && ( local || ( npc_home_body_effect_supported( entry.eff_id ) &&
+                                            entry.eff_id != efftype_id( "test_fatalism" ) ) );
     };
     return std::all_of( queued_additions.begin(), queued_additions.end(), supported ) &&
            std::all_of( queued_removals.begin(), queued_removals.end(), supported );
@@ -5199,14 +5200,11 @@ static int npc_body_focus_after( int focus, int equilibrium, int minutes )
     return static_cast<int>( ratio * focus + ( 1 - ratio ) * equilibrium );
 }
 
-// The caller uses this probe only in tests. Admit the bounded physiology and
-// effect inputs whose catch-up paths have no unresolved tile actions.
-bool npc::catch_up_ordinary_home_for_test( const npc_home_body_environment &environment,
-        units::temperature area_temperature, bool known_rift_footprint )
+// Offscreen dispatch owns body work for the supported interval. A resident
+// needing actual tile actions waits for its local map owner.
+bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
+                                  units::temperature area_temperature )
 {
-    if( !test_mode ) {
-        return false;
-    }
     const bool lethal_stim = get_stim() > 250 || get_stim() < -200;
     const bool lethal_painkiller = get_painkiller() > 240;
     const bool physiological_death_possible = lethal_stim || lethal_painkiller || needs_food() ||
@@ -5224,9 +5222,6 @@ bool npc::catch_up_ordinary_home_for_test( const npc_home_body_environment &envi
     const auto supported_effects = [&]() {
         const auto current = get_effects();
         return std::all_of( current.begin(), current.end(), [&]( const effect &entry ) {
-            if( entry.get_id() == efftype_id( "tindrift" ) ) {
-                return known_rift_footprint;
-            }
             return supported_effect( entry.get_id() );
         } );
     };
@@ -5240,8 +5235,8 @@ bool npc::catch_up_ordinary_home_for_test( const npc_home_body_environment &envi
         return true;
     };
     auto activation = live_bandit_body_interval_for( *this );
-    const time_duration dt = pending_npc_body_interval( *this, activation );
-    if( !activation || !activation.active() || dt <= 0_turns || dt > 1_hours ||
+    const time_duration dt = std::min( pending_npc_body_interval( *this, activation ), 2_days );
+    if( !activation || !activation.active() || last_updated > calendar::turn ||
         is_dead() || pending_home_death || in_vehicle || attitude == NPCATT_FLEE_TEMP ||
         hp_percentage() < 100 || ( activity && activity.id() != ACT_TRY_SLEEP ) ||
         has_flag( json_character_flag( "SEESLEEP" ) ) || has_trait( trait_id( "CHLOROMORPH" ) ) ||
@@ -5256,29 +5251,10 @@ bool npc::catch_up_ordinary_home_for_test( const npc_home_body_environment &envi
     }
     std::vector<npc_physiological_death_cause> selected_causes;
     npc_home_body_context home{ environment, area_temperature, true, &selected_causes };
-    home.known_rift_footprint = known_rift_footprint;
     const time_point end = calendar::turn;
     const scoped_npc_home_effects capture( *this, "dispatch-home:" +
                                           std::to_string( to_turn<int>( end ) ), true, &home );
-    time_point divergence = end;
-    const auto finish_body_step = [&]( time_point applied_until, time_point resume_at ) {
-        if( selected_causes.empty() && !home.lethal_fungal_damage ) {
-            return true;
-        }
-        auto &pending = pending_home_death.emplace();
-        pending.position = pos_abs();
-        pending.applied_until = applied_until;
-        pending.resume_at = resume_at;
-        if( selected_causes.empty() ) {
-            pending.cause = "fungal_infection";
-        } else {
-            pending.cause = npc_physiological_death_id( selected_causes.front() );
-            for( auto it = std::next( selected_causes.begin() ); it != selected_causes.end(); ++it ) {
-                pending.additional_physiological_causes.emplace_back( npc_physiological_death_id( *it ) );
-            }
-        }
-        pending.effect_phase = "body_completed";
-        pending.source = effect_source( get_killer() );
+    const auto save_queues = [&]( npc_home_pending_death &pending ) {
         const auto take_queue = []( auto &queue, auto &saved ) {
             while( !queue.empty() ) {
                 saved.push_back( std::move( queue.front() ) );
@@ -5287,62 +5263,92 @@ bool npc::catch_up_ordinary_home_for_test( const npc_home_body_environment &envi
         };
         take_queue( scheduled_effects, pending.queued_additions );
         take_queue( terminating_effects, pending.queued_removals );
+    };
+    const auto suspend = [&]( const char *phase, time_point applied_until, time_point resume_at ) {
+        auto &pending = pending_home_death.emplace();
+        pending.position = pos_abs();
+        pending.applied_until = applied_until;
+        pending.resume_at = resume_at;
+        pending.effect_phase = phase;
+        save_queues( pending );
+        return false;
+    };
+    const auto settle_partial = [&]() {
+        auto &pending = *pending_home_death;
+        pending.work_end = end;
+        pending.from_body_interval = true;
+        last_updated = pending.applied_until;
+        // The saved continuation owns the remaining work through this end.
+        activation.settle_body( getID(), to_turns<int>( end - calendar::start_of_cataclysm ) );
+    };
+    const auto finish_body_step = [&]( time_point applied_until, time_point resume_at ) {
+        if( selected_causes.empty() && !is_dead() && !home.lethal_fungal_damage ) {
+            return true;
+        }
+        auto &pending = pending_home_death.emplace();
+        pending.position = pos_abs();
+        pending.applied_until = applied_until;
+        pending.resume_at = resume_at;
+        if( selected_causes.empty() ) {
+            pending.cause = home.lethal_fungal_damage ? "fungal_infection" : "native_body_damage";
+        } else {
+            pending.cause = npc_physiological_death_id( selected_causes.front() );
+            for( auto it = std::next( selected_causes.begin() ); it != selected_causes.end(); ++it ) {
+                pending.additional_physiological_causes.emplace_back( npc_physiological_death_id( *it ) );
+            }
+        }
+        pending.effect_phase = "body_completed";
+        pending.source = effect_source( get_killer() );
+        save_queues( pending );
         return false;
     };
     const bool completed = run_npc_body_interval( end - dt, end,
     [&]( time_point from, time_point to ) {
         update_body( from, to, &home );
-        divergence = to;
-        return is_dead() == !selected_causes.empty() && supported_effects();
+        return true;
     }, [&]( time_point to, time_duration elapsed ) {
         age_body_effects( elapsed );
         advance_body_focus( to_minutes<int>( elapsed ) );
-        return finish_body_step( to, to + 1_turns );
+        return finish_body_step( to, to + 1_turns ) &&
+               ( supported_effects() || suspend( "local_effect_queue", to, to + 1_turns ) );
     }, [&]( time_point cur ) {
-        divergence = cur + 1_turns;
+        const time_point next = cur + 1_turns;
         if( prepare_home_effect_test_turn && home_effect_test_actor == getID() ) {
             const auto prepare = std::exchange( prepare_home_effect_test_turn, nullptr );
             prepare( *this );
         }
+        if( !supported_effects() ) {
+            return finish_body_step( next, next ) && suspend( "local_effect_turn", next, next );
+        }
         process_effects();
         if( pending_home_death ) {
-            pending_home_death->applied_until = cur + 1_turns;
+            pending_home_death->applied_until = next;
             return false;
         }
-        if( !supported_effects() ) {
-            return false;
+        if( home.deferred_effect_queue ) {
+            return finish_body_step( next, next ) && suspend( "local_effect_decay", next, next );
         }
         if( ( cur - calendar::turn_zero ) % 1_minutes == 0_turns ) {
             update_mental_focus();
         }
-        return finish_body_step( cur + 1_turns, cur + 1_turns );
+        return finish_body_step( next, next ) &&
+               ( supported_effects() || suspend( "local_effect_queue", next, next ) );
     }, []() {
         return true;
     } );
     if( !completed ) {
-        if( pending_home_death ) {
-            auto &pending = *pending_home_death;
-            pending.work_end = end;
-            pending.from_body_interval = true;
-            last_updated = pending.applied_until;
-            // New time and any later pause are tracked from the end of the
-            // active interval already owned by this record.
-            activation.settle_body( getID(), to_turns<int>( end - calendar::start_of_cataclysm ) );
-            return true;
-        }
-        throw std::runtime_error( "home admission probe actor " +
-                                  std::to_string( getID().get_value() ) +
-                                  " encountered body/effect divergence at turn " +
-                                  std::to_string( to_turn<int>( divergence ) ) );
+        settle_partial();
+        return false;
     }
     // A bulk step can end the interval without the native per-turn effect
     // pass. Commit already queued transitions without aging or running new
     // effect turns, since the native queues do not survive a save.
     if( !scheduled_effects.empty() || !terminating_effects.empty() ) {
         apply_queued_effect_transitions();
-        if( !scheduled_effects.empty() || !terminating_effects.empty() || !supported_effects() ) {
-            throw std::runtime_error( "home effect transition unresolved at settlement for actor " +
-                                      std::to_string( getID().get_value() ) );
+        if( home.deferred_effect_queue ) {
+            suspend( "local_effect_queue", end, end );
+            settle_partial();
+            return false;
         }
     }
     last_updated = calendar::turn;
@@ -5398,10 +5404,19 @@ void npc::advance_native_body_interval( time_point start, time_point end )
     } );
 }
 
-void npc::resume_home_body_after_prevention( const npc_home_pending_death &pending )
+void npc::resume_pending_home_body( const npc_home_pending_death &pending )
 {
-    if( pending.effect_phase == "effect_kill" ) {
-        // The selected effect interrupted the turn before its focus update.
+    if( pending.effect_phase == "local_effect_turn" ) {
+        process_effects();
+    } else if( pending.effect_phase == "local_effect_decay" ) {
+        apply_queued_effect_transitions();
+        Creature::process_effects();
+    } else if( pending.effect_phase == "local_effect_queue" ) {
+        apply_queued_effect_transitions();
+    }
+    if( pending.effect_phase == "effect_kill" || pending.effect_phase == "local_effect_turn" ||
+        pending.effect_phase == "local_effect_decay" ) {
+        // This effect turn paused before its focus update.
         const time_point interrupted_turn = pending.applied_until - 1_turns;
         if( ( interrupted_turn - calendar::turn_zero ) % 1_minutes == 0_turns ) {
             update_mental_focus();
@@ -5417,6 +5432,9 @@ void npc::resume_home_body_after_prevention( const npc_home_pending_death &pendi
 
 time_duration npc::catch_up_body()
 {
+    if( pending_home_death ) {
+        return 0_turns;
+    }
     refresh_live_bandit_activation();
     auto activation = live_bandit_body_interval_for( *this );
     if( activation && !activation.active() ) {

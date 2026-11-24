@@ -116,14 +116,9 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
     REQUIRE( std::getenv( "CAOL_HOME_DETAIL_TRACE" ) == nullptr );
     REQUIRE( std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" ) == nullptr );
     const char *mode_arg = std::getenv( "CAOL_WORLD2_DISPATCH_MODE" );
-    const char *arm_arg = std::getenv( "CAOL_WORLD2_DISPATCH_ARM" );
     REQUIRE( mode_arg );
-    REQUIRE( arm_arg );
     const std::string mode( mode_arg );
-    const std::string arm( arm_arg );
     REQUIRE( ( mode == "qualify" || mode == "turn" || mode == "body" ) );
-    REQUIRE( ( arm == "legacy" || arm == "map_free" ) );
-    const bool probe = arm == "map_free";
 
     REQUIRE( world_generator->active_world == nullptr );
     REQUIRE( world_generator->has_world( "TestSetup00" ) );
@@ -155,7 +150,6 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
     std::ostringstream record;
     JsonOut out( record );
     out.start_object();
-    out.member( "arm", arm );
     out.member( "mode", mode );
     out.member( "loaded_turn", saved_turn );
     out.member( "initial_after", initial_after );
@@ -211,11 +205,8 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
     clock_sample dispatch{};
     const auto due = [&]() { return !g->do_turn(); };
     {
-        set_ordinary_home_probe_for_test( true );
-        set_ordinary_home_probe_for_test( probe );
         set_home_admission_body_timing_for_test( mode == "body" ? &body_timing : nullptr );
         on_out_of_scope reset_probe( []() {
-            set_ordinary_home_probe_for_test( false );
             set_home_admission_body_timing_for_test( nullptr );
         } );
         get_avatar().set_moves( 0 );
@@ -229,12 +220,11 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
         }
     }
     REQUIRE( to_turn<int>( calendar::turn ) == dispatch_turn );
-    REQUIRE( ordinary_home_probe_successes_for_test() == ( probe ? 6 : 0 ) );
     if( mode == "qualify" ) {
         CAPTURE( entries.regions_entered, entries.region_loads, entries.region_saves );
         REQUIRE( entries.regions_entered == 2 );
-        REQUIRE( entries.region_loads == ( probe ? 0 : 4 ) );
-        REQUIRE( entries.region_saves == ( probe ? 0 : 4 ) );
+        REQUIRE( entries.region_loads == 0 );
+        REQUIRE( entries.region_saves == 0 );
     } else if( mode == "body" ) {
         REQUIRE( body_timing.calls == 6 );
     }

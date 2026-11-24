@@ -32,11 +32,6 @@ bool live_bandit_hostile_boundary_step( npc &member, map &main_map );
 // lifecycle boundary. It is inert without an active monitored run.
 void flush_native_slow_turn_receipts();
 
-// Controlled native-test admission probe; cannot enable a production game.
-void set_ordinary_home_probe_for_test( bool enabled,
-                                      std::optional<tripoint_abs_ms> known_rift_origin = std::nullopt );
-int ordinary_home_probe_successes_for_test();
-
 int signal_live_zombie_riders_from_light_observations_for_test(
     const std::vector<live_bandit_signal_observation> &signals );
 

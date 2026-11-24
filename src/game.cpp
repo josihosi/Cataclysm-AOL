@@ -1336,6 +1336,7 @@ void game::load_npcs( map *here )
             const npc_home_pending_death &pending = *temp->pending_home_death;
             const bool effect_kill = pending.effect_phase == "effect_kill";
             const bool body_completed = pending.effect_phase == "body_completed";
+            const bool local_effects = pending.needs_local_effects();
             bool valid_interval = pending.applied_until == pending.work_end && !pending.resume_at;
             if( pending.from_body_interval ) {
                 valid_interval = pending.applied_until <= pending.work_end &&
@@ -1344,11 +1345,17 @@ void game::load_npcs( map *here )
                     valid_interval = valid_interval && !pending.resume_at &&
                                      pending.work_end - pending.applied_until < 5_minutes;
                 } else if( body_completed ) {
-                    const bool fungal_damage = pending.cause == "fungal_infection" &&
+                    const bool body_damage = ( pending.cause == "fungal_infection" ||
+                                               pending.cause == "native_body_damage" ) &&
                                                pending.additional_physiological_causes.empty() &&
                                                pending.resume_at == pending.applied_until;
-                    valid_interval = valid_interval && ( pending.has_physiological_causes() || fungal_damage ) &&
+                    valid_interval = valid_interval && ( pending.has_physiological_causes() || body_damage ) &&
                                      temp->is_dead() && pending.resume_at &&
+                                     *pending.resume_at >= pending.applied_until &&
+                                     *pending.resume_at <= pending.applied_until + 1_turns &&
+                                     *pending.resume_at <= pending.work_end;
+                } else if( local_effects ) {
+                    valid_interval = valid_interval && !temp->is_dead() && pending.resume_at &&
                                      *pending.resume_at >= pending.applied_until &&
                                      *pending.resume_at <= pending.applied_until + 1_turns &&
                                      *pending.resume_at <= pending.work_end;
@@ -1356,7 +1363,8 @@ void game::load_npcs( map *here )
             }
             if( here != &reality_bubble() || pending.position != temp->pos_abs() ||
                 !here->inbounds( pending.position ) ||
-                ( !body_completed && !effect_kill ) ||
+                ( !body_completed && !effect_kill && !local_effects ) ||
+                ( local_effects && !pending.from_body_interval ) ||
                 ( effect_kill && ( pending.effect.is_null() || pending.next_effect_index < 1 ||
                                   !pending.additional_physiological_causes.empty() ) ) ||
                 pending.pending_removals.size() != pending.pending_removal_parts.size() ||
@@ -1374,12 +1382,14 @@ void game::load_npcs( map *here )
                 resolving_home_deaths.erase( id );
             } );
             temp->restore_home_effect_queue( pending );
-            temp->resolve_pending_home_death( here );
+            if( !local_effects ) {
+                temp->resolve_pending_home_death( here );
+            }
             if( effect_kill ) {
                 temp->resume_home_effect_decay( pending, *here );
             }
             if( pending.from_body_interval && !temp->is_dead() ) {
-                temp->resume_home_body_after_prevention( pending );
+                temp->resume_pending_home_body( pending );
             }
             temp->pending_home_death.reset();
             if( temp->is_dead() ) {

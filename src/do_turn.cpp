@@ -9961,7 +9961,8 @@ npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kin
     return npc_template_id::NULL_ID();
 }
 
-void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site )
+void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site,
+        const bool require_current_body = false )
 {
     if( !live_bandit_home_active( site ) ) {
         return;
@@ -9973,7 +9974,7 @@ void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site )
         }
         const auto found = overmap_buffer.find_npc( member.npc_id );
         const npc *guy = found.get();
-        // A selected but unresolved home death is not a finalized casualty.
+        // Work awaiting the local map holds this resident out of selection.
         if( guy != nullptr && guy->pending_home_death ) {
             member.wounded_or_unready = true;
             continue;
@@ -9995,6 +9996,7 @@ void refresh_live_bandit_site_readiness( bandit_live_world::site_record &site )
         if( guy != nullptr ) {
             const auto mark = site.home_activation.bodies.find( member.npc_id );
             if( !guy->is_dead() && ( guy->get_last_updated() > calendar::turn ||
+                ( require_current_body && guy->get_last_updated() != calendar::turn ) ||
                 mark == site.home_activation.bodies.end() ||
                 mark->second.world_turn != to_turns<int>( guy->get_last_updated() -
                         calendar::start_of_cataclysm ) ) ) {
@@ -10019,8 +10021,7 @@ void refresh_live_bandit_member_readiness( bandit_live_world::world_state &state
     }
 }
 
-// Optional, narrowly scoped dispatch investigation. This records inclusive
-// map-load time; mapgen within that load is not independently timed here.
+// Optional per-actor dispatch diagnostics. Timers stay inert without a trace.
 static const char *home_admission_trace_path()
 {
     const char *path = std::getenv( "CAOL_HOME_ADMISSION_TRACE" );
@@ -10059,9 +10060,6 @@ static void home_admission_trace( const char *path, const std::string &record )
 // Settle the home owner's exact body intervals before choosing a departing
 // party. Once an outing is committed its clock is the body owner, so waiting
 // until then would discard active home time as an untracked pre-outing gap.
-thread_local bool ordinary_home_probe_enabled = false;
-thread_local std::optional<tripoint_abs_ms> ordinary_home_probe_rift_origin;
-thread_local int ordinary_home_probe_successes = 0;
 thread_local home_admission_body_timing *home_body_timing = nullptr;
 
 template<typename CatchUp>
@@ -10146,87 +10144,29 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
             }
         }
     }
-    for( auto &group : remote ) {
-        if( test_mode && ordinary_home_probe_enabled ) {
-            const auto profile = site.profile == hostile_site_profile::none ?
-                                 profile_for_site_kind( site.site_kind ) : site.profile;
-            const auto environment = estimate_npc_home_body_environment(
-                                         profile, overmap_buffer.ter_existing( group.first ) );
-            if( environment ) {
-                auto &bodies = group.second;
-                bodies.erase( std::remove_if( bodies.begin(), bodies.end(), [&]( const auto &body ) {
-                    const auto area_temperature = get_weather().get_area_temperature( group.first );
-                    if( time_home_body_catch_up( [&]() {
-                    return body->catch_up_ordinary_home_for_test( *environment, area_temperature,
-                               ordinary_home_probe_rift_origin == body->pos_abs() );
-                    } ) ) {
-                        ++ordinary_home_probe_successes;
-                        return true;
-                    }
-                    return false;
-                } ), bodies.end() );
-            }
-            if( group.second.empty() ) {
+    const auto profile = site.profile == hostile_site_profile::none ?
+                         profile_for_site_kind( site.site_kind ) : site.profile;
+    for( const auto &[omt, bodies] : remote ) {
+        const auto environment = estimate_npc_home_body_environment( profile,
+                                 overmap_buffer.ter_existing( omt ) );
+        if( !environment ) {
+            continue;
+        }
+        const auto temperature = get_weather().get_area_temperature( omt );
+        for( const auto &body : bodies ) {
+            if( body->is_dead() ) {
                 continue;
             }
-        }
-        tinymap body_map;
-        int cached = 0;
-        if( trace_path ) {
-            const auto base = project_to<coords::sm>( group.first );
-            for( int x = 0; x < 2; ++x ) {
-                for( int y = 0; y < 2; ++y ) {
-                    cached += MAPBUFFER.lookup_submap_cached( base + point_rel_sm( x, y ) ) != nullptr;
-                }
+            const home_admission_trace_clock timer( trace_path != nullptr );
+            const bool settled = time_home_body_catch_up( [&]() {
+                return body->catch_up_offscreen_home( *environment, temperature );
+            } );
+            if( trace_path ) {
+                home_admission_trace( trace_path, "event=offscreen_catchup site=" + site.site_id +
+                                      " actor=" + std::to_string( body->getID().get_value() ) +
+                                      " omt=" + omt.to_string() + " settled=" + ( settled ? "1" : "0" ) +
+                                      timer.elapsed() );
             }
-        }
-        submap_load_counts counts;
-        std::unique_ptr<scoped_submap_load_counter> counter;
-        if( trace_path ) {
-            counter = std::make_unique<scoped_submap_load_counter>( counts );
-        }
-        const home_admission_trace_clock load_clock( trace_path != nullptr );
-        const auto detail_load = std::getenv( "CAOL_HOME_DETAIL_TRACE" ) ?
-                                 caol_map_detail_begin( "home_map_load", "site=" + site.site_id +
-                                                        " omt=" + group.first.to_string() ) : 0;
-        body_map.load( group.first, false );
-        const auto load_duration = trace_path ? load_clock.elapsed() : std::string();
-        caol_map_detail_end( detail_load, "" );
-        if( trace_path ) {
-            counter.reset();
-            std::ostringstream out;
-            out << "event=remote_map_load site=" << site.site_id << " omt=" << group.first.to_string()
-                << " actors=";
-            for( const auto &body : group.second ) {
-                out << body->getID().get_value() << ',';
-            }
-            out << " cached_z_submaps=" << cached << " lookup_calls=" << counts.lookup_calls
-                << " unserialize_calls=" << counts.unserialize_calls << " deserialize_calls="
-                << counts.deserialize_calls << load_duration;
-            home_admission_trace( trace_path, out.str() );
-        }
-        swap_map current( *body_map.cast_to_map() );
-        for( const auto &body : group.second ) {
-            if( !body->is_dead() ) {
-                const auto before = body->get_last_updated();
-                const home_admission_trace_clock timer( trace_path != nullptr );
-                time_home_body_catch_up( [&]() {
-                    return body->catch_up_body();
-                } );
-                if( trace_path ) {
-                    std::ostringstream out;
-                    out << "event=remote_catchup site=" << site.site_id << " omt=" << group.first.to_string()
-                        << " actor=" << body->getID().get_value() << " before=" << to_turn<int>( before )
-                        << " after=" << to_turn<int>( body->get_last_updated() ) << timer.elapsed();
-                    home_admission_trace( trace_path, out.str() );
-                }
-            }
-        }
-        const home_admission_trace_clock save_clock( trace_path != nullptr );
-        body_map.save();
-        if( trace_path ) {
-            home_admission_trace( trace_path, "event=remote_map_save site=" + site.site_id +
-                                  " omt=" + group.first.to_string() + save_clock.elapsed() );
         }
     }
     bool supply_settled = false;
@@ -10242,7 +10182,9 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
             }
         }
     }
-    refresh_live_bandit_site_readiness( site );
+    // A deferred body can finish under its real map owner on arrival. Keep
+    // its clock and exclude it from this dispatch while other residents proceed.
+    refresh_live_bandit_site_readiness( site, true );
     if( trace_path ) {
         home_admission_trace( trace_path, "event=preparation_end site=" + site.site_id +
                               " authenticated=" + std::to_string( authenticated.size() ) +
@@ -18186,21 +18128,6 @@ live_bandit_elevated_recovery_orders recover_live_bandit_local_elevated_watches(
 }
 
 } // namespace
-
-void set_ordinary_home_probe_for_test( bool enabled,
-                                      std::optional<tripoint_abs_ms> known_rift_origin )
-{
-    ordinary_home_probe_enabled = test_mode && enabled;
-    ordinary_home_probe_rift_origin = ordinary_home_probe_enabled ? known_rift_origin : std::nullopt;
-    if( enabled ) {
-        ordinary_home_probe_successes = 0;
-    }
-}
-
-int ordinary_home_probe_successes_for_test()
-{
-    return ordinary_home_probe_successes;
-}
 
 void set_home_admission_body_timing_for_test( home_admission_body_timing *timing )
 {
