@@ -614,6 +614,35 @@ parked at the owner's direction; this complement does not commission that repair
   - Finish through native save/quit and verify the owned process/helper exit before disposal.
     Preserve only active continuations, useful examples and reproductions; remove disposable
     output when the concise result and necessary evidence are durable.
+  - World 2 dispatch repair (006, open). At minute 7800 the remote home branch of
+    `prepare_live_bandit_home_admission` loaded one detailed map per occupied home OMT before
+    calling body catch-up. Four loads included 555.240 ms of map generation in replay 005.
+    [Detail and same-ID movement](task-logs/R-SOAK-FINDINGS-dispatch-detail-replay-005/replay-result.md)
+    · [Caller and proposed behavior](../doc/overmap-ai-field-guide.md#offscreen-home-readiness-at-dispatch).
+  - In dispatch preparation, check actual site membership, at-home state, physical location and
+    activation ownership. For a stale, eligible offscreen body, derive shelter, bedding/rest,
+    seating and temperature from camp profile, overmap terrain and area weather. Model ordinary
+    residents as able to free themselves and seek a bed. Apply the estimated rest only during
+    the eligible active interval. Use the individual's wounds, equipment, needs and effects;
+    avoid leaving a new sleep effect on an awake departing scout. Omit cosmetic ground blood.
+    Settle each elapsed interval once. Skip current or suspended intervals as appropriate.
+    Repeated checks, including after roster materialization, cannot charge that time again.
+    The remote body branch makes zero detailed-map load/save calls, including on exceptions.
+    In-bubble bodies use their ordinary local update. Scope the change at admission; independent
+    recall, rendezvous, expedition travel and general NPC catch-up retain their existing owners.
+  - When death needs the real map or a death script, persist the unresolved transition on the
+    same NPC before invoking death side effects. Preserve cause, available source/killer,
+    position, possessions, and the exact applied body/effect boundary. Exclude only that actor
+    from selection; peers remain eligible. A pending actor with lethal HP has no finalized
+    death credit. Repeated admission and save/reload retain the pending transition without
+    rerolling it. On real local resolution at that position, before relocation, invoke ordinary
+    death/prevention once. A survivor resumes remaining work from the saved boundary; a death
+    settles roster, possessions and applicable corpse once. Until a visit, that actor may remain pending indefinitely.
+  - Verify through the dispatch caller with counters sensitive to cached and cold loads/saves,
+    ordinary and exceptional bodies, local arrival, prevention and actual death, and reload
+    before and after resolution. Compare uninstrumented whole-turn and body costs from the same
+    pre-dispatch checkpoint and follow both parties' IDs through subsequent offscreen movement.
+    The earlier 34.841 ms body total and replay 005 timings are observations, not speedup claims.
 <!-- DE67:DFS-SLICE:END id=R-SOAK-FINDINGS-S001 claim=R-SOAK-FINDINGS -->
 
 ## Competing systems and override direction
