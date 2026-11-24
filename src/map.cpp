@@ -8228,8 +8228,13 @@ bool map::sees_site_with_optics( const tripoint_bub_ms &origin,
     float previous_distance = 0.0f;
     tripoint_bub_ms previous = origin;
     bool entered = false;
-    for( const tripoint_abs_ms &absolute : scout_observation::site_sightline( get_abs( origin ),
-            get_abs( target ) ) ) {
+    const auto absolute_origin = get_abs( origin );
+    const auto absolute_target = get_abs( target );
+    const auto line = footprint.size() == 1 &&
+                      footprint.front().xy() == project_to<coords::omt>( absolute_target ).xy() ?
+                      scout_observation::site_edge_sightline( absolute_origin, absolute_target ) :
+                      scout_observation::site_sightline( absolute_origin, absolute_target );
+    for( const tripoint_abs_ms &absolute : line ) {
         const auto p = get_bub( absolute );
         const float radial = rl_dist_exact( origin.raw(), p.raw() );
         const float distance = radial - previous_distance;
@@ -8406,7 +8411,13 @@ int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &
 int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
                          const std::vector<tripoint_abs_omt> *footprint ) const
 {
-    tripoint_bub_ms viewer_p = viewer.pos_bub( *this );
+    return ledge_coverage( viewer, target_p, footprint, viewer.pos_bub( *this ) );
+}
+
+int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
+                         const std::vector<tripoint_abs_omt> *footprint,
+                         const tripoint_bub_ms &viewer_p ) const
+{
     creature_size viewer_size = viewer.get_size();
 
     // Viewer eye level from ground in grids

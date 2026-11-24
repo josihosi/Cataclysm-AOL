@@ -138,7 +138,6 @@ constexpr int current_covert_egress_chain_version = 1;
 constexpr std::size_t max_covert_egress_route_omts = 64;
 constexpr std::size_t max_failed_covert_egress_route_omts =
     max_covert_egress_attempts * max_covert_egress_route_omts;
-constexpr std::size_t max_structural_watch_exact_terrain_reads = 128;
 constexpr int max_structural_watch_exact_route_reads = 4;
 constexpr int structural_watch_clear_day_sight_points = 6;
 constexpr std::size_t max_abstract_threat_ids = 16;
@@ -25410,7 +25409,11 @@ watch_selection_result select_exact_watch_ring_candidate(
     const std::vector<watch_selection_candidate> &candidates )
 {
     watch_selection_result result;
-    bool selected_concealed = false;
+    const watch_selection_candidate *selected = nullptr;
+    const auto rank = []( const watch_selection_candidate &candidate ) {
+        return std::make_tuple( candidate.lookout_score, !candidate.concealed, candidate.route_cost,
+                                candidate.omt.z(), candidate.omt.y(), candidate.omt.x() );
+    };
     for( const watch_selection_candidate &candidate : candidates ) {
         if( !candidate.reachable ||
             !candidate.two_intervening_omts_clear || candidate.route_cost < 0 ) {
@@ -25421,13 +25424,9 @@ watch_selection_result select_exact_watch_ring_candidate(
         if( !distance || *distance != 3 ) {
             continue;
         }
-        if( !result.valid ||
-            std::make_tuple( !candidate.concealed, candidate.route_cost, candidate.omt.z(), candidate.omt.y(),
-                             candidate.omt.x() ) <
-            std::make_tuple( !selected_concealed, result.route_cost, result.omt.z(), result.omt.y(),
-                             result.omt.x() ) ) {
+        if( !selected || rank( candidate ) < rank( *selected ) ) {
+            selected = &candidate;
             result.valid = true;
-            selected_concealed = candidate.concealed;
             result.omt = candidate.omt;
             result.footprint_distance = *distance;
             result.route_cost = candidate.route_cost;
@@ -25591,35 +25590,12 @@ structural_watch_geography_read read_structural_watch_geography(
                                                 omt, read.target_footprint );
         return !distance || *distance != 3;
     } ), candidate_omts.end() );
-    std::stable_sort( candidate_omts.begin(), candidate_omts.end(),
-    [&read]( const tripoint_abs_omt & lhs, const tripoint_abs_omt & rhs ) {
-        const int lhs_distance = *target_footprint_watch_distance(
-                                     lhs, read.target_footprint );
-        const int rhs_distance = *target_footprint_watch_distance(
-                                     rhs, read.target_footprint );
-        return lhs_distance != rhs_distance ? lhs_distance < rhs_distance :
-               structural_watch_omt_precedes( lhs, rhs );
-    } );
-    const std::size_t unbounded_candidate_count = candidate_omts.size();
-    std::vector<tripoint_abs_omt> bounded_candidate_omts;
-    bounded_candidate_omts.reserve( max_structural_watch_candidates );
-    const auto append_distance_band = [&read, &candidate_omts, &bounded_candidate_omts](
-    const int distance, const std::size_t cap ) {
-        std::size_t appended = 0;
-        for( const tripoint_abs_omt &candidate : candidate_omts ) {
-            if( appended >= cap ) {
-                break;
-            }
-            if( target_footprint_watch_distance( candidate, read.target_footprint ) == distance ) {
-                bounded_candidate_omts.push_back( candidate );
-                appended++;
-            }
-        }
-    };
-    append_distance_band( 3, max_structural_watch_exact_terrain_reads );
-    candidate_omts = std::move( bounded_candidate_omts );
-    read.candidate_enumeration_truncated =
-        unbounded_candidate_count > candidate_omts.size();
+    if( candidate_omts.size() > max_structural_watch_candidates ) {
+        // The terrain pass ranks a full ordinary ring. Keep the same hard
+        // upper bound for atypically large or disjoint target footprints.
+        candidate_omts.resize( max_structural_watch_candidates );
+        read.candidate_enumeration_truncated = true;
+    }
     read.candidate_omts_considered = static_cast<int>( candidate_omts.size() );
 
     std::vector<std::pair<tripoint_abs_omt, structural_watch_terrain_read>> qualified;
@@ -25666,11 +25642,11 @@ structural_watch_geography_read read_structural_watch_geography(
             };
             const int lhs_distance = origin_distance( lhs->first );
             const int rhs_distance = origin_distance( rhs->first );
-            if( lhs->second.concealed != rhs->second.concealed ) {
-                return lhs->second.concealed;
-            }
-            return lhs_distance != rhs_distance ? lhs_distance < rhs_distance :
-                   structural_watch_omt_precedes( lhs->first, rhs->first );
+            const auto rank = []( const auto *entry, int distance ) {
+                return std::make_tuple( entry->second.lookout_score, !entry->second.concealed, distance,
+                                        entry->first.z(), entry->first.y(), entry->first.x() );
+            };
+            return rank( lhs, lhs_distance ) < rank( rhs, rhs_distance );
         } );
         int group_reads = 0;
         bool reachable_concealed = false;
@@ -25684,7 +25660,8 @@ structural_watch_geography_read read_structural_watch_geography(
             // Preserve the existing route budget while giving an exposed useful
             // lookout one chance when concealed routes consumed the earlier attempts.
             if( group_reads == cap - 1 && !reachable_concealed &&
-                entry->second.concealed && exposed != group.end() ) {
+                entry->second.concealed && exposed != group.end() &&
+                ( *exposed )->second.lookout_score == entry->second.lookout_score ) {
                 entry = *exposed;
             }
             const structural_watch_route_read route = route_lookup( entry->first );
@@ -25698,6 +25675,7 @@ structural_watch_geography_read read_structural_watch_geography(
             candidate.concealed = entry->second.concealed;
             candidate.two_intervening_omts_clear = entry->second.intervening_omts_clear;
             candidate.route_cost = route.route_cost;
+            candidate.lookout_score = entry->second.lookout_score;
             read.routed_candidates.push_back( candidate );
         }
     };

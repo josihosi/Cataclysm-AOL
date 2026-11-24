@@ -442,6 +442,9 @@ class Creature : public viewer
         bool sees_site_with_optics( const map &here, const Creature &critter, float magnification,
                                     const std::vector<tripoint_abs_omt> &footprint,
                                     float observer_light ) const;
+        bool sees_site_with_optics( const map &here, const Creature &critter, float magnification,
+                                    const std::vector<tripoint_abs_omt> &footprint,
+                                    float observer_light, const tripoint_abs_ms &watch_eye ) const;
         // Decision-scoped actor capability adapter. Only location recognition
         // range changes; the native concealment/cover predicates still apply.
         bool sees_site_with_range( const map &here, const Creature &critter, int range,
@@ -1427,7 +1430,7 @@ class Creature : public viewer
                         bool without_clairvoyance, float optics = 0.0f,
                         const std::vector<tripoint_abs_omt> *footprint = nullptr,
                         float site_observer_light = 0.0f, bool physical_scene = false,
-                        int observation_range = -1 ) const;
+                        int observation_range = -1, const tripoint_abs_ms *watch_eye = nullptr ) const;
         bool sees_location_in_view( const map &here, const tripoint_bub_ms &t,
                                     bool is_avatar, int range_mod, bool physical_scene ) const;
         int pain;

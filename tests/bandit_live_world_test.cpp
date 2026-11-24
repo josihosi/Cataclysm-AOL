@@ -44361,6 +44361,15 @@ TEST_CASE( "loaded interrupted watch resumes only after current survival permits
             overmap_buffer.ter_set( point, oter_id( "field" ) );
         }
         overmap_buffer.ter_set( new_watch, oter_id( "forest" ) );
+        const auto original_line = line_to( watch, outing.target_omt );
+        const auto alternate_line = line_to( new_watch, outing.target_omt );
+        const auto obstructed_omt = std::find_if( original_line.begin(), original_line.end(),
+        [&]( const auto & point ) {
+            return point != watch && point != outing.target_omt &&
+                   std::find( alternate_line.begin(), alternate_line.end(), point ) == alternate_line.end();
+        } );
+        REQUIRE( obstructed_omt != original_line.end() );
+        overmap_buffer.ter_set( *obstructed_omt, oter_id( "solid_earth" ) );
     }
     // These are real stored target cells for geometry qualification, not a
     // signal/readiness certificate. The interrupted watch still has no records.

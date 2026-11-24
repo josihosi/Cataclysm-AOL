@@ -20,6 +20,21 @@ void TinymapLoadCheck::check( const MatchFinder::MatchResult &Result )
     diag( call->getExprLoc(), "tinymap load may read, generate, and update terrain" );
 }
 
+void ProspectiveLookoutCheck::registerMatchers( MatchFinder *Finder )
+{
+    Finder->addMatcher( cxxMemberCallExpr(
+                            callee( cxxMethodDecl( hasName( "::scout_observation::site_reader::read_lookout" ) ) ),
+                            unless( isExpansionInFileMatching( R"((^|[/\\])tests[/\\])" ) )
+                        ).bind( "lookout" ), this );
+}
+
+void ProspectiveLookoutCheck::check( const MatchFinder::MatchResult &Result )
+{
+    const auto *call = Result.Nodes.getNodeAs<CXXMemberCallExpr>( "lookout" );
+    diag( call->getExprLoc(), "read_lookout may construct and prepare a remote map for each ray; "
+                              "use overmap terrain to rank prospective lookouts" );
+}
+
 void StalkerLoopReaderCheck::registerMatchers( MatchFinder *Finder )
 {
     const auto allMonsters = cxxMemberCallExpr( callee( cxxMethodDecl(

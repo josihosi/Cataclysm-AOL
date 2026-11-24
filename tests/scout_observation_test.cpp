@@ -1318,6 +1318,113 @@ TEST_CASE( "a genuine native zero vehicle owner remains usable for observation",
     CHECK( body->pos_abs() == position );
 }
 
+TEST_CASE( "a camp watch ranks terrain before spending native routes", "[watch_terrain_ranking]" )
+{
+    using namespace bandit_live_world;
+    const tripoint_abs_omt target( 50, 50, 0 );
+    const tripoint_abs_omt close_route = target + point( 3, 0 );
+    const tripoint_abs_omt forest_edge = target + point( 0, 3 );
+    std::vector<tripoint_abs_omt> attempted;
+    const auto terrain = [&]( const tripoint_abs_omt &candidate, const auto & ) {
+        if( candidate == close_route ) {
+            return structural_watch_terrain_read{ true, true, { 4, 0 }, 68 };
+        }
+        if( candidate == forest_edge ) {
+            return structural_watch_terrain_read{ true, true, { 0, 0 }, 3 };
+        }
+        return structural_watch_terrain_read{};
+    };
+    const auto route = [&]( const tripoint_abs_omt &candidate ) {
+        attempted.push_back( candidate );
+        return structural_watch_route_read{ true, candidate == close_route ? 1 : 8 };
+    };
+    const auto decision = read_structural_watch_geography( { target }, target + point( 10, 0 ),
+                          terrain, route );
+    REQUIRE( decision.selection.valid );
+    CHECK( decision.selection.omt == forest_edge );
+    const std::vector<tripoint_abs_omt> expected = { forest_edge, close_route };
+    CHECK( attempted == expected );
+}
+
+TEST_CASE( "site edge clipping preserves the entry cell and elevation transition",
+           "[watch_site_edge]" )
+{
+    for( const tripoint_abs_ms &source : { tripoint_abs_ms( 59, 61, 1 ),
+                                         tripoint_abs_ms( -61, -59, 0 ) } ) {
+        const auto site = project_to<coords::omt>( source );
+        for( const point &direction : { point::north, point::north_east, point::east,
+                                        point::south_east, point::south, point::south_west,
+                                        point::west, point::north_west } ) {
+            const auto eye = source + tripoint_rel_ms( direction.x * 70, direction.y * 70, -1 );
+            const auto full = scout_observation::site_sightline( eye, source );
+            const auto edge = scout_observation::site_edge_sightline( eye, source );
+            const auto entry = std::find_if( full.begin(), full.end(), [&]( const auto &point ) {
+                return project_to<coords::omt>( point ).xy() == site.xy();
+            } );
+            REQUIRE( entry != full.end() );
+            REQUIRE( entry != full.begin() );
+            const std::vector<tripoint_abs_ms> expected( std::prev( entry ), full.end() );
+            CHECK( edge == expected );
+            CHECK( edge.size() <= 2 * SEEX + 1 );
+        }
+    }
+}
+
+TEST_CASE( "watch optics keep an opaque signal OMT boundary", "[watch_site_edge]" )
+{
+    const auto old_turn = calendar::turn;
+    const auto old_position = get_avatar().pos_abs();
+    clear_avatar();
+    clear_npcs();
+    clear_map_with_vision( -1, 1, false );
+    map &here = get_map();
+    on_out_of_scope restore( [&]() {
+        clear_npcs();
+        clear_map_with_vision( -1, 1, false );
+        get_avatar().setpos( old_position, false );
+        set_time( old_turn );
+    } );
+    scoped_weather_override weather( weather_type_id( "clear" ) );
+    set_time_to_day();
+    npc &observer = spawn_npc( point_bub_ms( 12, 66 ), "test_talker" );
+    observer.recalc_sight_limits();
+    const auto site = project_to<coords::omt>( here.get_abs( tripoint_bub_ms( 84, 66, 0 ) ) );
+    const auto site_origin = project_to<coords::ms>( site );
+    const auto source = site_origin + point( SEEX, SEEY );
+    const auto watch = site + point( -3, 0 );
+    const auto border = here.get_bub( site_origin + point( 0, SEEY ) );
+    const auto corridor = here.get_bub( site_origin + point( -SEEX, SEEY ) );
+    npc &subject = spawn_npc( here.get_bub( source ).xy(), "test_talker" );
+    REQUIRE( here.inbounds( source ) );
+    REQUIRE( here.inbounds( corridor ) );
+    here.ter_set( corridor, ter_str_id( "t_wall" ) );
+    here.build_map_cache( 0 );
+    {
+        scout_observation::site_reader reader;
+        REQUIRE( reader.read_watch_signal( observer, watch, source ).visible );
+        CHECK( reader.read_watch_character( observer, subject, watch ).visible );
+    }
+    here.ter_set( border, ter_str_id( "t_wall" ) );
+    here.build_map_cache( 0 );
+    {
+        scout_observation::site_reader reader;
+        const auto blocked = reader.read_watch_signal( observer, watch, source );
+        CHECK( blocked.known );
+        CHECK_FALSE( blocked.visible );
+        CHECK_FALSE( reader.read_watch_character( observer, subject, watch ).visible );
+    }
+
+    const auto observer_position = observer.pos_bub( here );
+    subject.setpos( here, observer_position + point( 5, 0 ), false );
+    subject.recalc_sight_limits();
+    REQUIRE( observer.sees_without_clairvoyance( here, subject ) );
+    REQUIRE( subject.sees_without_clairvoyance( here, observer ) );
+    here.ter_set( observer_position + point( 2, 0 ), ter_str_id( "t_wall" ) );
+    here.build_map_cache( 0 );
+    CHECK_FALSE( observer.sees_without_clairvoyance( here, subject ) );
+    CHECK_FALSE( subject.sees_without_clairvoyance( here, observer ) );
+}
+
 TEST_CASE( "prospective lookout geometry preserves footing range and physical occlusion",
            "[binocular_056][prospective_lookout_geometry]" )
 {

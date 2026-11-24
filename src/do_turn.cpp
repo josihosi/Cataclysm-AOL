@@ -8534,8 +8534,8 @@ int record_live_bandit_covert_visible_defenders()
                 if( defender.actor == observer.get() || defender.actor->is_dead_state() ) {
                     continue;
                 }
-                const auto visibility = optical_geometry.read_character( *observer, *defender.actor,
-                                        outing.target_footprint );
+                const auto visibility = optical_geometry.read_watch_character( *observer, *defender.actor,
+                                        outing.selected_watch_omt );
                 if( bandit_live_world_probe::transition_events_enabled() ) {
                     bandit_live_world_probe::transition_event event;
                     event.game_minutes = current_minutes;
@@ -8560,8 +8560,8 @@ int record_live_bandit_covert_visible_defenders()
                 // when both actual watchers see every person it contains.
                 if( physical_pair_can_share ) {
                     const auto &partner = observers[0] == observer ? observers[1] : observers[0];
-                    physical_pair_can_share = optical_geometry.read_character(
-                                                  *partner, *defender.actor, outing.target_footprint ).visible;
+                    physical_pair_can_share = optical_geometry.read_watch_character(
+                                                  *partner, *defender.actor, outing.selected_watch_omt ).visible;
                 }
                 bandit_live_world::covert_scout_burn_read::visible_defender_read read;
                 read.stable_id = defender.stable_id;
@@ -16080,114 +16080,139 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     }
 
     std::vector<std::pair<tripoint_abs_omt, std::vector<tripoint_abs_omt>>> watch_paths;
-    // A prospective lookout needs usable footing and a geometric view of
-    // the assigned area, not recognizable occupants or an illuminated scene.
-    // Actual arrived observers acquire their own light/channel-bound evidence.
-    scout_observation::site_reader geometry;
-    // Individual ray records are verbose diagnostics, not watch observations.
-    // Keep them for probe sessions and explicit investigations; routine live
-    // runs retain the route summary and lifecycle events without one stream
-    // append for every sample.
-    const char *watch_detail = std::getenv( "OPENCLAW_HARNESS_WATCH_GEOMETRY_DETAIL" );
-    const bool record_watch_details = bandit_live_world_probe::transition_events_enabled() &&
-                                      ( bandit_live_world_probe::active() ||
-                                        ( watch_detail && std::string_view( watch_detail ) == "1" ) );
-    const auto terrain_lookup = [&site, &plan, &geometry, record_watch_details](
-    const tripoint_abs_omt &candidate, const std::vector<tripoint_abs_omt> &footprint ) {
+    // Read each resident OMT's hostile pressure once across overlapping
+    // lookout neighborhoods. Never bring an overmap or detailed map in for it.
+    const auto leader = plan.member_ids.empty() ? shared_ptr_fast<npc>() :
+                        overmap_buffer.find_npc( plan.member_ids.front() );
+    const faction *observer_faction = leader ? leader->get_faction() : nullptr;
+    std::map<tripoint_abs_omt, bool> hostile_pressure;
+    for( const monster &creature : g->all_monsters() ) {
+        if( !creature.is_dead() &&
+            ( leader ? creature.attitude_to( *leader ) == Creature::Attitude::HOSTILE :
+              creature.type->aggro_character && creature.type->agro >= 10 ) ) {
+            hostile_pressure.emplace( creature.pos_abs_omt(), true );
+        }
+    }
+    constexpr int indexed_threats = horde_map_flavors::active | horde_map_flavors::idle |
+                                    horde_map_flavors::dormant | horde_map_flavors::immobile;
+    std::map<point_abs_om, overmap *> pressure_owners;
+    const auto has_hostile_pressure = [&]( const tripoint_abs_omt &omt ) {
+        const auto [cached, inserted] = hostile_pressure.try_emplace( omt, false );
+        if( !inserted ) {
+            return cached->second;
+        }
+        point_abs_om owner_omt;
+        tripoint_om_omt local_omt;
+        std::tie( owner_omt, local_omt ) = project_remain<coords::om>( omt );
+        const auto [owner_entry, new_owner] = pressure_owners.try_emplace( owner_omt, nullptr );
+        if( new_owner ) {
+            const auto owners = overmap_buffer.get_loaded_overmaps_near( project_to<coords::sm>( omt ).xy(), 0 );
+            if( !owners.empty() ) {
+                owner_entry->second = owners.front();
+            }
+        }
+        overmap *owner = owner_entry->second;
+        if( !owner ) {
+            return false;
+        }
+        for( const auto *bucket : owner->hordes_at( local_omt, indexed_threats ) ) {
+            for( const auto &entry : *bucket ) {
+                const horde_entity &entity = entry.second;
+                const mtype *type = entity.get_type();
+                if( !type ) {
+                    continue;
+                }
+                const bool hostile = leader && entity.monster_data ?
+                                     entity.monster_data->attitude_to( *leader ) == Creature::Attitude::HOSTILE :
+                                     type->aggro_character && type->agro >= 10 &&
+                                     ( !observer_faction || type->default_faction != observer_faction->mon_faction );
+                if( hostile ) {
+                    cached->second = true;
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    const auto terrain_lookup = [&]( const tripoint_abs_omt &candidate,
+    const std::vector<tripoint_abs_omt> & ) {
         bandit_live_world::structural_watch_terrain_read terrain;
         const oter_id &candidate_terrain = overmap_buffer.ter_existing( candidate );
-        if( candidate_terrain == oter_str_id::NULL_ID().id() ) {
+        if( !candidate_terrain.is_valid() || candidate_terrain == oter_str_id::NULL_ID().id() ||
+            npc_route.get_cost( candidate_terrain->get_travel_cost_type() ) < 0 ) {
             return terrain;
         }
+        const auto corridor = line_to( candidate, *physical_watch_target );
+        int obstruction = 0;
+        for( const auto &cell : corridor ) {
+            // The lookout supplies cover. The target has its own exposure read.
+            if( cell == candidate || cell == *physical_watch_target ) {
+                continue;
+            }
+            const oter_id &physical = overmap_buffer.ter_existing( cell );
+            if( !physical.is_valid() || physical == oter_str_id::NULL_ID().id() ) {
+                return terrain;
+            }
+            const int cost = physical->get_see_cost();
+            obstruction += cost;
+            terrain.intervening_see_costs.push_back( cost );
+        }
+        if( !bandit_live_world::structural_observer_route_is_visible( 6, terrain.intervening_see_costs ) ||
+            has_hostile_pressure( candidate ) ) {
+            return terrain;
+        }
+        int nearby_pressure = 0;
+        for( const point &offset : { point::north, point::north_east, point::east, point::south_east,
+                                    point::south, point::south_west, point::west, point::north_west } ) {
+            nearby_pressure += has_hostile_pressure( candidate + offset );
+        }
         terrain.concealed = candidate_terrain->get_see_cost() > 0;
-        auto targets = footprint;
-        std::sort( targets.begin(), targets.end(), [&candidate]( const auto &lhs, const auto &rhs ) {
-            return std::make_tuple( rl_dist( candidate, lhs ), lhs.z(), lhs.y(), lhs.x() ) <
-                   std::make_tuple( rl_dist( candidate, rhs ), rhs.z(), rhs.y(), rhs.x() );
-        } );
-        // At most two assigned area tiles, three standing samples and five
-        // area samples per tile. Reuse matching geometry across candidates.
-        if( targets.size() > 2 ) {
-            targets.resize( 2 );
-        }
-        tripoint_abs_ms origin;
-        const auto record_view = [&]( const char *role, const tripoint_abs_ms & observed,
-        const scout_observation::visibility_read & view ) {
-            raid_perf_scope record_scope( raid_perf_stage::watch_record_view );
-            if( raid_perf_current ) {
-                ++raid_perf_current->watch_record_view_calls;
-            }
-            if( !terrain.concealed || !record_watch_details ) {
-                return;
-            }
-            if( raid_perf_current ) {
-                ++raid_perf_current->watch_record_view_eligible_calls;
-            }
-            bandit_live_world_probe::transition_event event;
-            event.domain = "bandit_live_world";
-            event.transition = "watch_geometry_read";
-            event.outcome = "diagnostic";
-            event.site_id = site.site_id;
-            event.operation_id = plan.activity_id;
-            event.generation = plan.generation;
-            event.target_lead_id = plan.lead_id;
-            event.target_lead_revision = plan.lead_revision;
-            event.at_minutes = live_bandit_current_minutes();
-            for( const auto id : plan.member_ids ) {
-                event.actor_ids.push_back( id.get_value() );
-            }
-            std::ostringstream detail;
-            detail << "role=" << role << " candidate=" << candidate.to_string()
-                   << " origin=" << origin.to_string() << " target=" << observed.to_string()
-                   << " known=" << view.known << " visible=" << view.visible
-                   << " reason=" << view.reason;
-            event.reason = detail.str();
-            bandit_live_world_probe::record_live_transition_event( event );
-            bandit_live_world_probe::record_transition_event( std::move( event ) );
-        };
-        for( const auto &area : targets ) {
-            if( area.z() != candidate.z() ) {
-                continue;
-            }
-            std::vector<int> corridor;
-            bool known_corridor = true;
-            for( const auto &cell : line_to( candidate, area ) ) {
-                const oter_id &physical = overmap_buffer.ter_existing( cell );
-                if( physical == oter_str_id::NULL_ID().id() ) {
-                    known_corridor = false;
-                    break;
-                }
-                corridor.push_back( physical->get_see_cost() );
-            }
-            // Same existing clear-day terrain budget as watch geography.
-            if( !known_corridor || !bandit_live_world::structural_observer_route_is_visible( 6,
-                    corridor ) ) {
-                continue;
-            }
-            const auto target = project_to<coords::ms>( area );
-            for( const point &standing : { point( 12, 12 ), point( 6, 12 ), point( 18, 12 ) } ) {
-                origin = project_to<coords::ms>( candidate ) +
-                         tripoint_rel_ms( standing.x, standing.y, 0 );
-                for( const point &sample : { point( 12, 12 ), point( 1, 1 ), point( 22, 1 ),
-                                            point( 1, 22 ), point( 22, 22 ) } ) {
-                    const auto observed = target + tripoint_rel_ms( sample.x, sample.y, 0 );
-                    const auto view = [&]() {
-                        raid_perf_scope optical_scope( raid_perf_stage::watch_optical_read );
-                        if( raid_perf_current ) {
-                            ++raid_perf_current->watch_optical_read_calls;
-                        }
-                        return geometry.read_lookout( origin, observed, MAX_VIEW_DISTANCE * 2 );
-                    }();
-                    record_view( "area", observed, view );
-                    if( view.known && view.visible ) {
-                        terrain.intervening_omts_clear = true;
-                        terrain.intervening_see_costs = std::move( corridor );
-                        return terrain;
-                    }
-                }
-            }
-        }
+        const bool covered_edge = terrain.concealed &&
+                                  ( terrain.intervening_see_costs.empty() ||
+                                    terrain.intervening_see_costs.front() == 0 );
+        // Each adjacent hostile OMT takes priority over every clear corridor
+        // score. At equal pressure, weigh the angle and cover before distance.
+        constexpr int hostile_neighbor_cost = 256;
+        constexpr int obstruction_cost = 16;
+        const auto bearing = *physical_watch_target - candidate;
+        const int distance = static_cast<int>( std::min( 7.0, std::hypot( bearing.x(), bearing.y() ) ) );
+        const int cover_cost = covered_edge ? 0 : terrain.concealed ? 4 : 8;
+        terrain.lookout_score = nearby_pressure * hostile_neighbor_cost +
+                                obstruction * obstruction_cost + cover_cost + distance;
+        terrain.intervening_omts_clear = true;
         return terrain;
+    };
+    const auto known_safe_entry = [&]( const tripoint_abs_omt &candidate,
+    const tripoint_abs_omt &approach ) {
+        const auto direction = approach - candidate;
+        if( direction.z() != 0 || std::abs( direction.x() ) > 1 || std::abs( direction.y() ) > 1 ) {
+            return true; // The native move owner must qualify other entry shapes.
+        }
+        const map &here = get_map();
+        const auto origin = project_to<coords::ms>( candidate );
+        const int samples = direction.x() == 0 ? 2 * SEEX : direction.y() == 0 ? 2 * SEEY : 1;
+        for( int i = 0; i < samples; ++i ) {
+            const int x = direction.x() < 0 ? 0 : direction.x() > 0 ? 2 * SEEX - 1 : i;
+            const int y = direction.y() < 0 ? 0 : direction.y() > 0 ? 2 * SEEY - 1 : i;
+            const auto standing = origin + tripoint_rel_ms( x, y, 0 );
+            const auto before = standing + point( direction.x(), direction.y() );
+            if( !here.inbounds( before ) || !here.inbounds( standing ) ) {
+                return true; // No detailed load to certify a provisional entry.
+            }
+            const auto tile = here.get_bub( standing );
+            if( !here.passable( tile ) || !here.has_floor_or_water( tile ) ||
+                here.has_flag( ter_furn_flag::TFLAG_DEEP_WATER, tile ) ||
+                !here.valid_move( here.get_bub( before ), tile, false, false ) ) {
+                continue;
+            }
+            const auto &fields = here.field_at( tile );
+            if( std::none_of( fields.begin(), fields.end(), []( const auto &entry ) {
+            return entry.second.is_dangerous();
+            } ) ) {
+                return true;
+            }
+        }
+        return false;
     };
     // Four route callbacks is the existing geography owner's bound. Keep only
     // scalar facts from their original evaluation; the existing transition-event
@@ -16213,7 +16238,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     const auto watch_route_lookup = [&site, &npc_route, &source_node_cost, &target_footprint,
                                             &watch_path_budget, route_budget, &route_attempts,
                                             &route_attempt_count, &route_attempts_omitted,
-           &watch_paths, &member_route_check]( const tripoint_abs_omt & candidate ) {
+           &watch_paths, &member_route_check, &known_safe_entry]( const tripoint_abs_omt & candidate ) {
         bandit_live_world::structural_watch_route_read route;
         watch_route_attempt *attempt = nullptr;
         if( route_attempts ) {
@@ -16305,6 +16330,13 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
             route.reachable = false;
             return route;
         }
+        if( !known_safe_entry( candidate, watch_path.points[1] ) ) {
+            if( attempt ) {
+                attempt->first_rejection = "watch_entry_unsafe";
+            }
+            route.reachable = false;
+            return route;
+        }
         if( member_route_check ) {
             const bool member_route = member_route_check( candidate );
             if( attempt ) {
@@ -16327,9 +16359,6 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     bandit_live_world::structural_watch_geography_read watch =
         bandit_live_world::read_structural_watch_geography(
             target_footprint, site.anchor, terrain_lookup, watch_route_lookup );
-    if( raid_perf_current ) {
-        raid_perf_current->watch_cached_views += geometry.cached_view_count();
-    }
     watch.selection = member_route_check ?
                       bandit_live_world::select_alternate_watch_ring_candidate(
                           watch.target_footprint, watch.routed_candidates, site.active_outing.selected_watch_omt ) :
@@ -16856,14 +16885,15 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_structural_si
                             live_bandit_overmap_smoke_los_from( request.current_omt, signal, scout_position );
         }
         if( site_watch && line_of_sight ) {
+            const auto watch_eye = project_to<coords::ms>( outing.selected_watch_omt ) + point( SEEX, SEEY );
             size_t visible_watchers = 0;
+            if( !live_light::within_range( signal, watch_eye ) ) {
+                refuse_candidate( "outside_watch_range" );
+                continue;
+            }
             for( const auto &member : watchers ) {
-                if( !live_light::within_range( signal, member->pos_abs() ) ) {
-                    continue;
-                }
-                const auto read = optical_geometry.read_signal( *member, member->pos_abs(),
-                                  smoke_signal ? signal.smoke_observable_ms.value_or( *signal.source_ms ) : *signal.source_ms,
-                                  outing.target_footprint );
+                const auto read = optical_geometry.read_watch_signal( *member, outing.selected_watch_omt,
+                                  smoke_signal ? signal.smoke_observable_ms.value_or( *signal.source_ms ) : *signal.source_ms );
                 if( diagnostic_watch ) {
                     candidate_readers[signal_index].emplace_back( member->getID(), read );
                 }

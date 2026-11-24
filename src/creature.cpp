@@ -585,6 +585,16 @@ bool Creature::sees_site_with_optics( const map &here, const Creature &critter,
     return sees_impl( here, critter, true, magnification, &footprint, observer_light );
 }
 
+bool Creature::sees_site_with_optics( const map &here, const Creature &critter,
+                                      const float magnification,
+                                      const std::vector<tripoint_abs_omt> &footprint,
+                                      const float observer_light, const tripoint_abs_ms &watch_eye ) const
+{
+    return !footprint.empty() && std::isfinite( magnification ) && magnification > 0.0f &&
+           magnification <= 2.0f &&
+           sees_impl( here, critter, true, magnification, &footprint, observer_light, false, -1, &watch_eye );
+}
+
 bool Creature::sees_site_with_range( const map &here, const Creature &critter, const int range,
                                    const std::vector<tripoint_abs_omt> &footprint ) const
 {
@@ -596,11 +606,12 @@ bool Creature::sees_impl( const map &here, const Creature &critter,
                           const bool without_clairvoyance, const float optics,
                           const std::vector<tripoint_abs_omt> *footprint,
                           const float site_observer_light, const bool physical_scene,
-                          const int observation_range ) const
+                          const int observation_range, const tripoint_abs_ms *watch_eye ) const
 {
     const Character *ch = critter.as_character();
 
-    const tripoint_bub_ms pos = pos_bub( here );
+    const auto origin = watch_eye ? *watch_eye : pos_abs();
+    const tripoint_bub_ms pos = here.get_bub( origin );
     const tripoint_bub_ms critter_pos = critter.pos_bub( here );
 
     // Creatures always see themselves (simplifies drawing).
@@ -608,11 +619,11 @@ bool Creature::sees_impl( const map &here, const Creature &critter,
         return true;
     }
 
-    if( std::abs( posz() - critter.posz() ) > fov_3d_z_range ) {
+    if( std::abs( pos.z() - critter.posz() ) > fov_3d_z_range ) {
         return false;
     }
 
-    const int target_range = rl_dist( pos_abs( ), critter.pos_abs( ) );
+    const int target_range = rl_dist( origin, critter.pos_abs() );
     if( target_range > MAX_VIEW_DISTANCE * ( optics > 0.0f ? optics : 1.0f ) ) {
         return false;
     }
@@ -696,7 +707,7 @@ bool Creature::sees_impl( const map &here, const Creature &critter,
     // Can always see adjacent monsters on the same level.
     // We also bypass lighting for vertically adjacent monsters, but still check for floors.
     if( target_range <= 1 ) {
-        return ( posz() == critter.posz() || here.sees( pos, critter_pos, 1 ) ) &&
+        return ( pos.z() == critter.posz() || here.sees( pos, critter_pos, 1 ) ) &&
                visible( ch );
     }
 
@@ -760,21 +771,21 @@ bool Creature::sees_impl( const map &here, const Creature &critter,
           critter.is_likely_underwater( here ) &&
           majority_rule( critter.has_flag( mon_flag_WATER_CAMOUFLAGE ),
                          here.has_flag( ter_furn_flag::TFLAG_DEEP_WATER, critter_pos ),
-                         posz() != critter.posz() ) ) ||
+                         pos.z() != critter.posz() ) ) ||
         ( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_HIDE_PLACE, critter_pos ) &&
           !( std::abs( pos.x() - critter_pos.x() ) <= 1 && std::abs( pos.y() - critter_pos.y() ) <= 1 &&
-             std::abs( posz() - critter.posz() ) <= 1 ) ) ||
+             std::abs( pos.z() - critter.posz() ) <= 1 ) ) ||
         ( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_SMALL_HIDE, critter_pos ) &&
           critter.has_flag( mon_flag_SMALL_HIDER ) &&
           !( std::abs( pos.x() - critter_pos.x() ) <= 1 && std::abs( pos.y() - critter_pos.y() ) <= 1 &&
-             std::abs( posz() - critter.posz() ) <= 1 ) ) ) {
+             std::abs( pos.z() - critter.posz() ) <= 1 ) ) ) {
         return false;
     }
     if( ch != nullptr ) {
         if( ch->is_crouching() || ch->has_effect( effect_all_fours ) || ch->is_prone() ||
-            posz() != critter.posz() ) {
+            pos.z() != critter.posz() ) {
             const int coverage = std::max( here.obstacle_coverage( pos, critter_pos, footprint ),
-                                           here.ledge_coverage( *this, critter_pos, footprint ) );
+                                           here.ledge_coverage( *this, critter_pos, footprint, pos ) );
             if( coverage < 30 ) {
                 return visible( ch );
             }

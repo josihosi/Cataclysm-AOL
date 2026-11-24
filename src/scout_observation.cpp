@@ -713,7 +713,7 @@ scout_observation::visibility_read read_visibility( const Character &observer,
         const Character *actor,
         std::vector<std::unique_ptr<existing_view>> *cached_views = nullptr,
         vehicle_footprint_index *cached_vehicles = nullptr,
-        std::vector<tripoint_abs_omt> footprint = {} )
+        std::vector<tripoint_abs_omt> footprint = {}, const bool watch_edge = false )
 {
     if( observer.is_dead_state() || observer.is_blind() || observer.in_sleep_state() ||
         observer.has_effect( efftype_id( "no_sight" ) ) ||
@@ -749,7 +749,11 @@ scout_observation::visibility_read read_visibility( const Character &observer,
             return tile.xy() == omt.xy();
         } );
     };
-    const auto line = scout_observation::site_sightline( origin, target );
+    const auto target_line = [watch_edge]( const tripoint_abs_ms &from, const tripoint_abs_ms &to ) {
+        return watch_edge ? scout_observation::site_edge_sightline( from, to ) :
+               scout_observation::site_sightline( from, to );
+    };
+    const auto line = target_line( origin, target );
     const auto entry = std::find_if( line.begin(), line.end(), checked );
     if( entry == line.end() ) {
         return { false, false, "target_segment_unavailable" };
@@ -803,7 +807,7 @@ scout_observation::visibility_read read_visibility( const Character &observer,
         if( actor && ( origin.z() != target.z() || actor->is_crouching() || actor->is_prone() ||
                        actor->has_effect( efftype_id( "all_fours" ) ) ) ) {
             const int high = std::max( origin.z(), target.z() );
-            for( const auto &point : scout_observation::site_sightline( tripoint_abs_ms( origin.xy(), high ),
+            for( const auto &point : target_line( tripoint_abs_ms( origin.xy(), high ),
                     tripoint_abs_ms( target.xy(), high ) ) ) {
                 if( checked( point ) && !view->has_geometry( point ) ) {
                     return { false, false, "geometry_unavailable" };
@@ -861,8 +865,9 @@ scout_observation::visibility_read read_visibility( const Character &observer,
             const auto visible_at = [&]( const float light ) {
                 set_view_ambient( *probe, target, light );
                 set_view_source( *probe, target, *target_source );
-                return observer.sees_site_with_optics( *probe, *actor, optics, footprint,
-                                                      observer_light );
+                return watch_edge ? observer.sees_site_with_optics( *probe, *actor, optics, footprint,
+                                    observer_light, origin ) :
+                       observer.sees_site_with_optics( *probe, *actor, optics, footprint, observer_light );
             };
             // Character sight/range and the native light-dependent concealment
             // gates are monotone. All posture/invisibility/terrain gates still
@@ -898,8 +903,10 @@ scout_observation::visibility_read read_visibility( const Character &observer,
     // Site-only range uses the native outdoor environmental illumination at the
     // actual scout height, without inspecting ignored lookout/corridor terrain.
     if( actor ) {
-        return { true, observer.sees_site_with_optics( *here, *actor, optics, footprint,
-                 observer_light ), "optical_light_weather_or_actor_visibility" };
+        const bool visible = watch_edge ? observer.sees_site_with_optics( *here, *actor, optics,
+                             footprint, observer_light, origin ) :
+                             observer.sees_site_with_optics( *here, *actor, optics, footprint, observer_light );
+        return { true, visible, "optical_light_weather_or_actor_visibility" };
     }
     const int range = range_at( *target_light );
     return { true, rl_dist( origin, target ) <= range, "target_local_visibility" };
@@ -908,8 +915,10 @@ scout_observation::visibility_read read_visibility( const Character &observer,
 
 namespace scout_observation
 {
-std::vector<tripoint_abs_ms> site_sightline( const tripoint_abs_ms &origin,
-        const tripoint_abs_ms &target )
+namespace
+{
+std::vector<tripoint_abs_ms> make_site_sightline( const tripoint_abs_ms &origin,
+        const tripoint_abs_ms &target, const bool edge_only )
 {
     const auto delta = target - origin;
     const int steps = std::max( { std::abs( delta.x() ), std::abs( delta.y() ),
@@ -920,15 +929,47 @@ std::vector<tripoint_abs_ms> site_sightline( const tripoint_abs_ms &origin,
     if( steps == 0 ) {
         return { target };
     }
+    const auto point_at = [&]( const int step ) {
+        return origin + tripoint_rel_ms(
+                   static_cast<int>( std::lround( static_cast<double>( delta.x() ) * step / steps ) ),
+                   static_cast<int>( std::lround( static_cast<double>( delta.y() ) * step / steps ) ),
+                   static_cast<int>( std::lround( static_cast<double>( delta.z() ) * step / steps ) ) );
+    };
+    int first = 1;
+    if( edge_only ) {
+        const auto target_omt = project_to<coords::omt>( target ).xy();
+        int last = steps;
+        // The discrete ray enters the target's horizontal column at most once.
+        // Find the entry without building or walking the intervening ray.
+        while( first < last ) {
+            const int midpoint = first + ( last - first ) / 2;
+            if( project_to<coords::omt>( point_at( midpoint ) ).xy() == target_omt ) {
+                last = midpoint;
+            } else {
+                first = midpoint + 1;
+            }
+        }
+        first = std::max( 1, first - 1 );
+    }
     std::vector<tripoint_abs_ms> result;
-    result.reserve( steps );
-    for( int i = 1; i <= steps; ++i ) {
-        result.push_back( origin + tripoint_rel_ms(
-                              static_cast<int>( std::lround( static_cast<double>( delta.x() ) * i / steps ) ),
-                              static_cast<int>( std::lround( static_cast<double>( delta.y() ) * i / steps ) ),
-                              static_cast<int>( std::lround( static_cast<double>( delta.z() ) * i / steps ) ) ) );
+    result.reserve( steps - first + 1 );
+    for( int i = first; i <= steps; ++i ) {
+        result.push_back( point_at( i ) );
     }
     return result;
+}
+} // namespace
+
+std::vector<tripoint_abs_ms> site_sightline( const tripoint_abs_ms &origin,
+        const tripoint_abs_ms &target )
+{
+    return make_site_sightline( origin, target, false );
+}
+
+std::vector<tripoint_abs_ms> site_edge_sightline( const tripoint_abs_ms &origin,
+        const tripoint_abs_ms &target )
+{
+    return make_site_sightline( origin, target, true );
 }
 struct site_reader::implementation {
     vehicle_footprint_index vehicles;
@@ -1260,6 +1301,22 @@ visibility_read site_reader::read_signal( const Character &observer, const tripo
     return read_visibility( observer, origin, target, nullptr, &impl->views, &impl->vehicles,
                             footprint );
 }
+visibility_read site_reader::read_watch_signal( const Character &observer,
+        const tripoint_abs_omt &watch, const tripoint_abs_ms &target )
+{
+    const auto eye = project_to<coords::ms>( watch ) + point( SEEX, SEEY );
+    return read_visibility( observer, eye, target, nullptr, &impl->views, &impl->vehicles,
+                            { project_to<coords::omt>( target ) }, true );
+}
+
+visibility_read site_reader::read_watch_character( const Character &observer, const Character &target,
+        const tripoint_abs_omt &watch )
+{
+    const auto eye = project_to<coords::ms>( watch ) + point( SEEX, SEEY );
+    return read_visibility( observer, eye, target.pos_abs(), &target, &impl->views, &impl->vehicles,
+                            { target.pos_abs_omt() }, true );
+}
+
 size_t site_reader::cached_view_count() const
 {
     return impl->views.size();

@@ -781,6 +781,9 @@ class map
                                const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;
         int ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
                             const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;
+        int ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p,
+                            const std::vector<tripoint_abs_omt> *footprint,
+                            const tripoint_bub_ms &viewer_p ) const;
         int ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms &target_p,
                             const float &eye_level = 1.0f,
                             const std::vector<tripoint_abs_omt> *footprint = nullptr ) const;

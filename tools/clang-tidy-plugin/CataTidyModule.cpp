@@ -88,6 +88,7 @@ class CataModule : public ClangTidyModule
             CheckFactories.registerCheck<SerializeCheck>( "cata-serialize" );
             CheckFactories.registerCheck<SimplifyPointConstructorsCheck>(
                 "cata-simplify-point-constructors" );
+            CheckFactories.registerCheck<ProspectiveLookoutCheck>( "cata-prospective-lookout" );
             CheckFactories.registerCheck<StalkerLoopReaderCheck>( "cata-stalker-loop-reader" );
             CheckFactories.registerCheck<TinymapLoadCheck>( "cata-tinymap-load" );
             CheckFactories.registerCheck<StaticInitializationOrderCheck>(

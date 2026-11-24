@@ -20,6 +20,9 @@ namespace scout_observation
 // site reader's native optical range before any geometry is inspected.
 std::vector<tripoint_abs_ms> site_sightline( const tripoint_abs_ms &origin,
         const tripoint_abs_ms &target );
+// The target OMT segment, plus its preceding point for a boundary z transition.
+std::vector<tripoint_abs_ms> site_edge_sightline( const tripoint_abs_ms &origin,
+        const tripoint_abs_ms &target );
 struct visibility_read {
     bool known = false;
     bool visible = false;
@@ -66,6 +69,10 @@ class site_reader
         visibility_read read_signal( const Character &observer, const tripoint_abs_ms &origin,
                                      const tripoint_abs_ms &target,
                                      const std::vector<tripoint_abs_omt> &footprint );
+        visibility_read read_watch_signal( const Character &observer, const tripoint_abs_omt &watch,
+                                           const tripoint_abs_ms &target );
+        visibility_read read_watch_character( const Character &observer, const Character &target,
+                                              const tripoint_abs_omt &watch );
         bool watching_member( const bandit_live_world::site_record &site, const npc &observer );
         // Optional first refusal from the actual decision; no additional geometry read.
         bool watching_member( const bandit_live_world::site_record &site, const npc &observer,

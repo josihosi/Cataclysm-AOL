@@ -1655,11 +1655,12 @@ struct watch_selection_candidate {
     bool concealed = false;
     bool two_intervening_omts_clear = false;
     int route_cost = -1;
+    int lookout_score = 0;
 
     bool operator==( const watch_selection_candidate &rhs ) const {
         return omt == rhs.omt && reachable == rhs.reachable && concealed == rhs.concealed &&
                two_intervening_omts_clear == rhs.two_intervening_omts_clear &&
-               route_cost == rhs.route_cost;
+               route_cost == rhs.route_cost && lookout_score == rhs.lookout_score;
     }
     bool operator!=( const watch_selection_candidate &rhs ) const {
         return !( *this == rhs );
@@ -1691,6 +1692,7 @@ struct structural_watch_terrain_read {
     bool concealed = false;
     bool intervening_omts_clear = false;
     std::vector<int> intervening_see_costs;
+    int lookout_score = 0;
 };
 
 struct structural_watch_route_read {
