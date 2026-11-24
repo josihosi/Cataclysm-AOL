@@ -1959,8 +1959,11 @@ class npc : public Character
          * Consumes last_updated exactly once, with the ordinary load bounds.
          */
         time_duration catch_up_body();
-        bool catch_up_offscreen_home( const npc_home_body_environment &environment,
-                                      units::temperature area_temperature );
+        /** Settle an inactive body without opening its map. A false result leaves
+         * work for the real local map if the body or effect needs it.
+         */
+        bool catch_up_offscreen_body( const npc_home_body_environment &environment,
+                                      units::temperature area_temperature, bool resting_at_home );
         void restore_home_effect_queue( const npc_home_pending_death &pending );
         void resume_pending_home_body( const npc_home_pending_death &pending );
         void resolve_pending_home_death( map *here );
@@ -2003,6 +2006,7 @@ class npc : public Character
 
         void on_move( const tripoint_abs_ms &old_pos ) override;
     private:
+        void release_expired_flee_attitude();
         void age_body_effects( time_duration elapsed );
         void advance_body_focus( int minutes );
         void advance_native_body_interval( time_point start, time_point end );

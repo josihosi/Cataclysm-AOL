@@ -6890,7 +6890,7 @@ void Character::apply_queued_effect_transitions()
     auto *home = npc_home_effect_context( *this );
     const bool was_asleep = home && has_effect( effect_sleep );
     const auto defer_to_local = [&]( const efftype_id &id ) {
-        if( home && !npc_home_body_effect_supported( id ) ) {
+        if( home && !npc_home_body_effect_supported( id, home->expedition ) ) {
             home->deferred_effect_queue = true;
             return true;
         }

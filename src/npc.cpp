@@ -4970,7 +4970,7 @@ float npc_home_body_context::estimated_light( const Character &who ) const
     return environment.sheltered ? 0.0f : g->natural_light_level( who.pos_abs().z() );
 }
 
-bool npc_home_body_effect_supported( const efftype_id &id )
+bool npc_home_body_effect_supported( const efftype_id &id, bool expedition )
 {
     static const std::set<efftype_id> supported = {
         efftype_id( "test_fatalism" ), efftype_id( "test_vitamineff" ), efftype_id( "adrenaline" ),
@@ -4982,7 +4982,11 @@ bool npc_home_body_effect_supported( const efftype_id &id )
         efftype_id( "hunger_full" ), efftype_id( "hunger_hungry" ), efftype_id( "hunger_near_starving" ),
         efftype_id( "hunger_satisfied" ), efftype_id( "hunger_starving" ), efftype_id( "hunger_very_hungry" )
     };
-    return supported.count( id ) != 0;
+    static const std::set<efftype_id> expedition_effects = {
+        effect_npc_flee_player, efftype_id( "npc_run_away" ), efftype_id( "narcosis" ),
+        efftype_id( "stunned" ), efftype_id( "downed" ), efftype_id( "winded" )
+    };
+    return supported.count( id ) != 0 || ( expedition && expedition_effects.count( id ) != 0 );
 }
 
 bool npc_home_pending_death::has_supported_queued_effects() const
@@ -4995,7 +4999,7 @@ bool npc_home_pending_death::has_supported_queued_effects() const
         return false;
     }
     const auto supported = [local]( const auto &entry ) {
-        return entry.eff_id.is_valid() && ( local || ( npc_home_body_effect_supported( entry.eff_id ) &&
+        return entry.eff_id.is_valid() && ( local || ( npc_home_body_effect_supported( entry.eff_id, true ) &&
                                             entry.eff_id != efftype_id( "test_fatalism" ) ) );
     };
     return std::all_of( queued_additions.begin(), queued_additions.end(), supported ) &&
@@ -5200,10 +5204,8 @@ static int npc_body_focus_after( int focus, int equilibrium, int minutes )
     return static_cast<int>( ratio * focus + ( 1 - ratio ) * equilibrium );
 }
 
-// Offscreen dispatch owns body work for the supported interval. A resident
-// needing actual tile actions waits for its local map owner.
-bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
-                                  units::temperature area_temperature )
+bool npc::catch_up_offscreen_body( const npc_home_body_environment &environment,
+                                  units::temperature area_temperature, bool resting_at_home )
 {
     const bool lethal_stim = get_stim() > 250 || get_stim() < -200;
     const bool lethal_painkiller = get_painkiller() > 240;
@@ -5215,7 +5217,7 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
     // offscreen effect path has no owner for that item transfer yet.
     const bool may_drop_weapon = wielded && can_drop( *wielded ).success();
     const auto supported_effect = [&]( const efftype_id &id ) {
-        return npc_home_body_effect_supported( id ) &&
+        return npc_home_body_effect_supported( id, !resting_at_home ) &&
                !( may_drop_weapon && id == efftype_id( "fungus" ) ) &&
                !( physiological_death_possible && id == efftype_id( "test_fatalism" ) );
     };
@@ -5236,24 +5238,34 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
     };
     auto activation = live_bandit_body_interval_for( *this );
     const time_duration dt = std::min( pending_npc_body_interval( *this, activation ), 2_days );
-    if( !activation || !activation.active() || last_updated > calendar::turn ||
-        is_dead() || pending_home_death || in_vehicle || attitude == NPCATT_FLEE_TEMP ||
-        hp_percentage() < 100 || ( activity && activity.id() != ACT_TRY_SLEEP ) ||
+    const auto body_parts = get_all_body_parts();
+    const bool broken_limb = std::any_of( body_parts.begin(), body_parts.end(),
+    [&]( const bodypart_id &part ) {
+        return is_limb_broken( part );
+    } );
+    std::vector<npc_physiological_death_cause> selected_causes;
+    npc_home_body_context home{ environment, area_temperature,
+                               resting_at_home || in_sleep_state(), &selected_causes };
+    home.expedition = !resting_at_home;
+    if( ( activation ? !activation.active() : resting_at_home ) || last_updated > calendar::turn ||
+        is_dead() || pending_home_death || in_vehicle || broken_limb ||
+        ( resting_at_home && ( hp_percentage() < 100 || attitude == NPCATT_FLEE_TEMP ) ) ||
+        ( activity && activity.id() != ACT_TRY_SLEEP ) ||
         has_flag( json_character_flag( "SEESLEEP" ) ) || has_trait( trait_id( "CHLOROMORPH" ) ) ||
         has_trait( trait_id( "M_SKIN3" ) ) || has_trait( trait_id( "WATERSLEEP" ) ) ||
         has_trait( trait_id( "UNDINE_SLEEP_WATER" ) ) || has_trait( trait_id( "THRESH_MYCUS" ) ) ||
         ( ( get_stim() < -100 || get_stim() > 100 ) && !lethal_stim ) ||
         ( get_painkiller() > 100 && !lethal_painkiller ) ||
-        healing_rate( environment.sleeping_rest_quality ) < 0.0f ||
+        healing_rate( resting_at_home ? environment.sleeping_rest_quality :
+                      rest_quality( &home ) ) < 0.0f ||
         !supported_effects() || !supported_queue( scheduled_effects ) ||
         !supported_queue( terminating_effects ) ) {
         return false;
     }
-    std::vector<npc_physiological_death_cause> selected_causes;
-    npc_home_body_context home{ environment, area_temperature, true, &selected_causes };
     const time_point end = calendar::turn;
-    const scoped_npc_home_effects capture( *this, "dispatch-home:" +
-                                          std::to_string( to_turn<int>( end ) ), true, &home );
+    const char *causal_prefix = resting_at_home ? "dispatch-home:" : "expedition-body:";
+    const scoped_npc_home_effects capture( *this, causal_prefix + std::to_string( to_turn<int>( end ) ),
+                                          true, &home );
     const auto save_queues = [&]( npc_home_pending_death &pending ) {
         const auto take_queue = []( auto &queue, auto &saved ) {
             while( !queue.empty() ) {
@@ -5268,7 +5280,7 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
         auto &pending = pending_home_death.emplace();
         pending.position = pos_abs();
         pending.applied_until = applied_until;
-        pending.resume_at = resume_at;
+        pending.resume_at = std::min( resume_at, end );
         pending.effect_phase = phase;
         save_queues( pending );
         return false;
@@ -5288,7 +5300,7 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
         auto &pending = pending_home_death.emplace();
         pending.position = pos_abs();
         pending.applied_until = applied_until;
-        pending.resume_at = resume_at;
+        pending.resume_at = std::min( resume_at, end );
         if( selected_causes.empty() ) {
             pending.cause = home.lethal_fungal_damage ? "fungal_infection" : "native_body_damage";
         } else {
@@ -5304,6 +5316,7 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
     };
     const bool completed = run_npc_body_interval( end - dt, end,
     [&]( time_point from, time_point to ) {
+        home.asleep = resting_at_home || in_sleep_state();
         update_body( from, to, &home );
         return true;
     }, [&]( time_point to, time_duration elapsed ) {
@@ -5356,6 +5369,7 @@ bool npc::catch_up_offscreen_home( const npc_home_body_environment &environment,
         activation.settle_body( getID(),
                                 to_turns<int>( last_updated - calendar::start_of_cataclysm ) );
     }
+    release_expired_flee_attitude();
     return true;
 }
 
@@ -5428,6 +5442,7 @@ void npc::resume_pending_home_body( const npc_home_pending_death &pending )
     }
     last_updated = pending.work_end;
     check_dead_state( &get_map() );
+    release_expired_flee_attitude();
 }
 
 time_duration npc::catch_up_body()
@@ -5456,6 +5471,12 @@ time_duration npc::catch_up_body()
                                  to_turns<int>( last_updated - calendar::start_of_cataclysm ) );
     }
     check_dead_state( &get_map() );
+    release_expired_flee_attitude();
+    return dt;
+}
+
+void npc::release_expired_flee_attitude()
+{
     // The loaded move owner releases this temporary attitude when its native
     // effect expires. Off-bubble bodies need the same expiry consequence.
     if( !is_dead() && attitude == NPCATT_FLEE_TEMP &&
@@ -5465,7 +5486,6 @@ time_duration npc::catch_up_body()
                                     peek_destination_activity().id() == activity_id( "ACT_MOVE_LOOT" );
         set_attitude( resume_sorting ? NPCATT_ACTIVITY : NPCATT_NULL );
     }
-    return dt;
 }
 
 void npc::on_load( map *here )

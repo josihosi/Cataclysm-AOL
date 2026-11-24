@@ -172,6 +172,7 @@ static constexpr int MON_RADIUS = 3;
 void map::generate( const tripoint_abs_omt &p, const time_point &when, bool save_results,
                     bool run_post_process )
 {
+    record_detailed_map_generation();
     dbg( D_INFO ) << "map::generate( g[" << g.get() << "], p[" << p << "], "
                   "when[" << to_string( when ) << "] )";
     // Insure we reset mapgen_in_progress no matter how this method terminates.

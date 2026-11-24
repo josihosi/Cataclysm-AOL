@@ -8876,6 +8876,16 @@ scoped_detailed_map_entry_region::~scoped_detailed_map_entry_region()
     }
 }
 
+void map::record_detailed_map_generation()
+{
+    if( active_map_entry_counts ) {
+        ++active_map_entry_counts->generations;
+        if( active_map_entry_depth ) {
+            ++active_map_entry_counts->region_generations;
+        }
+    }
+}
+
 void map::save()
 {
     if( active_map_entry_counts ) {

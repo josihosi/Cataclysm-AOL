@@ -83,7 +83,7 @@ class scoped_npc_home_effects
 };
 bool npc_home_effects_active( const Character &actor );
 npc_home_body_context *npc_home_effect_context( const Character &actor );
-bool npc_home_body_effect_supported( const efftype_id &id );
+bool npc_home_body_effect_supported( const efftype_id &id, bool expedition );
 bool npc_home_capture_fatal_effect( const Character &actor );
 // One-shot fixture input at the first native effect turn of this resident.
 void set_first_npc_home_effect_turn_for_test( character_id id, void ( *prepare )( const npc & ) );
@@ -113,6 +113,7 @@ struct npc_home_body_context {
     std::vector<npc_physiological_death_cause> *physiological_deaths = nullptr;
     bool lethal_fungal_damage = false;
     bool deferred_effect_queue = false;
+    bool expedition = false;
 
     float estimated_light( const Character &actor ) const;
 };

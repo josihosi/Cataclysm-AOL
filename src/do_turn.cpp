@@ -145,6 +145,7 @@
 #include "stats_tracker.h"
 #include "string_formatter.h"
 #include "timed_event.h"
+#include "submap.h"
 #include "trap.h"
 #include "translations.h"
 #include "type_id.h"
@@ -3705,13 +3706,13 @@ void evaluate_live_bandit_activation()
                     continue;
                 }
                 const auto actor = overmap_buffer.find_npc( id );
-                const bool confirmed_dead = actor ? actor->is_dead() :
+                const bool confirmed_dead = actor ? actor->is_dead() && !actor->pending_home_death :
                                             hostile && live_bandit_confirmed_character_death(
                                                 id, outing.started_minutes, now / 60 );
                 if( !confirmed_dead ) {
                     all_confirmed_dead = false;
                 }
-                if( actor && !actor->is_dead() ) {
+                if( actor && !confirmed_dead ) {
                     eligible |= living_nearby.count( id ) != 0;
                     bodies.emplace( id, body_clock( *actor ) );
                 } else if( !actor && !confirmed_dead ) {
@@ -4350,7 +4351,7 @@ bool live_bandit_confirmed_character_death( const character_id member_id,
 {
     const shared_ptr_fast<npc> actor = overmap_buffer.find_npc( member_id );
     if( actor ) {
-        return actor->is_dead();
+        return actor->is_dead() && !actor->pending_home_death;
     }
     // cleanup_dead removes the NPC before the next five-minute approach pass.
     // The saved character_dies statistic retains the numeric identity and turn,
@@ -9121,6 +9122,9 @@ bool note_live_bandit_aftermath()
                 }
                 const bandit_live_world::member_record *member = site.find_member( member_id );
                 npc *member_npc = g->find_npc( member_id );
+                if( member_npc && member_npc->pending_home_death ) {
+                    continue;
+                }
                 const bool missing_after_deadline = member_npc == nullptr &&
                                                     site.active_outing.missing_deadline_minutes >= 0 &&
                                                     site.active_outing.activation.elapsed_turns( bandit_live_world::activation_timer::missing_deadline,
@@ -10159,7 +10163,7 @@ bool prepare_live_bandit_home_admission( bandit_live_world::world_state &world,
             }
             const home_admission_trace_clock timer( trace_path != nullptr );
             const bool settled = time_home_body_catch_up( [&]() {
-                return body->catch_up_offscreen_home( *environment, temperature );
+                return body->catch_up_offscreen_body( *environment, temperature, true );
             } );
             if( trace_path ) {
                 home_admission_trace( trace_path, "event=offscreen_catchup site=" + site.site_id +
@@ -11950,6 +11954,9 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         std::set<character_id> &blocked,
         const std::set<character_id> &loaded_before_settlement = {} );
 
+bool live_bandit_expedition_bodies_can_transfer( const std::vector<shared_ptr_fast<npc>> &members,
+        const std::set<character_id> &blocked );
+
 // Body time belongs to the authenticated current owner. Finish it before a
 // transfer captures HP or issues a living return receipt. A later transfer
 // failure must retain native injury/death, rather than roll physiology back.
@@ -11973,7 +11980,8 @@ bool finish_live_bandit_loaded_handoff_bodies( bandit_live_world::site_record &s
         // service, even when this recorder runs before that service. Real deaths
         // are reconciled before the caller reconsiders living return receipts.
         std::set<character_id> blocked;
-        return settle_live_bandit_inactive_bodies( site, members, changed, blocked );
+        return settle_live_bandit_inactive_bodies( site, members, changed, blocked ) &&
+               live_bandit_expedition_bodies_can_transfer( members, blocked );
     }
     if( !live_bandit_handoff_bodies_are_authenticated( site, members ) ) {
         return false;
@@ -12000,7 +12008,7 @@ bool finish_live_bandit_loaded_handoff_bodies( bandit_live_world::site_record &s
         // interval and aging only inactive partners, in one Local transaction.
         std::set<character_id> blocked;
         return settle_live_bandit_inactive_bodies( site, members, changed, blocked,
-                loaded_before_settlement );
+                loaded_before_settlement ) && live_bandit_expedition_bodies_can_transfer( members, blocked );
     }
     if( !has_loaded_body ) {
         return true;
@@ -12098,6 +12106,9 @@ bool dematerialize_live_bandit_structural_handoffs( const int fail_quiesce_id = 
         }
         if( native_body_blocked != nullptr ) {
             native_body_blocked->insert( body_blocked.begin(), body_blocked.end() );
+        }
+        if( !live_bandit_expedition_bodies_can_transfer( local_bodies, body_blocked ) ) {
+            continue;
         }
         // Native deaths may terminate the party or replace its survivor cursor.
         // Placement now consumes current physical facts and published casualties.
@@ -12752,7 +12763,7 @@ std::set<character_id> prepare_live_bandit_abstract_scout_travel(
                 continue;
             }
             const auto member = overmap_buffer.find_npc( id );
-            if( member && !member->is_dead() ) {
+            if( member && ( !member->is_dead() || member->pending_home_death ) ) {
                 continue;
             }
             commit_live_bandit_local_progress( site, [&]( bandit_live_world::site_record & next ) {
@@ -13633,7 +13644,8 @@ bool materialize_live_bandit_structural_handoffs()
             std::vector<bandit_live_world::local_abstract_resume_progress_read> reads;
             for( const character_id id : pre_handoff.member_ids ) {
                 const auto member = overmap_buffer.find_npc( id );
-                if( !member || member->is_active() || here.inbounds( member->pos_abs() ) ) {
+                if( !member || member->is_active() || member->pending_home_death ||
+                    here.inbounds( member->pos_abs() ) ) {
                     break;
                 }
                 reads.push_back( { id, true, member->is_dead(),
@@ -19291,7 +19303,8 @@ bool live_bandit_member_can_take_homeward_step( const npc &member )
 
 bool live_bandit_abstract_scout_member_can_travel( const npc &member )
 {
-    return !member.is_dead() && !member.in_sleep_state() && !member.duty_incapacitated() &&
+    return !member.is_dead() && !member.pending_home_death &&
+           !member.in_sleep_state() && !member.duty_incapacitated() &&
            member.get_attitude() != NPCATT_FLEE && member.get_attitude() != NPCATT_FLEE_TEMP &&
            !member.has_effect( effect_npc_run_away ) && !member.has_effect( effect_npc_flee_player ) &&
            !member.faction_alarm_requires_response();
@@ -23366,6 +23379,36 @@ bandit_live_world::camp_signal_observation_result record_live_light_staffed_obse
 
 namespace
 {
+// Keep exact known field and trap hazards without loading an absent submap.
+bool live_bandit_cached_body_tile_is_hazardous( const npc &member, const map &here )
+{
+    const auto location = project_remain<coords::sm>( member.pos_abs() );
+    const submap *tile_map = MAPBUFFER.lookup_submap_cached( location.quotient_tripoint );
+    if( !tile_map ) {
+        return false;
+    }
+    const point_sm_ms tile = location.remainder;
+    for( const auto &entry : tile_map->get_field( tile ) ) {
+        if( entry.second.is_dangerous() ) {
+            return true;
+        }
+    }
+    const trap_id &terrain_trap = tile_map->get_ter( tile )->trap;
+    const trap &candidate = *( terrain_trap != tr_null ? terrain_trap : tile_map->get_trap( tile ) );
+    return !candidate.is_benign() && candidate.can_see( here.get_bub( member.pos_abs() ), member );
+}
+
+// A pending effect is tied to the actual square and cannot be transferred.
+bool live_bandit_expedition_bodies_can_transfer( const std::vector<shared_ptr_fast<npc>> &members,
+        const std::set<character_id> &blocked )
+{
+    return std::none_of( members.begin(), members.end(), [&]( const auto &member ) {
+        return member->pending_home_death ||
+               ( blocked.count( member->getID() ) && !get_map().inbounds( member->pos_abs() ) &&
+                 member->get_last_updated() < calendar::turn );
+    } );
+}
+
 // Inactive bodies retain their native clock under either authenticated owner.
 // Consume it before admission or travel; an inability to transfer or walk must
 // not also prevent recovery. Callers authenticate the complete party first.
@@ -23375,6 +23418,7 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         const std::set<character_id> &loaded_before_settlement )
 {
     using namespace bandit_live_world;
+    const scoped_detailed_map_entry_region count_expedition_body_entries;
     const auto cursor = current_external_simulation_cursor( site );
     if( !cursor ) {
         return false;
@@ -23395,7 +23439,7 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         for( std::size_t i = 0; i < members.size(); ++i )
         {
             const auto &member = members[i];
-            if( member->is_dead() ) {
+            if( member->is_dead() && !member->pending_home_death ) {
                 casualties.push_back( { member->getID(), member_state::dead, member->pos_abs() } );
             }
         }
@@ -23435,7 +23479,10 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
             } else if( ( *actor )->pos_abs() != snapshot.exit_position ) {
                 return std::nullopt;
             }
-            snapshot.hp_percent = ( *actor )->hp_percentage();
+            // A selected death becomes a casualty only when the real map resolves it.
+            if( !( *actor )->is_dead() ) {
+                snapshot.hp_percent = ( *actor )->hp_percentage();
+            }
         }
         // A successfully reconciled all-dead party has no live executor
         // cursor. It still publishes the terminal roster/corpse outcome.
@@ -23446,37 +23493,32 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
         return current_external_simulation_cursor( candidate ) || terminal_deaths ?
                std::optional<site_record>( std::move( candidate ) ) : std::nullopt;
     };
-    const auto catch_up = [&]( const shared_ptr_fast<npc> &member, map & body_map ) {
-        member->catch_up_body();
-        if( !member->is_dead() &&
-            ( body_map.dangerous_field_at( member->pos_bub( body_map ) ) ||
-              live_bandit_local_step_has_known_dangerous_trap(
-                  *member, body_map, member->pos_bub( body_map ) ) ) ) {
-            blocked.insert( member->getID() );
-        }
-    };
-    // Native travel can temporarily straddle OMTs. Body physiology reads
-    // each exact physical location, never a guessed route-center map.
-    std::map<tripoint_abs_omt, std::vector<shared_ptr_fast<npc>>> remote_members;
     for( const auto &member : members ) {
         // Native turns exclusively own active bodies and their effect decay.
         if( member->is_active() ) {
             continue;
         }
-        if( get_map().inbounds( member->pos_abs() ) ) {
-            catch_up( member, get_map() );
+        map &here = get_map();
+        if( here.inbounds( member->pos_abs() ) ) {
+            member->catch_up_body();
+            const tripoint_bub_ms pos = member->pos_bub( here );
+            if( !member->is_dead() && ( here.dangerous_field_at( pos ) ||
+                                        live_bandit_local_step_has_known_dangerous_trap( *member, here, pos ) ) ) {
+                blocked.insert( member->getID() );
+            }
         } else {
-            remote_members[member->pos_abs_omt()].push_back( member );
+            npc_home_body_environment environment;
+            environment.sheltered = member->pos_abs().z() < 0;
+            const bool settled = member->get_last_updated() == calendar::turn ||
+                                 member->catch_up_offscreen_body( environment,
+                                         get_weather().get_area_temperature( member->pos_abs_omt() ), false );
+            if( !settled || live_bandit_cached_body_tile_is_hazardous( *member, here ) ) {
+                blocked.insert( member->getID() );
+            }
         }
-    }
-    for( const auto &group : remote_members ) {
-        tinymap body_map;
-        body_map.load( group.first, false );
-        swap_map current( *body_map.cast_to_map() );
-        for( const auto &member : group.second ) {
-            catch_up( member, *body_map.cast_to_map() );
+        if( member->pending_home_death ) {
+            blocked.insert( member->getID() );
         }
-        body_map.save();
     }
     auto candidate = body_candidate();
     if( !candidate ) {
@@ -23487,7 +23529,7 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
     }
     const bool casualties_observed = std::any_of( members.begin(), members.end(),
     []( const auto & member ) {
-        return member->is_dead();
+        return member->is_dead() && !member->pending_home_death;
     } );
     if( local ) {
         // Casualty/cursor publication and all surviving lease copies share the
@@ -23505,7 +23547,7 @@ bool settle_live_bandit_inactive_bodies( bandit_live_world::site_record &site,
     }
     changed |= casualties_observed;
     for( const auto &member : members ) {
-        if( member->is_dead() ) {
+        if( member->is_dead() && !member->pending_home_death ) {
             // A body that died while finishing a loaded interval remains in
             // the native active list even though is_active() no longer sees
             // dead creatures. Normal cleanup owns both of its representations.
@@ -26023,7 +26065,7 @@ void overmap_npc_move()
                 continue;
             }
             const auto member = overmap_buffer.find_npc( snapshot.npc_id );
-            if( !member || member->is_active() ) {
+            if( !member || member->is_active() || member->pending_home_death ) {
                 break;
             }
             reads.push_back( { snapshot.npc_id, true, member->is_dead(),

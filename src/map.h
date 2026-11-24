@@ -101,6 +101,8 @@ struct detailed_map_entry_counts {
     std::size_t region_loads = 0;
     std::size_t region_saves = 0;
     std::size_t regions_entered = 0;
+    std::size_t generations = 0;
+    std::size_t region_generations = 0;
 };
 class scoped_detailed_map_entry_counter
 {
@@ -1840,6 +1842,7 @@ class map
         void drop_vehicle( const tripoint_bub_ms &p );
         void drop_fields( const tripoint_bub_ms &p );
         void drop_creature( const tripoint_bub_ms &p );
+        static void record_detailed_map_generation();
         /*@}*/
     public:
         /**

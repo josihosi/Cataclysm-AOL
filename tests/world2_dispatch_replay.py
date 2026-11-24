@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the qualified, trace-free saved World 2 dispatch experiment."""
+"""Replay saved World 2 dispatch and expedition updates with trace-free timing."""
 
 import argparse
 import json
@@ -32,8 +32,9 @@ def verify_world(path: Path) -> None:
 
 
 def run_replay(mode: str, directory: Path, executable: Path, binary_hash: str,
-            evidence: Path) -> dict:
-    profile = directory / mode
+            evidence: Path, run_name: str | None = None) -> dict:
+    name = run_name or mode
+    profile = directory / name
     profile.mkdir()
     (profile / ".world2-dispatch-disposable").touch(exist_ok=False)
     world = profile / "save/TestSetup00"
@@ -45,14 +46,14 @@ def run_replay(mode: str, directory: Path, executable: Path, binary_hash: str,
     environment = {key: value for key, value in os.environ.items()
                    if not key.startswith("OPENCLAW_HARNESS_") and not key.startswith("CAOL_HOME_")}
     environment.update(CAOL_WORLD2_DISPATCH_USERDIR=str(profile), CAOL_WORLD2_DISPATCH_MODE=mode)
-    stdout_path = evidence / f"world2-{mode}.stdout.log"
-    stderr_path = evidence / f"world2-{mode}.stderr.log"
+    stdout_path = evidence / f"world2-{name}.stdout.log"
+    stderr_path = evidence / f"world2-{name}.stderr.log"
     with stdout_path.open("x") as stdout, stderr_path.open("x") as stderr:
         with subprocess.Popen([str(executable), "[world2_dispatch_replay]", "--rng-seed", SEED,
                                "--user-dir", str(profile), "--drop-world",
                                "--set-debug-level-mask", "8"],
                               cwd=ROOT, env=environment, stdout=stdout, stderr=stderr) as process:
-            print(f"{mode}: native test PID {process.pid}", flush=True)
+            print(f"{name}: native test PID {process.pid}", flush=True)
             try:
                 subprocess.run(["ps", "-p", str(process.pid), "-o", "pid,ppid,lstart,comm"],
                                check=False)
@@ -108,10 +109,10 @@ def main() -> None:
                 json.dump(qualified, out, indent=2)
                 out.write("\n")
             measured = {}
-            for mode in ("turn", "body"):
-                row = run_replay(mode, directory, executable, digest, evidence)
+            for name, mode in (("turn", "turn"), ("turn_repeat", "turn"), ("body", "body")):
+                row = run_replay(mode, directory, executable, digest, evidence, name)
                 require_same_work(qualified, row)
-                measured[mode] = row
+                measured[name] = row
             if product_source_binding().get("sha256") != source_before["sha256"]:
                 raise RuntimeError("Product source changed during the experiment")
             receipt = {"world_tree_sha256": WORLD_HASH, "character_sha256": CHARACTER_HASH,

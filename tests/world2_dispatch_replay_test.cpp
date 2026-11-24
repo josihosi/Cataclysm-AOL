@@ -33,6 +33,7 @@ namespace
 constexpr int saved_turn = 5218254;
 constexpr int dispatch_turn = 5220000;
 constexpr int movement_turn = 5221200;
+constexpr std::array<int, 4> expedition_turns = { 5220300, 5220600, 5220900, movement_turn };
 
 struct world2_camp {
     std::string site_id;
@@ -225,6 +226,7 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
         REQUIRE( entries.regions_entered == 2 );
         REQUIRE( entries.region_loads == 0 );
         REQUIRE( entries.region_saves == 0 );
+        REQUIRE( entries.region_generations == 0 );
     } else if( mode == "body" ) {
         REQUIRE( body_timing.calls == 6 );
     }
@@ -268,10 +270,44 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
     for( const auto &[id, start] : party_start ) {
         previous_omt.emplace( id, project_to<coords::omt>( start ) );
     }
+    std::array<clock_sample, expedition_turns.size()> expedition_times{};
+    std::array<detailed_map_entry_counts, expedition_turns.size()> expedition_entries{};
+    std::size_t expedition_index = 0;
     out.member( "movement_profile" );
     out.start_array();
     while( to_turn<int>( calendar::turn ) < movement_turn ) {
-        world2_turn();
+        const int next = to_turn<int>( calendar::turn ) + 1;
+        if( next != expedition_turns[expedition_index] ) {
+            world2_turn();
+        } else {
+            CAPTURE( next );
+            if( mode == "qualify" ) {
+                auto &counts = expedition_entries[expedition_index];
+                {
+                    scoped_detailed_map_entry_counter counter( counts );
+                    world2_turn();
+                }
+                CAPTURE( counts.regions_entered, counts.region_loads, counts.region_saves,
+                         counts.region_generations );
+                REQUIRE( counts.regions_entered == camps.size() );
+                CHECK( counts.region_loads == 0 );
+                CHECK( counts.region_saves == 0 );
+                CHECK( counts.region_generations == 0 );
+                for( const auto &[id, previous] : previous_omt ) {
+                    const auto body = overmap_buffer.find_npc( id );
+                    REQUIRE( body );
+                    CHECK_FALSE( body->pending_home_death );
+                    CHECK( body->get_last_updated() == calendar::turn );
+                }
+            } else if( mode == "turn" ) {
+                get_avatar().set_moves( 0 );
+                expedition_times[expedition_index] = measure( due );
+                REQUIRE( to_turn<int>( calendar::turn ) == next );
+            } else {
+                world2_turn();
+            }
+            ++expedition_index;
+        }
         for( auto &[id, previous] : previous_omt ) {
             const auto body = overmap_buffer.find_npc( id );
             REQUIRE( body );
@@ -314,15 +350,91 @@ TEST_CASE( "World 2 saved dispatch replay at turn 5220000", "[.][world2_dispatch
         out.member( "admission_regions", entries.regions_entered );
         out.member( "admission_loads", entries.region_loads );
         out.member( "admission_saves", entries.region_saves );
+        out.member( "admission_generations", entries.region_generations );
+        out.member( "expedition_map_entries" );
+        out.start_array();
+        for( std::size_t i = 0; i < expedition_turns.size(); ++i ) {
+            const auto &counts = expedition_entries[i];
+            out.start_object();
+            out.member( "turn", expedition_turns[i] );
+            out.member( "body_regions", counts.regions_entered );
+            out.member( "body_loads", counts.region_loads );
+            out.member( "body_saves", counts.region_saves );
+            out.member( "body_generations", counts.region_generations );
+            out.member( "turn_loads", counts.loads );
+            out.member( "turn_saves", counts.saves );
+            out.member( "turn_generations", counts.generations );
+            out.end_object();
+        }
+        out.end_array();
     } else if( mode == "turn" ) {
         write_clock( out, "load", loading );
         write_clock( out, "initial_do_turn", initial_turn );
         write_clock( out, "first_advancing_turn", first_advancing );
         write_clock( out, "dispatch_time", dispatch );
+        out.member( "expedition_times" );
+        out.start_array();
+        for( std::size_t i = 0; i < expedition_turns.size(); ++i ) {
+            out.start_object();
+            out.member( "turn", expedition_turns[i] );
+            write_clock( out, "time", expedition_times[i] );
+            out.end_object();
+        }
+        out.end_array();
     } else {
         out.member( "body_calls", body_timing.calls );
         out.member( "body_wall_ms", std::chrono::duration<double, std::milli>( body_timing.elapsed ).count() );
     }
     out.end_object();
     std::cout << "WORLD2_DISPATCH_REPLAY " << record.str() << '\n';
+
+    if( mode == "qualify" ) {
+        const auto scout = overmap_buffer.find_npc( camps.front().party.front() );
+        REQUIRE( scout );
+        REQUIRE_FALSE( get_map().inbounds( scout->pos_abs() ) );
+        const efftype_id flee( "npc_flee_player" );
+        const efftype_id narcosis( "narcosis" );
+        scout->add_effect( flee, 6_minutes );
+        scout->set_attitude( NPCATT_FLEE_TEMP );
+        scout->add_effect( narcosis, 6_minutes );
+        const auto position = scout->pos_abs();
+        for( const int update : { movement_turn + 300, movement_turn + 600 } ) {
+            while( to_turn<int>( calendar::turn ) < update ) {
+                world2_turn();
+            }
+            REQUIRE( scout->get_last_updated() == calendar::turn );
+            REQUIRE_FALSE( scout->pending_home_death );
+            if( update == movement_turn + 300 ) {
+                CHECK( scout->get_attitude() == NPCATT_FLEE_TEMP );
+                CHECK( scout->has_effect( flee ) );
+                CHECK( scout->has_effect( narcosis ) );
+                CHECK( scout->pos_abs() == position );
+            } else {
+                CHECK( scout->get_attitude() != NPCATT_FLEE_TEMP );
+                CHECK_FALSE( scout->has_effect( flee ) );
+                CHECK_FALSE( scout->has_effect( narcosis ) );
+            }
+        }
+
+        // Trigger offscreen lethal physiology, then load the original tile as
+        // the real local map and verify casualty ownership and one-time cleanup.
+        scout->set_stim( 400 );
+        const auto lethal_spot = scout->pos_abs();
+        while( to_turn<int>( calendar::turn ) < movement_turn + 900 ) {
+            world2_turn();
+        }
+        REQUIRE( scout->pending_home_death );
+        CHECK( scout->pos_abs() == lethal_spot );
+        REQUIRE_FALSE( world2_site( camps.front() ).active_outing.member_is_resolved( scout->getID() ) );
+        map &here = get_map();
+        const int mid = here.getmapsize() / 2;
+        here.load( scout->pos_abs_sm() - point_rel_sm{ mid, mid }, false );
+        REQUIRE( here.inbounds( lethal_spot ) );
+        g->load_npcs();
+        CHECK_FALSE( scout->pending_home_death );
+        CHECK( scout->is_dead() );
+        REQUIRE( world2_site( camps.front() ).active_outing.member_is_resolved( scout->getID() ) );
+        g->cleanup_dead();
+        CHECK_FALSE( overmap_buffer.find_npc( scout->getID() ) );
+    }
 }

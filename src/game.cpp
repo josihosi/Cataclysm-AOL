@@ -1317,9 +1317,8 @@ void game::load_npcs( map *here )
         if( temp->has_companion_mission() ) {
             continue;
         }
-        if( abstract_scout_owns_npc( *temp ) ) {
-            // Paired handoff admits these identities; generic loading must not
-            // create a second local movement owner.
+        const bool abstract_owned = abstract_scout_owns_npc( *temp );
+        if( abstract_owned && !temp->pending_home_death ) {
             continue;
         }
 
@@ -1372,6 +1371,16 @@ void game::load_npcs( map *here )
                 temp->get_last_updated() != pending.applied_until ) {
                 continue;
             }
+            using namespace bandit_live_world;
+            auto &bandit_state = overmap_buffer.global_state.bandit_live_world;
+            const auto *duty = abstract_owned ? active_operation_duty_site_for( bandit_state, id ) : nullptr;
+            const auto cursor = duty ? current_external_simulation_cursor( *duty ) : std::nullopt;
+            if( abstract_owned && ( !cursor || cursor->owner != simulation_owner::abstract ||
+                                    overmap_buffer.find_npc( id ).get() != temp.get() ) ) {
+                continue;
+            }
+            const std::string expedition_site = duty ? duty->site_id : std::string();
+            const tripoint_abs_ms body_position = pending.position;
             // NPC_DEATH EOCs may reenter the loader. Keep the decision pending
             // during callbacks, but never run it twice in the same invocation.
             static thread_local std::set<character_id> resolving_home_deaths;
@@ -1392,6 +1401,34 @@ void game::load_npcs( map *here )
                 temp->resume_pending_home_body( pending );
             }
             temp->pending_home_death.reset();
+            if( cursor ) {
+                const auto site = std::find_if( bandit_state.sites.begin(), bandit_state.sites.end(),
+                [&]( const site_record &entry ) {
+                    return entry.site_id == expedition_site;
+                } );
+                if( site != bandit_state.sites.end() ) {
+                    const auto current = current_external_simulation_cursor( *site );
+                    if( current && current->activity_id == cursor->activity_id &&
+                        current->generation == cursor->generation && current->owner == cursor->owner &&
+                        current->handoff_epoch == cursor->handoff_epoch &&
+                        current->last_advanced_minutes == cursor->last_advanced_minutes &&
+                        current->covert_egress_revision == cursor->covert_egress_revision ) {
+                        if( temp->is_dead() ) {
+                            const bool recorded = reconcile_local_pair_casualties(
+                                                      *site, *cursor, { { id, member_state::dead, temp->pos_abs() } },
+                                                      to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ) );
+                            site->active_outing.local_projection_reconciliation_rejected |= !recorded;
+                        } else {
+                            for( auto &snapshot : site->active_outing.local_handoff.members ) {
+                                if( snapshot.npc_id == id && !snapshot.dead &&
+                                    snapshot.exit_position == body_position && temp->pos_abs() == body_position ) {
+                                    snapshot.hp_percent = temp->hp_percentage();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             if( temp->is_dead() ) {
                 for( auto &site : overmap_buffer.global_state.bandit_live_world.sites ) {
                     const auto *member = site.find_member( id );
@@ -1411,6 +1448,11 @@ void game::load_npcs( map *here )
                 critter_tracker->active_npc.push_back( temp );
                 continue;
             }
+        }
+        // Local body work may resolve here, but only paired handoff admits
+        // an abstract scout to native movement.
+        if( abstract_owned ) {
+            continue;
         }
         temp->place_on_map( here );
         if( !here->inbounds( temp->pos_abs() ) ) {
